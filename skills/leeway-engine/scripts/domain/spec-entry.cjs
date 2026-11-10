@@ -9,11 +9,10 @@
 //
 // What carries the spec on, read alike by its entry and its recovery note
 // (position.cjs): each live topic's record, by its engine call, and its log
-// — a bugfix's its investigation (19.4.3, 19.4.15), and beside it, while
-// today's investigation writes one until 29.15 retires it, its document —
-// then the unit's own record, the gaps
-// asked at the spec and their answers; the files the unit's current entries link
-// as canonical, which the spec links (11.6.3); once the spec is written, the
+// — a bugfix's its investigation (19.4.3, 19.4.15) — then the unit's own
+// record, the gaps asked at the spec and their answers; the files the unit's
+// current entries link as canonical, which the spec links (11.6.3); once the
+// spec is written, the
 // spec; the cut, by its call, once the manifest holds one; and while the
 // person's review page is open, its address and the file its marks are read
 // back to (spec-review.cjs). The entry adds approve the map, by its call,
@@ -43,7 +42,6 @@ const { specStanding, specTopics, entryRefusal } = require('./spec-standing.cjs'
 const { specPath } = require('./spec-sections.cjs');
 const { knownUnit, noUnit, unitClosure, phaseHeldRefusal } = require('./topic-standing.cjs');
 const { topicLog, recordCall } = require('./topic-log.cjs');
-const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
 const { agentsLeft, passesInFlight, abandonEarlierPasses } = require('./agent-state.cjs');
 const { openPage } = require('./spec-review.cjs');
@@ -74,10 +72,9 @@ const PHASE = 'specification';
 function specSources(cwd, manifest, warnings) {
   const unit = manifest.name;
   const topics = specTopics(manifest);
-  const logsOf = (/** @type {string} */ topic) => [topicLog(unit, topic), ...(manifest.work_type === 'bugfix' ? [INDEXED_ARTIFACTS.investigation(unit, topic)] : [])];
   return {
     records: [...topics.map((topic) => recordCall(unit, topic)), `${ENGINE_COMMAND} ledger record ${unit}`],
-    logs: topics.flatMap(logsOf).map((log) => statePath(cwd, log)).filter((log) => fs.existsSync(log)),
+    logs: topics.map((topic) => statePath(cwd, topicLog(unit, topic))).filter((log) => fs.existsSync(log)),
     assets: canonicalAssets(stateRoot(cwd), unit, warnings).map((asset) => statePath(cwd, asset)),
     spec: [specPath(cwd, unit)].filter((spec) => fs.existsSync(spec)),
     cut: isObject(manifest.cut) ? [`${ENGINE_COMMAND} manifest get ${unit} cut`] : [],

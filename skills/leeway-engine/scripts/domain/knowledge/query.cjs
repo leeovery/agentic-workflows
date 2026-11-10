@@ -4,32 +4,28 @@
 // Domain ring: a knowledge query — every framing embedded in one request or,
 // whatever keeps it from a vector the store can compare, none, the query then
 // running keyword-only with a note naming why; the framings searched, merged
-// by each chunk's best score, dated by the progress clock and re-ranked, each
-// topic's records put in its order; and each result's passage (passages.cjs)
-// and whether its topic is in progress again; and the text `query` prints. A
-// query never writes.
+// by each chunk's best score, dated by the progress clock and re-ranked; and
+// each result's passage (passages.cjs); and the text `query` prints. A query
+// never writes.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
-const { searchFramings, mergeFramings, rerank, orderTopics, explanation } = require('../../kernel/knowledge/ranking.cjs');
+const { searchFramings, mergeFramings, rerank, explanation } = require('../../kernel/knowledge/ranking.cjs');
 const { UserError, isPermanentError, withRetry } = require('../../kernel/knowledge/retry.cjs');
 const { QuotaError, RateLimitError, WaitBudget } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
 const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 const { withPassages } = require('./passages.cjs');
-const { identityKey, unitsByName } = require('./artifacts.cjs');
 const { headingPath } = require('../../kernel/knowledge/outline.cjs');
-const { itemOf, phaseData } = require('../derivations.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Metadata} Metadata */
 /** @typedef {import('./embedder.cjs').Config} Config */
 /** @typedef {import('./embedder.cjs').EmbeddingProvider} EmbeddingProvider */
 /** @typedef {import('./passages.cjs').Placed} Placed */
-/** @typedef {Placed & {reopened: boolean}} Result  a placed result, and whether its topic is in progress again */
 
 // A query's patience with its endpoint is seconds, where an index's is
 // minutes: keyword-only answers at once, and a phase's opening query must not
@@ -234,7 +230,7 @@ function queryWhere({ phase, workType, workUnit, topic }) {
 
 /**
  * @typedef {object} QueryOutcome
- * @property {Result[]} results  ranked, cut to the limit
+ * @property {Placed[]} results  ranked, cut to the limit
  * @property {string[]} notes  the lines above the count
  */
 
@@ -242,41 +238,7 @@ function queryWhere({ phase, workType, workUnit, topic }) {
 const NO_RESULTS = { results: [], notes: [] };
 
 /**
- * Whether a chunk's own topic is in progress again: its phase item reads
- * `in-progress` in its unit's manifest. Only a completed item is indexed, so
- * one in progress that holds chunks has been reopened.
- * @param {Array<Record<string, any>>} workUnits
- * @returns {(workUnit: string, phase: string, topic: string) => boolean}
- */
-function reopenedTest(workUnits) {
-  const units = unitsByName(workUnits);
-  return (workUnit, phase, topic) => {
-    const unit = units.get(workUnit);
-    return unit !== undefined && (itemOf(unit, phase, topic) || {}).status === 'in-progress';
-  };
-}
-
-/**
- * Each record's topic and its stage in it, read from the manifests: every
- * investigation is a topic of its own, at its one stage.
- * @param {Array<Record<string, any>>} workUnits
- * @returns {(result: Record<string, any>) => import('../../kernel/knowledge/ranking.cjs').TopicPlace|null}
- */
-function topicPlaces(workUnits) {
-  /** @type {Set<string>} */
-  const topics = new Set();
-  for (const unit of unitsByName(workUnits).values()) {
-    for (const name of Object.keys(phaseData(unit, 'investigation').items || {})) topics.add(identityKey(unit.name, 'investigation', name));
-  }
-  return (result) => {
-    const topic = identityKey(result.work_unit, result.phase, result.topic);
-    return topics.has(topic) ? { topic, stage: 1 } : null;
-  };
-}
-
-/**
- * A query's ranked results, each topic's records in its order, each carrying
- * its passage, whether its topic is in progress again, and the scoring
+ * A query's ranked results, each carrying its passage and the scoring
  * `--explain` prints.
  * @param {Store} db @param {QuerySettings} settings @param {QueryRequest} request
  * @returns {Promise<QueryOutcome>}
@@ -287,11 +249,10 @@ async function queryStore(db, settings, { terms, options, workUnits, root }) {
   const { vectors, note } = await framingVectors(settings, terms);
   const { cut, framings } = searchFramings(db, terms, { where: queryWhere(options), limit, similarity: settings.similarity, vectors });
   const elapsedOf = progressElapsed(workUnits, settings.weights);
-  const reopened = reopenedTest(workUnits);
   const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: elapsedOf(r.work_unit) }));
-  const ranked = orderTopics(rerank(dated, boosts, settings.stability).slice(0, limit), topicPlaces(workUnits));
+  const ranked = rerank(dated, boosts, settings.stability).slice(0, limit);
   return {
-    results: withPassages(db, ranked, terms, root).map((r) => ({ ...r, reopened: reopened(r.work_unit, r.phase, r.topic) })),
+    results: withPassages(db, ranked, terms, root),
     notes: [
       ...(note ? [note] : []),
       ...vectorNotes(db, settings),
@@ -315,13 +276,11 @@ function formatDate(ts) {
 
 /**
  * A result's provenance: its phase, identity, confidence and its source
- * document's date, and `reopened` last where its topic is in progress again.
- * @param {Result} result
+ * document's date.
+ * @param {Placed} result
  */
-function provenanceLine({ phase, work_unit, topic, confidence, timestamp, reopened }) {
-  const fields = [phase, `${work_unit}/${topic}`, confidence, formatDate(timestamp)];
-  if (reopened) fields.push('reopened');
-  return `[${fields.join(' | ')}]`;
+function provenanceLine({ phase, work_unit, topic, confidence, timestamp }) {
+  return `[${[phase, `${work_unit}/${topic}`, confidence, formatDate(timestamp)].join(' | ')}]`;
 }
 
 /**

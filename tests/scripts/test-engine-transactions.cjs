@@ -10,7 +10,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
-const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
+const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit, startItem } = harness;
 
 /** Run `engine render` expecting success; returns the whole stdout (sections). */
 const render = (dir, args) => harness.output(dir, ['render', ...args]);
@@ -237,12 +237,12 @@ describe('engine topic reactivate', () => {
 
   it('a stash-less cancelled item returns to never-attempted — the per-item cancel of a status-less item stashed nothing', () => {
     const m = unitManifest();
-    m.phases.discussion.items.stuck = { status: 'cancelled', reconcile_needed: 'brief' };
+    m.phases.discussion.items.stuck = { status: 'cancelled', dismissed_grounds: ['not this year'] };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const topic = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'stuck']);
     assert.deepStrictEqual(topic.restored, [{ phase: 'discussion', status: null }]);
     const after = readManifest(dir, 'payments');
-    assert.deepStrictEqual(after.phases.discussion.items.stuck, { reconcile_needed: 'brief' }, 'the status is gone, the other fields stay');
+    assert.deepStrictEqual(after.phases.discussion.items.stuck, { dismissed_grounds: ['not this year'] }, 'the status is gone, the other fields stay');
   });
 
   it('a legacy topic with no map row reactivates the item carrying a stash', () => {
@@ -275,25 +275,29 @@ describe('engine topic reactivate', () => {
   });
 });
 
-describe('engine topic start', () => {
+describe('a topic\'s start — the function `enter` runs', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
   it('creates an absent phase item with status in-progress — init-phase semantics, no commit', () => {
-    const res = engine(dir, ['topic', 'start', 'payments', 'scoping', 'auth-flow']);
+    const m0 = epicManifest();
+    delete m0.phases.investigation;
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
+    commitAll(dir, 'no investigation');
+    const res = startItem(dir, 'payments', 'investigation', 'auth-flow');
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'auth-flow', phase: 'scoping', status: 'in-progress', created: true });
+    assert.deepStrictEqual(res, { topic: 'auth-flow', phase: 'investigation', status: 'in-progress', created: true });
 
     const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.scoping.items, { 'auth-flow': { status: 'in-progress' } });
+    assert.deepStrictEqual(m.phases.investigation.items, { 'auth-flow': { status: 'in-progress' } });
     // No commit inside — the manifest change is left for the session's cadence.
-    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
+    assert.strictEqual(lastMessage(dir), 'no investigation', 'no commit');
     assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
   it('creates alongside existing items in a populated phase — siblings untouched', () => {
-    const res = engine(dir, ['topic', 'start', 'payments', 'investigation', 'settlement']);
+    const res = startItem(dir, 'payments', 'investigation', 'settlement');
 
     assert.strictEqual(res.created, true);
     const m = readManifest(dir, 'payments');
@@ -309,67 +313,57 @@ describe('engine topic start', () => {
     m0.phases.investigation.items['auth-flow'].note = 'keep me';
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
+    const res = startItem(dir, 'payments', 'investigation', 'auth-flow');
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'auth-flow', phase: 'investigation', status: 'in-progress', created: false });
+    assert.deepStrictEqual(res, { topic: 'auth-flow', phase: 'investigation', status: 'in-progress', created: false });
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.investigation.items['auth-flow'], { status: 'in-progress', note: 'keep me' });
   });
 
-  it('rejects starting a completed item — reopen owns that path', () => {
-    const err = engineFails(dir, ['topic', 'start', 'payments', 'investigation', 'fee-model']);
-    assert.match(err.error, /already completed — reopen it instead/);
+  it('rejects starting a completed item — a message sent to it reopens it', () => {
+    assert.throws(() => startItem(dir, 'payments', 'investigation', 'fee-model'), { message: /already completed — a message sent to it reopens it/ });
   });
 
   it('rejects starting a cancelled item — reactivate owns that path', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'refund-policy']);
-    const err = engineFails(dir, ['topic', 'start', 'payments', 'discussion', 'refund-policy']);
-    assert.match(err.error, /is cancelled — reactivate it instead/);
+    assert.throws(() => startItem(dir, 'payments', 'discussion', 'refund-policy'), { message: /is cancelled — reactivate it instead/ });
   });
 
-  it('rejects unknown work unit, phase, and missing args — loud and specific', () => {
-    assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'investigation', 'auth-flow']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']).error, /unknown or non-lifecycle phase "research"/);
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'investigation']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|cancel\|reactivate\|postpone\|mailbox\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
+  it('rejects an unknown work unit and phase — loud and specific', () => {
+    assert.throws(() => startItem(dir, 'ghost', 'investigation', 'auth-flow'), { message: /manifest not found/ });
+    assert.throws(() => startItem(dir, 'payments', 'nonsense', 'auth-flow'), { message: /unknown or non-lifecycle phase "nonsense"/ });
+    assert.throws(() => startItem(dir, 'payments', 'research', 'auth-flow'), { message: /unknown or non-lifecycle phase "research"/ });
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <send\|cancel\|reactivate\|postpone\|mailbox\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
   });
 
-  it('refuses a specification or planning item on every unit but a quick-fix — the spec is entered at the work unit, the build planned by its cut', () => {
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    for (const verb of ['start', 'complete', 'reopen']) {
-      assert.strictEqual(engineFails(dir, ['topic', verb, 'payments', 'specification', 'auth-flow']).error,
-        "payments's spec keeps no items — it is entered at the work unit: engine enter specification payments", verb);
-      assert.strictEqual(engineFails(dir, ['topic', verb, 'payments', 'planning', 'auth-flow']).error,
-        "payments's build is planned by its cut — a planning item is a quick-fix's scoping's alone", verb);
+  it('refuses a specification item on every unit, a quick-fix\'s too — the spec is entered at the work unit — and a planning item, a phase no table holds', () => {
+    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({ name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {} }, null, 2) + '\n');
+    const before = ['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.leeway', unit, 'manifest.json'), 'utf8'));
+    for (const unit of ['payments', 'typo']) {
+      assert.throws(() => startItem(dir, unit, 'specification', unit),
+        { message: `${unit}'s spec keeps no items — it is entered at the work unit: engine enter specification ${unit}` }, unit);
+      assert.throws(() => startItem(dir, unit, 'planning', unit), { message: /^unknown or non-lifecycle phase "planning"/ }, unit);
     }
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before, 'nothing written');
-    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
-      name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: { scoping: { items: { typo: { status: 'in-progress' } } } },
-    }, null, 2) + '\n');
-    assert.strictEqual(engine(dir, ['topic', 'start', 'typo', 'specification', 'typo']).created, true, "scoping's spec keeps its item");
-    assert.strictEqual(engine(dir, ['topic', 'start', 'typo', 'planning', 'typo']).created, true, "scoping's plan keeps its item");
+    assert.deepStrictEqual(['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.leeway', unit, 'manifest.json'), 'utf8')), before, 'nothing written');
   });
 
   it('refuses the build\'s places on every unit, a quick-fix\'s too — they stand by the build\'s cut, entered by `enter`', () => {
     writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
-      name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: { scoping: { items: { typo: { status: 'completed' } } } },
+      name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {},
     }, null, 2) + '\n');
     const before = fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8');
-    for (const verb of ['start', 'complete', 'reopen']) {
-      for (const phase of ['implementation', 'review']) {
-        assert.strictEqual(engineFails(dir, ['topic', verb, 'typo', phase, 'typo']).error,
-          `${phase} stands by the build's cut — it is entered by \`engine enter ${phase} <work-unit>\`, never written by a topic verb`, `${verb} ${phase}`);
-      }
+    for (const phase of ['implementation', 'review']) {
+      assert.throws(() => startItem(dir, 'typo', phase, 'typo'),
+        { message: `${phase} stands by the build's cut — it is entered by \`engine enter ${phase} <work-unit>\`, never written by a topic verb` }, phase);
     }
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8'), before, 'nothing written');
   });
 
   it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
     parkStub(dir, 'investigation', 'parked-topic');
-    const res = engine(dir, ['topic', 'start', 'payments', 'investigation', 'parked-topic']);
+    const res = startItem(dir, 'payments', 'investigation', 'parked-topic');
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'parked-topic', phase: 'investigation', status: 'in-progress', created: false });
+    assert.deepStrictEqual(res, { topic: 'parked-topic', phase: 'investigation', status: 'in-progress', created: false });
     assert.strictEqual(readManifest(dir, 'payments').phases.investigation.items['parked-topic'].status, 'in-progress');
   });
 });
@@ -381,17 +375,6 @@ describe('unstarted guards across the other verbs', () => {
     parkStub(dir, 'investigation', 'parked-topic');
   });
   afterEach(() => { cleanupFixture(dir); });
-
-  it('complete refuses an unstarted stub — parked messages must never bury as completed', () => {
-    const err = engineFails(dir, ['topic', 'complete', 'payments', 'investigation', 'parked-topic']);
-    assert.match(err.error, /is unstarted — its messages have never been worked; start the topic first/);
-    assert.strictEqual(readManifest(dir, 'payments').phases.investigation.items['parked-topic'].status, 'unstarted');
-  });
-
-  it('reopen refuses an unstarted stub with the existing not-completed message', () => {
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'parked-topic']);
-    assert.match(err.error, /is not completed \(status: unstarted\) — only a completed item can be reopened/);
-  });
 
   it('a topic cancel stashes unstarted as previous_status; reactivate restores it', () => {
     parkStub(dir, 'discussion', 'parked-topic');
@@ -406,166 +389,22 @@ describe('unstarted guards across the other verbs', () => {
   });
 });
 
-describe('pipeline completion banner matrix', () => {
-  const { workunitReceipt } = require('../../skills/leeway-engine/scripts/domain/projections/transactions.cjs');
-  const banner = (wt, opts) => workunitReceipt('complete', 'pay-x', wt, { pipeline: true, ...opts });
-
-  it('every work-type label and both body variants render', () => {
-    assert.ok(banner('feature').includes('Feature Completed\n\n"Pay X" has completed all pipeline phases.'));
-    assert.ok(banner('bugfix').includes('Bugfix Completed\n\n"Pay X" has completed all pipeline phases.'));
-    assert.ok(banner('quick-fix').includes('Quick-Fix Completed\n\n"Pay X" has completed all pipeline phases.'));
-    assert.ok(banner('epic').includes('Epic Completed\n\n"Pay X" has completed all topics through review.'));
-    assert.ok(banner('epic', { skippedReview: true }).includes('Epic Completed\n\n"Pay X" completed — review skipped.'));
-  });
-});
-
-describe('topic verbs without section folds', () => {
+describe('topic start, reopen and complete — no verbs of their own', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('every topic verb appends nothing — receipts are render surfaces', () => {
-    assert.strictEqual(okSections(dir, ['topic', 'start', 'payments', 'investigation', 'brand-new']).sections, '',
-      'start appends no sections');
-    assert.strictEqual(okSections(dir, ['topic', 'reopen', 'payments', 'investigation', 'fee-model']).sections, '',
-      'reopen appends no sections');
-  });
-});
-
-describe('engine topic complete', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('completes an indexed-phase item and KB-indexes it — failure is a warning, no commit', () => {
-    const { res, sections } = okSections(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.topic, 'auth-flow');
-    assert.strictEqual(res.phase, 'investigation');
-    assert.strictEqual(res.status, 'completed');
-    // The fixture holds no investigation file — warn-don't-block.
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge index failed/);
-    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
-    const advisory = render(dir, ['topic-receipt', 'payments.investigation.auth-flow', '--verb', 'complete', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. The next start retries the indexing\./);
-    assert.ok(!advisory.includes('confirmation ==='), 'complete renders the advisory only — the flow owns its conclusion display');
-    assert.strictEqual(render(dir, ['topic-receipt', 'payments.investigation.auth-flow', '--verb', 'complete']), '',
-      'no --warn, no advisory — an empty receipt');
-
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.investigation.items, {
-      'auth-flow': { status: 'completed' },
-      'fee-model': { status: 'completed' },
-    });
-    // No commit inside.
-    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
-    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
-  });
-
-  it('an index that fails over a store it cannot load lands in the transaction\'s warnings', () => {
-    writeFile(dir, '.leeway/payments/investigation/auth-flow.md', '# Auth Flow\n\nInvestigation findings.\n');
-    harness.unreadableKnowledge(dir);
-
-    const res = engine(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']);
-
-    assert.strictEqual(res.status, 'completed');
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at .*\/\.leeway\/\.knowledge\/store\.bin: /);
-  });
-
-  it('completes a non-indexed phase with no KB attempt — empty warnings', () => {
-    const m0 = epicManifest();
-    m0.phases.scoping = { items: { 'auth-flow': { status: 'in-progress' }, 'fee-model': { status: 'in-progress' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
-
-    const { res, sections } = okSections(dir, ['topic', 'complete', 'payments', 'scoping', 'fee-model']);
-
-    assert.deepStrictEqual(res, { ok: true, topic: 'fee-model', phase: 'scoping', status: 'completed', warnings: [] });
-    assert.strictEqual(sections, '', 'no warnings — no sections');
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.scoping.items, {
-      'auth-flow': { status: 'in-progress' },
-      'fee-model': { status: 'completed' },
-    });
-  });
-
-  it('rejects completing a non-existent item, unknown phase, and a cancelled item', () => {
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'investigation', 'ghost']).error, /no investigation item "ghost"/);
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'scoping', 'auth-flow']).error, /no scoping items/);
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
-    const m0 = epicManifest();
-    m0.phases.investigation.items['auth-flow'] = { status: 'cancelled' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']).error, /is cancelled — reactivate it instead/);
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments']).error, /Usage: engine topic complete/);
-  });
-
-  it('round-trips with start: start → complete → resuming via start is still rejected', () => {
-    engine(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
-    const res = engine(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']);
-    assert.strictEqual(res.status, 'completed');
-    assert.strictEqual(res.warnings.length, 1);
-    const err = engineFails(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
-    assert.match(err.error, /already completed/);
-  });
-});
-
-describe('engine topic reopen', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('sets a completed item back to in-progress — no KB attempt, no commit', () => {
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'investigation', 'fee-model']);
-
-    assert.deepStrictEqual(res, { ok: true, topic: 'fee-model', phase: 'investigation', status: 'in-progress' });
-
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.investigation.items, {
-      'auth-flow': { status: 'in-progress' },
-      'fee-model': { status: 'in-progress' },
-    });
-    // No commit inside — the manifest change is left for the session's cadence.
-    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
-    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
-  });
-
-  it('refuses a discussion, whatever it stands at — a decided one reopens through a message sent to it', () => {
+  it('each answers the usage, writing nothing: a topic starts at `enter`, and closes and reopens through its phase\'s own doors', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    for (const topic of ['session-model', 'refund-policy']) {
-      assert.strictEqual(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', topic]).error,
-        'a discussion decided, or closed into its spec, reopens through a message sent to it (topic send), never topic reopen');
+    for (const [verb, topic] of [['start', 'brand-new'], ['reopen', 'fee-model'], ['complete', 'auth-flow']]) {
+      assert.match(engineFails(dir, ['topic', verb, 'payments', 'investigation', topic]).error,
+        /^Usage: engine topic <send\|cancel\|reactivate\|postpone\|mailbox\|answered\|/, verb);
     }
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
-
-  it('refuses an in-progress item — nothing touched', () => {
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'auth-flow']);
-    assert.match(err.error, /is not completed \(status: in-progress\) — only a completed item can be reopened/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
-  });
-
-  it('refuses a cancelled item — reactivate owns that path', () => {
-    const m = epicManifest();
-    m.phases.investigation.items['auth-flow'] = { status: 'cancelled' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'auth-flow']);
-    assert.match(err.error, /is cancelled — reactivate it instead/);
-  });
-
-  it('rejects unknown work unit, phase, missing item, and missing args — loud and specific', () => {
-    assert.match(engineFails(dir, ['topic', 'reopen', 'ghost', 'investigation', 'fee-model']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'nonsense', 'fee-model']).error, /unknown or non-lifecycle phase "nonsense"/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'scoping', 'fee-model']).error, /no scoping items/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'ghost']).error, /no investigation item "ghost"/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation']).error, /Usage: engine topic reopen/);
-  });
 });
 
-/** A single-topic feature manifest with completed indexed artifacts, an import, and imports on disk. */
+/** A single-topic feature manifest with completed indexed artifacts and a seed on disk. */
 function featureManifest() {
   return {
     name: 'auth-flow',
@@ -573,10 +412,6 @@ function featureManifest() {
     status: 'in-progress',
     created: '2026-06-01',
     description: 'auth flow work',
-    imports: [
-      { path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z' },
-      { path: 'evil/../notes.md', imported_at: '2026-06-01T09:00:00Z' },
-    ],
     seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-01T09:00:00Z' }],
     phases: {
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
@@ -590,7 +425,6 @@ const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
   writeFile(dir, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
-  writeFile(dir, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(dir, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(dir, '.leeway/auth-flow/.state/discovery-gap-analysis.md', '# Analysis\n');
   // A log, never indexed.
@@ -610,7 +444,7 @@ const setupFinishedQuickFixFixture = harness.fixtureFrom('engine-tx-', (dir) => 
     work_type: 'quick-fix',
     status: 'in-progress',
     phases: {
-      scoping: { items: { caching: { status: 'completed' } } },
+      planning: { items: { caching: { status: 'completed' } } },
       implementation: { items: { caching: { status: 'completed' } } },
       review: { items: { caching: { status: 'completed' } } },
     },
@@ -621,17 +455,16 @@ const setupFinishedQuickFixFixture = harness.fixtureFrom('engine-tx-', (dir) => 
   commitAll(dir, 'init');
 });
 
-describe('engine workunit complete', () => {
+describe('work-unit completion — finish\'s, in process', () => {
   let dir;
   beforeEach(() => { dir = setupFeatureFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
   it('sets status completed, stamps completed_at today, commits with the given message', () => {
     writeFile(dir, 'unrelated.txt', 'outside the scope\n');
-    const { res, sections } = okSections(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+    const res = completeUnit(dir, 'auth-flow', 'workflow(auth-flow): complete feature pipeline');
 
     const today = new Date().toISOString().slice(0, 10);
-    assert.strictEqual(res.ok, true);
     assert.strictEqual(res.work_unit, 'auth-flow');
     assert.strictEqual(res.status, 'completed');
     assert.strictEqual(res.completed_at, today);
@@ -646,25 +479,15 @@ describe('engine workunit complete', () => {
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
     assert.strictEqual(res.work_type, 'feature');
-    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
-    assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete']),
-      /=== DISPLAY: confirmation \(emit verbatim as a text code block \(```text fence\) after the response\) ===\n"Auth Flow" marked as completed\./);
+    assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'complete']).error,
+      /--verb must be cancel, reactivate, or pivot, got "complete"/, 'finish draws its own close');
   });
 
   it('purges the work unit\'s scratch cache on complete — untracked scratch leaves no dirt', () => {
     writeFile(dir, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): complete feature pipeline');
     assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/auth-flow')), false, 'cache dir removed');
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
-  });
-
-  it('--pipeline renders the "{Type} Completed" banner instead of the one-liner; --skipped-review varies the body', () => {
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
-    const banner = render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete', '--pipeline']);
-    assert.match(banner, /Feature Completed\n\n"Auth Flow" has completed all pipeline phases\./);
-    assert.ok(!banner.includes('marked as completed'));
-    assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete', '--pipeline', '--skipped-review']),
-      /Feature Completed\n\n"Auth Flow" completed — review skipped\./);
   });
 
   it('reactivate renders its confirmation via the receipt surface', () => {
@@ -677,23 +500,20 @@ describe('engine workunit complete', () => {
   });
 
   it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): mark as completed']);
-    assert.match(
-      engineFails(dir, ['workunit', 'complete', 'auth-flow', '-m', 'again']).error,
-      /already completed/);
+    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
+    assert.throws(() => completeUnit(dir, 'auth-flow', 'again'), /already completed/);
 
     engine(dir, ['workunit', 'reactivate', 'auth-flow']);
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
-    assert.match(
-      engineFails(dir, ['workunit', 'complete', 'auth-flow', '-m', 'msg']).error,
-      /is cancelled — reactivate it first/);
+    assert.throws(() => completeUnit(dir, 'auth-flow', 'msg'), /is cancelled — reactivate it first/);
   });
 
-  it('rejects a missing message, missing work unit, and unknown work unit', () => {
-    assert.match(engineFails(dir, ['workunit', 'complete', 'auth-flow']).error, /Usage: engine workunit complete/);
-    assert.match(engineFails(dir, ['workunit', 'complete', '-m', 'msg']).error, /Usage: engine workunit complete/);
-    assert.match(engineFails(dir, ['workunit', 'complete', 'ghost', '-m', 'msg']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|move\|position>/);
+  it('is no CLI verb — a unit completes at finish\'s yes — and refuses an unknown work unit', () => {
+    const usage = /^Usage: engine workunit <create\|cancel\|reactivate\|pivot\|absorb\|move\|position> …$/;
+    assert.match(engineFails(dir, ['workunit', 'complete', 'auth-flow', '-m', 'msg']).error, usage);
+    assert.strictEqual(readManifest(dir, 'auth-flow').status, 'in-progress');
+    assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, usage);
+    assert.throws(() => completeUnit(dir, 'ghost', 'msg'), /manifest not found/);
   });
 
   it('completes a cancelled unit with a finished pipeline directly, restoring its chunks', () => {
@@ -702,9 +522,8 @@ describe('engine workunit complete', () => {
     // the transition re-indexes them (warn-don't-block).
     const finishedDir = setupFinishedQuickFixFixture();
     engine(finishedDir, ['workunit', 'cancel', 'caching']);
-    const res = engine(finishedDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete quick-fix pipeline']);
+    const res = completeUnit(finishedDir, 'caching', 'workflow(caching): complete quick-fix pipeline');
 
-    assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'completed');
     assert.strictEqual(res.committed, shortHead(finishedDir));
     // Cancellation removed the unit's chunks; completion runs ONE scoped bulk
@@ -761,7 +580,7 @@ describe('engine workunit cancel', () => {
     assert.match(engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error, /already cancelled/);
 
     engine(dir, ['workunit', 'reactivate', 'auth-flow']);
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): mark as completed']);
+    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
     assert.match(
       engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error,
       /is completed — reactivate it first/);
@@ -780,7 +599,7 @@ describe('engine workunit reactivate', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('round-trips a complete: status restored, completed_at cleared, no KB attempt', () => {
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): mark as completed']);
+    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
     const res = engine(dir, ['workunit', 'reactivate', 'auth-flow']);
 
     assert.strictEqual(res.ok, true);
@@ -803,8 +622,8 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.previous_status, 'cancelled');
     // Cancellation removed the unit's chunks; reactivation re-indexes them in a
-    // SINGLE scoped bulk pass over the unit — completed phase artifacts,
-    // shape-valid imports/seeds, analysis caches. The store cannot be loaded,
+    // SINGLE scoped bulk pass over the unit — its record copies, shape-valid
+    // seeds, analysis caches. The store cannot be loaded,
     // so the pass fails → one warn-don't-block warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
@@ -838,10 +657,8 @@ describe('engine workunit reactivate', () => {
   });
 
   it('reactivates a completed unit whose pipeline is finished — the revisit path stays open', () => {
-    // The unit surfaces as finalising (or in-progress once a topic is
-    // reopened) — reactivate must not deadlock the reopen path.
     const finishedDir = setupFinishedQuickFixFixture();
-    engine(finishedDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete quick-fix pipeline']);
+    completeUnit(finishedDir, 'caching', 'workflow(caching): complete quick-fix pipeline');
     const res = engine(finishedDir, ['workunit', 'reactivate', 'caching']);
 
     assert.strictEqual(res.ok, true);
@@ -888,18 +705,13 @@ describe('engine workunit reactivate', () => {
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
   const { VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
-  it('discovery is not a lifecycle phase — start/complete/reopen refuse it; cancel addresses the unit', () => {
+  it('discovery is not a lifecycle phase — a start refuses it; cancel addresses the unit', () => {
     const dir = harness.setupGitFixture('engine-tx-');
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': {} } } },
     }, null, 2));
-    for (const verb of ['start', 'complete', 'reopen']) {
-      assert.match(
-        engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
-        /non-lifecycle phase "discovery"[\s\S]*discovery tooling/
-      );
-    }
+    assert.throws(() => startItem(dir, 'payments', 'discovery', 'auth-flow'), { message: /non-lifecycle phase "discovery"[\s\S]*discovery tooling/ });
     // the invalid state the live drive produced must now be impossible
     const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     assert.strictEqual(m.phases.discovery.items['auth-flow'].status, undefined);
@@ -917,16 +729,13 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
 });
 
 describe('engine usage banner', () => {
-  it('lists every topic transition, reopen included', () => {
+  it('lists every topic verb', () => {
     const res = call(process.cwd(), ['bogus-command']);
     assert.strictEqual(res.code, 1);
     for (const line of [
-      'topic start <work-unit> <phase> <topic>',
       'topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>',
       'topic mailbox <work-unit> <topic>',
       'topic answered <work-unit> <topic> <NNN-slug> --entry <id>',
-      'topic complete <work-unit> <phase> <topic>',
-      'topic reopen <work-unit> <phase> <topic>',
       'topic cancel <work-unit> discovery <topic>',
       'topic reactivate <work-unit> discovery <topic>',
       'experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)',
@@ -940,7 +749,7 @@ describe('engine usage banner', () => {
   });
 });
 
-describe('engine topic start — the discovery map gates the birth of a phase item', () => {
+describe('a topic\'s start — the discovery map gates the birth of a phase item', () => {
   const mapped = harness.fixtureFrom('engine-tx-', (dir) => {
     writeFile(dir, '.leeway/mapped/manifest.json', JSON.stringify({
       name: 'mapped',
@@ -967,61 +776,30 @@ describe('engine topic start — the discovery map gates the birth of a phase it
   afterEach(() => { cleanupFixture(dir); });
 
   it('a marker-only cancelled row refuses the birth — the reactivate is the way back', () => {
-    assert.strictEqual(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'iota']).error,
-      'discussion can\'t start on "iota" — it is cancelled and stays on the map as record; the epic menu names its next step');
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'iota'), { message: 'discussion can\'t start on "iota" — it is cancelled and stays on the map as record; the epic menu names its next step' });
     assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.iota, undefined, 'nothing born');
   });
 
   it('the map\'s own next action passes: a fresh topic is born, a parked stub flips, a live one resumes', () => {
-    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'beta']).created, true);
-    assert.deepStrictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'epsilon']), { ok: true, topic: 'epsilon', phase: 'discussion', status: 'in-progress', created: false });
-    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'gamma']).created, false);
+    assert.strictEqual(startItem(dir, 'mapped', 'discussion', 'beta').created, true);
+    assert.deepStrictEqual(startItem(dir, 'mapped', 'discussion', 'epsilon'), { topic: 'epsilon', phase: 'discussion', status: 'in-progress', created: false });
+    assert.strictEqual(startItem(dir, 'mapped', 'discussion', 'gamma').created, false);
   });
 
   it('a topic off the map is refused, writing nothing; a non-epic work unit is ungated by the map', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8');
-    assert.strictEqual(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).error,
-      'discussion can\'t start on "unmapped" — it is not on the map; a topic starts from its row on the epic menu');
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'unmapped'), { message: 'discussion can\'t start on "unmapped" — it is not on the map; a topic starts from its row on the epic menu' });
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8'), before);
     writeFile(dir, '.leeway/feat/manifest.json', JSON.stringify({
       name: 'feat', work_type: 'feature', status: 'in-progress',
       phases: { discovery: { items: { feat: { source: 'discovery' } } } },
     }, null, 2) + '\n');
-    assert.strictEqual(engine(dir, ['topic', 'start', 'feat', 'discussion', 'feat']).created, true);
+    assert.strictEqual(startItem(dir, 'feat', 'discussion', 'feat').created, true);
   });
 
   it('the terminal-status refusals keep their own words ahead of the map', () => {
     engine(dir, ['topic', 'cancel', 'mapped', 'discovery', 'zeta']);
-    assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'zeta']).error, /is cancelled — reactivate it instead/);
-    assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'delta']).error, /already completed — reopen it instead/);
-  });
-});
-
-describe('engine topic complete — a reconcile flag is its phase start\'s, never a refusal', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  /** Stamp fields onto one phase item of the fixture's payments epic. */
-  function withItem(phase, topic, fields) {
-    const m = epicManifest();
-    m.phases[phase].items[topic] = { ...(m.phases[phase].items[topic] || {}), ...fields };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    return m;
-  }
-
-  it('an investigation\'s flag is an entry-time advisory — never a refusal', () => {
-    withItem('investigation', 'auth-flow', { reconcile_needed: true });
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']).status, 'completed');
-    assert.strictEqual(readManifest(dir, 'payments').phases.investigation.items['auth-flow'].reconcile_needed, true, 'the flag stands for the entry advisory');
-  });
-
-  it('other phases\' flags are their start\'s alone — a flagged scoping completes untouched', () => {
-    const m = epicManifest();
-    m.phases.scoping = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'investigation' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'scoping', 'refund-policy']).status, 'completed');
-    const after = readManifest(dir, 'payments');
-    assert.strictEqual(after.phases.scoping.items['refund-policy'].reconcile_needed, 'investigation');
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'zeta'), { message: /is cancelled — reactivate it instead/ });
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'delta'), { message: /already completed — a message sent to it reopens it/ });
   });
 });

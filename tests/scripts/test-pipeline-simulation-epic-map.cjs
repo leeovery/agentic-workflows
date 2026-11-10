@@ -228,15 +228,6 @@ describe('pipeline simulation: epic map', () => {
     assert.ok(!fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/delta/mail/002-second-parked.md`)), 'message file removed');
     assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/.cache/${wu}/discussion/delta/presence`)),
       'the write-shaped verb is what claims the slot');
-    // The raise's display surfaces: the fresh-sitting notice, the offer gate
-    // (agenda payload validated against the live mailbox), and the conclusion
-    // blocker — the entry itself is read by the session, never rendered.
-    sim.write('.leeway/.cache/scratch/mail-offer.json', JSON.stringify({
-      items: [{ file: '001-parked-message.md', title: 'Parked message', from: 'From Alpha · 23 Jul' }],
-    }));
-    sim.render(['mail-announce', `${wu}.discussion.delta`], { expect: 'content' });
-    sim.render(['mail-offer', `${wu}.discussion.delta`, '--file', '.leeway/.cache/scratch/mail-offer.json'], { expect: 'content' });
-    sim.render(['mail-block', `${wu}.discussion.delta`], { expect: 'content' });
     // Presence: heartbeats are mechanical, so the verbs already run on this
     // work unit's topics have stamped them — no prose ever beats.
     const rowOf = (scan, phase, topic) => scan.sessions.find((r) => r.phase === phase && r.topic === topic);

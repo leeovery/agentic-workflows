@@ -21,9 +21,6 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { stateGit, layout } = require('./engine-harness.cjs');
 const { Sim, startUnit, discussed, arrive, send, sendArgv, specEntry, specWritten, specBuilt, enterEntry } = require('./pipeline-world.cjs');
 
@@ -38,14 +35,9 @@ describe('pipeline simulation: backwards', () => {
     discussed(sim, wu, wu);
 
     // The bridge offers no way back into the closed discussion: no revisit
-    // row, no revisit menu, and topic reopen does not take it.
+    // menu.
     arrive(sim, wu);
-    const dump = BRIDGE.format(BRIDGE.discover(sim.dir, wu));
-    assert.match(dump, /^revisitable_phases: \(none\)$/m);
-    assert.match(dump, /^revisit_routes: \(none\)$/m);
-    sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
     sim.refuses(['render', 'revisit-phases', wu], /has no completed earlier phase to revisit/);
-    sim.refuses(['topic', 'reopen', wu, 'discussion', wu], /^a discussion decided, or closed into its spec, reopens through a message sent to it/);
 
     // Entered again, the discussion goes on, so its close is void in the
     // entry's own commit: the spec waits until it closes again.
@@ -80,10 +72,5 @@ describe('pipeline simulation: backwards', () => {
     shut();
     const decision = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions[0].id;
     sim.refuses(['ledger', 'replace', at, '--replaces', decision, '--reason', 'changed-mind'], past('replace'), null, JSON.stringify({ ...person, text: 'Dropped.', why: 'So.', drops: [] }));
-    sim.refuses(['topic', 'reopen', wu, 'specification', wu], /^revisit's spec keeps no items — it is entered at the work unit/);
-
-    // The build's places stand by its cut: no topic verb reopens them.
-    sim.refuses(['topic', 'reopen', wu, 'implementation', wu], /^implementation stands by the build's cut — it is entered by `engine enter implementation <work-unit>`/);
-    sim.refuses(['topic', 'reopen', wu, 'review', wu], /^review stands by the build's cut/);
   });
 });

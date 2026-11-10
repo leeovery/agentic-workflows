@@ -33,7 +33,7 @@
 // review's fix phases numbered past the fixes (P14); and the cut's screens
 // refusing it. The task file's rules are
 // test-engine-task-verbs.cjs's, its verify run test-engine-verify.cjs's, the
-// board's row test-engine-board-units.cjs's, and a quick-fix today's scoping
+// board's row test-engine-board-units.cjs's, and a quick-fix its old scoping
 // made test-engine-build-entry.cjs's and test-engine-legacy-build.cjs's.
 //
 // Layer: git. World: a quick-fix made through `workunit create` from an

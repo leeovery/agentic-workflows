@@ -65,16 +65,12 @@ function derivedFrom(text) {
 }
 
 // The `MATERIAL` block — what a work unit carries alongside its own work:
-// the inbox seed it was spawned from, and any imported reference files.
-// Annotations, so they take the quiet `·` marker; under a header, so
-// they hang off something rather than opening a display at an indent.
-// Empty string when the unit carries neither.
-/** @param {{seeds: number, imports: number}} counts @returns {string} */
-function materialBlock({ seeds, imports }) {
-  const lines = [];
-  if (seeds > 0) lines.push('  · seeded from the inbox');
-  if (imports > 0) lines.push(`  · ${imports} import${imports === 1 ? '' : 's'}`);
-  return lines.length ? 'MATERIAL\n' + lines.join('\n') : '';
+// the inbox seed it was spawned from. An annotation, so it takes the quiet
+// `·` marker; under a header, so it hangs off something rather than opening
+// a display at an indent. Empty string when the unit carries none.
+/** @param {number} seeds @returns {string} */
+function materialBlock(seeds) {
+  return seeds > 0 ? 'MATERIAL\n  · seeded from the inbox' : '';
 }
 
 // `↳ state` line — a row's computed lifecycle spelled out beneath its summary,

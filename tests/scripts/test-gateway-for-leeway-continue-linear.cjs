@@ -23,7 +23,7 @@ describe('leeway-continue-linear discovery', () => {
   it('finds a unit of each single-topic type, its type read from its manifest', () => {
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } } });
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
     assert.deepStrictEqual(
       ['auth', 'crash', 'rename-api'].map((name) => [activeWorkUnit(dir, name).type, activeWorkUnit(dir, name).unit.name]),
       [['feature', 'auth'], ['bugfix', 'crash'], ['quick-fix', 'rename-api']],
@@ -41,18 +41,6 @@ describe('leeway-continue-linear discovery', () => {
     createManifest(dir, 'v1', { work_type: 'epic', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     assert.strictEqual(activeWorkUnit(dir, 'v1'), null);
     assert.strictEqual(activeWorkUnit(dir, 'ghost'), null);
-  });
-
-  it('surfaces no finished pipeline as finalising: one built under the old plan waits on the cut (P12), and a quick-fix\'s close completes it (19.5.14)', () => {
-    for (const [type, phases] of /** @type {[string, string[]][]} */ ([
-      ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review']],
-      ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review']],
-      ['quick-fix', ['scoping', 'implementation', 'review']],
-    ])) {
-      const name = `done-${type}`;
-      createManifest(dir, name, { work_type: type, phases: items(name, phases, 'completed') });
-      assert.strictEqual(activeWorkUnit(dir, name).unit.finalising, false, type);
-    }
   });
 
   it('includes phase_label and completed_phases', () => {
@@ -120,7 +108,6 @@ describe('leeway-continue-linear discovery', () => {
         work_type: 'quick-fix',
         phases: {
           discussion: { items: { qf: { status: 'completed' } } },
-          scoping: { items: { qf: { status: 'in-progress' } } },
         },
       });
       assert.deepStrictEqual(activeWorkUnit(dir, 'crash').unit.completed_phases, []);
@@ -128,30 +115,24 @@ describe('leeway-continue-linear discovery', () => {
     });
   });
 
-  describe('seeds and imports', () => {
-    it('a feature counts its seeds and imports — zero when the manifest tracks none', () => {
+  describe('seeds', () => {
+    it('a feature counts its seeds — zero when the manifest tracks none', () => {
       createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
       const { unit } = activeWorkUnit(dir, 'auth');
       assert.strictEqual(unit.seeds_count, 0);
-      assert.strictEqual(unit.imports_count, 0);
     });
 
-    it('a feature reports the length of manifest.seeds[] and manifest.imports[]', () => {
+    it('a feature reports the length of manifest.seeds[]', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
         seeds: [{ path: 'seeds/2026-03-18-login-timeout.md', source: 'inbox:bug', seeded_at: '2026-05-10T10:00:00Z' }],
-        imports: [
-          { path: 'imports/seed-conversation.md', imported_at: '2026-05-10T10:00:00Z' },
-          { path: 'imports/early-thoughts.md', imported_at: '2026-05-10T10:01:00Z' },
-        ],
       });
       const { unit } = activeWorkUnit(dir, 'auth');
       assert.strictEqual(unit.seeds_count, 1);
-      assert.strictEqual(unit.imports_count, 2);
     });
 
-    it('the other types surface neither count', () => {
+    it('the other types surface no count', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: { investigation: { items: { crash: { status: 'in-progress' } } } },
@@ -159,7 +140,6 @@ describe('leeway-continue-linear discovery', () => {
       });
       const { unit } = activeWorkUnit(dir, 'crash');
       assert.strictEqual(unit.seeds_count, undefined);
-      assert.strictEqual(unit.imports_count, undefined);
     });
   });
 });
@@ -186,13 +166,10 @@ describe('leeway-continue-linear view', () => {
       'work_type: feature',
       'next_phase: implementation',
       'phase_label: implementation (in-progress)',
-      'finalising: false',
       'completed_phases: discussion, specification',
-      'reconcile_pending: (none)',
       'mail_waiting: (none)',
       'revisit_available: false',
       'seeds_count: 1',
-      'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
       '  b  back  back  auth  → (internal)',
       '',
@@ -219,7 +196,7 @@ describe('leeway-continue-linear view', () => {
     ].join('\n'));
   });
 
-  it('draws no MENU where there is nothing to revisit or finalise — the continue hands straight on', () => {
+  it('draws no MENU where there is nothing to revisit — the continue hands straight on', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     const out = view(dir, 'crash');
     assert.ok(out.includes('=== DATA'));
@@ -264,8 +241,8 @@ describe('leeway-continue-linear view', () => {
     }
   });
 
-  it('P12: a quick-fix today\'s scoping left, nothing of its pipeline begun, draws no pipeline: its menu the migration\'s line and the way back', () => {
-    createManifest(dir, 'typo', { work_type: 'quick-fix', phases: items('typo', ['scoping'], 'completed') });
+  it('P12: a quick-fix its old scoping left, nothing of its pipeline begun, draws no pipeline: its menu the migration\'s line and the way back', () => {
+    createManifest(dir, 'typo', { work_type: 'quick-fix', phases: items('typo', ['specification', 'planning'], 'completed') });
     const out = view(dir, 'typo');
     assert.doesNotMatch(out, /^=== DISPLAY/m);
     assert.ok(out.includes('typo was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it\n'), out);

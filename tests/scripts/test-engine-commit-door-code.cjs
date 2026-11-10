@@ -135,8 +135,8 @@ describe('engine commit --paths: the code commit', () => {
   it('refuses escapes, workflow artifacts, and a missing target', () => {
     assert.match(refuses(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
     assert.match(refuses(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
-    assert.strictEqual(refuses(dir, ['commit', '--paths', '.leeway/payments/investigation/topic-a.md', '-m', 'x', ...FOR_TASK], building).error,
-      'commit --paths: ".leeway/payments/investigation/topic-a.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery/--plan)');
+    assert.strictEqual(refuses(dir, ['commit', '--paths', '.leeway/payments/topics/topic-a/log.md', '-m', 'x', ...FOR_TASK], building).error,
+      'commit --paths: ".leeway/payments/topics/topic-a/log.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery)');
     assert.match(refuses(dir, ['commit', '--paths', 'src/never-written.js', '-m', 'x', ...FOR_TASK], building).error, /neither on disk nor tracked/);
     assert.match(refuses(dir, ['commit', '--paths', '-m', 'x', ...FOR_TASK], building).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x'], building).error, /Usage/);
@@ -152,7 +152,7 @@ describe('engine commit --paths: the code commit', () => {
     try {
       const inState = statePath(dir, layout.doc('payments', 'investigation', 'topic-a'));
       assert.strictEqual(harness.refuses(wt, ['commit', '--paths', inState, '-m', 'x', ...FOR_TASK], building).error,
-        `commit --paths: "${inState}" is in the workflows' state — it commits by its own scope (--topic/--discovery/--plan)`);
+        `commit --paths: "${inState}" is in the workflows' state — it commits by its own scope (--topic/--discovery)`);
     } finally {
       cleanupFixture(wt);
     }

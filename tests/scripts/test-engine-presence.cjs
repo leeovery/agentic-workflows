@@ -108,13 +108,13 @@ describe('engine presence', () => {
   });
 
   it('a held session outside the source phases defers no analysis', () => {
-    // The analyses read discussion; a laboratory, planning, or code session
+    // The analyses read discussion; a laboratory, a spec, or code session
     // holds nothing they look at.
-    for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation', 'experiment']) {
+    for (const phase of ['specification', 'implementation', 'review', 'investigation', 'experiment']) {
       engine(dir, ['presence', 'beat', 'pay', phase, 'alpha'], PEER);
     }
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(res.held, 7, 'every session is held');
+    assert.strictEqual(res.held, 5, 'every session is held');
     assert.strictEqual(res.held_sources, 0, 'none of them is source material');
     assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
 
@@ -122,19 +122,19 @@ describe('engine presence', () => {
     const second = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(second.res.held_sources, 1);
     assert.ok(second.sections.includes('discussion/beta'), second.sections);
-    assert.ok(!second.sections.includes('planning/'), `the callout names source rows alone: ${second.sections}`);
+    assert.ok(!second.sections.includes('review/'), `the callout names source rows alone: ${second.sections}`);
   });
 
   it('held_sources counts held source rows alone — a dead source session is not one', () => {
     const dead = spawnSync('node', ['-e', '']);
     craftRecord(dir, 'discussion', 'beta', { pid: dead.pid, pid_start: EPOCH_START, session_id: 'gone' });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
-    engine(dir, ['presence', 'beat', 'pay', 'planning', 'gamma'], PEER);
+    engine(dir, ['presence', 'beat', 'pay', 'review', 'gamma'], PEER);
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions.length, 3, 'every row is listed, held or not');
     assert.strictEqual(res.held, 2);
-    assert.strictEqual(res.held_sources, 1, 'alpha alone: beta is dead, planning is not a source');
+    assert.strictEqual(res.held_sources, 1, 'alpha alone: beta is dead, review is not a source');
     assert.ok(unwrapped(sections).includes('1 session(s): discussion/alpha (last active'), sections);
     assert.ok(!sections.includes('discussion/beta'), `a dead source row is never named: ${sections}`);
   });
@@ -194,12 +194,12 @@ describe('engine presence', () => {
   });
 
   it('covers every phase a session sits in, discovery among them', () => {
-    for (const phase of ['discovery', 'experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
+    for (const phase of ['discovery', 'experiment', 'discussion', 'investigation', 'specification', 'implementation', 'review']) {
       assert.strictEqual(engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']).res.beat, true, `${phase} beats`);
     }
     const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.length, 9, 'every phase reports a row');
-    assert.strictEqual(scan.held, 9);
+    assert.strictEqual(scan.sessions.length, 7, 'every phase reports a row');
+    assert.strictEqual(scan.held, 7);
   });
 
   it('the product\'s conversation beats at product, which has no directory of its own', () => {

@@ -9,10 +9,10 @@
 //
 // A quick-fix is built by its own arm of the row (below), wherever
 // `quickFixBuild` says it is one (derivations.cjs). The entry refuses,
-// before anything else: a unit built under the old plan, its old scoping's,
-// spec's, planning's or implementation's items standing until the reshape's
-// 29.17 migration cuts it (`legacyBuild`, P12), which the menus show
-// waiting on that cut with no route — a quick-fix today's scoping made
+// before anything else: a unit built under the old plan, its old spec's,
+// planning's or implementation's items standing until the reshape's 29.17
+// migration cuts it (`legacyBuild`, P12), which the menus show waiting on
+// that cut with no route — a quick-fix the old scoping made
 // among them; and a unit whose build has not begun, ready to build's yes
 // beginning it (11.8.3).
 // Another

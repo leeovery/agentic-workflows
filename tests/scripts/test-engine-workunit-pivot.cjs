@@ -19,7 +19,7 @@ function writeFile(dir, rel, content) {
   fs.writeFileSync(full, content);
 }
 
-/** A feature manifest with completed artifacts, an import, and a seed. */
+/** A feature manifest with completed artifacts and a seed. */
 function featureManifest(overrides = {}) {
   return {
     name: 'auth-flow',
@@ -27,7 +27,6 @@ function featureManifest(overrides = {}) {
     status: 'in-progress',
     created: '2026-06-01',
     description: 'auth flow work',
-    imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z' }],
     seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-01T09:00:00Z' }],
     phases: {
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
@@ -47,7 +46,6 @@ function setupFixture(manifest = featureManifest()) {
   writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
   writeFile(project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion — the conversation, never indexed\n');
   writeFile(project, '.leeway/.knowledge/records/auth-flow/auth-flow.md', '# Auth Flow — the decided record\n');
-  writeFile(project, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
   commitAll(project, 'init');
 
@@ -68,7 +66,6 @@ const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env })
 /** The feature's artifacts the knowledge base holds, state-relative. */
 const UNIT_FILES = [
   '.knowledge/records/auth-flow/auth-flow.md',
-  'auth-flow/imports/notes.md',
   'auth-flow/seeds/seed.md',
 ];
 
@@ -159,7 +156,7 @@ describe('engine workunit pivot — happy path', () => {
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // Chunk metadata carries work_type — pivot clears the unit's chunks then
-    // re-indexes the unit's artifacts (decided records, imports, seeds, …),
+    // re-indexes the unit's artifacts (decided records, seeds, …),
     // every chunk now the epic's.
     assert.deepStrictEqual(indexedFiles(fix.project), UNIT_FILES);
     assert.deepStrictEqual(chunkWorkTypes(fix), ['epic']);

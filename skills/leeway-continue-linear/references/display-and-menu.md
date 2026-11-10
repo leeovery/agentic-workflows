@@ -20,10 +20,10 @@ node .claude/skills/leeway-continue-linear/scripts/gateway.cjs view {work_unit}
 
 The output is one snapshot in demarcated sections:
 
-- **DATA** — reasoning surface: state flags (`work_type`, `next_phase`, `phase_label`, `finalising`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  word  action  topic  → route` — or, where no unit by that name is in progress, an `error`. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags (`work_type`, `next_phase`, `phase_label`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  word  action  topic  → route` — or, where no unit by that name is in progress, an `error`. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
 - **DISPLAY** — the status block, or the not-found display. Emit verbatim per its marker. Never redraw, reflow, or trim it.
-- **MENU** — the proceed/revisit menu, present only when there is something to revisit or finalise, or when the unit waits on the migration's cut. Emit verbatim per its marker.
+- **MENU** — the proceed/revisit menu, present only when there is something to revisit, or when the unit waits on the migration's cut. Emit verbatim per its marker.
 
 #### If the DATA carries an `error`
 
@@ -58,22 +58,6 @@ Match the user's input to its `ACTIONS` entry — a command option's letter by `
 Store the entry's `action` and `route`.
 
 → Return to caller.
-
-#### If `action` is `finalise`
-
-Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits, its message naming the DATA's `work_type`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete {work_type} pipeline"
-```
-
-Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
-```
-
-**STOP.** Do not proceed — terminal condition.
 
 #### If `action` is `revisit`
 

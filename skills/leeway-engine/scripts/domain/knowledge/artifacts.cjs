@@ -36,13 +36,12 @@ const fs = require('fs');
 const path = require('path');
 const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest-io.cjs');
 const { RECORDS_DIR } = require('../../kernel/knowledge/files.cjs');
-const { TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
-const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
+const { isIndexableImport } = require('../import-landing.cjs');
 
 const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
-const PHASE_PATH = /^([^/]+)\/(investigation|imports|seeds)\/(.+)$/;
+const SEED_PATH = /^([^/]+)\/seeds\/(.+)$/;
 const SUMMARY_PATH = /^([^/]+)\/summary\.md$/;
 
 /** The phase a record's chunks carry. */
@@ -57,18 +56,8 @@ const UNIT_RECORD = '.unit';
 /** A quick-fix's short record after the work, state-relative (4.11.6). @param {string} unit */
 const summaryFile = (unit) => `${unit}/summary.md`;
 
-/**
- * Phases whose completed artifact is indexed, with the artifact path per
- * topic — the per-topic manifest items. Imports, seeds and analysis caches
- * are file-based and found by their own traversals.
- * @type {Record<string, (wu: string, topic: string) => string>}
- */
-const INDEXED_ARTIFACTS = {
-  investigation: (wu, topic) => `${wu}/investigation/${topic}.md`,
-};
-
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['investigation', 'imports', 'seeds', 'analysis', RECORD_PHASE, SUMMARY_PHASE];
+const INDEXED_PHASES = ['seeds', 'analysis', RECORD_PHASE, SUMMARY_PHASE];
 
 // The indexable files under `{wu}/.state/`, each basename mapped
 // to its topic — the directory also holds operational state that must never
@@ -116,21 +105,6 @@ function rejectDottedSegment(kind, name) {
 function assertSegment(kind, name) {
   if (isHiddenName(name)) throw new UserError(`Invalid ${kind} name: "${name}"`);
   rejectDottedSegment(kind, name);
-}
-
-// A flat import carrying another extension — refused by name, with the
-// policy as the reason; a subdirectory or a dotfile is still a bad shape.
-/** @param {string} name */
-function isNonMarkdownImport(name) {
-  return !isIndexableImport(name) && /^[^./][^/]*\.[^/.]+$/.test(name);
-}
-
-/** @param {string} filePath */
-function nonMarkdownImportError(filePath) {
-  return new UserError(
-    `Refusing to index ${filePath} — imports are tracked on the manifest; ` +
-      'only markdown imports are indexed.'
-  );
 }
 
 /**
@@ -208,18 +182,17 @@ function analysisIdentity(workUnit, rest) {
 }
 
 /**
- * A phase artifact's topic from the path beneath its phase directory, a flat
+ * A seed's topic from the path beneath the seeds' folder, a flat
  * `{topic}.md`.
- * @param {string} phase @param {string} rest @param {string} filePath
+ * @param {string} rest
  * @returns {string}
  */
-function phaseTopic(phase, rest, filePath) {
+function seedTopic(rest) {
   const flatMatch = /^([^/]+)\.md$/.exec(rest);
   if (!flatMatch) {
-    if (phase === 'imports' && isNonMarkdownImport(rest)) throw nonMarkdownImportError(filePath);
     throw new UserError(
-      `Unexpected ${phase} path structure: ${rest}\n` +
-        `Expected: {work_unit}/${phase}/{topic}.md`
+      `Unexpected seeds path structure: ${rest}\n` +
+        'Expected: {work_unit}/seeds/{topic}.md'
     );
   }
   return flatMatch[1];
@@ -245,18 +218,18 @@ function deriveIdentity(filePath) {
     return { workUnit: summaryMatch[1], phase: SUMMARY_PHASE, topic: UNIT_RECORD };
   }
 
-  const match = PHASE_PATH.exec(norm);
+  const match = SEED_PATH.exec(norm);
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
-        'Expected path matching: {work_unit}/{phase}/...'
+        'Expected path matching: {work_unit}/seeds/...'
     );
   }
-  const [, workUnit, phase, rest] = match;
+  const [, workUnit, rest] = match;
   assertSegment('work unit', workUnit);
-  const topic = phaseTopic(phase, rest, filePath);
+  const topic = seedTopic(rest);
   assertSegment('topic', topic);
-  return { workUnit, phase, topic };
+  return { workUnit, phase: 'seeds', topic };
 }
 
 /**
@@ -353,18 +326,16 @@ function readManifestsOr(root, warn, context) {
 // ---------------------------------------------------------------------------
 
 /**
- * A work unit's flat-file entries for a top-level array field (imports or
- * seeds): markdown alone, exactly `{field}/{filename}` — any other shape is a
- * manifest edit no lander makes, refused so it cannot poison the store — each
- * topic once, and only while its file exists.
- * @param {string} root @param {Record<string, any>} unit @param {string} field
- * @param {(workUnit: string, dest: string) => string} fileOf  the state-relative file an entry's filename lands at
+ * A work unit's seeds: markdown alone, exactly `seeds/{filename}` — any
+ * other shape is a manifest edit no lander makes, refused so it cannot
+ * poison the store — each topic once, and only while its file exists.
+ * @param {string} root @param {Record<string, any>} unit
  * @returns {Artifact[]}
  */
-function flatEntries(root, unit, field, fileOf) {
-  const entries = unit[field];
+function seedEntries(root, unit) {
+  const entries = unit.seeds;
   if (!Array.isArray(entries)) return [];
-  const shape = new RegExp(`^${field}/([^/]+)$`);
+  const shape = /^seeds\/([^/]+)$/;
   const seen = new Set();
   /** @type {Artifact[]} */
   const out = [];
@@ -374,8 +345,8 @@ function flatEntries(root, unit, field, fileOf) {
     const topic = m[1].slice(0, -3);
     if (!topic || seen.has(topic)) continue;
     seen.add(topic);
-    const file = fileOf(unit.name, m[1]);
-    if (fs.existsSync(path.resolve(root, file))) out.push({ file, workUnit: unit.name, phase: field, topic });
+    const file = path.posix.join(unit.name, 'seeds', m[1]);
+    if (fs.existsSync(path.resolve(root, file))) out.push({ file, workUnit: unit.name, phase: 'seeds', topic });
   }
   return out;
 }
@@ -410,9 +381,8 @@ function recordArtifacts(root, workUnit) {
 }
 
 /**
- * A live work unit's artifacts: each completed per-topic item's file, its
- * imports and seeds, its analysis caches, its record copies and its short
- * record.
+ * A live work unit's artifacts: its seeds, its analysis caches, its record
+ * copies and its short record.
  * @param {string} root @param {Record<string, any>} unit
  * @returns {Artifact[]}
  */
@@ -420,20 +390,7 @@ function unitArtifacts(root, unit) {
   const workUnit = unit.name;
   const exists = (/** @type {string} */ file) => fs.existsSync(path.resolve(root, file));
   /** @type {Artifact[]} */
-  const items = [];
-  for (const [phase, buildPath] of Object.entries(INDEXED_ARTIFACTS)) {
-    const topics = (unit.phases && unit.phases[phase] && unit.phases[phase].items) || {};
-    for (const [topic, item] of Object.entries(topics)) {
-      if (!item || item.status !== 'completed') continue;
-      const file = buildPath(workUnit, topic);
-      if (exists(file)) items.push({ file, workUnit, phase, topic });
-    }
-  }
-  items.push(
-    ...flatEntries(root, unit, 'imports', importArtifact),
-    ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join(wu, 'seeds', dest)),
-    ...recordArtifacts(root, workUnit),
-  );
+  const items = [...seedEntries(root, unit), ...recordArtifacts(root, workUnit)];
   if (exists(summaryFile(workUnit))) items.push({ file: summaryFile(workUnit), workUnit, phase: SUMMARY_PHASE, topic: UNIT_RECORD });
   for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
     const file = path.posix.join(workUnit, '.state', `${basename}.md`);
@@ -459,8 +416,8 @@ function discoverArtifacts(root, manifests) {
 /**
  * Why an indexed identity no longer belongs in the store, or null while it
  * may. Only positive knowledge retires: the source gone from disk, the work
- * unit unregistered or cancelled, the per-topic item gone or terminal. A
- * work unit whose manifest could not be read is evidence of nothing.
+ * unit unregistered or cancelled. A work unit whose manifest could not be
+ * read is evidence of nothing.
  * @param {string} root @param {Identity & {file: string}} entry
  * @param {Map<string, Record<string, any>>} units  work-unit manifests by name
  * @param {Set<string>|null} registry
@@ -470,13 +427,7 @@ function retiredReason(root, entry, units, registry) {
   if (!fs.existsSync(path.join(root, entry.file))) return 'source deleted';
   if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
   const unit = units.get(entry.workUnit);
-  if (!unit) return null;
-  if (unit.status === 'cancelled') return 'work unit cancelled';
-  if (!INDEXED_ARTIFACTS[entry.phase]) return null;
-  const items = (unit.phases && unit.phases[entry.phase] && unit.phases[entry.phase].items) || {};
-  const item = items[entry.topic];
-  if (!item) return `no ${entry.phase} item`;
-  return TERMINAL_STATUSES.includes(item.status) ? `${entry.phase} ${item.status}` : null;
+  return unit?.status === 'cancelled' ? 'work unit cancelled' : null;
 }
 
 /**
@@ -499,7 +450,6 @@ function retirements(root, entries, manifests, scope) {
 }
 
 module.exports = {
-  INDEXED_ARTIFACTS,
   INDEXED_PHASES,
   RECORD_PHASE,
   SUMMARY_PHASE,

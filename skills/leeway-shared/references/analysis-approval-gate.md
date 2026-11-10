@@ -147,7 +147,7 @@ The map can change between staging and this write — a prior session's gate run
 
 Merge provenance instead, following the already-on-map branch of the analysis's **D. Filter and Stage** — read the item's `source` and, unless it already includes `gap-analysis`, extend it comma-joined. Record `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status resolved`; nothing is added to `tracker`.
 
-The row is on the map under another path's provenance, so there is still a whole topic for the postpone to take: when `postpone_after` is `true`, load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none` and follow its instructions as written before returning.
+The row is on the map under another path's provenance, so there is still a whole topic for the postpone to take: when `postpone_after` is `true`, load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}` and follow its instructions as written before returning.
 
 → Return to **B. Gate Each Candidate**.
 
@@ -169,7 +169,7 @@ Append `{name}` to the caller's `tracker`.
 
 The row is on the map with its brief, so there is a whole topic for the postpone to take.
 
-→ Load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
+→ Load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`.
 
 → On return, return to **B. Gate Each Candidate**.
 

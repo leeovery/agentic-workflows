@@ -48,37 +48,17 @@ function inboxLine(n) {
   return n > 0 ? [`Its ${counted(n, 'waiting message')} went to the inbox as ${n === 1 ? 'an idea' : 'ideas'}.`] : [];
 }
 
-/** @type {Record<string, string>} */
-const TYPE_LABELS = {
-  feature: 'Feature',
-  bugfix: 'Bugfix',
-  'quick-fix': 'Quick-Fix',
-  epic: 'Epic',
-};
-
 /**
- * workunit complete / cancel / reactivate / pivot receipts. `complete` in
- * pipeline context (the bridge, the epic menu) renders the full "{Type} Completed" banner
- * instead of the one-line confirmation. `pivot` is advisory-only — its
- * user-facing continuation is the pivot-continuation menu, owned by the
- * caller's menu step.
- * @param {'complete'|'cancel'|'reactivate'|'pivot'} verb
- * @param {string} workUnit @param {string|undefined} workType
- * @param {{pipeline?: boolean, skippedReview?: boolean, warn?: boolean, inbox?: number, kept?: string[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside
+ * workunit cancel / reactivate / pivot receipts. `pivot` is
+ * advisory-only — its user-facing continuation is the pivot-continuation
+ * menu, owned by the caller's menu step.
+ * @param {'cancel'|'reactivate'|'pivot'} verb
+ * @param {string} workUnit
+ * @param {{warn?: boolean, inbox?: number, kept?: string[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside
  * @returns {string}
  */
-function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedReview = false, warn = false, inbox = 0, kept = [] } = {}) {
+function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [] } = {}) {
   const name = titlecase(workUnit);
-  if (verb === 'complete') {
-    if (!pipeline) return confirmation(`"${name}" marked as completed.`);
-    const typeLabel = TYPE_LABELS[workType || ''] || titlecase(String(workType || ''));
-    const body = skippedReview
-      ? `"${name}" completed — review skipped.`
-      : workType === 'epic'
-        ? `"${name}" has completed all topics through review.`
-        : `"${name}" has completed all pipeline phases.`;
-    return confirmation(`${typeLabel} Completed\n\n${body}`);
-  }
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The work unit is cancelled. The next start removes its chunks from the knowledge base.') : null,
@@ -97,25 +77,17 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
 }
 
 /**
- * topic complete / cancel / reactivate / postpone / restore receipts.
- * `complete` carries no confirmation line — the calling flow owns its own
- * conclusion display; it renders its knowledge advisory alone, empty without
- * `--warn`. The rest confirm the unit by name:
- * the postpone names the horizon it waits under, and the reactivate and the
+ * topic cancel / reactivate / postpone / restore receipts, each confirming
+ * the unit by name: the postpone names the horizon it waits under, and the reactivate and the
  * pull forward's restore the statuses their items returned to (none for a
  * never-started topic), and the cancel how many waiting messages it moved to
  * the inbox (10.1.6).
- * @param {'complete'|'cancel'|'reactivate'|'postpone'|'restore'} verb
+ * @param {'cancel'|'reactivate'|'postpone'|'restore'} verb
  * @param {string} name  the topic as screens title it
  * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null, inbox?: number}} [opts]
  * @returns {string}
  */
 function topicReceipt(verb, name, { warn = false, restored = [], horizon = null, inbox = 0 } = {}) {
-  if (verb === 'complete') {
-    return warn
-      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. The next start retries the indexing.', CONTINUE_INSTRUCTION)
-      : '';
-  }
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. The next start removes its chunks from the knowledge base.') : null,
@@ -143,7 +115,7 @@ function topicReceipt(verb, name, { warn = false, restored = [], horizon = null,
  * `experiments` counts top-level records only — a split is worked inside its
  * parent, so a series E1, E1.1, E2 is two experiments.
  * @param {string} feature @param {string} epic @param {string} topic
- * @param {{discussion: string, brief?: boolean, mail?: number, experiments?: number, seeds?: number, imports?: number, assets?: number, spikes?: number}} facts
+ * @param {{discussion: string, brief?: boolean, mail?: number, experiments?: number, seeds?: number, assets?: number, spikes?: number}} facts
  * @returns {string}
  */
 function absorbSummary(feature, epic, topic, facts) {
@@ -156,7 +128,6 @@ function absorbSummary(feature, epic, topic, facts) {
   if (facts.mail) rows.push(['Mail:', `${facts.mail} message(s) waiting`]);
   if (facts.experiments) rows.push(['Experiments:', `${facts.experiments} experiment(s)`]);
   if (facts.seeds) rows.push(['Seed:', `${facts.seeds} file(s) (origin)`]);
-  if (facts.imports) rows.push(['Imports:', `${facts.imports} file(s)`]);
   if (facts.assets) rows.push(['Assets:', `${facts.assets} file(s)`]);
   if (facts.spikes) rows.push(['Spikes:', `${facts.spikes} spike(s)`]);
   const width = Math.max(...rows.map(([label]) => label.length));
@@ -167,7 +138,6 @@ function absorbSummary(feature, epic, topic, facts) {
   if (facts.mail) lines.push('  • Move waiting message(s) to epic');
   if (facts.experiments) lines.push('  • Move experiment series to epic');
   if (facts.seeds) lines.push('  • Move seed file(s) to epic');
-  if (facts.imports) lines.push('  • Move import file(s) to epic');
   if (facts.assets) lines.push('  • Move asset(s) to epic');
   if (facts.spikes) lines.push('  • Move spike(s) to epic');
   lines.push('  • Register topic in epic manifest', '  • Remove feature work unit and directory');
@@ -175,7 +145,7 @@ function absorbSummary(feature, epic, topic, facts) {
 }
 
 /** What the receipt's `moved` may name, each with its line. */
-const ABSORB_MOVED = Object.freeze({ seeds: 'Seed', imports: 'Imports', assets: 'Assets', spikes: 'Spikes' });
+const ABSORB_MOVED = Object.freeze({ seeds: 'Seed', assets: 'Assets', spikes: 'Spikes' });
 
 /**
  * workunit absorb — the post-absorption summary. `moved` names which of

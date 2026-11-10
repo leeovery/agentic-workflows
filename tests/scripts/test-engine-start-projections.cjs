@@ -794,7 +794,6 @@ describe('start projections: manage unit', () => {
       'work_unit: auth-flow',
       'work_type: feature',
       'status: in-progress',
-      'implementation_completed: false',
       'has_build: false',
       'has_spec: false',
       'has_discussion: false',

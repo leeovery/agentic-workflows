@@ -28,12 +28,14 @@ const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
+const { manageUnitView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
 const { call } = require('./engine-harness.cjs');
 const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { epicMenu, epicCompletedMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 const bridge = require('../../skills/leeway-bridge/scripts/gateway.cjs');
+const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
 const linear = require('../../skills/leeway-continue-linear/scripts/gateway.cjs');
 const epic = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const start = require('../../skills/leeway/scripts/gateway.cjs');
@@ -103,9 +105,9 @@ describe('a unit built under the old plan reads its items and waits on the migra
     });
   });
 
-  it('the bridge routes it nowhere and revisits nothing', () => {
-    const dumps = Object.fromEntries(LIVE.map((name) => [name, lines(bridge.format(bridge.discover(dir, name)), /^(revisitable_phases|next_route|revisit_routes): /)]));
-    assert.deepStrictEqual(dumps, Object.fromEntries(LIVE.map((name) => [name, ['revisitable_phases: (none)', 'next_route: (none)', 'revisit_routes: (none)']])));
+  it('the bridge routes it nowhere', () => {
+    const dumps = Object.fromEntries(LIVE.map((name) => [name, lines(bridge.format(bridge.discover(dir, name)), /^next_route: /)]));
+    assert.deepStrictEqual(dumps, Object.fromEntries(LIVE.map((name) => [name, ['next_route: (none)']])));
   });
 
   it('the linear menu shows the migration\'s line and the way back alone, its tree drawn from its items, nothing finalising', () => {
@@ -113,7 +115,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
       const view = linear.view(dir, name);
       assert.deepStrictEqual(lines(view, /^  ([a-z]|[0-9])  /), [`  b  back  back  ${name}  → (internal)`], name);
       assert.ok(view.includes(`· · · · · · · · · · · ·\n${waiting(name)}\n\n**\`◆ What next?\`**\n\n**\`b/back\`** → Return to the start menu`), name);
-      assert.ok(view.includes('\nfinalising: false\n') && !view.includes('ready to finalise'), name);
+      assert.ok(!view.includes('finalis'), name);
     }
     assert.deepStrictEqual(lines(linear.view(dir, 'old-bugfix'), /^  [├└]─ /), [
       '  ├─ ✓ Investigation     [completed]',
@@ -140,7 +142,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
   it('the start menu reads its next phase off its items, never offering to finalise it, and a closed one its last', () => {
     const menu = start.discover(dir);
     assert.deepStrictEqual({
-      units: ['epics', 'features', 'bugfixes'].flatMap((group) => menu[group].work_units.map((u) => `${u.name}: ${u.phase_label}${u.finalising ? ', finalising' : ''}`)),
+      units: ['epics', 'features', 'bugfixes'].flatMap((group) => menu[group].work_units.map((u) => `${u.name}: ${u.phase_label}`)),
       closed: [...menu.completed, ...menu.cancelled].map((u) => `${u.name}: ${u.last_phase}`),
     }, {
       units: [
@@ -189,20 +191,16 @@ describe('a unit built under the old plan reads its items and waits on the migra
   });
 
   it('manage offers it no done, and the revisit list refuses it', () => {
-    assert.deepStrictEqual(LIVE.filter((name) => manageDetail(dir, name).implementation_completed), []);
+    assert.deepStrictEqual(LIVE.filter((name) => manageUnitView(manageDetail(dir, name)).menu.includes('d/done')), []);
     assert.strictEqual(JSON.parse(call(dir, ['render', 'revisit-phases', 'built-feature']).stderr).error,
       'render revisit-phases: "built-feature" has no completed earlier phase to revisit');
   });
 
   it('the lifecycle verbs refuse it as before', () => {
     const refusal = (args) => JSON.parse(call(dir, args).stderr).error;
-    assert.deepStrictEqual([
-      refusal(['workunit', 'complete', 'dropped-feature', '-m', 'x']),
-      refusal(['handoff', 'topic', 'old-bugfix', 'old-bugfix']),
-    ], [
-      'work unit "dropped-feature" is cancelled — reactivate it first',
-      'the topic "old-bugfix" is concluded — its work goes on in review, from the start menu, and a message sent to it reopens it',
-    ]);
+    assert.throws(() => completeWorkUnit(dir, 'dropped-feature', { message: 'x' }), /^Error: work unit "dropped-feature" is cancelled — reactivate it first$/);
+    assert.strictEqual(refusal(['handoff', 'topic', 'old-bugfix', 'old-bugfix']),
+      'the topic "old-bugfix" is concluded — its work goes on in review, from the start menu, and a message sent to it reopens it');
   });
 
   it('the board places it by its items, a retired type\'s unit at the cut it waits on', () => {

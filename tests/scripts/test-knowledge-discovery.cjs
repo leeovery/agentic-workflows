@@ -1,12 +1,12 @@
 'use strict';
 
 // Pins the bulk-discovery artifact SET on a rich fixture: discoverArtifacts()
-// yields exactly the completed artifacts below, every path state-relative —
-// and never a log, discovery's or the product's, nor a file the product's
-// conversation keeps (8.14.7, 9.2.2), nor a spec (11.1.2), nor anything of a
-// unit's build (22.6.3) — a quick-fix's short record among them, at its
-// unit's own identity, retired only by its file gone or its unit cancelled
-// (22.6.9).
+// yields exactly the artifacts below, every path state-relative — and never
+// a log, discovery's or the product's, nor a file the product's conversation
+// keeps (8.14.7, 9.2.2), nor a spec (11.1.2), nor anything of a unit's build
+// (22.6.3), nor an older version's investigation file or shared import — a
+// quick-fix's short record among them, at its unit's own identity, retired
+// only by its file gone or its unit cancelled (22.6.9).
 
 require('./hermetic-env.cjs');
 
@@ -43,8 +43,8 @@ function buildFixture(root) {
   const proj = { work_units: {} };
 
   // Epic: multi-topic phases (mixed statuses), each discussion's log beside
-  // its record copy, imports (with dup + bad shapes), seeds (with an
-  // escape), analysis caches, discovery's logs, the open one among them.
+  // its record copy, an older version's import, seeds (with an escape),
+  // analysis caches, discovery's logs, the open one among them.
   proj.work_units['payments'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
@@ -62,13 +62,7 @@ function buildFixture(root) {
         ledger: { status: 'completed' },          // completed, but not an indexed phase → excluded
       } },
     },
-    imports: [
-      { path: 'imports/oauth-notes.md' },
-      { path: 'imports/oauth-notes.md' },         // duplicate topic → deduped
-      { path: 'imports/bad/nested.md' },          // subdirectory → excluded
-      { path: 'imports/.hidden.md' },             // dotfile → excluded
-      { path: 'imports/dockset-05.jpeg', origin: 'discussion/ledger' }, // binary → tracked, never indexed
-    ],
+    imports: [{ path: 'imports/oauth-notes.md', origin: 'discovery' }], // an older version's → never indexed
     seeds: [
       { path: 'seeds/original-idea.md', source: 'inbox:idea' },
       { path: 'seeds/../escape.md' },             // path escape → excluded
@@ -83,8 +77,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec — never indexed\n');
   writeFile(path.join(wf, 'payments', 'spec.md'), '# The unit\'s spec — never indexed\n');
   writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
-  writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
-  writeFile(path.join(wf, 'payments', 'imports', 'dockset-05.jpeg'), 'binary-ish\n');
+  writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth — an older version\'s, never indexed\n');
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
@@ -101,12 +94,10 @@ function buildFixture(root) {
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
       specification: { items: { 'auth-flow': { status: 'completed' } } },
     },
-    imports: [{ path: 'imports/prior-art.md' }],
   });
   writeFile(path.join(wf, 'auth-flow', 'topics', 'auth-flow', 'log.md'), '# the conversation, never indexed\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'auth-flow', 'auth-flow.md'), '# D\n');
   writeFile(path.join(wf, 'auth-flow', 'specification', 'auth-flow', 'specification.md'), '# S — never indexed\n');
-  writeFile(path.join(wf, 'auth-flow', 'imports', 'prior-art.md'), '# PA\n');
   writeFile(path.join(wf, 'auth-flow', 'discovery', 'session-001.md'), '# a log, never indexed\n');
 
   // Quick-fix, completed: its short record, no phase's item, beside its build's log.
@@ -117,14 +108,14 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'typo', 'summary.md'), '## Spell the flag\n\n- What changed: The flag.\n');
   writeFile(path.join(wf, 'typo', 'build', 'log.md'), '# the build\'s — never indexed\n');
 
-  // Bugfix: investigation flat file.
+  // Bugfix: an older version's investigation file beside its seed.
   proj.work_units['login-timeout'] = { work_type: 'bugfix' };
   writeJson(path.join(wf, 'login-timeout', 'manifest.json'), {
     name: 'login-timeout', work_type: 'bugfix', status: 'in-progress', created: '2026-01-03',
     phases: { investigation: { items: { 'login-timeout': { status: 'completed' } } } },
     seeds: [{ path: 'seeds/bug-report.md', source: 'inbox:bug' }],
   });
-  writeFile(path.join(wf, 'login-timeout', 'investigation', 'login-timeout.md'), '# I\n');
+  writeFile(path.join(wf, 'login-timeout', 'investigation', 'login-timeout.md'), '# I — an older version\'s, never indexed\n');
   writeFile(path.join(wf, 'login-timeout', 'seeds', 'bug-report.md'), '# BR\n');
 
   // Cancelled epic: entirely excluded.
@@ -135,13 +126,13 @@ function buildFixture(root) {
   });
   writeFile(path.join(wf, '.knowledge', 'records', 'old-epic', 'topic-x.md'), '# skip (cancelled)\n');
 
-  // Completed topic whose file is MISSING on disk → excluded by existence check.
+  // A seed on the manifest whose file is MISSING on disk → excluded by existence check.
   proj.work_units['ghost'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'ghost', 'manifest.json'), {
-    name: 'ghost', work_type: 'epic', status: 'in-progress', created: '2026-01-04',
-    phases: { investigation: { items: { phantom: { status: 'completed' } } } },
+    name: 'ghost', work_type: 'epic', status: 'in-progress', created: '2026-01-04', phases: {},
+    seeds: [{ path: 'seeds/phantom.md', source: 'inbox:idea' }],
   });
-  // (no investigation/phantom.md written)
+  // (no seeds/phantom.md written)
 
   // The product's conversation: its logs, the open one among them, and the
   // files it keeps — none indexed.
@@ -155,12 +146,9 @@ function buildFixture(root) {
 
 // Golden set — its paths state-relative, sorted by JSON string.
 const EXPECTED = [
-  { workUnit: 'auth-flow', phase: 'imports', topic: 'prior-art', file: 'auth-flow/imports/prior-art.md' },
   { workUnit: 'auth-flow', phase: 'record', topic: 'auth-flow', file: '.knowledge/records/auth-flow/auth-flow.md' },
-  { workUnit: 'login-timeout', phase: 'investigation', topic: 'login-timeout', file: 'login-timeout/investigation/login-timeout.md' },
   { workUnit: 'login-timeout', phase: 'seeds', topic: 'bug-report', file: 'login-timeout/seeds/bug-report.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: 'payments/.state/discovery-gap-analysis.md' },
-  { workUnit: 'payments', phase: 'imports', topic: 'oauth-notes', file: 'payments/imports/oauth-notes.md' },
   { workUnit: 'payments', phase: 'record', topic: '.unit', file: '.knowledge/records/payments.md' },
   { workUnit: 'payments', phase: 'record', topic: 'ledger', file: '.knowledge/records/payments/ledger.md' },
   { workUnit: 'payments', phase: 'record', topic: 'refunds', file: '.knowledge/records/payments/refunds.md' },
@@ -208,9 +196,12 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     for (const rel of BUILD) assert.throws(() => deriveIdentity(rel), (err) => err instanceof UserError && /Cannot derive identity/.test(err.message), rel);
   });
 
-  it('leaves non-markdown imports undiscovered — manifest-tracked, never indexed', () => {
+  it('discovers no older version\'s investigation file or shared import, and the one-file door refuses each', () => {
     const files = normalise(discover(root)).map((it) => it.file);
-    assert.ok(!files.includes('payments/imports/dockset-05.jpeg'));
+    assert.deepStrictEqual(files.filter((f) => f.includes('/investigation/') || f.includes('/imports/')), []);
+    for (const rel of ['login-timeout/investigation/login-timeout.md', 'payments/imports/oauth-notes.md']) {
+      assert.throws(() => deriveIdentity(rel), (err) => err instanceof UserError && /Cannot derive identity/.test(err.message), rel);
+    }
   });
 
   it('yields the identical set over the manifests however they were read', () => {
@@ -236,33 +227,5 @@ describe('deriveIdentity: a quick-fix\'s short record (22.6.9)', () => {
   it('is named at its unit\'s own identity, a dotted unit refused', () => {
     assert.deepStrictEqual(deriveIdentity('typo/summary.md'), { workUnit: 'typo', phase: 'summary', topic: '.unit' });
     assert.throws(() => deriveIdentity('ty.po/summary.md'), (err) => err instanceof UserError && /Invalid work unit name/.test(err.message));
-  });
-});
-
-describe('deriveIdentity: non-markdown imports', () => {
-  const POLICY = /imports are tracked on the manifest; only markdown imports are indexed/;
-  const refusedBy = (pattern) => (err) => err instanceof UserError && pattern.test(err.message);
-
-  it('refuses a binary import by name, with the policy as the reason', () => {
-    assert.throws(() => deriveIdentity('payments/imports/diagram.png'), refusedBy(POLICY));
-    assert.throws(() => deriveIdentity('payments/imports/diagram.png'), refusedBy(/payments\/imports\/diagram\.png/));
-  });
-
-  it('leaves a structurally wrong path on the structure message', () => {
-    const cases = [
-      ['payments/imports/sub/diagram.png', /Unexpected imports path structure/],
-      ['payments/imports/.hidden.png', /Unexpected imports path structure/],
-    ];
-    for (const [p, structure] of cases) {
-      assert.throws(() => deriveIdentity(p), refusedBy(structure));
-      assert.throws(() => deriveIdentity(p), (err) => !POLICY.test(err.message));
-    }
-  });
-
-  it('derives a markdown import at its flat identity and refuses a dotted stem', () => {
-    assert.deepStrictEqual(deriveIdentity('payments/imports/oauth-notes.md'),
-      { workUnit: 'payments', phase: 'imports', topic: 'oauth-notes' });
-    assert.throws(() => deriveIdentity('payments/imports/dotted.name.md'),
-      refusedBy(/Invalid topic name/));
   });
 });

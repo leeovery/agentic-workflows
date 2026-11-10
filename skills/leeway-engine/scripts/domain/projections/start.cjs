@@ -178,17 +178,15 @@ function startOverview(detail) {
 // Menu
 // ---------------------------------------------------------------------------
 
-// A finalising unit's entry reads `Finalise …` — the continue skill it routes
-// to presents the completion gate. Its tail names the unit's own type: a
-// migrated unit of a retired type is listed with the features. Messages
-// waiting on the unit's topic cue `mail waiting` after the tail, as the epic
-// rows carry it.
+// A unit's entry tail names the unit's own type: a migrated unit of a retired
+// type is listed with the features. Messages waiting on the unit's topic cue
+// `mail waiting` after the tail, as the epic rows carry it.
 /** @param {WorkUnitEntry} unit @param {TypeSection['type']} type @returns {LabelParts} */
 function continueLabel(unit, type) {
   const t = titlecase(unit.name);
   if (type === 'epic') return { head: `Continue "${t}"`, tail: 'epic' };
   return {
-    head: `${unit.finalising ? 'Finalise' : 'Continue'} "${t}"`,
+    head: `Continue "${t}"`,
     tail: `${unit.work_type}, ${unit.phase_label}`,
     cue: (unit.mail_phases || []).length > 0 ? 'mail waiting' : undefined,
   };
@@ -609,7 +607,6 @@ function manageListView(detail) {
 function manageUnitView(md) {
   /** @type {{key: string, word: string, action: string, label: string}[]} */
   const keys = [];
-  if (md.implementation_completed) keys.push({ key: 'd', word: 'done', action: 'mark_completed', label: 'Mark as completed' });
   if (md.work_type === 'feature') keys.push({ key: 'p', word: 'pivot', action: 'pivot', label: 'Convert to epic (enables multiple topics)' });
   if (md.absorb_available) keys.push({ key: 'a', word: 'absorb', action: 'absorb', label: 'Merge into an existing epic' });
   if (md.has_build) keys.push({ key: 'v', word: 'view-build', action: 'view_build', label: 'View the build\'s phases and tasks' });
@@ -626,7 +623,6 @@ function manageUnitView(md) {
     `work_unit: ${md.work_unit}`,
     `work_type: ${md.work_type}`,
     `status: ${md.status}`,
-    `implementation_completed: ${md.implementation_completed}`,
     `has_build: ${md.has_build}`,
     `has_spec: ${md.has_spec}`,
     `has_discussion: ${md.has_discussion}`,

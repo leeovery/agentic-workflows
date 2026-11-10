@@ -195,7 +195,7 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
   beforeEach(() => {
     dir = setupFixture();
     const items = (phase, name, status) => ({ [phase]: { items: { [name]: { status } } } });
-    for (const [type, phase] of [['epic', 'discussion'], ['feature', 'discussion'], ['bugfix', 'investigation'], ['quick-fix', 'scoping']]) {
+    for (const [type, phase] of [['epic', 'discussion'], ['feature', 'discussion'], ['bugfix', 'investigation'], ['quick-fix', 'planning']]) {
       createManifest(dir, `live-${type}`, { work_type: type, phases: items(phase, type === 'epic' ? 'auth' : `live-${type}`, 'in-progress') });
       createManifest(dir, `done-${type}`, { work_type: type, status: 'completed', phases: items(phase, type === 'epic' ? 'auth' : `done-${type}`, 'completed') });
     }
@@ -349,7 +349,7 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
       });
       linearUnit(dir, 'live-feature', 'feature', 'planning', 'implementation');
       linearUnit(dir, 'live-bugfix', 'bugfix', 'investigation', 'specification');
-      linearUnit(dir, 'live-quickfix', 'quick-fix', 'scoping', 'implementation');
+      linearUnit(dir, 'live-quickfix', 'quick-fix', 'planning', 'implementation');
       createManifest(dir, 'live-policy', {
         work_type: 'cross-cutting',
         phases: { discussion: { items: { 'live-policy': { status: 'completed' } } }, specification: { items: { 'live-policy': { status: 'completed' } } } },

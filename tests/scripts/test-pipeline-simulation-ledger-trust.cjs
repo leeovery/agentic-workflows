@@ -15,6 +15,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const { startItem } = require('./engine-harness.cjs');
 const { Sim, mappedEpic } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -26,7 +27,7 @@ describe('pipeline simulation: the trust log', () => {
   it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
-    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
+    startItem(sim.dir, wu, 'discussion', 'note-window');
     const note = `${wu}.discussion.note-window`;
     const made = { by: 'claude', who_moved_whom: 'none' };
     /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */

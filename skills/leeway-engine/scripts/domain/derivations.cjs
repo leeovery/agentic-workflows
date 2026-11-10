@@ -13,7 +13,7 @@ const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs'
 const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, LEGACY_PHASES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
  * Whether the unit's build has begun: ready to build's yes recorded on its
@@ -104,13 +104,13 @@ function isFixPhase(manifest, phase) {
 }
 
 /**
- * Whether the unit was built under the old plan: its old scoping's, spec's,
+ * Whether the unit was built under the old plan: its old spec's,
  * planning's or implementation's items standing on its manifest, which
  * 29.17's cut takes (P12).
  * @param {Record<string, any>} manifest
  */
 function legacyBuild(manifest) {
-  return ['scoping', 'specification', 'planning', 'implementation'].some((phase) => phaseItems(manifest, phase).length > 0);
+  return ['specification', ...LEGACY_PHASES, 'implementation'].some((phase) => phaseItems(manifest, phase).length > 0);
 }
 
 /** A quick-fix's one phase, the fixes, each fix its own task (19.5.4, E4). */
@@ -168,7 +168,7 @@ function retiredRefusal(manifest) {
 
 /**
  * Whether the unit waits on the migration's cut: of a type the reshape
- * retires, or built under the old plan — a quick-fix today's scoping made
+ * retires, or built under the old plan — a quick-fix the old scoping made
  * among them. Its menus show it waiting, with no route into its work (P12).
  * @param {Record<string, any>} manifest
  */
@@ -355,18 +355,6 @@ function liveUnitItems(manifest, stage, name) {
  */
 function discoveryUnitExists(manifest, topic) {
   return itemOf(manifest, 'discovery', topic) !== undefined || unitItems(manifest, 'discovery', topic).length > 0;
-}
-
-/**
- * Whether a completed item's record has moved since it completed: its
- * reconcile flag. The one reading the linear route and the linear
- * dashboard's cue share, so the bridge can never route back to a phase the
- * display calls settled.
- * @param {{status?: string, reconcile_needed?: unknown}} item
- * @returns {boolean}
- */
-function inputMoved(item) {
-  return item.status === 'completed' && item.reconcile_needed !== undefined;
 }
 
 /**
@@ -729,6 +717,7 @@ function buildNext(manifest) {
  */
 function legacyNext(manifest) {
   const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase);
+  const [planning] = LEGACY_PHASES;
   if (ps('review') === 'completed') {
     return manifest.work_type === 'epic'
       ? { next_phase: 'review', phase_label: 'review completed for current topics' }
@@ -737,10 +726,10 @@ function legacyNext(manifest) {
   if (ps('review') === 'in-progress') return { next_phase: 'review', phase_label: 'review (in-progress)' };
   if (ps('implementation') === 'completed') return { next_phase: 'review', phase_label: 'ready for review' };
   if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
-  if (ps('planning') === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
-  if (ps('planning') === 'in-progress') return { next_phase: 'planning', phase_label: 'planning (in-progress)' };
+  if (ps(planning) === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
+  if (ps(planning) === 'in-progress') return { next_phase: planning, phase_label: `${planning} (in-progress)` };
   if (ps('specification') !== 'completed') return null;
-  return { next_phase: 'planning', phase_label: 'ready for planning' };
+  return { next_phase: planning, phase_label: `ready for ${planning}` };
 }
 
 /**
@@ -767,13 +756,8 @@ function computeNextPhase(manifest, specWritten = false) {
     return { next_phase: 'implementation', phase_label: 'ready for implementation' };
   }
 
-  // A completed phase whose item carries a reconcile flag routes BACK to that
-  // phase for the linear types — routing forward past known-stale input is
-  // the bug this override closes, and it keeps the bridge off its terminal
-  // `done` branch while a flag is live. The walk stops at the first in-flight
-  // phase: an upstream mid-revision owns the next action, and its conclusion
-  // re-runs this. Epics are excluded — their next_phase is phase-coarse;
-  // flagged epic items get per-item cues instead.
+  // The linear types' earliest in-flight phase owns the next action. Epics
+  // are excluded — their next_phase is phase-coarse.
   if (wt !== 'epic') {
     const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (wt)] || [];
     for (const phase of pipeline) {
@@ -795,11 +779,6 @@ function computeNextPhase(manifest, specWritten = false) {
         // which walks on past it.
         if (DERIVED_PHASES.includes(phase)) continue;
         return { next_phase: phase, phase_label: `${phase} (in-progress)` };
-      }
-      // Walking past a completed item whose record has moved hands the next
-      // phase input about to change — so the walk stops there instead.
-      if (phaseItems(manifest, phase).some(inputMoved)) {
-        return { next_phase: phase, phase_label: `${phase} (input moved — reconcile)` };
       }
     }
   }
@@ -846,29 +825,25 @@ function computeNextPhase(manifest, specWritten = false) {
 }
 
 // Pipeline phases whose aggregate status is in-progress, in pipeline order.
-// Feeds the finalising derivation: computeNextPhase short-circuits on a
-// completed review, so a reopened earlier phase (mid-revisit) would otherwise
-// masquerade as a finished pipeline.
+// computeNextPhase short-circuits on a completed review, so a reopened
+// earlier phase (mid-revisit) would otherwise masquerade as a finished
+// pipeline.
 function computeInProgressPhases(manifest, pipeline, specWritten = false) {
   return pipeline.filter((phase) => phaseStatus(manifest, phase, specWritten) === 'in-progress');
 }
 
 /**
- * The active work unit's next-phase state with the finalising / mid-revisit
- * override applied. computeNextPhase short-circuits on a completed review, so a
- * finished pipeline reports `next_phase: done` (finalising — the unit sat
- * between the last topic completion and `workunit complete`). But a reopened
- * earlier phase means the unit is mid-revisit, not finalising: the phase in
- * flight is the next action, and completing the unit now would abandon the
- * revisit. A unit waiting on the migration's cut is never finalising: it
- * offers no way on but the migration (P12); a retired type's keeps its
- * waiting label, whatever its items have in flight. The one derivation both the start
- * dashboard and the single-topic work-unit detail read, so the two can never
- * disagree.
+ * The active work unit's next-phase state with the mid-revisit override
+ * applied. computeNextPhase short-circuits on a completed review, so a
+ * finished pipeline reports `next_phase: done`; but a reopened earlier phase
+ * means the unit is mid-revisit: the phase in flight is the next action. A
+ * retired type's unit keeps its waiting label, whatever its items have in
+ * flight. The one derivation both the start dashboard and the single-topic
+ * work-unit detail read, so the two can never disagree.
  * @param {object} manifest
  * @param {string[]} pipeline  the work type's pipeline phases, in order
  * @param {boolean} [specWritten]  the unit's spec is written (phaseStatus)
- * @returns {{next_phase: string, phase_label: string, finalising: boolean, in_progress_phases: string[]}}
+ * @returns {{next_phase: string, phase_label: string, in_progress_phases: string[]}}
  */
 function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
   const state = computeNextPhase(manifest, specWritten);
@@ -882,7 +857,6 @@ function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
   return {
     next_phase: nextPhase,
     phase_label: phaseLabel,
-    finalising: nextPhase === 'done' && !awaitsCut(manifest),
     in_progress_phases: inProgress,
   };
 }
@@ -1026,7 +1000,7 @@ function computeTopicLifecycle(manifest, topicName) {
   }
   // A discussion cancelled or postponed on its own item reads as that
   // closure — the only reading a topic with no map row has. It must not
-  // fall through to fresh: its item refuses `topic start`, and the way back
+  // fall through to fresh: its item refuses a start, and the way back
   // is reactivate.
   if (ds === 'cancelled') {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, discussion_state: ds };
@@ -1435,7 +1409,6 @@ module.exports = {
   unitItems,
   liveUnitItems,
   discoveryUnitExists,
-  inputMoved,
   cancelPlan,
   postponePlan,
   openExperiments,

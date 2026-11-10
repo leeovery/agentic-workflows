@@ -33,19 +33,17 @@ describe('workunit projections: status display', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('feature: seed/import callouts, completed and in-progress pipeline rows', () => {
+  it('feature: the seed callout, completed and in-progress pipeline rows', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
         specification: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
       seeds: [{ path: 'seeds/2026-03-18-login-timeout.md', source: 'inbox:bug' }],
-      imports: [{ path: 'imports/a.md' }, { path: 'imports/b.md' }],
     });
     assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'auth-flow')), [
       'MATERIAL',
       '  · seeded from the inbox',
-      '  · 2 imports',
       '',
       'PIPELINE (feature)',
       '  ├─ ✓ Discussion       [completed]',
@@ -63,14 +61,7 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('feature: singular import callout', () => {
-    createManifest(dir, 'dark-mode', { imports: [{ path: 'imports/a.md' }] });
-    const out = workUnitStatus('feature', unitOf(dir, 'feature', 'dark-mode'));
-    assert.ok(out.startsWith('MATERIAL\n  · 1 import\n'));
-    assert.ok(!out.includes('seeded from the inbox'));
-  });
-
-  it('feature: no seeds and no imports renders no MATERIAL block at all', () => {
+  it('feature: no seeds renders no MATERIAL block at all', () => {
     createManifest(dir, 'plain', {});
     const out = workUnitStatus('feature', unitOf(dir, 'feature', 'plain'));
     assert.ok(out.startsWith('PIPELINE (feature)'), out);
@@ -157,18 +148,16 @@ describe('workunit projections: status display', () => {
     ]);
   });
 
-  it('feature: a reopened discussion with messages waiting cues the pipeline row and DATA', () => {
+  it('feature: a discussion with messages waiting cues the pipeline row and DATA', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
-        specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
       },
     });
     createFile(dir, '.leeway/auth-flow/topics/auth-flow/mail/001-retry-semantics.md', '### Retry semantics\n');
     const unit = unitOf(dir, 'feature', 'auth-flow');
     assert.deepStrictEqual(unit.mail_phases, ['discussion']);
     assert.match(workUnitStatus('feature', unit), /◐ Discussion +\[in-progress · mail waiting\]/);
-    assert.match(workUnitStatus('feature', unit), /✓ Specification +\[completed · input moved\]/);
     assert.ok(workUnitData('feature', unit, workUnitMenu('feature', unit)).includes('\nmail_waiting: discussion\n'));
     // The drain retires it.
     fs.rmSync(path.join(dir, '.leeway/auth-flow/topics/auth-flow/mail/001-retry-semantics.md'));
@@ -256,11 +245,11 @@ describe('workunit projections: menu', () => {
     ]);
   });
 
-  it('P12: a quick-fix today\'s scoping made waits on the migration\'s cut, with no route into its work', () => {
+  it('P12: a quick-fix its old scoping made waits on the migration\'s cut, with no route into its work', () => {
     createManifest(dir, 'hotfix-logs', {
       work_type: 'quick-fix',
       phases: {
-        scoping: { items: { 'hotfix-logs': { status: 'completed' } } },
+        planning: { items: { 'hotfix-logs': { status: 'completed' } } },
         implementation: { items: { 'hotfix-logs': { status: 'in-progress' } } },
       },
     });
@@ -279,7 +268,7 @@ describe('workunit projections: data body', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('feature: flags include seed/import counts and the ACTIONS table carries routes', () => {
+  it('feature: flags include the seed count and the ACTIONS table carries routes', () => {
     createManifest(dir, 'auth-flow', {
       ...BUILDING,
       phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
@@ -292,19 +281,16 @@ describe('workunit projections: data body', () => {
       'work_type: feature',
       'next_phase: implementation',
       'phase_label: implementation (in-progress)',
-      'finalising: false',
       'completed_phases: discussion, specification',
-      'reconcile_pending: (none)',
       'mail_waiting: (none)',
       'revisit_available: false',
       'seeds_count: 1',
-      'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
       '  y  yes  continue  auth-flow  → /leeway-implementation-process feature auth-flow',
     ].join('\n'));
   });
 
-  it('bugfix: no seed/import flags and a false revisit flag on a fresh unit', () => {
+  it('bugfix: no seed flag and a false revisit flag on a fresh unit', () => {
     createManifest(dir, 'login-crash', { work_type: 'bugfix' });
     const unit = unitOf(dir, 'bugfix', 'login-crash');
     const menu = workUnitMenu('bugfix', unit);
@@ -313,9 +299,7 @@ describe('workunit projections: data body', () => {
       'work_type: bugfix',
       'next_phase: investigation',
       'phase_label: ready for investigation',
-      'finalising: false',
       'completed_phases: (none)',
-      'reconcile_pending: (none)',
       'mail_waiting: (none)',
       'revisit_available: false',
       'ACTIONS (key  word  action  topic  → route):',
@@ -332,9 +316,7 @@ describe('workunit projections: data body', () => {
       'work_type: quick-fix',
       'next_phase: implementation',
       'phase_label: implementation (in-progress)',
-      'finalising: false',
       'completed_phases: (none)',
-      'reconcile_pending: (none)',
       'mail_waiting: (none)',
       'revisit_available: false',
       'ACTIONS (key  word  action  topic  → route):',
@@ -355,12 +337,12 @@ describe('workunit projections: revisit phases section', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('pins the labelled section byte-for-byte', () => {
-    assert.strictEqual(revisitPhasesSection(['scoping', 'implementation']), [
+    assert.strictEqual(revisitPhasesSection(['investigation', 'implementation']), [
       "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',
-      '**`1`**      → Scoping — *completed*',
+      '**`1`**      → Investigation — *completed*',
       '**`2`**      → Implementation — *completed*',
       '**`b/back`** → Return to the previous menu',
       '',

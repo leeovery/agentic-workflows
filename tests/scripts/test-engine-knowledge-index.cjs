@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const {
-  KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, setItems, configureKnowledge, knowledgeAt,
+  KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, configureKnowledge, knowledgeAt,
   knowledgeMetadata, storedChunks, systemConfigDir,
 } = require('./knowledge-harness.cjs');
 
@@ -48,9 +48,8 @@ describe('engine knowledge index <file>', () => {
     knowledgeUnit(root, 'login', 'bugfix');
     const artifacts = [
       ['.knowledge/records/auth/auth.md', 'auth', 'bugfix', 'record', 'auth', 'high'],
-      ['login/investigation/login.md', 'login', 'bugfix', 'investigation', 'login', 'medium'],
-      ['payments/imports/seed-conversation.md', 'payments', 'epic', 'imports', 'seed-conversation', 'low'],
       ['login/seeds/2026-05-30-login.md', 'login', 'bugfix', 'seeds', '2026-05-30-login', 'low'],
+      ['login/summary.md', 'login', 'bugfix', 'summary', '.unit', 'high'],
       ['payments/.state/discovery-gap-analysis.md', 'payments', 'epic', 'analysis', 'gap-analysis', 'low'],
     ];
     for (const [rel] of artifacts) {
@@ -68,18 +67,18 @@ describe('engine knowledge index <file>', () => {
 
   it('replaces the chunks a re-index finds the file no longer holds', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    write('auth/investigation/auth.md', `# Investigation\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
-    await knowledge('index', '.leeway/auth/investigation/auth.md');
+    write('auth/seeds/auth.md', `# Seed\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
+    await knowledge('index', '.leeway/auth/seeds/auth.md');
     assert.strictEqual(storedChunks(root).length, 2);
 
-    write('auth/investigation/auth.md', '# Investigation\n\nOne settled line.\n');
-    assert.strictEqual((await knowledge('index', '.leeway/auth/investigation/auth.md')).code, 0);
-    assert.deepStrictEqual(storedChunks(root).map((c) => c.content), ['# Investigation\n\nOne settled line.']);
+    write('auth/seeds/auth.md', '# Seed\n\nOne settled line.\n');
+    assert.strictEqual((await knowledge('index', '.leeway/auth/seeds/auth.md')).code, 0);
+    assert.deepStrictEqual(storedChunks(root).map((c) => c.content), ['# Seed\n\nOne settled line.']);
   });
 
   it('re-indexes an unchanged file to the same chunks, whatever its kind', async () => {
     knowledgeUnit(root, 'payments', 'epic');
-    for (const rel of ['payments/investigation/ledger.md', 'payments/imports/seed.md', 'payments/.state/discovery-gap-analysis.md']) {
+    for (const rel of ['payments/seeds/ledger.md', '.knowledge/records/payments/ledger.md', 'payments/.state/discovery-gap-analysis.md']) {
       write(rel, `# Notes\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
       await knowledge('index', `.leeway/${rel}`);
       const first = storedChunks(root).map((c) => c.id);
@@ -90,8 +89,8 @@ describe('engine knowledge index <file>', () => {
 
   it('writes the five metadata fields at a first keyword-only index, every chunk carrying its file\'s sha256', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    const file = write('auth/investigation/auth.md', `# Investigation\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
-    await knowledge('index', '.leeway/auth/investigation/auth.md');
+    const file = write('auth/seeds/auth.md', `# Seed\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
+    await knowledge('index', '.leeway/auth/seeds/auth.md');
     const { last_indexed: lastIndexed, ...identity } = knowledgeMetadata(root);
     assert.deepStrictEqual(Object.keys(knowledgeMetadata(root)), ['provider', 'model', 'dimensions', 'last_indexed', 'fill_failure']);
     assert.deepStrictEqual(identity, { provider: null, model: null, dimensions: null, fill_failure: null });
@@ -101,21 +100,21 @@ describe('engine knowledge index <file>', () => {
 
   it('moves last_indexed at each index', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    write('auth/investigation/auth.md', '# Investigation\n\nSettled.\n');
-    await knowledge('index', '.leeway/auth/investigation/auth.md');
+    write('auth/seeds/auth.md', '# Seed\n\nSettled.\n');
+    await knowledge('index', '.leeway/auth/seeds/auth.md');
     store.writeMetadata(knowledgeAt(root).metadata, { ...knowledgeMetadata(root), last_indexed: '2020-01-01T00:00:00.000Z' });
-    await knowledge('index', '.leeway/auth/investigation/auth.md');
+    await knowledge('index', '.leeway/auth/seeds/auth.md');
     assert.ok(knowledgeMetadata(root).last_indexed > '2020-01-02');
   });
 
   it('dates each chunk by its file\'s mtime, never the index run, and a query shows that date', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    const file = write('auth/investigation/auth.md', '# Investigation\n\nToken refresh settled.\n');
+    const file = write('auth/seeds/auth.md', '# Seed\n\nToken refresh settled.\n');
     const mtime = new Date('2020-06-15T12:00:00Z');
     fs.utimesSync(file, mtime, mtime);
-    await knowledge('index', '.leeway/auth/investigation/auth.md');
+    await knowledge('index', '.leeway/auth/seeds/auth.md');
     assert.deepStrictEqual(storedChunks(root).map((c) => c.timestamp), [mtime.getTime()]);
-    assert.match((await knowledge('query', 'token')).stdout, /^\[investigation \| auth\/auth \| medium \| 2020-06-15\]$/m);
+    assert.match((await knowledge('query', 'token')).stdout, /^\[seeds \| auth\/auth \| low \| 2020-06-15\]$/m);
   });
 
   describe('a path it refuses, building nothing', () => {
@@ -134,17 +133,17 @@ describe('engine knowledge index <file>', () => {
       await refused('outside.md', `Not in the workflows state: ${path.join(root, 'outside.md')}\n`);
       const other = setupFixture('kb-index-other-');
       try {
-        const elsewhere = createFile(statePath(other), 'auth/investigation/elsewhere.md', '# Investigation\n\nElsewhere.\n');
+        const elsewhere = createFile(statePath(other), 'auth/seeds/elsewhere.md', '# Seed\n\nElsewhere.\n');
         await refused(elsewhere, `Not in the workflows state: ${elsewhere}\n`);
       } finally {
         cleanupFixture(other);
       }
-      await refused('.leeway/../etc/investigation/foo.md', `Not in the workflows state: ${path.join(root, 'etc/investigation/foo.md')}\n`);
+      await refused('.leeway/../etc/seeds/foo.md', `Not in the workflows state: ${path.join(root, 'etc/seeds/foo.md')}\n`);
     });
 
     it('a file the state does not hold', async () => {
       knowledgeUnit(root, 'auth', 'bugfix');
-      await refused('.leeway/auth/investigation/auth.md', `File not found: ${at('auth/investigation/auth.md')}\n`);
+      await refused('.leeway/auth/seeds/auth.md', `File not found: ${at('auth/seeds/auth.md')}\n`);
     });
 
     it('a path no identity derives from, said as the error alone', async () => {
@@ -153,22 +152,23 @@ describe('engine knowledge index <file>', () => {
         + 'so a dot leaves the artifact indexable but unreachable by status, remove, and discovery.';
       const CACHES = 'only analysis caches (discovery-gap-analysis) are indexable.';
       for (const [rel, said] of [
-        ['auth/planning/auth/planning.md', 'Cannot derive identity from path: auth/planning/auth/planning.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['auth/discussion/auth.md', 'Cannot derive identity from path: auth/discussion/auth.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['auth/specification/auth/specification.md', 'Cannot derive identity from path: auth/specification/auth/specification.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['auth/spec.md', 'Cannot derive identity from path: auth/spec.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['auth/topics/auth/log.md', 'Cannot derive identity from path: auth/topics/auth/log.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['auth/discovery/session-001.md', 'Cannot derive identity from path: auth/discovery/session-001.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['.product/sessions/session-001.md', 'Cannot derive identity from path: .product/sessions/session-001.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['.product/assets/market.md', 'Cannot derive identity from path: .product/assets/market.md\nExpected path matching: {work_unit}/{phase}/...'],
-        ['auth/investigation/sub/topic.md', 'Unexpected investigation path structure: sub/topic.md\nExpected: {work_unit}/investigation/{topic}.md'],
-        ['.hidden/investigation/foo.md', 'Invalid work unit name: ".hidden"'],
+        ['auth/planning/auth/planning.md', 'Cannot derive identity from path: auth/planning/auth/planning.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/investigation/auth.md', 'Cannot derive identity from path: auth/investigation/auth.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/imports/notes.md', 'Cannot derive identity from path: auth/imports/notes.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/discussion/auth.md', 'Cannot derive identity from path: auth/discussion/auth.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/specification/auth/specification.md', 'Cannot derive identity from path: auth/specification/auth/specification.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/spec.md', 'Cannot derive identity from path: auth/spec.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/topics/auth/log.md', 'Cannot derive identity from path: auth/topics/auth/log.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/discovery/session-001.md', 'Cannot derive identity from path: auth/discovery/session-001.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['.product/sessions/session-001.md', 'Cannot derive identity from path: .product/sessions/session-001.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['.product/assets/market.md', 'Cannot derive identity from path: .product/assets/market.md\nExpected path matching: {work_unit}/seeds/...'],
+        ['auth/seeds/sub/topic.md', 'Unexpected seeds path structure: sub/topic.md\nExpected: {work_unit}/seeds/{topic}.md'],
+        ['.hidden/seeds/foo.md', 'Invalid work unit name: ".hidden"'],
         ['.hidden/.state/discovery-gap-analysis.md', 'Invalid work unit name: ".hidden"'],
         ['auth/.state/discussion-consolidation-analysis.md', `Refusing to index .state file "discussion-consolidation-analysis.md" — ${CACHES}`],
         ['auth/.state/migrations.md', `Refusing to index .state file "migrations.md" — ${CACHES}`],
-        ['dot.unit/investigation/dot.unit.md', `Invalid work unit name "dot.unit": ${DOTS}`],
-        ['auth/investigation/a.b.md', `Invalid topic name "a.b": ${DOTS}`],
-        ['auth/imports/diagram.png', 'Refusing to index auth/imports/diagram.png — imports are tracked on the manifest; only markdown imports are indexed.'],
+        ['dot.unit/seeds/dot.unit.md', `Invalid work unit name "dot.unit": ${DOTS}`],
+        ['auth/seeds/a.b.md', `Invalid topic name "a.b": ${DOTS}`],
       ]) {
         write(rel, '# Heading\n\nSome content.\n');
         await refused(`.leeway/${rel}`, `Error: ${said}\n`);
@@ -177,23 +177,22 @@ describe('engine knowledge index <file>', () => {
 
     it('an empty file, whose index would wipe its identity\'s chunks', async () => {
       knowledgeUnit(root, 'auth', 'bugfix');
-      write('auth/investigation/auth.md', '\n');
-      await refused('.leeway/auth/investigation/auth.md',
-        new RegExp(`^Failed to index ${at('auth/investigation/auth.md').replace(/[.]/g, '\\.')}: No chunks produced from .*\\nThe next start will retry it\\.\\n$`));
+      write('auth/seeds/auth.md', '\n');
+      await refused('.leeway/auth/seeds/auth.md',
+        new RegExp(`^Failed to index ${at('auth/seeds/auth.md').replace(/[.]/g, '\\.')}: No chunks produced from .*\\nThe next start will retry it\\.\\n$`));
     });
   });
 
   describe('over the store it finds', () => {
     beforeEach(() => {
       knowledgeUnit(root, 'auth', 'bugfix');
-      setItems(root, 'auth', { investigation: ['auth'] });
-      write('auth/investigation/auth.md', '# Investigation\n\nToken refresh settled.\n');
+      write('auth/seeds/auth.md', '# Seed\n\nToken refresh settled.\n');
     });
 
     /** The single-file index's refusal, the store's bytes as they were. @param {RegExp} said */
     async function refusedOverStore(said) {
       const before = fs.readFileSync(knowledgeAt(root).store);
-      const answer = await knowledge('index', '.leeway/auth/investigation/auth.md');
+      const answer = await knowledge('index', '.leeway/auth/seeds/auth.md');
       assert.strictEqual(answer.code, 1);
       assert.strictEqual(answer.stdout, '');
       assert.match(answer.stderr, said);
@@ -201,7 +200,7 @@ describe('engine knowledge index <file>', () => {
     }
 
     it('a store another provider built, naming the rebuild', async () => {
-      await knowledge('index', '.leeway/auth/investigation/auth.md');
+      await knowledge('index', '.leeway/auth/seeds/auth.md');
       configureKnowledge(root, STUB);
       store.writeMetadata(knowledgeAt(root).metadata, { ...knowledgeMetadata(root), ...OPENAI });
       await refusedOverStore(/^Failed to index .*: Provider\/model changed since last index\. Run `.* knowledge rebuild` to reindex\.\n  Store: provider=openai, model=text-embedding-3-small, dimensions=1536\n  Config: provider=stub, model=stub, dimensions=16\nThe next start will retry it\.\n$/);
@@ -217,7 +216,7 @@ describe('engine knowledge index <file>', () => {
     it('no store, where no configuration chose keyword-only and none names a provider', async (t) => {
       configureKnowledge(root, {});
       const env = { LEEWAY_CONFIG_DIR: systemConfigDir(t) };
-      for (const args of [['index', '.leeway/auth/investigation/auth.md'], ['index']]) {
+      for (const args of [['index', '.leeway/auth/seeds/auth.md'], ['index']]) {
         const answer = await engineKnowledge(root, args, env);
         assert.strictEqual(answer.code, 1, args.join(' '));
         assert.match(answer.stderr, /no embedding provider is configured and keyword-only was never chosen/, args.join(' '));
@@ -229,7 +228,7 @@ describe('engine knowledge index <file>', () => {
     it('no store, where the provider\'s key does not resolve — never a keyword-only store in its place', async (t) => {
       configureKnowledge(root, {});
       const env = { LEEWAY_CONFIG_DIR: systemConfigDir(t, { 'config.json': JSON.stringify({ knowledge: OPENAI }) }) };
-      const single = await engineKnowledge(root, ['index', '.leeway/auth/investigation/auth.md'], env);
+      const single = await engineKnowledge(root, ['index', '.leeway/auth/seeds/auth.md'], env);
       assert.strictEqual(single.code, 1);
       assert.match(single.stderr, /no store is created without it/);
       assert.strictEqual((await engineKnowledge(root, ['index'], env)).code, 1);
@@ -237,26 +236,26 @@ describe('engine knowledge index <file>', () => {
     });
 
     it('writes an edit by keyword into a store whose provider\'s key does not resolve, saying only what it wrote', async () => {
-      await knowledge('index', '.leeway/auth/investigation/auth.md');
+      await knowledge('index', '.leeway/auth/seeds/auth.md');
       store.writeMetadata(knowledgeAt(root).metadata, { ...knowledgeMetadata(root), ...OPENAI });
       configureKnowledge(root, OPENAI);
-      fs.appendFileSync(at('auth/investigation/auth.md'), 'A late addition to the investigation.\n');
-      assert.deepStrictEqual(await knowledge('index', '.leeway/auth/investigation/auth.md'),
-        { code: 0, stdout: `Indexed 1 chunks from ${at('auth/investigation/auth.md')}\n`, stderr: '' });
-      assert.match((await knowledge('query', 'late addition')).stdout, /^A late addition to the investigation\.$/m);
+      fs.appendFileSync(at('auth/seeds/auth.md'), 'A late addition to the seed.\n');
+      assert.deepStrictEqual(await knowledge('index', '.leeway/auth/seeds/auth.md'),
+        { code: 0, stdout: `Indexed 1 chunks from ${at('auth/seeds/auth.md')}\n`, stderr: '' });
+      assert.match((await knowledge('query', 'late addition')).stdout, /^A late addition to the seed\.$/m);
     });
 
     it('a store that cannot be loaded, naming the file and that the next start retries it', async () => {
       fs.writeFileSync(knowledgeAt(root).store, 'garbage-not-a-store');
-      await refusedOverStore(new RegExp(`^Failed to index ${at('auth/investigation/auth.md').replace(/[.]/g, '\\.')}: .*\\nThe next start will retry it\\.\\n$`));
+      await refusedOverStore(new RegExp(`^Failed to index ${at('auth/seeds/auth.md').replace(/[.]/g, '\\.')}: .*\\nThe next start will retry it\\.\\n$`));
     });
   });
 
   it('builds past metadata left without its store, recording the new store\'s mode', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    write('auth/investigation/auth.md', '# Investigation\n\nSettled.\n');
+    write('auth/seeds/auth.md', '# Seed\n\nSettled.\n');
     store.writeMetadata(knowledgeAt(root).metadata, { ...OPENAI, last_indexed: null });
-    assert.strictEqual((await knowledge('index', '.leeway/auth/investigation/auth.md')).code, 0);
+    assert.strictEqual((await knowledge('index', '.leeway/auth/seeds/auth.md')).code, 0);
     assert.strictEqual(knowledgeMetadata(root).provider, null);
     assert.deepStrictEqual(await knowledge('check'), { code: 0, stdout: 'ready\n', stderr: '' });
   });

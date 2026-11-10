@@ -13,7 +13,7 @@
 // at a feature's topic closed into its spec voiding that close, the
 // discussion going on (9.7.9), in the same commit; records where the
 // conversation is working — its position, the tmux label and the place's
-// presence, as `session label` and `topic start` do; and answers what the phase needs to begin or resume, in sections: any
+// presence, as `session label` does; and answers what the phase needs to begin or resume, in sections: any
 // question first, then a DATA naming what to read, as paths and engine
 // calls, never their contents, read as the place stood before the entry
 // wrote anything, and the log the conversation keeps, where it keeps one,
@@ -314,8 +314,8 @@ function investigationReads(at) {
 }
 
 /**
- * The row of a phase talked through at a topic, whose item it starts as
- * `topic start` does, raising waiting mail first and keeping the topic's log:
+ * The row of a phase talked through at a topic, whose item it starts
+ * (startTopic), raising waiting mail first and keeping the topic's log:
  * discussion's, and a bugfix's investigation, its one topic the unit.
  * @param {'discussion'|'investigation'} phase @param {(at: Entering) => Line[]} reads @returns {Entry}
  */

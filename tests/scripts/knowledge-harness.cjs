@@ -184,6 +184,15 @@ function knowledgeUnit(root, name, workType, fields = {}) {
 }
 
 /**
+ * A unit's manifest fields naming each topic's seed, `seeds/{topic}.md`, as a
+ * promotion records it.
+ * @param {...string} topics
+ */
+function seedsOn(...topics) {
+  return { seeds: topics.map((topic) => ({ path: `seeds/${topic}.md`, source: 'inbox:idea' })) };
+}
+
+/**
  * `engine manifest set <path> <field> <value>` in the world, in process; it
  * must succeed.
  * @param {string} root @param {string} at @param {string} field @param {string} value
@@ -276,5 +285,5 @@ function systemConfigDir(t, files = {}) {
 module.exports = {
   ENGINE_COMMAND, KEYWORD_ONLY, STUB, OPENAI,
   embeddingEndpoint, engineKnowledge, knowledgeDoor, heldCall, recordLaunches, refuseLaunches, withoutBackoff,
-  knowledgeUnit, manifestSet, setItems, completeUnit, setRegistry, configureKnowledge, knowledgeAt, knowledgeMetadata, storedChunks, systemConfigDir,
+  knowledgeUnit, seedsOn, manifestSet, setItems, completeUnit, setRegistry, configureKnowledge, knowledgeAt, knowledgeMetadata, storedChunks, systemConfigDir,
 };

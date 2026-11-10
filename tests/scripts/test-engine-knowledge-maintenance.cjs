@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const {
   ENGINE_COMMAND, KEYWORD_ONLY, engineKnowledge, knowledgeDoor, refuseLaunches,
-  knowledgeUnit, setItems, completeUnit, setRegistry, configureKnowledge, knowledgeAt, storedChunks,
+  knowledgeUnit, seedsOn, completeUnit, setRegistry, configureKnowledge, knowledgeAt, storedChunks,
 } = require('./knowledge-harness.cjs');
 
 describe('engine knowledge remove, compact and rebuild', () => {
@@ -48,32 +48,32 @@ describe('engine knowledge remove, compact and rebuild', () => {
     it('takes a unit\'s chunks in every phase, and leaves every other unit\'s', async () => {
       knowledgeUnit(root, 'mixed', 'epic');
       knowledgeUnit(root, 'kept', 'feature');
-      await indexed('mixed/investigation/mixed.md', 'mixed/imports/seed.md',
-        'mixed/seeds/origin.md', 'mixed/.state/discovery-gap-analysis.md', 'kept/investigation/kept.md');
+      await indexed('mixed/seeds/mixed.md', '.knowledge/records/mixed/ledger.md',
+        'mixed/seeds/origin.md', 'mixed/.state/discovery-gap-analysis.md', 'kept/seeds/kept.md');
       assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'mixed'), { code: 0, stdout: 'Removed 4 chunks for mixed (all phases)\n', stderr: '' });
-      assert.deepStrictEqual(identities(), ['kept/investigation/kept']);
+      assert.deepStrictEqual(identities(), ['kept/seeds/kept']);
     });
 
     it('narrows to a phase, and to a topic within it', async () => {
       knowledgeUnit(root, 'payments', 'epic');
-      await indexed('payments/investigation/billing.md', 'payments/imports/billing.md', 'payments/imports/invoicing.md');
-      assert.strictEqual((await knowledge('remove', '--work-unit', 'payments', '--phase', 'investigation')).stdout, 'Removed 1 chunks for payments/investigation\n');
-      assert.deepStrictEqual(identities(), ['payments/imports/billing', 'payments/imports/invoicing']);
-      assert.strictEqual((await knowledge('remove', '--work-unit', 'payments', '--phase', 'imports', '--topic', 'billing')).stdout,
-        'Removed 1 chunks for payments/imports/billing\n');
-      assert.deepStrictEqual(identities(), ['payments/imports/invoicing']);
+      await indexed('.knowledge/records/payments/billing.md', 'payments/seeds/billing.md', 'payments/seeds/invoicing.md');
+      assert.strictEqual((await knowledge('remove', '--work-unit', 'payments', '--phase', 'record')).stdout, 'Removed 1 chunks for payments/record\n');
+      assert.deepStrictEqual(identities(), ['payments/seeds/billing', 'payments/seeds/invoicing']);
+      assert.strictEqual((await knowledge('remove', '--work-unit', 'payments', '--phase', 'seeds', '--topic', 'billing')).stdout,
+        'Removed 1 chunks for payments/seeds/billing\n');
+      assert.deepStrictEqual(identities(), ['payments/seeds/invoicing']);
     });
 
     it('--dry-run says what it would remove and removes nothing', async () => {
       knowledgeUnit(root, 'preview', 'feature');
-      await indexed('preview/investigation/preview.md');
+      await indexed('preview/seeds/preview.md');
       assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'preview', '--dry-run'), { code: 0, stdout: 'Would remove 1 chunks for preview (all phases)\n', stderr: '' });
-      assert.deepStrictEqual(identities(), ['preview/investigation/preview']);
+      assert.deepStrictEqual(identities(), ['preview/seeds/preview']);
     });
 
     it('refuses a name the registry does not hold and the store holds nothing of, where a registered unit\'s empty match removes 0', async () => {
       knowledgeUnit(root, 'auth', 'feature');
-      await indexed('auth/investigation/auth.md');
+      await indexed('auth/seeds/auth.md');
       assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'nonexistent'), {
         code: 1,
         stdout: '',
@@ -82,12 +82,12 @@ describe('engine knowledge remove, compact and rebuild', () => {
       });
       assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'auth', '--phase', 'review', '--topic', 'nothing'),
         { code: 0, stdout: 'Removed 0 chunks for auth/review/nothing\n', stderr: '' });
-      assert.deepStrictEqual(identities(), ['auth/investigation/auth']);
+      assert.deepStrictEqual(identities(), ['auth/seeds/auth']);
     });
 
     it('takes the chunks of a unit the registry no longer names as an orphan cleanup, saying so — and then refuses the name', async () => {
       knowledgeUnit(root, 'absorbed', 'feature');
-      await indexed('absorbed/investigation/absorbed.md');
+      await indexed('absorbed/seeds/absorbed.md');
       setRegistry(root, {});
       assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'absorbed'), {
         code: 0,
@@ -113,7 +113,7 @@ describe('engine knowledge remove, compact and rebuild', () => {
 
     it('exits 1 when the removal fails, naming what failed and that the next start removes them', async () => {
       knowledgeUnit(root, 'drop-me', 'feature');
-      await indexed('drop-me/investigation/drop-me.md');
+      await indexed('drop-me/seeds/drop-me.md');
       fs.writeFileSync(knowledgeAt(root).store, 'corrupt-store-bytes');
       const answer = await knowledge('remove', '--work-unit', 'drop-me');
       assert.strictEqual(answer.code, 1);
@@ -131,32 +131,32 @@ describe('engine knowledge remove, compact and rebuild', () => {
         knowledgeUnit(root, unit, 'feature');
         completeUnit(root, unit, date);
       }
-      await indexed('buried/investigation/buried.md', 'buried/imports/seed.md', 'newer2/investigation/newer2.md');
+      await indexed('buried/seeds/buried.md', 'buried/.state/discovery-gap-analysis.md', 'newer2/seeds/newer2.md');
     });
 
     it('prunes every chunk of a unit the clock has passed below the floor, whatever its phase, and leaves the frontier\'s', async () => {
       assert.deepStrictEqual(await knowledge('compact'), {
-        code: 0, stdout: 'Compacted: removed 2 chunks from 1 work units (retrievability < 0.95)\n  • buried: 2 chunks (investigation, imports)\n', stderr: '',
+        code: 0, stdout: 'Compacted: removed 2 chunks from 1 work units (retrievability < 0.95)\n  • buried: 2 chunks (seeds, analysis)\n', stderr: '',
       });
-      assert.deepStrictEqual(identities(), ['newer2/investigation/newer2']);
+      assert.deepStrictEqual(identities(), ['newer2/seeds/newer2']);
     });
 
     it('--dry-run prints the plan, marked, and removes nothing', async () => {
       assert.strictEqual((await knowledge('compact', '--dry-run')).stdout,
-        '[dry-run] Compacted: removed 2 chunks from 1 work units (retrievability < 0.95)\n  • buried: 2 chunks (investigation, imports)\n');
-      assert.deepStrictEqual(identities(), ['buried/imports/seed', 'buried/investigation/buried', 'newer2/investigation/newer2']);
+        '[dry-run] Compacted: removed 2 chunks from 1 work units (retrievability < 0.95)\n  • buried: 2 chunks (seeds, analysis)\n');
+      assert.deepStrictEqual(identities(), ['buried/analysis/gap-analysis', 'buried/seeds/buried', 'newer2/seeds/newer2']);
     });
 
     it('prunes nothing at a floor of 0, which no retrievability falls below', async () => {
       configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: 0, decay_base_stability: 3 });
       assert.deepStrictEqual(await knowledge('compact'), { code: 0, stdout: '', stderr: '' });
-      assert.deepStrictEqual(identities(), ['buried/imports/seed', 'buried/investigation/buried', 'newer2/investigation/newer2']);
+      assert.deepStrictEqual(identities(), ['buried/analysis/gap-analysis', 'buried/seeds/buried', 'newer2/seeds/newer2']);
     });
 
     it('says compaction is disabled where decay_prune_below is false, and removes nothing', async () => {
       configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: false });
       assert.deepStrictEqual(await knowledge('compact'), { code: 0, stdout: 'Compaction disabled\n', stderr: '' });
-      assert.deepStrictEqual(identities(), ['buried/imports/seed', 'buried/investigation/buried', 'newer2/investigation/newer2']);
+      assert.deepStrictEqual(identities(), ['buried/analysis/gap-analysis', 'buried/seeds/buried', 'newer2/seeds/newer2']);
     });
   });
 
@@ -169,9 +169,8 @@ describe('engine knowledge remove, compact and rebuild', () => {
     const backups = () => ['store.bin.bak', 'metadata.json.bak'].filter((name) => fs.existsSync(path.join(knowledgeAt(root).dir, name)));
 
     beforeEach(async () => {
-      knowledgeUnit(root, 'auth', 'feature');
-      setItems(root, 'auth', { investigation: ['auth'] });
-      await indexed('auth/investigation/auth.md');
+      knowledgeUnit(root, 'auth', 'feature', seedsOn('auth'));
+      await indexed('auth/seeds/auth.md');
     });
 
     it('aborts on anything but rebuild typed back, the store untouched', async () => {
@@ -205,21 +204,20 @@ describe('engine knowledge remove, compact and rebuild', () => {
       for (const name of ['store.bin.bak', 'metadata.json.bak']) fs.writeFileSync(path.join(knowledgeAt(root).dir, name), '');
       assert.deepStrictEqual(await rebuild('rebuild\n'), {
         code: 0,
-        stdout: `Deleted existing index.\nIndexed ${at('auth/investigation/auth.md')} — 1 chunks (new)\n1 new, 0 changed, 0 removed, 0 unchanged.\n`,
+        stdout: `Deleted existing index.\nIndexed ${at('auth/seeds/auth.md')} — 1 chunks (new)\n1 new, 0 changed, 0 removed, 0 unchanged.\n`,
         stderr: PROMPT,
       });
       assert.deepStrictEqual(backups(), []);
-      assert.deepStrictEqual(identities(), ['auth/investigation/auth']);
+      assert.deepStrictEqual(identities(), ['auth/seeds/auth']);
     });
 
     it('exits 1 when a file fails, the rebuilt store standing with no backup left', async () => {
-      knowledgeUnit(root, 'empty', 'feature');
-      setItems(root, 'empty', { investigation: ['empty'] });
-      createFile(statePath(root), 'empty/investigation/empty.md', '\n');
+      knowledgeUnit(root, 'empty', 'feature', seedsOn('empty'));
+      createFile(statePath(root), 'empty/seeds/empty.md', '\n');
       const answer = await rebuild('rebuild\n');
       assert.strictEqual(answer.code, 1);
-      assert.ok(answer.stderr.startsWith(`${PROMPT}Failed to index ${at('empty/investigation/empty.md')}: No chunks produced`), answer.stderr);
-      assert.deepStrictEqual(identities(), ['auth/investigation/auth']);
+      assert.ok(answer.stderr.startsWith(`${PROMPT}Failed to index ${at('empty/seeds/empty.md')}: No chunks produced`), answer.stderr);
+      assert.deepStrictEqual(identities(), ['auth/seeds/auth']);
       assert.deepStrictEqual(backups(), []);
     });
 

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's sessions: background agents from dispatch to
-// incorporation; restarts committing in order; the migration gate's yes;
+// incorporation; the migration gate's yes;
 // and boot's stops — an old git, a folder in no repository, lost state and
 // its yes through the gate — and the GitHub offer. Concurrent sessions are
 // test-pipeline-simulation-concurrency.cjs.
@@ -127,50 +127,6 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(reviewRows(probe)[0].status, 'incorporated');
     for (const question of [auth, g1]) claudeDecides('alpha', question);
     decideTopic(sim, wu, 'alpha');
-  });
-
-  it('restart: a quick-fix commits the plan first, then everything its work unit is', () => {
-    const wu = 'typo';
-    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Fix the typo', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'scoping', wu]);
-    sim.write(`.leeway/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n\n## Change\n\nThe footer's typo is corrected.\n`);
-    sim.run(['topic', 'start', wu, 'specification', wu]);
-    sim.run(['topic', 'complete', wu, 'specification', wu]);
-    sim.run(['commit', wu, '-m', `spec(${wu}): quick-fix specification`, '--topic', `specification/${wu}`]);
-    sim.run(['topic', 'start', wu, 'planning', wu]);
-    sim.write(`.leeway/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
-    sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
-      'format=local-markdown', 'review_cycle=0', 'phase=1', 'task=~',
-      `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
-    sim.run(['topic', 'complete', wu, 'planning', wu]);
-    sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
-
-    fs.rmSync(path.join(sim.dir, `.leeway/${wu}/specification/${wu}`), { recursive: true, force: true });
-    fs.rmSync(path.join(sim.dir, `.leeway/${wu}/planning/${wu}`), { recursive: true, force: true });
-    // The restart's removal through the door finds nothing: the spec is never
-    // indexed (11.1.2).
-    const removed = sim.engine(['knowledge', 'remove', '--work-unit', wu, '--phase', 'specification', '--topic', wu]);
-    assert.deepStrictEqual([removed.code, removed.stdout], [0, `Removed 0 chunks for ${wu}/specification/${wu}\n`], removed.stderr);
-    const cleanup = sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping — clear the authored plan`, '--plan', wu]);
-    const cleaned = stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean).map((rel) => `.leeway/${rel}`);
-    assert.match(cleanup.committed, /^[0-9a-f]+$/);
-    assert.ok(cleaned.includes(`.leeway/${wu}/planning/${wu}/planning.md`), 'the plan half rides --plan');
-    assert.ok(!cleaned.includes(`.leeway/${wu}/specification/${wu}/specification.md`),
-      'the spec is outside the plan scope and waits for the closing commit');
-
-    sim.run(['manifest', 'delete', `${wu}.specification`, `items.${wu}`]);
-    sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
-    // The reason the order is what it is: `--plan` cannot resolve a deleted
-    // item, so a cleanup committed after the delete has no scope.
-    sim.refuses(['commit', wu, '-m', 'too late', '--plan', wu], /no planning item/);
-    assert.strictEqual(sim.manifest(wu).phases.scoping.items[wu].status, 'in-progress',
-      'the scoping item stays in progress — the fresh run re-completes it');
-    sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping`]);
-    const closed = stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
-    assert.ok(closed.includes(`${wu}/specification/${wu}/specification.md`), 'the deleted spec lands here');
-    assert.ok(closed.includes(`${wu}/manifest.json`), 'and both entry removals with it');
-    assert.deepStrictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', wu]).split('\n').filter(Boolean), [],
-      'the restart leaves nothing of the work unit behind');
   });
 
   it('the migration gate\'s yes: one commit lands every path the workflows own, and a code session\'s staging stays out', () => {

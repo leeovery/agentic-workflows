@@ -44,13 +44,13 @@ node .claude/skills/leeway/scripts/gateway.cjs manage {selected.name}
 
 The response carries demarcated sections:
 
-- **DATA** — reasoning surface: lifecycle flags (`implementation_completed`, `has_build`, `absorb_available`, …), `available_epics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: lifecycle flags (`has_build`, `absorb_available`, …), `available_epics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
 - **MENU** — the action menu, offering exactly the actions this work unit's state allows. Emit verbatim per its marker at this section's gate below.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Lifecycle actions for this work unit. Done marks it finished, cancel abandons it, pivot converts a feature to an epic when the scope grows beyond a single topic, absorb merges a feature's discussion into an existing epic.
+> Lifecycle actions for this work unit. Cancel abandons it, pivot converts a feature to an epic when the scope grows beyond a single topic, absorb merges a feature's discussion into an existing epic.
 ```
 
 Emit the MENU section verbatim per its marker.
@@ -58,22 +58,6 @@ Emit the MENU section verbatim per its marker.
 **STOP.** Wait for user response.
 
 A branch below can only be chosen when the menu offered its option.
-
-#### If user chose `d/done`
-
-Run the complete transaction — one command sets `status: completed`, stamps `completed_at`, and commits:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs workunit complete {selected.name} -m "workflow({selected.name}): mark as completed"
-```
-
-Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb complete
-```
-
-→ Return to caller.
 
 #### If user chose `p/pivot`
 

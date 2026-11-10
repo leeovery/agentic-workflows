@@ -431,7 +431,7 @@ const SUBJECTS = [
   { manifest: 'project', at: ['roadmap', 'items'], noun: 'roadmap item' },
 ];
 
-/** A key as words: `plan_format` → `plan format`. @param {string} key */
+/** A key as words: `tmux_labels` → `tmux labels`. @param {string} key */
 function words(key) {
   return key.replace(/[-_]+/g, ' ').trim();
 }

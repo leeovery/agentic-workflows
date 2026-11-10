@@ -2,7 +2,7 @@
 #
 # Contract suite for the engine's manifest field surface (`engine manifest …`,
 # skills/leeway-engine/scripts/domain/fields.cjs).
-# Validates get, set, list, push, pull, delete, exists, key-of, resolve.
+# Validates get, set, list, push, pull, delete, exists, key-of.
 # Uses dot-path syntax: <work-unit>[.<phase>[.<topic>]]
 #
 # Output contract: reads print bare stdout; mutations answer with the
@@ -398,10 +398,10 @@ echo ""
 echo -e "${YELLOW}Test: set parses a bare tilde as null${NC}"
 setup_fixture
 create_wu tilde-test feature "Tilde test"
-response=$(run_cli set tilde-test.planning.tilde-test task '~' 2>/dev/null)
-stored=$(node -e "const m=require(process.argv[1]); console.log(JSON.stringify(m.phases.planning.items['tilde-test'].task))" "$TEST_DIR/.leeway/tilde-test/manifest.json")
+response=$(run_cli set tilde-test.implementation.tilde-test task '~' 2>/dev/null)
+stored=$(node -e "const m=require(process.argv[1]); console.log(JSON.stringify(m.phases.implementation.items['tilde-test'].task))" "$TEST_DIR/.leeway/tilde-test/manifest.json")
 
-assert_equals "$response" '{"ok":true,"path":"tilde-test.planning.tilde-test","set":{"task":null}}' "Response reports null for a bare tilde"
+assert_equals "$response" '{"ok":true,"path":"tilde-test.implementation.tilde-test","set":{"task":null}}' "Response reports null for a bare tilde"
 assert_equals "$stored" "null" "Manifest stores JSON null, not the literal string"
 
 echo ""
@@ -411,10 +411,10 @@ echo ""
 echo -e "${YELLOW}Test: batch pair parses a bare tilde as null${NC}"
 setup_fixture
 create_wu tilde-batch feature "Tilde batch"
-run_cli set tilde-batch.planning.tilde-batch task='~' plan_format=local-markdown current='~' >/dev/null 2>&1
-stored=$(node -e "const i=require(process.argv[1]).phases.planning.items['tilde-batch']; console.log(JSON.stringify([i.task, i.plan_format, i.current]))" "$TEST_DIR/.leeway/tilde-batch/manifest.json")
+run_cli set tilde-batch.implementation.tilde-batch task='~' label=alpha current='~' >/dev/null 2>&1
+stored=$(node -e "const i=require(process.argv[1]).phases.implementation.items['tilde-batch']; console.log(JSON.stringify([i.task, i.label, i.current]))" "$TEST_DIR/.leeway/tilde-batch/manifest.json")
 
-assert_equals "$stored" '[null,"local-markdown",null]' "Positional and batch tildes both land as null"
+assert_equals "$stored" '[null,"alpha",null]' "Positional and batch tildes both land as null"
 
 echo ""
 
@@ -473,10 +473,10 @@ echo ""
 echo -e "${YELLOW}Test: set phase-level field (2-segment path)${NC}"
 setup_fixture
 create_wu phase-set feature "Phase set"
-run_cli set phase-set.planning format local-markdown >/dev/null 2>&1
-output=$(run_cli_stdout get phase-set.planning format)
+run_cli set phase-set.implementation label alpha >/dev/null 2>&1
+output=$(run_cli_stdout get phase-set.implementation label)
 
-assert_equals "$output" "local-markdown" "Phase-level set works"
+assert_equals "$output" "alpha" "Phase-level set works"
 
 echo ""
 
@@ -1258,13 +1258,13 @@ echo ""
 echo -e "${YELLOW}Test: key-of finds key by value${NC}"
 setup_fixture
 create_wu key-of-test feature "Key-of test"
-run_cli set key-of-test.planning.key-of-test task_map.portal-1-1 tick-abc >/dev/null 2>&1
-run_cli set key-of-test.planning.key-of-test task_map.portal-1-2 tick-def >/dev/null 2>&1
+run_cli set key-of-test.implementation.key-of-test task_map.portal-1-1 ext-abc >/dev/null 2>&1
+run_cli set key-of-test.implementation.key-of-test task_map.portal-1-2 ext-def >/dev/null 2>&1
 
-output=$(run_cli_stdout key-of key-of-test.planning.key-of-test task_map tick-abc)
+output=$(run_cli_stdout key-of key-of-test.implementation.key-of-test task_map ext-abc)
 assert_equals "$output" "portal-1-1" "key-of returns correct key for first value"
 
-output=$(run_cli_stdout key-of key-of-test.planning.key-of-test task_map tick-def)
+output=$(run_cli_stdout key-of key-of-test.implementation.key-of-test task_map ext-def)
 assert_equals "$output" "portal-1-2" "key-of returns correct key for second value"
 
 echo ""
@@ -1274,9 +1274,9 @@ echo ""
 echo -e "${YELLOW}Test: key-of errors on missing value${NC}"
 setup_fixture
 create_wu key-of-miss feature "Key-of miss"
-run_cli set key-of-miss.planning.key-of-miss task_map.t-1 ext-1 >/dev/null 2>&1
+run_cli set key-of-miss.implementation.key-of-miss task_map.t-1 ext-1 >/dev/null 2>&1
 
-exit_code=$(run_cli_exit_code key-of key-of-miss.planning.key-of-miss task_map ext-notfound)
+exit_code=$(run_cli_exit_code key-of key-of-miss.implementation.key-of-miss task_map ext-notfound)
 assert_equals "$exit_code" "2" "key-of value-not-found exits 2 (expected miss)"
 
 echo ""
@@ -1286,9 +1286,9 @@ echo ""
 echo -e "${YELLOW}Test: key-of errors on non-object path${NC}"
 setup_fixture
 create_wu key-of-scalar feature "Key-of scalar"
-run_cli set key-of-scalar.planning.key-of-scalar format tick >/dev/null 2>&1
+run_cli set key-of-scalar.implementation.key-of-scalar label alpha >/dev/null 2>&1
 
-exit_code=$(run_cli_exit_code key-of key-of-scalar.planning.key-of-scalar format tick)
+exit_code=$(run_cli_exit_code key-of key-of-scalar.implementation.key-of-scalar label alpha)
 assert_equals "$exit_code" "1" "key-of errors when path is not an object"
 
 echo ""
@@ -1318,24 +1318,24 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: set and get project.defaults.plan_format${NC}"
+echo -e "${YELLOW}Test: set and get project.defaults.tmux_labels${NC}"
 setup_fixture
 create_wu my-proj feature "Setup"
-run_cli set project.defaults.plan_format local-markdown >/dev/null 2>&1
+run_cli set project.defaults.tmux_labels true >/dev/null 2>&1
 
-output=$(run_cli_stdout get project.defaults.plan_format)
-assert_equals "$output" "local-markdown" "Get project default plan_format"
+output=$(run_cli_stdout get project.defaults.tmux_labels)
+assert_equals "$output" "true" "Get project default tmux_labels"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: exists project.defaults.plan_format${NC}"
+echo -e "${YELLOW}Test: exists project.defaults.tmux_labels${NC}"
 setup_fixture
 create_wu ex-proj feature "Setup"
-run_cli set project.defaults.plan_format tick >/dev/null 2>&1
+run_cli set project.defaults.tmux_labels false >/dev/null 2>&1
 
-output=$(run_cli_stdout exists project.defaults.plan_format)
+output=$(run_cli_stdout exists project.defaults.tmux_labels)
 assert_equals "$output" "true" "Exists returns true for set default"
 
 output=$(run_cli_stdout exists project.defaults.nonexistent)
@@ -1345,13 +1345,13 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: delete project.defaults.plan_format${NC}"
+echo -e "${YELLOW}Test: delete project.defaults.tmux_labels${NC}"
 setup_fixture
 create_wu del-proj feature "Setup"
-run_cli set project.defaults.plan_format linear >/dev/null 2>&1
-run_cli delete project.defaults.plan_format >/dev/null 2>&1
+run_cli set project.defaults.tmux_labels true >/dev/null 2>&1
+run_cli delete project.defaults.tmux_labels >/dev/null 2>&1
 
-output=$(run_cli_stdout exists project.defaults.plan_format)
+output=$(run_cli_stdout exists project.defaults.tmux_labels)
 assert_equals "$output" "false" "Deleted project default no longer exists"
 
 echo ""
@@ -1411,9 +1411,9 @@ echo -e "${YELLOW}Test: get project.defaults returns empty when not set${NC}"
 setup_fixture
 create_wu err-proj feature "Error test"
 
-output=$(run_cli_stdout get project.defaults.plan_format)
+output=$(run_cli_stdout get project.defaults.tmux_labels)
 assert_equals "$output" "" "Missing project default returns empty stdout"
-run_cli_stdout get project.defaults.plan_format >/dev/null
+run_cli_stdout get project.defaults.tmux_labels >/dev/null
 assert_equals "$?" "0" "Missing project default exits 0"
 
 echo ""
@@ -1422,7 +1422,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set project.defaults without value errors${NC}"
 setup_fixture
-output=$(run_cli set project.defaults.plan_format 2>&1 || true)
+output=$(run_cli set project.defaults.tmux_labels 2>&1 || true)
 assert_contains "$output" "Usage" "Set without value shows usage"
 
 echo ""
@@ -1431,9 +1431,9 @@ echo ""
 
 echo -e "${YELLOW}Test: project set does not require work unit to exist${NC}"
 setup_fixture
-run_cli set project.defaults.plan_format tick >/dev/null 2>&1
-output=$(run_cli_stdout get project.defaults.plan_format)
-assert_equals "$output" "tick" "Can set project default without any work units"
+run_cli set project.defaults.tmux_labels true >/dev/null 2>&1
+output=$(run_cli_stdout get project.defaults.tmux_labels)
+assert_equals "$output" "true" "Can set project default without any work units"
 
 echo ""
 
@@ -1577,14 +1577,12 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: cancelled accepted as valid status for planning${NC}"
+echo -e "${YELLOW}Test: set refuses a planning item, a legacy name no phase holds${NC}"
 setup_fixture
-create_wu cancel-plan epic "Cancel plan"
-run_cli set cancel-plan.planning.my-topic status in-progress >/dev/null 2>&1
-run_cli set cancel-plan.planning.my-topic status cancelled >/dev/null 2>&1
-output=$(run_cli_stdout get cancel-plan.planning.my-topic status)
+create_wu legacy-plan epic "Legacy plan"
+output=$(run_cli set legacy-plan.planning.my-topic status in-progress 2>&1 || true)
 
-assert_equals "$output" "cancelled" "Planning accepts cancelled status"
+assert_contains "$output" 'Invalid phase' "A write to planning is refused"
 
 echo ""
 
@@ -1747,53 +1745,53 @@ assert_contains "$output" '"value": "Beta"' "Wildcard returns beta's summary"
 echo ""
 
 # ============================================================================
-# IMPORTS[] FIELD TESTS
+# SEEDS[] FIELD TESTS — object-shaped array entries
 # ============================================================================
 
-echo -e "${YELLOW}Test: push creates imports[] array on first call${NC}"
+echo -e "${YELLOW}Test: push creates seeds[] array on first call${NC}"
 setup_fixture
-create_wu imp-create epic "Imports create"
-run_cli push imp-create imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-create imports)
+create_wu seed-create epic "Seeds create"
+run_cli push seed-create seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-create seeds)
 
-assert_contains "$output" '"path": "imports/seed.md"' "First push creates array with entry"
-assert_contains "$output" '"imported_at": "2026-05-09T10:00:00Z"' "Entry preserves imported_at"
+assert_contains "$output" '"dest": "seed.md"' "First push creates array with entry"
+assert_contains "$output" '"source": ".inbox/ideas/seed.md"' "Entry preserves source"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: push appends subsequent entries to imports[]${NC}"
+echo -e "${YELLOW}Test: push appends subsequent entries to seeds[]${NC}"
 setup_fixture
-create_wu imp-append epic "Imports append"
-run_cli push imp-append imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-run_cli push imp-append imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-append imports)
+create_wu seed-append epic "Seeds append"
+run_cli push seed-append seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+run_cli push seed-append seeds '{"dest":"notes.md","source":".inbox/ideas/notes.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-append seeds)
 
-assert_contains "$output" "imports/seed.md" "First entry preserved after append"
-assert_contains "$output" "imports/notes.md" "Second entry appended"
+assert_contains "$output" "seed.md" "First entry preserved after append"
+assert_contains "$output" "notes.md" "Second entry appended"
 
 # Verify it's a proper array of length 2
-length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.leeway/imp-append/manifest.json','utf8')); console.log(m.imports.length)")
-assert_equals "$length" "2" "imports[] has two entries after two pushes"
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.leeway/seed-append/manifest.json','utf8')); console.log(m.seeds.length)")
+assert_equals "$length" "2" "seeds[] has two entries after two pushes"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: pull removes a single imports[] entry by deep equality${NC}"
+echo -e "${YELLOW}Test: pull removes a single seeds[] entry by deep equality${NC}"
 setup_fixture
-create_wu imp-pull epic "Imports pull"
-run_cli push imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-run_cli push imp-pull imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
-run_cli pull imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-pull imports)
+create_wu seed-pull epic "Seeds pull"
+run_cli push seed-pull seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+run_cli push seed-pull seeds '{"dest":"notes.md","source":".inbox/ideas/notes.md"}' >/dev/null 2>&1
+run_cli pull seed-pull seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-pull seeds)
 
-assert_not_contains "$output" "imports/seed.md" "Pull removed seed.md entry"
-assert_contains "$output" "imports/notes.md" "Pull kept notes.md entry"
+assert_not_contains "$output" "seed.md" "Pull removed seed.md entry"
+assert_contains "$output" "notes.md" "Pull kept notes.md entry"
 
-length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.leeway/imp-pull/manifest.json','utf8')); console.log(m.imports.length)")
-assert_equals "$length" "1" "imports[] has one entry after pull"
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.leeway/seed-pull/manifest.json','utf8')); console.log(m.seeds.length)")
+assert_equals "$length" "1" "seeds[] has one entry after pull"
 
 echo ""
 
@@ -1801,23 +1799,23 @@ echo ""
 
 echo -e "${YELLOW}Test: pull is no-op when entry shape does not match${NC}"
 setup_fixture
-create_wu imp-pull-miss epic "Imports pull miss"
-run_cli push imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-run_cli pull imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T99:99:99Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-pull-miss imports)
+create_wu seed-pull-miss epic "Seeds pull miss"
+run_cli push seed-pull-miss seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+run_cli pull seed-pull-miss seeds '{"dest":"seed.md","source":".inbox/ideas/other.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-pull-miss seeds)
 
-assert_contains "$output" "imports/seed.md" "Non-matching pull preserved entry"
+assert_contains "$output" "seed.md" "Non-matching pull preserved entry"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: push onto non-array imports field fails${NC}"
+echo -e "${YELLOW}Test: push onto non-array seeds field fails${NC}"
 setup_fixture
-create_wu imp-bad epic "Imports bad"
-# Set imports to a non-array value first
-run_cli set imp-bad imports '"not-an-array"' >/dev/null 2>&1
-combined=$(cd "$TEST_DIR" && node "$ENGINE_JS" manifest push imp-bad imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' 2>&1; echo "__EXIT__=$?")
+create_wu seed-bad epic "Seeds bad"
+# Set seeds to a non-array value first
+run_cli set seed-bad seeds '"not-an-array"' >/dev/null 2>&1
+combined=$(cd "$TEST_DIR" && node "$ENGINE_JS" manifest push seed-bad seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' 2>&1; echo "__EXIT__=$?")
 exit_code=$(echo "$combined" | grep -o '__EXIT__=[0-9]*' | tail -1 | cut -d= -f2)
 output=$(echo "$combined" | grep -v '__EXIT__=')
 
@@ -1828,11 +1826,11 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: imports[] round-trip preserves entry shape${NC}"
+echo -e "${YELLOW}Test: seeds[] round-trip preserves entry shape${NC}"
 setup_fixture
-create_wu imp-roundtrip epic "Imports round-trip"
-run_cli push imp-roundtrip imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-roundtrip imports)
+create_wu seed-roundtrip epic "Seeds round-trip"
+run_cli push seed-roundtrip seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-roundtrip seeds)
 
 # Parse the JSON and confirm shape
 parsed=$(echo "$output" | node -e "
@@ -1843,7 +1841,7 @@ process.stdin.on('end',()=>{
   if (!Array.isArray(arr)) { console.log('not-array'); return; }
   if (arr.length !== 1) { console.log('wrong-length'); return; }
   const e = arr[0];
-  if (e.path === 'imports/seed.md' && e.imported_at === '2026-05-09T10:00:00Z') {
+  if (e.dest === 'seed.md' && e.source === '.inbox/ideas/seed.md') {
     console.log('shape-ok');
   } else {
     console.log('shape-wrong');
@@ -1851,92 +1849,6 @@ process.stdin.on('end',()=>{
 });
 ")
 assert_equals "$parsed" "shape-ok" "Round-tripped entry has expected fields"
-
-echo ""
-
-# ============================================================================
-# RESOLVE COMMAND TESTS
-# ============================================================================
-
-echo -e "${YELLOW}Test: resolve refuses discussion, which is no longer indexed${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-exit_code=$(run_cli_exit_code resolve auth-flow.discussion.auth-flow)
-output=$(run_cli resolve auth-flow.discussion.auth-flow 2>&1 || true)
-
-assert_equals "$exit_code" "1" "Discussion exits 1"
-assert_contains "$output" 'Phase "discussion" is not indexed' "Error names discussion not indexed"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve refuses specification, which is never indexed${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-exit_code=$(run_cli_exit_code resolve auth-flow.specification.auth-flow)
-output=$(run_cli resolve auth-flow.specification.auth-flow 2>&1 || true)
-
-assert_equals "$exit_code" "1" "Specification exits 1"
-assert_contains "$output" 'Phase "specification" is not indexed' "Error names specification not indexed"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve investigation file path${NC}"
-setup_fixture
-create_wu auth-flow bugfix "Bug"
-output=$(run_cli_stdout resolve auth-flow.investigation.auth-flow)
-
-assert_contains "$output" "auth-flow/investigation/auth-flow.md" "Resolves investigation path"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve errors for non-existent work unit${NC}"
-setup_fixture
-exit_code=$(run_cli_exit_code resolve nonexistent.investigation.foo)
-
-assert_equals "$exit_code" "2" "Non-existent work unit exits 2 (expected miss)"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve errors for non-indexed phase${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-exit_code=$(run_cli_exit_code resolve auth-flow.planning.auth-flow)
-output=$(run_cli resolve auth-flow.planning.auth-flow 2>&1 || true)
-
-assert_equals "$exit_code" "1" "Non-indexed phase exits 1"
-assert_contains "$output" "not indexed" "Error mentions not indexed"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve errors for insufficient segments${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-exit_code=$(run_cli_exit_code resolve auth-flow)
-output=$(run_cli resolve auth-flow 2>&1 || true)
-
-assert_equals "$exit_code" "1" "Single segment exits 1"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve outputs correct path even when file does not exist on disk${NC}"
-setup_fixture
-create_wu auth-flow bugfix "Auth"
-# Don't create the file on disk — resolve should still output the path
-output=$(run_cli_stdout resolve auth-flow.investigation.auth-flow)
-
-assert_contains "$output" "auth-flow/investigation/auth-flow.md" "Path returned even without file on disk"
 
 echo ""
 
@@ -2013,20 +1925,18 @@ echo ""
 echo -e "${YELLOW}Test: read/mutation exit-code contract, pinned distinctly (miss=2, error/mutation=1)${NC}"
 setup_fixture
 create_wu codes feature "Codes"
-run_cli set codes.planning.codes task_map.codes-1-1 ext-1 >/dev/null 2>&1
+run_cli set codes.implementation.codes task_map.codes-1-1 ext-1 >/dev/null 2>&1
 
 # Reads — an EXPECTED miss is exit 2, distinct from a real error's exit 1. A
 # regression collapsing 2 into 1 must fail here, not slip past a non-zero check.
 assert_exit_code 2 "key-of value-not-found → exit 2 (expected miss)" \
-    key-of codes.planning.codes task_map ext-absent
-assert_exit_code 2 "resolve on a missing work unit → exit 2 (expected miss)" \
-    resolve ghost.investigation.ghost
+    key-of codes.implementation.codes task_map ext-absent
+assert_exit_code 2 "key-of on a missing work unit → exit 2 (expected miss)" \
+    key-of ghost.implementation.ghost task_map ext-1
 
 # Reads — a real error is exit 1, never 2.
 assert_exit_code 1 "get on an invalid phase → exit 1 (real error)" \
     get codes.cooking.codes status
-assert_exit_code 1 "resolve on a non-indexed phase → exit 1 (real error)" \
-    resolve codes.planning.codes
 assert_exit_code 1 "key-of on a non-object path → exit 1 (real error)" \
     key-of codes work_type feature
 

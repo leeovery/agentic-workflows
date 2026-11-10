@@ -71,7 +71,7 @@ function seedCancel(dir) {
 /** The cancel gate over that topic. */
 const CANCEL = ['render', 'cancel-gate', 'pay.discovery.data-export'];
 
-/** A bugfix's investigation in progress, its conclude gate the render. @param {string} dir */
+/** A bugfix's investigation in progress. @param {string} dir */
 function seedInvestigation(dir) {
   createManifest(dir, 'auth', { work_type: 'bugfix', phases: { investigation: { items: { auth: { status: 'in-progress' } } } } });
 }
@@ -141,23 +141,6 @@ describe('gate payload — a render surface', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the conclude gate states its question, no statement, its pressable row and its typed row', () => {
-    seedInvestigation(dir);
-    const out = output(dir, ['render', 'conclude-gate', 'auth.investigation.auth'], { env: ANNOUNCED });
-
-    assert.deepStrictEqual(gateOf(out), {
-      gate: 'conclude gate',
-      question: 'Investigation complete. Ready to conclude?',
-      statement: '',
-      options: [
-        { key: 'y', word: 'yes', head: 'Conclude investigation', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
-      ],
-      typed: [
-        { label: 'Keep going', description: 'Tell me what else to explore', detail: null },
-      ],
-    });
-  });
-
   it('an auto candidate gate arms nothing — its DISPLAY is not a gate', () => {
     createManifest(dir, 'pay', {
       work_type: 'epic',
@@ -219,8 +202,9 @@ describe('gate payload — a render surface', () => {
   it('each render starts from nothing — neither a menu before it nor a menu-less one leaks rows in', () => {
     seedCancel(dir);
     seedInvestigation(dir);
+    createFile(dir, '.leeway/.cache/pay/names.json', JSON.stringify({ names: ['billing-core'] }));
     const first = output(dir, CANCEL, { env: ANNOUNCED });
-    output(dir, ['render', 'conclude-gate', 'auth.investigation.auth'], { env: ANNOUNCED });
+    output(dir, ['render', 'summary-backfill-gate', 'pay', '--variant', 'unsourced', '--file', '.leeway/.cache/pay/names.json'], { env: ANNOUNCED });
     output(dir, ['render', 'phase-completed', 'auth', '--phase', 'investigation'], { env: ANNOUNCED });
     const last = output(dir, CANCEL, { env: ANNOUNCED });
 
@@ -260,14 +244,6 @@ describe('gate payload — the statement', () => {
     assert.strictEqual(gate.question, 'Cancel it?');
     assert.strictEqual(gate.statement,
       'Cancelling Data Export takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.');
-  });
-
-  it('a statement label over the question stays the statement', () => {
-    createManifest(dir, 'fix', { work_type: 'quick-fix', phases: { scoping: { items: { fix: { status: 'completed' } } } } });
-    const gate = gateOf(output(dir, ['render', 'resume-gate', 'fix.scoping.fix', '--variant', 'scoping'], { env: ANNOUNCED }));
-
-    assert.strictEqual(gate.question, 'How would you like to proceed?');
-    assert.strictEqual(gate.statement, 'Found completed scoping for Fix — spec and plan are in place.');
   });
 
   it('a statement over the question is the statement', () => {
@@ -400,7 +376,7 @@ describe('gate payload — every gateway verb', () => {
     },
     'leeway-continue-linear': {
       index: [refused()],
-      view: [ungated('view', 'checkout'), gated('view', 'crash-fix'), gated('view', 'typo'), ungated('view', 'nowhere')],
+      view: [ungated('view', 'checkout'), gated('view', 'crash-fix'), ungated('view', 'nowhere')],
       fallback: [refused('checkout')],
     },
     'leeway-continue-epic': {
@@ -478,7 +454,7 @@ describe('gate payload — every gateway verb', () => {
         discussion: {
           items: {
             auth: { status: 'in-progress' },
-            billing: { status: 'completed', reconcile_needed: true },
+            billing: { status: 'completed' },
             search: { status: 'cancelled', previous_status: 'in-progress' },
           },
         },
@@ -497,7 +473,6 @@ describe('gate payload — every gateway verb', () => {
     });
     concluded('checkout', 'feature', 'discussion', 'specification');
     concluded('crash-fix', 'bugfix', 'investigation', 'specification');
-    concluded('typo', 'quick-fix', 'scoping', 'implementation');
     createManifest(dir, 'payments', { phases: { discussion: { items: { payments: { status: 'in-progress' } } } } });
     createFile(dir, '.leeway/payments/topics/payments/mail/001.md', '# A message\n');
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
@@ -671,19 +646,6 @@ describe('gate payload — escaped text', () => {
     const gate = collect(() => menu('Run `a_b*c` to release it.', [cmdOption('1', null, 'One')], { question: 'Proceed?' }));
 
     assert.strictEqual(gate.statement, 'Run a_b*c to release it.');
-  });
-
-  it('a label the model wrote reaches its row as text — its code span as content, its escape as the character', () => {
-    const formats = createFile(dir, '.leeway/.cache/formats.json', JSON.stringify({
-      formats: [
-        { name: 'calls', label: 'Call `resolveUser` before the write' },
-        { name: 'keeps', label: 'Keep user\\_id on the \\*session\\*' },
-      ],
-    }));
-    const gate = gateOf(output(dir, ['render', 'plan-format-gate', '--variant', 'select', '--file', formats], { env: ANNOUNCED }));
-
-    assert.deepStrictEqual(gate.options.map((/** @type {{head: string}} */ o) => o.head),
-      ['Call resolveUser before the write', 'Keep user_id on the *session*']);
   });
 
   it('every part of a row states its text, whatever markup drew it', () => {

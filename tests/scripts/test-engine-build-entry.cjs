@@ -4,7 +4,7 @@
 // The build's entry and its standing (leeway-engine/scripts/domain/
 // build-entry.cjs): `engine enter implementation <unit>`. What it refuses,
 // naming the way on and writing nothing — a unit built under the old plan
-// (P12), a quick-fix today's scoping made among them, a build not begun
+// (P12), a quick-fix the old scoping made among them, a build not begun
 // (11.8.3), a work type with no build, and a topic named; another session
 // holding the checkout's code stopped at the code gate alone, nothing
 // written, `--take` entering and back leaving it to that session (12.7.8);
@@ -35,7 +35,7 @@
 // written, 2.1 not started; Reports not yet written; a question asked in its
 // build. Beside it a feature, `solo`, its build begun; another feature whose
 // code a peer may hold; a feature cut and not yet built; a quick-fix
-// mid-scoping; an epic built under the old plan, and a feature whose old spec
+// the old scoping planned; an epic built under the old plan, and a feature whose old spec
 // stands; a migrated cross-cutting unit; and the build's skill installed. Each
 // test's conversations keep their records in a config folder of their own.
 // ---------------------------------------------------------------------------
@@ -114,7 +114,7 @@ const world = fixtureFrom('engine-build-entry-', (dir) => {
   createManifest(dir, 'solo', { build: { position: 'step' }, cut: { phases: [CUT.phases[0]] } });
   createManifest(dir, 'other', {});
   createManifest(dir, 'fresh', { cut: { phases: [CUT.phases[0]] } });
-  createManifest(dir, 'tweak', { work_type: 'quick-fix', phases: { scoping: { items: { tweak: { status: 'in-progress' } } } } });
+  createManifest(dir, 'tweak', { work_type: 'quick-fix', phases: { planning: { items: { tweak: { status: 'in-progress' } } } } });
   createManifest(dir, 'old', { work_type: 'epic', phases: { planning: { items: { old: { status: 'completed' } } } }, build: { position: 'auto' } });
   createManifest(dir, 'kept', { phases: { specification: { items: { kept: { status: 'completed' } } } }, build: { position: 'auto' } });
   createManifest(dir, 'concern', { work_type: 'cross-cutting' });
@@ -204,7 +204,7 @@ const PHASE_LINES = Object.freeze([
 ]);
 
 describe('enter implementation: what cannot be entered is refused, naming the way on, and nothing is written', () => {
-  it('a unit built under the old plan (P12) — a quick-fix mid-scoping among them — a build not begun (11.8.3), a migrated unit of a retired type, and a topic named', () => {
+  it('a unit built under the old plan (P12) — a quick-fix the old scoping planned among them — a build not begun (11.8.3), a migrated unit of a retired type, and a topic named', () => {
     assert.deepStrictEqual([refused(['tweak']), refused(['old']), refused(['kept']), refused(['fresh']), refused([UNIT, 'note-window'])], [
       'tweak was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
       'old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',

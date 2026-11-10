@@ -5,9 +5,8 @@
 // they change (leeway-engine/scripts/domain/inbox.cjs, commit.cjs, and the
 // knowledge changes in transitions.cjs and workunit-lifecycle.cjs):
 // `inbox archive|restore|delete`, each set one commit or none, a move that
-// throws put back whole (`moveFiles`); `engine commit`, scoped to a unit,
-// the inbox or a plan's storage paths, and hardened against a malformed
-// plan; the knowledge store never riding a commit; and each transaction's
+// throws put back whole (`moveFiles`); `engine commit`, scoped to a unit or
+// the inbox; the knowledge store never riding a commit; and each transaction's
 // knowledge change against a real store, the chunks it must leave alone
 // beside it. The lifecycle verbs themselves are test-engine-transactions.cjs's.
 //
@@ -279,61 +278,11 @@ describe('engine commit', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): capture y');
   });
 
-  it('--plan stages the recorded storage paths and the project manifest alongside the work unit', () => {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
-    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: ['.tracker/'] } } } };
-    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    writeFile(dir, '.tracker/tasks-auth.jsonl', '{"id":"auth-1-1"}\n');
-    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } }, defaults: { plan_format: 'x' } }) + '\n');
-    writeFile(dir, 'unrelated.txt', 'outside the scope\n');
-
-    const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): author task auth-1-1', '--plan', 'auth']);
-    assert.strictEqual(res.committed, shortHead(dir));
-    assert.strictEqual(res.code_committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
-      ['manifest.json', 'payments/manifest.json']);
-    assert.deepStrictEqual(git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.tracker/tasks-auth.jsonl']);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'planning(payments): author task auth-1-1');
-    assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/, 'code never rides a --plan commit');
-  });
-
-  it('--plan with empty storage_paths is the plain scoped commit plus project manifest', () => {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
-    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: [] } } } };
-    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): initialize plan', '--plan', 'auth']);
-    assert.strictEqual(res.committed, shortHead(dir));
-    assert.strictEqual(res.code_committed, null);
-  });
-
-  it('--plan stages tracked deletions of a storage path removed from disk (restart cleanup)', () => {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
-    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: ['.tracker/'] } } } };
-    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    writeFile(dir, '.tracker/tasks-auth.jsonl', '{"id":"auth-1-1"}\n');
-    commitAll(dir, 'seed the tracker storage');
-    fs.rmSync(path.join(dir, '.tracker'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-
-    const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): restart plan', '--plan', 'auth']);
-    assert.strictEqual(res.committed, null, 'the plan\'s state was already committed');
-    assert.strictEqual(res.code_committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.match(git(dir, ['show', '--name-status', 'HEAD']), /^D\t\.tracker\/tasks-auth\.jsonl$/m, 'deletion staged');
-    assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
-  });
-
-  it('--plan is loud on a missing planning item, missing storage_paths, and illegal entries', () => {
-    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'ghost']).error, /no planning item "ghost"/);
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
-    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress' } } } };
-    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /has no storage_paths — record the format/);
-    m.phases.planning.items.auth.storage_paths = ['../evil'];
-    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /illegal storage_paths entry/);
-  });
-
-  it('rejects a missing message, missing scope, and bad work unit names', () => {
+  it('rejects a missing message, missing scope, a scope it has no more, and bad work unit names', () => {
     assert.match(engineFails(dir, ['commit', 'payments']).error, /Usage: engine commit/);
+    for (const scope of [['--plan', 'auth'], ['--imports']]) {
+      assert.match(engineFails(dir, ['commit', 'payments', '-m', 'msg', ...scope]).error, new RegExp(`unexpected argument "${scope[0]}"`));
+    }
     assert.match(engineFails(dir, ['commit', '-m', 'msg']).error, /Usage: engine commit/);
     assert.match(engineFails(dir, ['commit', 'payments', '--inbox', '-m', 'msg']).error, /Usage: engine commit/);
     assert.match(engineFails(dir, ['commit', '../escape', '-m', 'msg']).error, /invalid work unit name/);
@@ -375,58 +324,14 @@ describe('the knowledge store never rides an engine commit', () => {
   });
 });
 
-describe('engine commit --plan — hardening', () => {
-  const feature = world((dir) => {
-    writeFile(dir, '.leeway/auth-flow/manifest.json', json({ name: 'auth-flow', work_type: 'feature', status: 'in-progress', phases: {} }));
-    commitAll(dir, 'init');
-  });
-  let dir;
-  beforeEach(() => { dir = feature(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  function planWith(storage) {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth-flow/manifest.json'), 'utf8'));
-    m.phases = { ...(m.phases || {}), planning: { items: { 'auth-flow': { status: 'in-progress', ...(storage !== undefined ? { storage_paths: storage } : {}) } } } };
-    fs.writeFileSync(path.join(dir, '.leeway/auth-flow/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-  }
-
-  it('a dangling --plan is a usage error, not a ghost lookup', () => {
-    assert.match(engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan']).error, /Usage: engine commit/);
-  });
-
-  it('malformed storage_paths gets its own message — never the missing-field repair', () => {
-    planWith([123]);
-    const err = engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan', 'auth-flow']);
-    assert.match(err.error, /malformed storage_paths/);
-    assert.ok(!err.error.includes('record the format'), 'present-but-wrong is not missing');
-  });
-
-  it('the missing-field repair names the exact command', () => {
-    planWith(undefined);
-    const err = engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan', 'auth-flow']);
-    assert.match(err.error, /engine manifest set auth-flow\.planning\.auth-flow storage_paths/);
-  });
-
-  it('multiple storage paths all stage', () => {
-    planWith(['.tracker/', 'docs-tasks/']);
-    writeFile(dir, '.tracker/t.jsonl', '{}\n');
-    writeFile(dir, 'docs-tasks/a.md', 'task\n');
-    engine(dir, ['commit', 'auth-flow', '-m', 'planning(auth-flow): author', '--plan', 'auth-flow']);
-    const staged = git(dir, ['show', '--name-only', 'HEAD']);
-    assert.match(staged, /\.tracker\/t\.jsonl/);
-    assert.match(staged, /docs-tasks\/a\.md/);
-  });
-});
-
 // Each transaction's knowledge change against a real keyword-only store that
 // also holds chunks the change must leave alone — another work unit's — so a
 // change that wiped too much fails as surely as one that took too little.
 describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
-  const IMPORT = 'payments/imports/notes.md';
-  const OTHER_UNIT = 'billing/imports/rates.md';
+  const SEED = 'payments/seeds/notes.md';
+  const OTHER_UNIT = 'billing/seeds/rates.md';
   // An epic with a topic still in discussion and two decided; and a
-  // finished quick-fix beside it. Each unit holds one indexed
-  // import.
+  // finished quick-fix beside it. Each unit holds one indexed seed.
   const indexedWorld = world((dir) => {
     writeFile(dir, '.leeway/payments/manifest.json', json({
       name: 'payments', work_type: 'epic', status: 'in-progress',
@@ -434,17 +339,17 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
         discovery: { items: { 'auth-flow': { source: 'discovery', order: 1 }, 'session-model': { source: 'discovery', order: 2 }, 'fee-model': { source: 'discovery', order: 3 } } },
         discussion: { items: { 'auth-flow': { status: 'in-progress' }, 'session-model': { status: 'completed' }, 'fee-model': { status: 'completed' } } },
       },
-      imports: [{ path: 'imports/notes.md', imported_at: '2026-01-01T00:00:00Z', origin: 'discovery' }],
+      seeds: [{ path: 'seeds/notes.md', source: 'inbox:idea' }],
     }));
     writeFile(dir, '.leeway/billing/manifest.json', json({
       name: 'billing', work_type: 'quick-fix', status: 'in-progress',
-      phases: { scoping: { items: { billing: { status: 'completed' } } }, implementation: { items: { billing: { status: 'completed' } } }, review: { items: { billing: { status: 'completed' } } } },
-      imports: [{ path: 'imports/rates.md', imported_at: '2026-01-01T00:00:00Z', origin: 'discovery' }],
+      phases: { planning: { items: { billing: { status: 'completed' } } }, implementation: { items: { billing: { status: 'completed' } } }, review: { items: { billing: { status: 'completed' } } } },
+      seeds: [{ path: 'seeds/rates.md', source: 'inbox:bug' }],
     }));
-    for (const file of [IMPORT, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);
+    for (const file of [SEED, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);
     commitAll(dir, 'init');
     harness.keywordOnlyKnowledge(dir);
-    for (const file of [IMPORT, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.leeway', file)]);
+    for (const file of [SEED, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.leeway', file)]);
   });
   let dir;
   beforeEach(() => { dir = indexedWorld(); });
@@ -454,26 +359,26 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
 
   it('a Discovery-unit cancel leaves the store as it stands — a conversation indexes no artifact', () => {
     assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SEED]);
   });
 
   it('a work-unit cancel takes the unit\'s chunks, and a reactivate brings back its artifacts — another unit\'s untouched', () => {
     assert.deepStrictEqual(engine(dir, ['workunit', 'cancel', 'payments']).warnings, []);
     assert.deepStrictEqual(indexed(), [OTHER_UNIT]);
     assert.deepStrictEqual(engine(dir, ['workunit', 'reactivate', 'payments']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SEED]);
   });
 
   it('a work-unit complete leaves the store as it stands', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/.knowledge/store.bin'));
-    assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'payments', '-m', 'workflow(payments): complete']).warnings, []);
+    assert.deepStrictEqual(harness.completeUnit(dir, 'payments').warnings, []);
     assert.deepStrictEqual(fs.readFileSync(path.join(dir, '.leeway/.knowledge/store.bin')), before);
   });
 
   it('a work-unit complete over a cancelled, finished unit re-indexes it — another unit\'s untouched', () => {
     engine(dir, ['workunit', 'cancel', 'billing']);
-    assert.deepStrictEqual(indexed(), [IMPORT]);
-    assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'billing', '-m', 'workflow(billing): complete']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
+    assert.deepStrictEqual(indexed(), [SEED]);
+    assert.deepStrictEqual(harness.completeUnit(dir, 'billing').warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SEED]);
   });
 });

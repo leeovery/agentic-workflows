@@ -21,7 +21,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { LEDGER } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
 const { launcher } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/call.cjs'));
-const { stateGit } = require('./engine-harness.cjs');
+const { stateGit, startItem } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, mappedEpic } = require('./pipeline-world.cjs');
 
@@ -33,8 +33,8 @@ describe('pipeline simulation: ledger', () => {
   it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects, Claude\'s calls since the person last looked and the departures waiting on a verdict, and rendered to the knowledge base\'s copies, the records indexed; a decision the one-decision check could not judge is checked at a later start', (t) => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
-    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
-    sim.run(['topic', 'start', wu, 'discussion', 'space-homing']);
+    startItem(sim.dir, wu, 'discussion', 'note-window');
+    startItem(sim.dir, wu, 'discussion', 'space-homing');
     const made = { by: 'claude', who_moved_whom: 'none' };
     const note = `${wu}.discussion.note-window`;
     /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */
@@ -144,7 +144,7 @@ describe('pipeline simulation: ledger', () => {
     // reactivated, the later merge still holds.
     const mint = 'mint';
     sim.run(['workunit', 'create', mint, 'feature', '--description', 'Mint', '--session-log-file', sessionLog(sim, mint)]);
-    sim.run(['topic', 'start', mint, 'discussion', mint]);
+    startItem(sim.dir, mint, 'discussion', mint);
     const overruled = ledger(['replace', `${mint}.discussion.${mint}`, '--replaces', replacement, '--reason', 'changed-mind'],
       { ...made, drops: ['frameless'], text: 'A framed panel.', why: 'Mint frames its notes.' });
     const overruling = sim.run(['ledger', 'record', wu, 'note-window']);
@@ -208,7 +208,7 @@ describe('pipeline simulation: ledger', () => {
     // last, never a row of its own.
     const sage = 'sage';
     sim.run(['workunit', 'create', sage, 'feature', '--description', 'Sage', '--session-log-file', sessionLog(sim, sage)]);
-    sim.run(['topic', 'start', sage, 'discussion', sage]);
+    startItem(sim.dir, sage, 'discussion', sage);
     const reword = (/** @type {string} */ unit, /** @type {string} */ wording, /** @type {string} */ text) => ledger(['replace', `${unit}.discussion.${unit}`, '--replaces', wording, '--reason', 'changed-mind'], { ...made, drops: ['the old wording'], text });
     const tilting = ledger(['ask', note], { ...made, text: 'Does a note tilt?' });
     const tilts = ledger(['decide', note, '--answers', tilting], { ...made, text: 'It tilts with the desk.', why: 'Furniture leans.' });

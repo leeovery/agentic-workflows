@@ -21,7 +21,6 @@
 // ---------------------------------------------------------------------------
 
 const engine = require('../../leeway-engine/scripts/lib.cjs');
-const { TERMINAL_STATUSES } = require('../../leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { loadActiveManifests } = engine.reads;
 
 // The gate each of the epic's menus states, named for what it asks: a key of
@@ -47,27 +46,8 @@ function discover(cwd, workUnit) {
   return manifest ? engine.detail.epicDetail(cwd, manifest) : null;
 }
 
-/**
- * Completed items carrying a live reconcile flag, across every phase —
- * `phase/name (value)` strings for the scoped dump, the same vocabulary the
- * linear bridge's `reconcile_pending:` line uses.
- * @param {any} d  EpicDetail
- * @returns {string[]}
- */
-function reconcilePending(d) {
-  const out = [];
-  for (const [phase, items] of Object.entries(d.phases || {})) {
-    for (const item of items) {
-      if (!TERMINAL_STATUSES.includes(item.status) && item.reconcile_needed !== undefined) {
-        out.push(`${phase}/${item.name} (${item.reconcile_needed})`);
-      }
-    }
-  }
-  return out;
-}
-
 // The scoped state dump for one epic — the reasoning surface Steps 1–4
-// read: the reconcile flags, analysis-cache statuses, the sequencing flag, and
+// read: the analysis-cache statuses, the sequencing flag, and
 // the discovery-map rows (tier, lifecycle, the name a renamed topic goes by
 // beside its key, field presence, current summary text).
 /** @param {string} workUnit @param {EpicDetail|null} d */
@@ -78,7 +58,6 @@ function formatScoped(workUnit, d) {
     lines.push('error: no active epic with this name');
     return lines.join('\n') + '\n';
   }
-  lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
   lines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   lines.push(`needs_sequencing: ${d.needs_sequencing}`);
   lines.push(`discovery_map (${d.discovery_map.length}):`);

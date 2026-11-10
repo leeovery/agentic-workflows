@@ -193,7 +193,7 @@ function hasRoadmapNode(manifest) {
  * a scalar `roadmap`, an object `horizons`, an array `items` all name their
  * corruption instead of being silently rebuilt.
  * @param {Record<string, any>} manifest
- * @returns {{horizons: string[], items: Record<string, any>, imports?: Record<string, any>[]}}
+ * @returns {{horizons: string[], items: Record<string, any>}}
  */
 function ensureRoadmap(manifest) {
   const roadmap = ensureContainer(manifest, 'roadmap', 'roadmap');
@@ -202,7 +202,7 @@ function ensureRoadmap(manifest) {
     throw new Error('roadmap.horizons is malformed — expected an array of horizon names');
   }
   ensureContainer(roadmap, 'items', 'roadmap.items');
-  return /** @type {{horizons: string[], items: Record<string, any>, imports?: Record<string, any>[]}} */ (roadmap);
+  return /** @type {{horizons: string[], items: Record<string, any>}} */ (roadmap);
 }
 
 /**
@@ -1070,10 +1070,8 @@ function returnPostponed(cwd, name, into, topic) {
     delete item.postponed_from;
     return { op: 'pull-forward', name, into, topic, state: 'in-flight' };
   });
-  const returned = restorePostponedUnit(cwd, into, topic);
-  result.restored = returned.restored;
-  return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`,
-    { workUnit: into, warnings: returned.warnings });
+  result.restored = restorePostponedUnit(cwd, into, topic);
+  return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`, { workUnit: into });
 }
 
 /**

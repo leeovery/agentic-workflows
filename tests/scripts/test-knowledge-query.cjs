@@ -44,21 +44,21 @@ const NO_FILES = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-no-files-'));
 after(() => fs.rmSync(NO_FILES, { recursive: true, force: true }));
 refuseLaunches();
 
-/** A chunk of `unit`'s investigation, `n` its ordinal. */
 /** `text` as a regular expression matches it exactly. @param {string} text */
 const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** A chunk of `unit`'s seed, `n` its ordinal. */
 function doc(unit, n, content) {
   return {
-    id: `${unit}-investigation-${unit}-${String(n).padStart(3, '0')}`,
+    id: `${unit}-seeds-${unit}-${String(n).padStart(3, '0')}`,
     content,
     heading_path: '',
     work_unit: unit,
     work_type: 'feature',
-    phase: 'investigation',
+    phase: 'seeds',
     topic: unit,
-    confidence: 'medium',
-    source_file: `${unit}/investigation/${unit}.md`,
+    confidence: 'low',
+    source_file: `${unit}/seeds/${unit}.md`,
     timestamp: new Date(2026, 0, 2).getTime(),
   };
 }
@@ -162,9 +162,9 @@ describe('queryStore', () => {
     const terms = ['token', 'refresh', 'refunds'];
     const merged = await query(db, { terms });
     assert.deepStrictEqual(merged.map((r) => r.id).sort(), [
-      'billing-investigation-billing-002',
-      'new-investigation-new-001',
-      'old-investigation-old-001',
+      'billing-seeds-billing-002',
+      'new-seeds-new-001',
+      'old-seeds-old-001',
     ]);
     assert.strictEqual((await query(db, { terms, options: { limit: 2 } })).length, 2);
   });
@@ -195,52 +195,6 @@ describe('queryStore', () => {
     assert.strictEqual(boosted[0].work_unit, 'old');
   });
 
-  describe('the reopened marker', () => {
-    const INVESTIGATION = 'ledger-investigation-ledger-001';
-    const IMPORT = 'ledger-imports-notes-001';
-    const UNLISTED = 'orphan-investigation-orphan-001';
-    let ledgerDb;
-
-    /** The ledger unit's manifest, its investigation at `status`. @param {string} status */
-    function ledger(status) {
-      return [{ name: 'ledger', work_type: 'feature', status: 'in-progress', phases: { investigation: { items: { ledger: { status } } } } }];
-    }
-
-    /** Each result's marker by chunk id, and the ranking, the investigation at `status`. @param {string} status */
-    async function queried(status) {
-      const results = await query(ledgerDb, { terms: ['receipts'], workUnits: ledger(status) });
-      return { reopened: Object.fromEntries(results.map((r) => [r.id, r.reopened])), ranking: results.map((r) => [r.id, r.score]) };
-    }
-
-    before(() => {
-      ledgerDb = store.createStore();
-      const investigation = doc('ledger', 1, 'Receipts reconcile nightly.');
-      for (const d of [
-        investigation,
-        { ...investigation, id: IMPORT, phase: 'imports', topic: 'notes', source_file: 'ledger/imports/notes.md' },
-        doc('orphan', 1, 'Receipts reconcile nightly.'),
-      ]) {
-        store.insertDocument(ledgerDb, d);
-      }
-    });
-
-    it('marks a result whose own topic is in progress again', async () => {
-      assert.strictEqual((await queried('in-progress')).reopened[INVESTIGATION], true);
-    });
-
-    it('never marks a result with no item of its own: an import, or a unit no manifest names', async () => {
-      const { reopened } = await queried('in-progress');
-      assert.deepStrictEqual([reopened[IMPORT], reopened[UNLISTED]], [false, false]);
-    });
-
-    it('drops the marker once the topic completes again, and ranks alike either way', async () => {
-      const reopened = await queried('in-progress');
-      const concluded = await queried('completed');
-      assert.deepStrictEqual(concluded.reopened, { [INVESTIGATION]: false, [IMPORT]: false, [UNLISTED]: false });
-      assert.deepStrictEqual(reopened.ranking, concluded.ranking);
-    });
-  });
-
   it('refuses an invalid boost with a UserError', async () => {
     await assert.rejects(
       query(db, { terms: ['token'], options: { boosts: [{ field: 'bogus', value: 'x' }] } }),
@@ -261,7 +215,7 @@ describe('queryStore', () => {
     const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), provider);
     const outcome = await outcomeOf(db, { terms: ['token refresh', 'refunds', PARAPHRASE.term], settings });
     assert.deepStrictEqual(requests, [['token refresh', 'refunds', PARAPHRASE.term]]);
-    assert.ok(outcome.results.some((r) => r.id === 'accounts-investigation-accounts-001'), 'the paraphrase found by its vector');
+    assert.ok(outcome.results.some((r) => r.id === 'accounts-seeds-accounts-001'), 'the paraphrase found by its vector');
     assert.deepStrictEqual(outcome.notes, []);
   });
 
@@ -306,7 +260,7 @@ describe('queryStore', () => {
     const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, loaded({ provider: 'axis' }), axis);
     const keyword = Object.fromEntries(store.searchKeyword(blended, { term: 'receipts' }).map((h) => [h.work_unit, h.score]));
     const best = Math.max(...Object.values(keyword));
-    const confidence = 0.03;
+    const confidence = 0.01;
     const results = Object.fromEntries((await query(blended, { terms: ['receipts'], settings })).map((r) => [r.work_unit, r.score]));
     assert.deepStrictEqual(Object.keys(results), ['both', 'keyword', 'vector']);
     assert.strictEqual(results.both, 0.4 * (keyword.both / best) + 0.6 + confidence);
@@ -315,7 +269,7 @@ describe('queryStore', () => {
   });
 
   it('finds by meaning in full mode a chunk sharing no word with the query', async () => {
-    const accounts = 'accounts-investigation-accounts-001';
+    const accounts = 'accounts-seeds-accounts-001';
     const full = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), stub);
     assert.ok((await query(db, { terms: [PARAPHRASE.term], settings: full })).some((r) => r.id === accounts));
     assert.ok(!(await query(db, { terms: [PARAPHRASE.term] })).some((r) => r.id === accounts));
@@ -351,7 +305,7 @@ describe('queryProvider', () => {
     assert.deepStrictEqual(endpoint.requests, [['receipts']]);
     assert.deepStrictEqual(waits, [], 'the 20 s wait the endpoint names never fits the query\'s budget');
     assert.deepStrictEqual(outcome.notes, ["[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly]"]);
-    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-investigation-ledger-001']);
+    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-seeds-ledger-001']);
   });
 
   it('gives an endpoint that never answers two tries of its timeout, then runs keyword-only', async () => {
@@ -366,7 +320,7 @@ describe('queryProvider', () => {
     assert.deepStrictEqual(outcome.notes, [
       '[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request timed out after 0.05s (network error): the endpoint did not answer; retry once the provider answers]',
     ]);
-    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-investigation-ledger-001']);
+    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-seeds-ledger-001']);
   });
 
   it('gives each request 5 seconds to answer, and a rate limit 5 seconds of waiting in all', () => {
@@ -425,12 +379,12 @@ describe('knowledge query — `engine knowledge query`', () => {
   /** @param {string} name @param {string} completedAt */
   function completedFeature(name, completedAt) {
     const unit = path.join(root, '.leeway', name);
-    fs.mkdirSync(path.join(unit, 'investigation'), { recursive: true });
+    fs.mkdirSync(path.join(unit, 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name, work_type: 'feature', status: 'completed', created: '2026-01-01', completed_at: completedAt,
-      phases: { investigation: { items: { [name]: { status: 'completed' } } } },
+      phases: {}, seeds: [{ path: `seeds/${name}.md`, source: 'inbox:idea' }],
     }));
-    fs.writeFileSync(path.join(unit, 'investigation', `${name}.md`), '# Investigation\n\nToken refresh follows the rate window.\n');
+    fs.writeFileSync(path.join(unit, 'seeds', `${name}.md`), '# Investigation\n\nToken refresh follows the rate window.\n');
   }
 
   /** @param {...string} args */
@@ -448,14 +402,14 @@ describe('knowledge query — `engine knowledge query`', () => {
       JSON.stringify({ work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } }));
     completedFeature('alpha', '2026-01-01');
     completedFeature('beta', '2026-06-01');
-    await knowledge('index', '.leeway/alpha/investigation/alpha.md');
-    await knowledge('index', '.leeway/beta/investigation/beta.md');
+    await knowledge('index', '.leeway/alpha/seeds/alpha.md');
+    await knowledge('index', '.leeway/beta/seeds/beta.md');
   });
 
   after(() => cleanupFixture(root));
 
   it('ranks a chunk the progress clock has moved past below its equal', async () => {
-    const units = [...(await knowledge('query', 'token refresh')).matchAll(/^\[investigation \| (\w+)\//gm)].map((m) => m[1]);
+    const units = [...(await knowledge('query', 'token refresh')).matchAll(/^\[seeds \| (\w+)\//gm)].map((m) => m[1]);
     assert.deepStrictEqual(units, ['beta', 'alpha']);
   });
 
@@ -464,19 +418,19 @@ describe('knowledge query — `engine knowledge query`', () => {
     assert.deepStrictEqual(beta.split('\n').slice(1), [
       'Investigation',
       'Token refresh follows the rate window.',
-      `Source: ${path.join(root, '.leeway/beta/investigation/beta.md')}:L1-3`,
+      `Source: ${path.join(root, '.leeway/beta/seeds/beta.md')}:L1-3`,
     ]);
   });
 
   it('prints the bare path, and no headings, for a chunk its file no longer holds', async () => {
-    const file = path.join(root, '.leeway', 'beta', 'investigation', 'beta.md');
+    const file = path.join(root, '.leeway', 'beta', 'seeds', 'beta.md');
     const written = fs.readFileSync(file, 'utf8');
     fs.writeFileSync(file, written.replace('rate window', 'burst window'));
     try {
       const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
       assert.deepStrictEqual(beta.split('\n').slice(1), [
         'Token refresh follows the rate window.',
-        `Source: ${path.join(root, '.leeway/beta/investigation/beta.md')}`,
+        `Source: ${path.join(root, '.leeway/beta/seeds/beta.md')}`,
       ]);
     } finally {
       fs.writeFileSync(file, written);
@@ -488,31 +442,13 @@ describe('knowledge query — `engine knowledge query`', () => {
     const score = String.raw`\d+\.\d{4}`;
     for (const [unit, decay] of [['beta', '1\\.0000'], ['alpha', '0\\.9791']]) {
       assert.match(explained, new RegExp([
-        `^Source: ${literal(path.join(root, '.leeway', unit, 'investigation', `${unit}.md`))}:L1-3`,
+        `^Source: ${literal(path.join(root, '.leeway', unit, 'seeds', `${unit}.md`))}:L1-3`,
         `Framing 1: keyword ${score}`,
         `Framing 2: keyword ${score}`,
-        `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0300 tier = ${score}$`,
+        `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0100 tier = ${score}$`,
       ].join('\n'), 'm'));
     }
     assert.strictEqual(explained.replace(/^(?:Framing \d+|Score): .*\n/gm, ''), await knowledge('query', 'token refresh', 'rate window'));
-  });
-
-  it("closes a reopened topic's provenance line on reopened, and only that topic's", async () => {
-    const manifest = path.join(root, '.leeway', 'beta', 'manifest.json');
-    const written = fs.readFileSync(manifest, 'utf8');
-    const reopened = JSON.parse(written);
-    reopened.phases.investigation.items.beta.status = 'in-progress';
-    fs.writeFileSync(manifest, JSON.stringify(reopened));
-    try {
-      const provenance = (await knowledge('query', 'token refresh')).match(/^\[investigation \|.*$/gm)
-        .map((line) => line.replace(/\d{4}-\d{2}-\d{2}/, 'YYYY-MM-DD'));
-      assert.deepStrictEqual(provenance, [
-        '[investigation | beta/beta | medium | YYYY-MM-DD | reopened]',
-        '[investigation | alpha/alpha | medium | YYYY-MM-DD]',
-      ]);
-    } finally {
-      fs.writeFileSync(manifest, written);
-    }
   });
 
   it('never reads the term after --explain as its value', async () => {
@@ -521,7 +457,7 @@ describe('knowledge query — `engine knowledge query`', () => {
 });
 
 describe('knowledge query — `engine knowledge query`, without a vector', () => {
-  const RESULT = /^\[1 results\]\n\n\[investigation \| alpha\/alpha \|/m;
+  const RESULT = /^\[1 results\]\n\n\[seeds \| alpha\/alpha \|/m;
   let endpoint;
   let root;
 
@@ -545,14 +481,14 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   beforeEach(async () => {
     root = setupFixture('kb-query-cli-');
     const unit = path.join(root, '.leeway', 'alpha');
-    fs.mkdirSync(path.join(unit, 'investigation'), { recursive: true });
+    fs.mkdirSync(path.join(unit, 'seeds'), { recursive: true });
     fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
     fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-      phases: { investigation: { items: { alpha: { status: 'completed' } } } },
+      phases: {}, seeds: [{ path: 'seeds/alpha.md', source: 'inbox:idea' }],
     }));
-    fs.writeFileSync(path.join(unit, 'investigation', 'alpha.md'), '# Investigation\n\nToken refresh follows the rate window.\n');
+    fs.writeFileSync(path.join(unit, 'seeds', 'alpha.md'), '# Investigation\n\nToken refresh follows the rate window.\n');
     configure(endpoint.config);
     endpoint.mode = 'ok';
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
@@ -668,14 +604,14 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
   beforeEach(async () => {
     root = setupFixture('kb-query-config-');
     const unit = path.join(root, '.leeway', 'alpha');
-    fs.mkdirSync(path.join(unit, 'investigation'), { recursive: true });
+    fs.mkdirSync(path.join(unit, 'seeds'), { recursive: true });
     fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
     fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-      phases: { investigation: { items: { alpha: { status: 'completed' } } } },
+      phases: {}, seeds: [{ path: 'seeds/alpha.md', source: 'inbox:idea' }],
     }));
-    fs.writeFileSync(path.join(unit, 'investigation', 'alpha.md'), '# Investigation\n\nToken refresh follows the rate window.\n');
+    fs.writeFileSync(path.join(unit, 'seeds', 'alpha.md'), '# Investigation\n\nToken refresh follows the rate window.\n');
     configFile = path.join(root, '.leeway', '.knowledge', 'config.json');
     configure({ provider: null });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
@@ -727,12 +663,12 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     const units = { alpha: { work_type: 'feature' } };
     for (const [name, completedAt] of completions) {
       const unit = path.join(root, '.leeway', name);
-      fs.mkdirSync(path.join(unit, 'investigation'), { recursive: true });
+      fs.mkdirSync(path.join(unit, 'seeds'), { recursive: true });
       fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
         name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
-        phases: { investigation: { items: { [name]: { status: 'completed' } } } },
+        phases: {}, seeds: [{ path: `seeds/${name}.md`, source: 'inbox:idea' }],
       }));
-      fs.writeFileSync(path.join(unit, 'investigation', `${name}.md`), `# Investigation\n\n${name} settled its tokens.\n`);
+      fs.writeFileSync(path.join(unit, 'seeds', `${name}.md`), `# Investigation\n\n${name} settled its tokens.\n`);
       units[name] = { work_type: 'feature' };
     }
     fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: units }));
@@ -744,7 +680,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     assert.strictEqual(compact.code, 0, compact.stderr);
     assert.strictEqual(compact.stdout, [
       'Compacted: removed 1 chunks from 1 work units (retrievability < 0.05)',
-      '  • buried: 1 chunks (investigation)',
+      '  • buried: 1 chunks (seeds)',
       '',
     ].join('\n'));
   });
@@ -757,7 +693,6 @@ describe('renderQuery', () => {
     excerpt: 'Tokens refresh hourly.',
     headings: ['Investigation: Auth', 'Refresh'],
     lines: { first: 3, last: 6 },
-    reopened: false,
   };
   const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
 
@@ -767,26 +702,21 @@ describe('renderQuery', () => {
       awaiting,
       '[1 results]',
       '',
-      '[investigation | auth/auth | medium | 2026-01-02]',
+      '[seeds | auth/auth | low | 2026-01-02]',
       'Investigation: Auth › Refresh',
       'Tokens refresh hourly.',
-      'Source: /work/project/.leeway/auth/investigation/auth.md:L3-6',
+      'Source: /work/project/.leeway/auth/seeds/auth.md:L3-6',
     ].join('\n') + '\n');
   });
 
   it('names a one-line chunk by its line, and leaves out the headings and an excerpt where there are none', () => {
     const lines = (placed) => renderQuery({ results: [{ ...result, ...placed }], notes: [] }, { root: STATE }).split('\n').slice(3, -1);
-    const source = 'Source: /work/project/.leeway/auth/investigation/auth.md';
+    const source = 'Source: /work/project/.leeway/auth/seeds/auth.md';
     assert.deepStrictEqual(lines({ lines: { first: 9, last: 9 } }), [
       'Investigation: Auth › Refresh', 'Tokens refresh hourly.', `${source}:L9`,
     ]);
     assert.deepStrictEqual(lines({ headings: [], lines: null }), ['Tokens refresh hourly.', source]);
     assert.deepStrictEqual(lines({ excerpt: '' }), ['Investigation: Auth › Refresh', `${source}:L3-6`]);
-  });
-
-  it('closes the provenance line on reopened where the topic is in progress again', () => {
-    assert.strictEqual(renderQuery({ results: [{ ...result, reopened: true }], notes: [] }, { root: STATE }).split('\n')[2],
-      '[investigation | auth/auth | medium | 2026-01-02 | reopened]');
   });
 
   it('prints no note where there is none, and a bare count where there are no results', () => {

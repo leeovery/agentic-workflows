@@ -23,10 +23,11 @@ const { setupFixtureAt, statePath } = require('./engine-harness.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
-const SOURCE = 'cache-schema-versioning/investigation/cache-schema-versioning.md';
-const ANCHOR = 'Deterministic failure — not intermittent';
-const OTHER = 'same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md';
-const OTHER_ANCHOR = 'the batch shares a second';
+const SOURCE = 'same-second-tasks-sort-by-id/seeds/2026-09-21-same-second-tasks-sort-by-id.md';
+const ANCHOR = 'All five had been created inside the same wall-clock second';
+const OTHER = 'ready-includes-in-progress/seeds/2026-06-02-ready-includes-in-progress.md';
+const OTHER_ANCHOR = 'The in-progress task ends up dangling';
+const OTHER_TOPIC = '2026-06-02-ready-includes-in-progress';
 
 /** A sound tick case, with `overrides` laid over it. */
 function tickCase(overrides = {}) {
@@ -73,10 +74,10 @@ describe('knowledge eval — keyword mode', () => {
       }),
       tickCase({ id: 'boosts-not-a-list', options: { boosts: 'work-unit' } }),
       negativeCase({ id: 'negative-filtered', options: { 'work-type': 'epic' } }),
-      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'investigation' } }),
+      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'seeds' } }),
       tickCase({
         id: 'names-absent',
-        options: { 'work-unit': 'cache-schema-versioning, nowhere', boosts: [{ field: 'phase', value: 'analysis' }, { field: 'topic', value: 'same-second-tasks-sort-by-id' }] },
+        options: { 'work-unit': 'same-second-tasks-sort-by-id, nowhere', boosts: [{ field: 'phase', value: 'analysis' }, { field: 'topic', value: OTHER_TOPIC }] },
       }),
       negativeCase({ id: 'negative-judged', relevant: tickCase().relevant }),
       nearMissCase({ id: 'near-miss-judged', relevant: tickCase().relevant }),
@@ -87,17 +88,17 @@ describe('knowledge eval — keyword mode', () => {
           { source: 'cache-schema-versioning/nowhere.md', anchor: 'x', grade: 'primary', framing: 0 },
           { source: SOURCE, anchor: 'not a phrase in the file', grade: 'supporting', framing: 3 },
           { source: SOURCE, anchor: ANCHOR, grade: 'key', framing: 0 },
-          { source: SOURCE, anchor: 'SQLite', grade: 'supporting', framing: 0 },
+          { source: SOURCE, anchor: 'tick', grade: 'supporting', framing: 0 },
           { source: SOURCE, anchor: ANCHOR, grade: 'supporting', framing: 0 },
         ],
       }),
       tickCase({ id: 'no-primary', relevant: [{ ...tickCase().relevant[0], grade: 'supporting' }] }),
       tickCase({
         id: 'primary-filtered-out',
-        options: { topic: 'same-second-tasks-sort-by-id' },
+        options: { topic: OTHER_TOPIC },
         relevant: [
           { source: SOURCE, anchor: ANCHOR, grade: 'primary', framing: 0 },
-          { source: SOURCE, anchor: 'stale cache.db', grade: 'supporting', framing: 0 },
+          { source: SOURCE, anchor: 'second granularity', grade: 'supporting', framing: 0 },
           { source: OTHER, anchor: OTHER_ANCHOR, grade: 'primary', framing: 0 },
         ],
       }),
@@ -257,20 +258,20 @@ async function fakeEndpoint(dimensions) {
 }
 
 /**
- * A bugfix with two completed investigations, in a fresh directory under
+ * A bugfix with two seeds, in a fresh directory under
  * `parent`, configured to embed with the provider `identity` names.
  * @param {string} parent @param {Record<string, any>} identity
  */
-function investigatedProject(parent, identity) {
+function seededProject(parent, identity) {
   const root = setupFixtureAt(fs.mkdtempSync(path.join(parent, 'project-')));
   const topics = ['refresh', 'revocation'];
   writeJson(statePath(root, 'manifest.json'), { work_units: { auth: { work_type: 'bugfix' } } });
   writeJson(statePath(root, 'auth', 'manifest.json'), {
     name: 'auth', work_type: 'bugfix', status: 'in-progress', created: '2026-01-01',
-    phases: { investigation: { items: Object.fromEntries(topics.map((topic) => [topic, { status: 'completed' }])) } },
+    phases: {}, seeds: topics.map((topic) => ({ path: `seeds/${topic}.md`, source: 'inbox:bug' })),
   });
   for (const topic of topics) {
-    writeFile(statePath(root, 'auth', 'investigation', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
+    writeFile(statePath(root, 'auth', 'seeds', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
   }
   writeJson(knowledgeFiles(statePath(root)).config, { knowledge: identity });
   return root;
@@ -329,11 +330,11 @@ describe('knowledge eval — the embedding cache', () => {
     const endpoint = await fakeEndpoint(8);
     const cache = embeddings.embeddingCache(cacheDir, endpoint.identity);
     try {
-      await knowledgeEval.runKnowledge(investigatedProject(scratch, endpoint.identity), ['index'], cacheDir);
+      await knowledgeEval.runKnowledge(seededProject(scratch, endpoint.identity), ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2);
       assert.ok(endpoint.texts.every((text) => cache.read(text) !== null), 'every text embedded is cached');
 
-      const rebuilt = investigatedProject(scratch, endpoint.identity);
+      const rebuilt = seededProject(scratch, endpoint.identity);
       await knowledgeEval.runKnowledge(rebuilt, ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2, 'the rebuild sent the endpoint nothing');
       assert.strictEqual(store.readMetadata(knowledgeFiles(statePath(rebuilt)).metadata).provider, 'openai-compatible');

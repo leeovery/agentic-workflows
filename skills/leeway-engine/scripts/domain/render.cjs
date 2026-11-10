@@ -23,8 +23,7 @@ const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { displayWidth } = require('../kernel/terminal.cjs');
 const { titlecase, tag } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, callout, indentedBody, bulletRow, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
-const { worklist } = require('./projections/worklist.cjs');
+const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
@@ -50,12 +49,12 @@ const {
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
-const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
+const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
   computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
-  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildByCut,
+  postponePlan, postponeTarget, postponedItem, openExperiments,
+  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
@@ -99,557 +98,6 @@ function resolveAddress(cwd, dotpath, surface) {
   return { workUnit, phase, topic, manifest };
 }
 
-// ---------------------------------------------------------------------------
-// resume-gate — the shared continue/restart gate over an in-progress phase
-// artifact. Address-backed; the artifact name is the phase segment. The
-// optional mail count comes from the caller's `topic mailbox` read and
-// rides as a scalar flag.
-// ---------------------------------------------------------------------------
-
-const RESUME_QUESTION = 'How would you like to proceed?';
-
-/**
- * The resume-menu family. The default renders the shared phase-resume menu;
- * variants derive their consumer's label and options from state at the same
- * address: `scoping` (the revisit wording), `session` (bare work-unit
- * address, the interrupted discovery session).
- * @param {string} cwd
- * @param {{dotpath: string, mail?: string, variant?: string}} args
- * @returns {string}
- */
-function resumeGate(cwd, args) {
-  const { dotpath, mail, variant } = args;
-  if (variant !== undefined && !['scoping', 'session'].includes(variant)) {
-    throw new Error(`render resume-gate: --variant must be "scoping" or "session", got "${variant}"`);
-  }
-  if (variant !== undefined && mail !== undefined) {
-    throw new Error('render resume-gate: --mail only applies to the default variant');
-  }
-  if (variant === 'session') {
-    const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'resume-gate');
-    const active = ((manifest.phases || {}).discovery || {}).active_session;
-    if (active === undefined || active === null || String(active).trim() === '') {
-      throw new Error('render resume-gate: no active discovery session to resume');
-    }
-    return section('MENU: resume gate', MENU_INSTRUCTION, menu(
-      `Found an in-progress discovery session for **${titlecase(workUnit)}** at \`session-${active}.md\`.`,
-      [
-        cmdOption('c', 'continue', 'Pick up where you left off'),
-        cmdOption('r', 'restart', 'Discard the interrupted log and start a new session (map edits already applied stay applied — only their session record is lost)'),
-      ],
-      { question: RESUME_QUESTION },
-    ));
-  }
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
-  const t = itemTitle(topicTitles(manifest), phase, topic);
-  if (variant === 'scoping') {
-    return section('MENU: resume gate', MENU_INSTRUCTION, menu(
-      `Found completed scoping for **${t}** — spec and plan are in place.`,
-      [
-        cmdOption('c', 'continue', 'Adjust the existing spec and plan'),
-        cmdOption('r', 'restart', 'Erase the spec, plan, and task files, then rescope from scratch'),
-      ],
-      { question: RESUME_QUESTION },
-    ));
-  }
-  const parts = [];
-  if (mail !== undefined) {
-    const n = parseInt(mail, 10);
-    if (!Number.isInteger(n) || n < 1) {
-      throw new Error(`render resume-gate: --mail must be a positive integer, got "${mail}"`);
-    }
-    parts.push(section(
-      'DISPLAY: mail warning',
-      emitAs('text', ', directly above the menu'),
-      callout(`${n} message(s) from other topics wait in this topic's `
-        + 'mailbox. Restart leaves them there — the restarted session raises them.'),
-    ));
-  }
-  parts.push(section(
-    'MENU: resume gate',
-    MENU_INSTRUCTION,
-    menu(`Found existing ${phase} for **${t}**.`, [
-      cmdOption('c', 'continue', 'Pick up where you left off'),
-      cmdOption('r', 'restart', `Delete the ${phase} and start fresh`),
-    ], { question: RESUME_QUESTION }),
-  ));
-  return parts.join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// hypothesis-board — the investigation's hypothesis ledger, in the four
-// presentations the analysis needs. One renderer for one object: judgment
-// supplies the claims and the evidence beneath them, while the counts, the
-// order of the parts, and every gate belong to this surface — so the board
-// reads the same however long the analysis runs, and at any width.
-//   plan      — the proposed ledger, its trace lines and checkpoint depth
-//   resume    — the same ledger re-rendered from an earlier session
-//   check-in  — a resolution moment: what just resolved, then the whole board
-//   pivot     — a finding invalidated the plan: what changed, then the
-//               ledger proposed in its place
-// ---------------------------------------------------------------------------
-
-const HYPOTHESIS_VARIANTS = ['plan', 'resume', 'check-in', 'pivot'];
-const HYPOTHESIS_STATUSES = ['suspected', 'tracing', 'confirmed', 'ruled-out'];
-const CHECKPOINT_DEPTHS = ['straight-through', 'check-ins'];
-
-// A field that lands inside a markdown construct living on one line — a bold
-// head, a `- **Label**: value` bullet — cannot carry a newline: it would
-// break the construct around it and put a bare fragment on the page. Shared
-// by the investigation's row-shaped surfaces, which all take more rows rather
-// than longer ones; an artefact too big for a row (a trace, a diff) stays in
-// the investigation file, which the display cites rather than reproduces.
-/** @param {string} surface @param {string} v @param {string} field @returns {string} */
-function oneLine(surface, v, field) {
-  if (/[\r\n]/.test(v)) {
-    throw new Error(`render ${surface}: ${field} runs to more than one line — split it across rows, or leave the detail in the investigation file`);
-  }
-  return v;
-}
-
-/**
- * Validate the ledger and answer its ids in payload order.
- * @param {unknown} v @returns {string[]}
- */
-function hypothesisLedger(v) {
-  if (!Array.isArray(v) || v.length === 0) {
-    throw new Error('render hypothesis-board: "hypotheses" must be a non-empty array of {id, claim, status, rows}');
-  }
-  /** @type {string[]} */
-  const ids = [];
-  v.forEach((h, i) => {
-    if (!h || typeof h !== 'object') throw new Error(`render hypothesis-board: hypotheses[${i}] must be an object`);
-    if (!isFilled(h.id)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "id"`);
-    oneLine('hypothesis-board', h.id, `hypotheses[${i}] id`);
-    if (ids.includes(h.id)) throw new Error(`render hypothesis-board: duplicate hypothesis id "${h.id}" — an id is the ledger's stable reference and is never reused`);
-    if (!isFilled(h.claim)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "claim"`);
-    oneLine('hypothesis-board', h.claim, `hypotheses[${i}] claim`);
-    if (!HYPOTHESIS_STATUSES.includes(h.status)) {
-      throw new Error(`render hypothesis-board: hypotheses[${i}] carries unknown status "${h.status}" (expected ${HYPOTHESIS_STATUSES.join('/')})`);
-    }
-    if (!Array.isArray(h.rows) || h.rows.length === 0) {
-      throw new Error(`render hypothesis-board: hypotheses[${i}] needs "rows" — a non-empty array of [label, value] pairs`);
-    }
-    h.rows.forEach((/** @type {unknown} */ r, /** @type {number} */ j) => {
-      if (!Array.isArray(r) || r.length !== 2 || !isFilled(r[0]) || !isFilled(r[1])) {
-        throw new Error(`render hypothesis-board: hypotheses[${i}] row ${j + 1} must be a [label, value] pair of non-empty strings`);
-      }
-      oneLine('hypothesis-board', r[0], `hypotheses[${i}] row ${j + 1} label`);
-      oneLine('hypothesis-board', r[1], `hypotheses[${i}] row ${j + 1} value`);
-    });
-    ids.push(h.id);
-  });
-  return ids;
-}
-
-/** One ledger entry: the claim under its id, status as the metadata tail, evidence beneath. @param {any} h @returns {string} */
-function hypothesisEntry(h) {
-  return [`**${h.id} — ${h.claim}** — *${h.status}*`, ...h.rows.map((/** @type {string[]} */ r) => `- **${r[0]}**: ${r[1]}`)].join('\n');
-}
-
-/** `(N tracked, N confirmed, N ruled out, N open)` — zero-count middles drop out, the open count never does. @param {any[]} hs @returns {string} */
-function hypothesisCounts(hs) {
-  const of = (/** @type {string} */ s) => hs.filter((h) => h.status === s).length;
-  const parts = [`${hs.length} tracked`];
-  const confirmed = of('confirmed');
-  const ruledOut = of('ruled-out');
-  if (confirmed) parts.push(`${confirmed} confirmed`);
-  if (ruledOut) parts.push(`${ruledOut} ruled out`);
-  parts.push(`${of('suspected') + of('tracing')} open`);
-  return `(${parts.join(', ')})`;
-}
-
-/** The `**Trace lines**` block. @param {unknown} v @returns {string} */
-function traceLines(v) {
-  const lines = stringLines(v, 'hypothesis-board', 'trace_lines');
-  if (lines.length === 0 || lines.some((l) => !isFilled(l))) {
-    throw new Error('render hypothesis-board: "trace_lines" must be a non-empty array of non-empty strings');
-  }
-  lines.forEach((l, i) => oneLine('hypothesis-board', l, `trace_lines[${i}]`));
-  return ['**Trace lines**', ...lines.map((l) => `- ${l}`)].join('\n');
-}
-
-/** @param {any} p @returns {string} */
-function checkpointDepth(p) {
-  if (!CHECKPOINT_DEPTHS.includes(p.depth)) {
-    throw new Error(`render hypothesis-board: "depth" must be one of ${CHECKPOINT_DEPTHS.join('/')}`);
-  }
-  return p.depth;
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string, variant?: string}} args
- * @returns {string}
- */
-function hypothesisBoard(cwd, { dotpath, file, variant }) {
-  if (variant === undefined || !HYPOTHESIS_VARIANTS.includes(variant)) {
-    throw new Error(`render hypothesis-board: --variant must be one of ${HYPOTHESIS_VARIANTS.join('/')}`);
-  }
-  if (!file) throw new Error('render hypothesis-board: --file <payload.json> is required');
-  const { phase, topic } = resolveAddress(cwd, dotpath, 'hypothesis-board');
-  if (phase !== 'investigation') {
-    throw new Error(`render hypothesis-board: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
-  }
-  const p = readJsonPayload(cwd, file, 'hypothesis-board');
-  const ids = hypothesisLedger(p.hypotheses);
-  const name = titlecase(topic);
-  const ledger = p.hypotheses.map(hypothesisEntry);
-
-  if (variant === 'plan' || variant === 'pivot') {
-    const pivot = variant === 'pivot';
-    if (pivot && !isFilled(p.changed)) {
-      throw new Error('render hypothesis-board: "changed" must be a non-empty string — a pivot names the finding that invalidated the plan');
-    }
-    const body = [pivot ? `**Plan pivot — ${name}**` : `**Investigation plan — ${name}**`, ''];
-    if (pivot) body.push(`**What changed**: ${oneLine('hypothesis-board', p.changed, '"changed"')}`, '', '**Proposed direction**', '');
-    body.push(ledger.join('\n\n'), '', traceLines(p.trace_lines));
-    if (!pivot) {
-      if (!isFilled(p.depth_reasoning)) throw new Error('render hypothesis-board: "depth_reasoning" must be a non-empty string');
-      body.push('', `**Depth**: ${checkpointDepth(p)} — ${oneLine('hypothesis-board', p.depth_reasoning, '"depth_reasoning"')}`);
-    }
-    return [
-      section(pivot ? 'DISPLAY: plan pivot' : 'DISPLAY: investigation plan', emitAs('markdown'), body.join('\n')),
-      section(pivot ? 'MENU: pivot gate' : 'MENU: plan gate', MENU_INSTRUCTION, pivot
-        ? menu('', [
-          cmdOption('y', 'yes', 'Proceed as proposed'),
-          promptOption('Adjust', 'Tell me what to change'),
-        ], { question: 'Proceed on the new direction?' })
-        : menu('', [
-          cmdOption('y', 'yes', 'Proceed with the analysis as planned'),
-          promptOption('Adjust', 'Tell me what to change: hypotheses, trace lines, or depth'),
-        ], { question: 'Does this plan look right?' })),
-    ].join('\n');
-  }
-
-  if (variant === 'resume') {
-    if (!isFilled(p.remaining)) {
-      throw new Error('render hypothesis-board: "remaining" must be a non-empty string — name the open hypotheses and trace lines, or say all are resolved');
-    }
-    const body = [
-      `**Investigation plan — ${name} · resumed** ${hypothesisCounts(p.hypotheses)}`,
-      '',
-      ledger.join('\n\n'),
-      '',
-      `**Depth**: ${checkpointDepth(p)}`,
-      `**Remaining**: ${oneLine('hypothesis-board', p.remaining, '"remaining"')}`,
-    ];
-    return [
-      section('DISPLAY: resumed plan', emitAs('markdown'), body.join('\n')),
-      section('MENU: resumed plan gate', MENU_INSTRUCTION, menu('', [
-        cmdOption('y', 'yes', 'Continue as agreed'),
-        promptOption('Revise', 'Tell me what to change: hypotheses, trace lines, or depth'),
-      ], { question: 'Picking up where we left off — still good?' })),
-    ].join('\n');
-  }
-
-  if (!Array.isArray(p.resolved_now) || p.resolved_now.length === 0) {
-    throw new Error('render hypothesis-board: "resolved_now" must be a non-empty array of hypothesis ids — a check-in is a resolution moment');
-  }
-  for (const id of p.resolved_now) {
-    if (!ids.includes(id)) throw new Error(`render hypothesis-board: "resolved_now" names "${id}", which is not on the board`);
-  }
-  const open = p.hypotheses.filter((/** @type {any} */ h) => p.resolved_now.includes(h.id) && (h.status === 'suspected' || h.status === 'tracing'));
-  if (open.length) {
-    throw new Error(`render hypothesis-board: "${open[0].id}" is named in "resolved_now" but its status is "${open[0].status}" — a resolved hypothesis is confirmed or ruled-out`);
-  }
-  if (!isFilled(p.next)) throw new Error('render hypothesis-board: "next" must be a non-empty string');
-  const body = [
-    `**Hypothesis board — ${name}** ${hypothesisCounts(p.hypotheses)}`,
-    '',
-    `Resolved this check-in: ${p.resolved_now.join(', ')}`,
-    '',
-    ledger.join('\n\n'),
-    '',
-    `**Next**: ${oneLine('hypothesis-board', p.next, '"next"')}`,
-  ];
-  return [
-    section('DISPLAY: hypothesis board', emitAs('markdown'), body.join('\n')),
-    section('MENU: check-in gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('y', 'yes', 'Continue with the next trace line'),
-      promptOption('Steer', 'Tell me what to look at instead, or what this changes'),
-    ], { question: 'Continue as planned?' })),
-  ].join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// findings-signoff-gate — the one sign-off on the investigation record. The
-// findings are retold above it from the investigation file, and both the
-// technical retelling and the view read that same file, so the gate refuses
-// where the file is not there: every row it offers would be over nothing.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function findingsSignoffGate(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'findings-signoff-gate');
-  if (phase !== 'investigation') {
-    throw new Error(`render findings-signoff-gate: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
-  }
-  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit, 'investigation', `${topic}.md`))) {
-    throw new Error(`render findings-signoff-gate: no investigation file for "${topic}" — the sign-off is read from the record`);
-  }
-  return section('MENU: findings sign-off gate', MENU_INSTRUCTION, menu('Do these findings match your understanding?', [
-    cmdOption('y', 'yes', 'Findings are correct, move to fix exploration'),
-    cmdOption('t', 'technical', "Retell the findings from the code's perspective"),
-    cmdOption('v', 'view', 'Show the full investigation file'),
-    promptOption('Provide feedback', "Tell me what's off or unclear"),
-  ]));
-}
-
-// ---------------------------------------------------------------------------
-// fix-direction — the candidate approaches, presented for the user to steer.
-// The shape is the surface's so a reader can compare: every option carries
-// the same rows, and what varies with the material — whether options are
-// lettered at all, the count in the header — is derived, not decided. A
-// recommendation must carry its reasoning: naming a favourite without saying
-// why is the move this phase exists to prevent. Where the exploration is
-// genuinely unresolved, the open question is a field rather than a paragraph
-// someone remembers to add. Agreement carries the pressure test with it —
-// there is no direction worth agreeing to and not proving.
-// ---------------------------------------------------------------------------
-
-// One option per letter. A fix exploration that reaches the end of this has
-// stopped being a comparison and needs the discussion, not more rows.
-const OPTION_LETTERS = 'ABCDEFGH';
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function fixDirection(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render fix-direction: --file <payload.json> is required');
-  const { phase, topic } = resolveAddress(cwd, dotpath, 'fix-direction');
-  if (phase !== 'investigation') {
-    throw new Error(`render fix-direction: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
-  }
-  const p = readJsonPayload(cwd, file, 'fix-direction');
-  if (!Array.isArray(p.options) || p.options.length === 0) {
-    throw new Error('render fix-direction: "options" must be a non-empty array of {name, rows} — one obvious fix is a valid outcome, none is not');
-  }
-  if (p.options.length > OPTION_LETTERS.length) {
-    throw new Error(`render fix-direction: ${p.options.length} options is past comparing — this surface letters at most ${OPTION_LETTERS.length}`);
-  }
-  p.options.forEach((o, i) => {
-    if (!o || typeof o !== 'object') throw new Error(`render fix-direction: options[${i}] must be an object`);
-    if (!isFilled(o.name)) throw new Error(`render fix-direction: options[${i}] is missing "name"`);
-    oneLine('fix-direction', o.name, `options[${i}] name`);
-    if (o.recommended !== undefined && typeof o.recommended !== 'boolean') {
-      throw new Error(`render fix-direction: options[${i}] "recommended" must be true or false`);
-    }
-    if (!Array.isArray(o.rows) || o.rows.length === 0) {
-      throw new Error(`render fix-direction: options[${i}] needs "rows" — a non-empty array of [label, value] pairs`);
-    }
-    o.rows.forEach((/** @type {unknown} */ r, /** @type {number} */ j) => {
-      if (!Array.isArray(r) || r.length !== 2 || !isFilled(r[0]) || !isFilled(r[1])) {
-        throw new Error(`render fix-direction: options[${i}] row ${j + 1} must be a [label, value] pair of non-empty strings`);
-      }
-      oneLine('fix-direction', r[0], `options[${i}] row ${j + 1} label`);
-      oneLine('fix-direction', r[1], `options[${i}] row ${j + 1} value`);
-    });
-  });
-
-  const many = p.options.length > 1;
-  const picked = p.options.filter((/** @type {any} */ o) => o.recommended);
-  if (picked.length > 1) {
-    throw new Error('render fix-direction: only one option can be "recommended" — a recommendation that names two is a comparison, and belongs in the rows');
-  }
-  if (picked.length && !many) {
-    throw new Error('render fix-direction: a lone option cannot be "recommended" — there is nothing to recommend it over');
-  }
-  // The tail marks which; this line says why. One without the other is
-  // either a favourite with no reasoning or reasoning with no subject.
-  if (picked.length && !isFilled(p.recommendation)) {
-    throw new Error('render fix-direction: a recommended option needs "recommendation" — the deciding factor, not just the mark');
-  }
-  if (!picked.length && p.recommendation !== undefined) {
-    throw new Error('render fix-direction: "recommendation" was given but no option is marked "recommended"');
-  }
-  if (p.recommendation !== undefined) oneLine('fix-direction', p.recommendation, '"recommendation"');
-  if (p.open_question !== undefined) {
-    if (!isFilled(p.open_question)) throw new Error('render fix-direction: "open_question" must be a non-empty string when present');
-    oneLine('fix-direction', p.open_question, '"open_question"');
-  }
-
-  const name = titlecase(topic);
-  const body = [many ? `**Fix direction — ${name}** (${p.options.length} approaches)` : `**Fix direction — ${name}**`, ''];
-  p.options.forEach((/** @type {any} */ o, /** @type {number} */ i) => {
-    const id = many ? `${OPTION_LETTERS[i]} — ` : '';
-    body.push(`**${id}${o.name}**${o.recommended ? ' — *recommended*' : ''}`);
-    for (const [label, value] of o.rows) body.push(`- **${label}**: ${value}`);
-    body.push('');
-  });
-  if (p.recommendation !== undefined) body.push(`**Recommendation**: ${p.recommendation}`);
-  if (p.open_question !== undefined) body.push(`**Open question**: ${p.open_question}`);
-
-  return [
-    section('DISPLAY: fix direction', emitAs('markdown'), body.join('\n').replace(/\n+$/, '')),
-    section('MENU: fix direction gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('y', 'yes', 'Agree with this direction and pressure-test it'),
-      promptOption('Provide feedback', 'Tell me your thoughts: discuss, challenge, or suggest alternatives'),
-    ], { question: 'What are your thoughts?' })),
-  ].join('\n');
-}
-// ---------------------------------------------------------------------------
-// validation-report — the investigation's two independent-agent passes, which
-// differ only in what they hunt: root-cause validation looks for gaps in the
-// diagnosis, fix validation for risks in the direction. One surface, because
-// a divergence between them would be drift rather than design. The agent's
-// own STATUS travels verbatim in the payload and is checked against the
-// findings, so a verdict can never disagree with the list beneath it. Both
-// verdicts carry the same readout — what was checked, what it concluded,
-// where the full analysis sits — because a bare pass is an assertion rather
-// than a result. Only the offer differs: the root cause validation is the
-// one the user chooses, so it is the only variant `validation-gate` serves.
-// ---------------------------------------------------------------------------
-
-const VALIDATION_CONFIDENCE = ['high', 'medium', 'low'];
-const VALIDATION_VARIANTS = {
-  'root-cause': {
-    label: 'Root cause validation',
-    found: 'gaps_found',
-    noun: 'gap',
-    clean: 'validated, no gaps found',
-    question: 'How should these gaps be handled?',
-    address: 'Work through them and fold the answers into the investigation',
-    gate: {
-      offer: 'Root cause documented. Run validation?',
-      run: 'Run root cause validation',
-      decline: 'Skip straight to findings sign-off',
-    },
-  },
-  fix: {
-    label: 'Fix validation',
-    found: 'risks_found',
-    noun: 'risk',
-    clean: 'confirmed, no unaddressed risks',
-    question: 'How should these risks be handled?',
-    address: 'Work through them and fold the outcome into the fix direction',
-    // The user agreed to one option out of a lettered comparison, so the
-    // verdict names which one it confirms rather than leaving them to recall.
-    requiresDirection: true,
-  },
-};
-
-/**
- * The offer that opens the root cause validation — payload-less: the ask is
- * the same every time, and what it is offering comes from the variant.
- * @param {string} cwd
- * @param {{dotpath: string, variant?: string}} args
- * @returns {string}
- */
-function validationGate(cwd, { dotpath, variant }) {
-  const v = VALIDATION_VARIANTS[/** @type {keyof typeof VALIDATION_VARIANTS} */ (variant)];
-  const gate = v && /** @type {{gate?: {offer: string, run: string, decline: string}}} */ (v).gate;
-  if (!gate) {
-    throw new Error('render validation-gate: --variant must be root-cause — the fix direction is always pressure-tested, so nothing offers it');
-  }
-  const { phase } = resolveAddress(cwd, dotpath, 'validation-gate');
-  if (phase !== 'investigation') {
-    throw new Error(`render validation-gate: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
-  }
-  return section(`MENU: ${variant} validation offer`, MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', gate.run),
-    cmdOption('s', 'skip', gate.decline),
-  ], { question: gate.offer }));
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string, variant?: string}} args
- * @returns {string}
- */
-function validationReport(cwd, { dotpath, file, variant }) {
-  const v = VALIDATION_VARIANTS[/** @type {keyof typeof VALIDATION_VARIANTS} */ (variant)];
-  if (!v) {
-    throw new Error(`render validation-report: --variant must be one of ${Object.keys(VALIDATION_VARIANTS).join('/')}`);
-  }
-  if (!file) throw new Error('render validation-report: --file <payload.json> is required');
-  const { phase } = resolveAddress(cwd, dotpath, 'validation-report');
-  if (phase !== 'investigation') {
-    throw new Error(`render validation-report: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
-  }
-  const p = readJsonPayload(cwd, file, 'validation-report');
-  if (!VALIDATION_CONFIDENCE.includes(p.confidence)) {
-    throw new Error(`render validation-report: "confidence" must be one of ${VALIDATION_CONFIDENCE.join('/')}`);
-  }
-  if (p.status !== 'validated' && p.status !== v.found) {
-    throw new Error(`render validation-report: "status" must be "validated" or "${v.found}" for the ${variant} variant, got "${p.status}"`);
-  }
-  const named = /** @type {{requiresDirection?: boolean}} */ (v).requiresDirection === true;
-  if (named) {
-    if (!isFilled(p.direction)) {
-      throw new Error('render validation-report: "direction" must name the agreed approach — a verdict that does not say what it confirms is not one');
-    }
-    oneLine('validation-report', p.direction, '"direction"');
-  } else if (p.direction !== undefined) {
-    throw new Error(`render validation-report: "direction" belongs to the fix variant — ${variant} validation has no chosen approach to name`);
-  }
-  if (!Array.isArray(p.checks) || p.checks.length === 0) {
-    throw new Error('render validation-report: "checks" must be a non-empty array of [label, outcome] pairs — the verdict says what was examined');
-  }
-  p.checks.forEach((/** @type {unknown} */ c, /** @type {number} */ i) => {
-    if (!Array.isArray(c) || c.length !== 2 || !isFilled(c[0]) || !isFilled(c[1])) {
-      throw new Error(`render validation-report: checks[${i}] must be a [label, outcome] pair of non-empty strings`);
-    }
-    oneLine('validation-report', c[0], `checks[${i}] label`);
-    oneLine('validation-report', c[1], `checks[${i}] outcome`);
-  });
-  if (!isFilled(p.summary)) {
-    throw new Error('render validation-report: "summary" must be a non-empty string — the agent\'s own one-sentence assessment');
-  }
-  oneLine('validation-report', p.summary, '"summary"');
-  if (!isFilled(p.analysis_path)) {
-    throw new Error('render validation-report: "analysis_path" must be a non-empty string — the full analysis stays in cache and the display points at it');
-  }
-  const items = p.items === undefined ? [] : stringLines(p.items, 'validation-report', 'items');
-  items.forEach((it, i) => {
-    if (!isFilled(it)) throw new Error(`render validation-report: items[${i}] must be a non-empty string`);
-  });
-
-  const head = [v.label, ...(named ? [`"${p.direction}"`] : []), `${p.confidence} confidence`].join(' · ');
-  // The checks and the summary close every verdict, clean or not — findings
-  // first where there are any, then the scope they were found within.
-  const tail = [
-    '',
-    p.checks.map((/** @type {[string, string]} */ [label, outcome]) => `- **${label}**: ${outcome}`).join('\n'),
-    '',
-    p.summary,
-    '',
-    `*Full analysis: \`${p.analysis_path}\`*`,
-  ];
-
-  if (p.status === 'validated') {
-    if (items.length) {
-      throw new Error(`render validation-report: "status" is "validated" but ${items.length} ${v.noun}(s) are listed — the verdict and the findings must agree`);
-    }
-    return section(
-      `DISPLAY: ${variant} validation verdict`,
-      CONTINUE_MARKDOWN_INSTRUCTION,
-      [`**${head}** — ${v.clean}`, ...tail].join('\n'),
-    );
-  }
-
-  if (!items.length) {
-    throw new Error(`render validation-report: "status" is "${v.found}" but no ${v.noun}s are listed — the verdict and the findings must agree`);
-  }
-  const body = worklist({
-    heading: { label: head, noun: v.noun },
-    items: items.map((title) => ({ title })),
-  });
-  return [
-    section(`DISPLAY: ${variant} validation findings`, emitAs('markdown'), [body, ...tail].join('\n')),
-    section(`MENU: ${variant} validation gate`, MENU_INSTRUCTION, menu('', [
-      cmdOption('a', 'address', v.address),
-      cmdOption('d', 'dismiss', 'Note them as considered-and-dismissed and proceed'),
-    ], { question: v.question })),
-  ].join('\n');
-}
-
 /** @param {string} cwd @param {string} file @param {string} surface @returns {any} */
 function readJsonPayload(cwd, file, surface) {
   let raw;
@@ -673,14 +121,6 @@ function readJsonPayload(cwd, file, surface) {
 /** @param {unknown} v @returns {v is string} */
 function isFilled(v) {
   return typeof v === 'string' && v.trim() !== '';
-}
-
-/** @param {unknown} v @param {string} surface @param {string} field @returns {string[]} */
-function stringLines(v, surface, field) {
-  if (!Array.isArray(v) || v.some((l) => typeof l !== 'string')) {
-    throw new Error(`render ${surface}: "${field}" must be an array of strings`);
-  }
-  return v;
 }
 
 /**
@@ -829,36 +269,6 @@ function sendClosedTarget(cwd, { dotpath }) {
     cmdOption('e', 'elsewhere', 'Pick a different target'),
     cmdOption('d', 'drop', "Don't send it; it stays with the current topic"),
   ], { question: 'Where should the message go?' }));
-}
-
-// ---------------------------------------------------------------------------
-// The phase gates. Each of these stops a flow the same way a shipped surface
-// does — the option set in code, the prose carrying the fetch and the
-// emission. Wording is the flow's own; the frame, the alignment and the
-// register are this catalogue's.
-// ---------------------------------------------------------------------------
-
-// conclude-gate — the investigation's closing consent, the user's call: a
-// yes, and a keep-going beside it while the analysis can take more. A
-// discussion topic closes at its decided screen instead.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function concludeGate(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'conclude-gate');
-  if (phase !== 'investigation') {
-    throw new Error(`render conclude-gate: phase must be investigation, got "${phase}"`);
-  }
-  if (!itemOf(manifest, phase, topic)) {
-    throw new Error(`render conclude-gate: no ${phase} item "${topic}" — nothing to conclude`);
-  }
-  return section('MENU: conclude gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Conclude investigation'),
-    promptOption('Keep going', 'Tell me what else to explore'),
-  ], { question: 'Investigation complete. Ready to conclude?' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1106,259 +516,8 @@ function unsourcedGate(cwd, file, titles) {
   ], { question: 'How do you want to handle them?' }));
 }
 
-// plan-format-gate — the plan's format offer in its two moments. Bare, it is
-// the accept of the project default: the format is project-manifest state, so
-// the surface reads it rather than being told, and an offer naming a format
-// nobody set would be a gate over nothing. `--variant select` is the
-// catalogue reached when there is no default or the user declined it — which
-// formats a project ships is the planning skill's to name, so the rows arrive
-// as a payload and the surface numbers them in payload order. Neither takes
-// an address: the planning item does not exist yet when this gate renders.
-
-/**
- * @param {string} cwd
- * @param {string|undefined} file
- * @returns {string}
- */
-function planFormatSelect(cwd, file) {
-  if (!file) throw new Error('render plan-format-gate: --variant select requires --file <payload.json>');
-  const { formats } = readJsonPayload(cwd, file, 'plan-format-gate');
-  if (!Array.isArray(formats) || formats.length === 0) {
-    throw new Error('render plan-format-gate: "formats" must be a non-empty array of {name, label}');
-  }
-  for (const f of formats) {
-    if (!f || !isFilled(f.name) || !isFilled(f.label)) {
-      throw new Error('render plan-format-gate: every format needs a non-empty "name" and "label"');
-    }
-  }
-  return section('MENU: plan format select', MENU_INSTRUCTION, menu('Which output format?',
-    formats.map((f, i) => cmdOption(String(i + 1), null, f.label))));
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, variant?: string, file?: string}} args
- * @returns {string}
- */
-function planFormatGate(cwd, { variant, file }) {
-  if (variant === 'select') return planFormatSelect(cwd, file);
-  if (variant !== undefined) {
-    throw new Error(`render plan-format-gate: --variant must be select, got "${variant}"`);
-  }
-  const project = loadProjectManifest(cwd);
-  const format = ((project || {}).defaults || {}).plan_format;
-  if (!isFilled(format)) {
-    throw new Error('render plan-format-gate: no project default plan_format — the offer only renders over an existing default');
-  }
-  return section('MENU: plan format gate', MENU_INSTRUCTION, menu(
-    `Project default format is **${format}**.`,
-    [
-      cmdOption('y', 'yes', `Use ${format}`),
-      cmdOption('n', 'no', 'See all available formats'),
-    ],
-    { question: 'Use the same format?' },
-  ));
-}
-
-// scoping-questions — the quick-fix's context ask. The four questions are
-// fixed; which of them the carrier leaves open is the session's read, named
-// by key, and the ask keeps their order whatever order the keys arrive in.
-
-const SCOPING_QUESTIONS = {
-  what: 'What exactly is being changed? (pattern, syntax, API)',
-  where: 'Where in the codebase? (files, directories, packages)',
-  why: 'Why? (deprecation, consistency, modernisation)',
-  exclusions: 'Any exceptions or areas to exclude?',
-};
-
-/**
- * A quick-fix work unit at a bare address — scoping is the quick-fix's own.
- * @param {string} cwd @param {string} dotpath
- * @returns {string} the work unit
- */
-function resolveQuickFix(cwd, dotpath) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'scoping-questions');
-  if (manifest.work_type !== 'quick-fix') {
-    throw new Error(`render scoping-questions: "${workUnit}" is a ${manifest.work_type} — scoping is the quick-fix's own`);
-  }
-  return workUnit;
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, open?: string}} args
- * @returns {string}
- */
-function scopingQuestions(cwd, { dotpath, open }) {
-  const workUnit = resolveQuickFix(cwd, dotpath);
-  const keys = String(open || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const known = /** @type {(keyof typeof SCOPING_QUESTIONS)[]} */ (Object.keys(SCOPING_QUESTIONS));
-  if (keys.length === 0) {
-    throw new Error(`render scoping-questions: --open <${known.join(',')}> is required — the questions the carrier leaves open`);
-  }
-  const unknown = keys.filter((k) => !Object.hasOwn(SCOPING_QUESTIONS, k));
-  if (unknown.length > 0) {
-    throw new Error(`render scoping-questions: unknown question "${unknown[0]}" — one of ${known.join(', ')}`);
-  }
-  return section('DISPLAY: scoping questions', emitAs('text', STOP_CLAUSE), [
-    `Scoping: ${titlecase(workUnit)}`,
-    '',
-    'A few questions to scope this change:',
-    '',
-    ...known.filter((k) => keys.includes(k)).map((k) => `- ${SCOPING_QUESTIONS[k]}`),
-  ].join('\n'));
-}
-
-// complexity-gate — the stop of scoping's complexity
-// check. Which criteria the change fails is the session's read, so the
-// concerns ride a payload, while the type is state: an offer to promote a
-// unit that is not a quick-fix, or one already promoted, is a gate over
-// nothing.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function complexityGate(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render complexity-gate: --file <payload.json> is required');
-  const { manifest } = resolveWorkUnit(cwd, dotpath, 'complexity-gate');
-  if (manifest.work_type !== 'quick-fix') {
-    throw new Error(`render complexity-gate: "${dotpath}" is a ${manifest.work_type} — the complexity check is the quick-fix's own`);
-  }
-  const concerns = stringLines(readJsonPayload(cwd, file, 'complexity-gate').concerns, 'complexity-gate', 'concerns');
-  if (concerns.length === 0 || concerns.some((c) => !isFilled(c))) {
-    throw new Error('render complexity-gate: "concerns" must be a non-empty array of non-empty strings — the warning names what failed');
-  }
-  return [
-    section('DISPLAY: complexity check', emitAs('text', ', directly above the menu'), [
-      'Complexity Check',
-      '',
-      ...indentedBody(['This change may be more involved than a quick-fix:'], { indent: '' }),
-      '',
-      ...concerns.flatMap((c) => bulletRow(c)),
-    ].join('\n')),
-    section('MENU: complexity gate', MENU_INSTRUCTION, menu('How would you like to proceed?', [
-      cmdOption('c', 'continue', 'Continue as quick-fix anyway'),
-      cmdOption('f', 'feature', 'Promote to feature (full pipeline)'),
-      cmdOption('b', 'bugfix', 'Promote to bugfix (investigation pipeline)'),
-    ])),
-  ].join('\n');
-}
-
 // ---------------------------------------------------------------------------
-// Mailbox surfaces — the mailbox is engine-owned layout, so these
-// surfaces read it from disk; entry content never populates a render from a
-// parse — per-entry agenda values arrive as a judgment payload.
-// ---------------------------------------------------------------------------
-
-// mail-offer — the offer gate over a non-empty mailbox: the agenda (count
-// and order from the live mailbox, per-entry lines from the caller's payload,
-// keyed by message file so payload and mailbox stay in exact correspondence)
-// plus the yes/later menu.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function mailOffer(cwd, { dotpath, file }) {
-  const { workUnit, topic } = resolveAddress(cwd, dotpath, 'mail-offer');
-  if (!file) throw new Error('render mail-offer: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'mail-offer');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
-  if (!files.length) throw new Error(`render mail-offer: ${topic}'s mailbox is empty — nothing to offer`);
-  if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
-  /** @type {Map<string, {file: string, title: string, from: string}>} */
-  const byFile = new Map();
-  p.items.forEach((it, i) => {
-    for (const field of ['file', 'title', 'from']) {
-      if (!isFilled(it[field])) throw new Error(`render mail-offer: item ${i + 1} is missing "${field}"`);
-    }
-    if (byFile.has(it.file)) throw new Error(`render mail-offer: duplicate item for "${it.file}"`);
-    byFile.set(it.file, it);
-  });
-  if (byFile.size !== files.length || files.some((f) => !byFile.has(f))) {
-    throw new Error(`render mail-offer: payload items must cover the mailbox exactly (mailbox: ${files.join(', ')})`);
-  }
-  // The mailbox is a flat set of messages from any number of topics, so
-  // provenance belongs per row — the `↳` note — rather than folded into the
-  // header. Every row is pending by definition: a handled message's file
-  // leaves the mailbox.
-  const agenda = worklist({
-    heading: { label: 'Mailbox', noun: 'message' },
-    items: files.map((f) => {
-      const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
-      return { title: it.title, note: it.from };
-    }),
-    walked: true,
-  });
-  return [
-    section('DISPLAY: mail agenda', emitAs('markdown'), agenda),
-    section(
-      'MENU: mail offer',
-      MENU_INSTRUCTION,
-      menu('Work through them now?', [
-        cmdOption('y', 'yes', 'Surface and discuss them one at a time'),
-        cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The mailbox must be empty before this topic can conclude"),
-      ]),
-    ),
-  ].join('\n');
-}
-
-// mail-announce — the fresh-sitting notice over a non-empty mailbox: one
-// count-only line, no agenda — the session opens on its own material and
-// the mailbox is offered at its first genuine break.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function mailAnnounce(cwd, { dotpath }) {
-  const { workUnit, topic } = resolveAddress(cwd, dotpath, 'mail-announce');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
-  if (!files.length) throw new Error(`render mail-announce: ${topic}'s mailbox is empty — nothing to announce`);
-  const line = files.length === 1
-    ? "1 message from another topic waits in this topic's mailbox — I'll raise it once the session finds its footing."
-    : `${files.length} messages from other topics wait in this topic's mailbox — I'll raise them once the session finds its footing.`;
-  return section('DISPLAY: mail announce', CONTINUE_INSTRUCTION, callout(line));
-}
-
-// mail-block — the conclusion blocker over a non-empty mailbox. Count comes
-// from the live mailbox; the awaiting-word follows the phase.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function mailBlock(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-block');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
-  if (!files.length) throw new Error(`render mail-block: ${topic}'s mailbox is empty — nothing blocks conclusion`);
-  const doing = phase === 'investigation' ? 'investigation' : 'discussion';
-  // A true blocker renders red: a `properties` fence colours the ⚑ turquoise
-  // and the rest of its one logical line red, the one highlighter that never
-  // tokenises English. Its guidance rides a markdown section of its own, so
-  // it reflows and stays calm.
-  return [
-    section(
-      'DISPLAY: mail block',
-      emitAs('properties'),
-      `⚑ Mailbox not empty — ${files.length} message${files.length === 1 ? '' : 's'} awaiting ${doing}`,
-    ),
-    section(
-      'DISPLAY: mail block guidance',
-      emitAs('markdown'),
-      '> Returning to the session to surface them before concluding.',
-    ),
-  ].join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// Pipeline continuation surfaces — work-unit-level: the completion and
-// pause banners and the gates the bridge presents between phases.
+// Work-unit surfaces — the completion banner, the cancel and postpone gates.
 // Address-backed (work_type from the manifest); phases ride as flags.
 // ---------------------------------------------------------------------------
 
@@ -1387,76 +546,19 @@ function resolveWorkUnit(cwd, dotpath, surface) {
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, phase?: string, paths?: string}} args
+ * @param {{dotpath: string, phase?: string}} args
  * @returns {string}
  */
-function phaseCompleted(cwd, { dotpath, phase, paths }) {
+function phaseCompleted(cwd, { dotpath, phase }) {
   const { workUnit } = resolveWorkUnit(cwd, dotpath, 'phase-completed');
   if (!isFilled(phase)) throw new Error('render phase-completed: --phase is required');
-  const artefacts = paths
-    ? `\n\n  Spec: ${statePath(cwd, workUnit, 'specification', workUnit, 'specification.md')}\n  Plan: ${statePath(cwd, workUnit, 'planning', workUnit)}/`
-    : '';
   // A derived phase has no completion ceremony — the record closed, the
   // session ends, and sibling records may still live — so its line says what
   // is true: the session is complete, never the phase.
   const line = DERIVED_PHASES.includes(phase)
     ? `${titlecase(phase)} session complete for "${titlecase(workUnit)}".`
-    : `${titlecase(phase)} completed for "${titlecase(workUnit)}".${artefacts}`;
+    : `${titlecase(phase)} completed for "${titlecase(workUnit)}".`;
   return section('DISPLAY: phase completed', CONTINUE_INSTRUCTION, line);
-}
-
-/**
- * The one stop between a completed phase and the next: every way forward
- * offered together — continue; complete without review, on the review hop
- * alone, of a unit not built by its cut; revisit an earlier phase, where one
- * is completed.
- * @param {string} cwd
- * @param {{dotpath: string, prev?: string, next?: string}} args
- * @returns {string} one MENU section, or '' when continuing is the only way forward
- */
-function nextPhaseGate(cwd, { dotpath, prev, next }) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'next-phase-gate');
-  if (!isFilled(prev)) throw new Error('render next-phase-gate: --prev is required');
-  if (!isFilled(next)) throw new Error('render next-phase-gate: --next is required');
-  const type = manifest.work_type;
-  if (!WORK_UNIT_TYPES[type]) {
-    throw new Error(`render next-phase-gate: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the gate serves the linear work types`);
-  }
-  const cfg = workUnitTypeConfig(type);
-  for (const [flag, phase] of [['--prev', prev], ['--next', next]]) {
-    if (!cfg.pipeline.includes(phase)) {
-      throw new Error(`render next-phase-gate: unknown ${flag} "${phase}" for a ${type} (pipeline: ${cfg.pipeline.join(', ')})`);
-    }
-  }
-  const skipReview = next === 'review' && !buildByCut(manifest);
-  const revisitable = phaseTargets(cwd, manifest, next).revisit;
-  if (!skipReview && revisitable.length === 0) return '';
-
-  let statement = `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
-  if (skipReview) {
-    // A live reconcile flag makes the skip-review exit an informed choice:
-    // the gate names what completing now would carry unresolved.
-    const flagged = [];
-    for (const [phase, data] of Object.entries(manifest.phases || {})) {
-      for (const [name, item] of Object.entries((data && data.items) || {})) {
-        if (item && typeof item === 'object' && item.status === 'completed' && item.reconcile_needed !== undefined) {
-          flagged.push(`${phase}/${name} (${item.reconcile_needed})`);
-        }
-      }
-    }
-    if (flagged.length > 0) {
-      statement += ` ⚑ Input moved beneath ${flagged.join(', ')} — completing without review carries the pending reconcile unresolved.`;
-    }
-  }
-
-  const options = [cmdOption('y', 'yes', `Proceed to ${next}`)];
-  if (skipReview) options.push(cmdOption('d', 'done', 'Complete without review'));
-  if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
-  return section(
-    'MENU: next phase gate',
-    MENU_INSTRUCTION,
-    menu(statement, options, { question: `Proceed to ${next}?` }),
-  );
 }
 
 /** `a`, `a and b`, `a, b, and c`. @param {string[]} parts */
@@ -1638,40 +740,6 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 }
 
 // ---------------------------------------------------------------------------
-// format-version-check — the stop where a plan format's tool is missing or
-// older than the format requires. Every value is read from the format's own
-// declaration and the tool's own output, so all of it rides the payload, the
-// format's name among it: the engine names no format. A missing tool has no
-// installed version, so the payload leaves `installed` out. The guidance
-// waits on the user, who installs or updates the tool and says so; the check
-// then runs again.
-// ---------------------------------------------------------------------------
-
-const FORMAT_VERSION_FIELDS = ['tool', 'format', 'required', 'update_instructions'];
-
-/** @param {string} cwd @param {{dotpath: string, file?: string}} args @returns {string} */
-function formatVersionCheck(cwd, { file }) {
-  if (!file) throw new Error('render format-version-check: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'format-version-check');
-  for (const field of FORMAT_VERSION_FIELDS) {
-    if (!isFilled(p[field])) throw new Error(`render format-version-check: "${field}" must be a non-empty string`);
-  }
-  const missing = p.installed === undefined || p.installed === null;
-  if (!missing && !isFilled(p.installed)) {
-    throw new Error('render format-version-check: "installed" must be a non-empty string, or left out where the tool is not installed');
-  }
-  const [blocker, guidance] = missing
-    ? ['⚑ The tool this plan format requires is not installed',
-      `> ${p.tool} is not installed; the ${p.format} format requires \`${p.required}\`. See ${p.update_instructions} to install.`]
-    : ['⚑ The installed tool does not meet the version this plan format requires',
-      `> ${p.tool} ${p.installed} is installed; the ${p.format} format requires \`${p.required}\`. See ${p.update_instructions} to update.`];
-  return [
-    section('DISPLAY: version blocker', emitAs('properties'), blocker),
-    section('DISPLAY: version guidance', emitAs('markdown', STOP_CLAUSE), guidance),
-  ].join('\n');
-}
-
-// ---------------------------------------------------------------------------
 // Transaction receipts — fetched by the calling flow right after its
 // lifecycle verb, so the verb's stdout stays one JSON line. Each surface
 // validates that the state it renders from matches the verb it receipts:
@@ -1680,7 +748,7 @@ function formatVersionCheck(cwd, { file }) {
 // carried `warnings`.
 // ---------------------------------------------------------------------------
 
-const WORKUNIT_RECEIPT_STATUS = { complete: 'completed', cancel: 'cancelled', reactivate: 'in-progress' };
+const WORKUNIT_RECEIPT_STATUS = { cancel: 'cancelled', reactivate: 'in-progress' };
 
 /**
  * How many waiting messages a cancel moved to the inbox, as `--inbox <n>`
@@ -1696,12 +764,12 @@ function inboxCount(surface, verb, inbox) {
   return Number(inbox);
 }
 
-/** @param {string} cwd @param {{dotpath: string, verb?: string, pipeline?: string, 'skipped-review'?: string, warn?: string, inbox?: string}} args @returns {string} */
+/** @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string}} args @returns {string} */
 function workunitReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'workunit-receipt');
   const verb = args.verb;
-  if (verb !== 'complete' && verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
-    throw new Error(`render workunit-receipt: --verb must be complete, cancel, reactivate, or pivot, got "${verb}"`);
+  if (verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
+    throw new Error(`render workunit-receipt: --verb must be cancel, reactivate, or pivot, got "${verb}"`);
   }
   const inbox = inboxCount('workunit-receipt', verb, args.inbox);
   if (verb === 'pivot') {
@@ -1711,9 +779,7 @@ function workunitReceiptSurface(cwd, args) {
   } else if (manifest.status !== WORKUNIT_RECEIPT_STATUS[verb]) {
     throw new Error(`render workunit-receipt: "${workUnit}" is "${manifest.status}", not "${WORKUNIT_RECEIPT_STATUS[verb]}" — the ${verb} has not run`);
   }
-  return workunitReceipt(verb, workUnit, manifest.work_type, {
-    pipeline: args.pipeline === '1',
-    skippedReview: args['skipped-review'] === '1',
+  return workunitReceipt(verb, workUnit, {
     warn: args.warn === '1',
     inbox,
     kept: verb === 'cancel' ? keptAside(cwd, workUnit).map(keptWords) : [],
@@ -1744,9 +810,9 @@ function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
 }
 
 /**
- * The topic receipts. `complete` addresses the phase item; `cancel`,
- * `reactivate`, `postpone` and `restore` address the unit,
- * `<wu>.discovery.<topic>`, and read its state after the verb ran.
+ * The topic receipts: `cancel`, `reactivate`, `postpone` and `restore`
+ * address the unit, `<wu>.discovery.<topic>`, and read its state after the
+ * verb ran.
  * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string}} args @returns {string}
  */
 function topicReceiptSurface(cwd, args) {
@@ -1755,14 +821,6 @@ function topicReceiptSurface(cwd, args) {
   const warn = args.warn === '1';
   const inbox = inboxCount('topic-receipt', verb, args.inbox);
   const name = itemTitle(topicTitles(manifest), phase, topic);
-  if (verb === 'complete') {
-    const item = itemOf(manifest, phase, topic);
-    if (!item) throw new Error(`render topic-receipt: no ${phase} item "${topic}"`);
-    if (item.status !== 'completed') {
-      throw new Error(`render topic-receipt: "${topic}" is "${item.status}", not "completed" — the complete has not run`);
-    }
-    return topicReceipt(verb, name, { warn });
-  }
   if (verb === 'postpone') {
     assertDiscoveryUnitAddress(manifest, phase, topic, verb);
     if (computeTopicLifecycle(manifest, topic).lifecycle !== 'postponed') {
@@ -1779,7 +837,7 @@ function topicReceiptSurface(cwd, args) {
     return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
   }
   if (verb !== 'cancel' && verb !== 'reactivate') {
-    throw new Error(`render topic-receipt: --verb must be complete, cancel, reactivate, postpone, or restore, got "${verb}"`);
+    throw new Error(`render topic-receipt: --verb must be cancel, reactivate, postpone, or restore, got "${verb}"`);
   }
   assertDiscoveryUnitAddress(manifest, phase, topic, verb);
   const cancelled = computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled';
@@ -1818,7 +876,6 @@ function absorbSummarySurface(cwd, args) {
     discussion: discussion.status,
     experiments,
     seeds: Array.isArray(manifest.seeds) ? manifest.seeds.length : 0,
-    imports: Array.isArray(manifest.imports) ? manifest.imports.length : 0,
     ...absorbedMaterial(cwd, workUnit),
   });
 }
@@ -2399,32 +1456,17 @@ function knowledgeReadySurface(cwd) {
 
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
-  'resume-gate': resumeGate,
-  'hypothesis-board': hypothesisBoard,
-  'findings-signoff-gate': findingsSignoffGate,
-  'fix-direction': fixDirection,
-  'validation-gate': validationGate,
-  'validation-report': validationReport,
-  'mail-announce': mailAnnounce,
-  'mail-offer': mailOffer,
-  'mail-block': mailBlock,
   'backlog-gate': backlogGate,
   'candidate-gate': candidateGate,
   'send-closed-target': sendClosedTarget,
-  'conclude-gate': concludeGate,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
-  'plan-format-gate': planFormatGate,
-  'scoping-questions': scopingQuestions,
-  'complexity-gate': complexityGate,
   'phase-completed': phaseCompleted,
   'phase-note': phaseNote,
-  'format-version-check': formatVersionCheck,
-  'next-phase-gate': nextPhaseGate,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,
   'workunit-receipt': workunitReceiptSurface,

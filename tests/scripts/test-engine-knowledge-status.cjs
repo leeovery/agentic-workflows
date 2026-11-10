@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const {
   ENGINE_COMMAND, KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches,
-  knowledgeUnit, manifestSet, setItems, configureKnowledge, knowledgeAt, systemConfigDir,
+  knowledgeUnit, seedsOn, manifestSet, configureKnowledge, knowledgeAt, systemConfigDir,
 } = require('./knowledge-harness.cjs');
 
 refuseLaunches();
@@ -33,12 +33,12 @@ describe('engine knowledge check', () => {
 
   afterEach(() => cleanupFixture(root));
 
-  /** A keyword-only store with one investigation indexed. */
+  /** A keyword-only store with one seed indexed. */
   async function readyStore() {
     configureKnowledge(root, KEYWORD_ONLY);
     knowledgeUnit(root, 'auth', 'feature');
-    createFile(statePath(root), 'auth/investigation/auth.md', '# Investigation\n\nSettled.\n');
-    assert.strictEqual((await engineKnowledge(root, ['index', '.leeway/auth/investigation/auth.md'])).code, 0);
+    createFile(statePath(root), 'auth/seeds/auth.md', '# Seed\n\nSettled.\n');
+    assert.strictEqual((await engineKnowledge(root, ['index', '.leeway/auth/seeds/auth.md'])).code, 0);
   }
 
   /** @type {Array<[string, Record<string, string>, () => void|Promise<void>, string, RegExp|null]>} the state, the system config's files, the build, the readiness, what stderr says */
@@ -93,9 +93,8 @@ describe('engine knowledge status', () => {
   beforeEach(async () => {
     root = setupFixture('kb-status-');
     configureKnowledge(root, KEYWORD_ONLY);
-    knowledgeUnit(root, 'auth', 'feature');
-    setItems(root, 'auth', { investigation: ['auth'] });
-    createFile(statePath(root), 'auth/investigation/auth.md', '# Investigation\n\nSettled.\n');
+    knowledgeUnit(root, 'auth', 'feature', seedsOn('auth'));
+    createFile(statePath(root), 'auth/seeds/auth.md', '# Seed\n\nSettled.\n');
   });
 
   afterEach(() => cleanupFixture(root));
@@ -111,27 +110,27 @@ describe('engine knowledge status', () => {
   it('counts the chunks in all and by unit, phase and type, with the store\'s size and its mode', async () => {
     await knowledge('index');
     const { stdout } = await knowledge('status');
-    assert.match(stdout, /^Total chunks: 1\n\nBy work unit:\n  auth: 1\n\nBy phase:\n  investigation: 1\n\nBy work type:\n  feature: 1\n\nStore size: \d+\.\d KB$/m);
+    assert.match(stdout, /^Total chunks: 1\n\nBy work unit:\n  auth: 1\n\nBy phase:\n  seeds: 1\n\nBy work type:\n  feature: 1\n\nStore size: \d+\.\d KB$/m);
     assert.match(stdout, /^Provider: none\nMode: Keyword-only — /m);
   });
 
   it('names a file changed since it was indexed, and none before it changes', async () => {
     await knowledge('index');
     assert.doesNotMatch((await knowledge('status')).stdout, /Changed since indexing/);
-    fs.appendFileSync(at('auth/investigation/auth.md'), 'An edit after completion.\n');
-    assert.match((await knowledge('status')).stdout, new RegExp(`^Changed since indexing: 1\\n  ${at('auth/investigation/auth.md')}$`, 'm'));
+    fs.appendFileSync(at('auth/seeds/auth.md'), 'An edit after completion.\n');
+    assert.match((await knowledge('status')).stdout, new RegExp(`^Changed since indexing: 1\\n  ${at('auth/seeds/auth.md')}$`, 'm'));
   });
 
   it('names each file whose chunks the next index retires, and why', async () => {
     knowledgeUnit(root, 'dropped', 'feature');
     manifestSet(root, 'dropped', 'status', 'cancelled');
-    createFile(statePath(root), 'dropped/investigation/dropped.md', '# Investigation\n\nDropped.\n');
-    for (const rel of ['auth/investigation/auth.md', 'dropped/investigation/dropped.md']) await knowledge('index', `.leeway/${rel}`);
-    fs.rmSync(at('auth/investigation/auth.md'));
+    createFile(statePath(root), 'dropped/seeds/dropped.md', '# Seed\n\nDropped.\n');
+    for (const rel of ['auth/seeds/auth.md', 'dropped/seeds/dropped.md']) await knowledge('index', `.leeway/${rel}`);
+    fs.rmSync(at('auth/seeds/auth.md'));
     assert.match((await knowledge('status')).stdout, new RegExp([
       '^Retired since indexing: 2',
-      `  ${at('auth/investigation/auth.md')} \\(source deleted\\)`,
-      `  ${at('dropped/investigation/dropped.md')} \\(work unit cancelled\\)$`,
+      `  ${at('auth/seeds/auth.md')} \\(source deleted\\)`,
+      `  ${at('dropped/seeds/dropped.md')} \\(work unit cancelled\\)$`,
     ].join('\\n'), 'm'));
   });
 });

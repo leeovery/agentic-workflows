@@ -1,10 +1,10 @@
 # Postponing the Topic
 
-*Shared reference. Loaded by the `## Postponing the Topic` section on the scoping processing skill, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
+*Shared reference. Loaded by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
 
 ---
 
-The caller provides `work_unit`, `name` — the topic that leaves — and the session's own `phase` and `topic`, the literal `none` where the caller is not a session working a topic (the epic menu and the approval gate name neither; discovery's map operations name the phase alone). Postpone says one thing: we are doing this topic later — it leaves the epic whole, waits on the roadmap under the horizon the user names, and comes back by the pull.
+The caller provides `work_unit` and `name`, the topic that leaves. Postpone says one thing: we are doing this topic later — it leaves the epic whole, waits on the roadmap under the horizon the user names, and comes back by the pull.
 
 Two neighbours it is not:
 
@@ -20,8 +20,6 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} wo
 ```
 
 #### If work type is `epic`
-
-Set `own` — whether `topic` equals `name` and `phase` is `discussion`: the session is sitting in the unit that leaves.
 
 → Proceed to **B. The Horizon**.
 
@@ -47,11 +45,7 @@ A label already on the map, or a new one in their own words — "under Next", "t
 
 ## C. Confirm
 
-**If `own`:**
-
-Write into the document what this sitting discussed and has not yet recorded, as the phase records it — the substance, never the postpone itself, which the transaction records. Then commit anything this session has written and not yet committed, with the phase's own cadence commit: the postpone transaction writes the manifests alone, so the sitting that sent the topic away is recorded and committed with the rest of its record rather than left in the conversation. Nothing to write means the document already holds what the sitting discussed — a clean working tree does not say so. Nothing to commit is fine.
-
-Either way, fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands. The gate is the confirmation: the request is never put back to the user in conversation first.
+Fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands. The gate is the confirmation: the request is never put back to the user in conversation first.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"
@@ -87,23 +81,7 @@ The horizon is all the comment can change — the name is the topic's and the su
 
 ## D. Postpone
 
-**If `own`:**
-
-Close this session's background agents first. Read the store:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
-```
-
-For each `in_flight` row, stop its running task with the TaskStop tool on the task id this session dispatched it under, then close the row — `agent scan` never promotes an incorporated row, so a report that lands later is ignored:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
-```
-
-Rows in any other status stay as they are, and a scan holding no `in_flight` row needs none of this.
-
-Either way, run the postpone — one command takes the unit (the map row marked, the live discussion item under its name stashed and postponed, the experiment series left as it stands), births or re-waits the roadmap item under the horizon, and commits both manifests:
+Run the postpone — one command takes the unit (the map row marked, the live discussion item under its name stashed and postponed, the experiment series left as it stands), births or re-waits the roadmap item under the horizon, and commits both manifests:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic postpone {work_unit} {name} --horizon "{horizon}"
@@ -122,11 +100,5 @@ Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried)
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{name} --verb postpone [--warn]
 ```
-
-**If `own`:**
-
-Invoke `/leeway-bridge {work_unit} {phase} postponed`.
-
-**Otherwise:**
 
 → Return to caller.

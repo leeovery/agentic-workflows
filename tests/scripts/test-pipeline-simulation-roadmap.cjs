@@ -24,7 +24,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
-const { stateGit } = require('./engine-harness.cjs');
+const { stateGit, completeUnit } = require('./engine-harness.cjs');
 const {
   Sim, sessionLog, carryOn, arrive, handoff, enterEntry, discussed, pickRoute, startKeys, specEntry, literal,
   shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap,
@@ -267,7 +267,7 @@ describe('pipeline simulation: roadmap', () => {
     assert.match(START_GATEWAY.format(START_GATEWAY.discover(sim.dir)), /has_any_work: true/);
 
     // Shipping the unit flips the derived state to shipped — nothing stored.
-    sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);
+    completeUnit(sim.dir, 'mvp');
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'guest-ordering').state, 'shipped');
     assert.deepStrictEqual(state.totals, { items: 5, waiting: 4, in_flight: 0, shipped: 1, orphaned: 0 });

@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: work-unit lifecycle transitions — complete, cancel,
-// reactivate, and pivot, each a single transaction from the caller's
-// perspective: manifest write, knowledge-base sync, scoped git commit.
+// Domain ring: work-unit lifecycle transitions — complete (finish's, run in
+// process), cancel, reactivate, and pivot, each a single transaction from the
+// caller's perspective: manifest write, knowledge-base sync, scoped commit.
 //
 // The status vocabulary comes from the shared schema
 // (kernel/manifest-schema.cjs) — the same table the manifest
@@ -72,8 +72,7 @@ function assertLegalStatus(status) {
  * (warn-don't-block).
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {{message: string}} opts  commit message — varies by caller (manual
- *   completion vs pipeline-terminal vs review-skipped), so it arrives via -m
+ * @param {{message: string}} opts  the commit message, finish's
  * @returns {WorkUnitLifecycleResult}
  */
 function completeWorkUnit(cwd, workUnit, { message }) {
@@ -158,8 +157,8 @@ function cancelWorkUnit(cwd, workUnit) {
 
 /**
  * Re-index a work unit's chunk-backed material: the bulk pass scoped to the
- * unit — every completed indexed-phase topic, the shape-valid imports and
- * seeds, the analysis caches and the record copies.
+ * unit — the shape-valid seeds, the analysis caches, the record copies and
+ * the short record.
  *
  * `clearFirst` (pivot) removes the unit's chunks before re-indexing: a pivot
  * restamps the work_type of chunks already indexed, which the bulk pass
@@ -178,9 +177,7 @@ function reindexWorkUnit(cwd, workUnit, warnings, opts) {
 /**
  * Reactivate a completed or cancelled work unit: `status: in-progress`, a
  * stale `completed_at` cleared, commit scoped to the work unit. A finished
- * pipeline (derived next phase `done`) is no bar — the reactivated unit
- * surfaces as finalising until a phase is reopened, which is exactly the
- * revisit path the navigation skills route through here. Cancellation removed
+ * pipeline (derived next phase `done`) is no bar. Cancellation removed
  * the unit's knowledge-base chunks, so reactivating from `cancelled`
  * re-indexes them (warn-don't-block); completed units retained their chunks —
  * no knowledge-base action.

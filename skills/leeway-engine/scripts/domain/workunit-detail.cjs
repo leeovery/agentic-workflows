@@ -6,7 +6,7 @@
 // type the reshape retires, shown waiting on the migration's cut). The
 // types share one shape (topic = work unit — a promoted unit's moved
 // discussions excepted, see phaseTargets — linear pipeline); everything that
-// varies between them — pipeline phases, the seeds and imports they surface —
+// varies between them — pipeline phases, the seeds they surface —
 // is data in WORK_UNIT_TYPES, never a copied code path.
 //
 // Pure over the project's state: same files, same answer. Shared
@@ -16,15 +16,13 @@
 
 const { loadManifest } = require('./reads.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, DERIVED_PHASES, TERMINAL_STATUSES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, DERIVED_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 const {
   phaseStatus,
-  phaseItems,
   computeUnitPhaseState,
   mailPhases,
   ownNamedItems,
-  inputMoved,
   buildByCut,
   awaitsCut,
   buildRefusal,
@@ -34,7 +32,7 @@ const {
  * @typedef {object} WorkUnitTypeConfig
  * @property {string} workType     manifest `work_type` value; also the `$0` work_type argument in phase routes
  * @property {string[]} pipeline   the type's phases in pipeline order
- * @property {boolean} surfacesSeeds  collate + surface seeds/imports counts (feature only)
+ * @property {boolean} surfacesSeeds  collate + surface the seeds' count (feature only)
  */
 
 /** @type {Record<string, WorkUnitTypeConfig>} */
@@ -73,17 +71,10 @@ const WORK_UNIT_TYPES = {
  * @property {string|null} waiting  the line a unit built under the old plan shows while it waits on the migration's cut, with no route (P12); null for any other
  * @property {string[]} revisit   the revisit candidates' phases, in pipeline order (see phaseTargets)
  * @property {string} phase_label
- * @property {boolean} finalising      pipeline finished (`next_phase: done`), no phase in
- *                                     flight, but the unit is still in-progress — `workunit
- *                                     complete` never ran
  * @property {string[]} completed_phases
  * @property {string[]} in_progress_phases  pipeline phases in flight (a reopened phase mid-revisit)
- * @property {{phase: string, from: string|boolean}[]} [reconcile_phases]  completed phases whose item carries
- *                                     a reconcile flag — `from` is the flag value (the upstream
- *                                     phase that moved, or `true` for a brief flag)
  * @property {string[]} [mail_phases]  phases whose mailbox holds messages for the unit's
  *                                     topics — the pipeline row's and menu's `mail waiting` cue
- * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
  */
 
@@ -101,34 +92,17 @@ function completedPhases(cfg, manifest) {
   return cfg.pipeline.filter((phase) => phaseStatus(manifest, phase) === 'completed');
 }
 
-/**
- * Live pipeline phases whose input has moved, in pipeline order, each with
- * the upstream phase that moved it — the stored flag's value.
- * @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string}[]}
- */
-function reconcilePhases(cfg, manifest) {
-  /** @type {{phase: string, from: string}[]} */
-  const out = [];
-  for (const phase of cfg.pipeline) {
-    const moved = phaseItems(manifest, phase)
-      .find((i) => !TERMINAL_STATUSES.includes(i.status) && i.reconcile_needed !== undefined);
-    if (moved) out.push({ phase, from: moved.reconcile_needed });
-  }
-  return out;
-}
-
 /** The phases a revisit never enters. */
 const UNREVISITABLE = [...DERIVED_PHASES, 'discussion', 'specification'];
 
 /**
  * Where a single-topic unit's routes enter from `nextPhase`. The next route
  * enters the phase, naming the item in flight — else a parked stub its
- * session starts, else the one whose input moved — where the phase's items
+ * session starts — where the phase's items
  * carry names of their own (a promoted unit's moved discussions); a unit
  * whose items all carry its name routes to the unit alone. The revisit
  * candidates are the completed phases before `nextPhase` in the pipeline
- * (every completed phase where it sits outside — the finalising case), each
- * entered by the unit alone; never the derived phase, since a concluded
+ * (every completed phase where it sits outside), each entered by the unit alone; never the derived phase, since a concluded
  * verdict stands and a new spawn is what reopens the series, nor a decided
  * discussion, which reopens through a message sent to it, nor the spec, which
  * is never corrected once concluded (11.9.1), nor, once the unit is past its
@@ -144,8 +118,7 @@ function phaseTargets(cwd, manifest, nextPhase) {
   const nextIdx = cfg.pipeline.indexOf(nextPhase);
   const own = ownNamedItems(manifest, nextPhase);
   const entered = own.find((i) => i.status === 'in-progress')
-    ?? own.find((i) => i.status === 'unstarted')
-    ?? own.find(inputMoved);
+    ?? own.find((i) => i.status === 'unstarted');
   const closed = [...UNREVISITABLE, ...(pastItsSpec(cwd, manifest) ? TOPIC_PHASES : []), ...(buildByCut(manifest) ? ['implementation'] : [])];
   return {
     next: { phase: nextPhase, topic: entered ? entered.name : null },
@@ -176,18 +149,12 @@ function activeWorkUnit(cwd, name) {
     waiting: awaitsCut(m) ? buildRefusal(m) : null,
     revisit: targets.revisit,
     phase_label: state.phase_label,
-    finalising: state.finalising,
     completed_phases: completedPhases(cfg, m),
     in_progress_phases: state.in_progress_phases,
   };
-  const flagged = reconcilePhases(cfg, m);
-  if (flagged.length > 0) unit.reconcile_phases = flagged;
   const waiting = mailPhases(stateRoot(cwd), m);
   if (waiting.length > 0) unit.mail_phases = waiting;
-  if (cfg.surfacesSeeds) {
-    unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;
-    unit.seeds_count = Array.isArray(m.seeds) ? m.seeds.length : 0;
-  }
+  if (cfg.surfacesSeeds) unit.seeds_count = Array.isArray(m.seeds) ? m.seeds.length : 0;
   return { type: m.work_type, unit };
 }
 

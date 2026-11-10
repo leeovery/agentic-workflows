@@ -311,14 +311,7 @@ describe('topic-receipt — the unit addresses', () => {
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.back', verb: 'reactivate' }),
       /--verb reactivate addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'cancel' }), /no topic "ghost"/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be complete, cancel, reactivate, postpone, or restore/);
-  });
-
-  it('complete keeps its phase-item address', () => {
-    writeManifest(dir, 'pay', { phases: { investigation: { items: { back: { status: 'completed' } } } } });
-    assert.strictEqual(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.investigation.back', verb: 'complete' }), '');
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.investigation.back', verb: 'complete', warn: '1' }), /Knowledge indexing warning/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.investigation.ghost', verb: 'complete' }), /no investigation item "ghost"/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be cancel, reactivate, postpone, or restore/);
   });
 });
 
@@ -508,184 +501,7 @@ describe('experiment spawn gate — the conversation\'s pause for its laboratory
 
 });
 
-describe('render resume-gate', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
-  });
-  afterEach(() => teardown(dir));
-
-  it('renders the menu byte-exactly, artifact from the phase segment, topic titlecased', () => {
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow' });
-    assert.strictEqual(out, [
-      '=== MENU: resume gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
-      '· · · · · · · · · · · ·',
-      'Found existing discussion for **Auth Flow**.',
-      '',
-      '**`◆ How would you like to proceed?`**',
-      '',
-      '**`c/continue`** → Pick up where you left off',
-      '**`r/restart`**  → Delete the discussion and start fresh',
-      '',
-    ].join('\n'));
-  });
-
-  it('prepends the mail warning display when --mail is passed', () => {
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', mail: '3' });
-    assert.ok(out.startsWith([
-      '=== DISPLAY: mail warning (emit verbatim as a text code block (```text fence), directly above the menu) ===',
-      "  ⚑ 3 message(s) from other topics wait in this topic's mailbox.",
-      '    Restart leaves them there — the restarted session raises',
-      '    them.',
-      '',
-    ].join('\n')));
-    assert.ok(out.includes('=== MENU: resume gate'));
-  });
-
-  it('rejects a non-positive or non-integer mail count', () => {
-    for (const bad of ['0', '-1', 'two', '']) {
-      assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', mail: bad }), /--mail must be a positive integer/);
-    }
-  });
-
-  it('rejects a malformed address and an unknown work unit', () => {
-    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion' }), /address must be <work_unit>\.<phase>\.<topic>/);
-    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'nope.discussion.x' }), /work unit "nope" not found/);
-  });
-
-  it('rejects an unknown variant and --mail combined with a variant', () => {
-    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', variant: 'nope' }), /--variant must be "scoping" or "session"/);
-    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.auth-flow', variant: 'scoping', mail: '2' }), /--mail only applies to the default variant/);
-  });
-});
-
-describe('render resume-gate variants', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  it('scoping renders the revisit wording', () => {
-    writeManifest(dir, 'pay', { phases: { scoping: { items: { pay: { status: 'in-progress' } } } } });
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.pay', variant: 'scoping' });
-    assert.ok(out.includes('Found completed scoping for **Pay** — spec and plan are in place.'));
-    assert.ok(/\*\*`c\/continue`\*\* +→ Adjust the existing spec and plan/.test(out));
-    assert.ok(/\*\*`r\/restart`\*\* +→ Erase the spec, plan, and task files, then rescope from scratch/.test(unwrap(out)));
-  });
-
-  it('session takes a bare work-unit address and reads the active-session marker', () => {
-    writeManifest(dir, 'pay', { phases: { discovery: { active_session: '002', items: {} } } });
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay', variant: 'session' });
-    assert.ok(out.includes('Found an in-progress discovery session for **Pay** at `session-002.md`.'));
-    assert.ok(/\*\*`r\/restart`\*\* +→ Discard the interrupted log and start a new session \(map edits already applied stay applied — only their session record is lost\)/.test(unwrap(out)));
-  });
-
-  it('session is loud when no active session exists', () => {
-    writeManifest(dir, 'pay', { phases: { discovery: { items: {} } } });
-    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay', variant: 'session' }), /no active discovery session to resume/);
-  });
-});
-
-describe('render mailbox surfaces', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'wu', {});
-  });
-  afterEach(() => teardown(dir));
-
-  function writeMailbox(topic, files) {
-    const mailbox = path.join(dir, '.leeway', 'wu', 'topics', topic, 'mail');
-    fs.mkdirSync(mailbox, { recursive: true });
-    for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(mailbox, f), body);
-  }
-
-  it('mail-announce derives the count with verb agreement, refusing an empty mailbox', () => {
-    assert.throws(() => renderSurface(dir, 'mail-announce', { dotpath: 'wu.investigation.measurement' }), /mailbox is empty — nothing to announce/);
-    writeMailbox('measurement', { '001-a.md': 'x' });
-    const one = renderSurface(dir, 'mail-announce', { dotpath: 'wu.investigation.measurement' });
-    assert.ok(one.startsWith('=== DISPLAY: mail announce (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ==='), one);
-    assert.ok(one.includes('1 message from another topic waits'), one);
-    writeMailbox('measurement', { '002-b.md': 'y' });
-    const two = renderSurface(dir, 'mail-announce', { dotpath: 'wu.investigation.measurement' });
-    assert.ok(two.includes('2 messages from other topics wait'), two);
-  });
-
-  it('mail-offer renders the agenda in mailbox order and the yes/later menu', () => {
-    writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
-    const file = writePayload(dir, 'offer.json', { items: [
-      { file: '002-tracking.md', title: 'Expansion tracking', from: 'From Synonyms · 2 Aug' },
-      { file: '001-metrics.md', title: 'Offline metrics', from: 'From Ranking · 1 Aug' },
-    ] });
-    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file });
-    assert.ok(out.startsWith([
-      '=== DISPLAY: mail agenda (emit verbatim as markdown (not a code block)) ===',
-      '**Mailbox** — 2 messages',
-      '',
-      '○ 1. Offline metrics',
-      `${NB(7)}↳ From Ranking · 1 Aug`,
-      '○ 2. Expansion tracking',
-      `${NB(7)}↳ From Synonyms · 2 Aug`,
-    ].join('\n')), out);
-    assert.ok(out.includes("=== MENU: mail offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="));
-    assert.ok(out.includes('Work through them now?'));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Surface and discuss them one at a time/.test(out));
-    assert.ok(/\*\*`l\/later`\*\* +→ Carry on with the session/.test(out));
-  });
-
-  it('mail-offer wraps a sentence-length title under itself, with the note beneath', () => {
-    writeMailbox('measurement', { '001-metrics.md': 'a' });
-    const file = writePayload(dir, 'offer.json', { items: [
-      { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', from: 'From Note Model · 30 Jul' },
-    ] });
-    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file });
-    assert.ok(out.includes([
-      '**Mailbox** — 1 message',
-      '',
-      '○ 1. A preset binding persists until broken — three revisions to',
-      `${NB(5)}the positioning model`,
-      `${NB(7)}↳ From Note Model · 30 Jul`,
-    ].join('\n')), out);
-    // No agenda row may overflow the width the display was sized to —
-    // engine-wrapped even as markdown, so a soft-wrap never restarts a
-    // continuation at column zero. Markers and menu lines reflow freely.
-    const agenda = out.split('=== MENU')[0].split('===\n')[1];
-    for (const line of agenda.split('\n')) assert.ok(line.length <= 65, `overflowing row: ${line}`);
-  });
-
-  it('mail-offer refuses an empty mailbox, a short payload, and a payload naming a file the mailbox lacks', () => {
-    const file = writePayload(dir, 'offer.json', { items: [
-      { file: '001-metrics.md', title: 'T', from: 'From O · 1 Aug' },
-    ] });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file }), /mailbox is empty — nothing to offer/);
-    writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file }), /payload items must cover the mailbox exactly/);
-    const wrong = writePayload(dir, 'wrong.json', { items: [
-      { file: '001-metrics.md', title: 'T', from: 'From O · 1 Aug' },
-      { file: '999-ghost.md', title: 'G', from: 'From O · 1 Aug' },
-    ] });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file: wrong }), /payload items must cover the mailbox exactly/);
-    const missing = writePayload(dir, 'missing.json', { items: [{ file: '001-metrics.md', title: 'T' }] });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file: missing }), /item 1 is missing "from"/);
-  });
-
-  it('mail-block derives the count, refusing an empty mailbox', () => {
-    assert.throws(() => renderSurface(dir, 'mail-block', { dotpath: 'wu.investigation.measurement' }), /mailbox is empty — nothing blocks conclusion/);
-    writeMailbox('measurement', { '001-a.md': 'x' });
-    const out = renderSurface(dir, 'mail-block', { dotpath: 'wu.investigation.measurement' });
-    assert.ok(out.startsWith([
-      '=== DISPLAY: mail block (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ Mailbox not empty — 1 message awaiting investigation',
-      '',
-      '=== DISPLAY: mail block guidance (emit verbatim as markdown (not a code block)) ===',
-      '> Returning to the session to surface them before concluding.',
-    ].join('\n')), out);
-    writeMailbox('measurement', { '002-b.md': 'y' });
-    assert.ok(renderSurface(dir, 'mail-block', { dotpath: 'wu.investigation.measurement' }).includes('2 messages awaiting investigation'));
-  });
-});
-
-describe('pipeline continuation surfaces', () => {
+describe('render phase-completed', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -693,72 +509,8 @@ describe('pipeline continuation surfaces', () => {
       work_type: 'feature',
       phases: { discussion: { items: { pay: { status: 'completed' } } } },
     });
-    // A bugfix with its investigation completed and no cut — the
-    // implementation → review hop, every way forward on offer: its skip-review
-    // row is a unit's not built by its cut.
-    writeManifest(dir, 'fix', {
-      work_type: 'bugfix',
-      phases: { investigation: { items: { fix: { status: 'completed' } } } },
-    });
   });
   afterEach(() => teardown(dir));
-
-  it('next-phase-gate: the review hop offers proceed, complete without review, and revisit — byte-stable', () => {
-    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'implementation', next: 'review' }), [
-      "=== MENU: next phase gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'Implementation completed for "Fix".',
-      '',
-      '**`◆ Proceed to review?`**',
-      '',
-      '**`y/yes`**     → Proceed to review',
-      '**`d/done`**    → Complete without review',
-      '**`r/revisit`** → Revisit an earlier phase',
-      '',
-    ].join('\n'));
-  });
-
-  it('next-phase-gate: a non-review hop carries no d/done — proceed or revisit', () => {
-    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'investigation', next: 'specification' });
-    assert.ok(out.includes('Investigation completed for "Fix".'), out);
-    assert.match(out, /`◆ Proceed to specification\?`/);
-    assert.match(out, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
-    assert.match(out, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
-    assert.ok(!out.includes('d/done'), 'skip-review belongs to the review hop alone');
-  });
-
-  it('next-phase-gate: no r/revisit while no earlier phase is completed — the review hop still offers d/done', () => {
-    writeManifest(dir, 'fresh', { work_type: 'bugfix' });
-    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fresh', prev: 'implementation', next: 'review' });
-    assert.match(out, /\*\*`y\/yes`\*\*  → Proceed to review/);
-    assert.match(out, /\*\*`d\/done`\*\* → Complete without review/);
-    assert.ok(!out.includes('r/revisit'), out);
-  });
-
-  it('next-phase-gate: empty when continuing is the only way forward — nothing to skip, nothing to revisit', () => {
-    writeManifest(dir, 'lab', {
-      work_type: 'feature',
-      phases: { discussion: { items: { lab: { status: 'in-progress' } } } },
-    });
-    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'discussion' }), '');
-  });
-
-  it('next-phase-gate: the review hop names a live reconcile flag — skipping review is an informed choice', () => {
-    writeManifest(dir, 'moved', {
-      work_type: 'bugfix',
-      phases: {
-        investigation: { items: { moved: { status: 'completed' } } },
-        review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
-      },
-    });
-    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'implementation', next: 'review' });
-    assert.ok(out.includes('Implementation completed for "Moved". ⚑ Input moved beneath review/moved (implementation) — completing without review carries the pending reconcile unresolved.'), out);
-    // The cue informs the skip — a hop with no d/done carries none, flag or not.
-    const specification = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'investigation', next: 'specification' });
-    assert.ok(specification.includes('Investigation completed for "Moved".') && !specification.includes('⚑'), specification);
-    // No flag, no cue.
-    assert.ok(!renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'implementation', next: 'review' }).includes('⚑'));
-  });
 
   it('a derived phase says the session is complete, never the phase — sibling records may still live', () => {
     const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'experiment' });
@@ -766,131 +518,35 @@ describe('pipeline continuation surfaces', () => {
     assert.ok(!note.includes('Experiment completed'), 'never claims the phase completed');
   });
 
-  it('next-phase-gate: an experiment hands on without asking — nothing before the next phase is revisitable', () => {
-    writeManifest(dir, 'lab', {
-      work_type: 'feature',
-      phases: { discussion: { items: { lab: { status: 'completed' } } } },
-    });
-    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'specification' }), '');
-  });
-
   it('phase-completed carries its statement', () => {
     const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'discussion' });
     assert.ok(note.includes('Discussion completed for "Pay".'));
   });
 
-  it('work-unit addressing is loud on dotted paths, unknown units, missing flags, and an epic', () => {
+  it('work-unit addressing is loud on dotted paths, unknown units, a missing phase, and an epic', () => {
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay.review.pay', phase: 'review' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'nope', phase: 'review' }), /work unit "nope" not found/);
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', next: 'planning' }), /--prev is required/);
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'specification' }), /--next is required/);
     writeManifest(dir, 'big', { work_type: 'epic' });
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'big', prev: 'implementation', next: 'review' }), /"big" is typed "epic" — the gate serves the linear work types/);
     assert.throws(() => renderSurface(dir, 'revisit-phases', { dotpath: 'big' }), /"big" is typed "epic" — the revisit menu serves the linear work types/);
-    writeManifest(dir, 'raw', { work_type: undefined });
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'raw', prev: 'implementation', next: 'review' }), /"raw" is untyped — the gate serves the linear work types/);
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay' }), /--phase is required/);
   });
 
-  it('next-phase-gate: refuses a phase outside the type\'s pipeline — a typo, or done', () => {
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'reveiw' }),
-      /unknown --next "reveiw" for a feature \(pipeline: experiment, discussion, specification, implementation, review\)/);
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'review', next: 'done' }), /unknown --next "done" for a feature/);
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'banana', next: 'review' }), /unknown --prev "banana" for a feature/);
-  });
-
-  it('next-phase-gate: several live reconcile flags join into one cue', () => {
-    writeManifest(dir, 'moved2', {
-      work_type: 'bugfix',
-      phases: {
-        investigation: { items: { moved2: { status: 'completed', reconcile_needed: 'discussion' } } },
-        review: { items: { moved2: { status: 'completed', reconcile_needed: 'implementation' } } },
-      },
-    });
-    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved2', prev: 'implementation', next: 'review' });
-    assert.ok(out.includes('⚑ Input moved beneath investigation/moved2 (discussion), review/moved2 (implementation) — completing without review carries the pending reconcile unresolved.'), out);
-  });
 });
 
 describe('render phase-note', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
-    writeManifest(dir, 'pay', { phases: { planning: { items: { 'auth-flow': { status: 'completed' } } } } });
+    writeManifest(dir, 'pay', { phases: { investigation: { items: { 'auth-flow': { status: 'completed' } } } } });
   });
   afterEach(() => teardown(dir));
 
   it('renders the one-liner with the phase noun by default and an override when given', () => {
     assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow', verb: 'Resuming' }),
       '=== DISPLAY: phase note (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===\nResuming investigation: Auth Flow\n');
-    assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.planning.auth-flow', verb: 'Reopening', noun: 'plan' })
-      .includes('Reopening plan: Auth Flow'));
+    assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow', verb: 'Reopening', noun: 'hunt' })
+      .includes('Reopening hunt: Auth Flow'));
     assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow' }), /--verb is required/);
-  });
-});
-
-describe('render format-version-check', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  const found = { tool: 'acme', installed: '0.2.1', format: 'some-format', required: '>=0.3.*', update_instructions: 'the format\'s about.md' };
-  const payload = (obj) => writePayload(dir, '.leeway/.cache/pay/planning/checkout/format-version.json', obj);
-
-  it('the red blocker, then the guidance naming the tool, both versions and the format the payload carries — waiting on the user', () => {
-    assert.strictEqual(renderSurface(dir, 'format-version-check', { file: payload(found) }), [
-      '=== DISPLAY: version blocker (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ The installed tool does not meet the version this plan format requires',
-      '',
-      "=== DISPLAY: version guidance (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      "> acme 0.2.1 is installed; the some-format format requires `>=0.3.*`. See the format's about.md to update.",
-      '',
-    ].join('\n'));
-  });
-
-  it('a tool not installed — `installed` absent or null — reads as missing and asks for an install', () => {
-    const absent = { ...found };
-    delete absent.installed;
-    for (const missing of [absent, { ...found, installed: null }]) {
-      assert.strictEqual(renderSurface(dir, 'format-version-check', { file: payload(missing) }), [
-        '=== DISPLAY: version blocker (emit verbatim as a properties code block (```properties fence)) ===',
-        '⚑ The tool this plan format requires is not installed',
-        '',
-        "=== DISPLAY: version guidance (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-        "> acme is not installed; the some-format format requires `>=0.3.*`. See the format's about.md to install.",
-        '',
-      ].join('\n'));
-    }
-  });
-
-  it('refuses no payload, any required field missing or blank, and a blank installed version, by name', () => {
-    assert.throws(() => renderSurface(dir, 'format-version-check', {}), /--file <payload\.json> is required/);
-    for (const field of ['tool', 'format', 'required', 'update_instructions']) {
-      assert.throws(() => renderSurface(dir, 'format-version-check', { file: payload({ ...found, [field]: ' ' }) }),
-        new RegExp(`render format-version-check: "${field}" must be a non-empty string`));
-    }
-    assert.throws(() => renderSurface(dir, 'format-version-check', { file: payload({ ...found, installed: ' ' }) }),
-      /render format-version-check: "installed" must be a non-empty string, or left out where the tool is not installed/);
-  });
-});
-
-describe('render phase-completed --paths', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'hotfix', { work_type: 'quick-fix', phases: {} });
-  });
-  afterEach(() => teardown(dir));
-
-  it('appends the derived spec and plan paths', () => {
-    assert.strictEqual(renderSurface(dir, 'phase-completed', { dotpath: 'hotfix', phase: 'scoping', paths: '1' }), [
-      '=== DISPLAY: phase completed (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
-      'Scoping completed for "Hotfix".',
-      '',
-      `  Spec: ${dir}/.leeway/hotfix/specification/hotfix/specification.md`,
-      `  Plan: ${dir}/.leeway/hotfix/planning/hotfix/`,
-      '',
-    ].join('\n'));
   });
 });
 
@@ -1740,30 +1396,6 @@ describe('render — the adopted phase gates', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('conclude-gate: the investigation\'s closing consent — a yes, and a keep-going beside it', () => {
-    const investigation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation.checkout' });
-    assert.strictEqual(investigation, [
-      "=== MENU: conclude gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Investigation complete. Ready to conclude?`**',
-      '',
-      '**`y/yes`**      → Conclude investigation',
-      '**Keep going** → Tell me what else to explore',
-      '',
-    ].join('\n'));
-  });
-
-  it('conclude-gate: refuses a phase that concludes some other way — a discussion closes at the decided screen (9.7)', () => {
-    for (const phase of ['research', 'discussion', 'implementation', 'planning']) {
-      assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: `pay.${phase}.checkout` }),
-        new RegExp(`phase must be investigation, got "${phase}"`));
-    }
-    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation' }),
-      /address must be <work_unit>\.<phase>\.<topic>/);
-    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation.ghost' }),
-      /no investigation item "ghost" — nothing to conclude/);
-  });
-
   // A map whose rows are missing a summary (one drafted, one with no source
   // to draft from), a description alone, or nothing at all — the last never
   // part of the batch.
@@ -1876,64 +1508,4 @@ describe('render — the adopted phase gates', () => {
       dotpath: 'pay', variant: 'unsourced', file: writePayload(dir, 'u.json', { names: [] }),
     }), /"names" must be a non-empty array of topic names/);
   });
-
-  // The grapher worked over the plan's authored tasks — three in task_map,
-  // beside the phase key, which is no task.
-  const graphed = (/** @type {Record<string, any>} */ extra = {}) => writeManifest(dir, 'pay', { phases: { planning: { items: {
-    checkout: { status: 'in-progress', task_map: { 'checkout-1': 'p1', 'checkout-1-1': 'a', 'checkout-1-2': 'b', 'checkout-1-3': 'c' }, ...extra },
-  } } } });
-
-  it('plan-format-gate: names the project default, and refuses when none is set', () => {
-    assert.throws(() => renderSurface(dir, 'plan-format-gate', {}),
-      /no project default plan_format — the offer only renders over an existing default/);
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'),
-      JSON.stringify({ work_units: { pay: {} }, defaults: { plan_format: 'local-markdown' } }));
-    assert.strictEqual(renderSurface(dir, 'plan-format-gate', {}), [
-      "=== MENU: plan format gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'Project default format is **local-markdown**.',
-      '',
-      '**`◆ Use the same format?`**',
-      '',
-      '**`y/yes`** → Use local-markdown',
-      '**`n/no`**  → See all available formats',
-      '',
-    ].join('\n'));
-  });
-
-  it('plan-format-gate --variant select: numbers the payload\'s rows, and never names a format itself', () => {
-    const file = writePayload(dir, 'formats.json', {
-      formats: [
-        { name: 'alpha', label: 'Alpha — the first sample format, with a long enough label that the surface has to wrap it under the label column.' },
-        { name: 'beta', label: 'Beta — the second.' },
-      ],
-    });
-    assert.strictEqual(renderSurface(dir, 'plan-format-gate', { variant: 'select', file }), [
-      "=== MENU: plan format select (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Which output format?`**',
-      '',
-      '**`1`** → Alpha — the first sample format, with a long enough label',
-      `${NB(4)}that the surface has to wrap it under the label column.`,
-      '**`2`** → Beta — the second.',
-      '',
-    ].join('\n'));
-  });
-
-  it('plan-format-gate: refuses an unknown variant, a missing payload, and a row without a name or label', () => {
-    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'all' }),
-      /--variant must be select, got "all"/);
-    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select' }),
-      /--variant select requires --file <payload\.json>/);
-    const empty = writePayload(dir, 'empty.json', { formats: [] });
-    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select', file: empty }),
-      /"formats" must be a non-empty array of \{name, label\}/);
-    const nameless = writePayload(dir, 'nameless.json', { formats: [{ label: 'Alpha — no name' }] });
-    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select', file: nameless }),
-      /every format needs a non-empty "name" and "label"/);
-    const labelless = writePayload(dir, 'labelless.json', { formats: [{ name: 'alpha' }] });
-    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select', file: labelless }),
-      /every format needs a non-empty "name" and "label"/);
-  });
-
 });

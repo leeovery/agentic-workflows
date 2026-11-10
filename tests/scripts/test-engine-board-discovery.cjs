@@ -22,7 +22,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, writeState, readState, readManifest, layout, withFrozenClock, FROZEN_AT } = require('./engine-harness.cjs');
+const { ok, writeState, readState, readManifest, layout, withFrozenClock, FROZEN_AT, startItem } = require('./engine-harness.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers } = require('./discovery-gates-world.cjs');
 const { SESSION_ID } = require('./ledger-world.cjs');
 const { fixture, fixtureModule, misfits, emptyLists, standingOn, place } = require('./board-world.cjs');
@@ -172,7 +172,7 @@ describe('discovery on the board (20.11)', () => {
   it('20.11.1: each spike the epic started, in order, canonical or reference as its links give it, none where nothing links it; 20.11.3: a spike opens on its page', () => {
     staged();
     run(answer('approve the map', 'y'));
-    ok(dir(), ['topic', 'start', EPIC, 'discussion', 'note-model'], { env: SESSION });
+    startItem(dir(), EPIC, 'discussion', 'note-model');
     const [frame, sync] = ['frame', 'sync', 'list'].map((slug) => ok(dir(), ['asset', 'spike', EPIC, slug]).path);
     writeState(dir(), `${frame}/Frame.swift`, 'struct Frame {}\n');
     writeState(dir(), `${sync}/notes.md`, 'notes\n');
@@ -261,7 +261,7 @@ describe('discovery on the board (20.11)', () => {
     run(answer('approve the map', 'y'));
     const states = () => board(['--tab', 'unit']).view.topics.map(({ topic, state }) => [topic, state]);
     const approved = states();
-    ok(dir(), ['topic', 'start', EPIC, 'discussion', 'note-model'], { env: SESSION });
+    startItem(dir(), EPIC, 'discussion', 'note-model');
 
     assert.deepStrictEqual([approved, states()], [[['note-model', 'next'], ['sharing', 'not-started']], [['note-model', 'discussing'], ['sharing', 'not-started']]]);
   });
@@ -272,7 +272,7 @@ describe('discovery on the board (20.11)', () => {
     writeState(dir(), '.cache/tour.md', '# The tour opens first\n\nIt bears on you.\n');
     ok(dir(), ['topic', 'send', EPIC, 'sharing', '--from', 'note-model', '--content', '.leeway/.cache/tour.md', '--slug', 'tour'], { env: SESSION });
     const fresh = board(['--page', 'topic:sharing']).view;
-    ok(dir(), ['topic', 'start', EPIC, 'discussion', 'note-model'], { env: SESSION });
+    startItem(dir(), EPIC, 'discussion', 'note-model');
     const started = board(['--page', 'topic:note-model']).view.kind;
     ok(dir(), ['topic', 'postpone', EPIC, 'sharing', '--horizon', 'later'], { env: SESSION });
     const postponed = board(['--page', 'topic:sharing']).view;

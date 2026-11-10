@@ -124,21 +124,8 @@ function auditState(dir, label) {
     }
   }
 
-  // Every import entry, wherever it lives, keeps the one shape the schema
-  // requires: a flat landing under the owner's `imports/`, and an origin that
-  // names a real door.
-  /** @param {unknown[]|undefined} entries @param {string} owner */
-  const auditImports = (entries, owner) => {
-    for (const entry of entries || []) {
-      assert.ok(entry && typeof entry === 'object', ctx(`${owner}: an imports[] entry is not an object`));
-      const e = /** @type {Record<string, unknown>} */ (entry);
-      assert.ok(typeof e.path === 'string' && /^imports\/[^/]+$/.test(e.path),
-        ctx(`${owner}: import path ${JSON.stringify(e.path)} is not imports/{name}`));
-      assert.ok(typeof e.origin === 'string' && schema.isImportOrigin(e.origin),
-        ctx(`${owner}: import ${e.path} carries origin ${JSON.stringify(e.origin)}, outside the vocabulary`));
-    }
-  };
-  if (project) auditImports(project.roadmap && project.roadmap.imports, 'roadmap');
+  // A file the person shares is an asset: nothing records an import.
+  assert.strictEqual(project?.roadmap?.imports, undefined, ctx('the roadmap records imports'));
 
   // The ledger reads whole: it starts byte for byte with the one the state
   // branch last committed, and every line is an event of its version's shape.
@@ -167,7 +154,7 @@ function auditState(dir, label) {
         ctx(`${wu}: the build's position "${manifest.build?.position}" not in schema`));
     }
 
-    auditImports(manifest.imports, wu);
+    assert.strictEqual(manifest.imports, undefined, ctx(`${wu}: records imports`));
 
     // A quick-fix's record names each nested repository its fixes committed
     // in once, by its folder, each a repository of the project's.
@@ -207,6 +194,7 @@ function auditState(dir, label) {
       for (const [topic, item] of Object.entries(items)) {
         assert.ok(item && typeof item === 'object' && !Array.isArray(item),
           ctx(`${wu}.${phase}.${topic}: item is not an object`));
+        assert.ok(!('reconcile_needed' in item), ctx(`${wu}.${phase}.${topic}: carries a reconcile flag`));
         const vocab = schema.VALID_PHASE_STATUSES[phase];
         if (phase === 'discovery') {
           assert.ok(!('status' in item),

@@ -4,8 +4,8 @@
 // The commit door suites' world and helpers (test-engine-commit-door-state.cjs,
 // test-engine-commit-door-code.cjs, test-engine-commit-door-guards.cjs, and
 // the task test-engine-code.cjs's code commits are made under): an
-// epic, `payments`, its two topics in progress, their investigation
-// documents committed clean, built once per process and copied — with code
+// epic, `payments`, its two topics in progress, their logs and briefs
+// committed clean, built once per process and copied — with code
 // committed beside it and the checkout on the branch of the task a code
 // commit is made under where a suite needs one — the task in flight in the
 // conversation the code commits are made in, and the reads of what a commit
@@ -78,11 +78,13 @@ function epicManifest() {
   };
 }
 
-/** Two in-progress topics, their investigation documents committed clean. @param {string} dir */
+/** Two in-progress topics, their logs and briefs committed clean. @param {string} dir */
 function twoTopics(dir) {
   writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n');
-  writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\n');
-  writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\n');
+  for (const [topic, title] of [['topic-a', 'Topic A'], ['topic-b', 'Topic B']]) {
+    writeState(dir, layout.doc('payments', 'investigation', topic), `# ${title}\n`);
+    writeState(dir, layout.brief('payments', topic), `# ${title}\n`);
+  }
   commitAll(dir, 'init');
 }
 

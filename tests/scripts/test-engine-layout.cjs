@@ -96,10 +96,6 @@ const DRAWN = Object.freeze({
 const TODAYS = Object.freeze({
   'pay/.state/discovery-gap-analysis.md': '{unit}/.state',
   '.state/environment-setup.md': '.state/environment-setup.md',
-  'pay/investigation/crash.md': '{unit}/investigation/{topic}.md',
-  'pay/specification/auth/specification.md': '{unit}/specification/{topic}',
-  'pay/planning/auth/tasks/pay-1-2.md': '{unit}/planning/{topic}',
-  'pay/imports/deck.pdf': '{unit}/imports',
   '.roadmap/notes/ideas/2026-10-30--smart-retry.md': '.roadmap/notes/{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md',
 });
 
@@ -121,6 +117,7 @@ const OUTSIDE = Object.freeze([
   'pay/research/auth.md', 'pay/discussion/auth.md', 'pay/experiment/auth/E1-token-cost/E1.1-cold-start/report.md', 'pay/discussion/.mailbox/auth/001-retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth.md',
   '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.state/environment.md',
   'pay/discovery/sessions/session-001.md', '.roadmap/sessions/session-001.md', '.roadmap/imports/deck.pdf',
+  'pay/investigation/crash.md', 'pay/specification/auth/specification.md', 'pay/planning/auth/tasks/pay-1-2.md', 'pay/imports/deck.pdf',
 ]);
 
 /** @param {import('../../skills/leeway-engine/scripts/domain/layout.cjs').Place|null} at */
@@ -240,16 +237,14 @@ describe('today\'s places (E4)', () => {
       manifest: layout.manifest('pay'),
       topic: layout.topic('pay', 'auth', 'log.md'),
       assets: layout.assets('pay', 'deck', 'cover.png'),
-      doc: layout.doc('pay', 'investigation', 'crash'),
+      doc: layout.doc('pay', 'investigation', 'pay'),
       mailbox: layout.mailbox('pay', 'auth', '001-retry-policy.md'),
       experiment: layout.experiment('pay', 'auth', 'E1-token-cost', 'problem.md'),
-      spec: layout.spec('pay', 'auth'),
-      plan: layout.plan('pay', 'auth'),
       session: layout.session('pay', '001'),
       productSession: layout.productSession('001'),
       spike: layout.spike('.product', '001-pricing', 'index.html'),
       brief: layout.brief('pay', 'auth'),
-      imports: layout.imports('pay', 'deck.pdf'),
+      seed: layout.seed('pay', '2026-10-30--smart-retry'),
       unitState: layout.unitState('pay', 'discussion-consolidation-analysis.md'),
       run: layout.run('pay', '3.S2', '001'),
     };

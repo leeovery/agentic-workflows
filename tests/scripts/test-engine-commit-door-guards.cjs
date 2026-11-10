@@ -23,7 +23,7 @@ const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState } = harness;
+const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState, readManifest, startItem } = harness;
 const { headFiles, statusLines, codeHeadFiles, codeStatusLines, holdStateRef, epicManifest, implementing, setupTwoTopicFixture, building, FOR_TASK, startBuilding } = require('./commit-door-world.cjs');
 const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/leeway-engine/scripts/domain/commit.cjs');
 
@@ -34,22 +34,28 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
   const beatFile = (phase, topic) => statePath(dir, layout.cache('payments', phase, topic, 'presence'));
   const beaten = (phase, topic) => fs.existsSync(beatFile(phase, topic));
+  /** The investigation item as its own close leaves it, completed. @param {string} topic */
+  const closed = (topic) => {
+    const manifest = readManifest(dir, 'payments');
+    manifest.phases.investigation.items[topic] = { ...manifest.phases.investigation.items[topic], status: 'completed' };
+    writeState(dir, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
+  };
 
   it('the session-cadence commit beats; the conclusion commit clears; --sweep suppresses', () => {
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
     ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a']);
     assert.ok(beaten('investigation', 'topic-a'), 'the cadence commit is the heartbeat');
 
-    // The conclusion: `topic complete` then its commit. The completed item
+    // The conclusion: the item closed, then its commit. The completed item
     // makes that commit a release, so a concluded topic never reads held.
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nconcluded\n');
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
+    closed('topic-a');
     ok(dir, ['commit', 'payments', '-m', 'investigation(payments): complete topic-a', '--topic', 'investigation/topic-a']);
     assert.ok(!beaten('investigation', 'topic-a'), 'the conclusion commit clears instead of beating');
 
     // The conclude sweep committing a dead session's leavings must not
     // resurrect the hold it just swept.
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\ndead session leavings\n');
+    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\ndead session leavings\n');
     ok(dir, ['commit', 'payments', '-m', 'chore(payments/topic-b): sweep session leavings', '--topic', 'investigation/topic-b', '--sweep']);
     assert.ok(!beaten('investigation', 'topic-b'), '--sweep never stamps the swept topic');
   });
@@ -61,7 +67,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\nresolution landed\n');
+    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\nresolution landed\n');
     ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-b): supersede the decision',
       '--topic', 'investigation/topic-b', '--sweep']);
 
@@ -75,13 +81,13 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // may be sitting in it idle-but-alive. Terminal status releases a slot
     // this session holds; it must never release one this session is only
     // visiting.
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-b']);
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-b']);
+    startItem(dir, 'payments', 'investigation', 'topic-b');
+    closed('topic-b');
     const peer = beatFile('investigation', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\nthe resolution landed\n');
+    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\nthe resolution landed\n');
     ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-b): supersede the decision',
       '--topic', 'investigation/topic-b', '--sweep']);
 
@@ -99,9 +105,6 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // foreign mailbox must not manufacture a hold there.
     ok(dir, ['topic', 'mailbox', 'payments', 'topic-a'], { env: me });
     assert.ok(!beaten('discussion', 'topic-a'), 'a mailbox read never creates a heartbeat');
-
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a'], { env: me });
-    assert.ok(beaten('investigation', 'topic-a'), 'start opens the session\'s own topic');
 
     writeState(dir, layout.mailbox('payments', 'topic-a', '001-first.md'), 'First\n');
     commitAll(dir, 'a delivered message');
@@ -142,29 +145,20 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.ok(!beaten('discussion', 'topic-b'), 'apply writes across topics — the analysis session holds none of them');
   });
 
-  it('the close releases the slot, and every commit after it keeps it released', () => {
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
-    assert.ok(beaten('investigation', 'topic-a'), 'start opens the topic');
+  it('a commit on a closed item releases the slot, and every commit after it keeps it released', () => {
+    startItem(dir, 'payments', 'investigation', 'topic-a');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nunder way\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): under way', '--topic', 'investigation/topic-a']);
+    assert.ok(beaten('investigation', 'topic-a'), 'a live item\'s cadence commit holds it');
 
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
-    assert.ok(!beaten('investigation', 'topic-a'), 'complete is the release');
-
-    // The conclusion commit that follows must not re-take what the close let
-    // go — a terminal item is finished, whatever the session does next.
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nconcluded\n');
-    ok(dir, ['commit', 'payments', '-m', 'investigation(payments): conclude topic-a', '--topic', 'investigation/topic-a']);
-    assert.ok(!beaten('investigation', 'topic-a'), 'a post-completion cadence commit stays released');
-  });
-
-  it('a reopened item beats again', () => {
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
-    assert.ok(!beaten('investigation', 'topic-a'), 'closed and released');
-
-    ok(dir, ['topic', 'reopen', 'payments', 'investigation', 'topic-a']);
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nreopened\n');
-    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): reconcile', '--topic', 'investigation/topic-a']);
-    assert.ok(beaten('investigation', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
+    // A terminal item is finished, whatever the session does next: no commit
+    // after its close re-takes the slot.
+    closed('topic-a');
+    for (const step of ['conclude', 'tidy']) {
+      writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), `# Topic A\n${step}\n`);
+      ok(dir, ['commit', 'payments', '-m', `investigation(payments): ${step} topic-a`, '--topic', 'investigation/topic-a']);
+      assert.ok(!beaten('investigation', 'topic-a'), `the ${step} commit leaves it released`);
+    }
   });
 
   it('a --topic commit on a topic with no manifest item neither beats nor clears', () => {
@@ -361,34 +355,34 @@ describe('commit door: transaction tails commit their own scope', () => {
   it('a deletion that empties its scope still commits (inbox delete)', () => {
     writeState(dir, layout.archived('ideas', '2026-10-30--a-thought.md'), '# A thought\n');
     commitAll(dir, 'an archived idea');
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer dirt\n');
+    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\npeer dirt\n');
 
     const res = ok(dir, ['inbox', 'delete', path.join(STATE_DIR_NAME, layout.archived('ideas', '2026-10-30--a-thought.md'))]);
 
     assert.match(res.committed, /^[0-9a-f]+$/, 'the staged deletion commits even though nothing is left on disk');
     assert.ok(headFiles(dir).includes(layout.archived('ideas', '2026-10-30--a-thought.md')), 'the deletion is in the commit');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'the live session\'s dirt is untouched');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.brief('payments', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 
   it('the inbox scope commits the inbox alone — dirt outside it that the state does not ignore stays out', () => {
     writeState(dir, layout.inbox('ideas', '2026-10-30--a-thought.md'), '# A thought\n');
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer dirt\n');
+    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\npeer dirt\n');
 
     ok(dir, ['commit', '--inbox', '-m', 'chore(inbox): capture an idea']);
 
     assert.deepStrictEqual(headFiles(dir), [layout.inbox('ideas', '2026-10-30--a-thought.md')]);
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'the live session\'s dirt is untouched');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.brief('payments', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 
   it('a topic cancel commits the manifest write alone', () => {
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nlive session dirt\n');
+    writeState(dir, layout.brief('payments', 'topic-a'), '# Topic A\nlive session dirt\n');
 
     const res = ok(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(headFiles(dir), [layout.manifest('payments')],
       'a cancel from the epic menu takes nothing a session is holding');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-a')}`]);
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.brief('payments', 'topic-a')}`]);
   });
 
   it('the discovery session close commits the discovery scope, not the work unit', () => {
@@ -399,14 +393,14 @@ describe('commit door: transaction tails commit their own scope', () => {
     commitAll(dir, 'an open session');
 
     writeState(dir, layout.session('payments', '001'), '# Session 001\n\n## Conclusion\n');
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\na peer session mid-turn\n');
+    writeState(dir, layout.experiment('payments', 'topic-a', 'E1-x', 'design.md'), '# Design\na peer session mid-turn\n');
 
     const res = ok(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): synthesise 1 topic']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
     assert.ok(files.includes(layout.session('payments', '001')));
-    assert.ok(!files.includes(layout.doc('payments', 'investigation', 'topic-a')), 'the peer\'s half-written document stays uncommitted');
+    assert.ok(!files.includes(layout.experiment('payments', 'topic-a', 'E1-x', 'design.md')), 'the peer\'s half-written document stays uncommitted');
   });
 });
 
@@ -415,8 +409,8 @@ describe('commit door: two live sessions on one checkout', () => {
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  // One session's turn loop: write its own topic file, commit it, repeat —
-  // the cadence a document's session runs.
+  // One session's turn loop: write its own experiment record, commit it,
+  // repeat — the cadence a document's session runs.
   const SESSION = [
     "const fs = require('fs');",
     "const { execFileSync } = require('child_process');",
@@ -424,14 +418,18 @@ describe('commit door: two live sessions on one checkout', () => {
     'for (let i = 1; i <= Number(turns); i++) {',
     '  fs.writeFileSync(file, "# " + topic + "\\n" + Array.from({length: i}, (_, n) => "line " + (n + 1)).join("\\n") + "\\n");',
     '  execFileSync("node", [engine, "commit", "payments", "-m",',
-    '    "investigation(payments/" + topic + "): turn " + i, "--topic", "investigation/" + topic],',
+    '    "experiment(payments/" + topic + "): turn " + i, "--topic", "experiment/" + topic],',
     '    { cwd: dir, encoding: "utf8" });',
     '}',
   ].join('\n');
 
+  /** The record a session's turns write. @param {string} topic */
+  const record = (topic) => layout.experiment('payments', topic, 'E1-x', 'report.md');
+
   /** @param {string} topic @param {number} turns */
   function session(dir, topic, turns) {
-    const proc = spawn('node', ['-e', SESSION, ENGINE, dir, topic, String(turns), statePath(dir, layout.doc('payments', 'investigation', topic))], { cwd: dir });
+    fs.mkdirSync(path.dirname(statePath(dir, record(topic))), { recursive: true });
+    const proc = spawn('node', ['-e', SESSION, ENGINE, dir, topic, String(turns), statePath(dir, record(topic))], { cwd: dir });
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
     return new Promise((resolve) => proc.on('exit', (code) => resolve({ code, stderr })));
@@ -449,20 +447,20 @@ describe('commit door: two live sessions on one checkout', () => {
 
     for (const sha of commits) {
       const subject = stateGit(dir, ['log', '--format=%s', '-1', sha]).trim();
-      if (!subject.startsWith('investigation(payments/')) continue;
-      const mine = subject.slice('investigation(payments/'.length).split(')')[0];
+      if (!subject.startsWith('experiment(payments/')) continue;
+      const mine = subject.slice('experiment(payments/'.length).split(')')[0];
       const foreign = mine === 'topic-a' ? 'topic-b' : 'topic-a';
       const files = stateGit(dir, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
-      assert.ok(!files.includes(layout.doc('payments', 'investigation', foreign)),
+      assert.ok(!files.includes(record(foreign)),
         `${subject} (${sha}) swept a foreign session's file:\n${files.join('\n')}\n${log}`);
-      assert.deepStrictEqual(files, [layout.doc('payments', 'investigation', mine)],
+      assert.deepStrictEqual(files, [record(mine)],
         `${subject} committed more than its own action`);
     }
 
     // Both sessions' last turn is in HEAD, and the tree is clean.
     for (const topic of ['topic-a', 'topic-b']) {
-      const committed = stateGit(dir, ['show', `HEAD:payments/investigation/${topic}.md`]);
-      assert.strictEqual(committed, fs.readFileSync(statePath(dir, layout.doc('payments', 'investigation', topic)), 'utf8'),
+      const committed = stateGit(dir, ['show', `HEAD:${record(topic)}`]);
+      assert.strictEqual(committed, fs.readFileSync(statePath(dir, record(topic)), 'utf8'),
         `${topic}'s last turn never reached a commit`);
       assert.ok(committed.trim().endsWith(`line ${turns}`), `${topic} lost a turn`);
     }

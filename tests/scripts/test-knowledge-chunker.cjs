@@ -296,7 +296,7 @@ describe('knowledge chunker', () => {
 // ---------------------------------------------------------------------------
 
 describe('knowledge chunker — character budget', () => {
-  const heading = loadConfig('investigation');
+  const heading = loadConfig('seeds');
 
   // A paragraph of `size` characters of words on one line, tagged so order
   // and survival can be checked.
@@ -436,11 +436,11 @@ describe('knowledge chunker — character budget', () => {
 
   it('holds the budget and the verbatim slice across every real fixture', () => {
     for (const [fixture, config] of [
-      ['discussion-fixture.md', loadConfig('investigation')],
-      ['spec-folio-fixture.md', loadConfig('investigation')],
-      ['spec-deep-nested-fixture.md', loadConfig('investigation')],
-      ['specification-fixture.md', loadConfig('investigation')],
-      ['research-oversized-h3-fixture.md', loadConfig('investigation')],
+      ['discussion-fixture.md', loadConfig('seeds')],
+      ['spec-folio-fixture.md', loadConfig('seeds')],
+      ['spec-deep-nested-fixture.md', loadConfig('seeds')],
+      ['specification-fixture.md', loadConfig('seeds')],
+      ['research-oversized-h3-fixture.md', loadConfig('seeds')],
     ]) {
       const src = loadFixture(fixture);
       const chunks = chunk(src, config);
@@ -482,9 +482,9 @@ describe('phase chunking configs', () => {
     });
   }
 
-  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline, nor the spec (8.14.7, 9.2.2, 11.1.2)', () => {
+  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline, nor the spec, nor the old investigation file or imports (8.14.7, 9.2.2, 11.1.2)', () => {
     assert.ok(phases.includes('record'));
-    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline', 'specification']) {
+    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline', 'specification', 'investigation', 'imports']) {
       assert.ok(!phases.includes(phase), phase);
       assert.strictEqual(fs.existsSync(path.join(chunkingDir, phase + '.json')), false, phase);
     }
@@ -502,19 +502,19 @@ describe('phase chunking configs', () => {
       ['fumi / note-window', 'Does a panel take focus?'],
       ['fumi / note-window', 'Finding: Panels float above every Space.'],
     ]);
-    assert.strictEqual(chunk(copy, loadConfig('investigation')).length, 1);
+    assert.strictEqual(chunk(copy, loadConfig('seeds')).length, 1);
   });
 
-  it('imports.json declares low confidence', () => {
+  it('seeds.json declares low confidence', () => {
     const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'imports.json'), 'utf8')
+      fs.readFileSync(path.join(chunkingDir, 'seeds.json'), 'utf8')
     );
     assert.strictEqual(cfg.confidence, 'low');
   });
 
-  it('imports config chunks a multi-section seed file into per-section chunks', () => {
+  it('seeds config chunks a multi-section seed file into per-section chunks', () => {
     const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'imports.json'), 'utf8')
+      fs.readFileSync(path.join(chunkingDir, 'seeds.json'), 'utf8')
     );
     const src = [
       '# Seed Conversation',
@@ -634,7 +634,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a research fixture into expected sections', () => {
     const src = loadFixture('research-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     // cc-tool-plan.md has 12 H2 sections plus an H1+intro chunk.
@@ -669,7 +669,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a discussion fixture into its H2 sections, the Discussion Map and the Summary among them', () => {
     const src = loadFixture('discussion-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     // application-architecture.md: Context, Discussion Map, App Structure,
@@ -696,7 +696,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks an investigation fixture into Symptoms, Analysis, Fix Direction sections', () => {
     const src = loadFixture('investigation-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     // 3 H2s (Symptoms, Analysis, Fix Direction) plus possibly an
@@ -717,7 +717,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a specification fixture into expected sections', () => {
     const src = loadFixture('specification-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     // 12 H2 sections in the portal spec (Overview through Dependencies).
@@ -752,7 +752,7 @@ describe('knowledge chunker — real fixtures', () => {
     // The single H2 runs to ~250 lines but well under the character budget,
     // so its three H3 observations stay together.
     const src = loadFixture('research-single-section-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     const section = chunks.filter((c) => /^## /.test(c.content.split('\n')[0]));
@@ -767,7 +767,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('returns minimal spec as single chunk (below keep_whole_below)', () => {
     const src = loadFixture('spec-minimal-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     assert.strictEqual(chunks.length, 1);
@@ -781,7 +781,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('handles code blocks with headings without false splits', () => {
     const src = loadFixture('artifact-with-codeblocks-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     // Exactly two real H2 sections. Anything matching the fake code-block
@@ -812,7 +812,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('returns no-headings fixture as single chunk', () => {
     const src = loadFixture('artifact-no-headings-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     assert.strictEqual(chunks.length, 1);
@@ -823,15 +823,15 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('ensures each chunks content is a verbatim substring of the source (all fixtures)', () => {
     const cases = [
-      ['research-fixture.md', loadConfig('investigation')],
-      ['discussion-fixture.md', loadConfig('investigation')],
-      ['discussion-no-map-fixture.md', loadConfig('investigation')],
-      ['investigation-fixture.md', loadConfig('investigation')],
-      ['specification-fixture.md', loadConfig('investigation')],
-      ['research-single-section-fixture.md', loadConfig('investigation')],
-      ['spec-minimal-fixture.md', loadConfig('investigation')],
-      ['artifact-with-codeblocks-fixture.md', loadConfig('investigation')],
-      ['artifact-no-headings-fixture.md', loadConfig('investigation')],
+      ['research-fixture.md', loadConfig('seeds')],
+      ['discussion-fixture.md', loadConfig('seeds')],
+      ['discussion-no-map-fixture.md', loadConfig('seeds')],
+      ['investigation-fixture.md', loadConfig('seeds')],
+      ['specification-fixture.md', loadConfig('seeds')],
+      ['research-single-section-fixture.md', loadConfig('seeds')],
+      ['spec-minimal-fixture.md', loadConfig('seeds')],
+      ['artifact-with-codeblocks-fixture.md', loadConfig('seeds')],
+      ['artifact-no-headings-fixture.md', loadConfig('seeds')],
     ];
     for (const [fixture, config] of cases) {
       const src = loadFixture(fixture);
@@ -842,7 +842,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('handles CRLF line endings', () => {
     const src = loadFixture('investigation-fixture.md').replace(/\n/g, '\r\n');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     // Should not throw. CRLF is just LF preceded by a \r — headings still
     // parse because the regex is anchored by ^ and the \r sits at end of
     // line before the \n delimiter.
@@ -852,7 +852,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('does not produce an empty trailing chunk when file ends with blank lines', () => {
     const src = loadFixture('investigation-fixture.md') + '\n\n\n';
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
     for (const c of chunks) {
       assert.notStrictEqual(c.content.trim(), '');
@@ -869,7 +869,7 @@ describe('knowledge chunker — real fixtures', () => {
     // lines, stays whole). Verifies that a real artifact with one huge
     // parent H2 splits at its H3s.
     const src = loadFixture('spec-deep-nested-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 11, 'expected >= 11 chunks, got ' + chunks.length);
@@ -892,7 +892,7 @@ describe('knowledge chunker — real fixtures', () => {
     // tick v1 research exploration.md has an H3 "Session 1" under "Open
     // Questions to Explore" that runs to ~310 lines.
     const src = loadFixture('research-oversized-h3-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 2);
@@ -906,7 +906,7 @@ describe('knowledge chunker — real fixtures', () => {
     // the chunker copes with discussion variants that don't match the
     // design doc's canonical discussion shape.
     const src = loadFixture('discussion-q-style-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 8);
@@ -925,7 +925,7 @@ describe('knowledge chunker — real fixtures', () => {
     // various sizes — structurally different from both portal and tick
     // specs.
     const src = loadFixture('spec-folio-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = loadConfig('seeds');
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 10);

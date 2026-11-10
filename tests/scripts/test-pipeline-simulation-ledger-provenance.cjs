@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { startItem } = require('./engine-harness.cjs');
 const { Sim, mappedEpic } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: the ledger\'s second version', () => {
@@ -30,7 +31,7 @@ describe('pipeline simulation: the ledger\'s second version', () => {
   it('the ledger\'s second version: who decided each decision — the person\'s own scope call, and their "your call" and "don\'t care" Claude\'s calls — how each finding is known, a measurement with the command run and its result, the sections an entry cites, and a question moved to the roadmap as later, each written through the verbs and read back by the record, the map, `since`, the trust log and the copy', () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
-    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
+    startItem(sim.dir, wu, 'discussion', 'note-window');
     const note = `${wu}.discussion.note-window`;
     const made = { by: 'claude', who_moved_whom: 'none' };
     /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */

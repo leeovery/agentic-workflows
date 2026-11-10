@@ -4,8 +4,7 @@
 // The merged phase (9.S41): with the release installed, research is no skill
 // and no phase, the research-thread and subtopic-map verbs are gone, neither
 // map draws a subtopic state, and the screens name the one conversational
-// phase discussion — which closes at its decided gate, never through
-// `topic complete`.
+// phase discussion — which closes at its decided gate.
 //
 // Layer: verb. World, built once and only read: an epic, `orbit`, its topic
 // `alpha` under discussion with a question decided on the ledger.
@@ -17,7 +16,7 @@ const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { call, ok, output, refuses, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { call, ok, output, refuses, commitAll, fixtureFrom, cleanupFixture, startItem } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { WORK_TYPE_PIPELINES, VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { TOPIC_PHASES } = require('../../skills/leeway-engine/scripts/domain/ledger-units.cjs');
@@ -61,7 +60,7 @@ describe('research is no skill and no phase', () => {
     assert.ok(!TOPIC_PHASES.includes('research'));
     assert.strictEqual(Object.hasOwn(VALID_PHASE_STATUSES, 'research'), false);
     assert.match(refuses(dir, ['manifest', 'set', `${EPIC}.research.alpha`, 'status', 'in-progress']).error, /^Invalid phase "research"/);
-    assert.match(refuses(dir, ['topic', 'start', EPIC, 'research', 'alpha']).error, /^unknown or non-lifecycle phase "research"/);
+    assert.throws(() => startItem(dir, EPIC, 'research', 'alpha'), { message: /^unknown or non-lifecycle phase "research"/ });
   });
 });
 
@@ -99,8 +98,4 @@ describe('the screens name the merged phase discussion', () => {
     assert.doesNotMatch(card, /research/i);
   });
 
-  it('a discussion closes on its decided checklist, never through topic complete', () => {
-    assert.match(refuses(dir, ['topic', 'complete', EPIC, 'discussion', 'alpha']).error,
-      /^a discussion closes on its decided checklist, `checklist close decided` — an epic's then at its decided gate, `render decided` and the yes, which runs `decided yes`; a feature's into its spec, `decided stage`, its close taken at ready to build$/);
-  });
 });

@@ -10,7 +10,7 @@
 // the quick-fix begun, its fix 1.1 closed before its commit and 1.2 started
 // with none; the bugfix hunt in its investigation, its log written and a
 // finding citing it; and beside them an epic, a feature, a quick-fix
-// today's scoping made, and bugfixes past their spec, concluded and not
+// its old scoping made, and bugfixes past their spec, concluded and not
 // begun. The knowledge base is keyword-only. And the calls a test makes in
 // its conversation, whose records it keeps in a config folder of its own.
 // ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ const world = fixtureFrom('workunit-move-', (dir) => {
   writeState(dir, layout.brief(BUG, BUG), '# Hunt\n\nThe bug as discovery heard it.\n');
   createManifest(dir, EPIC, { work_type: 'epic', phases: { discovery: { items: { 'fee-model': { source: 'discovery', summary: 'Fees' } } } } });
   createManifest(dir, 'notes', {});
-  createManifest(dir, 'scoped', { work_type: 'quick-fix', phases: { scoping: { items: { scoped: { status: 'in-progress' } } } } });
+  createManifest(dir, 'scoped', { work_type: 'quick-fix', phases: { planning: { items: { scoped: { status: 'in-progress' } } } } });
   createManifest(dir, 'specced', { work_type: 'bugfix', phases: { investigation: { items: { specced: { status: 'completed' } } } } });
   writeState(dir, layout.unit('specced', 'spec.md'), '# Spec\n');
   createManifest(dir, 'fixed', { work_type: 'bugfix', phases: { investigation: { items: { fixed: { status: 'completed' } } } } });

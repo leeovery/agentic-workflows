@@ -124,7 +124,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
 
   it('a refusal answers {ok:false} on stderr with exit 1, and writes nothing', () => {
     const before = manifestOf(dir);
-    const res = engine.run(['topic', 'complete', 'payments', 'investigation', 'absent'], { cwd: dir });
+    const res = engine.run(['manifest', 'set', 'payments.investigation.payments', 'status', 'bogus'], { cwd: dir });
     assert.strictEqual(res.code, 1);
     assert.strictEqual(res.stdout, '', 'a refusal says nothing on stdout');
     assert.strictEqual(JSON.parse(res.stderr).ok, false);
@@ -283,8 +283,8 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
     dir = setupFixture();
     seed(dir);
     createFile(dir, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
-    createFile(dir, '.leeway/payments/investigation/payments.md', '# Payments\n\nCards settle nightly.\n');
-    engine.run(['knowledge', 'index', '.leeway/payments/investigation/payments.md'], { cwd: dir });
+    createFile(dir, '.leeway/payments/seeds/payments.md', '# Payments\n\nCards settle nightly.\n');
+    engine.run(['knowledge', 'index', '.leeway/payments/seeds/payments.md'], { cwd: dir });
   });
   afterEach(() => cleanupFixture(dir));
 
@@ -342,21 +342,21 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('a single-file index answers at once, so run takes it', () => {
-    const res = engine.run(['knowledge', 'index', '.leeway/payments/investigation/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '.leeway/payments/seeds/payments.md'], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
   });
 
   it('--dry-run is a switch: it never takes the argument after it as its value', () => {
-    const res = engine.run(['knowledge', 'index', '--dry-run', '.leeway/payments/investigation/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '--dry-run', '.leeway/payments/seeds/payments.md'], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
     assert.match(res.stdout, /^Indexed \d+ chunks from /);
-    assert.ok(res.stdout.endsWith(` from ${path.join(dir, '.leeway/payments/investigation/payments.md')}\n`), res.stdout);
+    assert.ok(res.stdout.endsWith(` from ${path.join(dir, '.leeway/payments/seeds/payments.md')}\n`), res.stdout);
   });
 
   it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
     const { runKnowledge, knowledgeWaits } = require('../../skills/leeway-engine/scripts/domain/knowledge/commands.cjs');
     const forms = [
-      ['index'], ['index', '.leeway/payments/investigation/payments.md'], ['query', 'cards'], ['check'], ['status'],
+      ['index'], ['index', '.leeway/payments/seeds/payments.md'], ['query', 'cards'], ['check'], ['status'],
       ['remove', '--work-unit', 'payments', '--dry-run'], ['compact', '--dry-run'], ['rebuild'], ['fill'],
       ['--help'], ['bogus'], [], ['setup', '--keyword-only'],
     ];
@@ -389,17 +389,18 @@ describe('the two doors answer alike', () => {
 
   // The in-process entry is only worth having if it is the CLI. Each case is
   // run both ways against the same state and compared byte for byte.
-  for (const [what, args] of Object.entries({
-    'a read': ['manifest', 'get', 'payments.investigation.payments', 'status'],
-    'an expected miss': ['manifest', 'key-of', 'payments.investigation', 'items', 'absent'],
-    'a mutation': ['manifest', 'set', 'payments.investigation.payments', 'brief_incorporated=true'],
-    'a refusal': ['topic', 'complete', 'payments', 'investigation', 'absent'],
-    'a usage': ['workunit'],
-    'a render surface': ['render', 'resume-gate', 'payments.investigation.payments'],
+  for (const [what, [args, code]] of Object.entries({
+    'a read': [['manifest', 'get', 'payments.investigation.payments', 'status'], 0],
+    'an expected miss': [['manifest', 'key-of', 'payments.investigation', 'items', 'absent'], 2],
+    'a mutation': [['manifest', 'set', 'payments.investigation.payments', 'brief_incorporated=true'], 0],
+    'a refusal': [['manifest', 'set', 'payments.investigation.payments', 'status', 'bogus'], 1],
+    'a usage': [['workunit'], 1],
+    'a render surface': [['render', 'cancel-gate', 'payments'], 0],
   })) {
     it(what, () => {
       const spawned = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
       const inProcess = engine.run(args, { cwd: dir });
+      assert.strictEqual(spawned.status, code, `${what} answers as one: ${spawned.stderr}`);
       assert.deepStrictEqual(
         { stdout: inProcess.stdout, stderr: inProcess.stderr, code: inProcess.code },
         { stdout: spawned.stdout, stderr: spawned.stderr, code: spawned.status });
