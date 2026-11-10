@@ -154,6 +154,14 @@ describe('leeway-roadmap gateway: proposal', () => {
     assert.match(res.stdout, /Already on the roadmap \(3\)/);
   });
 
+  it('flags an archived item\'s name as on the roadmap — its name stays taken (18.8.21)', () => {
+    writeRoadmap(dir, { horizons: ['v1'], items: { legacy: { summary: 's', kind: 'idea', origin: 'harvest', archived: { at: '2026-01-01T00:00:00Z', horizon: 'v1' } } } });
+    createFile(dir, 'proposed.json', JSON.stringify([{ name: 'legacy', horizon: 'v1', summary: 'again' }]));
+    const res = run(['proposal', '--file', 'proposed.json']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.match(res.stdout, /legacy horizon=v1 exists_on_roadmap=true /);
+  });
+
   it('fails loudly on a missing, malformed, or empty file', () => {
     writeRoadmap(dir, MAP);
     assert.strictEqual(run(['proposal', '--file', 'ghost.json']).status, 1);

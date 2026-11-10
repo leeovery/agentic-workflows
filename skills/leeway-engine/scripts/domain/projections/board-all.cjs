@@ -24,10 +24,10 @@
 //   copy of its store a call.
 // - A session is in a unit where this one is, or another holds a presence
 //   in it.
-// - The roadmap is its waiting items, those no unit has pulled, under their
-//   horizons in the roadmap's order, each by its summary, a topic postponed
-//   out of an epic by its title there, with the epic's; the inbox, its
-//   captures by kind.
+// - The roadmap is its waiting items, those no unit has pulled and none
+//   archived, under their horizons in the roadmap's order, each by its
+//   summary, a topic postponed out of an epic by its title there, with the
+//   epic's; the inbox, its captures by kind.
 // ---------------------------------------------------------------------------
 
 const { fact, placeFact } = require('../board-model.cjs');
@@ -37,7 +37,7 @@ const { scanProject } = require('../presence.cjs');
 const { discoverInbox } = require('../start.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { titlecase } = require('../conventions.cjs');
-const { roadmapItems, itemJoin, itemPostponedFrom, topicTitle, buildByCut, quickFixBuild, tasksBegun } = require('../derivations.cjs');
+const { roadmapItems, itemWaiting, itemPostponedFrom, topicTitle, buildByCut, quickFixBuild, tasksBegun } = require('../derivations.cjs');
 const { buildView, buildWords } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { specDoing } = require('./board-spec.cjs');
@@ -114,7 +114,7 @@ function roadmapLine(units, name, item) {
 
 /** The roadmap's waiting items under their horizons, in its order. @param {string} cwd @param {Record<string, any>} project @returns {AllView['roadmap']} */
 function roadmapOf(cwd, project) {
-  const waiting = Object.entries(roadmapItems(project)).filter(([, item]) => itemJoin(item) === null);
+  const waiting = Object.entries(roadmapItems(project)).filter(([, item]) => itemWaiting(item));
   const units = waiting.some(([, item]) => itemPostponedFrom(item) !== null) ? new Map(listWorkUnitManifests(cwd).map((manifest) => [manifest.name, manifest])) : new Map();
   const horizons = Array.isArray(project.roadmap?.horizons) ? project.roadmap.horizons : [];
   return horizons.flatMap((/** @type {string} */ horizon) => {

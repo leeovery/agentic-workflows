@@ -90,6 +90,7 @@ function postponedRefusal(phase, topic) {
  * @property {string[]} abandoned  the open records closed as abandoned, reason recorded on each row
  * @property {WaitRelease[]} released_waits  the evidence waits the topic's conversations held
  * @property {string[]} roadmap_reverted  roadmap items handed back to waiting by the cancel-revert hop
+ * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone]  those of them whose horizon was removed meanwhile, now on none
  * @property {string[]} inbox  each waiting message's idea in the inbox, absolute
  * @property {string[]} closed_agents  the agents still running on the items taken, closed
  * @property {string|null} committed  short commit sha, or null when nothing was staged
@@ -454,7 +455,7 @@ function cancelDiscoveryUnit(manifest, topic) {
     throw new Error(`"${topic}" is already cancelled`);
   }
   if (lifecycle === 'postponed') {
-    throw new Error(`"${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
+    throw new Error(`"${topic}" is postponed — the roadmap owns it; archive its item there to cancel it, or pull it forward first`);
   }
   const plan = cancelPlan(manifest, topic);
   const mapItem = itemOf(manifest, 'discovery', topic);
@@ -510,9 +511,9 @@ function cancelTopic(cwd, workUnit, phase, said) {
   // lifecycle cancelled hands any roadmap item joined to it back to
   // waiting (sources/origin intact) — the un-pull path. The project
   // manifest rides this transaction's commit when a revert landed.
-  const reverted = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle === 'cancelled'
+  const { reverted, horizon_gone: gone } = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle === 'cancelled'
     ? revertJoins(cwd, workUnit, { topic })
-    : [];
+    : { reverted: [], horizon_gone: [] };
 
   // A cancel writes the work-unit manifest, the topic's waiting mail moved
   // to the inbox, and the project manifest when a roadmap join reverted, and
@@ -529,6 +530,7 @@ function cancelTopic(cwd, workUnit, phase, said) {
     topic, phase: 'discovery', status: 'cancelled', ...taken, roadmap_reverted: reverted, inbox: mail.map(({ idea }) => statePath(cwd, idea)),
     closed_agents: closedAgents, committed: outcome.committed, warnings,
   };
+  if (gone.length > 0) result.roadmap_horizon_gone = gone;
   // The manifest alone is narrower than any state scope, so the retry stays
   // generic — the commit door's own rule.
   noteCommitOutcome(result, outcome);
@@ -726,15 +728,15 @@ function restorePostponedUnit(cwd, workUnit, topic) {
 }
 
 /**
- * Turn a postponed Discovery unit's hold into a cancel — `roadmap remove`
+ * Turn a postponed Discovery unit's hold into a cancel — `roadmap archive`
  * over the item the postpone put there, so "actually never" has one door.
  * The marker and every stashed item read `cancelled`, each stash and the
  * stashed map order kept for a later reactivate; the chunks left at the
- * postpone. One locked write and no commit — the remove's own transaction
+ * postpone. One locked write and no commit — the archive's own transaction
  * stages both manifests together. A unit holding no postpone refuses: the
- * item's join is stale, and the remove must not report a cancel it never made.
+ * item's join is stale, and the archive must not report a cancel it never made.
  * @param {string} cwd @param {string} workUnit @param {string} topic
- * @param {string} item  the roadmap item being removed, for the orphan refusal
+ * @param {string} item  the roadmap item being archived, for the orphan refusal
  * @returns {CancelledItem[]}
  */
 function cancelPostponedUnit(cwd, workUnit, topic, item) {

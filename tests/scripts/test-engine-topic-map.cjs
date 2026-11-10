@@ -164,6 +164,13 @@ describe('topic add (8.7.6, 8.8.18, 8.10.11)', () => {
     assert.strictEqual(refusedPristine(dir, ['topic', 'add', UNIT, 'crash-fix', '--summary', 'S', '--brief', draft('fix'), '--from-roadmap', 'receipt-crash']).error,
       'topic add: "crash-fix" can\'t take the item in — the roadmap\'s "receipt-crash" is a bug — it rides with work as material, never a topic');
   });
+
+  it('refuses taking an archived item in, naming the way back; an archived item is no twin (18.8.13)', () => {
+    ok(dir, ['roadmap', 'archive', 'loyalty']);
+    assert.strictEqual(refusedPristine(dir, ['topic', 'add', UNIT, 'points-scheme', '--summary', 'Points', '--brief', draft('points'), '--from-roadmap', 'loyalty']).error,
+      'topic add: "points-scheme" can\'t take the item in — the roadmap\'s "loyalty" is archived — bring it back onto a horizon (engine roadmap move loyalty --horizon <h>) first');
+    assert.strictEqual(ok(dir, ['topic', 'add', UNIT, 'loyalty', '--summary', 'Points', '--brief', draft('points')]).name, 'loyalty');
+  });
 });
 
 describe('topic add-batch', () => {
@@ -364,6 +371,19 @@ describe('topic remove (8.8.6, 8.8.16, 8.10.11)', () => {
     assert.deepStrictEqual(roadmapItem('loyalty'), { horizon: 'later', summary: 'Points for regulars', kind: 'idea', origin: 'harvest' });
     assert.deepStrictEqual(committedFiles(), [`D\t${layout.brief(UNIT, 'points-scheme')}`, `M\t${layout.projectManifest}`, `M\t${layout.manifest(UNIT)}`]);
     assert.strictEqual(sections, report('Removed "Points Scheme" from the map. "Loyalty" is back on the roadmap under later.'));
+  });
+
+  it('puts the item back on no horizon where its horizon was removed meanwhile, the report naming the horizon gone for Claude to ask which (18.8.20, 18.S66)', () => {
+    ok(dir, ['topic', 'add', UNIT, 'points-scheme', '--summary', 'Points', '--brief', draft('points'), '--from-roadmap', 'loyalty']);
+    ok(dir, ['roadmap', 'archive', 'receipt-crash']);
+    ok(dir, ['roadmap', 'horizon', 'remove', 'later']);
+
+    const { res, sections } = okSections(dir, ['topic', 'remove', UNIT, 'points-scheme']);
+
+    assert.deepStrictEqual(res.roadmap_returned, [{ name: 'loyalty', horizon: null }]);
+    assert.deepStrictEqual(res.roadmap_horizon_gone, [{ name: 'loyalty', horizon: 'later' }]);
+    assert.deepStrictEqual(roadmapItem('loyalty'), { summary: 'Points for regulars', kind: 'idea', origin: 'harvest' });
+    assert.strictEqual(sections, report('Removed "Points Scheme" from the map. "Loyalty" is back on the roadmap with no horizon — later was removed.'));
   });
 
   it('refuses a topic started, set aside or named by the ledger, pointing the way to what the person is after, writing nothing (8.8.8)', () => {

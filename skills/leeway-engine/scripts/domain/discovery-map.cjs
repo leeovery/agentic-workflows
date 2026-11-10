@@ -77,7 +77,8 @@ const { pastSpecRefusal } = require('./spec-standing.cjs');
  * @property {boolean} [moved]           rename: the key and folder moved — false where the topic had started, its title taking the name
  * @property {string[]} [roadmap_reaimed] rename: the roadmap items following the topic
  * @property {string[]} [inbox]          remove: each waiting message's idea in the inbox, absolute
- * @property {{name: string, horizon: string}[]} [roadmap_returned] remove: the roadmap items back on their horizons
+ * @property {{name: string, horizon: string|null}[]} [roadmap_returned] remove: the roadmap items back on their horizons, none where theirs was removed meanwhile
+ * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone] remove: those whose horizon was removed meanwhile
  * @property {number} [map_total]        topics on the map after the change
  * @property {string|null} [committed]
  * @property {string} [note]
@@ -754,16 +755,16 @@ function removeTopic(cwd, workUnit, said) {
     dismiss(manifest, [name]);
     saveWorkUnitManifest(cwd, workUnit, manifest);
     fs.rmSync(statePath(cwd, topicDir(workUnit, name)), { recursive: true, force: true });
-    const reverted = revertJoins(cwd, workUnit, { topic: name });
+    const { reverted, horizon_gone: gone } = revertJoins(cwd, workUnit, { topic: name });
     const items = readProjectManifest(cwd).roadmap?.items ?? {};
-    return {
-      mail,
-      result: /** @type {MapChange} */ ({
-        work_unit: workUnit, op: 'remove', name, title, lifecycle: 'fresh', map_total: mapTotal(manifest),
-        inbox: mail.map(({ idea }) => statePath(cwd, idea)),
-        roadmap_returned: reverted.map((item) => ({ name: item, horizon: items[item]?.horizon })),
-      }),
+    /** @type {MapChange} */
+    const result = {
+      work_unit: workUnit, op: 'remove', name, title, lifecycle: 'fresh', map_total: mapTotal(manifest),
+      inbox: mail.map(({ idea }) => statePath(cwd, idea)),
+      roadmap_returned: reverted.map((item) => ({ name: item, horizon: items[item]?.horizon ?? null })),
     };
+    if (gone.length > 0) result.roadmap_horizon_gone = gone;
+    return { mail, result };
   });
   const name = /** @type {string} */ (removed.result.name);
   const paths = [

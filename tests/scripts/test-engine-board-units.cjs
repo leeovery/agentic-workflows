@@ -127,6 +127,15 @@ describe('an epic\'s page (20.8)', () => {
     assert.deepStrictEqual(item, { title: 'Website', from: 'Fumi' });
   });
 
+  it('18.8.13: All work\'s roadmap leaves an archived item out, its horizon showing what still waits', () => {
+    at([UNIT]);
+    ok(dir(), ['roadmap', 'add', 'loyalty', '--horizon', 'later', '--summary', 'Points for regulars']);
+    ok(dir(), ['roadmap', 'add', 'gift-cards', '--horizon', 'later', '--summary', 'Cards to give']);
+    ok(dir(), ['roadmap', 'archive', 'loyalty']);
+
+    assert.deepStrictEqual(board(['--tab', 'all']).view.roadmap, [{ horizon: 'later', items: [{ title: 'Cards to give', from: null }] }]);
+  });
+
   it('N5, D29: a topic decided, and one cancelled once its discussion started, open on the discussion\'s page; one cancelled before it started — though a message waited for it — and one postponed, on its brief', () => {
     at([UNIT]);
     close();

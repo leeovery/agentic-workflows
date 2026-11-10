@@ -154,13 +154,13 @@ const LAYOUT = Object.freeze([
 /** Today's places, each with the phase that retires it. @type {readonly Place[]} */
 const TODAY = Object.freeze([
   todays('29.16', 'free', '{unit}/.state'),
-  todays('29.16', 'file', '.roadmap/notes/{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md'),
   todays('29.17', 'file', '.state/environment-setup.md'),
 ]);
 
-/** The product's folder, and its conversation's session logs (4.11.16). */
+/** The product's folder, its conversation's session logs, and the roadmap's notes (4.11.16). */
 const PRODUCT_DIR = '.product';
 const PRODUCT_SESSIONS = `${PRODUCT_DIR}/sessions`;
+const PRODUCT_NOTES = `${PRODUCT_DIR}/notes`;
 
 /** The places a file informing the work sits below: the assets and the spikes, a unit's and the product's (4.11.5, 4.11.12). */
 const ASSET_HOMES = Object.freeze(['{unit}/assets', '{unit}/spikes/{NNN}-{slug}', '.product/assets', '.product/spikes/{NNN}-{slug}']);
@@ -290,4 +290,4 @@ function engineRefusal(at, rel) {
   return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, stagedPlace, assetHome, engineRefusal };
+module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, PRODUCT_NOTES, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, stagedPlace, assetHome, engineRefusal };

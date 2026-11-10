@@ -486,8 +486,6 @@ module.exports = {
   parseInboxPaths,
   refuseTakenDestinations,
   moveFiles,
-  undoMoves,
-  archivedDir,
   INBOX,
   ARCHIVED,
   FOLDER_KIND,

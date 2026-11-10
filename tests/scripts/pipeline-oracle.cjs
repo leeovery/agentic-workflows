@@ -115,14 +115,24 @@ function auditState(dir, label) {
   for (const row of rm.items) {
     assert.ok(['waiting', 'in-flight', 'shipped', 'orphaned'].includes(row.state),
       ctx(`roadmap item ${row.name}: state "${row.state}" not in vocabulary`));
+  }
+  for (const row of [...rm.items, ...rm.archived]) {
     assert.ok(['idea', 'bug', 'quick-fix'].includes(row.kind),
       ctx(`roadmap item ${row.name}: kind ${JSON.stringify(row.kind)} not in vocabulary`));
     // A source is recorded only once it is on disk, and whatever moves the
-    // file carries the pointer with it.
+    // file carries the pointer with it — an archive moves none.
     for (const source of row.sources) {
       assert.ok(fs.existsSync(path.join(dir, '.leeway', source)),
         ctx(`roadmap item ${row.name}: source ${source} is not on disk`));
     }
+  }
+  // An archived item is off its horizon, joined to no work and holding no
+  // postpone, kept with the instant it went (18.8.13).
+  for (const row of rm.archived) {
+    const item = project.roadmap.items[row.name];
+    assert.deepStrictEqual(['horizon', 'pulled_to', 'postponed_from'].filter((key) => key in item), [],
+      ctx(`archived roadmap item ${row.name} still holds what a live item does`));
+    assert.match(row.archived.at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, ctx(`archived roadmap item ${row.name}: at is no instant`));
   }
 
   // A file the person shares is an asset: nothing records an import.

@@ -175,6 +175,12 @@ describe('approve the map, refused as staged — nothing staged, nothing written
     assert.deepStrictEqual(readManifest(dir(), '.').roadmap.items['share-links'].pulled_to, { work_unit: EPIC, topic: 'share-links' }, 'bound, the seed comes home with its topic');
   });
 
+  it('refuses a park named as an archived roadmap item, naming it and the way on (18.8.21)', () => {
+    ok(dir(), ['roadmap', 'archive', 'lifetime-tier']);
+    refusesEach([['a park named as an archived item', () => ({ topics: [sharing()], binds: [bound], parks: [park('lifetime-tier', 'Lifetime', 'later')] }),
+      'park "lifetime-tier": "lifetime-tier" is archived on the roadmap, and its name stays taken — bring it back onto a horizon (engine roadmap move lifetime-tier --horizon <h>), or name the new one apart']]);
+  });
+
   it('refuses a bind of a bug the epic was started from: it rides with the work, never a topic', () => {
     joinedTo(dir(), EPIC, 'export-timeout');
     refusesEach([['a bug bound', () => ({ topics: [sharing()], binds: [bound, { item: 'export-timeout', topic: 'sharing' }] }),

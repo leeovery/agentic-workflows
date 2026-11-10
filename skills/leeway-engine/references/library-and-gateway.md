@@ -61,7 +61,7 @@ engine.agents.completedReviewCycles(cwd, wu, topic)   // → number — report-b
 engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, moves_seen, moves_needed, reason } — discussion review-arming verdict (tolerant reads)
 
 // domain: the product roadmap (roadmap.cjs — lifecycle by join, never stored)
-engine.roadmap.roadmapState(cwd)                  // → { exists, horizons, items, totals, session_logs } — each item's kind and its state from its join (waiting / in-flight / shipped / orphaned), and the product's conversation's logs; a never-born roadmap reads exists:false, and one with a product session's log and no node exists:true. The roadmap gateway's views read it
+engine.roadmap.roadmapState(cwd)                  // → { exists, horizons, items, archived, totals, session_logs } — each item's kind and its state from its join (waiting / in-flight / shipped / orphaned), the archived items apart, and the product's conversation's logs; a never-born roadmap reads exists:false, and one with a product session's log and no node exists:true. The roadmap gateway's views read it
 
 // domain: session presence
 engine.presence.scanPresence(cwd, wu)             // → { work_unit, held, held_sources, sessions[] } — one work unit's heartbeats; a row's `age_seconds` is "last active", never a verdict

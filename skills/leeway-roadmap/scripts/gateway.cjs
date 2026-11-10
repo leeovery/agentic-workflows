@@ -128,7 +128,7 @@ function proposal(...rest) {
   for (const t of proposed) {
     const flags = [
       `horizon=${t.horizon}`,
-      `exists_on_roadmap=${s.items.some((i) => i.name === t.name)}`,
+      `exists_on_roadmap=${[...s.items, ...s.archived].some((i) => i.name === t.name)}`,
       `legal_name=${!/[./]/.test(t.name)}`,
       `legal_horizon=${!/[./]/.test(t.horizon)}`,
       `new_horizon=${!s.horizons.includes(t.horizon)}`,

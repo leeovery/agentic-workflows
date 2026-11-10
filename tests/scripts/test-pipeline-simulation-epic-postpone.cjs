@@ -101,14 +101,14 @@ describe('pipeline simulation: epic postpone', () => {
       'a message for a topic that waits is mail that waits with it');
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), held, 'the send leaves the hold alone');
 
-    // `roadmap remove` is the door to "actually never".
-    const removed = sim.run(['roadmap', 'remove', 'fresh-one']);
-    assert.deepStrictEqual(removed.epic_row_cancelled, { work_unit: wu, topic: 'fresh-one' });
+    // `roadmap archive` is the door to "actually never".
+    const archived = sim.run(['roadmap', 'archive', 'fresh-one']);
+    assert.deepStrictEqual(archived.epic_row_cancelled, { work_unit: wu, topic: 'fresh-one' });
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].cancelled, true);
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].postponed, undefined);
 
     // The menu's return row and its sub-view carry what still waits — the
-    // removed item is gone from both, the cancelled row with it.
+    // archived item is gone from both, the cancelled row with it.
     assert.ok(menuActions().includes('pull_forward_topic'));
     assert.deepStrictEqual(pullable(), [['decided', 'decided'], ['talking', 'talking']]);
 

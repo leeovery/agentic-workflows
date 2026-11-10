@@ -455,9 +455,39 @@ function itemJoin(item) {
 }
 
 /**
+ * The archive mark an item carries (18.8.13) — when it was archived and the
+ * horizon it left, `{at, horizon}` — or null. A malformed mark reads as
+ * none, as a malformed join does.
+ * @param {Record<string, any>} item
+ * @returns {{at: string, horizon: string|null}|null}
+ */
+function itemArchived(item) {
+  const mark = item.archived;
+  return mark && typeof mark === 'object' && !Array.isArray(mark) && typeof mark.at === 'string' ? mark : null;
+}
+
+/**
+ * Whether an item waits on the roadmap: joined to no work, and not archived.
+ * @param {Record<string, any>} item
+ * @returns {boolean}
+ */
+function itemWaiting(item) {
+  return itemJoin(item) === null && itemArchived(item) === null;
+}
+
+/**
+ * The way an archived item comes back onto the roadmap (18.8.13).
+ * @param {string} name
+ * @returns {string}
+ */
+function bringBack(name) {
+  return `bring it back onto a horizon (engine roadmap move ${name} --horizon <h>)`;
+}
+
+/**
  * Why `names` cannot seed new work, or null where they can: each a roadmap
- * item, waiting — joined to no work — and named once. The one check a pull's
- * handoff into discovery and start this work share.
+ * item, waiting — joined to no work and not archived — and named once. The
+ * one check a pull's handoff into discovery and start this work share.
  * @param {Record<string, any>} project @param {unknown[]} names
  * @returns {string|null}
  */
@@ -468,6 +498,7 @@ function roadmapSeedRefusal(project, names) {
     if (item === undefined) return `the roadmap has no item ${JSON.stringify(name)} to seed the work`;
     const join = itemJoin(item);
     if (join !== null) return `roadmap item "${name}" is joined to work unit "${join.work_unit}" already — only a waiting item seeds new work`;
+    if (itemArchived(item) !== null) return `roadmap item "${name}" is archived — only a waiting item seeds new work; ${bringBack(/** @type {string} */ (name))} first`;
     if (names.indexOf(name) < at) return `roadmap item "${name}" is named twice`;
   }
   return null;
@@ -526,17 +557,21 @@ function postponeTarget(project, workUnit, topic, goes) {
 }
 
 /**
- * The name clash a postpone's birth would overwrite, as one sentence: the
- * plan's lock reads the roadmap before the epic manifest is written, and the
- * landing reads it again under the project lock, so both refusals say the
- * same thing about the same item.
+ * The name clash a postpone's birth would overwrite, as one sentence naming
+ * the topic and the item: the plan's lock reads the roadmap before the epic
+ * manifest is written, and the landing reads it again under the project
+ * lock, so both refusals say the same thing about the same item. An
+ * archived item holds its name as a waiting one does (18.8.21), and either
+ * is renamed on the roadmap, or the topic is, to let the postpone through.
+ * @param {string} topic  the topic postponing
  * @param {string} name  the name the birth would take
  * @param {Record<string, any>} item  what already sits there
  * @returns {string}
  */
-function postponeClashPhrase(name, item) {
-  const horizon = typeof item.horizon === 'string' ? item.horizon : '';
-  return `a roadmap item named "${name}"${horizon ? ` (horizon "${horizon}")` : ''} is not this topic's — rename or remove it on the roadmap first`;
+function postponeClashPhrase(topic, name, item) {
+  const horizon = typeof item.horizon === 'string' ? ` (horizon "${item.horizon}")` : '';
+  const where = itemArchived(item) === null ? horizon : ' (archived)';
+  return `postponing "${topic}" is refused — a roadmap item named "${name}"${where} is not this topic's: rename it on the roadmap, or rename the topic, first`;
 }
 
 /**
@@ -629,7 +664,7 @@ function postponePlan(manifest, name, project, horizon) {
   }
   const target = postponeTarget(project, manifest.name, name, goesBy(topicTitles(manifest), name));
   if (!target.joined && target.item !== undefined) {
-    locks.push({ reason: postponeClashPhrase(target.name, target.item) });
+    locks.push({ reason: postponeClashPhrase(name, target.name, target.item) });
   }
   return { items: liveUnitItems(manifest, 'discovery', name), locks };
 }
@@ -1432,6 +1467,9 @@ module.exports = {
   openRecords,
   roadmapItems,
   itemJoin,
+  itemArchived,
+  itemWaiting,
+  bringBack,
   roadmapSeedRefusal,
   topicAddress,
   itemPostponedFrom,

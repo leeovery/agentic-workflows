@@ -148,8 +148,8 @@ describe('what the spec leaves open', () => {
     assert.strictEqual(readManifest(dir, 'fumi').phases.discovery.items.alpha.postponed, true);
   });
 
-  it('the roadmap item holding a postponed topic archived, which cancels the topic\'s row (18.8.17)', () => {
-    ok(dir, ['roadmap', 'remove', 'widgets']);
+  it('the roadmap item holding a postponed topic archived, which cancels the topic\'s row (18.8.17, 18.S62)', () => {
+    assert.deepStrictEqual(ok(dir, ['roadmap', 'archive', 'widgets']).epic_row_cancelled, { work_unit: 'fumi', topic: 'widgets' });
     assert.strictEqual(JSON.parse(readState(dir, layout.manifest('fumi'))).phases.discovery.items.widgets.cancelled, true);
   });
 });

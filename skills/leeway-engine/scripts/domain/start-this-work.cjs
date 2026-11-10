@@ -47,7 +47,7 @@ const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = req
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { roadmapItems, roadmapSeedRefusal, briefFile } = require('./derivations.cjs');
-const { waitingTwin, noteOfSource, notePath } = require('./roadmap.cjs');
+const { waitingTwin, isNote } = require('./roadmap.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { productSession } = require('./discovery-session.cjs');
@@ -220,9 +220,8 @@ function noteSeedsOf(cwd, roadmap) {
   const items = roadmapItems(readProjectManifest(cwd));
   return roadmap.flatMap((name) => {
     const item = items[name];
-    const note = (Array.isArray(item.sources) ? item.sources : []).map(noteOfSource).find((found) => found !== null);
-    const at = note ? notePath(note.folder, note.file) : null;
-    return at !== null && fs.existsSync(statePath(cwd, at)) ? [{ name, note: at }] : [];
+    const note = (Array.isArray(item.sources) ? item.sources : []).find(isNote);
+    return note !== undefined && fs.existsSync(statePath(cwd, note)) ? [{ name, note }] : [];
   });
 }
 

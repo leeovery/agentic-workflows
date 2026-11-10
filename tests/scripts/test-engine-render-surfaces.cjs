@@ -102,7 +102,7 @@ describe('cancel-gate', () => {
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.gone' }),
       /"gone" is already cancelled — the menu never offers it/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.away' }),
-      /"away" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first/);
+      /"away" is postponed — the roadmap owns it; archive its item there to cancel it, or pull it forward first/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.ghost' }),
       /render cancel-gate: no topic "ghost" — the map's topics are auth$/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.auth' }),
@@ -195,7 +195,7 @@ describe('postpone-gate', () => {
     assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
     assert.throws(() => gate('done', 'built'), /render postpone-gate: postponing "done" is refused — built's build has begun, so its map is closed/);
     assert.throws(() => gate('busy'), /render postpone-gate: postponing "busy" is refused while an experiment is live \(E2, with E2\.1\) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic/);
-    assert.throws(() => gate('auth'), /render postpone-gate: a roadmap item named "auth" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
+    assert.throws(() => gate('auth'), /render postpone-gate: postponing "auth" is refused — a roadmap item named "auth" \(horizon "mvp"\) is not this topic's: rename it on the roadmap, or rename the topic, first/);
   });
 
   it('refuses a dead address, a non-Discovery address, a missing horizon, and one the roadmap could not name', () => {
@@ -828,6 +828,21 @@ describe('roadmap surfaces', () => {
       /render park-gate: "loyalty" is already on the roadmap — edit it, or pick a different name/);
   });
 
+  it('park-gate: an archived item\'s name refuses too, naming it and the way on (18.8.21)', () => {
+    const archived = { summary: 's', kind: 'idea', origin: 'harvest', archived: { at: '2026-01-01T00:00:00Z', horizon: 'v1' } };
+    writeRoadmap({ ...TWO_HORIZONS, items: { ...TWO_HORIZONS.items, legacy: archived } });
+    assert.throws(() => renderSurface(dir, 'park-gate', { name: 'legacy', horizon: 'v1', summary: 's' }),
+      { message: 'render park-gate: "legacy" is archived on the roadmap, and its name stays taken — bring it back onto a horizon (engine roadmap move legacy --horizon <h>), or name the new one apart' });
+  });
+
+  it('roadmap-view: an archived item is left out, of its horizon and of the count (18.8.13)', () => {
+    const archived = { summary: 'an old idea', kind: 'idea', origin: 'harvest', archived: { at: '2026-01-01T00:00:00Z', horizon: 'v1' } };
+    writeRoadmap({ ...TWO_HORIZONS, items: { ...TWO_HORIZONS.items, legacy: archived } }, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    const out = renderSurface(dir, 'roadmap-view', {});
+    assert.match(out, /Roadmap \(3 items — 1 in flight · 2 waiting\)/);
+    assert.ok(!out.includes('Legacy') && !out.includes('an old idea'), out);
+  });
+
   it('park-gate: a bug or a quick-fix is named by its kind; an idea, the default, is not', () => {
     writeRoadmap(TWO_HORIZONS);
     const bug = unwrap(renderSurface(dir, 'park-gate', { name: 'login-crash', horizon: 'v1', summary: 'sign-in crashes', kind: 'bug' }));
@@ -911,8 +926,8 @@ describe('roadmap surfaces', () => {
     refused([{ ...item, kind: 'bug' }], /render inbox-roadmap-gate: entry 1 — "kind" is bug, but the note .* is a idea/);
     fs.writeFileSync(path.join(dir, '.leeway/.inbox/ideas/2026-03-04--dark mode.md'), '# x\n');
     refused([{ ...item, note: '.leeway/.inbox/ideas/2026-03-04--dark mode.md' }], /render inbox-roadmap-gate: entry 1 — the note "\.leeway\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
-    fs.mkdirSync(path.join(dir, '.leeway/.roadmap/notes/ideas'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway/.roadmap/notes/ideas/2026-03-01--dark-mode.md'), 'taken\n');
+    fs.mkdirSync(path.join(dir, '.leeway/.product/notes'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/.product/notes/2026-03-01--dark-mode.md'), 'taken\n');
     refused([item], /render inbox-roadmap-gate: destination already exists/);
     refused([{ name: 'login-crash', horizon: 'v1', summary: 's', note: BUG }, { name: 'typo', horizon: 'v2', summary: 's', note: FIX }],
       /render inbox-roadmap-gate: every entry goes under the one horizon/);

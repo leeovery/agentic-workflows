@@ -102,8 +102,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.leeway/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
 - `.leeway/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
 - `.leeway/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
-- `.leeway/.roadmap/` — the roadmap's notes
-- `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes
+- `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes
 - `.leeway/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `refs/leeway/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
 - `~/.config/leeway/` (or `LEEWAY_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, and `conversations/{session-id}/`, per-conversation state

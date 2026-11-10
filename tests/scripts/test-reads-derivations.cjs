@@ -975,13 +975,13 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponePlan({ ...m, build: { position: 'auto' } }, 'timing', null).locks.map((l) => l.reason),
         ['postponing "timing" is refused — pay\'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit\'s cancel, through manage on the start menu']);
       assert.deepStrictEqual(reasons('busy'), ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic']);
-      assert.deepStrictEqual(reasons('auth', project), ['a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first']);
+      assert.deepStrictEqual(reasons('auth', project), ['postponing "auth" is refused — a roadmap item named "auth" (horizon "next") is not this topic\'s: rename it on the roadmap, or rename the topic, first']);
       // The horizon is read here, before the epic moves — a name the roadmap
       // could not take would otherwise refuse at the landing.
       assert.deepStrictEqual(reasons('auth', null, 'v2.1'), ['"v2.1" is not a legal horizon name — dots and slashes break manifest addressing']);
       assert.deepStrictEqual(reasons('auth', project, 'v2.1'), [
         '"v2.1" is not a legal horizon name — dots and slashes break manifest addressing',
-        'a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first',
+        'postponing "auth" is refused — a roadmap item named "auth" (horizon "next") is not this topic\'s: rename it on the roadmap, or rename the topic, first',
       ]);
       assert.deepStrictEqual(reasons('auth', null, 'v2'), [], 'a legal horizon locks nothing, and the menu asks with none');
     });
@@ -996,11 +996,13 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, joined: false });
     });
 
-    it('the clash phrase names the horizon it has, and stands without one', () => {
-      assert.strictEqual(postponeClashPhrase('auth', { horizon: 'next' }),
-        'a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first');
-      assert.strictEqual(postponeClashPhrase('auth', {}),
-        'a roadmap item named "auth" is not this topic\'s — rename or remove it on the roadmap first');
+    it('the clash phrase names the topic and the item, the horizon the item has or its archive, and stands without either (18.8.17, 18.8.21)', () => {
+      assert.strictEqual(postponeClashPhrase('auth', 'auth', { horizon: 'next' }),
+        'postponing "auth" is refused — a roadmap item named "auth" (horizon "next") is not this topic\'s: rename it on the roadmap, or rename the topic, first');
+      assert.strictEqual(postponeClashPhrase('auth', 'sign-in', { archived: { at: '2026-11-10T09:00:00Z', horizon: 'next' } }),
+        'postponing "auth" is refused — a roadmap item named "sign-in" (archived) is not this topic\'s: rename it on the roadmap, or rename the topic, first');
+      assert.strictEqual(postponeClashPhrase('auth', 'auth', {}),
+        'postponing "auth" is refused — a roadmap item named "auth" is not this topic\'s: rename it on the roadmap, or rename the topic, first');
     });
 
     it('postponedItem joins the roadmap by postponed_from, null when nothing does', () => {

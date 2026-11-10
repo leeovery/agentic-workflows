@@ -96,7 +96,6 @@ const DRAWN = Object.freeze({
 const TODAYS = Object.freeze({
   'pay/.state/discovery-gap-analysis.md': '{unit}/.state',
   '.state/environment-setup.md': '.state/environment-setup.md',
-  '.roadmap/notes/ideas/2026-10-30--smart-retry.md': '.roadmap/notes/{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md',
 });
 
 /** Paths outside every place: beside each folder's places, a free folder named as a file, and a name a placeholder refuses. */
@@ -115,7 +114,7 @@ const OUTSIDE = Object.freeze([
   'pay/build/phases/phase-1/checkout-a.md', 'pay/build/phases/phase-1/0-checkout-a.md',
   'pay/topics/auth/experiments/E0-token-cost/problem.md', 'pay/topics/auth/experiments/E1-token-cost/E1.0-cold-start/report.md', 'pay/build/runs/0.S2/run-001.json', 'pay/build/runs/3.S0/run-001.json',
   'pay/research/auth.md', 'pay/discussion/auth.md', 'pay/experiment/auth/E1-token-cost/E1.1-cold-start/report.md', 'pay/discussion/.mailbox/auth/001-retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth.md',
-  '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.state/environment.md',
+  '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.roadmap/notes/ideas/2026-10-30--smart-retry.md', '.state/environment.md',
   'pay/discovery/sessions/session-001.md', '.roadmap/sessions/session-001.md', '.roadmap/imports/deck.pdf',
   'pay/investigation/crash.md', 'pay/specification/auth/specification.md', 'pay/planning/auth/tasks/pay-1-2.md', 'pay/imports/deck.pdf',
 ]);
@@ -242,6 +241,7 @@ describe('today\'s places (E4)', () => {
       experiment: layout.experiment('pay', 'auth', 'E1-token-cost', 'problem.md'),
       session: layout.session('pay', '001'),
       productSession: layout.productSession('001'),
+      note: layout.note('2026-10-30--smart-retry.md'),
       spike: layout.spike('.product', '001-pricing', 'index.html'),
       brief: layout.brief('pay', 'auth'),
       seed: layout.seed('pay', '2026-10-30--smart-retry'),

@@ -12,8 +12,10 @@
 // a type it does not create, cross-cutting among them (8.S2, 19.S1), a
 // taken or numbered name (8.S57), a one-topic unit beside a waiting roadmap
 // idea of its name (8.1.6), and a failure part-way leaving no unit. The
-// seeds an inbox item and a roadmap item's note give it, the item as it stood recorded and put back by a cancel (4.S35). What a created unit holds, whatever door made
-// it, is test-engine-workunit-create.cjs's.
+// seeds an inbox item and a roadmap item's note give it, the item left on
+// the project manifest and put back by a cancel on its horizon as merged
+// since (4.S35, 18.S66). What a created unit holds, whatever door made it, is
+// test-engine-workunit-create.cjs's.
 //
 // Layer: verb. World: discovery's gate suites' (discovery-gates-world.cjs).
 // ---------------------------------------------------------------------------
@@ -145,7 +147,7 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
       [{ kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', 'typo-fix'] }, undefined, false]);
   });
 
-  it('lands an inbox item and a roadmap item\'s note as seeds, the manifest recording each source; a cancel puts the item back on its horizon (4.S35)', () => {
+  it('lands an inbox item and a roadmap item\'s note as seeds, the manifest recording each source; a cancel puts the item back on its horizon as merged since (4.S35)', () => {
     ok(dir(), ['roadmap', 'add-batch', '--file', payload([{ name: 'retry-on-drop', horizon: 'next', summary: 'Retry when the line drops', note: `.leeway/${IDEA}` }])]);
     const stood = readManifest(dir(), '.').roadmap.items['retry-on-drop'];
     const res = started({ ...oneTopic('feature', 'checkout-retry'), seeds: [statePath(dir(), BUG)], roadmap: ['retry-on-drop'] });
@@ -157,11 +159,31 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
       { path: 'seeds/2026-06-02-login-loop.md', source: 'inbox:bug' },
       { path: 'seeds/2026-06-01-smart-retry.md', source: 'roadmap:retry-on-drop' },
     ]);
-    assert.strictEqual(stood.horizon, 'next');
+    assert.deepStrictEqual([stood.horizon, stood.sources], ['next', ['.product/notes/2026-06-01--smart-retry.md']]);
     assert.deepStrictEqual(fs.readdirSync(statePath(dir(), 'checkout-retry/seeds')).sort(), ['2026-06-01-smart-retry.md', '2026-06-02-login-loop.md']);
     assert.strictEqual(readState(dir(), stood.sources[0]), '# Smart Retry\n', 'the note stays where its item names it');
+    ok(dir(), ['roadmap', 'horizon', 'merge', 'next', '--into', 'later']);
     ok(dir(), ['workunit', 'cancel', 'checkout-retry']);
-    assert.deepStrictEqual(readManifest(dir(), '.').roadmap.items['retry-on-drop'], stood, 'the item is back on its horizon as it stood');
+    assert.deepStrictEqual(readManifest(dir(), '.').roadmap.items['retry-on-drop'], { ...stood, horizon: 'later' }, 'the item is back, on the horizon its own was merged into');
+  });
+
+  it('takes two items waiting on "later" off the roadmap as the work\'s seeds, and the work\'s cancel shows both on "later" again (18.S66)', () => {
+    ok(dir(), ['roadmap', 'add-batch', '--file', payload([
+      { name: 'smart-retry', horizon: 'later', summary: 'Retry when the line drops', note: `.leeway/${IDEA}` },
+      { name: 'login-loop', horizon: 'later', summary: 'Sign-in loops', note: `.leeway/${BUG}` },
+    ])]);
+    const waitingOnLater = () => ok(dir(), ['roadmap', 'state']).items.filter((i) => i.horizon === 'later' && i.state === 'waiting').map((i) => i.name);
+    assert.deepStrictEqual(waitingOnLater(), ['lifetime-tier', 'smart-retry', 'login-loop']);
+
+    started({ ...FUMI, roadmap: ['smart-retry', 'login-loop'] });
+
+    assert.deepStrictEqual(waitingOnLater(), ['lifetime-tier'], 'neither waits on the roadmap');
+    assert.deepStrictEqual(readManifest(dir(), 'fumi').seeds.map(({ seeded_at: at, ...seed }) => seed), [
+      { path: 'seeds/2026-06-01-smart-retry.md', source: 'roadmap:smart-retry' },
+      { path: 'seeds/2026-06-02-login-loop.md', source: 'roadmap:login-loop' },
+    ]);
+    ok(dir(), ['workunit', 'cancel', 'fumi']);
+    assert.deepStrictEqual(waitingOnLater(), ['lifetime-tier', 'smart-retry', 'login-loop']);
   });
 
   it('points two units shaped in one session at their own sections of the same log (8.S64)', () => {
@@ -198,11 +220,14 @@ describe('start this work, refused (8.2.4, 8.8.18)', () => {
     assert.strictEqual(refusedStage({ ...unbriefed, type: 'quick-fix', brief }), 'render start-this-work: a quick-fix has no topic to brief — drop the brief');
   });
 
-  it('refuses a roadmap item missing, named twice, or joined to work already', () => {
+  it('refuses a roadmap item missing, named twice, joined to work already, or archived', () => {
     assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['no-such'] }), 'render start-this-work: roadmap: the roadmap has no item "no-such" to seed the work');
     assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync', 'note-sync'] }), 'render start-this-work: roadmap: roadmap item "note-sync" is named twice');
     joinedTo(dir(), 'atlas', 'note-sync');
     assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync'] }), 'render start-this-work: roadmap: roadmap item "note-sync" is joined to work unit "atlas" already — only a waiting item seeds new work');
+    ok(dir(), ['roadmap', 'archive', 'lifetime-tier']);
+    assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['lifetime-tier'] }),
+      'render start-this-work: roadmap: roadmap item "lifetime-tier" is archived — only a waiting item seeds new work; bring it back onto a horizon (engine roadmap move lifetime-tier --horizon <h>) first');
   });
 
   it('refuses a feature or a bugfix beside a waiting roadmap idea of its name, unless it starts from the item (8.1.6)', () => {
