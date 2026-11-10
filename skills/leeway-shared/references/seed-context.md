@@ -16,7 +16,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} se
 
 #### If `work_type` is `epic` or there is no seed
 
-Nothing to read here. (For an epic, the seed surfaces per topic via the knowledge base, not here.)
+Nothing to read here.
 
 → Return to caller.
 

@@ -21,7 +21,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { GIT_TIMEOUT_MS } = require('./discovery-test-utils.cjs');
+const { GIT_TIMEOUT_MS, layout, writeState } = require('./discovery-test-utils.cjs');
 const io = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 const {
   call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
@@ -29,6 +29,9 @@ const {
 
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-own' };
 const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
+
+/** The feature's topic's record copy, state-relative. */
+const RECORD = layout.record('card', 'card');
 
 /** The investigation's log, state-relative. */
 const LOG = 'pay/topics/pay/log.md';
@@ -47,16 +50,15 @@ function seed(dir, { commit = true } = {}) {
   if (commit) commitAll(dir, 'init');
 }
 
-/** A feature in progress, one seed on its manifest and on disk, committed — a pivot re-indexes it. */
-function seededFeature(dir) {
+/** A feature in progress, its topic's record copy on disk, committed — a pivot re-indexes it. */
+function recordedFeature(dir) {
   const wu = statePath(dir, 'card');
-  fs.mkdirSync(path.join(wu, 'seeds'), { recursive: true });
+  fs.mkdirSync(wu, { recursive: true });
   fs.writeFileSync(statePath(dir, 'manifest.json'), JSON.stringify({ work_units: { card: { work_type: 'feature' } } }, null, 2) + '\n');
   fs.writeFileSync(path.join(wu, 'manifest.json'), JSON.stringify({
     name: 'card', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
-    seeds: [{ path: 'seeds/card.md', source: 'inbox:idea' }],
   }, null, 2) + '\n');
-  fs.writeFileSync(path.join(wu, 'seeds', 'card.md'), '# Card\n\nCards ship first.\n');
+  writeState(dir, RECORD, '# Card\n\nCards ship first.\n');
   commitAll(dir, 'init');
 }
 
@@ -254,7 +256,7 @@ describe('engine harness — a world made once and copied', () => {
 
 describe('engine harness — a keyword-only checkout', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture('harness-kb-'); seededFeature(dir); });
+  beforeEach(() => { dir = setupGitFixture('harness-kb-'); recordedFeature(dir); });
   const pivot = () => ok(dir, ['workunit', 'pivot', 'card']);
   afterEach(() => cleanupFixture(dir));
 
@@ -262,7 +264,7 @@ describe('engine harness — a keyword-only checkout', () => {
     harness.keywordOnlyKnowledge(dir);
     const res = pivot();
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(harness.indexedFiles(dir), ['card/seeds/card.md']);
+    assert.deepStrictEqual(harness.indexedFiles(dir), [RECORD]);
   });
 
   it('holds nothing where the checkout was never set up — the index a warning, no store built, and a read of what it holds refused', () => {

@@ -4,9 +4,10 @@
 // yields exactly the artifacts below, every path state-relative — and never
 // a log, discovery's or the product's, nor a file the product's conversation
 // keeps (8.14.7, 9.2.2), nor a spec (11.1.2), nor anything of a unit's build
-// (22.6.3), nor an older version's investigation file or shared import — a
-// quick-fix's short record among them, at its unit's own identity, retired
-// only by its file gone or its unit cancelled (22.6.9).
+// (22.6.3), nor an older version's investigation file or shared import, nor
+// a seed, an asset, an inbox item or the product record's rendered file
+// (22.6.12) — a quick-fix's short record among them, at its unit's own
+// identity, retired only by its file gone or its unit cancelled (22.6.9).
 
 require('./hermetic-env.cjs');
 
@@ -34,6 +35,12 @@ function writeFile(p, content) {
   fs.writeFileSync(p, content);
 }
 
+/** What the project holds that is never indexed (22.6.12): seeds, an asset of a unit's and of the product's, inbox items, the product record's rendered file. */
+const NEVER = Object.freeze([
+  'payments/seeds/original-idea.md', 'login-timeout/seeds/bug-report.md', 'payments/assets/ledger-sketch.md', '.product/assets/app-idea.md',
+  '.inbox/ideas/2026-01-06--offline-ledger.md', '.inbox/bugs/2026-01-06--login-loops.md', '.knowledge/product.md',
+]);
+
 /** A unit's build: its log, its notes for later, a task's account and a round's report. */
 const BUILD = Object.freeze(['payments/build/log.md', 'payments/build/notes.md', 'payments/build/tasks/1.1.md', 'payments/build/tasks/1.1/round-1-a.md']);
 
@@ -43,8 +50,8 @@ function buildFixture(root) {
   const proj = { work_units: {} };
 
   // Epic: multi-topic phases (mixed statuses), each discussion's log beside
-  // its record copy, an older version's import, seeds (with an escape),
-  // analysis caches, discovery's logs, the open one among them.
+  // its record copy, an older version's import, seeds, an asset, analysis
+  // caches, discovery's logs, the open one among them.
   proj.work_units['payments'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
@@ -63,10 +70,7 @@ function buildFixture(root) {
       } },
     },
     imports: [{ path: 'imports/oauth-notes.md', origin: 'discovery' }], // an older version's → never indexed
-    seeds: [
-      { path: 'seeds/original-idea.md', source: 'inbox:idea' },
-      { path: 'seeds/../escape.md' },             // path escape → excluded
-    ],
+    seeds: [{ path: 'seeds/original-idea.md', source: 'inbox:idea' }],
   });
   for (const topic of ['ledger', 'refunds', 'chargebacks']) {
     writeFile(path.join(wf, 'payments', 'topics', topic, 'log.md'), `# ${topic} — the conversation, never indexed\n`);
@@ -78,7 +82,6 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'spec.md'), '# The unit\'s spec — never indexed\n');
   writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth — an older version\'s, never indexed\n');
-  writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
@@ -116,7 +119,6 @@ function buildFixture(root) {
     seeds: [{ path: 'seeds/bug-report.md', source: 'inbox:bug' }],
   });
   writeFile(path.join(wf, 'login-timeout', 'investigation', 'login-timeout.md'), '# I — an older version\'s, never indexed\n');
-  writeFile(path.join(wf, 'login-timeout', 'seeds', 'bug-report.md'), '# BR\n');
 
   // Cancelled epic: entirely excluded.
   proj.work_units['old-epic'] = { work_type: 'epic' };
@@ -126,20 +128,12 @@ function buildFixture(root) {
   });
   writeFile(path.join(wf, '.knowledge', 'records', 'old-epic', 'topic-x.md'), '# skip (cancelled)\n');
 
-  // A seed on the manifest whose file is MISSING on disk → excluded by existence check.
-  proj.work_units['ghost'] = { work_type: 'epic' };
-  writeJson(path.join(wf, 'ghost', 'manifest.json'), {
-    name: 'ghost', work_type: 'epic', status: 'in-progress', created: '2026-01-04', phases: {},
-    seeds: [{ path: 'seeds/phantom.md', source: 'inbox:idea' }],
-  });
-  // (no seeds/phantom.md written)
-
   // The product's conversation: its logs, the open one among them, and the
   // files it keeps — none indexed.
   writeFile(path.join(wf, '.product', 'sessions', 'session-001.md'), '# genesis — a log, never indexed\n');
   writeFile(path.join(wf, '.product', 'sessions', 'session-002.md'), '# catch-up — a log, never indexed\n');
-  writeFile(path.join(wf, '.product', 'assets', 'app-idea.md'), '# the Claude-app bridge doc\n');
   writeFile(path.join(wf, '.product', 'spikes', '001-pricing', 'notes.md'), '# a spike\n');
+  for (const rel of NEVER) writeFile(path.join(wf, rel), '# never indexed\n');
 
   writeJson(path.join(wf, 'manifest.json'), { ...proj, product_session: '002' });
 }
@@ -147,12 +141,10 @@ function buildFixture(root) {
 // Golden set — its paths state-relative, sorted by JSON string.
 const EXPECTED = [
   { workUnit: 'auth-flow', phase: 'record', topic: 'auth-flow', file: '.knowledge/records/auth-flow/auth-flow.md' },
-  { workUnit: 'login-timeout', phase: 'seeds', topic: 'bug-report', file: 'login-timeout/seeds/bug-report.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: 'payments/.state/discovery-gap-analysis.md' },
   { workUnit: 'payments', phase: 'record', topic: '.unit', file: '.knowledge/records/payments.md' },
   { workUnit: 'payments', phase: 'record', topic: 'ledger', file: '.knowledge/records/payments/ledger.md' },
   { workUnit: 'payments', phase: 'record', topic: 'refunds', file: '.knowledge/records/payments/refunds.md' },
-  { workUnit: 'payments', phase: 'seeds', topic: 'original-idea', file: 'payments/seeds/original-idea.md' },
   { workUnit: 'typo', phase: 'summary', topic: '.unit', file: 'typo/summary.md' },
 ];
 
@@ -202,6 +194,11 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     for (const rel of ['login-timeout/investigation/login-timeout.md', 'payments/imports/oauth-notes.md']) {
       assert.throws(() => deriveIdentity(rel), (err) => err instanceof UserError && /Cannot derive identity/.test(err.message), rel);
     }
+  });
+
+  it('22.6.12: discovers no seed, asset, inbox item or the product record\'s rendered file (9.S54)', () => {
+    const files = normalise(discover(root)).map((it) => it.file);
+    assert.deepStrictEqual(files.filter((f) => NEVER.includes(f)), []);
   });
 
   it('yields the identical set over the manifests however they were read', () => {

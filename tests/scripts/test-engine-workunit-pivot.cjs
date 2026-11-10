@@ -64,10 +64,7 @@ engine.lastSections = '';
 const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
 
 /** The feature's artifacts the knowledge base holds, state-relative. */
-const UNIT_FILES = [
-  '.knowledge/records/auth-flow/auth-flow.md',
-  'auth-flow/seeds/seed.md',
-];
+const UNIT_FILES = ['.knowledge/records/auth-flow/auth-flow.md'];
 
 /** Index each of the feature's artifacts. */
 function indexUnit(fix) {
@@ -156,7 +153,7 @@ describe('engine workunit pivot — happy path', () => {
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // Chunk metadata carries work_type — pivot clears the unit's chunks then
-    // re-indexes the unit's artifacts (decided records, seeds, …),
+    // re-indexes the unit's artifacts (its records, …),
     // every chunk now the epic's.
     assert.deepStrictEqual(indexedFiles(fix.project), UNIT_FILES);
     assert.deepStrictEqual(chunkWorkTypes(fix), ['epic']);

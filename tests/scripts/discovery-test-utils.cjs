@@ -264,6 +264,10 @@ const layout = Object.freeze({
   spike: (owner, spike, ...segments) => [owner, 'spikes', spike, ...segments].join('/'),
   /** A topic's brief. @param {string} unit @param {string} topic */
   brief: (unit, topic) => `${unit}/topics/${topic}/brief.md`,
+  /** A record's rendered copy: a topic's, or with no topic the unit's own level's. @param {string} unit @param {string} [topic] */
+  record: (unit, topic) => (topic === undefined ? `${KNOWLEDGE_DIR}/records/${unit}.md` : `${KNOWLEDGE_DIR}/records/${unit}/${topic}.md`),
+  /** A quick-fix's short record after the work. @param {string} unit */
+  summary: (unit) => `${unit}/summary.md`,
   /** A unit's seed, an inbox item it was started from. @param {string} unit @param {string} name the file's stem */
   seed: (unit, name) => `${unit}/seeds/${name}.md`,
   /** A unit's analysis file. @param {string} unit @param {string} name */

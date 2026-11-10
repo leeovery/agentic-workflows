@@ -6,10 +6,10 @@
 // work's yes — its canonical manifest and registration, the marker only an
 // epic's first session takes, and its inbox seeds, each moved with its
 // folder's source tag, their removal in the creation's commit and nothing
-// else of the inbox; a seed that is no live inbox item refused, nothing
-// touched. Then what only `workunit create` takes: its model-authored log;
-// a failed registration putting the unit back; the knowledge base indexing
-// what landed, warn-don't-block; and its argument refusals. The gate itself is
+// else of the inbox, and none of them indexed (22.6.12); a seed that is no
+// live inbox item refused, nothing touched. Then what only `workunit create`
+// takes: its model-authored log; a failed registration putting the unit
+// back; and its argument refusals. The gate itself is
 // test-engine-start-this-work.cjs's.
 //
 // Layer: verb. World: discovery's gate suites' (discovery-gates-world.cjs).
@@ -24,7 +24,7 @@ const path = require('path');
 
 const {
   ENGINE, ok, refuses, refusedPristine, output, readManifest, readState, statePath, stateGit, lastMessage, touched, head, layout, writeState,
-  indexedFiles, unreadableKnowledge, commitOnState,
+  hasStore, commitOnState,
 } = require('./engine-harness.cjs');
 const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
@@ -84,7 +84,7 @@ describe('a created unit, through start this work', () => {
       [{ discovery: { active_session: '001' } }, {}, {}, {}]);
   });
 
-  it('moves each seed out of the inbox with its folder\'s source tag, the commit taking the removal and indexing what landed', () => {
+  it('moves each seed out of the inbox with its folder\'s source tag, the commit taking the removal, and indexes none of them (22.6.12)', () => {
     commitOnState(statePath(dir()), { [QUICKFIX]: '# Typo Fix\n' });
     const res = started('epic', 'payments', { seeds: [`.leeway/${IDEA}`, `.leeway/${BUG}`, `.leeway/${QUICKFIX}`] });
     assert.deepStrictEqual(res.seeds, [
@@ -102,7 +102,7 @@ describe('a created unit, through start this work', () => {
     assert.deepStrictEqual(['ideas', 'bugs', 'quickfixes'].map((folder) => fs.readdirSync(statePath(dir(), '.inbox', folder))), [[], [], []]);
     assert.deepStrictEqual(touched(statePath(dir()), 'HEAD').filter((line) => line.includes('.inbox/')), [`D\t${BUG}`, `D\t${IDEA}`, `D\t${QUICKFIX}`],
       'each seed\'s removal rides with its new home');
-    assert.deepStrictEqual(indexedFiles(dir()), ['payments/seeds/2026-06-01-smart-retry.md', 'payments/seeds/2026-06-02-login-loop.md', 'payments/seeds/2026-06-03-typo-fix.md']);
+    assert.strictEqual(hasStore(dir()), false, 'a seed was indexed');
   });
 
   it('leaves an unrelated inbox change out of a commit with no seeds', () => {
@@ -132,15 +132,6 @@ describe('workunit create, its log', () => {
     const args = createArgs('payments', 'epic', ['--seed', `.leeway/${IDEA}`]);
     const refused = failingWrites(manifestTemp(statePath(dir())), () => refusedPristine(dir(), args));
     assert.strictEqual(refused.error, 'disk full');
-  });
-
-  it('warns where the knowledge base cannot index what landed, and still commits', () => {
-    unreadableKnowledge(dir());
-    const res = ok(dir(), createArgs('payments', 'epic', ['--seed', `.leeway/${IDEA}`]));
-    assert.deepStrictEqual(res.warnings.map((/** @type {string} */ w) => w.replace(/ at .*/s, '')), [
-      'knowledge index (seeds/2026-06-01-smart-retry.md) failed: loadStore: corrupted store file',
-    ]);
-    assert.strictEqual(lastMessage(dir()), 'discovery(payments): create work unit (epic)');
   });
 });
 

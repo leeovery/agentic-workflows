@@ -6,7 +6,7 @@
 // `setupProject`); the library's stub engine, whose migration runner
 // STUB_MIGRATE_MODE and its siblings drive (`stubbed`), and the repo's real
 // scripts (`real`); the hooks boot installs, as settings read;
-// a knowledge base that reads ready, a seed to index, and
+// a knowledge base that reads ready, a short record to index, and
 // the vector fill's launches recorded; and the session-hook helpers over a
 // describe's own fixture (`hookHelpers`).
 
@@ -95,17 +95,16 @@ function readyKnowledge(project, settings = {}) {
 }
 
 /**
- * A feature with one seed holding `body` — something for boot's index to
- * take in.
+ * A quick-fix whose short record holds `body` — something for boot's index
+ * to take in.
  * @param {string} project @param {string} body
  */
-function seededFeature(project, body) {
-  writeState(project, layout.projectManifest, JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
+function recordedQuickFix(project, body) {
+  writeState(project, layout.projectManifest, JSON.stringify({ work_units: { payments: { work_type: 'quick-fix' } } }, null, 2) + '\n');
   writeState(project, layout.manifest('payments'), JSON.stringify({
-    name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-    phases: {}, seeds: [{ path: 'seeds/payments.md', source: 'inbox:idea' }],
+    name: 'payments', work_type: 'quick-fix', status: 'in-progress', created: '2026-01-01', phases: {},
   }, null, 2) + '\n');
-  writeState(project, layout.seed('payments', 'payments'), body);
+  writeState(project, layout.summary('payments'), body);
 }
 
 /** A git-repo project carrying the settings every booted project has. */
@@ -157,5 +156,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, FLAG, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, seededFeature, bootProject, runEngine, runEngineFails,
+  hookHelpers, FLAG, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails,
 };

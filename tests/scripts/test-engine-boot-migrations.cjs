@@ -25,7 +25,7 @@ const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { LABELS_ON, stubbed, readyKnowledge, seededFeature, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
+const { LABELS_ON, stubbed, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;
@@ -272,7 +272,7 @@ describe('engine boot', () => {
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
     readyKnowledge(fix.project);
-    seededFeature(fix.project, '# Payments\n\nCards ship first.\n');
+    recordedQuickFix(fix.project, '# Payments\n\nCards ship first.\n');
     const knowledge = statePath(fix.project, layout.knowledge());
     const before = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
 

@@ -20,7 +20,7 @@ const assert = require('node:assert');
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const {
   ENGINE_COMMAND, KEYWORD_ONLY, OPENAI,
-  embeddingEndpoint, engineKnowledge, refuseLaunches, knowledgeUnit, seedsOn, knowledgeAt, knowledgeMetadata, systemConfigDir,
+  embeddingEndpoint, engineKnowledge, refuseLaunches, knowledgeUnit, knowledgeAt, knowledgeMetadata, systemConfigDir,
 } = require('./knowledge-harness.cjs');
 
 const UPGRADE = `Upgrade anytime: \`${ENGINE_COMMAND} knowledge setup --provider ...\` `
@@ -147,13 +147,13 @@ describe('engine knowledge setup', () => {
 
     it('validates the system\'s provider by a test embed, indexes what the project holds, and records the provider', async () => {
       fs.writeFileSync(systemConfig(), JSON.stringify({ knowledge: { provider: 'stub', dimensions: 64 } }));
-      knowledgeUnit(root, 'seeded', 'epic', seedsOn('seed-conversation'));
-      createFile(statePath(root), 'seeded/seeds/seed-conversation.md', '# Seed\n\nOAuth notes.\n');
+      knowledgeUnit(root, 'decided', 'epic');
+      createFile(statePath(root), '.knowledge/records/decided/oauth.md', '# OAuth\n\nOAuth notes.\n');
       const answer = await setup('--from-system');
       assert.strictEqual(answer.code, 0, answer.stderr);
       assert.strictEqual(answer.stdout, [
         'Validating stub via a test embed...', 'Embedding provider works.', '  config.json written', '  store.bin written', '  metadata.json written', '',
-        'Initial indexing', '----------------', `Indexed ${statePath(root, 'seeded/seeds/seed-conversation.md')} — 1 chunks (new)`,
+        'Initial indexing', '----------------', `Indexed ${statePath(root, '.knowledge/records/decided/oauth.md')} — 1 chunks (new)`,
         '1 new, 0 changed, 0 removed, 0 unchanged.', '', 'Knowledge base ready.', '  provider: stub', '',
       ].join('\n'));
       assert.strictEqual(knowledgeMetadata(root).provider, 'stub');

@@ -5,15 +5,15 @@
 // one transaction, in steps start this work composes with its own writes
 // (start-this-work.cjs) and `workunit create` runs alone: check everything,
 // write the unit (its manifest, seeds — inbox items and roadmap items'
-// notes — and first discovery log), register it, index what landed, commit.
+// notes — and first discovery log), register it, commit. Nothing it lands is
+// indexed (22.6.12).
 // The engine never authors prose — `workunit create` installs the
 // model-authored log verbatim.
 //
 // Validation is complete before any mutation: a name already taken refuses
 // outright — nothing is on disk until every input is legal. A write that fails
 // part-way is undone: each seed back in the inbox, the unit's folder gone.
-// The manifest write is the source of truth; the knowledge base is a derived
-// index (warn-don't-block); the scoped commit comes last.
+// The manifest write is the source of truth; the scoped commit comes last.
 //
 // The created manifest and its project-manifest registration reproduce the
 // canonical work-unit document field-for-field — one on-disk shape.
@@ -30,7 +30,6 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { parseInboxPaths, INBOX, SEED_SOURCES, ROADMAP_SEED } = require('./inbox.cjs');
 const { normaliseBasename, dedupe } = require('./import-landing.cjs');
 const { todayStamp, isoNow } = require('./dates.cjs');
@@ -61,7 +60,7 @@ function assertLegalWorkUnitName(workUnit) {
  * @property {string} session_log  the installed log (absolute)
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]  set when committed is null
- * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
+ * @property {string[]} warnings  non-blocking failures (the commit)
  */
 
 /**
@@ -199,16 +198,6 @@ function registerWorkUnit(project, workUnit, workType) {
 }
 
 /**
- * The unit's seeds indexed into the knowledge base, warn-don't-block.
- * @param {string} cwd @param {string} workUnit @param {Landed} landed @param {string[]} warnings
- */
-function indexLanded(cwd, workUnit, { seeds }, warnings) {
-  syncKnowledge(cwd, [
-    ...seeds.map(({ dest }) => ({ index: `${workUnit}/seeds/${dest}`, label: `knowledge index (seeds/${dest})` })),
-  ], warnings);
-}
-
-/**
  * What a commit of the new unit takes: the unit and the project manifest,
  * and the inbox where seeds moved out of it — their removal rides with their
  * new home.
@@ -225,7 +214,7 @@ function landedSeeds(cwd, workUnit, { seeds }) {
 
 /**
  * `workunit create`: the unit created from Claude's arguments — checked,
- * written, registered, indexed and committed, the session log installed
+ * written, registered and committed, the session log installed
  * verbatim from `sessionLogFile`.
  * @param {string} cwd project root
  * @param {string} workUnit
@@ -260,7 +249,6 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 
   /** @type {string[]} */
   const warnings = [];
-  indexLanded(cwd, workUnit, landed, warnings);
   const outcome = commitStateTail(cwd, createdPaths(workUnit, landed), `discovery(${workUnit}): create work unit (${workType})`, warnings);
 
   /** @type {WorkUnitCreateResult} */
@@ -277,5 +265,5 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 }
 
 module.exports = {
-  FIRST_LOG, createWorkUnit, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, indexLanded, createdPaths, landedSeeds,
+  FIRST_LOG, createWorkUnit, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, createdPaths, landedSeeds,
 };

@@ -22,21 +22,25 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { git, stateGit, output, unreadableKnowledge, indexedFiles, commitAll, fixtureFrom } = require('./engine-harness.cjs');
+const { git, stateGit, output, unreadableKnowledge, indexedFiles, hasStore, commitAll, fixtureFrom } = require('./engine-harness.cjs');
 const { holdsWriterLock } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 const {
   ABSORB, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
 } = require('./absorb-world.cjs');
 
-/** Index each file as it stands, so the store holds chunks a transaction can remove. */
+/** Each record copy written and indexed, so the store holds chunks a transaction can remove. */
 function indexFiles(fix, files) {
-  for (const file of files) output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
+  for (const file of files) {
+    writeFile(fix.project, path.join('.leeway', file), `# ${file}\n\nWhat it settled.\n`);
+    output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
+  }
 }
 
-/** The feature's own indexed artifacts — its discussion is never indexed (9.2.2). */
-const FEATURE_FILES = [
-  'auth-flow/seeds/seed.md',
-];
+/** The feature's own indexed artifacts — its discussion is never indexed (9.2.2), nor its seeds (22.6.12). */
+const FEATURE_FILES = ['.knowledge/records/auth-flow/auth-flow.md'];
+
+/** The epic's own topic's record. */
+const EPIC_FILE = '.knowledge/records/payments/fee-model.md';
 
 describe('engine workunit absorb — happy path', () => {
   let fix;
@@ -66,7 +70,7 @@ describe('engine workunit absorb — happy path', () => {
 
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', (t) => {
     fix = setupFixture();
-    indexFiles(fix, [...FEATURE_FILES, 'payments/seeds/roadmap.md']);
+    indexFiles(fix, [...FEATURE_FILES, EPIC_FILE]);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     writeFile(fix.project, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
     writeFile(fix.project, '.leeway/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md', 'put back\n');
@@ -151,13 +155,10 @@ describe('engine workunit absorb — happy path', () => {
     assert.ok(staged.includes('manifest.json'), 'project manifest staged');
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
-    // KB: feature chunks removed, the moved seeds indexed at their epic
-    // identities — the discussion never — and the epic's own chunks left
-    // standing.
-    assert.deepStrictEqual(indexedFiles(fix.project), [
-      'payments/seeds/roadmap.md',
-      'payments/seeds/seed.md',
-    ]);
+    // KB: feature chunks removed, nothing it moved indexed at the epic — a
+    // seed never (22.6.12), the discussion never — and the epic's own chunks
+    // left standing.
+    assert.deepStrictEqual(indexedFiles(fix.project), [EPIC_FILE]);
   });
 
   it('an in-progress discussion alone: its status mirrored, a map row written for it, nothing indexed', () => {
@@ -167,7 +168,7 @@ describe('engine workunit absorb — happy path', () => {
     });
     delete feature.seeds;
     fix = setupFixture({ feature });
-    indexFiles(fix, ['payments/seeds/roadmap.md']);
+    indexFiles(fix, [EPIC_FILE]);
     const res = engine(fix, ABSORB);
 
     assert.deepStrictEqual(res.discussion, { path: inEpic(fix, 'topics/auth/log.md'), status: 'in-progress' });
@@ -176,7 +177,7 @@ describe('engine workunit absorb — happy path', () => {
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'in-progress' } });
     assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery' });
-    assert.deepStrictEqual(indexedFiles(fix.project), ['payments/seeds/roadmap.md']);
+    assert.deepStrictEqual(indexedFiles(fix.project), [EPIC_FILE]);
   });
 
   it('a phase item travels key-complete — whatever a feature item carries, the epic item carries', () => {
@@ -240,8 +241,8 @@ describe('engine workunit absorb — happy path', () => {
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
 
-    // The store holds exactly the indexed moves — no experiment file.
-    assert.deepStrictEqual(indexedFiles(fix.project), ['payments/seeds/seed.md']);
+    // Nothing it moved is indexed — no experiment file, no seed.
+    assert.strictEqual(hasStore(fix.project), false);
 
     // The receipt names the moved series by its top-level count — E1, E1.1,
     // E2 is two experiments, never three; a non-count refuses.
@@ -303,9 +304,8 @@ describe('engine workunit absorb — happy path', () => {
     unreadableKnowledge(fix.project);
     const res = engine(fix, ABSORB);
 
-    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
+    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
-    assert.match(res.warnings[1], /^knowledge index \(seeds\/seed\.md\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
 
@@ -343,7 +343,6 @@ describe('engine workunit absorb — a renamed seed\'s links follow it', () => {
     assert.strictEqual(movedLog(), 'See [the ask](../../seeds/notes-2.md).\nAlso ../../seeds/seed.md.');
     assert.strictEqual(read('payments/topics/fee-model/brief.md'), '# Fees\n\n[epic notes](../../seeds/notes.md)\n', 'the epic\'s own document names the epic\'s own file');
     assert.deepStrictEqual([read('payments/seeds/notes.md'), read('payments/seeds/notes-2.md')], ['# Epic notes\n', '# notes.md\n']);
-    assert.deepStrictEqual(indexedFiles(fix.project), ['payments/seeds/notes-2.md', 'payments/seeds/seed.md']);
   });
 
   it('a link already naming the landed file is left as it is — the substitution is exact', () => {

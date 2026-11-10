@@ -28,7 +28,7 @@ const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { ENGINE_COMMAND } = require(path.join(REAL_SCRIPTS, 'kernel/call.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { STORE_FILES, stubbed, recordStubbedLaunches, readyKnowledge, seededFeature, bootProject, runEngine } = require('./boot-world.cjs');
+const { STORE_FILES, stubbed, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;
@@ -81,20 +81,20 @@ describe('engine boot', () => {
 
   it('a ready store is never committed — the index is the checkout\'s own', () => {
     readyKnowledge(fix.project);
-    seededFeature(fix.project, '# Payments\n\nCards ship first.\n');
+    recordedQuickFix(fix.project, '# Payments\n\nCards ship first.\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.seed('payments', 'payments')]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('payments')]);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
     assert.strictEqual(stateGit(fix.project, ['ls-files', '--', '.knowledge']).trim(), '');
   });
 
   it('buildable: a set-up checkout with no store has it built by the keyword side, then compacted', () => {
     writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
-    seededFeature(fix.project, '# Payments\n\nCards ship first.\n');
+    recordedQuickFix(fix.project, '# Payments\n\nCards ship first.\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -103,7 +103,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.compacted, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.ok(!('system_config' in res), 'a store that stood needs no setup');
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.seed('payments', 'payments')]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('payments')]);
   });
 
   it('buildable: a build that did not stand is not-ready — no compact, the gate\'s report attached', () => {
@@ -123,7 +123,7 @@ describe('engine boot', () => {
 
   it('buildable: a store that stood with a file failing is ready, the failure a warning the next start retries', () => {
     writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
-    seededFeature(fix.project, '');
+    recordedQuickFix(fix.project, '');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -131,7 +131,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.warnings.length, 1);
-    const file = statePath(fix.project, layout.seed('payments', 'payments'));
+    const file = statePath(fix.project, layout.summary('payments'));
     assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
   });
 
@@ -147,26 +147,26 @@ describe('engine boot', () => {
   });
 
   it('a mistake in the knowledge config is named, never a block — compact prunes at the default floor in its place', () => {
-    // S0 0.05: 'buried', two completions behind, sits at R ≈ 0.015 — below the
-    // default floor 0.05 — and 'recent', one behind, at R ≈ 0.12, above it.
-    const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
+    // S0 0.04: 'buried', a quick-fix and a feature behind, sits at R ≈ 0.037
+    // — below the default floor 0.05 — and 'recent', a feature behind, at
+    // R ≈ 0.072, above it. Each quick-fix holds its short record.
+    const completions = [['buried', '2024-01-01', 'quick-fix'], ['recent', '2024-06-01', 'quick-fix'], ['frontier', '2024-12-01', 'feature']];
     writeState(fix.project, layout.projectManifest, JSON.stringify({
-      work_units: Object.fromEntries(completions.map(([name]) => [name, { work_type: 'feature' }])),
+      work_units: Object.fromEntries(completions.map(([name, , type]) => [name, { work_type: type }])),
     }, null, 2) + '\n');
-    for (const [name, completedAt] of completions) {
+    for (const [name, completedAt, type] of completions) {
       writeState(fix.project, layout.manifest(name), JSON.stringify({
-        name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
-        phases: {}, seeds: name === 'frontier' ? [] : [{ path: `seeds/${name}.md`, source: 'inbox:idea' }],
+        name, work_type: type, status: 'completed', created: '2024-01-01', completed_at: completedAt, phases: {},
       }, null, 2) + '\n');
-      if (name !== 'frontier') writeState(fix.project, layout.seed(name, name), `# ${name}\n\nCards ship first.\n`);
+      if (type === 'quick-fix') writeState(fix.project, layout.summary(name), `## ${name}\n\nCards ship first.\n`);
     }
-    readyKnowledge(fix.project, { decay_prune_below: false, decay_base_stability: 0.05 });
+    readyKnowledge(fix.project, { decay_prune_below: false, decay_base_stability: 0.04 });
     runEngine(stubbed, fix.project, ['boot']);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.seed('buried', 'buried'), layout.seed('recent', 'recent')]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('buried'), layout.summary('recent')]);
 
     const configFile = statePath(fix.project, layout.knowledge('config.json'));
     writeState(fix.project, layout.knowledge('config.json'), JSON.stringify({
-      knowledge: { provider: null, decay_prune_below: 7, decay_base_stability: 0.05, strategy: 'hybrid' },
+      knowledge: { provider: null, decay_prune_below: 7, decay_base_stability: 0.04, strategy: 'hybrid' },
     }) + '\n');
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -178,12 +178,12 @@ describe('engine boot', () => {
       `knowledge config: decay_prune_below in ${configFile} is ignored: 7 is not false or a number from 0 to 1`,
       `knowledge config: strategy in ${configFile} is ignored: not a knowledge setting`,
     ]);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.seed('recent', 'recent')]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('recent')]);
   });
 
   it('a file the index cannot take is its own warning — compact still runs', () => {
     readyKnowledge(fix.project);
-    seededFeature(fix.project, '');
+    recordedQuickFix(fix.project, '');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -191,7 +191,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.warnings.length, 1);
-    const file = statePath(fix.project, layout.seed('payments', 'payments'));
+    const file = statePath(fix.project, layout.summary('payments'));
     assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
   });
 
@@ -218,13 +218,8 @@ describe('engine boot: a set-up checkout with no store', () => {
     fix = bootProject();
     sysDir = path.join(fix.root, 'system-config');
     fs.mkdirSync(sysDir, { recursive: true });
-    // A feature with one seed — something for a build to index.
-    writeState(fix.project, layout.projectManifest, JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
-    writeState(fix.project, layout.manifest('payments'), JSON.stringify({
-      name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-      phases: {}, seeds: [{ path: 'seeds/payments.md', source: 'inbox:idea' }],
-    }, null, 2) + '\n');
-    writeState(fix.project, layout.seed('payments', 'payments'), '# Payments\n\n## Card first\n\nCards ship first; wallets follow.\n');
+    // A quick-fix with its short record — something for a build to index.
+    recordedQuickFix(fix.project, '## Card first\n\nCards ship first; wallets follow.\n');
     commitAll(fix.project, 'the project');
     // This checkout is set up — its local knowledge config — with no store.
     writeState(fix.project, CONFIG, '{ "knowledge": {} }\n');
@@ -253,7 +248,7 @@ describe('engine boot: a set-up checkout with no store', () => {
     const meta = metadata();
     assert.strictEqual(meta.provider, 'stub');
     assert.strictEqual(meta.dimensions, 8);
-    assert.ok(meta.last_indexed, 'the seed was indexed into it');
+    assert.ok(meta.last_indexed, 'the short record was indexed into it');
     assert.strictEqual(store.chunksWithoutVector(store.loadStore(storePath())).length, 1, 'its vector awaits the fill');
     assert.deepStrictEqual(launched, [statePath(fix.project)]);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'the build commits nothing');
@@ -296,18 +291,18 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.deepStrictEqual(res.warnings, [
       `knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run ${ENGINE_COMMAND} knowledge setup --key-only`,
     ]);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.seed('payments', 'payments')], 'the keyword side still lands');
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('payments')], 'the keyword side still lands');
     assert.deepStrictEqual(launched, []);
   });
 
   it('a vector fill that fell short is the next start\'s warning — and the fill goes again', (t) => {
     const launched = recordStubbedLaunches(t);
     bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
-    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.seed('payments', 'payments')}: out of quota` });
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.summary('payments')}: out of quota` });
 
     const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
 
-    assert.deepStrictEqual(res.warnings, [`knowledge vector fill fell short: ${layout.seed('payments', 'payments')}: out of quota`]);
+    assert.deepStrictEqual(res.warnings, [`knowledge vector fill fell short: ${layout.summary('payments')}: out of quota`]);
     assert.deepStrictEqual(launched, [statePath(fix.project), statePath(fix.project)]);
   });
 
@@ -315,7 +310,7 @@ describe('engine boot: a set-up checkout with no store', () => {
     recordStubbedLaunches(t);
     writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
     bootWith(null);
-    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.seed('payments', 'payments')}: out of quota` });
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.summary('payments')}: out of quota` });
     const unit = statePath(fix.project, layout.manifest('payments'));
     fs.writeFileSync(unit, JSON.stringify({ ...JSON.parse(fs.readFileSync(unit, 'utf8')), status: 'cancelled' }));
 

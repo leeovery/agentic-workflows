@@ -29,7 +29,9 @@
 // product's among them, are reached through the pointers into them. Nor is
 // the spec (11.1.2): the records it is drawn from are indexed in its place.
 // Nor is anything of a unit's build (22.6.3): its log, its notes for later,
-// and each task's account and reports.
+// and each task's account and reports. Nor is a seed, an asset, an inbox item
+// or the product record's rendered file (22.6.12): an asset is reached
+// through the entry that links it, in its record.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -41,7 +43,6 @@ const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport } = require('../import-landing.cjs');
 
 const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
-const SEED_PATH = /^([^/]+)\/seeds\/(.+)$/;
 const SUMMARY_PATH = /^([^/]+)\/summary\.md$/;
 
 /** The phase a record's chunks carry. */
@@ -57,7 +58,7 @@ const UNIT_RECORD = '.unit';
 const summaryFile = (unit) => `${unit}/summary.md`;
 
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['seeds', 'analysis', RECORD_PHASE, SUMMARY_PHASE];
+const INDEXED_PHASES = ['analysis', RECORD_PHASE, SUMMARY_PHASE];
 
 // The indexable files under `{wu}/.state/`, each basename mapped
 // to its topic — the directory also holds operational state that must never
@@ -182,23 +183,6 @@ function analysisIdentity(workUnit, rest) {
 }
 
 /**
- * A seed's topic from the path beneath the seeds' folder, a flat
- * `{topic}.md`.
- * @param {string} rest
- * @returns {string}
- */
-function seedTopic(rest) {
-  const flatMatch = /^([^/]+)\.md$/.exec(rest);
-  if (!flatMatch) {
-    throw new UserError(
-      `Unexpected seeds path structure: ${rest}\n` +
-        'Expected: {work_unit}/seeds/{topic}.md'
-    );
-  }
-  return flatMatch[1];
-}
-
-/**
  * An artifact's identity from its state-relative path, or a UserError naming
  * the shape the path should have.
  * @param {string} filePath
@@ -213,23 +197,14 @@ function deriveIdentity(filePath) {
   const stateMatch = ANALYSIS_PATH.exec(norm);
   if (stateMatch) return analysisIdentity(stateMatch[1], stateMatch[2]);
   const summaryMatch = SUMMARY_PATH.exec(norm);
-  if (summaryMatch) {
-    assertSegment('work unit', summaryMatch[1]);
-    return { workUnit: summaryMatch[1], phase: SUMMARY_PHASE, topic: UNIT_RECORD };
-  }
-
-  const match = SEED_PATH.exec(norm);
-  if (!match) {
+  if (!summaryMatch) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
-        'Expected path matching: {work_unit}/seeds/...'
+        `Expected path matching: ${RECORDS_DIR}/..., {work_unit}/summary.md or {work_unit}/.state/...`
     );
   }
-  const [, workUnit, rest] = match;
-  assertSegment('work unit', workUnit);
-  const topic = seedTopic(rest);
-  assertSegment('topic', topic);
-  return { workUnit, phase: 'seeds', topic };
+  assertSegment('work unit', summaryMatch[1]);
+  return { workUnit: summaryMatch[1], phase: SUMMARY_PHASE, topic: UNIT_RECORD };
 }
 
 /**
@@ -326,32 +301,6 @@ function readManifestsOr(root, warn, context) {
 // ---------------------------------------------------------------------------
 
 /**
- * A work unit's seeds: markdown alone, exactly `seeds/{filename}` — any
- * other shape is a manifest edit no lander makes, refused so it cannot
- * poison the store — each topic once, and only while its file exists.
- * @param {string} root @param {Record<string, any>} unit
- * @returns {Artifact[]}
- */
-function seedEntries(root, unit) {
-  const entries = unit.seeds;
-  if (!Array.isArray(entries)) return [];
-  const shape = /^seeds\/([^/]+)$/;
-  const seen = new Set();
-  /** @type {Artifact[]} */
-  const out = [];
-  for (const entry of entries) {
-    const m = entry && typeof entry.path === 'string' ? shape.exec(entry.path) : null;
-    if (!m || !isIndexableImport(m[1]) || m[1].includes('..') || m[1].startsWith('.')) continue;
-    const topic = m[1].slice(0, -3);
-    if (!topic || seen.has(topic)) continue;
-    seen.add(topic);
-    const file = path.posix.join(unit.name, 'seeds', m[1]);
-    if (fs.existsSync(path.resolve(root, file))) out.push({ file, workUnit: unit.name, phase: 'seeds', topic });
-  }
-  return out;
-}
-
-/**
  * The markdown files directly in a directory, their stems dot-free.
  * @param {string} root @param {string} dir @returns {string[]}
  */
@@ -381,8 +330,8 @@ function recordArtifacts(root, workUnit) {
 }
 
 /**
- * A live work unit's artifacts: its seeds, its analysis caches, its record
- * copies and its short record.
+ * A live work unit's artifacts: its analysis caches, its record copies and
+ * its short record.
  * @param {string} root @param {Record<string, any>} unit
  * @returns {Artifact[]}
  */
@@ -390,7 +339,7 @@ function unitArtifacts(root, unit) {
   const workUnit = unit.name;
   const exists = (/** @type {string} */ file) => fs.existsSync(path.resolve(root, file));
   /** @type {Artifact[]} */
-  const items = [...seedEntries(root, unit), ...recordArtifacts(root, workUnit)];
+  const items = recordArtifacts(root, workUnit);
   if (exists(summaryFile(workUnit))) items.push({ file: summaryFile(workUnit), workUnit, phase: SUMMARY_PHASE, topic: UNIT_RECORD });
   for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
     const file = path.posix.join(workUnit, '.state', `${basename}.md`);
