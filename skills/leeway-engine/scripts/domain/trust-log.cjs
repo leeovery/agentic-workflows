@@ -76,7 +76,9 @@
 //   whichever of its clones on the machine kept it, its landing failed or
 //   never run — so evidence whose append failed counts all the same,
 //   wherever it waits (trust-evidence.cjs); an event under another
-//   project's id is that project's.
+//   project's id is that project's. The person's events are read the same
+//   way from one project, every project's at once, for the ask rule's
+//   counts, whose prior is the person's other projects (trust-counts.cjs).
 // - While the migration runs in the project — its state branch with no
 //   commit yet (state-worktree.cjs) — nothing of the project's reaches the
 //   log: no event is recorded, and none kept ahead of its entry, so none
@@ -578,22 +580,34 @@ function readTrustLog(visit) {
 }
 
 /**
+ * Read every project's events on this machine through once, from the
+ * project whose state is at `root`: `visit` is given each event, in the
+ * order read, once by its id — the log's, then what every conversation keeps
+ * waiting: an event whose append failed, whichever project's, and one kept
+ * ahead of its entry where this state's ledger holds the entry, whichever
+ * clone kept it. One kept ahead of an entry in another project's ledger is
+ * read once it lands.
+ * @param {string} root the project's state root
+ * @param {(event: Record<string, unknown>) => void} visit
+ */
+function readPersonEvents(root, visit) {
+  const holds = ledgerHolds(root);
+  readEvents([trustLogPath(), ...waitingFiles()], visit, ({ entry }) => holds(entry));
+}
+
+/**
  * Read the project whose state is at `root` through once, on this machine:
- * `visit` is given each of its events, in the order read, once by its id —
- * the log's, then what every conversation keeps waiting: an event whose
- * append failed, and one kept ahead of its entry where this state's ledger
- * holds the entry, whichever clone kept it. An event under another
- * project's id is never this one's (16.13.5). Refuses a project whose
- * manifest holds no project_id.
+ * `visit` is given each of its events, as `readPersonEvents` reads them. An
+ * event under another project's id is never this one's (16.13.5). Refuses a
+ * project whose manifest holds no project_id.
  * @param {string} root the project's state root
  * @param {(event: Record<string, unknown>) => void} visit
  */
 function readProjectEvents(root, visit) {
   const project = projectId(root);
-  const holds = ledgerHolds(root);
-  readEvents([trustLogPath(), ...waitingFiles()], (event) => {
+  readPersonEvents(root, (event) => {
     if (event.project === project) visit(event);
-  }, ({ entry }) => holds(entry));
+  });
 }
 
-module.exports = { TRUST_LOG, PENDING, trustLogPath, projectOf, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readProjectEvents };
+module.exports = { TRUST_LOG, PENDING, trustLogPath, projectId, projectOf, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readPersonEvents, readProjectEvents };
