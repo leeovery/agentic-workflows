@@ -4,7 +4,7 @@
 
 ---
 
-The level a turn runs at. [voice.md](voice.md) governs how a sentence sounds and [ask-or-decide.md](ask-or-decide.md) which calls go to `raise`; this file governs what the turn is about — the product, with the code as evidence beneath it. What is prescribed and what is written on disk sit outside it, as they sit outside voice: a record stays technical at whatever depth the material needs, and altitude is a property of the turn the person reads, never of the file.
+The level a turn runs at. [voice.md](voice.md) governs how a sentence sounds and [ask-or-decide.md](ask-or-decide.md) which calls go to `raise`; this file governs what the turn is about — the product, with the code as evidence beneath it. What is prescribed and what is written on disk sit outside it, as they sit outside voice: a record stays technical at whatever depth the material needs, and altitude is a property of what the person reads — a turn, or a payload the engine draws (**Payloads**) — never of the record.
 
 ## The Level
 
@@ -21,3 +21,7 @@ The level a turn runs at. [voice.md](voice.md) governs how a sentence sounds and
 A question put to the person — in the conversation or in a raise — is composed at the same level: the situation they would be in, then what the product is or does on each side of the answer. A fork whose sides cannot be told as what the product does — a data model, a contract, the code's insides — still goes to `raise` as [ask-or-decide.md](ask-or-decide.md) says, told as close to what the person would notice as it gets, never settled alone.
 
 **The test**: from a glance the person can picture the behaviour and knows what they are being asked, with no code in front of them.
+
+## Payloads
+
+Words written into a payload for the engine to draw — a recap, a summary, a line a screen shows — are read by the person, and are composed at this level, as a turn is, never as a record is. The reader is an engineer who knows the product but not this codebase: full fluency, nothing dumbed down, no internal name assumed. Complete in coverage, compact in telling: every substantive point in a sentence or two, its depth left to the record and to the screen's deeper rows.

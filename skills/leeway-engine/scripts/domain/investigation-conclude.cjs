@@ -19,6 +19,10 @@
 //   yet taken in named by where it stands, never dispatched again; no
 //   question of the person's open at the place, no row of its map standing
 //   open; and no mail waiting in the topic's mailbox.
+// - A move of the bugfix to a feature (workunit-move.cjs) waits on the root
+//   cause's validation as the conclude does, so the feature never starts
+//   from a cause its validator would have broken (`assertMovable`): one
+//   still running is what the move waits for.
 // - Claude's recap of the hunt, `{"hunt": "<one paragraph>", "fixes"?,
 //   "area"?}`, is staged in the topic's cache with `--file`, against the
 //   root cause and the fix as they stand, and when it was staged; the
@@ -116,10 +120,11 @@ const VALIDATIONS = Object.freeze([
 
 /**
  * A validation dispatched and still to be taken in, said as its way on by
- * where it stands. @type {Readonly<Record<string, (unit: string, id: string) => string>>}
+ * where it stands, `waiter` what waits on it.
+ * @type {Readonly<Record<string, (unit: string, id: string, waiter: string) => string>>}
  */
 const WAITING = Object.freeze({
-  running: (unit, id) => `${id} is still running — the conclude waits for its report`,
+  running: (unit, id, waiter) => `${id} is still running — ${waiter} waits for its report`,
   lost: (unit, id) => `${id} was lost with the process that dispatched it — engine agent incorporate ${unit} ${PHASE} ${unit} ${id} abandons it, and another is dispatched`,
   landed: (unit, id) => `${id}'s report is in — engine agent scan ${unit} ${PHASE} ${unit} reads it in, then engine agent ack ${unit} ${PHASE} ${unit} ${id} with its findings, or --clean`,
   pending: (unit, id) => `${id}'s report is in — engine agent ack ${unit} ${PHASE} ${unit} ${id} with its findings, or --clean`,
@@ -145,17 +150,19 @@ function validationSince(cwd, unit, folded, { kind, since }, rests) {
 
 /**
  * The validation not yet taken in since the entries it rests on were made,
- * refused with the way on: the one dispatched since, by where it stands,
- * or, where none was, its dispatch, its brief and its report taken in.
+ * refused with the way on: the one dispatched since, by where it stands —
+ * one still running named as what `waiter` waits for — or, where none was,
+ * its dispatch, its brief and its report taken in.
  * @param {string} cwd @param {string} unit @param {UnitView} view
- * @param {(typeof VALIDATIONS)[number]} validation @param {{rootCause: Rested, fix: Rested}} rests
+ * @param {(typeof VALIDATIONS)[number]} validation @param {Partial<Record<'rootCause'|'fix', Rested>>} rests each entry it rests on
+ * @param {string} [waiter]
  */
-function assertValidated(cwd, unit, { folded }, validation, rests) {
+function assertValidated(cwd, unit, { folded }, validation, rests, waiter = 'the conclude') {
   const { kind, of, what, logged } = validation;
   const standing = validationSince(cwd, unit, folded, validation, rests);
   if (standing?.stands === 'taken-in') return;
-  const named = `the ${what} ${rests[of].short}`;
-  if (standing !== null) throw new Error(`${named} is being validated — ${WAITING[standing.stands](unit, standing.id)}`);
+  const named = `the ${what} ${/** @type {Rested} */ (rests[of]).short}`;
+  if (standing !== null) throw new Error(`${named} is being validated — ${WAITING[standing.stands](unit, standing.id, waiter)}`);
   throw new Error(`${named} has not been validated since ${logged} — both validations always run: engine agent dispatch ${unit} ${PHASE} ${unit} --kind ${kind}, its brief engine brief ${kind} ${unit} --agent <id>, and its report taken in`);
 }
 
@@ -165,6 +172,27 @@ function assertQuestionsClosed(unit, { folded, entries, short }) {
   if (open.length === 0) return;
   const listed = open.map(({ id }) => `${short(id)} "${String(entries.get(id)?.line.text ?? '').replace(/\s+/g, ' ').trim()}"`).join(', ');
   throw new Error(`a question of the person's is open at the investigation — ${listed} — each is answered before it concludes`);
+}
+
+/**
+ * Refuses a bugfix's move to a feature while the root cause logged has no
+ * validation taken in since it was — one out, its report not taken in, or
+ * none dispatched — so the feature never starts from a cause its validator
+ * would have broken (19.4.7); none where no root cause is logged. What the
+ * ledger's read said is pushed to `warnings`.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function assertMovable(cwd, unit, warnings) {
+  const hunt = huntOf(cwd, unit, warnings);
+  withUnitEntries(cwd, unit, warnings, (view) => {
+    const { rootCause } = huntEntries(unit, view, hunt);
+    if ('fault' in rootCause) return;
+    try {
+      assertValidated(cwd, unit, view, VALIDATIONS[0], { rootCause }, 'the move');
+    } catch (err) {
+      throw new Error(`${unit} moves to a feature once its root cause's validation is taken in, and ${messageOf(err)}`);
+    }
+  });
 }
 
 /**
@@ -367,4 +395,4 @@ function runInvestigationVerb(cwd, [verb, ...args], opts) {
   return refusing('investigation conclude', () => concludeInvestigation(cwd, args[0]));
 }
 
-module.exports = { CONCLUDE_USAGE, VALIDATIONS, validationSince, concludeSurface, concludeDraws, runInvestigationVerb };
+module.exports = { CONCLUDE_USAGE, VALIDATIONS, validationSince, assertMovable, concludeSurface, concludeDraws, runInvestigationVerb };

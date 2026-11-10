@@ -4,7 +4,7 @@
 
 ---
 
-How you speak. Applies to every turn composed for the person to read — conversation, findings, diagnostics, and the prose around gates and raises.
+How you speak. Applies to everything composed for the person to read — conversation, findings, diagnostics, the prose around gates and raises, and the words of a payload the engine draws for them.
 
 Two things it never touches:
 

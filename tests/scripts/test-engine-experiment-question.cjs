@@ -190,14 +190,14 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.status, 'running');
   });
 
-  it('an epic topic\'s decided close is refused while an experiment of its own is out, conceived or further, and taken once each has ended (11.2.1)', () => {
+  it('an epic topic\'s decided close is refused while an experiment of its own is out, conceived or further, naming the abandon that frees one no one will run, and taken once each has ended (11.2.1)', () => {
     const placement = ask('Where does a new window open?');
     measure(placement);
     personDecides(placement);
     for (const item of DECIDED_ITEMS) engine(dir, ['checklist', 'done', 'decided', 'lab', 'timing', item], { env: SESSION });
     const close = ['checklist', 'close', 'decided', 'lab', 'timing'];
     assert.strictEqual(refusedPristine(dir, close, { env: SESSION }).error,
-      'checklist close: timing\'s experiment E1 is still out — the topic closes once each has concluded or been abandoned, and its report is read');
+      'checklist close: timing\'s experiment E1 is still out — the topic closes once each has concluded or been abandoned, and its report is read; one no one will run is abandoned: engine experiment abandon lab timing E1 --reason "<one line>"');
     engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'the person decided it']);
     engine(dir, close, { env: SESSION });
     assert.strictEqual(typeof readManifest(dir, 'lab').checklists.decided.timing.closed, 'string');

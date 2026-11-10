@@ -22,8 +22,10 @@
 // the yes closing it unmerged and keeping its commits on its branch under
 // moved/; one holding a fix done and recorded moving, its summary.md set
 // aside, which the first opening names; and the yes refusing a checkout
-// holding changes, lines with no conversation to carry them in, and a fix
-// landed. What the move refuses at its stage and its yes run again, a
+// holding changes no fix holds, lines with no conversation to carry them in, and a fix
+// landed. What the holder of the checkout has not committed, which the yes
+// sets aside: test-engine-landing-conformance-quick-fix-move-holder.cjs.
+// What the move refuses at its stage and its yes run again, a
 // bugfix moved and what the new type's build meets are
 // test-engine-workunit-move-after.cjs's.
 //
@@ -45,7 +47,7 @@ const {
   QF, SHIPPED, BEGUN, EPIC, ENGINE, BRANCH, KEPT, SHOT, RECORD, STAGED, BUILD_LOG, EARLIER, made,
   world, moveHelpers,
 } = require('./workunit-move-world.cjs');
-const { recordFile } = require('./quick-fix-world.cjs');
+const { recordFile, parkedOn } = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
@@ -170,8 +172,9 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.deepStrictEqual([callsOf(dir, { unit: QF, phase: 1, n: 1 }), buildCalls], [[], 'None recorded.']);
   });
 
-  it('refuses while the checkout holds changes not committed, naming each, nothing moved — the fix still in progress, the checkout on its branch', () => {
+  it('refuses while the checkout holds changes not committed that no fix holds — the person\'s own, its one fix parked — naming each, nothing moved, the checkout on its branch', async () => {
     dir = world();
+    await parkedOn(dir, '1.1', { env: env() });
     staged(QF, 'feature');
     createFile(dir, 'src/help.js', 'const help = 1;\n');
     const { next } = ok(dir, ['gate', 'start this work', '--pick', 'y'], { env: env() });

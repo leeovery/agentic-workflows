@@ -4,9 +4,9 @@ user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-bridge/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-Decide where the work goes when a phase concludes or pauses, then hand it off.
+Decide where the work goes when an experiment's session leaves it, then hand it off.
 
-A phase invokes this skill as it ends. A feature's next phase is derived from state; an epic returns to its menu. Every route ends in the handoff.
+The experiment invokes this skill once its series has nothing left to work, or the person picks the menu over the next experiment (`next-experiment.md`). A feature's next phase is derived from state; an epic returns to its menu. Every route ends in the handoff.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 

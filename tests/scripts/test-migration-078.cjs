@@ -677,7 +677,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       const log = read('stall/topics/stall/log.md');
       const warnings = [];
       const hunt = huntIn(log, 'stall/topics/stall/log.md', warnings);
-      assert.deepStrictEqual([hunt.symptoms, hunt.hypotheses, hunt.experiments, hunt.rootCause, hunt.validations, hunt.fixDirection, warnings], [[], [], [], null, [], null, []]);
+      assert.deepStrictEqual([hunt.symptoms, hunt.hypotheses, hunt.experiments, hunt.rootCause, hunt.fixDirection, warnings], [[], [], [], null, null, []]);
 
       const logged = withEntry(log, Object.values(HUNT_HEADINGS), HUNT_HEADINGS.symptoms, 'The queue stalls at noon');
       assert.strictEqual(logged, `${log}\n## Symptoms\n\n- The queue stalls at noon\n`);

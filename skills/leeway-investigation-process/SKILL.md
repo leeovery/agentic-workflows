@@ -32,9 +32,9 @@ node .claude/skills/leeway-engine/scripts/engine.cjs enter investigation {work_u
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names: the brief; discovery's logs and the seeds, the person's own account of the bug; the product record; at a first opening of a quick-fix moved here, its `earlier record`, `earlier build log`, `earlier summary` and each `kept branch`, read as input and never changed; and on resume the topic's record, its map and the `log`, the hunt so far. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
+Then read what the DATA names: the brief; discovery's logs and the seeds, the person's own account of the bug; the product record; at a first opening of a quick-fix moved here, its `earlier record`, `earlier build log`, `earlier summary` and each `earlier review round`, read as input and never changed, and each `kept branch` and `kept work`, what the quick-fix kept for the person; and on resume the topic's record, its map and the `log`, the hunt so far. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
 
-Then open the conversation; never stop in silence once you have read. On resume, say in your own words where the hunt stands and what comes next.
+Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives. On resume, say in your own words, in a line, where the hunt stands and what comes next.
 
 ## The Hunt
 
@@ -130,7 +130,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{wo
 - The plan → `render investigation-plan {work_unit} --file {plan} [--revised]`; a check-in → `render investigation-check-in {work_unit} --file {check-in}`.
 - A question → `ledger ask {place}`, `{"text", "by": "person|claude", "who_moved_whom": "none"}`.
 - A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where exploratory.
-- A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "who_moved_whom": "none"}`; a changed one → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces.
+- A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "who_moved_whom": "none"}`; a changed one → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops.
 - A call → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fix settled afresh once the person keeps shaping → `raise {place} --replaces {id} --reason changed-mind`; a fact only the person holds → `raise {place} --answers {id} --fact`; a run against a live server → `ledger ask {work_unit}.investigation`, then `raise {work_unit}.investigation --answers {id}`.
 - The topic as it stands → `ledger record|map {work_unit} {work_unit}`.
 - A validation's agent → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`; a finding that reached the person → `agent surface {work_unit} investigation {work_unit} {id} {finding} --replaces {fix} --reason new-fact`, or `--question {question}`.
@@ -184,7 +184,7 @@ The person shares a file, a path or an image — a log, an export, a screenshot 
 
 ## Reworking It as a Feature
 
-The person has decided the fix direction is to rework the area as a feature. Before anything moves, the root cause's validation is taken in (**Validations**), so the feature never starts from a cause its validator would have broken. Bring the log up to date, then draft the feature's brief at `.leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
+The person has decided the fix direction is to rework the area as a feature. The move waits on the root cause's validation, taken in as **Validations** says, and refuses until it is. Bring the log up to date, then draft the feature's brief at `.leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
 
 Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is a feature}", "brief": ".leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md"}` to `.leeway/.cache/{work_unit}/investigation/{work_unit}/move.json`, then stage the move and draw start this work's screen, emitting its sections verbatim per their markers:
 

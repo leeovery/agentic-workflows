@@ -36,7 +36,8 @@ const VALID_PHASES = Object.keys(PHASE_STAGES);
 // The item names older units carry that no phase table holds: a unit built
 // under the old plan keeps its planning items, read and never written, until
 // the reshape's 29.17 cut takes it (P12).
-const LEGACY_PHASES = Object.freeze(['planning']);
+const LEGACY_PLANNING = 'planning';
+const LEGACY_PHASES = Object.freeze([LEGACY_PLANNING]);
 
 // Per-work-type pipeline order — the phases a unit of that type moves through
 // after discovery (the universal first phase; a map, not a pipeline phase, so
@@ -232,6 +233,7 @@ module.exports = {
   PHASE_STAGES,
   VALID_PHASES,
   LEGACY_PHASES,
+  LEGACY_PLANNING,
   WORK_TYPE_PIPELINES,
   EPIC_PHASES,
   DERIVED_PHASES,

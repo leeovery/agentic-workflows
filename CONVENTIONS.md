@@ -202,7 +202,7 @@ Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn 
 **Claude's own words:**
 - **The conversation**, in the framework's voice and altitude: product first, code as evidence beneath it.
 - **A line made only of values the conversation holds** — a name it was passed, a count it tallied, a path the layout fixes. It is said inline, never fenced: its wording in a code span where the wording is fixed (``Say `Phase {N} merged.` ``), or `In your own words, …` where it is judgment.
-- **A report or summary Claude composes**, as markdown, in the register of `skills/leeway-shared/references/product-lens.md`: what the person would see first, `file:line` references as anchors. A `t/technical` row retells it from the code's side (`technical-lens.md`).
+- **A line or a payload Claude writes for a report** is in the product's terms, in the framework's register (`altitude.md`, `voice.md`), and the engine draws the report. A `t/technical` row retells it from the code's side (`technical-lens.md`).
 - **A code block Claude writes itself** — a diagram, a sample — which names its language on the fence, `text` for plain.
 
 **The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. The one exception is the banner, which stays in the start skill's prose because the release writes the version into it (`.mint.toml`). Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.

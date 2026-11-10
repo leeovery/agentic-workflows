@@ -83,7 +83,8 @@
 //   topic it added counts and one set aside meanwhile does not: an epic
 //   whose every live topic is now decided goes into its spec, at the unit,
 //   any other epic to its menu, where the person picks the next topic
-//   (24.1.2, 8.8.13); any other unit into its spec, at the unit.
+//   (24.1.2, 8.8.13). Only an epic's topic reaches it: a feature's closes
+//   into its spec (`decided stage`), its yes ready to build's.
 // - `decided strike <n>` strikes the n-th candidate, numbered as the screen
 //   shows them, in the staged payload alone, and answers the screen again
 //   as what comes next (P8) — a feature's ready to build, `--page` carried
@@ -108,6 +109,7 @@ const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
+const { phaseSkill } = require('./handoff.cjs');
 const { topicsSettled, specStanding } = require('./spec-standing.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
 const { checkTopics, placeTopics, installBriefs, landedPaths, dismiss } = require('./discovery-map.cjs');
@@ -617,15 +619,14 @@ function waitAgentsSurface(cwd, { dotpath }) {
 }
 
 /**
- * What comes after a topic is decided: an epic's spec once its every live
- * topic is decided, else its menu; any other unit's spec.
+ * What comes after an epic's topic is decided: its spec once its every live
+ * topic is decided, else its menu.
  * @param {Record<string, any>} manifest as the yes saved it @param {string} unit
  * @returns {import('./projections/surfaces.cjs').Next}
  */
 function nextAfter(manifest, unit) {
-  if (manifest.work_type !== 'epic') return { kind: 'handoff', skill: 'leeway-specification-process', args: [manifest.work_type, unit] };
   return topicsSettled(manifest)
-    ? { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', unit] }
+    ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['epic', unit] }
     : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit, PHASE, 'completed'] };
 }
 
@@ -802,17 +803,16 @@ function decidedYes(cwd, unit, topic) {
   const yes = closingYes(cwd, unit, topic, staged, warnings);
   const { lines, withdrawn } = yes.land();
   const at = new Date().toISOString();
-  const { manifest, paths, parked } = withWorkUnitLock(cwd, unit, () => {
+  const { manifest, paths } = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
     const taken = yes.take(fresh, at);
     saveWorkUnitManifest(cwd, unit, fresh);
-    return { manifest: fresh, paths: yes.paths(taken), parked: taken.parked };
+    return { manifest: fresh, paths: yes.paths(taken) };
   });
   const outcome = commitStateTail(cwd, paths, `decided(${unit}): ${topic}`, warnings);
   yes.done();
   /** @type {Record<string, unknown>} */
   const result = { unit, topic, decided: at, lines, withdrawn, candidates: yes.candidates, struck: yes.struck, committed: outcome.committed, next: nextAfter(manifest, unit) };
-  if (parksCandidates(manifest)) result.parked = parked;
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, `${unit} --state`);
   return result;
@@ -851,7 +851,7 @@ function decidedStage(cwd, unit, topic, file) {
     return stage(cwd, unit, topic, file, { shower, rows: side.rows, manifest, closed });
   }, openTopic);
   /** @type {import('./projections/surfaces.cjs').Next} */
-  const next = specStanding(cwd, unit) === 'none' ? { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', unit] } : { kind: 'continue' };
+  const next = specStanding(cwd, unit) === 'none' ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['feature', unit] } : { kind: 'continue' };
   return { unit, topic, lines: staged.lines.length, withdrawals: staged.withdrawals.length, candidates: staged.candidates.map(({ name }) => name), next };
 }
 

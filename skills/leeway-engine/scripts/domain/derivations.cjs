@@ -13,7 +13,7 @@ const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs'
 const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, LEGACY_PHASES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, LEGACY_PHASES, LEGACY_PLANNING, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
  * Whether the unit's build has begun: ready to build's yes recorded on its
@@ -717,7 +717,6 @@ function buildNext(manifest) {
  */
 function legacyNext(manifest) {
   const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase);
-  const [planning] = LEGACY_PHASES;
   if (ps('review') === 'completed') {
     return manifest.work_type === 'epic'
       ? { next_phase: 'review', phase_label: 'review completed for current topics' }
@@ -726,10 +725,10 @@ function legacyNext(manifest) {
   if (ps('review') === 'in-progress') return { next_phase: 'review', phase_label: 'review (in-progress)' };
   if (ps('implementation') === 'completed') return { next_phase: 'review', phase_label: 'ready for review' };
   if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
-  if (ps(planning) === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
-  if (ps(planning) === 'in-progress') return { next_phase: planning, phase_label: `${planning} (in-progress)` };
+  if (ps(LEGACY_PLANNING) === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
+  if (ps(LEGACY_PLANNING) === 'in-progress') return { next_phase: LEGACY_PLANNING, phase_label: `${LEGACY_PLANNING} (in-progress)` };
   if (ps('specification') !== 'completed') return null;
-  return { next_phase: planning, phase_label: `ready for ${planning}` };
+  return { next_phase: LEGACY_PLANNING, phase_label: `ready for ${LEGACY_PLANNING}` };
 }
 
 /**

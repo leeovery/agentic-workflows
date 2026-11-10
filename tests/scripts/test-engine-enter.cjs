@@ -19,7 +19,8 @@
 // the agents the topic was left with landed or lost by whether the process
 // that dispatched them still runs (9.7.8), and the log with the line the
 // conversation opens its first write with, owed until the log names it
-// (8.14.8, 9.S67).
+// (8.14.8, 9.S67). Each key a move's carry is read by is named in the
+// Entering of the skill the topic opens in (19.5.16, R26).
 //
 // Discovery's row (discovery-entry.cjs): the product's conversation and an
 // epic's discovery entered with no question (8.S1), a feature, bugfix or
@@ -64,7 +65,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { entrySections } = require('../../skills/leeway-engine/scripts/domain/projections/enter.cjs');
-const { ENTRIES, enterThrough } = require('../../skills/leeway-engine/scripts/domain/enter.cjs');
+const { ENTRIES, CARRIED, enterThrough } = require('../../skills/leeway-engine/scripts/domain/enter.cjs');
 const { SHAPED_BY } = require('../../skills/leeway-engine/scripts/domain/discovery-entry.cjs');
 
 const EPIC = 'fumi';
@@ -544,6 +545,23 @@ function moveRefused(args) {
   assert.deepStrictEqual(position(), before, `engine enter ${args.join(' ')} moved the position on refusing`);
   return error;
 }
+
+/** A skill's `## Entering` section. @param {string} skill */
+function entering(skill) {
+  const text = fs.readFileSync(path.join(__dirname, '../../skills', skill, 'SKILL.md'), 'utf8');
+  const at = text.indexOf('\n## Entering\n');
+  return text.slice(at, text.indexOf('\n## ', at + 1));
+}
+
+describe('what a move carries, read by the skill a topic opens in (19.5.16, R26)', () => {
+  it('each key a move\'s carry is read by is named where the topic opens: the discussion every key, the investigation every one but a bugfix\'s investigation log — a bugfix is moved to from a quick-fix alone', () => {
+    const unread = (/** @type {string} */ skill, /** @type {string[]} */ keys) => keys.filter((key) => !entering(skill).includes(`\`${key}\``));
+    const all = Object.values(CARRIED);
+
+    assert.deepStrictEqual(unread('leeway-discussion-process', all), []);
+    assert.deepStrictEqual(unread('leeway-investigation-process', all.filter((key) => key !== CARRIED.investigationLog)), []);
+  });
+});
 
 describe('discovery: what cannot be entered (8.6.5, 8.2.11)', () => {
   it('a feature, a bugfix or a quick-fix, whose discovery ended at start this work: manage is the way back (8.S12)', () => {
