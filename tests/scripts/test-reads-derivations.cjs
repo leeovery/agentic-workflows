@@ -990,10 +990,21 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponePlan(manifest(), 'busy', project).locks.map((l) => l.reason),
         ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic'],
         'the joined item named "ordering" holds no clash against "busy"');
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true });
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, joined: false });
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'pacing'), { name: 'pacing', item: undefined, joined: false }, 'a birth takes the name the topic goes by');
-      assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, joined: false });
+      const born = { joined: false, archived: false, clash: false };
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true, archived: false, clash: false });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, ...born });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'pacing'), { name: 'pacing', item: undefined, ...born }, 'a birth takes the name the topic goes by');
+      assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, ...born });
+    });
+
+    it('an archived item an earlier postpone of the epic left is brought back; another\'s, archived or waiting, is the clash (18.8.17, 18.8.21)', () => {
+      const archived = { at: '2026-11-10T09:00:00Z', horizon: 'next' };
+      const own = { summary: 's', origin: 'postpone:pay', archived };
+      const others = { summary: 's', origin: 'harvest', archived };
+      const held = { roadmap: { horizons: ['next'], items: { timing: own, pacing: others } } };
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'timing', 'timing'), { name: 'timing', item: own, joined: false, archived: true, clash: false });
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'pacing', 'pacing'), { name: 'pacing', item: others, joined: false, archived: false, clash: true });
+      assert.deepStrictEqual(postponeTarget(held, 'cart', 'timing', 'timing'), { name: 'timing', item: own, joined: false, archived: false, clash: true }, 'another epic\'s postpone is not this one\'s');
     });
 
     it('the clash phrase names the topic and the item, the horizon the item has or its archive, and stands without either (18.8.17, 18.8.21)', () => {

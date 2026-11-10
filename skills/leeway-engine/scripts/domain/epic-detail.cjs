@@ -221,8 +221,8 @@ function cancellableUnits(cwd, manifest, discoveryMap) {
   const units = [];
   for (const { name, row } of discoveryUnits(manifest, discoveryMap)) {
     const lifecycle = row ? row.lifecycle : computeTopicLifecycle(manifest, name).lifecycle;
-    // A postponed unit is the roadmap's, not this menu's: its own remove is
-    // the door to "actually never".
+    // A postponed unit is the roadmap's, not this menu's: its item's archive
+    // is the door to "actually never".
     if (lifecycle === 'cancelled' || lifecycle === 'postponed') continue;
     if (!row && liveUnitItems(manifest, 'discovery', name).length === 0) continue;
     units.push({ name, stage: 'discovery', state: topicState(cwd, manifest, name, row) });

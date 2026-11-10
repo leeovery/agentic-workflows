@@ -41,7 +41,9 @@
 // is the item's source, there for good.
 //
 // Known edge: a postponed topic whose name another roadmap item holds,
-// waiting or archived, is refused the postpone, naming both (18.8.17).
+// waiting or archived, is refused the postpone, naming both (18.8.17); the
+// item an earlier postpone of the epic left there, archived since, comes
+// back with it instead.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -384,6 +386,7 @@ function joinState(cwd, item) {
  * @property {string} [topic]
  * @property {{work_unit: string, topic: string}} [prior]  pull-forward: the epic the topic's prior record sits in
  * @property {{work_unit: string, topic: string}} [epic_row_cancelled]  archive: the postponed row this archive cancelled
+ * @property {string[]} [inbox]  archive: each message that waited for the cancelled row's topic, an idea in the inbox now, absolute
  * @property {{phase: string, status: string|null}[]} [restored]  pull-forward: the postponed items the return brought back
  * @property {string|null} [committed]  short sha, or null when nothing staged
  * @property {string} [note]            set when committed is null
@@ -910,9 +913,10 @@ function refuseArchive(cwd, item, name) {
  * the way it goes back to waiting (refuseJoined), and on one archived
  * already. An item a postpone put here takes the epic's row with it at any
  * stage of the epic (18.8.17) — "actually never" has one door — so the
- * marker and every stashed item flip to cancelled, the item's
- * `postponed_from` goes with the hold it named, and one commit covers both
- * manifests. Self-commits.
+ * marker and every stashed item flip to cancelled, the topic's waiting mail
+ * goes to the inbox as a cancel's does (10.1.6), the item's `postponed_from`
+ * goes with the hold it named, and one commit covers both manifests and the
+ * mail. Self-commits.
  * @param {string} cwd @param {string} name
  * @returns {RoadmapOpResult}
  */
@@ -923,9 +927,11 @@ function archiveRoadmapItem(cwd, name) {
   // The epic's row is cancelled before the item is archived: a crash between
   // leaves a cancelled row and an item still waiting, never a live postponed
   // row whose item is archived.
+  /** @type {import('./transitions.cjs').MailMoved[]} */
+  let mail = [];
   if (postponed) {
     const { cancelPostponedUnit } = require('./transitions.cjs');
-    cancelPostponedUnit(cwd, postponed.work_unit, postponed.topic, name);
+    ({ mail } = cancelPostponedUnit(cwd, postponed.work_unit, postponed.topic, name));
   }
   const result = transactProject(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
@@ -937,11 +943,16 @@ function archiveRoadmapItem(cwd, name) {
     delete item.postponed_from;
     /** @type {RoadmapOpResult} */
     const out = { op: 'archive', name, horizon: left, state: 'archived' };
-    if (postponed) out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
+    if (postponed) {
+      out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
+      out.inbox = mail.map(({ idea }) => statePath(cwd, idea));
+    }
     return out;
   });
   return postponed
-    ? commitRoadmap(cwd, result, `roadmap: archive ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, { workUnit: postponed.work_unit })
+    ? commitRoadmap(cwd, result, `roadmap: archive ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, {
+      workUnit: postponed.work_unit, moves: mail.map(({ message, idea }) => ({ from: message, to: idea })),
+    })
     : commitRoadmap(cwd, result, `roadmap: archive ${name}`);
 }
 
@@ -1372,6 +1383,7 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * @property {boolean} born_map     the roadmap node was created with it
  * @property {boolean} born_horizon the horizon was created with it
  * @property {boolean} reverted_join  an item already joined to the topic was re-waited rather than born
+ * @property {boolean} from_archive  the item an earlier postpone of this epic left, archived since, was brought back rather than born
  */
 
 /**
@@ -1399,26 +1411,22 @@ function postponeToRoadmap(cwd, workUnit, topic, { goes, horizon, summary, sourc
     const bornMap = !hasRoadmapNode(manifest);
     const roadmap = ensureRoadmap(manifest);
     const target = postponeTarget(manifest, workUnit, topic, goes);
-    if (!target.joined) {
-      // Read again under the project lock: the plan's clash check ran before
-      // the epic write, and a name a peer took since must refuse, never overwrite.
-      if (target.item !== undefined) throw new Error(postponeClashPhrase(topic, target.name, target.item));
-      assertLegalName('item', target.name);
-    }
+    // Read again under the project lock: the plan's clash check ran before
+    // the epic write, and a name a peer took since must refuse, never overwrite.
+    if (target.clash) throw new Error(postponeClashPhrase(topic, target.name, /** @type {Record<string, any>} */ (target.item)));
+    const born = target.item === undefined;
+    if (born) assertLegalName('item', target.name);
     const bornHorizon = ensureHorizon(roadmap, horizon);
-    if (!target.joined) {
-      roadmap.items[target.name] = { horizon, summary, kind: DEFAULT_KIND, origin: `postpone:${workUnit}` };
-    }
+    if (born) roadmap.items[target.name] = { horizon, summary, kind: DEFAULT_KIND, origin: `postpone:${workUnit}` };
     const item = roadmap.items[target.name];
-    if (target.joined) {
-      delete item.pulled_to;
-      item.horizon = horizon;
-    }
+    delete item.pulled_to;
+    delete item.archived;
+    item.horizon = horizon;
     item.postponed_from = { work_unit: workUnit, topic };
     const kept = Array.isArray(item.sources) ? item.sources.filter((/** @type {*} */ s) => typeof s === 'string') : [];
     const merged = [...kept, ...sources.filter((s) => !kept.includes(s))];
     if (merged.length > 0) item.sources = merged;
-    return { name: target.name, horizon, born_map: bornMap, born_horizon: bornHorizon, reverted_join: target.joined };
+    return { name: target.name, horizon, born_map: bornMap, born_horizon: bornHorizon, reverted_join: target.joined, from_archive: target.archived };
   });
 }
 

@@ -63,10 +63,13 @@ function manifestOf(root, unit) {
   return fs.existsSync(workUnitManifestPath(root, unit)) ? readWorkUnitManifest(root, unit) : null;
 }
 
-/** Whether the project's roadmap holds an item named `item`. @param {string} root @param {string} item */
-function hasRoadmapItem(root, item) {
+/**
+ * The project's roadmap item named `item`, or null where it holds none.
+ * @param {string} root @param {string} item @returns {Record<string, any>|null}
+ */
+function roadmapItemNamed(root, item) {
   const items = readProjectManifest(root).roadmap?.items;
-  return isObject(items) && Object.hasOwn(items, item) && isObject(items[item]);
+  return isObject(items) && Object.hasOwn(items, item) && isObject(items[item]) ? items[item] : null;
 }
 
 /**
@@ -211,5 +214,5 @@ function changedUnits(root, before) {
 }
 
 module.exports = {
-  TOPIC_PHASES, hasItem, hasTopic, manifestOf, hasRoadmapItem, experimentWaits, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits,
+  TOPIC_PHASES, hasItem, hasTopic, manifestOf, roadmapItemNamed, experimentWaits, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits,
 };

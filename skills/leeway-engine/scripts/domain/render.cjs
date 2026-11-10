@@ -679,8 +679,8 @@ function postponeStatement(workUnit, topic, plan, horizon, project, name, goesAs
   const horizons = roadmap && Array.isArray(roadmap.horizons) ? roadmap.horizons : [];
   const target = postponeTarget(project, workUnit, topic, goesAs);
   const flag = roadmap && !horizons.includes(horizon) ? ' (new)' : '';
-  const lands = target.joined
-    ? `Its own item **${titlecase(target.name)}** re-waits under "${horizon}"${flag}.`
+  const lands = target.joined || target.archived
+    ? `Its own item **${titlecase(target.name)}** ${target.joined ? 're-waits' : 'comes back from the archive'} under "${horizon}"${flag}.`
     : `It waits on the roadmap under "${horizon}"${flag}, until it is pulled into work.`;
   return [goes, lands, ...(roadmap ? [] : ['The roadmap is created with it.'])]
     .filter(Boolean).join(' ');

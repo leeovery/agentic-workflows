@@ -78,7 +78,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.deepStrictEqual(res.postponed, [
       { phase: 'discussion', previous_status: 'in-progress' },
     ]);
-    assert.deepStrictEqual(res.roadmap, { name: 'ordering', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false });
+    assert.deepStrictEqual(res.roadmap, { name: 'ordering', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false, from_archive: false });
 
     assert.deepStrictEqual(readProject(dir).roadmap, {
       horizons: ['next'],
@@ -115,7 +115,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   it('a second postpone joins the existing map under a new horizon', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     const res = engineOk(['topic', 'postpone', 'mvp', 'menus', '--horizon', 'later']);
-    assert.deepStrictEqual(res.roadmap, { name: 'menus', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false });
+    assert.deepStrictEqual(res.roadmap, { name: 'menus', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false, from_archive: false });
     assert.deepStrictEqual(readProject(dir).roadmap.horizons, ['next', 'later']);
   });
 
@@ -123,7 +123,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order', '--origin', 'harvest']);
     boundTo(dir, 'mvp', 'ordering', 'guest-ordering');
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
-    assert.deepStrictEqual(res.roadmap, { name: 'guest-ordering', horizon: 'later', born_map: false, born_horizon: true, reverted_join: true });
+    assert.deepStrictEqual(res.roadmap, { name: 'guest-ordering', horizon: 'later', born_map: false, born_horizon: true, reverted_join: true, from_archive: false });
     const item = readProject(dir).roadmap.items['guest-ordering'];
     assert.strictEqual('pulled_to' in item, false, 'the join reverts');
     assert.strictEqual(item.horizon, 'later');
@@ -160,6 +160,21 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(refuses(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'next']).error, `render postpone-gate: ${clash}`);
     assert.strictEqual(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error, clash);
     assert.deepStrictEqual([projectManifestText(dir), epicText()], before);
+  });
+
+  it('a postpone after its item was archived and the topic reactivated brings that item back: one item, waiting on the horizon chosen, postponed from the topic (18.8.17)', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const first = readProject(dir).roadmap.items.ordering;
+    runOk(dir, ['archive', 'ordering']);
+    engineOk(['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
+
+    assert.match(output(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'later']),
+      /Its own item \*\*Ordering\*\* comes back from the archive under "later" \(new\)\./);
+    const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
+
+    assert.deepStrictEqual(res.roadmap, { name: 'ordering', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false, from_archive: true });
+    assert.deepStrictEqual(readProject(dir).roadmap.items, { ordering: { ...first, horizon: 'later' } });
+    assert.strictEqual(runOk(dir, ['state']).items[0].state, 'waiting');
   });
 
   it('an illegal horizon refuses at the gate and at the verb, and the epic never moves', () => {
@@ -225,11 +240,19 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mvp/manifest.json'), 'utf8'), before, 'the send leaves the hold alone');
   });
 
-  it('roadmap archive cancels the epic\'s row in the same transaction, the hold gone from the item, one commit over both manifests (18.S62)', () => {
+  it('roadmap archive cancels the epic\'s row in the same transaction, its waiting mail to the inbox as a cancel\'s, the hold gone from the item, one commit over both manifests and the mail (18.S62, 10.1.6)', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const message = '.leeway/mvp/topics/ordering/mail/001-a-question.md';
+    const idea = '.leeway/.inbox/ideas/2026-01-01--a-question.md';
+    fs.mkdirSync(path.join(dir, '.leeway/.cache/scratch'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/.cache/scratch/message.md'), 'A question\n\nAsked while it waited.\n');
+    engineOk(['topic', 'send', 'mvp', 'ordering', '--from', 'menus', '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question']);
+    const sent = fs.readFileSync(path.join(dir, message), 'utf8');
     const { horizon: _horizon, postponed_from: _hold, ...kept } = readProject(dir).roadmap.items.ordering;
     const res = withFrozenClock(() => runOk(dir, ['archive', 'ordering']));
-    assert.deepStrictEqual(res.epic_row_cancelled, { work_unit: 'mvp', topic: 'ordering' });
+    assert.deepStrictEqual([res.epic_row_cancelled, res.inbox], [{ work_unit: 'mvp', topic: 'ordering' }, [path.join(dir, idea)]]);
+    assert.strictEqual(fs.readFileSync(path.join(dir, idea), 'utf8'), `# ${sent}`, 'the message an idea, its first line the title');
+    assert.strictEqual(fs.existsSync(path.join(dir, message)), false, 'the mailbox is empty');
     const m = epic();
     assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined);
     assert.strictEqual(m.phases.discovery.items.ordering.cancelled, true);
@@ -238,8 +261,9 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering, { ...kept, archived: { at: '2026-01-01T00:00:00Z', horizon: 'next' } });
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: archive ordering — ordering cancelled in mvp');
-    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('manifest.json') && staged.includes('mvp/manifest.json'), 'both manifests ride one commit');
+    assert.deepStrictEqual(stateGit(dir, ['show', '--no-renames', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
+      `A\t${idea.slice('.leeway/'.length)}`, 'M\tmanifest.json', `D\t${message.slice('.leeway/'.length)}`, 'M\tmvp/manifest.json',
+    ].sort());
     // And the reactivate is then the way back, as for any cancelled unit.
     assert.deepStrictEqual(ok(dir, ['topic', 'reactivate', 'mvp', 'discovery', 'ordering']).restored,
       [{ phase: 'discussion', status: 'in-progress' }]);
@@ -373,6 +397,7 @@ describe('engine CLI: the cancel-revert hop', () => {
   it('topic cancel reverts the bound item to waiting, staging the project manifest', () => {
     const res = engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
     assert.deepStrictEqual(res.roadmap_reverted, ['ordering']);
+    assert.strictEqual('roadmap_horizon_gone' in res, false, 'its horizon still there, no gone report');
     const items = readProject(dir).roadmap.items;
     assert.strictEqual('pulled_to' in items.ordering, false);
     assert.strictEqual(items.ordering.origin, 'harvest', 'origin survives the revert');
@@ -407,11 +432,6 @@ describe('engine CLI: the cancel-revert hop', () => {
     const moved = runOk(dir, ['move', 'ordering', '--horizon', 'v1']);
     assert.strictEqual(moved.moved_from, null);
     assert.strictEqual(readProject(dir).roadmap.items.ordering.horizon, 'v1');
-  });
-
-  it('a horizon the cancel finds still there carries no gone report', () => {
-    const res = engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
-    assert.strictEqual('roadmap_horizon_gone' in res, false);
   });
 
   it('work-unit cancel reverts every join into the unit', () => {

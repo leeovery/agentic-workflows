@@ -478,6 +478,31 @@ function cancelDiscoveryUnit(manifest, topic) {
 }
 
 /**
+ * @typedef {{message: string, idea: string}} MailMoved  a message that waited
+ *   for the topic, and the idea it became in the inbox, state-relative
+ */
+
+/**
+ * The one door a topic's cancel goes through, whichever hold it ends: under
+ * the work unit's lock, `cancel` flips the loaded manifest and names the
+ * topic, the manifest is saved, and every message waiting for the topic
+ * moves to the inbox as an idea (10.1.6). Commits nothing.
+ * @template {{topic: string}} T
+ * @param {string} cwd @param {string} workUnit
+ * @param {(manifest: Record<string, any>) => T} cancel
+ * @returns {T & {mail: MailMoved[]}}
+ */
+function cancelUnderLock(cwd, workUnit, cancel) {
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const outcome = cancel(manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    const { moveWaitingToInbox } = require('./mail.cjs');
+    return { ...outcome, mail: moveWaitingToInbox(cwd, workUnit, outcome.topic) };
+  });
+}
+
+/**
  * Cancel a topic — the Discovery unit under the name — in one locked write,
  * its waiting mail moved to the inbox as ideas under the same lock (10.1.6),
  * then release the calling session's own heartbeat on each
@@ -491,14 +516,10 @@ function cancelDiscoveryUnit(manifest, topic) {
  */
 function cancelTopic(cwd, workUnit, phase, said) {
   assertUnitStage('cancel', phase);
-  const { mail, topic, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
+  const { mail, topic, ...taken } = cancelUnderLock(cwd, workUnit, (manifest) => {
     assertBeforeSpec(cwd, manifest, 'cancel');
     const topic = topicKey(manifest, said);
-    const outcome = cancelDiscoveryUnit(manifest, topic);
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    const { moveWaitingToInbox } = require('./mail.cjs');
-    return { ...outcome, topic, mail: moveWaitingToInbox(cwd, workUnit, topic) };
+    return { ...cancelDiscoveryUnit(manifest, topic), topic };
   });
 
   /** @type {string[]} */
@@ -732,19 +753,20 @@ function restorePostponedUnit(cwd, workUnit, topic) {
  * over the item the postpone put there, so "actually never" has one door.
  * The marker and every stashed item read `cancelled`, each stash and the
  * stashed map order kept for a later reactivate; the chunks left at the
- * postpone. One locked write and no commit — the archive's own transaction
- * stages both manifests together. A unit holding no postpone refuses: the
- * item's join is stale, and the archive must not report a cancel it never made.
+ * postpone; the mail that waited for the topic's return moved to the inbox,
+ * through the cancel's own door (cancelUnderLock). No commit — the archive's
+ * own transaction stages both manifests and the mail together. A unit
+ * holding no postpone refuses: the item's join is stale, and the archive
+ * must not report a cancel it never made.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @param {string} item  the roadmap item being archived, for the orphan refusal
- * @returns {CancelledItem[]}
+ * @returns {{topic: string, cancelled: CancelledItem[], mail: MailMoved[]}}
  */
 function cancelPostponedUnit(cwd, workUnit, topic, item) {
   if (!fs.existsSync(statePath(cwd, workUnit, 'manifest.json'))) {
     throw new Error(`"${item}" was postponed from work unit "${workUnit}", which no longer exists — the join is orphaned`);
   }
-  return withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
+  return cancelUnderLock(cwd, workUnit, (manifest) => {
     const row = itemOf(manifest, 'discovery', topic);
     const held = unitItems(manifest, 'discovery', topic).filter(({ item: it }) => it.status === 'postponed');
     if ((!row || row.postponed !== true) && held.length === 0) {
@@ -758,8 +780,7 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
       it.status = 'cancelled';
       return { phase, previous_status: it.previous_status };
     });
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    return cancelled;
+    return { topic, cancelled };
   });
 }
 

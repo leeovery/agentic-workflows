@@ -534,14 +534,17 @@ function itemPostponedFrom(item) {
  * @property {string} name   the item the postpone writes — the joined item's own name, or the name the topic goes by
  * @property {Record<string, any>|undefined} item  what already sits there
  * @property {boolean} joined  the item is joined to this topic, so the postpone re-waits it
+ * @property {boolean} archived  the item is the one an earlier postpone of this epic left, archived since, so the postpone brings it back
+ * @property {boolean} clash  the item is another's, so the postpone refuses
  */
 
 /**
  * The roadmap item a postpone would write: the one joined to `{workUnit,
  * topic}` — re-waited, whatever its name — or, when none is joined, the name
  * a birth would take, the one the topic goes by (8.8.20), with whatever
- * already sits on it (the clash). The one join the plan's lock, the gate's
- * statement, and the verb all read.
+ * already sits on it: the item an earlier postpone of this epic left there,
+ * archived since and brought back, or another's (the clash). The one join
+ * the plan's lock, the gate's statement, and the verb all read.
  * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
  * @param {string} goes  the name the topic goes by
  * @returns {PostponeTarget}
@@ -551,9 +554,11 @@ function postponeTarget(project, workUnit, topic, goes) {
   for (const [name, item] of Object.entries(items)) {
     if (!item || typeof item !== 'object') continue;
     const join = itemJoin(item);
-    if (join && join.work_unit === workUnit && join.topic === topic) return { name, item, joined: true };
+    if (join && join.work_unit === workUnit && join.topic === topic) return { name, item, joined: true, archived: false, clash: false };
   }
-  return { name: goes, item: items[goes], joined: false };
+  const item = items[goes];
+  const archived = item !== undefined && itemArchived(item) !== null && item.origin === `postpone:${workUnit}`;
+  return { name: goes, item, joined: false, archived, clash: item !== undefined && !archived };
 }
 
 /**
@@ -663,8 +668,8 @@ function postponePlan(manifest, name, project, horizon) {
     locks.push({ reason: illegalHorizon });
   }
   const target = postponeTarget(project, manifest.name, name, goesBy(topicTitles(manifest), name));
-  if (!target.joined && target.item !== undefined) {
-    locks.push({ reason: postponeClashPhrase(name, target.name, target.item) });
+  if (target.clash) {
+    locks.push({ reason: postponeClashPhrase(name, target.name, /** @type {Record<string, any>} */ (target.item)) });
   }
   return { items: liveUnitItems(manifest, 'discovery', name), locks };
 }

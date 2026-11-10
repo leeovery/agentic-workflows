@@ -220,13 +220,17 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
 });
 
 describe('a question moved to the roadmap (9.5.4)', () => {
-  it('stands later where it was asked, naming the roadmap\'s item, the move on its record, until a decision answers it or a later move of its unit takes it to a topic; a move to an item the roadmap lacks is refused', () => {
+  it('stands later where it was asked, naming the roadmap\'s item, the move on its record, until a decision answers it or a later move of its unit takes it to a topic; a move to an item the roadmap lacks, or holds archived, is refused, naming the way on (18.8.13)', () => {
     const syncing = ask(NOTE, 'Do notes sync across Macs?');
     const sharing = ask(NOTE, 'Can a note be shared?');
     const toSync = ['--question', syncing, '--to', 'roadmap:sync'];
     const lacking = refuses(dir, ['ledger', 'move', NOTE, ...toSync], { env: SESSION, stdin: JSON.stringify(MADE) });
     assert.strictEqual(lacking.error, 'ledger move: --to names roadmap:sync, and the roadmap has no item "sync" — put it on the roadmap first');
     ok(dir, ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Notes sync across Macs']);
+    ok(dir, ['roadmap', 'archive', 'sync']);
+    const archived = refuses(dir, ['ledger', 'move', NOTE, ...toSync], { env: SESSION, stdin: JSON.stringify(MADE) });
+    assert.strictEqual(archived.error, 'ledger move: --to names roadmap:sync, and the roadmap\'s "sync" is archived — bring it back onto a horizon (engine roadmap move sync --horizon <h>) first');
+    ok(dir, ['roadmap', 'move', 'sync', '--horizon', 'v2']);
 
     const moved = write('move', NOTE, toSync, MADE).id;
     write('move', NOTE, ['--question', sharing, '--to', 'roadmap:sync'], MADE);

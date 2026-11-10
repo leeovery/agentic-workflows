@@ -4,7 +4,8 @@
 // driven through the engine CLI: inbox notes moved into the product's notes
 // as roadmap items under one commit — the kind from the note's folder, the
 // origin its file stem, the note the item's one source — each refusal before
-// anything moves; and an archived item's note kept where it is. The rollbacks
+// anything moves; a capture of a name the product's notes hold taking the
+// next free one; and an archived item's note kept where it is. The rollbacks
 // are reached by failing a rename in process — the disk fault no CLI sequence
 // can stage.
 //
@@ -19,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { git, stateGit, commitAll, cleanupFixture: cleanup, output, withFrozenClock } = require('./engine-harness.cjs');
+const { git, stateGit, commitAll, cleanupFixture: cleanup, output, okSections, withFrozenClock } = require('./engine-harness.cjs');
 const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, joinedTo } = require('./roadmap-world.cjs');
 
 describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes', () => {
@@ -193,6 +194,18 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
     assert.deepStrictEqual(readProject(dir).roadmap.items['login-crash'], kept);
     assert.ok(exists(BUG_NOTE));
     assert.match(output(dir, ['render', 'roadmap-view']), /Login Crash/);
+  });
+
+  it('a capture the same day of a title a note in the product\'s notes holds takes the next free -{n}, of whichever kind, and comes onto the roadmap too (4.11.16)', () => {
+    const capture = (/** @type {string} */ kind, /** @type {string} */ text) =>
+      path.relative(dir, withFrozenClock(() => okSections(dir, ['inbox', 'capture', kind], { stdin: text })).res.captured);
+    runOk(dir, batch([{ name: 'offline-mode', horizon: 'later', summary: 's', note: capture('idea', '# Offline Mode\n') }]));
+
+    const bug = capture('bug', '# Offline Mode\n');
+    assert.strictEqual(bug, '.leeway/.inbox/bugs/2026-01-01--offline-mode-2.md');
+    runOk(dir, batch([{ name: 'offline-crash', horizon: 'later', summary: 's', note: bug }]));
+    assert.deepStrictEqual(['offline-mode', 'offline-crash'].map((name) => readProject(dir).roadmap.items[name].sources),
+      [['.product/notes/2026-01-01--offline-mode.md'], ['.product/notes/2026-01-01--offline-mode-2.md']]);
   });
 
   it('a pulled item\'s note stays where it is — the archive refuses as for any pulled item', () => {
