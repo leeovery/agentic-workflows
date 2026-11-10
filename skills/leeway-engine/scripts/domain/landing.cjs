@@ -950,6 +950,11 @@ function refuseUnfinished(cwd, unit) {
 function landFinish(cwd, unit) {
   assertUnit(unit);
   refuseUnfinished(cwd, unit);
+  return finishMerge(cwd, unit);
+}
+
+/** `land finish` past its refusals, which finish's yes makes itself before it lands. @param {string} cwd @param {string} unit */
+function finishMerge(cwd, unit) {
   if (landsAsOne(cwd, unit)) return quickFixLand(cwd, unit);
   const project = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
@@ -1324,7 +1329,8 @@ function pointersOf(driver, held, ctx) {
  * the walk lands in pointing them at their landings (`pointersOf`), each
  * other repository's default branch here brought up to the host's —
  * reached only past the refusals finish's yes makes before it lands
- * (`refuseUnfinished`), a task unended among them; refused before anything
+ * (`refuseUnfinished`, or the yes's own before `finishMerge`), a task
+ * unended among them; refused before anything
  * moves while a task done holds work that is neither landed nor on its
  * branch (fix-end.cjs); each branch first readied (`readied`,
  * fix-branch.cjs), so it holds no work landed, then pushed to its pull
@@ -1402,5 +1408,5 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
 }
 
 module.exports = {
-  LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal,
+  LAND_USAGE, landOpen, landChain, landPhase, landFinish, finishMerge, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal,
 };

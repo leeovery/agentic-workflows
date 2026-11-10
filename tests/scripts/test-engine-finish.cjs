@@ -5,22 +5,18 @@
 // domain/projections/finish.cjs, its engine items domain/finish-checks.cjs):
 // finish's checklist (6.4.10) — the review phase over, read from its
 // rounds' records, only where the unit has a review phase, no question
-// waiting on the person, and the unit's records indexed, only where the checkout's knowledge base is set up, each
-// the engine's; Claude's items worked in its own order, one skipped, and the
-// close (2.S2); `engine render finish <unit>`, standing on that close — every
-// checklist item skipped on the way, with its reason, read from the
-// manifest by a later conversation (6.S23, 6.S32), no measure (17.S2), each
-// call the person changed in the build and the review phase asked its
-// verdict before the gate (14.S9, 16.S35) and nothing added where they
-// changed none (16.10.5), questions about what was built invited, then yes
-// and a comment; the units it refuses; and `engine finish yes <unit>`,
-// landing what stands, completing the unit and naming where the work goes
-// (24.1.2), a refusal of the landing leaving the unit in progress; a
-// knowledge base set up but not reading said on the screen, in the yes and
-// in a refusal of the landing, its records left unchecked. Every refusal
-// writes and commits nothing. The fix phases' order at finish
-// (7.S10) is test-engine-landing-conformance.cjs's, and a quick-fix's
-// close test-engine-quick-fix-close.cjs's.
+// waiting on the person, and the unit's records indexed, only where the
+// checkout's knowledge base is set up, each the engine's; Claude's items
+// worked in its own order, one skipped, and the close (2.S2); `engine
+// render finish <unit>`, standing on that close — every checklist item
+// skipped on the way, with its reason, read from the manifest by a later
+// conversation (6.S23, 6.S32), no measure (17.S2), each call the person
+// changed in the build and the review phase asked its verdict before the
+// gate (14.S9, 16.S35) and nothing added where they changed none (16.10.5),
+// questions about what was built invited, then yes and a comment; and the
+// units it refuses, `land finish` refusing each as it does. Every refusal
+// writes and commits nothing. The yes is test-engine-finish-yes.cjs's, and
+// a quick-fix's close test-engine-quick-fix-close.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -28,51 +24,23 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
-const { output, callAsync, sectionOf, keywordOnlyKnowledge, unreadableKnowledge, readState, layout, commitAll } = require('./engine-harness.cjs');
+const { sectionOf, callAsync, keywordOnlyKnowledge, layout, commitAll } = require('./engine-harness.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const {
-  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, taskMade, fixBuilt, fixClosed, readManifest, writeState, stateGit, refusedPristine, ok, assert,
+  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, taskMade, fixBuilt, fixClosed, reviewPassed, finishClosed, finishReady, readManifest, writeState, stateGit, ok, assert,
 } = require('./review-world.cjs');
-
-/** What finish says of a knowledge base set up over a store that does not load. */
-const UNREAD = 'the knowledge base is set up but does not read, so the records indexed are not checked — knowledge status says why';
+const { finishHelpers } = require('./finish-world.cjs');
 
 /** @type {string} */
 let dir;
 useWorld((at) => { dir = at; });
+const { screen, refused } = finishHelpers(() => dir);
 
-/** A checklist verb, which must succeed, in the world's conversation or another. @param {string[]} args @param {string} [session] */
-const checklist = (args, session) => ok(dir, ['checklist', ...args], { env: env(session) });
+/** A checklist verb, which must succeed. @param {string[]} args */
+const checklist = (args) => ok(dir, ['checklist', ...args], { env: env() });
 
 /** Finish's items, a line each: key, who checks it, where it stands, and its way on where it names one. @param {string} [unit] */
 const items = (unit = UNIT) => checklist(['show', 'finish', unit]).items.map((/** @type {any} */ { key, by, state, way }) => `${key} ${by} ${state}${way === undefined ? '' : ` — ${way}`}`);
-
-/** Round 1 recorded passing, every report of it clean. */
-function reviewPassed() {
-  enter();
-  reported(1, EVERY);
-  recorded({ can_now: ['Pay by card.'], findings: [] });
-}
-
-/** The review passed, then finish's checklist worked and closed (`finishWorked`). */
-function finishClosed() {
-  reviewPassed();
-  finishWorked();
-}
-
-/** A phase's start skipping its design, and finish's checklist worked and closed, its inbox item skipped. */
-function finishWorked() {
-  checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
-  checklist(['skip', 'finish', UNIT, 'inbox-closed', '--reason', 'No inbox item was resolved.']);
-  checklist(['done', 'finish', UNIT, 'build-log-closed']);
-  checklist(['close', 'finish', UNIT]);
-}
-
-/** The screen as a conversation draws it. @param {string} [session] */
-const screen = (session) => output(dir, ['render', 'finish', UNIT], { env: env(session) });
-
-/** The refusal's error, nothing written or committed. @param {string[]} args */
-const refused = (args) => refusedPristine(dir, args, { env: env() }).error;
 
 /** The person's replacement of Claude's call `entry`, at `at`, standing over its lean: its short id. @param {string} at @param {string} entry @param {string} text */
 const overruled = (at, entry, text) => ok(dir, ['ledger', 'replace', at, '--replaces', entry, '--reason', 'changed-mind'], {
@@ -102,7 +70,7 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
   });
 
   it('12.13.22: holds the unit open while a question of it waits on the person, wherever it was raised, naming each and the stop — a close made before one was raised standing at neither the gate nor the yes', async () => {
-    finishClosed();
+    finishReady();
     const asks = 'Should a refund name its card?';
     const asked = ok(dir, ['ledger', 'ask', `${UNIT}.review`], { env: env(), stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: asks }) }).id;
     const raised = await callAsync(dir, ['raise', `${UNIT}.review`, '--answers', asked], { env: env(), stdin: JSON.stringify({ ...leaningCall('A refund names it.', 'A refund names none.'), question: asks }) });
@@ -156,7 +124,7 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
 
 describe('render finish (14.5.1)', () => {
   it('14.S9, 6.S23, 6.S32, 17.S2: draws every skip on the way with its reason, read by a later conversation, no measure, and, nothing changed by the person, no verdict — then questions invited, the yes running finish and a comment', () => {
-    finishClosed();
+    finishReady();
     const out = screen('later-session');
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), [
@@ -182,7 +150,7 @@ describe('render finish (14.5.1)', () => {
   });
 
   it('16.S35: asks a verdict on each call the person changed in the build and the review phase, one at a time, at finish, before the gate — a change at the spec never asked here — the yes refused until each is given', () => {
-    finishClosed();
+    finishReady();
     const retry = overruled(`${UNIT}.implementation`, calls.retry, 'A charge is retried once.');
     overruled(`${UNIT}.specification`, calls.copy, 'The receipt names the brand.');
     const dropped = overruled(`${UNIT}.review`, reviewCall('The expiry finding is filed.', 'It is out of the change.'), 'The expiry finding is dropped.');
@@ -209,7 +177,7 @@ describe('render finish (14.5.1)', () => {
     const reviewing = both(UNIT);
     reviewPassed();
     const open = both(UNIT);
-    finishWorked();
+    finishClosed();
     keywordOnlyKnowledge(dir);
     const stale = both(UNIT);
     writeState(dir, layout.manifest('half'), JSON.stringify({ ...readManifest(dir, 'half'), status: 'completed' }, null, 2));
@@ -224,66 +192,5 @@ describe('render finish (14.5.1)', () => {
       `finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,
       'finish has items open since its close: records-indexed — they are worked, and it is closed again',
     ].map((said) => [`render finish: ${said}`, `land: ${said}`]));
-  });
-});
-
-describe('finish yes (14.5.1, 24.1.2)', () => {
-  it('lands every phase still standing and completes the unit, committed, a feature handed to the start menu — refused while its review phase goes on, and while finish\'s checklist is open', () => {
-    const reviewing = refused(['finish', 'yes', UNIT]);
-    reviewPassed();
-    const open = refused(['finish', 'yes', UNIT]);
-    finishWorked();
-    const done = ok(dir, ['finish', 'yes', UNIT], { env: env() });
-
-    assert.deepStrictEqual([reviewing, open], [
-      `finish yes: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
-      `finish yes: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,
-    ]);
-    assert.deepStrictEqual(done, {
-      ok: true, unit: UNIT, landed: [], completed_at: readManifest(dir, UNIT).completed_at, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },
-    });
-    assert.match(output(dir, ['handoff', done.next.skill, ...done.next.args], { env: env() }), /^skill: leeway\nargs: $/m);
-    assert.deepStrictEqual([readManifest(dir, UNIT).status, stateGit(dir, ['log', '-1', '--format=%s']).trim()], ['completed', `finish(${UNIT}): completed`]);
-    assert.strictEqual(refused(['render', 'finish', UNIT]), `render finish: ${UNIT} is completed — new work starts from the start menu`);
-  });
-
-  it('hands an epic back to its menu, its review completed — the handoff taking it once the epic is completed', () => {
-    finishClosed();
-    writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir, UNIT), work_type: 'epic' }, null, 2));
-    commitAll(dir, 'pay an epic');
-
-    const { next } = ok(dir, ['finish', 'yes', UNIT], { env: env() });
-
-    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'review', 'completed'] });
-    assert.match(output(dir, ['handoff', next.skill, ...next.args], { env: env() }), /^skill: leeway-continue-epic\nargs: pay review completed$/m);
-  });
-
-  it('says, on the screen and in the yes, that a knowledge base set up but not reading leaves the records indexed unchecked', () => {
-    finishClosed();
-    unreadableKnowledge(dir);
-    const shown = sectionOf(screen(), 'DISPLAY: finish');
-    const { warnings } = ok(dir, ['finish', 'yes', UNIT], { env: env() });
-
-    assert.ok(shown.replace(/\s+/g, ' ').includes(`⚑ ${UNREAD}`), shown);
-    assert.deepStrictEqual(warnings, [UNREAD]);
-  });
-
-  it('leaves the unit in progress where the landing refuses, its refusal the way on with what standing warned, writing nothing', () => {
-    finishClosed();
-    unreadableKnowledge(dir);
-    const project = JSON.parse(readState(dir, layout.projectManifest));
-    writeState(dir, layout.projectManifest, JSON.stringify({ ...project, drivers: { ...project.drivers, landing: 'carrier-pigeon' } }, null, 2));
-    commitAll(dir, 'a landing driver the workflows lack');
-    const { error, warnings } = refusedPristine(dir, ['finish', 'yes', UNIT], { env: env() });
-
-    assert.match(error, /^finish yes: .*carrier-pigeon/);
-    assert.deepStrictEqual(warnings, [UNREAD]);
-    assert.strictEqual(readManifest(dir, UNIT).status, 'in-progress');
-  });
-
-  it('refuses arguments of another shape with the usage', () => {
-    for (const args of [['finish', 'yes'], ['finish', 'no', UNIT], ['finish', 'yes', UNIT, 'more'], ['finish', 'yes', UNIT, '--force', 'x']]) {
-      assert.strictEqual(refused(args), 'Usage: engine finish yes <work-unit>', args.join(' '));
-    }
   });
 });

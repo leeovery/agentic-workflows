@@ -19,7 +19,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  UNIT, SESSION_ID, EVERY, FOUND, useWorld, env, enter, reported, recorded, fixPhaseWritten, reviewCall, filed, finishClosed, secondRoundReady, ok,
+  UNIT, SESSION_ID, EVERY, FOUND, useWorld, env, enter, reported, recorded, fixPhaseWritten, reviewCall, filed, finishClosed, finishReady, secondRoundReady, ok,
 } = require('./review-world.cjs');
 const { place } = require('./board-world.cjs');
 const { area, tests, FINISH, facts, placed, reviewBoard } = require('./review-board-world.cjs');
@@ -47,10 +47,7 @@ describe('a round that passed (20.10.1, 20.10.4)', () => {
   });
 
   it('a round that passed shows what it found, what could not be proven with its scenario\'s words, and its verdict; the phase over, finish waits on the person, and the banner flags it (D18, D37); once finish completes the unit from its review phase, This session is All work at the start menu, the banner the unit\'s close, through the boot that brings the start menu, until the session goes somewhere (20.10.4, D38)', () => {
-    enter();
-    reported(1, EVERY);
-    recorded({ can_now: ['Pay by card.'], findings: [] });
-    finishClosed();
+    finishReady();
     const over = board();
     ok(dir, ['finish', 'yes', UNIT], { env: env() });
     const read = () => {
