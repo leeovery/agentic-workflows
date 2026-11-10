@@ -87,7 +87,8 @@
 //   the first lean — and so does a draw whose seal another, drawn at once,
 //   wrote while it waited. A seal of another version is never matched, and
 //   stays as written. The layout hook refuses Claude's own writes to it
-//   (layout-hook.cjs).
+//   (layout-hook.cjs). What waits on the person in a unit, read with no
+//   conversation of its own, reads every conversation's seals (waits.cjs).
 // - The decision point's answer is the response's, with its reason. An ask
 //   draws the screen. A proceed lands Claude's call, drawing nothing and
 //   sealing nothing: Claude's decision answering the question — the lean
@@ -223,7 +224,7 @@ const { LOCK_TIMEOUT_MS, isObject, writeJsonAtomic, withStateLockFile } = requir
 const { handedSession } = require('../kernel/process.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { conversationDir } = require('./conversation.cjs');
+const { conversationDir, conversationsRoot } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind } = require('./ledger-events.cjs');
@@ -656,6 +657,30 @@ function steppedBackSealed(folded, question) {
 function sealsAt(session, { unit, phase, topic }) {
   return /** @type {Seal[]} */ (Object.values(readSeals(session)).filter((seal) => isSeal(seal) && seal.place.unit === unit && seal.place.phase === phase && seal.place.topic === topic))
     .sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
+ * Every raise sealed in any conversation on this machine, read without the
+ * seals' lock, as what waits on the person is read with no conversation of
+ * its own (waits.cjs): a seal of another version passed over, and a
+ * conversation whose seals cannot be read passed over whole.
+ * @returns {Seal[]}
+ */
+function everySeal() {
+  /** @type {string[]} */
+  let folders;
+  try {
+    folders = fs.readdirSync(conversationsRoot());
+  } catch {
+    return [];
+  }
+  return folders.flatMap((folder) => {
+    try {
+      return /** @type {Seal[]} */ (Object.values(readSeals(folder)).filter(isSeal));
+    } catch {
+      return [];
+    }
+  });
 }
 
 /**
@@ -1488,4 +1513,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, everySeal, sealWaits };

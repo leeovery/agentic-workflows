@@ -77,6 +77,7 @@ const { ledgerStopSurface } = require('./ledger.cjs');
 const { directiveStopSurface } = require('./directives.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
+const { helpSurface } = require('./projections/help.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -1536,6 +1537,7 @@ const SURFACES = {
   'investigation-plan': investigationPlanSurface,
   'investigation-check-in': investigationCheckInSurface,
   'conclude': concludeSurface,
+  'help': (_cwd, { dotpath, item }) => helpSurface(dotpath, item),
 };
 
 /**

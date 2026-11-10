@@ -430,6 +430,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render state-merge-gate
   render ledger-stop
   render directive-stop --directive <id>
+  render help <menu> [<arg>]
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
