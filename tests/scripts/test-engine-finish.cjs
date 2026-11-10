@@ -140,7 +140,7 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
   /** The way on over the claimed items still live. @param {string[]} live */
   const claimed = (live) => `inbox-closed engine open — the build's log claims ${live.join(', ')} resolved, still in the inbox — close each the work resolved: inbox close ${UNIT} <path> …; where the work did not resolve one after all, take its Resolved: line out of the log`;
 
-  it('18.S24: holds finish open while an item a Resolved: line of the build\'s log claims is live, naming each and the close; the two the work resolved closed for the unit, one triage archived meanwhile, and one the log mentions without a claim left live — the screen then lists the unit\'s two closures, and none another unit or none closed', () => {
+  it('18.S24: holds finish open while an item a Resolved: line of the build\'s log claims is live, naming each and the close; the two the work resolved closed for the unit, one triage archived meanwhile, and one the log mentions without a claim left live — the screen then lists the unit\'s two closures, and none another unit or none closed; one brought back after the close holds finish again, the way on taking its claim out of the log, and finish stands once the claim is out', () => {
     const [declined, ...rest] = inbox(
       ['bugs', '2026-06-01--a-card-is-charged-twice.md', 'A Card Is Charged Twice'],
       ['bugs', '2026-06-02--a-refund-names-no-card.md', 'A Refund Names No Card'],
@@ -151,7 +151,8 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
     );
     const [resolved, mentioned, elsewhere] = [rest.slice(0, 2), rest[2], rest.slice(3)];
     reviewPassed();
-    logged(`Resolved: ${resolved[0]}`, 'Resolved: .leeway/.inbox/ideas/2026-06-03--receipts-by-mail.md', `Resolved: ${declined}`, '', `Paying by phone, ${mentioned}, was captured for later.`);
+    const [receipts, prose] = ['Resolved: .leeway/.inbox/ideas/2026-06-03--receipts-by-mail.md', `Paying by phone, ${mentioned}, was captured for later.`];
+    logged(`Resolved: ${resolved[0]}`, receipts, `Resolved: ${declined}`, '', prose);
     ok(dir, ['inbox', 'archive', declined], { env: env() });
     const open = inboxItem();
     const closed = ok(dir, ['inbox', 'close', UNIT, ...resolved], { env: env() });
@@ -176,6 +177,12 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
       '    alone.',
       '',
     ].join('\n'));
+    ok(dir, ['inbox', 'restore', closed.closed[0]], { env: env() });
+    const held = [inboxItem(), refused(['render', 'finish', UNIT])];
+    logged(receipts, `Resolved: ${declined}`, '', prose);
+
+    assert.deepStrictEqual(held, [claimed([resolved[0]]), 'render finish: finish has items open since its close: inbox-closed — they are worked, and it is closed again']);
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), /^Pay — finish\n\nCLOSED IN THE INBOX \(1\)\n  └─ Receipts By Mail /);
   });
 
   it('reads a claim only on a line of its own, opening Resolved:, its path in any form read from .inbox/ on — absolute, from the project, backticked, a link, punctuation after it — once each; a mention anywhere else claims nothing', () => {
@@ -195,20 +202,6 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
     );
 
     assert.strictEqual(inboxItem(), claimed(paths.slice(0, 5)));
-  });
-
-  it('an item brought back after its close holds finish again, the way on taking its claim out of the log where the work did not resolve it after all, and finish stands once the claim is out', () => {
-    const [wrong] = inbox(['bugs', '2026-06-01--a-card-is-charged-twice.md', 'A Card Is Charged Twice']);
-    reviewPassed();
-    logged(`Resolved: ${wrong}`);
-    const [archived] = ok(dir, ['inbox', 'close', UNIT, wrong], { env: env() }).closed;
-    finishClosed();
-    ok(dir, ['inbox', 'restore', archived], { env: env() });
-    const held = [inboxItem(), refused(['render', 'finish', UNIT])];
-    logged('The charge was a gateway retry, not this bug.');
-
-    assert.deepStrictEqual(held, [claimed([wrong]), 'render finish: finish has items open since its close: inbox-closed — they are worked, and it is closed again']);
-    assert.match(sectionOf(screen(), 'DISPLAY: finish'), /^Pay — finish\n/);
   });
 });
 

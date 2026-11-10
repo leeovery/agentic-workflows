@@ -24,7 +24,8 @@
 // — the close's at `{unit}.implementation` — (14.3.7, review-phase.cjs), so
 // every filing is one engine call away.
 // It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, today's date
-// and its title's slug, and committed. It refuses, writing nothing, a unit
+// and its title's slug, a name only the archive holds taking the next free
+// `-{n}` (`freeItemPath`), and committed. It refuses, writing nothing, a unit
 // whose review phase cannot be entered (review-entry.cjs) but such a
 // quick-fix, a payload of another shape, a text with no title, a call that
 // is none of those, and an item already there.
@@ -461,7 +462,10 @@ function fileItem(cwd, unit, file) {
   const fault = filled(call) ? readShown(stateRoot(cwd), warnings, (shower) => reviewCallFault(shower, unit, call, atClose ? 'implementation' : 'review')) : 'its call names the ledger\'s file-or-drop call';
   if (fault !== null) faults.push(fault);
   if (faults.length > 0) throw new Error(`${said}: ${faults.join('; ')}`);
-  const rel = freeItemPath(cwd, KIND_FOLDER[/** @type {string} */ (kind)], slugOf(/** @type {string} */ (title)));
+  const [folder, slug] = [KIND_FOLDER[/** @type {string} */ (kind)], slugOf(/** @type {string} */ (title))];
+  const live = statePath(cwd, INBOX, folder, `${todayStamp()}--${slug}.md`);
+  if (fs.existsSync(live)) throw new Error(`${said}: ${live} is filed already — group this finding with it, or title it apart`);
+  const rel = freeItemPath(cwd, folder, slug);
   fs.mkdirSync(path.dirname(statePath(cwd, rel)), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), `${String(text).replace(/\n*$/, '')}\n`);
   const outcome = commitStateTail(cwd, [rel], `workflow(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s ${atClose ? 'close' : 'review'}`, warnings);
