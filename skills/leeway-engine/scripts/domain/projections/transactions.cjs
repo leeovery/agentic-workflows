@@ -285,4 +285,9 @@ function inboxDeleteReceipt(title) {
   return confirmation(`Deleted "${title}".`);
 }
 
-module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };
+/** A capture's one line, naming the project where it is another's (18.6.1, 18.6.8). @param {string} kind @param {string} title @param {string|null} project */
+function captureReceipt(kind, title, project) {
+  return confirmation(`Logged ${kind}${project === null ? '' : ` in ${project}`}: "${title}"`);
+}
+
+module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt, captureReceipt };

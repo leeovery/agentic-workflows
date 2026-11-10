@@ -222,7 +222,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
       finish: [
         'review-passed engine open: the review phase passed and its report is written, where the unit has a review phase (a quick-fix\'s only when the person asks)',
         'questions-answered engine done: no question waiting on the person',
-        'inbox-closed claude open: resolved inbox items closed',
+        'inbox-closed engine done: resolved inbox items closed',
         'build-log-closed claude open: the build log closed',
       ],
     });
@@ -517,8 +517,8 @@ describe('skips (6.4.2, 6.4.5)', () => {
   eachOn(marked);
 
   it('a skip records its reason: none given, or a blank one, is refused', () => {
-    assert.match(refused(['skip', 'finish', UNIT, 'inbox-closed']), /^Usage: engine checklist /);
-    assert.strictEqual(refused(['skip', 'finish', UNIT, 'inbox-closed', '--reason', ' ']), 'checklist skip: a skip records its reason — --reason "<text>"');
+    assert.match(refused(['skip', 'finish', UNIT, 'build-log-closed']), /^Usage: engine checklist /);
+    assert.strictEqual(refused(['skip', 'finish', UNIT, 'build-log-closed', '--reason', ' ']), 'checklist skip: a skip records its reason — --reason "<text>"');
   });
 
   it('decided\'s gate shows its own skips; a phase\'s start shows none of its own', () => {

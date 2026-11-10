@@ -29,7 +29,9 @@
 //   among them — the yes then merging them, else saying its fixes have
 //   landed; and each fix done with its pair's verdict, the round its pair
 //   passed it in or the orchestrator settled it (`pairVerdict`).
-// - It shows every checklist item skipped on the way, with its reason,
+// - It lists every inbox item the unit closed, read from the record
+//   `inbox close` keeps (18.6.7, inbox.cjs, `closedBy`); it shows every
+//   checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
 //   and the review phase — the person's answer at `{unit}.implementation`
@@ -91,6 +93,7 @@ const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const { finishScreen, closeScreen } = require('./projections/finish.cjs');
 const { setAsideHeld } = require('./review-phase.cjs');
+const { closedBy } = require('./inbox.cjs');
 const { reviewOverRefusal, stillOpen, notesLeft } = require('./finish-checks.cjs');
 const { reading } = require('./phase-checks.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -228,6 +231,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
     const view = {
       unit,
       title: itemTitle(topicTitles(manifest), 'review', unit),
+      closed: closedBy(cwd, unit),
       skips: skips.map(({ checklist, text, reason }) => ({ checklist, text, reason })),
       verdict,
       warnings,

@@ -86,6 +86,7 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 - A call or a question → `ledger ask {work_unit}.implementation [--task {task}]`, then `raise {work_unit}.implementation --answers {question_id} [--parks {task}]`; a decision that must change → `raise {work_unit}.implementation --replaces {decision_id} --reason {reason} [--parks {task}]`; what relied on it → `ledger affected {work_unit}`, `ledger hold`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - Earlier work → `knowledge query "{term}" …`.
+- An inbox item the work resolved → `inbox close {work_unit} {path} …`.
 - The close → `checklist show|done|skip|close finish {work_unit}`, then `render finish {work_unit}`, whose yes runs `finish yes` and whose review row runs `review ask`.
 - The work as a feature or a bugfix → `workunit move {work_unit} --to {type:[feature|bugfix]} --file {payload}`, whose yes runs `start-this-work yes`.
 - The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.
@@ -93,9 +94,7 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 
 ## Closing
 
-The quick-fix closes once every fix is done or closed, each done fix recorded. Finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. Yours:
-- `inbox-closed` — the build's log names each live inbox item this work resolved, by its path, and the item stays in the inbox.
-- `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
+The quick-fix closes once every fix is done or closed, each done fix recorded. Finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log: check the live inbox against what was built, name in the log each item the work resolved, by its path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
 
 Where `notes-answered` stays open, the notes for later its fixes' builders and pairs left stand. Answer each by one finding, filed to the inbox or dropped: `{"area": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.leeway/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.leeway/.cache/{work_unit}/build/notes.json` and record them:
 
@@ -105,7 +104,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs quick-fix notes {work_unit}
 
 A refusal names every fault: put each right and record them again.
 
-Mark each as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw the close, emitting its sections verbatim per their markers:
+Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw the close, emitting its sections verbatim per their markers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render finish {work_unit}

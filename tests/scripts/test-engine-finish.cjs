@@ -5,10 +5,11 @@
 // domain/projections/finish.cjs, its engine items domain/finish-checks.cjs):
 // finish's checklist (6.4.10) — the review phase over, read from its
 // rounds' records, only where the unit has a review phase, no question
-// waiting on the person, and the unit's records indexed, only where the
-// checkout's knowledge base is set up, each the engine's; Claude's items
-// worked in its own order, one skipped, and the close (2.S2); `engine
-// render finish <unit>`, standing on that close — every checklist item
+// waiting on the person, no live inbox item the build's log names left
+// (18.S24), and the unit's records indexed, only where the checkout's
+// knowledge base is set up, each the engine's; Claude's item skipped, and
+// the close (2.S2); `engine render finish <unit>`, standing on that close —
+// the inbox items the unit closed (18.6.7), every checklist item
 // skipped on the way, with its reason, read from the manifest by a later
 // conversation (6.S23, 6.S32), no measure (17.S2), each call the person
 // changed in the build and the review phase asked its verdict before the
@@ -24,10 +25,11 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
+const fs = require('fs');
 const { sectionOf, callAsync, keywordOnlyKnowledge, layout, commitAll } = require('./engine-harness.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const {
-  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, taskMade, fixBuilt, fixClosed, reviewPassed, finishClosed, finishReady, readManifest, writeState, stateGit, ok, assert,
+  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, taskMade, fixBuilt, fixClosed, reviewPassed, finishClosed, finishReady, readManifest, writeState, statePath, stateGit, ok, assert,
 } = require('./review-world.cjs');
 const { finishHelpers } = require('./finish-world.cjs');
 
@@ -61,10 +63,10 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
     fixClosed(3, 2);
 
     assert.deepStrictEqual([before, waiting, beyond, items()], [
-      [`review-passed engine open — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
-      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started, task 3.2 not started`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
-      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.2 not started`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
-      ['review-passed engine done', 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      [`review-passed engine open — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`, 'questions-answered engine done', 'inbox-closed engine done', 'build-log-closed claude open'],
+      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started, task 3.2 not started`, 'questions-answered engine done', 'inbox-closed engine done', 'build-log-closed claude open'],
+      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.2 not started`, 'questions-answered engine done', 'inbox-closed engine done', 'build-log-closed claude open'],
+      ['review-passed engine done', 'questions-answered engine done', 'inbox-closed engine done', 'build-log-closed claude open'],
     ]);
     assert.strictEqual(refused(['checklist', 'done', 'finish', UNIT, 'review-passed']), 'checklist done: review-passed is the engine\'s to check, never marked — it reads done once it holds');
   });
@@ -88,7 +90,7 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
   it('names the review\'s entry refusal as the way on where the review cannot be entered yet, and holds no review item for a quick-fix, but its notes answered', () => {
     assert.deepStrictEqual([items('half')[0], items('tweak')], [
       'review-passed engine open — half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
-      ['questions-answered engine done', 'notes-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      ['questions-answered engine done', 'notes-answered engine done', 'inbox-closed engine done', 'build-log-closed claude open'],
     ]);
   });
 
@@ -104,27 +106,70 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
     }, 'records-indexed engine done']);
   });
 
-  it('ends each of Claude\'s items done or skipped in its own order, its reason recorded, and the close recorded on the unit\'s manifest — Claude\'s marks and the close alone, each write committed alone', () => {
+  it('ends Claude\'s item skipped with its reason, and the close recorded on the unit\'s manifest — Claude\'s mark and the close alone, each write committed alone', () => {
     reviewPassed();
     const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
-    const marks = {
-      'build-log-closed': checklist(['done', 'finish', UNIT, 'build-log-closed']),
-      'inbox-closed': checklist(['skip', 'finish', UNIT, 'inbox-closed', '--reason', 'No inbox item was resolved.']),
-    };
+    const { state, reason, at } = checklist(['skip', 'finish', UNIT, 'build-log-closed', '--reason', 'The build kept no log.']);
     const closing = checklist(['close', 'finish', UNIT]);
 
-    const stored = (/** @type {any} */ { state, reason, at }) => (reason === undefined ? { state, at } : { state, reason, at });
-    assert.deepStrictEqual(readManifest(dir, UNIT).checklists.finish, { items: Object.fromEntries(Object.entries(marks).map(([key, mark]) => [key, stored(mark)])), closed: closing.closed });
+    assert.deepStrictEqual(readManifest(dir, UNIT).checklists.finish, { items: { 'build-log-closed': { state, reason, at } }, closed: closing.closed });
     assert.deepStrictEqual(stateGit(dir, ['log', '--reverse', '--format=%s', `${before}..HEAD`]).trim().split('\n'), [
-      `checklist(${UNIT}): finish build-log-closed done`, `checklist(${UNIT}): finish inbox-closed skipped`, `checklist(${UNIT}): finish closed`,
+      `checklist(${UNIT}): finish build-log-closed skipped`, `checklist(${UNIT}): finish closed`,
     ]);
     assert.deepStrictEqual([...new Set(stateGit(dir, ['log', '--format=', '--name-only', `${before}..HEAD`]).trim().split('\n'))], [layout.manifest(UNIT)]);
   });
 });
 
+describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
+  /** An inbox item written and committed: its path, absolute. @param {string} kind @param {string} name @param {string} title */
+  const item = (kind, name, title) => {
+    writeState(dir, layout.inbox(kind, name), `# ${title}\n\nSeen while paying.\n`);
+    commitAll(dir, `inbox: ${name}`);
+    return statePath(dir, layout.inbox(kind, name));
+  };
+
+  it('18.S24: holds finish open while an item the build\'s log names is live, naming each and the close; the two the work resolved closed for the unit, one triage archived meanwhile, and the third, never named, left live — the screen then lists the unit\'s two closures, and none another unit or none closed', () => {
+    const declined = item('bugs', '2026-06-01--a-card-is-charged-twice.md', 'A Card Is Charged Twice');
+    const resolved = [item('bugs', '2026-06-02--a-refund-names-no-card.md', 'A Refund Names No Card'), item('ideas', '2026-06-03--receipts-by-mail.md', 'Receipts By Mail')];
+    const unnamed = item('ideas', '2026-06-04--pay-by-phone.md', 'Pay By Phone');
+    const elsewhere = [item('quickfixes', '2026-06-05--rename-the-pay-button.md', 'Rename The Pay Button'), item('bugs', '2026-06-06--the-totals-drift.md', 'The Totals Drift')];
+    reviewPassed();
+    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), `# The build\n\nResolved ${resolved[0]} and .leeway/.inbox/ideas/2026-06-03--receipts-by-mail.md, and ${declined}.\n`);
+    commitAll(dir, 'the build\'s log');
+    ok(dir, ['inbox', 'archive', declined], { env: env() });
+    const open = items()[2];
+    const closed = ok(dir, ['inbox', 'close', UNIT, ...resolved], { env: env() });
+    ok(dir, ['inbox', 'close', 'none', elsewhere[0]], { env: env() });
+    ok(dir, ['inbox', 'close', 'half', elsewhere[1]], { env: env() });
+    const done = items()[2];
+    finishClosed();
+
+    assert.deepStrictEqual([open, closed.unit, done, fs.existsSync(unnamed)], [
+      `inbox-closed engine open — the build's log names ${resolved.join(', ')}, still in the inbox — close each the work resolved: inbox close ${UNIT} <path> …`, UNIT, 'inbox-closed engine done', true,
+    ]);
+    assert.strictEqual(sectionOf(screen(), 'DISPLAY: finish'), [
+      'Pay — finish',
+      '',
+      'CLOSED IN THE INBOX (2)',
+      '  ├─ A Refund Names No Card    [bug]',
+      '  └─ Receipts By Mail          [idea]',
+      '  ↳ Each is archived as closed by Pay. One closed wrongly comes',
+      '    back from the archived items in triage, or ask me to bring it',
+      '    back.',
+      '',
+      '  ⚑ Skipped at phase 1\'s start: shared design settled — One task',
+      '    alone.',
+      '',
+    ].join('\n'));
+  });
+});
+
 describe('render finish (14.5.1)', () => {
   it('14.S9, 6.S23, 6.S32, 17.S2: draws every skip on the way with its reason, read by a later conversation, no measure, and, nothing changed by the person, no verdict — then questions invited, the yes running finish and a comment', () => {
-    finishReady();
+    reviewPassed();
+    checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
+    checklist(['skip', 'finish', UNIT, 'build-log-closed', '--reason', 'The build kept no log.']);
+    checklist(['close', 'finish', UNIT]);
     const out = screen('later-session');
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), [
@@ -132,8 +177,8 @@ describe('render finish (14.5.1)', () => {
       '',
       '  ⚑ Skipped at phase 1\'s start: shared design settled — One task',
       '    alone.',
-      '  ⚑ Skipped at finish: resolved inbox items closed — No inbox',
-      '    item was resolved.',
+      '  ⚑ Skipped at finish: the build log closed — The build kept no',
+      '    log.',
       '',
     ].join('\n'));
     assert.strictEqual(sectionOf(out, 'MENU: finish'), [

@@ -62,7 +62,7 @@ describe('pipeline simulation: finish held over a task beyond the review\'s find
 
     assert.strictEqual(reviewNext(sim, WU).move, 'fixes', 'after the /clear the review still waits on it');
     sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review passed in round 1 on a nit.\n');
-    for (const key of ['inbox-closed', 'build-log-closed']) sim.run(['checklist', 'done', 'finish', WU, key]);
+    sim.run(['checklist', 'done', 'finish', WU, 'build-log-closed']);
     sim.refuses(['checklist', 'close', 'finish', WU], null);
 
     builtAside(sim, WU, other, 'src/write.js');

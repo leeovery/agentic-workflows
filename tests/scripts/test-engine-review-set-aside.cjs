@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { output, sectionOf } = require('./engine-harness.cjs');
 const {
-  UNIT, SESSION_ID, EVERY, FAILING, useWorld, env, enter, reported, recorded, firstRoundReady, fixPhaseWritten, fixBuilt, named, RECEIPT, stateText, commitFile, ok, okSections, statePath, git, initRepo, assert,
+  UNIT, SESSION_ID, EVERY, FAILING, useWorld, env, enter, reported, recorded, firstRoundReady, fixPhaseWritten, fixBuilt, named, finishClosed, RECEIPT, stateText, commitFile, ok, okSections, statePath, git, initRepo, assert,
 } = require('./review-world.cjs');
 const {
   ASIDE, flat, excluded, treeKit,
@@ -60,14 +60,6 @@ const asideLine = (copy) => `set aside: ${statePath(dir, ASIDE)} — ${copy}, ke
 
 /** The last round's report as `render review-report` draws it, flattened. */
 const reportDrawn = () => flat(sectionOf(output(dir, ['render', 'review-report', UNIT], { env: env() }), 'DISPLAY: review report'));
-
-/** The checklist verbs finish closes on, worked. */
-function finishClosed() {
-  ok(dir, ['checklist', 'skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.'], { env: env() });
-  ok(dir, ['checklist', 'skip', 'finish', UNIT, 'inbox-closed', '--reason', 'No inbox item was resolved.'], { env: env() });
-  ok(dir, ['checklist', 'done', 'finish', UNIT, 'build-log-closed'], { env: env() });
-  ok(dir, ['checklist', 'close', 'finish', UNIT], { env: env() });
-}
 
 describe('what put back sets aside (12.7.8, 14.S13)', () => {
   it('a link is set aside as a link — to a folder, or to nothing — and put back removes it', () => {

@@ -120,16 +120,15 @@ The review runs without the person but for its reports and finish. Every questio
 - The round → `review reads|round|accept-tree {work_unit}`, the round's file `{can_now, findings, settled?}`: `can_now`, each line of what the person can now do that they could not; each finding's `area` by its name, `tests` for the test surface, `scope` `in` or `out`, `call`, `text` and `from`, the report items it answers as `{report}#{n}`, a note for later as `{report}#n{k}`, a builder's note as `notes#{k}`, a bugfix's reproducing test passing on the unfixed code again as `unfixed#1`, then where it landed — `fix` its task, `inbox` the item filed, or `drop` why — and `ledger`, your call's id, where you made one; `settled`, how a round that makes no fix task was settled. Its report → `render review-report {work_unit} [--round {r}]`.
 - A question only the person can answer → `ledger ask {work_unit}.review [--task {task}]`, then `raise {work_unit}.review --answers {question_id} [--parks {task}]`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
+- An inbox item the work resolved → `inbox close {work_unit} {path} …`.
 - The close → `checklist show|done|skip|close finish {work_unit}`, then `render finish {work_unit}`, whose yes runs `finish yes`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
 
-Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. Yours:
-- `inbox-closed` — the build's log names each live inbox item this work resolved, by its path, and the item stays in the inbox.
-- `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
+Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log: check the live inbox against what was built, name in the log each item the work resolved, by its path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
 
-Mark each as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish, emitting its sections verbatim per their markers:
+Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish, emitting its sections verbatim per their markers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render finish {work_unit}

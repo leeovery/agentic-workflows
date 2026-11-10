@@ -100,7 +100,7 @@ describe('finish\'s checklist for a quick-fix (6.4.10, 6.S14)', () => {
     writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...manifest, fixes: { ...manifest.fixes, review_asked: '2026-06-03T10:00:00Z' } }, null, 2));
 
     assert.deepStrictEqual([unasked, items()[0]], [
-      ['questions-answered engine done', 'notes-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      ['questions-answered engine done', 'notes-answered engine done', 'inbox-closed engine done', 'build-log-closed claude open'],
       `review-passed engine open — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
     ]);
   });
@@ -176,7 +176,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('offers a yes that merges nothing, where no fix is done', () => {
-    const view = { unit: UNIT, title: 'Typo', skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, pair: [], kept: [] };
+    const view = { unit: UNIT, title: 'Typo', closed: [], skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, pair: [], kept: [] };
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);

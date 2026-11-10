@@ -408,7 +408,7 @@ function ownBranchCommit(dir, subject) {
 /** Finish's checklist worked and closed in the conversation `as` names, the build's log written. @param {string} dir @param {As} as */
 function checklistClosed(dir, as) {
   writeState(dir, layout.unit(UNIT, 'build', 'log.md'), '# The fixes\n');
-  for (const key of ['inbox-closed', 'build-log-closed']) ok(dir, ['checklist', 'done', 'finish', UNIT, key], as);
+  ok(dir, ['checklist', 'done', 'finish', UNIT, 'build-log-closed'], as);
   ok(dir, ['checklist', 'close', 'finish', UNIT], as);
 }
 

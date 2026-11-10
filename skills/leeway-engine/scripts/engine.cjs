@@ -56,7 +56,8 @@ const { createExperiment, advanceExperiment, approveExperiment, recordRuns, conc
 const { seriesDir } = require('./domain/experiment-paths.cjs');
 const { topicLog } = require('./domain/topic-log.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
-const { archiveItems, restoreItems, deleteItems, fileItem } = require('./domain/inbox.cjs');
+const { archiveItems, closeItems, restoreItems, deleteItems, fileItem } = require('./domain/inbox.cjs');
+const { CAPTURE_USAGE, captureItem } = require('./domain/inbox-capture.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
@@ -309,6 +310,8 @@ ${VERIFY_USAGE.replace(/^/gm, '  ')}
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
   inbox file <work-unit> --file <item.json>
+  inbox close <work-unit|none> <path> [<path> …]
+  ${CAPTURE_USAGE}
 ${REVIEW_USAGE.replace(/^/gm, '  ')}
   ${FINISH_USAGE}
   ${MEASURES_USAGE}
@@ -1445,17 +1448,33 @@ function runMigrate(call, argv) {
 // ---------------------------------------------------------------------------
 // inbox — archive / restore / delete one or more inbox items as a single
 // transaction: strict path validation, file moves (or git rm), one scoped
-// commit for the whole set; and file, the review phase's out-of-scope
-// finding filed with the ledger's call that filed it.
+// commit for the whole set; close, the same archive recording who closed
+// each; file, the review phase's out-of-scope finding filed with the
+// ledger's call that filed it; and capture, the capture skills' one line
+// (domain/inbox-capture.cjs).
 // ---------------------------------------------------------------------------
 
-const INBOX_USAGE = 'Usage: engine inbox <archive|restore|delete> <path> [<path> …] | engine inbox file <work-unit> --file <item.json>';
+const INBOX_USAGE = `Usage: engine inbox <archive|restore|delete> <path> [<path> …] | engine inbox close <work-unit|none> <path> [<path> …] | engine inbox file <work-unit> --file <item.json> | engine ${CAPTURE_USAGE}`;
 
 /** @param {Call} call @param {string[]} argv */
 function runInbox(call, argv) {
   const [command, ...paths] = argv;
   try {
     const { cwd } = call;
+    if (command === 'capture') {
+      const { opts, positional } = parseArgs(paths);
+      if (positional.length !== 1 || Object.keys(opts).some((key) => key !== 'project' || !opts[key])) throw new Error(INBOX_USAGE);
+      const { response, receipt } = captureItem(cwd, positional[0], call.stdin(), opts.project);
+      respond(call, response);
+      respondSections(call, receipt);
+      return;
+    }
+    if (command === 'close') {
+      const [unit, ...closing] = paths;
+      if (closing.length === 0) throw new Error(INBOX_USAGE);
+      respond(call, closeItems(cwd, unit, closing));
+      return;
+    }
     if (command === 'file') {
       const { opts, positional } = parseArgs(paths);
       if (positional.length !== 1 || typeof opts.file !== 'string' || Object.keys(opts).length !== 1) throw new Error(INBOX_USAGE);
@@ -2402,8 +2421,11 @@ const COMMANDS = Object.freeze({
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger`, `asset`, `raise`, `enter` and `verify`, and none but
-// they waits on the lock: `knowledge` writes the store the state ignores,
+// `boot`, `ledger`, `asset`, `raise`, `enter`, `verify` and `inbox
+// capture`, and none but they waits on the lock: `inbox capture` holds
+// the lock of the project it captures into, which may be another's than
+// the caller's, around its name, its write and its commit;
+// `knowledge` writes the store the state ignores,
 // under a lock of its own; `verify` holds it around a run's record or the
 // setup's and the commit alone, so the product's parts, which run for
 // minutes, hold no peer up and may run the engine;
@@ -2446,6 +2468,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   handoff: '*',
   topic: ['mailbox'],
   roadmap: ['state'],
+  inbox: ['capture'],
   session: ['label', 'repair', 'cleanup', 'resume'],
   gate: '*',
   raise: '*',
@@ -2496,14 +2519,18 @@ const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', '
 // that one runs the workflows or not.
 const MOD_READS = ['board'];
 
+// The capture line, which a capture skill runs from a conversation in any
+// project, one that runs the workflows or not (18.6.2).
+const CAPTURE = 'inbox capture';
+
 /** Whether a command marks the conversation that ran it. @param {string[]} argv */
-const marks = (argv) => !HOOK_TARGETS.includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]);
+const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]);
 
 /**
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. Whatever the exit, a command
  * the conversation ran marks it as one that runs the workflows — but a
- * hook's or the mod's, run for any conversation; one that
+ * hook's, the mod's or the capture line's, run for any conversation; one that
  * answered records the gate its MENU stated as the gate the conversation was
  * shown, where a failed one showed none. Both after the command, which may
  * take the folder both live in: boot's tidy-up deletes one whose transcript

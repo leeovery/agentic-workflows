@@ -83,6 +83,16 @@ function notesBanked() {
 }
 
 describe('a quick-fix\'s notes for later, answered at its close (R24)', () => {
+  it('6.4.10: a note filed to the inbox is no closure — the build\'s log naming it holds no inbox item open', () => {
+    dir = world();
+    notesBanked();
+    const note = filedNote('notes#1', 'Warn on --color');
+    run(['quick-fix', 'notes', UNIT, '--file', payload('notes.json', { findings: [note, droppedNote('notes#2')] })]);
+    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), `# The fixes\n\nnotes#1 filed to the inbox, ${note.inbox}.\n`);
+
+    assert.deepStrictEqual([fs.existsSync(note.inbox), items().find((line) => line.startsWith('inbox-closed'))], [true, 'inbox-closed engine done']);
+  });
+
   it('holds the close while a note stands — its checklist\'s notes-answered open, naming each and the verb, and its screen refused — until each is filed to the inbox or dropped, kept and committed; then the close stands', () => {
     dir = world();
     notesBanked();
@@ -95,7 +105,7 @@ describe('a quick-fix\'s notes for later, answered at its close (R24)', () => {
 
     assert.deepStrictEqual(open, [
       `notes-answered engine open — ${way}`,
-      'checklist close: finish has items open: notes-answered, inbox-closed, build-log-closed',
+      'checklist close: finish has items open: notes-answered, build-log-closed',
       `render finish: ${UNIT} closes once each note for later is filed to the inbox or dropped — notes#1, notes#2: quick-fix notes ${UNIT} --file <notes.json>`,
     ]);
     assert.deepStrictEqual([answered.answered, committed], [['notes#1', 'notes#2'], `quick-fix(${UNIT}): notes for later answered`]);

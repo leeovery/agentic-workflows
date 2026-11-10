@@ -43,7 +43,8 @@
 // relies on done, its tasks passed, its phase review passed with its fixes
 // landed, its scenarios proven or reported, its notes consolidated and its
 // stack merged; finish's, the review phase over, no question waiting on
-// the person and the unit's records indexed (finish-checks.cjs); and a
+// the person, no live inbox item the build's log names left and the
+// unit's records indexed (finish-checks.cjs); and a
 // directive's check passing
 // (directives.cjs). What a
 // call reads for them is read once (`reads`). Whether every engine item of
@@ -422,7 +423,9 @@ const POINTS = Object.freeze({
         way: ofUnit(finishChecks.notesWay),
         applies: ofUnit(finishChecks.answersNotes),
       },
-      { key: 'inbox-closed', text: 'resolved inbox items closed' },
+      {
+        key: 'inbox-closed', text: 'resolved inbox items closed', check: ofUnit(finishChecks.inboxClosed), way: ofUnit(finishChecks.inboxWay),
+      },
       { key: 'build-log-closed', text: 'the build log closed' },
       {
         key: 'records-indexed', text: 'the records indexed', check: ofUnit(finishChecks.recordsIndexed), way: ofUnit(finishChecks.recordsWay), applies: ofUnit(finishChecks.knowledgeSetUp),

@@ -65,6 +65,7 @@ const { resolveId, shortId } = require('./ledger-ids.cjs');
 const { todayStamp, dayMonth } = require('./dates.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { sendReport } = require('./projections/mail.cjs');
+const { freeItemPath } = require('./inbox.cjs');
 
 const SEND_USAGE = 'topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>';
 const MAILBOX_USAGE = 'topic mailbox <work-unit> <topic>';
@@ -252,7 +253,8 @@ function toInbox(cwd, unit, why, message, slug) {
 /**
  * Every message waiting for a topic moved to the inbox as an idea, as a send
  * to a cancelled topic lands one (10.1.6, 8.8.16): named for the message's
- * slug, a name the inbox holds already today taking the next free `-{n}`.
+ * slug, a name the inbox holds already today taking the next free `-{n}`
+ * (inbox.cjs, `freeItemPath`).
  * Runs under the caller's lock and commits nothing. Answers, state-relative,
  * each message removed and the idea it became, in the order they landed.
  * @param {string} cwd @param {string} unit @param {string} topic
@@ -262,8 +264,7 @@ function moveWaitingToInbox(cwd, unit, topic) {
   return mailboxFiles(stateRoot(cwd), unit, topic).map((name) => {
     const message = `${mailboxDir(unit, topic)}/${name}`;
     const slug = name.replace(/^\d+-/, '').replace(/\.md$/, '');
-    let idea = ideaPath(slug);
-    for (let n = 2; fs.existsSync(statePath(cwd, idea)); n += 1) idea = ideaPath(`${slug}-${n}`);
+    const idea = freeItemPath(cwd, 'ideas', slug);
     writeIdea(cwd, idea, fs.readFileSync(statePath(cwd, message), 'utf8'));
     fs.unlinkSync(statePath(cwd, message));
     return { message, idea };
