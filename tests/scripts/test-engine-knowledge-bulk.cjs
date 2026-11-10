@@ -19,7 +19,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, createFile, layout } = require('./discovery-test-utils.cjs');
 const {
   KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, manifestSet, completeUnit, setRegistry,
   configureKnowledge, knowledgeAt, knowledgeMetadata, storedChunks,
@@ -36,7 +36,7 @@ describe('engine knowledge index — the bulk index', () => {
   /** A feature whose one topic's record is on disk. @param {string} name */
   function feature(name) {
     knowledgeUnit(root, name, 'feature');
-    write(`.knowledge/records/${name}/${name}.md`);
+    write(layout.record(name, name));
   }
   const sha = (/** @type {string} */ rel) => store.contentHash(fs.readFileSync(at(rel), 'utf8'));
   const removed = (/** @type {string} */ rel, /** @type {string} */ why) => `Removed ${at(rel)} — 1 chunks (${why})\n`;
@@ -53,15 +53,15 @@ describe('engine knowledge index — the bulk index', () => {
     for (const name of ['auth', 'billing']) feature(name);
     assert.deepStrictEqual(await knowledge('index'), {
       code: 0,
-      stdout: indexed('.knowledge/records/auth/auth.md', 'new') + indexed('.knowledge/records/billing/billing.md', 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n',
+      stdout: indexed(layout.record('auth', 'auth'), 'new') + indexed(layout.record('billing', 'billing'), 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n',
       stderr: '',
     });
 
-    fs.appendFileSync(at('.knowledge/records/auth/auth.md'), 'A line added after indexing.\n');
+    fs.appendFileSync(at(layout.record('auth', 'auth')), 'A line added after indexing.\n');
     assert.deepStrictEqual(await knowledge('index'), {
-      code: 0, stdout: indexed('.knowledge/records/auth/auth.md', 'changed') + '0 new, 1 changed, 0 removed, 1 unchanged.\n', stderr: '',
+      code: 0, stdout: indexed(layout.record('auth', 'auth'), 'changed') + '0 new, 1 changed, 0 removed, 1 unchanged.\n', stderr: '',
     });
-    assert.deepStrictEqual([...new Set(storedChunks(root, { workUnit: 'auth' }).map((c) => c.source_hash))], [sha('.knowledge/records/auth/auth.md')]);
+    assert.deepStrictEqual([...new Set(storedChunks(root, { workUnit: 'auth' }).map((c) => c.source_hash))], [sha(layout.record('auth', 'auth'))]);
   });
 
   it('re-indexes chunks that record no hash of their file once, then leaves them', async () => {
@@ -71,8 +71,8 @@ describe('engine knowledge index — the bulk index', () => {
     for (const chunk of storedChunks(root)) store.insertDocument(hashless, { ...chunk, source_hash: undefined });
     store.saveStore(hashless, knowledgeAt(root).store);
 
-    assert.strictEqual((await knowledge('index')).stdout, indexed('.knowledge/records/legacy/legacy.md', 'changed') + '0 new, 1 changed, 0 removed, 0 unchanged.\n');
-    assert.deepStrictEqual(storedChunks(root).map((c) => c.source_hash), [sha('.knowledge/records/legacy/legacy.md')]);
+    assert.strictEqual((await knowledge('index')).stdout, indexed(layout.record('legacy', 'legacy'), 'changed') + '0 new, 1 changed, 0 removed, 0 unchanged.\n');
+    assert.deepStrictEqual(storedChunks(root).map((c) => c.source_hash), [sha(layout.record('legacy', 'legacy'))]);
     assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 1 unchanged.\n');
   });
 
@@ -84,7 +84,7 @@ describe('engine knowledge index — the bulk index', () => {
 
     assert.deepStrictEqual(await knowledge('index'), {
       code: 0,
-      stdout: removed('.knowledge/records/dropped/dropped.md', 'work unit cancelled') + removed('.knowledge/records/orphaned/orphaned.md', 'work unit not registered')
+      stdout: removed(layout.record('dropped', 'dropped'), 'work unit cancelled') + removed(layout.record('orphaned', 'orphaned'), 'work unit not registered')
         + '0 new, 0 changed, 2 removed, 1 unchanged.\n',
       stderr: '',
     });
@@ -93,24 +93,24 @@ describe('engine knowledge index — the bulk index', () => {
 
   it('removes the chunks of a file gone from disk, naming why, and keeps its sibling', async () => {
     knowledgeUnit(root, 'payments', 'bugfix');
-    for (const topic of ['gone', 'kept']) write(`.knowledge/records/payments/${topic}.md`);
+    for (const topic of ['gone', 'kept']) write(layout.record('payments', topic));
     await knowledge('index');
-    fs.rmSync(at('.knowledge/records/payments/gone.md'));
+    fs.rmSync(at(layout.record('payments', 'gone')));
 
     assert.deepStrictEqual(await knowledge('index'), {
-      code: 0, stdout: removed('.knowledge/records/payments/gone.md', 'source deleted') + '0 new, 0 changed, 1 removed, 1 unchanged.\n', stderr: '',
+      code: 0, stdout: removed(layout.record('payments', 'gone'), 'source deleted') + '0 new, 0 changed, 1 removed, 1 unchanged.\n', stderr: '',
     });
     assert.deepStrictEqual(storedChunks(root).map((c) => c.topic), ['kept']);
   });
 
   it('--work-unit confines the index and its removals to that unit, its sibling left as it was', async () => {
     for (const name of ['alpha', 'beta']) feature(name);
-    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, indexed('.knowledge/records/alpha/alpha.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');
-    assert.match((await knowledge('status')).stdout, new RegExp(`^Unindexed artifacts: 1\\n  ${at('.knowledge/records/beta/beta.md')}$`, 'm'));
+    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, indexed(layout.record('alpha', 'alpha'), 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');
+    assert.match((await knowledge('status')).stdout, new RegExp(`^Unindexed artifacts: 1\\n  ${at(layout.record('beta', 'beta'))}$`, 'm'));
 
     await knowledge('index');
     for (const name of ['alpha', 'beta']) manifestSet(root, name, 'status', 'cancelled');
-    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, removed('.knowledge/records/alpha/alpha.md', 'work unit cancelled') + '0 new, 0 changed, 1 removed, 0 unchanged.\n');
+    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, removed(layout.record('alpha', 'alpha'), 'work unit cancelled') + '0 new, 0 changed, 1 removed, 0 unchanged.\n');
     assert.deepStrictEqual([...new Set(storedChunks(root).map((c) => c.work_unit))], ['beta']);
   });
 
@@ -126,12 +126,12 @@ describe('engine knowledge index — the bulk index', () => {
 
   it('attempts every file: one that fails is named on stderr and counted, the rest indexed, and the run exits 1', async () => {
     knowledgeUnit(root, 'payments', 'bugfix');
-    write('.knowledge/records/payments/empty.md', '\n');
-    write('.knowledge/records/payments/good.md');
+    write(layout.record('payments', 'empty'), '\n');
+    write(layout.record('payments', 'good'));
     const answer = await knowledge('index');
     assert.strictEqual(answer.code, 1);
-    assert.strictEqual(answer.stdout, indexed('.knowledge/records/payments/good.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged, 1 failed.\n');
-    assert.match(answer.stderr, new RegExp(`^Failed to index ${at('.knowledge/records/payments/empty.md').replace(/[.]/g, '\\.')}: No chunks produced from `));
+    assert.strictEqual(answer.stdout, indexed(layout.record('payments', 'good'), 'new') + '1 new, 0 changed, 0 removed, 0 unchanged, 1 failed.\n');
+    assert.match(answer.stderr, new RegExp(`^Failed to index ${at(layout.record('payments', 'empty')).replace(/[.]/g, '\\.')}: No chunks produced from `));
   });
 
   it('aborts on a project manifest it cannot read, before anything is removed', async () => {
@@ -172,11 +172,11 @@ describe('engine knowledge index — the bulk index', () => {
 
     assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 0 unchanged.\n');
     const status = (await knowledge('status')).stdout;
-    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at('.knowledge/records/buried/buried.md')}$`, 'm'));
+    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at(layout.record('buried', 'buried'))}$`, 'm'));
     assert.doesNotMatch(status, /Unindexed/);
 
-    await knowledge('index', '.leeway/.knowledge/records/buried/buried.md');
-    fs.appendFileSync(at('.knowledge/records/buried/buried.md'), 'A late edit.\n');
+    await knowledge('index', `.leeway/${layout.record('buried', 'buried')}`);
+    fs.appendFileSync(at(layout.record('buried', 'buried')), 'A late edit.\n');
     assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 0 unchanged.\n', 'the pruned chunks are compact\'s, never refreshed or dropped');
     assert.strictEqual(storedChunks(root).length, 1);
     assert.match((await knowledge('compact')).stdout, /^Compacted: removed 1 chunks from 1 work units/);
@@ -192,10 +192,10 @@ describe('engine knowledge index — the bulk index', () => {
     knowledgeUnit(root, 'frontier', 'feature');
     for (const [name, date] of [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']]) completeUnit(root, name, date);
 
-    assert.deepStrictEqual(await knowledge('index'), { code: 0, stdout: indexed('.knowledge/records/recent/recent.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n', stderr: '' });
+    assert.deepStrictEqual(await knowledge('index'), { code: 0, stdout: indexed(layout.record('recent', 'recent'), 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n', stderr: '' });
     const status = (await knowledge('status')).stdout;
     assert.match(status, new RegExp(`^WARNING: decay_prune_below in ${knowledgeAt(root).config} is ignored: "high" is not false or a number from 0 to 1$`, 'm'));
-    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at('.knowledge/records/buried/buried.md')}$`, 'm'));
+    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at(layout.record('buried', 'buried'))}$`, 'm'));
   });
 
   it('builds a missing store under the configured provider, empty where nothing is indexable', async () => {
@@ -216,12 +216,12 @@ describe('engine knowledge index — the bulk index', () => {
   it('from a subdirectory finds the project\'s artifacts, and neither it nor status reads a source as deleted', async () => {
     feature('auth');
     knowledgeUnit(root, 'ledger', 'epic');
-    write('.knowledge/records/ledger/fees.md');
+    write(layout.record('ledger', 'fees'));
     const subdirectory = at('auth');
     const fromSubdirectory = (/** @type {string[]} */ args) => engineKnowledge(subdirectory, args);
 
     assert.strictEqual((await fromSubdirectory(['index'])).stdout,
-      indexed('.knowledge/records/auth/auth.md', 'new') + indexed('.knowledge/records/ledger/fees.md', 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n');
+      indexed(layout.record('auth', 'auth'), 'new') + indexed(layout.record('ledger', 'fees'), 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n');
     assert.strictEqual((await fromSubdirectory(['index'])).stdout, '0 new, 0 changed, 0 removed, 2 unchanged.\n');
     const status = (await fromSubdirectory(['status'])).stdout;
     assert.match(status, /^Total chunks: 2$/m);
@@ -241,8 +241,8 @@ describe('engine knowledge fill', () => {
 
   it('gives a keyword-only store the provider configured over it, every chunk its vector, and says nothing', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    createFile(statePath(root), '.knowledge/records/auth/auth.md', '# Seed\n\nToken refresh settled.\n');
-    await engineKnowledge(root, ['index', '.leeway/.knowledge/records/auth/auth.md']);
+    createFile(statePath(root), layout.record('auth', 'auth'), '# Auth\n\nToken refresh settled.\n');
+    await engineKnowledge(root, ['index', `.leeway/${layout.record('auth', 'auth')}`]);
     assert.strictEqual(knowledgeMetadata(root).provider, null);
 
     configureKnowledge(root, STUB);

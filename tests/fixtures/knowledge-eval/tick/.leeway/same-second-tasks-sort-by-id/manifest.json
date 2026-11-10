@@ -191,12 +191,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-09-21-same-second-tasks-sort-by-id.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-09-21T21:20:24Z"
-    }
-  ],
   "completed_at": "2026-09-23"
 }

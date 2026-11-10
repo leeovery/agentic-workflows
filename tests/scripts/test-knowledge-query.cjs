@@ -13,7 +13,7 @@ const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, refuseLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
-const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
@@ -44,17 +44,6 @@ const NO_FILES = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-no-files-'));
 after(() => fs.rmSync(NO_FILES, { recursive: true, force: true }));
 refuseLaunches();
 
-/**
- * The record copy of `unit`'s one topic holding `text`, written into the
- * state at `root`.
- * @param {string} root @param {string} unit @param {string} text
- */
-function writeRecord(root, unit, text) {
-  const file = path.join(root, '.leeway', '.knowledge', 'records', unit, `${unit}.md`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text);
-}
-
 /** `text` as a regular expression matches it exactly. @param {string} text */
 const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -69,7 +58,7 @@ function doc(unit, n, content) {
     phase: 'record',
     topic: unit,
     confidence: 'high',
-    source_file: `.knowledge/records/${unit}/${unit}.md`,
+    source_file: layout.record(unit, unit),
     timestamp: new Date(2026, 0, 2).getTime(),
   };
 }
@@ -394,7 +383,7 @@ describe('knowledge query — `engine knowledge query`', () => {
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name, work_type: 'feature', status: 'completed', created: '2026-01-01', completed_at: completedAt, phases: {},
     }));
-    writeRecord(root, name, '# Investigation\n\nToken refresh follows the rate window.\n');
+    createFile(statePath(root), layout.record(name, name), '# Investigation\n\nToken refresh follows the rate window.\n');
   }
 
   /** @param {...string} args */
@@ -412,8 +401,8 @@ describe('knowledge query — `engine knowledge query`', () => {
       JSON.stringify({ work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } }));
     completedFeature('alpha', '2026-01-01');
     completedFeature('beta', '2026-06-01');
-    await knowledge('index', '.leeway/.knowledge/records/alpha/alpha.md');
-    await knowledge('index', '.leeway/.knowledge/records/beta/beta.md');
+    await knowledge('index', `.leeway/${layout.record('alpha', 'alpha')}`);
+    await knowledge('index', `.leeway/${layout.record('beta', 'beta')}`);
   });
 
   after(() => cleanupFixture(root));
@@ -428,19 +417,19 @@ describe('knowledge query — `engine knowledge query`', () => {
     assert.deepStrictEqual(beta.split('\n').slice(1), [
       'Investigation',
       'Token refresh follows the rate window.',
-      `Source: ${path.join(root, '.leeway/.knowledge/records/beta/beta.md')}:L1-3`,
+      `Source: ${path.join(root, `.leeway/${layout.record('beta', 'beta')}`)}:L1-3`,
     ]);
   });
 
   it('prints the bare path, and no headings, for a chunk its file no longer holds', async () => {
-    const file = path.join(root, '.leeway', '.knowledge', 'records', 'beta', 'beta.md');
+    const file = statePath(root, layout.record('beta', 'beta'));
     const written = fs.readFileSync(file, 'utf8');
     fs.writeFileSync(file, written.replace('rate window', 'burst window'));
     try {
       const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
       assert.deepStrictEqual(beta.split('\n').slice(1), [
         'Token refresh follows the rate window.',
-        `Source: ${path.join(root, '.leeway/.knowledge/records/beta/beta.md')}`,
+        `Source: ${path.join(root, `.leeway/${layout.record('beta', 'beta')}`)}`,
       ]);
     } finally {
       fs.writeFileSync(file, written);
@@ -452,7 +441,7 @@ describe('knowledge query — `engine knowledge query`', () => {
     const score = String.raw`\d+\.\d{4}`;
     for (const [unit, decay] of [['beta', '1\\.0000'], ['alpha', '0\\.9791']]) {
       assert.match(explained, new RegExp([
-        `^Source: ${literal(path.join(root, '.leeway', '.knowledge', 'records', unit, `${unit}.md`))}:L1-3`,
+        `^Source: ${literal(statePath(root, layout.record(unit, unit)))}:L1-3`,
         `Framing 1: keyword ${score}`,
         `Framing 2: keyword ${score}`,
         `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0400 tier = ${score}$`,
@@ -496,7 +485,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
     }));
-    writeRecord(root, 'alpha', '# Investigation\n\nToken refresh follows the rate window.\n');
+    createFile(statePath(root), layout.record('alpha', 'alpha'), '# Investigation\n\nToken refresh follows the rate window.\n');
     configure(endpoint.config);
     endpoint.mode = 'ok';
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
@@ -617,7 +606,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
     }));
-    writeRecord(root, 'alpha', '# Investigation\n\nToken refresh follows the rate window.\n');
+    createFile(statePath(root), layout.record('alpha', 'alpha'), '# Investigation\n\nToken refresh follows the rate window.\n');
     configFile = path.join(root, '.leeway', '.knowledge', 'config.json');
     configure({ provider: null });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
@@ -673,7 +662,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
       fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
         name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt, phases: {},
       }));
-      writeRecord(root, name, `# Investigation\n\n${name} settled its tokens.\n`);
+      createFile(statePath(root), layout.record(name, name), `# Investigation\n\n${name} settled its tokens.\n`);
       units[name] = { work_type: 'feature' };
     }
     fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: units }));

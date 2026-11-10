@@ -19,13 +19,13 @@ const assert = require('node:assert');
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
 const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
-const { setupFixtureAt, statePath } = require('./engine-harness.cjs');
+const { setupFixtureAt, statePath, layout } = require('./engine-harness.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
-const SOURCE = '.knowledge/records/same-second-tasks-sort-by-id/2026-09-21-same-second-tasks-sort-by-id.md';
+const SOURCE = layout.record('same-second-tasks-sort-by-id', '2026-09-21-same-second-tasks-sort-by-id');
 const ANCHOR = 'All five had been created inside the same wall-clock second';
-const OTHER = '.knowledge/records/ready-includes-in-progress/2026-06-02-ready-includes-in-progress.md';
+const OTHER = layout.record('ready-includes-in-progress', '2026-06-02-ready-includes-in-progress');
 const OTHER_ANCHOR = 'The in-progress task ends up dangling';
 const OTHER_TOPIC = '2026-06-02-ready-includes-in-progress';
 
@@ -270,7 +270,7 @@ function recordedProject(parent, identity) {
     name: 'auth', work_type: 'bugfix', status: 'in-progress', created: '2026-01-01', phases: {},
   });
   for (const topic of topics) {
-    writeFile(statePath(root, '.knowledge', 'records', 'auth', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
+    writeFile(statePath(root, layout.record('auth', topic)), `# ${topic}\n\nThe ${topic} decision.\n`);
   }
   writeJson(knowledgeFiles(statePath(root)).config, { knowledge: identity });
   return root;

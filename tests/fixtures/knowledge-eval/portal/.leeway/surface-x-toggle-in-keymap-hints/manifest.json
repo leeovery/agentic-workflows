@@ -76,12 +76,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-05-19-surface-x-toggle-in-keymap-hints.md",
-      "source": "inbox:quickfix",
-      "seeded_at": "2026-06-03T18:42:21Z"
-    }
-  ],
   "completed_at": "2026-06-03"
 }

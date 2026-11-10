@@ -8,15 +8,34 @@
 
 const { stem } = require('./stemmer.cjs');
 
-/** The fields a keyword search scores, each with its own length statistics. */
-const FIELDS = ['content', 'heading_path', 'source_file', 'id'];
+/**
+ * A topic of the chunk's own, or none: a dotted topic names a unit's own
+ * level, never a topic.
+ * @param {unknown} topic
+ */
+const ownTopic = (topic) => (typeof topic === 'string' && !topic.startsWith('.') ? topic : '');
+
+/**
+ * The fields a keyword search scores, each with its own length statistics,
+ * and the text each takes from a chunk. Its source is named by its unit and
+ * its topic, never its path or id, whose folder and phase words every chunk
+ * of a kind shares.
+ * @type {Record<string, (chunk: Record<string, any>) => string>}
+ */
+const FIELD_TEXT = {
+  content: (chunk) => chunk.content ?? '',
+  heading_path: (chunk) => chunk.heading_path ?? '',
+  source: (chunk) => [chunk.work_unit ?? '', ownTopic(chunk.topic)].join(' '),
+};
+
+const FIELDS = Object.keys(FIELD_TEXT);
 
 /**
  * The version of the terms a chunk carries, recorded in the store's file. A
  * change to the tokenizer or the fields takes the next, and a store recording
  * another re-derives every chunk's terms from the fields it records.
  */
-const TOKENIZER_VERSION = 3;
+const TOKENIZER_VERSION = 4;
 
 const K1 = 1.2;
 const B = 0.75;
@@ -109,7 +128,7 @@ function termsOf(chunk, vocabulary) {
   return FIELDS.map((field) => {
     /** @type {Map<string, number>} */
     const counts = new Map();
-    for (const token of tokenize(chunk[field] ?? '')) counts.set(token, (counts.get(token) || 0) + 1);
+    for (const token of tokenize(FIELD_TEXT[field](chunk))) counts.set(token, (counts.get(token) || 0) + 1);
     return {
       words: Uint32Array.from(counts.keys(), (word) => vocabulary.add(word)),
       counts: Uint32Array.from(counts.values()),

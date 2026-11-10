@@ -34,7 +34,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createManifest, createFile, layout } = require('./discovery-test-utils.cjs');
 
 const REPO = path.join(__dirname, '../..');
 const ENGINE = path.join(REPO, 'skills/leeway-engine/scripts/engine.cjs');
@@ -283,8 +283,8 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
     dir = setupFixture();
     seed(dir);
     createFile(dir, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
-    createFile(dir, '.leeway/.knowledge/records/payments/payments.md', '# Payments\n\nCards settle nightly.\n');
-    engine.run(['knowledge', 'index', '.leeway/.knowledge/records/payments/payments.md'], { cwd: dir });
+    createFile(dir, `.leeway/${layout.record('payments', 'payments')}`, '# Payments\n\nCards settle nightly.\n');
+    engine.run(['knowledge', 'index', `.leeway/${layout.record('payments', 'payments')}`], { cwd: dir });
   });
   afterEach(() => cleanupFixture(dir));
 
@@ -342,21 +342,21 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('a single-file index answers at once, so run takes it', () => {
-    const res = engine.run(['knowledge', 'index', '.leeway/.knowledge/records/payments/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', `.leeway/${layout.record('payments', 'payments')}`], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
   });
 
   it('--dry-run is a switch: it never takes the argument after it as its value', () => {
-    const res = engine.run(['knowledge', 'index', '--dry-run', '.leeway/.knowledge/records/payments/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '--dry-run', `.leeway/${layout.record('payments', 'payments')}`], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
     assert.match(res.stdout, /^Indexed \d+ chunks from /);
-    assert.ok(res.stdout.endsWith(` from ${path.join(dir, '.leeway/.knowledge/records/payments/payments.md')}\n`), res.stdout);
+    assert.ok(res.stdout.endsWith(` from ${path.join(dir, `.leeway/${layout.record('payments', 'payments')}`)}\n`), res.stdout);
   });
 
   it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
     const { runKnowledge, knowledgeWaits } = require('../../skills/leeway-engine/scripts/domain/knowledge/commands.cjs');
     const forms = [
-      ['index'], ['index', '.leeway/.knowledge/records/payments/payments.md'], ['query', 'cards'], ['check'], ['status'],
+      ['index'], ['index', `.leeway/${layout.record('payments', 'payments')}`], ['query', 'cards'], ['check'], ['status'],
       ['remove', '--work-unit', 'payments', '--dry-run'], ['compact', '--dry-run'], ['rebuild'], ['fill'],
       ['--help'], ['bogus'], [], ['setup', '--keyword-only'],
     ];

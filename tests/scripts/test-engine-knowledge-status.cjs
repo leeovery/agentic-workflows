@@ -16,7 +16,7 @@ const fs = require('fs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, createFile, layout } = require('./discovery-test-utils.cjs');
 const {
   ENGINE_COMMAND, KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches,
   knowledgeUnit, manifestSet, configureKnowledge, knowledgeAt, systemConfigDir,
@@ -37,8 +37,8 @@ describe('engine knowledge check', () => {
   async function readyStore() {
     configureKnowledge(root, KEYWORD_ONLY);
     knowledgeUnit(root, 'auth', 'feature');
-    createFile(statePath(root), '.knowledge/records/auth/auth.md', '# Seed\n\nSettled.\n');
-    assert.strictEqual((await engineKnowledge(root, ['index', '.leeway/.knowledge/records/auth/auth.md'])).code, 0);
+    createFile(statePath(root), layout.record('auth', 'auth'), '# Auth\n\nSettled.\n');
+    assert.strictEqual((await engineKnowledge(root, ['index', `.leeway/${layout.record('auth', 'auth')}`])).code, 0);
   }
 
   /** @type {Array<[string, Record<string, string>, () => void|Promise<void>, string, RegExp|null]>} the state, the system config's files, the build, the readiness, what stderr says */
@@ -94,7 +94,7 @@ describe('engine knowledge status', () => {
     root = setupFixture('kb-status-');
     configureKnowledge(root, KEYWORD_ONLY);
     knowledgeUnit(root, 'auth', 'feature');
-    createFile(statePath(root), '.knowledge/records/auth/auth.md', '# Seed\n\nSettled.\n');
+    createFile(statePath(root), layout.record('auth', 'auth'), '# Auth\n\nSettled.\n');
   });
 
   afterEach(() => cleanupFixture(root));
@@ -117,20 +117,20 @@ describe('engine knowledge status', () => {
   it('names a file changed since it was indexed, and none before it changes', async () => {
     await knowledge('index');
     assert.doesNotMatch((await knowledge('status')).stdout, /Changed since indexing/);
-    fs.appendFileSync(at('.knowledge/records/auth/auth.md'), 'An edit after completion.\n');
-    assert.match((await knowledge('status')).stdout, new RegExp(`^Changed since indexing: 1\\n  ${at('.knowledge/records/auth/auth.md')}$`, 'm'));
+    fs.appendFileSync(at(layout.record('auth', 'auth')), 'An edit after completion.\n');
+    assert.match((await knowledge('status')).stdout, new RegExp(`^Changed since indexing: 1\\n  ${at(layout.record('auth', 'auth'))}$`, 'm'));
   });
 
   it('names each file whose chunks the next index retires, and why', async () => {
     knowledgeUnit(root, 'dropped', 'feature');
     manifestSet(root, 'dropped', 'status', 'cancelled');
-    createFile(statePath(root), '.knowledge/records/dropped/dropped.md', '# Seed\n\nDropped.\n');
-    for (const rel of ['.knowledge/records/auth/auth.md', '.knowledge/records/dropped/dropped.md']) await knowledge('index', `.leeway/${rel}`);
-    fs.rmSync(at('.knowledge/records/auth/auth.md'));
+    createFile(statePath(root), layout.record('dropped', 'dropped'), '# Dropped\n\nDropped.\n');
+    for (const rel of [layout.record('auth', 'auth'), layout.record('dropped', 'dropped')]) await knowledge('index', `.leeway/${rel}`);
+    fs.rmSync(at(layout.record('auth', 'auth')));
     assert.match((await knowledge('status')).stdout, new RegExp([
       '^Retired since indexing: 2',
-      `  ${at('.knowledge/records/auth/auth.md')} \\(source deleted\\)`,
-      `  ${at('.knowledge/records/dropped/dropped.md')} \\(work unit cancelled\\)$`,
+      `  ${at(layout.record('auth', 'auth'))} \\(source deleted\\)`,
+      `  ${at(layout.record('dropped', 'dropped'))} \\(work unit cancelled\\)$`,
     ].join('\\n'), 'm'));
   });
 });

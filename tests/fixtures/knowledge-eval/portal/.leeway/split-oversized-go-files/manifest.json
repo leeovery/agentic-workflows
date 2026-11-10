@@ -50,12 +50,5 @@
         }
       }
     }
-  },
-  "seeds": [
-    {
-      "path": "seeds/2026-08-09-split-oversized-go-files.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-08-15T14:20:26Z"
-    }
-  ]
+  }
 }

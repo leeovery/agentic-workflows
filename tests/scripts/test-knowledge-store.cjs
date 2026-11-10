@@ -192,14 +192,25 @@ describe('knowledge store — keyword search', () => {
     assert.strictEqual(scores(store.searchKeyword(db, { term: 'queue' })).a, bm25({ count: 1, matching: 2, size: 2, length: 2, average: 2 }));
   });
 
-  it('searches the content, the heading path, the source path and the chunk id', () => {
+  it('searches the content, the heading path, and the unit and topic naming its source — never its path or id', () => {
     const db = storeOf(
       ['content', 'alpha'],
       ['headings', 'delta', { heading_path: 'Auth › Alpha' }],
-      ['path', 'beta', { source_file: 'x/alpha.md' }],
-      ['alpha', 'gamma', { source_file: 'x/id.md' }],
+      ['unit', 'beta', { work_unit: 'alpha' }],
+      ['topic', 'gamma', { topic: 'alpha' }],
+      ['path', 'epsilon', { source_file: '.knowledge/records/auth-flow/alpha.md' }],
+      ['alpha', 'zeta'],
     );
-    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha' }).map((h) => h.id).sort(), ['alpha', 'content', 'headings', 'path']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha' }).map((h) => h.id).sort(), ['content', 'headings', 'topic', 'unit']);
+  });
+
+  it('never matches a word only the folders every chunk of a kind shares hold, nor a unit\'s own level\'s dotted topic', () => {
+    const db = storeOf(
+      ['record', 'alpha', { source_file: '.knowledge/records/auth-flow/auth-flow.md', phase: 'record' }],
+      ['summary', 'beta', { source_file: 'auth-flow/summary.md', phase: 'summary', topic: '.unit' }],
+    );
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'knowledge records record summary md unit' }), []);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'auth-flow' }).map((h) => h.id).sort(), ['record', 'summary']);
   });
 
   it('returns hits in the chunk\'s shape, with a score', () => {
@@ -265,11 +276,11 @@ describe('knowledge store — keyword search', () => {
   });
 
   it('scores each field on its own, with its own average length, and sums the fields', () => {
-    const db = storeOf(['both', 'alpha beta', { source_file: 'alpha/notes.md' }], ['content', 'alpha gamma delta']);
+    const db = storeOf(['both', 'alpha beta', { work_unit: 'alpha' }], ['content', 'alpha gamma delta']);
     const scored = scores(store.searchKeyword(db, { term: 'alpha' }));
     const content = (length) => bm25({ count: 1, matching: 2, size: 2, length, average: 2.5 });
-    const sourceFile = bm25({ count: 1, matching: 1, size: 2, length: 3, average: 3 });
-    assert.strictEqual(scored.both, content(2) + sourceFile);
+    const source = bm25({ count: 1, matching: 1, size: 2, length: 2, average: 2 });
+    assert.strictEqual(scored.both, content(2) + source);
     assert.strictEqual(scored.content, content(3));
   });
 
@@ -314,7 +325,7 @@ describe('knowledge store — keyword search', () => {
     assert.strictEqual(rarity('delta'), idf(1));
     assert.ok(rarity('delta') > rarity('alpha'));
     assert.strictEqual(rarity('absent'), 0);
-    assert.strictEqual(rarity(tokenize('x/a.md')[0]), 0, 'the source path is no content');
+    assert.strictEqual(rarity(tokenize('auth-flow')[0]), 0, 'the unit naming the source is no content');
   });
 });
 
@@ -335,8 +346,8 @@ describe('knowledge store — tokenizer', () => {
     assert.deepStrictEqual(
       { version: TOKENIZER_VERSION, fields: FIELDS, tokens: tokenize(text) },
       {
-        version: 3,
-        fields: ['content', 'heading_path', 'source_file', 'id'],
+        version: 4,
+        fields: ['content', 'heading_path', 'source'],
         tokens: ['rate-limit', 'queue', 'drain', 'na', 've', 'cafe', 'refresh', 'it', 'tokens_v2', '2026', 'generous', 'organis'],
       },
       'the tokenizer\'s output or its fields changed: bump TOKENIZER_VERSION in skills/leeway-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version, fields and tokens',
@@ -435,7 +446,7 @@ describe('knowledge store — the file', () => {
     store.insertDocument(loaded, makeDoc({ id: 'c', content: 'alpha gamma', embedding: stub.embed('alpha gamma') }));
     store.saveStore(loaded, file);
     const again = store.loadStore(file);
-    assert.deepStrictEqual(again.vocabulary.words.sort(), ['alpha', 'c', 'gamma', 'md', 'x']);
+    assert.deepStrictEqual(again.vocabulary.words.sort(), ['alpha', 'auth-flow', 'gamma']);
     assert.deepStrictEqual(store.searchKeyword(again, { term: 'alpha' }).map((h) => h.id), ['c']);
     assert.deepStrictEqual(store.searchKeyword(again, { term: 'unique-to-a' }), []);
   });

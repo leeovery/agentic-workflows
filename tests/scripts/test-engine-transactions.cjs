@@ -422,7 +422,7 @@ describe('topic start, reopen and complete — no verbs of their own', () => {
   });
 });
 
-/** A single-topic feature manifest with completed indexed artifacts and a seed on disk. */
+/** A single-topic feature manifest with completed indexed artifacts. */
 function featureManifest() {
   return {
     name: 'auth-flow',
@@ -430,7 +430,6 @@ function featureManifest() {
     status: 'in-progress',
     created: '2026-06-01',
     description: 'auth flow work',
-    seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-01T09:00:00Z' }],
     phases: {
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
       specification: { items: { 'auth-flow': { status: 'in-progress' } } },
@@ -443,7 +442,6 @@ const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
   writeFile(dir, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
-  writeFile(dir, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(dir, '.leeway/auth-flow/.state/discovery-gap-analysis.md', '# Analysis\n');
   // A log, never indexed.
   writeFile(dir, '.leeway/auth-flow/discovery/session-001.md', '# Session 001\n');
@@ -640,8 +638,8 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.previous_status, 'cancelled');
     // Cancellation removed the unit's chunks; reactivation re-indexes them in a
-    // SINGLE scoped bulk pass over the unit — its record copies, shape-valid
-    // seeds, analysis caches. The store cannot be loaded,
+    // SINGLE scoped bulk pass over the unit — its record copies and analysis
+    // caches. The store cannot be loaded,
     // so the pass fails → one warn-don't-block warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);

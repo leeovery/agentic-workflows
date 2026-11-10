@@ -424,12 +424,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-07-09-cli-verb-surface-redesign.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-07-15T17:49:50Z"
-    }
-  ],
   "completed_at": "2026-07-20"
 }

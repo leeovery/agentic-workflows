@@ -27,7 +27,7 @@ const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowled
 const { loadSettings } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
 const { syncKnowledge } = require('../../skills/leeway-engine/scripts/domain/knowledge/sync.cjs');
 const { embeddingEndpoint, engineKnowledge, recordLaunches } = require('./knowledge-harness.cjs');
-const { setupFixture, cleanupFixture, statePath } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
 const STUB = { provider: 'stub', dimensions: 8 };
 const ENGINE_CJS = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
@@ -56,19 +56,17 @@ function buildProject(knowledge, topics = ['alpha']) {
 
 /** @param {string} root @param {string} topic @param {string} body */
 function writeRecord(root, topic, body) {
-  const file = path.join(root, '.leeway', '.knowledge', 'records', 'pay', `${topic}.md`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `# ${topic}\n\n${body}\n`);
+  createFile(statePath(root), layout.record('pay', topic), `# ${topic}\n\n${body}\n`);
 }
 
 /** A topic's record as the project names it. @param {string} topic */
-const record = (topic) => `.leeway/.knowledge/records/pay/${topic}.md`;
+const record = (topic) => `.leeway/${layout.record('pay', topic)}`;
 
 /** A topic's record's absolute path, as a regular expression matches it. @param {string} root @param {string} topic */
 const named = (root, topic) => path.join(root, record(topic)).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
 /** A topic's record as the store knows it, state-relative. @param {string} topic */
-const identity = (topic) => `.knowledge/records/pay/${topic}.md`;
+const identity = (topic) => layout.record('pay', topic);
 
 /** The project's knowledge files, in its state. @param {string} root */
 const files = (root) => knowledgeFiles(statePath(root));

@@ -158,12 +158,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-07-16-persistent-no-host-terminal-banner.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-07-21T20:42:44Z"
-    }
-  ],
   "completed_at": "2026-07-22"
 }

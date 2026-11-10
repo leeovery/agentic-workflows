@@ -23,7 +23,7 @@ const { InvalidRequestError, QuotaError } = require('../../skills/leeway-engine/
 const { indexBulk } = require('../../skills/leeway-engine/scripts/domain/knowledge/bulk.cjs');
 const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowledge/indexing.cjs');
 const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, heldCall, recordLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
-const { setupFixture, cleanupFixture, statePath } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
 const { loadStore, saveStore, withLock } = store;
 const CFG = { provider: 'stub', dimensions: 128 };
@@ -34,19 +34,18 @@ function writeJson(p, obj) {
   fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n');
 }
 
-/** A topic of the epic's record copy. @param {string} root @param {string} topic */
-function recordPath(root, topic) {
-  return path.join(root, '.leeway', '.knowledge', 'records', 'payments', `${topic}.md`);
-}
 
 /** A string as the regular expression that matches it literally. @param {string} text */
 function literal(text) {
   return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 }
 
+/** A topic of the epic's record copy. @param {string} root @param {string} topic */
+const recordPath = (root, topic) => statePath(root, layout.record('payments', topic));
+
+/** @param {string} root @param {string} topic @param {string} body */
 function writeRecord(root, topic, body) {
-  fs.mkdirSync(path.dirname(recordPath(root, topic)), { recursive: true });
-  fs.writeFileSync(recordPath(root, topic), `# ${topic}\n\n${body}\n`);
+  createFile(statePath(root), layout.record('payments', topic), `# ${topic}\n\n${body}\n`);
 }
 
 /**
@@ -62,9 +61,7 @@ function addFeature(root, name, unit = {}) {
     name, work_type: 'feature', status: 'in-progress', created: '2026-01-01', ...unit,
     phases: {},
   });
-  const file = path.join(root, '.leeway', '.knowledge', 'records', name, `${name}.md`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `# ${name}\n\nThe ${name} decision.\n`);
+  createFile(statePath(root), layout.record(name, name), `# ${name}\n\nThe ${name} decision.\n`);
 }
 
 /** An epic whose three topics' records are on disk, no store yet. */
@@ -140,7 +137,7 @@ function bulk(root, output, cfg, provider, scope = null) {
 
 /** The single-file index of one of the epic's records. @param {string} root @param {string} topic */
 function indexOne(root, topic, cfg = CFG, provider = null) {
-  return indexPath(statePath(root), `.knowledge/records/payments/${topic}.md`, { cfg, provider });
+  return indexPath(statePath(root), layout.record('payments', topic), { cfg, provider });
 }
 
 describe('knowledge bulk index — keywords in one write, then vectors batch by batch', () => {
@@ -379,7 +376,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
       const db = loadStore(storeFile(root));
       store.insertDocument(db, {
         id: 'payments-record-peer-001', content: 'A peer indexed this.', heading_path: 'peer', work_unit: 'payments', work_type: 'epic',
-        phase: 'record', topic: 'peer', confidence: 'high', source_file: '.knowledge/records/payments/peer.md',
+        phase: 'record', topic: 'peer', confidence: 'high', source_file: layout.record('payments', 'peer'),
         timestamp: Date.now(), embedding: new StubProvider({ dimensions: CFG.dimensions }).embed('peer'),
       });
       saveStore(db, storeFile(root));
@@ -662,7 +659,7 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
 
   it('a single-file index writes by keyword and launches the fill; a fill that falls short exits non-zero, and a search says why until one lands', async (t) => {
     const launched = recordLaunches(t);
-    const indexed = await cli('index', '.leeway/.knowledge/records/payments/alpha.md');
+    const indexed = await cli('index', `.leeway/${layout.record('payments', 'alpha')}`);
     assert.deepStrictEqual(indexed, { code: 0, stdout: `Indexed 1 chunks from ${recordPath(root, 'alpha')}\n`, stderr: '' });
     assert.deepStrictEqual(launched, [statePath(root)], 'the fill works on the state\'s store');
     assert.deepStrictEqual(endpoint.requests, [], 'the index itself embeds nothing');

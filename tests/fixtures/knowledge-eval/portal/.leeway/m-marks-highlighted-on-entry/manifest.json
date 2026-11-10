@@ -91,12 +91,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-07-14-m-marks-highlighted-on-entry.md",
-      "source": "inbox:quickfix",
-      "seeded_at": "2026-07-15T06:49:46Z"
-    }
-  ],
   "completed_at": "2026-07-15"
 }

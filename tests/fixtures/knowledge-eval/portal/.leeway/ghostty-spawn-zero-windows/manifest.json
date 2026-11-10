@@ -146,12 +146,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-07-16-ghostty-spawn-zero-windows.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-07-16T18:29:51Z"
-    }
-  ],
   "completed_at": "2026-07-17"
 }

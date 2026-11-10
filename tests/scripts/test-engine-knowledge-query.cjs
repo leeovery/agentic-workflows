@@ -17,7 +17,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const { fixtureFrom, call } = require('./engine-harness.cjs');
-const { cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
+const { cleanupFixture, statePath, createFile, layout } = require('./discovery-test-utils.cjs');
 const { ENGINE_COMMAND, KEYWORD_ONLY, STUB, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, setItems, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -26,18 +26,19 @@ const { lastQuery } = require(path.join(SCRIPTS, 'domain/knowledge/last-query.cj
 
 const CHOSEN_NOTE = '[keyword-only mode — configure embedding provider for semantic search]';
 
-/** Two features, each its record and a short record, and an epic's two topics' records, every file indexed keyword-only, each naming the token. */
+/** Two features' records, a quick-fix's short record, and an epic's two topics' records, every file indexed keyword-only, each naming the token. */
 const indexedWorld = fixtureFrom('kb-query-door-', (root) => {
   configureKnowledge(root, KEYWORD_ONLY);
   const files = {
-    'auth/summary.md': 'Token refresh design for auth.',
-    '.knowledge/records/auth/auth.md': 'Token refresh decided for auth.',
-    'data/summary.md': 'Token storage design for data.',
-    '.knowledge/records/payments/billing.md': 'Token billing decided.',
-    '.knowledge/records/payments/invoicing.md': 'Token invoicing decided.',
+    [layout.record('auth', 'auth')]: 'Token refresh decided for auth.',
+    [layout.record('data', 'data')]: 'Token storage decided for data.',
+    [layout.summary('typo')]: 'Token typo fixed.',
+    [layout.record('payments', 'billing')]: 'Token billing decided.',
+    [layout.record('payments', 'invoicing')]: 'Token invoicing decided.',
   };
   knowledgeUnit(root, 'auth', 'feature');
   knowledgeUnit(root, 'data', 'feature');
+  knowledgeUnit(root, 'typo', 'quick-fix');
   knowledgeUnit(root, 'payments', 'epic');
   for (const [rel, text] of Object.entries(files)) createFile(statePath(root), rel, `# Notes\n\n${text}\n`);
   for (const rel of Object.keys(files)) assert.strictEqual(call(root, ['knowledge', 'index', `.leeway/${rel}`]).code, 0, rel);
@@ -87,16 +88,16 @@ describe('engine knowledge query', () => {
 
   it('--boost:work-unit lifts that unit\'s results above the rest, and keeps the rest', async () => {
     const boosted = hits((await query('token', '--boost:work-unit', 'data')).stdout);
-    assert.strictEqual(boosted[0], 'summary data/.unit');
+    assert.strictEqual(boosted[0], 'record data/data');
     assert.strictEqual(boosted.length, 5);
   });
 
   it('keeps only what each filter flag names: --phase, --work-type as a comma list, --work-unit and --topic', async () => {
     const filtered = async (/** @type {string[]} */ flags) => hits((await query('token', ...flags)).stdout).sort();
-    assert.deepStrictEqual(await filtered(['--phase', 'summary']), ['summary auth/.unit', 'summary data/.unit']);
+    assert.deepStrictEqual(await filtered(['--phase', 'summary']), ['summary typo/.unit']);
     assert.deepStrictEqual(await filtered(['--work-type', 'epic']), ['record payments/billing', 'record payments/invoicing']);
-    assert.strictEqual((await filtered(['--work-type', 'feature,epic'])).length, 5);
-    assert.deepStrictEqual(await filtered(['--work-unit', 'auth']), ['record auth/auth', 'summary auth/.unit']);
+    assert.deepStrictEqual(await filtered(['--work-type', 'feature,quick-fix']), ['record auth/auth', 'record data/data', 'summary typo/.unit']);
+    assert.deepStrictEqual(await filtered(['--work-unit', 'auth']), ['record auth/auth']);
     assert.deepStrictEqual(await filtered(['--topic', 'billing']), ['record payments/billing']);
   });
 

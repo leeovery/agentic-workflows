@@ -207,12 +207,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-06-30-warm-command-bootstrap-latch.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-06-30T19:26:08Z"
-    }
-  ],
   "completed_at": "2026-07-04"
 }

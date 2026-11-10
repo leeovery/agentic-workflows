@@ -164,7 +164,7 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
 
   after(() => cleanupFixture(root));
 
-  it('discovers exactly the expected identity + target set', () => {
+  it('discovers exactly the expected identity + target set — no seed, asset, inbox item or the product record\'s rendered file among them (9.S54)', () => {
     assert.deepStrictEqual(normalise(discover(root)), EXPECTED);
   });
 
@@ -194,11 +194,6 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     for (const rel of ['login-timeout/investigation/login-timeout.md', 'payments/imports/oauth-notes.md']) {
       assert.throws(() => deriveIdentity(rel), (err) => err instanceof UserError && /Cannot derive identity/.test(err.message), rel);
     }
-  });
-
-  it('22.6.12: discovers no seed, asset, inbox item or the product record\'s rendered file (9.S54)', () => {
-    const files = normalise(discover(root)).map((it) => it.file);
-    assert.deepStrictEqual(files.filter((f) => NEVER.includes(f)), []);
   });
 
   it('yields the identical set over the manifests however they were read', () => {

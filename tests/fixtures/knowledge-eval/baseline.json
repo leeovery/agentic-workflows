@@ -7,11 +7,11 @@
       "recall@10": 1,
       "file_hit@5": 1,
       "excerpt_hit@5": 1,
-      "bytes": 4774.7727,
+      "bytes": 4734.5909,
       "negative_results": 4.2222,
       "negative_bytes": 4752.8889,
-      "near_miss_results": 4.6667,
-      "near_miss_bytes": 4972.75
+      "near_miss_results": 4.5,
+      "near_miss_bytes": 4899.0833
     },
     "portal": {
       "hit@5": null,
@@ -33,11 +33,11 @@
       "recall@10": 1,
       "file_hit@5": 1,
       "excerpt_hit@5": 1,
-      "bytes": 2459.625,
+      "bytes": 2349.125,
       "negative_results": 1.6667,
       "negative_bytes": 1875,
-      "near_miss_results": 3,
-      "near_miss_bytes": 2864
+      "near_miss_results": 2.5,
+      "near_miss_bytes": 2643
     },
     "fumi": {
       "hit@5": null,
@@ -67,7 +67,7 @@
     "tick-neg-portal-palette-contrast": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":0,"bytes":85},
     "tick-near-miss-due-dates": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":3,"bytes":3042},
     "tick-near-miss-text-search": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":3,"bytes":2753},
-    "tick-near-miss-effort-estimates": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":4,"bytes":3382},
+    "tick-near-miss-effort-estimates": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":2498},
     "tick-near-miss-secrets-in-tasks": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":2279},
     "fumi-neg-portal-go-file-organisation": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":971},
     "fumi-neg-portal-tmux-resume-hooks": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":940},

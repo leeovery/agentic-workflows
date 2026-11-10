@@ -87,17 +87,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-05-23-list-version-in-help.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-06-04T13:15:34Z"
-    },
-    {
-      "path": "seeds/2026-05-23-version-short-alias.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-06-04T13:15:34Z"
-    }
-  ],
   "completed_at": "2026-06-04"
 }

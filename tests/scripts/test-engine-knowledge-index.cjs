@@ -17,7 +17,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, createFile, layout } = require('./discovery-test-utils.cjs');
 const {
   KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, configureKnowledge, knowledgeAt,
   knowledgeMetadata, storedChunks, systemConfigDir,
@@ -50,8 +50,8 @@ describe('engine knowledge index <file>', () => {
     knowledgeUnit(root, 'payments', 'epic');
     knowledgeUnit(root, 'login', 'bugfix');
     const artifacts = [
-      ['.knowledge/records/auth/auth.md', 'auth', 'bugfix', 'record', 'auth', 'high'],
-      ['login/summary.md', 'login', 'bugfix', 'summary', '.unit', 'high'],
+      [layout.record('auth', 'auth'), 'auth', 'bugfix', 'record', 'auth', 'high'],
+      [layout.summary('login'), 'login', 'bugfix', 'summary', '.unit', 'high'],
       ['payments/.state/discovery-gap-analysis.md', 'payments', 'epic', 'analysis', 'gap-analysis', 'low'],
     ];
     for (const [rel] of artifacts) {
@@ -69,18 +69,18 @@ describe('engine knowledge index <file>', () => {
 
   it('replaces the chunks a re-index finds the file no longer holds', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    write('.knowledge/records/auth/auth.md', `# Seed\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
-    await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+    write(layout.record('auth', 'auth'), `# Auth\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
+    await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
     assert.strictEqual(storedChunks(root).length, 2);
 
-    write('.knowledge/records/auth/auth.md', '# Seed\n\nOne settled line.\n');
-    assert.strictEqual((await knowledge('index', '.leeway/.knowledge/records/auth/auth.md')).code, 0);
-    assert.deepStrictEqual(storedChunks(root).map((c) => c.content), ['# Seed\n\nOne settled line.']);
+    write(layout.record('auth', 'auth'), '# Auth\n\nOne settled line.\n');
+    assert.strictEqual((await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`)).code, 0);
+    assert.deepStrictEqual(storedChunks(root).map((c) => c.content), ['# Auth\n\nOne settled line.']);
   });
 
   it('re-indexes an unchanged file to the same chunks, whatever its kind', async () => {
     knowledgeUnit(root, 'payments', 'epic');
-    for (const rel of ['.knowledge/records/payments/ledger.md', 'payments/summary.md', 'payments/.state/discovery-gap-analysis.md']) {
+    for (const rel of [layout.record('payments', 'ledger'), layout.summary('payments'), 'payments/.state/discovery-gap-analysis.md']) {
       write(rel, `# Notes\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
       await knowledge('index', `.leeway/${rel}`);
       const first = storedChunks(root).map((c) => c.id);
@@ -91,8 +91,8 @@ describe('engine knowledge index <file>', () => {
 
   it('writes the five metadata fields at a first keyword-only index, every chunk carrying its file\'s sha256', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    const file = write('.knowledge/records/auth/auth.md', `# Seed\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
-    await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+    const file = write(layout.record('auth', 'auth'), `# Auth\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
+    await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
     const { last_indexed: lastIndexed, ...identity } = knowledgeMetadata(root);
     assert.deepStrictEqual(Object.keys(knowledgeMetadata(root)), ['provider', 'model', 'dimensions', 'last_indexed', 'fill_failure']);
     assert.deepStrictEqual(identity, { provider: null, model: null, dimensions: null, fill_failure: null });
@@ -102,19 +102,19 @@ describe('engine knowledge index <file>', () => {
 
   it('moves last_indexed at each index', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    write('.knowledge/records/auth/auth.md', '# Seed\n\nSettled.\n');
-    await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+    write(layout.record('auth', 'auth'), '# Auth\n\nSettled.\n');
+    await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
     store.writeMetadata(knowledgeAt(root).metadata, { ...knowledgeMetadata(root), last_indexed: '2020-01-01T00:00:00.000Z' });
-    await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+    await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
     assert.ok(knowledgeMetadata(root).last_indexed > '2020-01-02');
   });
 
   it('dates each chunk by its file\'s mtime, never the index run, and a query shows that date', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    const file = write('.knowledge/records/auth/auth.md', '# Seed\n\nToken refresh settled.\n');
+    const file = write(layout.record('auth', 'auth'), '# Auth\n\nToken refresh settled.\n');
     const mtime = new Date('2020-06-15T12:00:00Z');
     fs.utimesSync(file, mtime, mtime);
-    await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+    await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
     assert.deepStrictEqual(storedChunks(root).map((c) => c.timestamp), [mtime.getTime()]);
     assert.match((await knowledge('query', 'token')).stdout, /^\[record \| auth\/auth \| high \| 2020-06-15\]$/m);
   });
@@ -135,7 +135,7 @@ describe('engine knowledge index <file>', () => {
       await refused('outside.md', `Not in the workflows state: ${path.join(root, 'outside.md')}\n`);
       const other = setupFixture('kb-index-other-');
       try {
-        const elsewhere = createFile(statePath(other), '.knowledge/records/auth/elsewhere.md', '# Seed\n\nElsewhere.\n');
+        const elsewhere = createFile(statePath(other), layout.record('auth', 'elsewhere'), '# Auth\n\nElsewhere.\n');
         await refused(elsewhere, `Not in the workflows state: ${elsewhere}\n`);
       } finally {
         cleanupFixture(other);
@@ -145,7 +145,7 @@ describe('engine knowledge index <file>', () => {
 
     it('a file the state does not hold', async () => {
       knowledgeUnit(root, 'auth', 'bugfix');
-      await refused('.leeway/.knowledge/records/auth/auth.md', `File not found: ${at('.knowledge/records/auth/auth.md')}\n`);
+      await refused(`.leeway/${layout.record('auth', 'auth')}`, `File not found: ${at(layout.record('auth', 'auth'))}\n`);
     });
 
     it('22.6.12: a seed, an asset, an inbox item and the product record\'s rendered file, each with no identity (9.S54)', async () => {
@@ -172,7 +172,7 @@ describe('engine knowledge index <file>', () => {
         ['auth/.state/discussion-consolidation-analysis.md', `Refusing to index .state file "discussion-consolidation-analysis.md" — ${CACHES}`],
         ['auth/.state/migrations.md', `Refusing to index .state file "migrations.md" — ${CACHES}`],
         ['dot.unit/summary.md', `Invalid work unit name "dot.unit": ${DOTS}`],
-        ['.knowledge/records/auth/a.b.md', `Invalid topic name "a.b": ${DOTS}`],
+        [layout.record('auth', 'a.b'), `Invalid topic name "a.b": ${DOTS}`],
       ]) {
         write(rel, '# Heading\n\nSome content.\n');
         await refused(`.leeway/${rel}`, `Error: ${said}\n`);
@@ -181,22 +181,22 @@ describe('engine knowledge index <file>', () => {
 
     it('an empty file, whose index would wipe its identity\'s chunks', async () => {
       knowledgeUnit(root, 'auth', 'bugfix');
-      write('.knowledge/records/auth/auth.md', '\n');
-      await refused('.leeway/.knowledge/records/auth/auth.md',
-        new RegExp(`^Failed to index ${at('.knowledge/records/auth/auth.md').replace(/[.]/g, '\\.')}: No chunks produced from .*\\nThe next start will retry it\\.\\n$`));
+      write(layout.record('auth', 'auth'), '\n');
+      await refused(`.leeway/${layout.record('auth', 'auth')}`,
+        new RegExp(`^Failed to index ${at(layout.record('auth', 'auth')).replace(/[.]/g, '\\.')}: No chunks produced from .*\\nThe next start will retry it\\.\\n$`));
     });
   });
 
   describe('over the store it finds', () => {
     beforeEach(() => {
       knowledgeUnit(root, 'auth', 'bugfix');
-      write('.knowledge/records/auth/auth.md', '# Seed\n\nToken refresh settled.\n');
+      write(layout.record('auth', 'auth'), '# Auth\n\nToken refresh settled.\n');
     });
 
     /** The single-file index's refusal, the store's bytes as they were. @param {RegExp} said */
     async function refusedOverStore(said) {
       const before = fs.readFileSync(knowledgeAt(root).store);
-      const answer = await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+      const answer = await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
       assert.strictEqual(answer.code, 1);
       assert.strictEqual(answer.stdout, '');
       assert.match(answer.stderr, said);
@@ -204,7 +204,7 @@ describe('engine knowledge index <file>', () => {
     }
 
     it('a store another provider built, naming the rebuild', async () => {
-      await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+      await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
       configureKnowledge(root, STUB);
       store.writeMetadata(knowledgeAt(root).metadata, { ...knowledgeMetadata(root), ...OPENAI });
       await refusedOverStore(/^Failed to index .*: Provider\/model changed since last index\. Run `.* knowledge rebuild` to reindex\.\n  Store: provider=openai, model=text-embedding-3-small, dimensions=1536\n  Config: provider=stub, model=stub, dimensions=16\nThe next start will retry it\.\n$/);
@@ -220,7 +220,7 @@ describe('engine knowledge index <file>', () => {
     it('no store, where no configuration chose keyword-only and none names a provider', async (t) => {
       configureKnowledge(root, {});
       const env = { LEEWAY_CONFIG_DIR: systemConfigDir(t) };
-      for (const args of [['index', '.leeway/.knowledge/records/auth/auth.md'], ['index']]) {
+      for (const args of [['index', `.leeway/${layout.record('auth', 'auth')}`], ['index']]) {
         const answer = await engineKnowledge(root, args, env);
         assert.strictEqual(answer.code, 1, args.join(' '));
         assert.match(answer.stderr, /no embedding provider is configured and keyword-only was never chosen/, args.join(' '));
@@ -232,7 +232,7 @@ describe('engine knowledge index <file>', () => {
     it('no store, where the provider\'s key does not resolve — never a keyword-only store in its place', async (t) => {
       configureKnowledge(root, {});
       const env = { LEEWAY_CONFIG_DIR: systemConfigDir(t, { 'config.json': JSON.stringify({ knowledge: OPENAI }) }) };
-      const single = await engineKnowledge(root, ['index', '.leeway/.knowledge/records/auth/auth.md'], env);
+      const single = await engineKnowledge(root, ['index', `.leeway/${layout.record('auth', 'auth')}`], env);
       assert.strictEqual(single.code, 1);
       assert.match(single.stderr, /no store is created without it/);
       assert.strictEqual((await engineKnowledge(root, ['index'], env)).code, 1);
@@ -240,26 +240,26 @@ describe('engine knowledge index <file>', () => {
     });
 
     it('writes an edit by keyword into a store whose provider\'s key does not resolve, saying only what it wrote', async () => {
-      await knowledge('index', '.leeway/.knowledge/records/auth/auth.md');
+      await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`);
       store.writeMetadata(knowledgeAt(root).metadata, { ...knowledgeMetadata(root), ...OPENAI });
       configureKnowledge(root, OPENAI);
-      fs.appendFileSync(at('.knowledge/records/auth/auth.md'), 'A late addition to the record.\n');
-      assert.deepStrictEqual(await knowledge('index', '.leeway/.knowledge/records/auth/auth.md'),
-        { code: 0, stdout: `Indexed 1 chunks from ${at('.knowledge/records/auth/auth.md')}\n`, stderr: '' });
+      fs.appendFileSync(at(layout.record('auth', 'auth')), 'A late addition to the record.\n');
+      assert.deepStrictEqual(await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`),
+        { code: 0, stdout: `Indexed 1 chunks from ${at(layout.record('auth', 'auth'))}\n`, stderr: '' });
       assert.match((await knowledge('query', 'late addition')).stdout, /^A late addition to the record\.$/m);
     });
 
     it('a store that cannot be loaded, naming the file and that the next start retries it', async () => {
       fs.writeFileSync(knowledgeAt(root).store, 'garbage-not-a-store');
-      await refusedOverStore(new RegExp(`^Failed to index ${at('.knowledge/records/auth/auth.md').replace(/[.]/g, '\\.')}: .*\\nThe next start will retry it\\.\\n$`));
+      await refusedOverStore(new RegExp(`^Failed to index ${at(layout.record('auth', 'auth')).replace(/[.]/g, '\\.')}: .*\\nThe next start will retry it\\.\\n$`));
     });
   });
 
   it('builds past metadata left without its store, recording the new store\'s mode', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    write('.knowledge/records/auth/auth.md', '# Seed\n\nSettled.\n');
+    write(layout.record('auth', 'auth'), '# Auth\n\nSettled.\n');
     store.writeMetadata(knowledgeAt(root).metadata, { ...OPENAI, last_indexed: null });
-    assert.strictEqual((await knowledge('index', '.leeway/.knowledge/records/auth/auth.md')).code, 0);
+    assert.strictEqual((await knowledge('index', `.leeway/${layout.record('auth', 'auth')}`)).code, 0);
     assert.strictEqual(knowledgeMetadata(root).provider, null);
     assert.deepStrictEqual(await knowledge('check'), { code: 0, stdout: 'ready\n', stderr: '' });
   });

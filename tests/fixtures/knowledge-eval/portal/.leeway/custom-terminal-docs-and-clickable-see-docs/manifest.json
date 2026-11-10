@@ -95,12 +95,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-07-22-custom-terminal-docs-and-clickable-see-docs.md",
-      "source": "inbox:quickfix",
-      "seeded_at": "2026-07-24T10:09:00Z"
-    }
-  ],
   "completed_at": "2026-07-24"
 }

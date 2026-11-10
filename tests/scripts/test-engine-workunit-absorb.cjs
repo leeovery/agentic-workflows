@@ -22,7 +22,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { git, stateGit, output, unreadableKnowledge, indexedFiles, hasStore, commitAll, fixtureFrom } = require('./engine-harness.cjs');
+const { git, stateGit, output, unreadableKnowledge, indexedFiles, hasStore, commitAll, fixtureFrom, layout } = require('./engine-harness.cjs');
 const { holdsWriterLock } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 const {
   ABSORB, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
@@ -37,10 +37,10 @@ function indexFiles(fix, files) {
 }
 
 /** The feature's own indexed artifacts — its discussion is never indexed (9.2.2), nor its seeds (22.6.12). */
-const FEATURE_FILES = ['.knowledge/records/auth-flow/auth-flow.md'];
+const FEATURE_FILES = [layout.record('auth-flow', 'auth-flow')];
 
 /** The epic's own topic's record. */
-const EPIC_FILE = '.knowledge/records/payments/fee-model.md';
+const EPIC_FILE = layout.record('payments', 'fee-model');
 
 describe('engine workunit absorb — happy path', () => {
   let fix;

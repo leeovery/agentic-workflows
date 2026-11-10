@@ -140,12 +140,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-06-25-cold-boot-restore-lands-on-projects.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-06-25T21:04:30Z"
-    }
-  ],
   "completed_at": "2026-06-26"
 }

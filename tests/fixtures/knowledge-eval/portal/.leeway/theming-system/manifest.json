@@ -899,17 +899,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-06-17-user-overridable-theme-system.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-07-27T13:25:01Z"
-    },
-    {
-      "path": "seeds/2026-06-21-border-token-role-names.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-07-27T13:25:01Z"
-    }
-  ],
   "completed_at": "2026-08-12"
 }

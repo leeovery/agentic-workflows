@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
+const { layout } = harness;
 const { moveFiles } = require('../../skills/leeway-engine/scripts/domain/inbox.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture, createFile: writeFile, lastMessage, ok: engine, refuses: engineFails } = harness;
@@ -328,8 +329,8 @@ describe('the knowledge store never rides an engine commit', () => {
 // also holds chunks the change must leave alone — another work unit's — so a
 // change that wiped too much fails as surely as one that took too little.
 describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
-  const RECORD = '.knowledge/records/payments/session-model.md';
-  const OTHER_UNIT = 'billing/summary.md';
+  const RECORD = layout.record('payments', 'session-model');
+  const OTHER_UNIT = layout.summary('billing');
   // An epic with a topic still in discussion and two decided, one decided
   // topic's record indexed; and a finished quick-fix beside it, its short
   // record indexed.

@@ -23,6 +23,7 @@ const { UserError } = require('../../skills/leeway-engine/scripts/kernel/knowled
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
 const { ENGINE_COMMAND, heldCall, refuseLaunches } = require('./knowledge-harness.cjs');
+const { layout } = require('./engine-harness.cjs');
 
 refuseLaunches();
 
@@ -338,12 +339,12 @@ describe('runInitialIndexStep', () => {
   function recordedProject(body) {
     const wf = state;
     fs.mkdirSync(path.join(wf, 'auth'), { recursive: true });
-    fs.mkdirSync(path.join(wf, '.knowledge', 'records', 'auth'), { recursive: true });
+    fs.mkdirSync(path.dirname(path.join(wf, layout.record('auth', 'auth'))), { recursive: true });
     fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: { auth: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(wf, 'auth', 'manifest.json'), JSON.stringify({
       name: 'auth', work_type: 'feature', status: 'in-progress', phases: {},
     }));
-    fs.writeFileSync(path.join(wf, '.knowledge', 'records', 'auth', 'auth.md'), body);
+    fs.writeFileSync(path.join(wf, layout.record('auth', 'auth')), body);
     fs.writeFileSync(path.join(wf, '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
   }
 
@@ -368,7 +369,7 @@ describe('runInitialIndexStep', () => {
   it('artifacts that failed to index are counted, and setup still succeeds', async () => {
     recordedProject('');
     await initialIndex();
-    const failed = `Failed to index ${path.join(state, '.knowledge/records/auth/auth.md')}: No chunks produced`;
+    const failed = `Failed to index ${path.join(state, layout.record('auth', 'auth'))}: No chunks produced`;
     assert.ok(held.output.stderr.split('\n').some((line) => line.startsWith(failed)), held.output.stderr);
     assert.ok(held.output.stderr.endsWith('\n1 artifact(s) failed to index — the next start retries them.\n'));
   });

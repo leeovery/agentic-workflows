@@ -24,7 +24,7 @@ const path = require('path');
 
 const {
   ENGINE, ok, refuses, refusedPristine, output, readManifest, readState, statePath, stateGit, lastMessage, touched, head, layout, writeState,
-  hasStore, commitOnState,
+  indexedFiles, commitOnState,
 } = require('./engine-harness.cjs');
 const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
@@ -86,6 +86,8 @@ describe('a created unit, through start this work', () => {
 
   it('moves each seed out of the inbox with its folder\'s source tag, the commit taking the removal, and indexes none of them (22.6.12)', () => {
     commitOnState(statePath(dir()), { [QUICKFIX]: '# Typo Fix\n' });
+    const record = layout.record('atlas', 'atlas');
+    output(dir(), ['knowledge', 'index', writeState(dir(), record, '# Atlas\n\nMaps settled.\n')]);
     const res = started('epic', 'payments', { seeds: [`.leeway/${IDEA}`, `.leeway/${BUG}`, `.leeway/${QUICKFIX}`] });
     assert.deepStrictEqual(res.seeds, [
       { path: landed('seeds/2026-06-01-smart-retry.md'), source: 'inbox:idea' },
@@ -102,7 +104,7 @@ describe('a created unit, through start this work', () => {
     assert.deepStrictEqual(['ideas', 'bugs', 'quickfixes'].map((folder) => fs.readdirSync(statePath(dir(), '.inbox', folder))), [[], [], []]);
     assert.deepStrictEqual(touched(statePath(dir()), 'HEAD').filter((line) => line.includes('.inbox/')), [`D\t${BUG}`, `D\t${IDEA}`, `D\t${QUICKFIX}`],
       'each seed\'s removal rides with its new home');
-    assert.strictEqual(hasStore(dir()), false, 'a seed was indexed');
+    assert.deepStrictEqual(indexedFiles(dir()), [record], 'the store holds what it held before, and no seed');
   });
 
   it('leaves an unrelated inbox change out of a commit with no seeds', () => {
