@@ -6,8 +6,10 @@
 // `ledger decide` writes, and every one `ledger replace` writes in place of
 // a decision, judged by the separate Claude call before the writer lock,
 // once its links pass — one rule lands checked, several are refused for the
-// writer to split, and a call that cannot run, or fails in any way, lands
-// the entry unchecked; then, at a later start,
+// writer to split, the label's call beside it cancelled, never waited on,
+// and a call that cannot run, or fails in any way, lands the entry
+// unchecked; a write its links refuse makes no call, the label's neither;
+// then, at a later start,
 // boot launches the late check, detached and one at a time, which records
 // what it finds beside each unchecked decision and commits it, never
 // touching the entry's line, a decision found holding several rules showing
@@ -107,9 +109,27 @@ function eventOf(short) {
   return /** @type {Record<string, any>} */ (entries().find((e) => e.id === full(short)));
 }
 
-/** What each call handed the stub. @returns {{argv: string[], input: string}[]} */
-function calls() {
+/** What every call handed the stub, the check's and the labeller's. @returns {{argv: string[], input: string}[]} */
+function everyCall() {
   return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
+}
+
+/**
+ * What each call of the check handed the stub, on Opus: the labeller's
+ * beside it, on Sonnet, is test-engine-ledger-trust.cjs's.
+ */
+function calls() {
+  return everyCall().filter(({ argv }) => flagValue(argv, '--model') === 'opus');
+}
+
+/** Whether the process `pid` names still runs. @param {number} pid */
+function running(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** `ledger late-check`, the stub armed with `answers`, run by `session`. @param {Record<string, unknown>} [answers] @param {string} [session] */
@@ -195,6 +215,22 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions.map((/** @type {{id: string}} */ d) => d.id), parts);
   });
 
+  it('refuses a decision holding several rules in the check\'s time: the label\'s call beside it cancelled, never waited on — none left running, no folder left', async () => {
+    const question = ask();
+    const [meet, temp] = [path.join(dir, 'meet'), path.join(dir, 'temp')];
+    fs.mkdirSync(meet);
+    fs.mkdirSync(temp);
+    const env = { ...armed({ 'The answer: ': rules(PANEL, SYNC), '': 'timeout' }), CLAUDE_STUB_MEET: `1:${meet}`, TMPDIR: temp };
+    const begun = Date.now();
+
+    assert.match(refusedPristine(dir, ['ledger', 'decide', NOTE, '--answers', question], { env, stdin: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things at once.' }) }).error, /the decision holds 2 rules/);
+
+    assert.ok(Date.now() - begun < 10000, 'the refusal waited on the label');
+    const made = fs.readdirSync(meet).map(Number);
+    for (const by = Date.now() + 5000; made.some(running) && Date.now() < by;) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.deepStrictEqual([made.length, made.filter(running), fs.readdirSync(temp)], [2, [], []]);
+  });
+
   it('refuses a replacement holding several rules the same way: one rule replaces the old, and each other is decided answering the question it answers', () => {
     const question = ask();
     const decision = decide(question, PANEL, { '': rules(PANEL) });
@@ -205,11 +241,11 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     assert.strictEqual(res.error, `ledger replace: the decision holds 2 rules, and an entry holds one — nothing appended. Split it: replace ${decision} with one of them, and decide each other as its own entry answering ${question}:\n  1. ${PANEL}\n  2. ${SYNC}`);
   });
 
-  it('spends no call on a decision its links refuse: an answer to no question, to a prefix naming nothing, a replacement caused by what it replaces — each refused as under the lock, no call made, nothing appended', () => {
+  it('spends no call on a decision its links refuse: an answer to no question, to a prefix naming nothing, a replacement caused by what it replaces — each refused as under the lock, no call made, the label\'s neither, nothing appended', () => {
     const question = ask();
     const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike', known: 'spike' }).id;
     const decision = decide(question, PANEL, { '': rules(PANEL) });
-    const before = { ledger: ledgerText(), calls: calls().length };
+    const before = { ledger: ledgerText(), calls: everyCall().length };
     const content = JSON.stringify({ ...MADE, text: SYNC, why: 'Because.' });
     const env = armed({ '': rules(SYNC) });
 
@@ -218,7 +254,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     assert.match(refuses(dir, ['ledger', 'replace', NOTE, '--replaces', decision, '--reason', 'changed-mind', '--cause', decision], {
       env, stdin: JSON.stringify({ ...MADE, drops: [], text: SYNC, why: 'Because.' }),
     }).error, new RegExp(`^ledger replace --cause names ${decision}, the entry it replaces`));
-    assert.deepStrictEqual({ ledger: ledgerText(), calls: calls().length }, before, 'a call was spent on a write its links refuse');
+    assert.deepStrictEqual({ ledger: ledgerText(), calls: everyCall().length }, before, 'a call was spent on a write its links refuse');
   });
 
   it('reads the ledger before the lock once for a replacement, as for a decision: the one reading gives the replacement its kind and checks its links before the call', (t) => {

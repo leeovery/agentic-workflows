@@ -28,7 +28,8 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 
-const { UNIT, MADE, NOTE, SPACE, WRITE_PHASES, AT_NOTE, ledgerWriteHelpers, writtenWorld } = require('./ledger-world.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, WRITE_PHASES, AT_NOTE, ledgerWriteHelpers, writtenWorld } = require('./ledger-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const { world } = writtenWorld('ledger-verbs-', WRITE_PHASES, () => ({}));
 
@@ -68,18 +69,18 @@ describe('the write verbs (6.1.4)', () => {
     assertAnswered(res, id);
   });
 
-  it('decide (5.S1): one line carrying its id, version, tags, time, who, why, what it rules out and relies on, and the link to the question it closes; the response shows its short id; the project holds this one ledger', () => {
+  it('decide (5.S1): one line carrying its id, version, tags, time, who, why, what it rules out and relies on, the link to the question it closes, and the kind and hard-to-undo mark its question\'s label gives; the response shows its short id; the project holds this one ledger', () => {
     const question = ask().id;
     const finding = find().id;
 
     const res = write('decide', NOTE, ['--answers', question, '--relies-on', finding], {
       by: 'person', who_moved_whom: 'none', text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
-      rules_out: ['a title bar', 'a dock icon'], kind: 'look',
-    });
+      rules_out: ['a title bar', 'a dock icon'],
+    }, { ...SESSION, ...labelling('What is a note, at its most basic?', 'look', { hardToUndo: true }) });
 
     const id = assertLast('decided', AT_NOTE, {
       by: 'person', who_moved_whom: 'none', answers: full(question), text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
-      rules_out: ['a title bar', 'a dock icon'], relies_on: [full(finding)], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: 'look', unchecked: true,
+      rules_out: ['a title bar', 'a dock icon'], relies_on: [full(finding)], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: 'look', hard_to_undo: true, unchecked: true,
       given: 'own', cites: [], task: null,
     });
     assertAnswered(res, id);
@@ -103,7 +104,7 @@ describe('the write verbs (6.1.4)', () => {
 
     assertLast('decided', AT_NOTE, {
       ...MADE, answers: full(question), text: 'Notes float above every Space.', why: 'A note follows the person.',
-      rules_out: [], relies_on: [], product_wide: false, sealed: null, alternatives: ['one Space per note'], evidence: ['the spike'], kind: null, unchecked: true,
+      rules_out: [], relies_on: [], product_wide: false, sealed: null, alternatives: ['one Space per note'], evidence: ['the spike'], kind: null, hard_to_undo: null, unchecked: true,
       given: 'own', cites: [], task: null,
     });
   });
@@ -120,7 +121,7 @@ describe('the write verbs (6.1.4)', () => {
     const id = assertLast('replaced', AT_NOTE, {
       by: 'person', who_moved_whom: 'person-moved-claude', replaces: full(old), reason: 'changed-mind', cause: null, drops: ['a near-frameless window'], of: 'decision',
       answers: full(question), text: 'A frameless surface.', why: 'Lighter on the desk.', rules_out: ['a border'], relies_on: [],
-      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null,
+      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null,
     });
     assertAnswered(res, id);
     assert.deepStrictEqual(rawLines().slice(0, -1), before);

@@ -22,6 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { startItem } = require('./engine-harness.cjs');
 const { Sim, mappedEpic } = require('./pipeline-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 describe('pipeline simulation: the ledger\'s second version', () => {
   let sim;
@@ -41,7 +42,7 @@ describe('pipeline simulation: the ledger\'s second version', () => {
     const cites = [{ path: `${wu}/discussion/note-window.md`, section: 'Session 1' }];
 
     const scope = ledger(['ask', note], { ...made, text: 'What does the note window cover?', cites });
-    const scoped = ledger(['decide', note, '--answers', scope], { by: 'person', who_moved_whom: 'none', text: 'The window and its frame.', why: 'Where it opens is space homing\'s.', kind: 'scope', cites });
+    const scoped = sim.run(['ledger', 'decide', note, '--answers', scope], labelling('What does the note window cover?', 'scope'), JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'The window and its frame.', why: 'Where it opens is space homing\'s.', cites })).id;
     const handed = call('Does a note snap to the grid?', 'Notes snap to an 8-point grid.', 'your-call');
     const builders = call('What radius are a note\'s corners?', 'Ten points.', 'dont-care');
     const measured = ledger(['find', note], { ...made, text: 'A panel opens in 4 ms.', how: 'timed the open', known: 'measured', command: 'swift run bench open', result: 'median 4.1 ms', cites });

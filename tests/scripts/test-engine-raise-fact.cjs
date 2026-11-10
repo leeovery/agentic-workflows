@@ -142,7 +142,7 @@ function entryOf(id, question, own = {}) {
   return {
     v: 1, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', answers: full(question), text: MONDAY.text, why: WHY, rules_out: [LATER.text],
-    relies_on: [], product_wide: true, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
+    relies_on: [], product_wide: true, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
   };
 }
 
@@ -176,7 +176,7 @@ describe('the draw (16.S75, 16.3.8)', () => {
     assert.deepStrictEqual(seal, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
       answers: full(asked.ships), relies_on: [full(asked.team)], replaces: null,
-      call: FACT, fact: true, rows_judged: [], reason: ONLY_YOU_KNOW, at: seal.at, answered: null, didnt_follow: 0, parks: null,
+      call: FACT, fact: true, rows_judged: [], label: null, reason: ONLY_YOU_KNOW, at: seal.at, answered: null, didnt_follow: 0, parks: null,
     });
     assert.strictEqual(output(dir, ['raise', 'show', res.raise], { env: conversation() }), `{"ok":true,"raise":"${res.raise}"}\n${screen(res.raise, FACT)}`);
     assert.strictEqual(output(dir, ['raise', 'show', res.raise, '--technical'], { env: conversation() }), `{"ok":true,"raise":"${res.raise}"}\n${screen(res.raise, FACT, { technical: true })}`);
@@ -190,7 +190,7 @@ describe('the draw (16.S75, 16.3.8)', () => {
     assert.strictEqual(auditGate(bare.sections, 'a fact with none')?.gate, `raise — ${bare.res.raise}`);
   });
 
-  it('the one-decision check is never called: a row it would refuse as several rules is drawn, and the separate call is never made', async () => {
+  it('the one-decision check is never called, nor the labeller (16.3.8): a row it would refuse as several rules is drawn, no separate call is made, and the seal holds no label', async () => {
     const log = path.join(config(), 'calls.jsonl');
     const several = { CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['Ship on Monday.', 'Freeze the window.'] } }), CLAUDE_STUB_LOG: log };
     await refusesAsync(dir, ['raise', NOTE, '--answers', asked.team], { env: conversation(several), stdin: JSON.stringify(leaningCall('Monday', 'Later')) });
@@ -199,7 +199,7 @@ describe('the draw (16.S75, 16.3.8)', () => {
 
     const { res } = await raiseFact(FACT, { env: several });
 
-    assert.deepStrictEqual([seals()[res.raise].rows_judged, fs.existsSync(log)], [[], false]);
+    assert.deepStrictEqual([seals()[res.raise].rows_judged, seals()[res.raise].label, fs.existsSync(log)], [[], null, false]);
   });
 });
 

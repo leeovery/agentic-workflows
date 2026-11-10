@@ -27,12 +27,14 @@
 // its reason the decisions it restates and when, the findings it rests on,
 // or that it holds nothing the person would see. One resting on a call of
 // Claude's — a decision Claude made, or the person handed to Claude — on a
-// decision the migration carried over, its maker unknown (21.6.5), or on a
+// decision the migration carried over, its maker unknown (21.6.5), on a
 // decision marked hard to undo (16.11.7), its ledger line carrying
-// `hard_to_undo: true` beside the kind of its question, stays open, its
-// reason saying which; so does one that does not trace (spec-trace.cjs),
-// its reason why. A scenario takes its tick from the statements it draws
-// on — it carries it where every one does — and none of their flags.
+// `hard_to_undo: true` beside the kind of its question, or on one whose
+// question no label marks either way, `hard_to_undo` null — the labeller's
+// call having failed — stays open, its reason saying which; so does one
+// that does not trace (spec-trace.cjs), its reason why. A scenario takes
+// its tick from the statements it draws on — it carries it where every one
+// does — and none of their flags.
 // ---------------------------------------------------------------------------
 
 const { fingerprint } = require('../kernel/fingerprint.cjs');
@@ -46,7 +48,7 @@ const { untraced, withTraceView } = require('./spec-trace.cjs');
 /** @typedef {import('./spec-trace.cjs').TraceView} TraceView */
 /** @typedef {import('./unit-entries.cjs').UnitEntry} UnitEntry */
 
-/** The decision's field that marks its question hard to undo (16.11.7), absent until the labeller writes it. */
+/** The decision's field that marks its question hard to undo (16.11.7), or not; null where the labeller gave no label. */
 const HARD_TO_UNDO = 'hard_to_undo';
 
 /** A line's mark, as the page reads its kind: Claude's call, the builder's, a screen. @typedef {'claude'|'builder'|'screen'} Flag */
@@ -162,6 +164,9 @@ function sortOf({ kind, line }) {
 /** Whether a decision was marked hard to undo. @param {UnitEntry} decision */
 const markedHardToUndo = ({ line }) => line[HARD_TO_UNDO] === true;
 
+/** Whether a decision's question went unlabelled, so whether it is hard to undo is not known. @param {UnitEntry} decision */
+const unlabelled = ({ line }) => line[HARD_TO_UNDO] === null;
+
 /** An entry named with when it was made. @param {UnitEntry} entry */
 const dated = ({ short, line }) => `${short} of ${String(line.at).slice(0, 10)}`;
 
@@ -188,10 +193,12 @@ function citedTick(view, line) {
   const named = (/** @type {UnitEntry[]} */ entries) => listed(entries.map(({ short }) => short));
   const [calls, carried, decisions, findings] = [of('call'), of('carried'), of('decision'), of('finding')];
   const hard = decisions.filter(markedHardToUndo);
+  const unknown = decisions.filter(unlabelled);
   const opens = [
     ...(calls.length > 0 ? [`Rests on Claude's ${plural('call', calls.length)} ${named(calls)}`] : []),
     ...(carried.length > 0 ? [`Rests on ${named(carried)}, carried over from before, ${carried.length === 1 ? 'its maker' : 'their makers'} unknown`] : []),
     ...(hard.length > 0 ? [`Restates your ${plural('decision', hard.length)} ${named(hard)}, ${hard.length === 1 ? 'its question' : 'their questions'} marked hard to undo`] : []),
+    ...(unknown.length > 0 ? [`Restates your ${plural('decision', unknown.length)} ${named(unknown)}, ${unknown.length === 1 ? 'its question' : 'their questions'} unlabelled, so not known to be easy to undo`] : []),
   ];
   if (opens.length > 0) return assessed(open(opens.join('; ')), { call: calls.length > 0 });
   if (decisions.length > 0) return assessed(soft(`Restates your ${plural('decision', decisions.length)} ${listed(decisions.map(dated))}`));
@@ -244,4 +251,4 @@ function specPage(cwd, unit, warnings = []) {
   return { ...pageOf(text, reading, drawn), ticks: new Map([...ticks].map(([number, tick]) => [lineId(number), tick])) };
 }
 
-module.exports = { HARD_TO_UNDO, lineId, pageOf, lineTicks, specPage };
+module.exports = { lineId, pageOf, specPage };

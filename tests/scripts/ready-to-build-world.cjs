@@ -4,8 +4,9 @@
 // The ready to build suites' world and helpers
 // (test-engine-ready-to-build-screen.cjs, test-engine-ready-to-build-close.cjs,
 // test-engine-ready-to-build-yes.cjs): an epic, `payments`, its topics
-// `cards` and `refunds` decided through the ledger's verbs, two calls of
-// Claude's made at the spec, one labelled and one not, and a call of
+// `cards` and `refunds` decided through the ledger's verbs, the person's
+// decisions each labelled by the stub armed for it (labels.cjs), two calls
+// of Claude's made at the spec, one labelled and one not, and a call of
 // Claude's on `cards` that is not the spec's; its sweep taken, its spec
 // written from the writer's brief and landed citing them, the land's review
 // pass clean, and the spec cut into two phases — `landed`; and the same with ready to build's checklist worked
@@ -29,6 +30,7 @@ const { beforeEach, afterEach } = require('node:test');
 const { ok, output, refusedPristine, sectionOf, layout, writeState, commitAll, fixtureFrom, cleanupFixture, withEnv } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
+const { labelling } = require('./labels.cjs');
 const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -47,14 +49,18 @@ const PINNED = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 /** Each entry's short id by name, filled as the world is built. @type {Record<string, string>} */
 const made = {};
 
-/** One ledger write: its short id. @param {string} dir @param {string} verb @param {string} at @param {string[]} flags @param {Record<string, unknown>} content */
-function write(dir, verb, at, flags, content) {
-  return ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify(content) }).id;
+/** One ledger write: its short id. @param {string} dir @param {string} verb @param {string} at @param {string[]} flags @param {Record<string, unknown>} content @param {Record<string, string>} [env] */
+function write(dir, verb, at, flags, content, env = {}) {
+  return ok(dir, ['ledger', verb, at, ...flags], { env: { ...SESSION, ...env }, stdin: JSON.stringify(content) }).id;
 }
 
-/** A question asked at `at` and answered as `answer` says: the answer's short id. @param {string} dir @param {string} at @param {string} text @param {Record<string, unknown>} answer */
-function answered(dir, at, text, answer) {
-  return write(dir, 'decide', at, ['--answers', write(dir, 'ask', at, [], { ...MADE, text })], { why: 'Because.', ...answer });
+/**
+ * A question asked at `at` and answered as `answer` says, its question
+ * labelled `kind` where it gives one: the answer's short id.
+ * @param {string} dir @param {string} at @param {string} text @param {Record<string, unknown> & {kind?: import('./labels.cjs').Kind}} answer
+ */
+function answered(dir, at, text, { kind, ...answer }) {
+  return write(dir, 'decide', at, ['--answers', write(dir, 'ask', at, [], { ...MADE, text })], { why: 'Because.', ...answer }, kind === undefined ? {} : labelling(text, kind));
 }
 
 /** A discussion topic, mapped. @param {number} order */
@@ -121,9 +127,9 @@ function written(dir, text, unit = UNIT) {
 function buildLanded(dir) {
   payments(dir, 'in-progress');
   commitAll(dir, 'init');
-  made.taken = answered(dir, `${UNIT}.discussion.cards`, 'Which cards are taken?', { ...PERSON, text: 'Visa and Mastercard.' });
+  made.taken = answered(dir, `${UNIT}.discussion.cards`, 'Which cards are taken?', { ...PERSON, text: 'Visa and Mastercard.', kind: 'contract' });
   answered(dir, `${UNIT}.discussion.cards`, 'Is the brand shown?', { ...MADE, text: 'As a logo.' });
-  made.refund = answered(dir, `${UNIT}.discussion.refunds`, 'Where does a refund go?', { ...PERSON, text: 'Back to the card.' });
+  made.refund = answered(dir, `${UNIT}.discussion.refunds`, 'Where does a refund go?', { ...PERSON, text: 'Back to the card.', kind: 'behaviour' });
   payments(dir, 'completed');
   writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ candidates: [], builder_calls: [] }));
   commitAll(dir, 'topics settled, the sweep taken');
@@ -164,7 +170,7 @@ const reversed = (dir, at, call, text) => write(dir, 'replace', at, ['--replaces
 function buildFeature(dir, { departed = false } = {}) {
   createManifest(dir, FEATURE, { phases: { discussion: { items: { [FEATURE]: { status: 'in-progress' } } } } });
   commitAll(dir, 'init');
-  made.resets = answered(dir, FEATURE_AT, 'When does a tally reset?', { ...PERSON, text: 'At midnight.' });
+  made.resets = answered(dir, FEATURE_AT, 'When does a tally reset?', { ...PERSON, text: 'At midnight.', kind: 'behaviour' });
   made.shown = answered(dir, FEATURE_AT, 'Where is the count shown?', { ...MADE, text: 'In the menu bar.', kind: 'look' });
   if (departed) made.onTopic = reversed(dir, FEATURE_AT, made.shown, 'In the dock.');
   writeState(dir, layout.doc(FEATURE, 'discussion', FEATURE), '# Tally\n\nA tally resets at midnight.\n');

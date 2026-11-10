@@ -8,7 +8,8 @@
 // the fix tasks the round made — fixed where done, not built where closed,
 // else to build as their phase — what went to the inbox and never what was
 // dropped, how a failing round was settled, and one line counting the calls
-// decided for the person, its checks never shown (14.4.1, 14.4.2, 15.3.3);
+// decided for the person by the kind each carries, the unlabelled last, its
+// checks never shown (14.4.1, 14.4.2, 15.3.3);
 // the closing report once a round ends the review, every round broken up by
 // round, each with only its own fix tasks, and the calls across the unit
 // with the build's share (14.4.3) — each drawn from the records to it, each
@@ -81,7 +82,7 @@ function nextRound(round, title, file) {
 }
 
 describe('render review-report: a round\'s report (14.4.1)', () => {
-  it('14.S6, 14.S10, 15.S5: what the person can now do, each scenario proven or not in its standing\'s words, the fix tasks as their phase, what went to the inbox and not what was dropped, and the calls decided for the person counted — its checks never shown; the round\'s file the same, its fix tasks as filed and its calls as the round was recorded', () => {
+  it('14.S6, 14.S10, 14.S17, 15.S5: what the person can now do, each scenario proven or not in its standing\'s words, the fix tasks as their phase, what went to the inbox and not what was dropped, and the calls decided for the person counted by kind, the unlabelled last — its checks never shown; the round\'s file the same, its fix tasks as filed and its calls as the round was recorded', () => {
     firstRoundRecorded();
     const shown = screen(['review-report', UNIT]);
 
@@ -108,10 +109,10 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
       '  └─ Card expiry (idea)',
       '',
       'CALLS DECIDED FOR YOU',
-      `  5 calls — render review-calls ${UNIT} lists them`,
+      `  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled — render review-calls ${UNIT} lists them`,
       '',
     ].join('\n'));
-    assert.strictEqual(stateText(`${UNIT}/review/round-1.md`), shown.replace('TO FIX, PHASE 3', 'FIX TASKS, PHASE 3').replace('  5 calls —', '  5 calls, when round 1 was recorded —'));
+    assert.strictEqual(stateText(`${UNIT}/review/round-1.md`), shown.replace('TO FIX, PHASE 3', 'FIX TASKS, PHASE 3').replace('  5 calls:', '  5 calls, when round 1 was recorded:'));
   });
 
   it('a round that failed again and was settled says how; --round draws an earlier round from its record, its fix now built and the calls as they stand now; refused for a unit with no round recorded and a round not recorded', () => {
@@ -125,8 +126,8 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
 
     assert.ok(settled.startsWith('Pay — review settled in round 2, the certificate of the work\n'), settled);
     assert.ok(settled.includes('SETTLED\n  └─ The amount is the bank\'s to show.\n'), settled);
-    assert.ok(first.includes('  5 calls — render review-calls'), first);
-    assert.strictEqual(screen(['review-report', UNIT, '--round', '1']), first.replace('TO FIX, PHASE 3 (1 task)\n  └─ 3.1 The receipt is never sent.', 'FIXED (1)\n  └─ The receipt is never sent.').replace('  5 calls', '  6 calls'));
+    assert.ok(first.includes('  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled — render review-calls'), first);
+    assert.strictEqual(screen(['review-report', UNIT, '--round', '1']), first.replace('TO FIX, PHASE 3 (1 task)\n  └─ 3.1 The receipt is never sent.', 'FIXED (1)\n  └─ The receipt is never sent.').replace('  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled', '  6 calls: 1 danger · 1 words · 1 behaviour · 3 unlabelled'));
     assert.deepStrictEqual([none, refuses(dir, ['render', 'review-report', UNIT, '--round', '3'], { env: env() }).error], [
       `render review-report: ${UNIT}'s review phase has recorded no round yet — review round ${UNIT} --file <round.json> records one`,
       'render review-report: --round names a round recorded, 1 to 2',
@@ -143,7 +144,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     const shown = screen(['review-report', UNIT]);
 
     const lines = (/** @type {string} */ text) => text.split('\n').filter((line) => /^(Pay|ROUND|FIXED|NOT BUILT|TO FIX|FIX TASKS|CALLS|  \d+ calls|  └─ (\d\.\d )?The receipt)/.test(line));
-    const calls = `  5 calls across the work unit, 3 of them in the build — render review-calls ${UNIT} lists them`;
+    const calls = `  5 calls across the work unit, 3 of them in the build: 1 danger · 1 words · 1 behaviour · 2 unlabelled — render review-calls ${UNIT} lists them`;
 
     assert.deepStrictEqual(lines(shown), [
       'Pay — review passed in round 3, the certificate of the work',
@@ -167,7 +168,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
       '  └─ 4.1 The receipt names no amount.',
       'ROUND 3 — passed',
       'CALLS DECIDED FOR YOU',
-      calls.replace(' —', ', when round 3 was recorded —'),
+      calls.replace(':', ', when round 3 was recorded:'),
     ]);
   });
 
@@ -196,12 +197,12 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     assert.doesNotMatch(file, /FIXED|NOT BUILT|TO FIX/);
     assert.match(roundPart(file, 1), /FIX TASKS, PHASE 3 \(1 task\)\n {2}└─ 3\.1 The receipt is never sent\./);
     assert.match(roundPart(file, 2), /FIX TASKS, PHASE 4 \(1 task\)\n {2}└─ 4\.1 The receipt's label is terse\./);
-    assert.match(file, / {2}5 calls across the work unit, 3 of them in the build, when round 2 was recorded — /);
+    assert.match(file, / {2}5 calls across the work unit, 3 of them in the build, when round 2 was recorded: /);
   });
 });
 
 describe('render review-calls: the calls decided for the person (14.4.4)', () => {
-  it('14.S8: every call decided for the person across the unit, grouped by kind in the ledger\'s order — those changing what the product does first, then process, the unlabelled last — never the person\'s own, nor one replaced', () => {
+  it('14.S8, 14.S16: every call decided for the person across the unit, grouped by kind in the ledger\'s order — those changing what the product does first, then process, the unlabelled last — never the person\'s own, nor one replaced', () => {
     decided(dir, `${UNIT}.review`, 'Is the expiry finding filed or dropped?', { by: 'claude', text: 'Filed.', why: 'It is out of the change.' });
     decided(dir, `${UNIT}.implementation`, 'Is each task\'s branch kept?', { by: 'claude', text: 'Branches are kept.', why: 'They are cheap.', kind: 'process' });
 

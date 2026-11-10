@@ -56,14 +56,14 @@
 // keeps a decision's content out (16.13.3). A label is the labeller's twelve
 // answers, true or false in 16.11.2's order, with the labeller that wrote
 // them, by the id of the model its call ran on (16.11.5, 16.19.6,
-// 16.19.11). The kind and the label are null until the labeller fills them
-// (29.19); the sort is Claude's, carried by its raise or its call
-// (raise.cjs), null on a call no raise made. An event whose fields
-// contradict each other is no event: free text pressed or naming a row,
-// read as a row though it is no free text, or a row's key answer naming
+// 16.19.11). The kind and the label are null where the labeller gave none,
+// a fact never labelled (labeller.cjs); the sort is Claude's, carried by its
+// raise or its call (raise.cjs), null on a call no raise made. An event whose
+// fields contradict each other is no event: free text pressed or naming a
+// row, read as a row though it is no free text, or a row's key answer naming
 // none; a raise followed with no entry, or not followed with an answer, a
-// reading or an entry; an entry reversing itself; and a correction of both
-// or of neither.
+// reading or an entry; an entry reversing itself; and a correction of both or
+// of neither.
 //
 // One file serves every project on the machine, and each project runs the
 // engine its own copy of the workflows installs, so engines of several
@@ -80,7 +80,7 @@
 // ---------------------------------------------------------------------------
 
 const {
-  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, oneOf, nullable, field, event, addedIn, readFields,
+  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, MODEL, LABEL: A_LABEL, oneOf, nullable, field, event, addedIn, readFields,
 } = require('./event-fields.cjs');
 const { KEBAB_SLUG_PATTERN, BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
@@ -94,18 +94,11 @@ const GATE = type('a gate\'s name: up to five lowercase words, 40 characters at 
   && /^[a-z0-9]+(?:-[a-z0-9]+)*(?: [a-z0-9]+(?:-[a-z0-9]+)*){0,4}$/.test(v));
 // A work unit's or a topic's name.
 const SLUG = type('a slug', (v) => typeof v === 'string' && KEBAB_SLUG_PATTERN.test(v));
-// A Claude model's id, as the API names it — never an alias, never words.
-const MODEL = type('a model id', (v) => typeof v === 'string' && v.length <= 64 && /^claude-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v));
 // A Claude Code session's id.
 const SESSION = type('a session id', (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v));
 // Claude's sort of a call (16.3.7).
 const SORT = nullable(oneOf('one', 'several'));
-const QUESTIONS = 12;
-const LABEL = nullable(type(
-  `a label: the labeller's model id, and its ${QUESTIONS} answers, true or false`,
-  (v) => isObject(v) && Object.keys(v).length === 2 && MODEL.test(v.labeller)
-    && Array.isArray(v.answers) && v.answers.length === QUESTIONS && v.answers.every((a) => typeof a === 'boolean'),
-));
+const LABEL = nullable(A_LABEL);
 const JUDGED = ['nothing', 'fix', 'loss'];
 const VERDICTS = [...JUDGED, 'skip'];
 // Where a verdict is given: a topic's decided screen, ready to build, an
@@ -261,4 +254,4 @@ function trustEvent(type, header, fields) {
   return read.event;
 }
 
-module.exports = { SCHEMA, HEADER, KEY, MODEL, SESSION, VERDICTS, VERDICT_POINTS, readTrustEvent, trustEvent };
+module.exports = { SCHEMA, HEADER, KEY, SESSION, VERDICTS, VERDICT_POINTS, readTrustEvent, trustEvent };

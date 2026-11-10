@@ -6,7 +6,7 @@
 // build (projections/ready-to-build.cjs), a feature's of which carries its
 // topic's close (9.7.6):
 // - Claude's calls, counted by the kind each carries, a call the labeller
-//   has not reached counted as unlabelled (16.11), and opened to list them,
+//   gave no label counted as unlabelled (16.11), and opened to list them,
 //   one the person handed over marked so (9.5.4);
 // - a topic's close (9.7.3): what the person decided, and apart from it what
 //   was carried over, never passing as theirs (21.6.5); the proposed
@@ -63,14 +63,14 @@ function series(words, last) {
   return words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} ${last} ${words.at(-1)}`;
 }
 
-/** Claude's calls by kind, most first, the unlabelled last: `2 behaviour · 1 look · 3 unlabelled`. @param {ShownCall[]} calls */
-function kindCounts(calls) {
+/** Calls counted by the kind each carries, most first, the unlabelled last: `2 behaviour · 1 look · 3 unlabelled`. @param {(string|null)[]} kinds */
+function kindCounts(kinds) {
   /** @type {Map<string, number>} */
-  const kinds = new Map();
-  for (const { kind } of calls) if (kind !== null) kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
-  const unlabelled = calls.filter(({ kind }) => kind === null).length;
-  const labelled = [...kinds].sort(([, a], [, b]) => b - a).map(([kind, n]) => `${n} ${kind}`);
-  return [...labelled, ...(unlabelled > 0 ? [`${unlabelled} unlabelled — the labeller gives each its kind`] : [])].join(' · ');
+  const counts = new Map();
+  for (const kind of kinds) if (kind !== null) counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  const unlabelled = kinds.filter((kind) => kind === null).length;
+  const labelled = [...counts].sort(([, a], [, b]) => b - a).map(([kind, n]) => `${n} ${kind}`);
+  return [...labelled, ...(unlabelled > 0 ? [`${unlabelled} unlabelled`] : [])].join(' · ');
 }
 
 /** Each of Claude's calls, its question cut to keep its tag on the line — its kind, and how the person handed it over where they did — its answer beneath. @param {ShownCall[]} calls */
@@ -84,7 +84,7 @@ function callTree(calls) {
 
 /** The calls block: their count by kind, listed beneath where `listed`. @param {ShownCall[]} calls @param {boolean} listed */
 function callsBlock(calls, listed) {
-  return block(`CLAUDE'S CALLS (${calls.length})`, `  ${kindCounts(calls)}${listed ? `\n${callTree(calls)}` : ''}`);
+  return block(`CLAUDE'S CALLS (${calls.length})`, `  ${kindCounts(calls.map(({ kind }) => kind))}${listed ? `\n${callTree(calls)}` : ''}`);
 }
 
 /** What stands where nothing was the person's decision: what every question was instead. @param {TopicClose} close */
@@ -215,4 +215,4 @@ function verdictGate({ entry }, point) {
   ], { question: 'What would my answer have cost the product?' }));
 }
 
-module.exports = { runs, block, series, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, verdictBlock, verdictGate };
+module.exports = { runs, block, series, kindCounts, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, verdictBlock, verdictGate };

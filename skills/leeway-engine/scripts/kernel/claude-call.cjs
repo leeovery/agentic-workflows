@@ -16,8 +16,7 @@
 //   would carry the calling session or project in — the session's id, the
 //   project's folder, what Claude Code gives every command its session runs,
 //   the person's plugin folders, the gate mod's harness, and Leeway's own
-//   variables. The login is left as it is: its variables
-//   pass through.
+//   variables. The login is left as it is: its variables pass through.
 // - The binary: `claude` on PATH, or the one LEEWAY_CLAUDE names — the test
 //   suite pins it to a stub, so no test reaches a real Claude.
 // - Its answer: the structured output, where it fits the schema, what the
@@ -31,15 +30,30 @@
 //   the caller's mistake — is refused, before any call.
 // - Generic: the prompt, the schema, the model, the effort, the input and the
 //   time it may take are the caller's.
-// - Two forms, one call: `askClaude` waits on it, and `askClaudeAsync`
+// - Bounded whatever ends its caller: the call runs detached, in a process
+//   group of its own through one shell, its input, its answer and its exit
+//   status in files of their own beside its empty folder. The shell bounds
+//   itself: at the call's limit it removes both folders and kills its group,
+//   and a call that ends once its caller is gone — pressed to stop, or
+//   killed — removes them then, so nothing of it runs past its limit and
+//   no folder outlives it.
+// - Three forms, that one call: `askClaude` waits on it; `askClaudeAsync`
 //   answers later, so a caller with several questions puts them at once and
-//   waits about one call's time (raise.cjs, a raise's rows).
+//   waits about one call's time (raise.cjs, a raise's rows); and
+//   `startClaude` starts it and lets its caller block on something else
+//   meanwhile — another call made with `askClaude` — then waits on it, or
+//   cancels it where that other work refused (ledger-write.cjs, a decision
+//   labelled beside its one-decision check). Its files need nothing of the
+//   event loop the blocked caller holds, so a synchronous verb can wait on
+//   two calls at once. A wait polls for the status, and once the answer is
+//   in, the limit passes or the call is cancelled, kills the group and
+//   removes the folders itself.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const { isObject } = require('./manifest-io.cjs');
 const { messageOf } = require('./call.cjs');
 
@@ -65,6 +79,27 @@ const CLEARED = Object.freeze([
 
 /** Leeway's own variables. */
 const CLEARED_PREFIXES = Object.freeze(['LEEWAY_']);
+
+/**
+ * How a call runs, in a shell of its own given its files' folder, its empty
+ * folder, its limit in seconds and its caller's process: a watch that, at
+ * the limit, removes both folders and kills the shell's group; then the
+ * call, its input from its file, its answer and what it said to theirs, its
+ * exit status a line a wait reads as written once it ends; and, its caller
+ * gone, both folders removed and the group killed, the watch among it.
+ */
+const STARTED = [
+  'io=$1 dir=$2 limit=$3 caller=$4; shift 4',
+  '(sleep "$limit"; rm -rf "$io" "$dir"; kill -KILL 0) &',
+  '"$@" < "$io/in" > "$io/out" 2> "$io/err"; echo $? > "$io/status"',
+  'kill -0 "$caller" 2> /dev/null || { rm -rf "$io" "$dir"; kill -KILL 0; }',
+].join('\n');
+
+/** The exit statuses of a shell that could not run the binary: not executable, or not found. */
+const UNRUN = Object.freeze([126, 127]);
+
+/** How often a wait on a call looks for its status. */
+const POLL_MS = 5;
 
 /** Hooks and auto-memory off, whatever any settings file says. */
 const SETTINGS = JSON.stringify({ disableAllHooks: true, autoMemoryEnabled: false });
@@ -277,25 +312,23 @@ function answerOfResult(result, { schema, model }) {
 }
 
 /**
- * A finished run of the binary, however it ran: what it printed, how it
- * exited, and the error that stopped it — `ETIMEDOUT` where it outlived its
- * time and was killed.
- * @typedef {{error?: Error, stdout: string, stderr: string, status: number|null, signal: NodeJS.Signals|null}} Run
+ * A finished run of the binary: what it printed and how it exited; or
+ * `timeout`, its limit passed first.
+ * @typedef {{stdout: string, stderr: string, status: number}|'timeout'} Run
  */
 
 /**
- * The answer a run gives: a timeout, a binary that would not start, output
+ * The answer a run gives: a timeout, a binary that would not run, output
  * that is no result — its stderr read for what it says — or the result's.
  * @param {Run} run @param {Ask} ask
  * @returns {Answer}
  */
 function answerOf(run, ask) {
-  const code = /** @type {NodeJS.ErrnoException|undefined} */ (run.error)?.code;
-  if (code === 'ETIMEDOUT') return cannot('timeout', `no answer within ${ask.timeoutMs / 1000} s`);
-  if (run.error) return cannot('failed', `${binary()} did not run: ${run.error.message}`);
+  if (run === 'timeout') return cannot('timeout', `no answer within ${ask.timeoutMs / 1000} s`);
   const result = resultOf(run.stdout);
   if (result !== null) return answerOfResult(result, ask);
-  const said = (run.stderr || run.stdout || `exit ${run.status ?? run.signal}`).replace(/\s+/g, ' ').trim();
+  const said = (run.stderr || run.stdout || `exit ${run.status}`).replace(/\s+/g, ' ').trim();
+  if (UNRUN.includes(run.status)) return cannot('failed', `${binary()} did not run: ${said}`);
   return cannot(failureOf({}, said), said);
 }
 
@@ -323,49 +356,132 @@ function removeFolder(folder) {
 }
 
 /**
- * Put one question to the separate Claude call, from a fresh empty folder.
+ * A call started: `wait()` blocks until it answers and `answered()` answers
+ * later without blocking — either once, the answer kept, as `askClaude`
+ * answers; `cancel()` ends it unanswered, its group killed and its folders
+ * removed, and does nothing once it has answered.
+ * @typedef {{wait: () => Answer, answered: () => Promise<Answer>, cancel: () => void}} Started
+ */
+
+/** A call that cannot run, `answer` its why. @param {Answer} answer @returns {Started} */
+function startedAs(answer) {
+  return { wait: () => answer, answered: async () => answer, cancel: () => {} };
+}
+
+/** Block for `ms`, holding the event loop. @param {number} ms */
+function pause(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Wait `ms` without holding the event loop. @param {number} ms @returns {Promise<void>} */
+function later(ms) {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
+}
+
+/** A file's text, '' where it holds none. @param {string} file */
+function textOf(file) {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * The run a call's files hold once its status is written; `timeout` once
+ * `deadline` passes first; else null, not yet.
+ * @param {string} io @param {number} deadline
+ * @returns {Run|null}
+ */
+function ranBy(io, deadline) {
+  const exited = textOf(path.join(io, 'status'));
+  if (exited.endsWith('\n')) return { stdout: textOf(path.join(io, 'out')), stderr: textOf(path.join(io, 'err')), status: Number(exited) };
+  return Date.now() < deadline ? null : 'timeout';
+}
+
+/**
+ * The call the shell runs in `group`, its folders `io` and `folder`,
+ * answering by `deadline`: its run read as it ends, then the group killed,
+ * the watch among it, and both folders removed.
+ * @param {number} group @param {{io: string, folder: string}} folders @param {number} deadline @param {Ask} ask
+ * @returns {Started}
+ */
+function running(group, { io, folder }, deadline, ask) {
+  /** @type {Answer|null} */
+  let answer = null;
+  const ended = (/** @type {Answer} */ given) => {
+    if (answer !== null) return answer;
+    try {
+      process.kill(-group, 'SIGKILL');
+    } catch { /* a group gone already has nothing left to kill */ }
+    removeFolder(folder);
+    removeFolder(io);
+    answer = given;
+    return answer;
+  };
+  /** Whether the call has answered, its answer taken once its run ends. */
+  const settled = () => {
+    const run = answer === null ? ranBy(io, deadline) : null;
+    if (run !== null) ended(answerOf(run, ask));
+    return answer !== null;
+  };
+  return {
+    wait() {
+      while (!settled()) pause(POLL_MS);
+      return /** @type {Answer} */ (answer);
+    },
+    async answered() {
+      while (!settled()) await later(POLL_MS);
+      return /** @type {Answer} */ (answer);
+    },
+    cancel() {
+      ended(cannot('failed', 'cancelled before it answered'));
+    },
+  };
+}
+
+/**
+ * Start one question to the separate Claude call (the header's), from a
+ * fresh empty folder, without waiting on it. Refuses a schema an answer
+ * cannot be checked against, before any call; every other failure is an
+ * answer, never a throw.
+ * @param {Ask} ask
+ * @returns {Started}
+ */
+function startClaude(ask) {
+  const folder = freshFolder(ask);
+  if (typeof folder !== 'string') return startedAs(folder);
+  /** @type {string} */
+  let io;
+  try {
+    io = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-call-io-'));
+    fs.writeFileSync(path.join(io, 'in'), ask.input);
+  } catch (err) {
+    removeFolder(folder);
+    return startedAs(cannot('failed', `no folder to keep the call's answer in: ${messageOf(err)}`));
+  }
+  const child = spawn('/bin/sh', ['-c', STARTED, 'sh', io, folder, String(ask.timeoutMs / 1000), String(process.pid), binary(), ...argsOf(ask)], {
+    cwd: folder, env: envOf(), stdio: 'ignore', detached: true,
+  });
+  child.on('error', () => { /* a shell that never started has no pid, answered below */ });
+  child.unref();
+  if (child.pid === undefined) {
+    removeFolder(folder);
+    removeFolder(io);
+    return startedAs(cannot('failed', 'the shell the call runs in did not start'));
+  }
+  return running(child.pid, { io, folder }, Date.now() + ask.timeoutMs, ask);
+}
+
+/**
+ * Put one question to the separate Claude call and wait on its answer.
  * Refuses a schema an answer cannot be checked against, before any call;
  * every other failure is an answer, never a throw.
  * @param {Ask} ask
  * @returns {Answer}
  */
 function askClaude(ask) {
-  const folder = freshFolder(ask);
-  if (typeof folder !== 'string') return folder;
-  try {
-    return answerOf(spawnSync(binary(), argsOf(ask), { cwd: folder, env: envOf(), input: ask.input, encoding: 'utf8', timeout: ask.timeoutMs, killSignal: 'SIGKILL' }), ask);
-  } finally {
-    removeFolder(folder);
-  }
-}
-
-/**
- * Run the binary from `folder` without waiting on it, `input` on its stdin,
- * killed outright once `timeoutMs` passes: answers as `spawnSync` would.
- * @param {string[]} args @param {string} folder @param {string} input @param {number} timeoutMs
- * @returns {Promise<Run>}
- */
-function spawned(args, folder, input, timeoutMs) {
-  return new Promise((resolve) => {
-    const child = spawn(binary(), args, { cwd: folder, env: envOf() });
-    /** @type {string[]} */ const stdout = [];
-    /** @type {string[]} */ const stderr = [];
-    /** @type {Error|undefined} */
-    let error;
-    const timer = setTimeout(() => {
-      error = Object.assign(new Error(`${binary()} ETIMEDOUT`), { code: 'ETIMEDOUT' });
-      child.kill('SIGKILL');
-    }, timeoutMs);
-    child.stdout.setEncoding('utf8').on('data', (chunk) => stdout.push(chunk));
-    child.stderr.setEncoding('utf8').on('data', (chunk) => stderr.push(chunk));
-    child.stdin.on('error', () => { /* a binary that never read its stdin answers all the same */ });
-    child.on('error', (err) => { error ??= err; });
-    child.on('close', (status, signal) => {
-      clearTimeout(timer);
-      resolve({ error, stdout: stdout.join(''), stderr: stderr.join(''), status, signal });
-    });
-    child.stdin.end(input);
-  });
+  return startClaude(ask).wait();
 }
 
 /**
@@ -375,13 +491,7 @@ function spawned(args, folder, input, timeoutMs) {
  * @returns {Promise<Answer>}
  */
 async function askClaudeAsync(ask) {
-  const folder = freshFolder(ask);
-  if (typeof folder !== 'string') return folder;
-  try {
-    return answerOf(await spawned(argsOf(ask), folder, ask.input, ask.timeoutMs), ask);
-  } finally {
-    removeFolder(folder);
-  }
+  return startClaude(ask).answered();
 }
 
-module.exports = { askClaude, askClaudeAsync };
+module.exports = { askClaude, askClaudeAsync, startClaude };

@@ -46,6 +46,7 @@ const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, NOTE_COPY, writtenWorld, ledgerHelpers, copiesHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
+const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -145,7 +146,7 @@ function replacementOf(id, own = {}) {
     v: 1, id, event: 'replaced', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', replaces: full(made.opens), reason: 'changed-mind', cause: null, drops: [KEPT], of: 'decision',
     answers: full(made.where), text: MAIN.text, why: WHY, rules_out: [LAST.text], relies_on: [], product_wide: false, sealed: MAIN.text,
-    alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
+    alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
   };
 }
 
@@ -187,13 +188,24 @@ describe('the draw (16.5.7, 29.5.2)', () => {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
       answers: null, relies_on: [full(made.screens)],
       replaces: { entry: full(made.opens), reason: 'new-fact', cause: full(made.screens), keep: KEEP },
-      call: CALL, fact: false, rows_judged: [], reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0, parks: null,
+      call: CALL, fact: false, rows_judged: [], label: null, reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0, parks: null,
     });
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise --replaces'));
     assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.head, o.recommended]).slice(0, 3),
       [['1', MAIN.text, true], ['2', LAST.text, false], ['keep', KEPT, false]]);
     assert.ok(gate.statement.includes(`I lean: ${MAIN.text}`) && gate.statement.includes('- Keep it as it stands: nothing changes'), 'the payload states no lean or no keep');
     assert.deepStrictEqual(/** @type {any} */ (gateShown()).options.find((/** @type {{key: string}} */ o) => o.key === 'keep').next.argv, ['raise', 'answer', res.raise, '--pick', 'keep']);
+  });
+
+  it('labels the call from its question and Claude\'s proposals, never the keep row — the decision as it stands — and a keep lands no kind, the raise event carrying the label', async () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const { res } = await drawn(replacing(), { env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('words') }), CLAUDE_STUB_LOG: log } });
+
+    const [labelled] = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line)).filter(({ argv }) => argv[argv.indexOf('--model') + 1] === 'sonnet');
+    assert.strictEqual(labelled.input, `${CALL.question}\n\nThe answers offered:\n${CALL.rows.map((/** @type {{text: string, notice: string}} */ row) => `- ${row.text} — ${row.notice}`).join('\n')}`);
+    const { label } = /** @type {Record<string, any>} */ (seals())[res.raise];
+    answer(res.raise, ['--pick', 'keep']);
+    assert.deepStrictEqual([lastEntry().event, lastEntry().kind, logged().at(-1)?.kind, logged().at(-1)?.label], ['kept', undefined, 'words', label]);
   });
 
   it('a second raise to replace the decision in the conversation keeps the first seal, its lean unchanged', async () => {

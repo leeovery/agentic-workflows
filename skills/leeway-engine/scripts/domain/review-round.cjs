@@ -619,10 +619,10 @@ function scenarioWordings(cwd, unit, manifest) {
   return new Map(specStatements(readSpec(cwd, unit)).filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording.replace(/\s*\([^()]*\)$/, '')]));
 }
 
-/** The calls decided for the person across the unit, counted with the build's share; what the read warned of pushed to `warnings`. @param {string} cwd @param {string} unit @param {string[]} warnings */
+/** The calls decided for the person across the unit, by kind, with the build's share; what the read warned of pushed to `warnings`. @param {string} cwd @param {string} unit @param {string[]} warnings */
 function callsCount(cwd, unit, warnings) {
   const calls = readShown(stateRoot(cwd), warnings, (shower) => unitCalls(shower, unit)).filter(forThePerson);
-  return { count: calls.length, build: calls.filter(inTheBuild).length };
+  return { kinds: calls.map(({ kind }) => kind), build: calls.filter(inTheBuild).length };
 }
 
 /**

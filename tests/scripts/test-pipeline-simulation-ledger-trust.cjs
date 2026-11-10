@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's trust-log scenario: Claude's calls, the
 // person's answers to them through the ledger verbs, the verdicts and the
-// raises, each landing a line of the trust log where it is a departure.
+// raises, each landing a line of the trust log where it is a departure, each
+// question labelled by the stub armed for the labeller (labels.cjs).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -17,7 +18,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { startItem } = require('./engine-harness.cjs');
 const { Sim, mappedEpic } = require('./pipeline-world.cjs');
+const { trustLines } = require('./pipeline-oracle.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
 
 describe('pipeline simulation: the trust log', () => {
   let sim;
@@ -26,6 +29,16 @@ describe('pipeline simulation: the trust log', () => {
 
   it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
     const wu = 'fumi';
+    sim.env = {
+      ...sim.env,
+      CLAUDE_STUB_ANSWERS: JSON.stringify({
+        'The answer: ': 'no-login',
+        'Is a note a window?': labelAnswers('look', { hardToUndo: true }),
+        'What is a note?': labelAnswers('behaviour'),
+        'Does a note have a title?': labelAnswers('words'),
+        '': 'no-login',
+      }),
+    };
     mappedEpic(sim, wu, ['note-window']);
     startItem(sim.dir, wu, 'discussion', 'note-window');
     const note = `${wu}.discussion.note-window`;
@@ -73,5 +86,7 @@ describe('pipeline simulation: the trust log', () => {
     const untitled = ledger(['decide', note, '--answers', titled], { by: 'person', text: 'A note has no title.', why: 'Its first line is enough.' });
     const retitled = ledger(['replace', note, '--replaces', untitled, '--reason', 'changed-mind'], { by: 'person', drops: ['no title'], text: 'A note has a title.', why: 'Titles help search.' });
     assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => d.id === retitled), 'the person\'s own decision, changed, waits on a verdict');
+    const kinds = trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'call' || type === 'raise').map(({ type, kind }) => `${type} ${kind}`);
+    assert.deepStrictEqual(kinds, ['call look', 'call look', 'raise behaviour', 'raise behaviour', 'call null', 'raise behaviour'], 'the calls and raises carry no labels for the oracle to hold');
   });
 });

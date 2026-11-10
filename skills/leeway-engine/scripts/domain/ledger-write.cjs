@@ -104,11 +104,16 @@
 //   being unchecked, where the one-decision check could not judge it
 //   (ledger-one-decision.cjs) — a raise's always, its draw having judged
 //   its rows without the why, so the late check judges it whole
-//   (ledger-late-check.cjs).
+//   (ledger-late-check.cjs); and a decision's kind and whether it is hard to
+//   undo, from the labeller's label of its question (labeller.cjs, 16.11.2):
+//   Claude's own call labelled from the question's wording with its answer
+//   and what it rules out, the person's decision, or one carried over, from
+//   the wording alone, its answer not Claude's, and a raise's answer from
+//   the label its draw sealed — each null where no label was given.
 // - What the trust log is told (16.13.3, 16.13.4): Claude's answer — its
 //   decision, or its replacement of a decision, the person's among them
-//   (5.8.19) — logs a call, naming the entry, its kind, label and sort left
-//   for the labeller and the decision point to fill; the person's
+//   (5.8.19) — logs a call, naming the entry, its kind and the label it was
+//   composed from, and its sort, null where no raise sorted it; the person's
 //   replacement the departure rule holds standing over a lean the entry it
 //   replaces held logs a reversal, naming the entry it reverses (16.12.1,
 //   ledger-verdicts.cjs). A decision carried over is no call of Claude's,
@@ -136,15 +141,19 @@
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
 //   write never waits on a peer; then a decision's links are resolved and
-//   checked against the ledger as it stands — folded once before the lock, a
-//   replacement's reading reused — so no call is spent on a write they
-//   refuse, and it is judged, one rule or several, by the separate Claude
-//   call, which no peer waits on either. Under the lock the ledger is folded
-//   (ledger-fold.cjs), the place's liveness read again, every link resolved
-//   and its currency and relations checked again, the trust log's event
-//   built and kept, the entry appended, the event landed in the trust log,
-//   and the ledger committed, so no peer's write or lifecycle change lands
-//   between the check and the append. The answer is made once the lock is
+//   checked against the ledger as it stands — folded once before the lock,
+//   each question's wording kept for the label, a replacement's reading
+//   reused — so no call is spent on a write they refuse, and it is judged,
+//   one rule or several, by the separate Claude call, which no peer waits on
+//   either, and labelled meanwhile by the labeller's call, started before
+//   the check, waited on once it answers and cancelled where it refuses, so
+//   the write stays synchronous (kernel/claude-call.cjs `startClaude`).
+//   Under the lock the ledger is folded (ledger-fold.cjs), the place's
+//   liveness read again, every link resolved and its currency and relations
+//   checked again, the trust log's event built and kept, the entry appended,
+//   the event landed in the trust log, and the ledger committed, so no
+//   peer's write or lifecycle change lands between the check and the
+//   append. The answer is made once the lock is
 //   released: the entry's short id, the commit, and as warnings a push that
 //   failed and what a landing finished on the way said, which a refusal
 //   carries too.
@@ -172,6 +181,7 @@ const { TOPIC_PHASES, hasItem, hasTopic, hasRoadmapItem, manifestOf, experimentW
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
+const { startLabel, questionText, labelFields } = require('./labeller.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs');
 const { heldAgainst } = require('./ledger-affected.cjs');
@@ -183,9 +193,11 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
+/** The ledger as read before the lock: folded, and the text of each question's wording. @typedef {Folded & {asked: Map<string, string>}} Before */
 /** @typedef {import('./ledger-fold.cjs').Standing} Standing */
 /** @typedef {import('./ledger-fold.cjs').Liveness} Liveness */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
+/** @typedef {import('./labeller.cjs').Label} Label */
 
 /**
  * What a link must name: said for its refusal, and the test of the facts of
@@ -262,8 +274,9 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
 
 /**
  * The trust log's event a write logs, built from the entry it is about to
- * append, its id minted: the event's type and its own fields.
- * @typedef {(entry: Record<string, unknown>) => {type: string, fields: Record<string, unknown>}} Logs
+ * append, its id minted, and the label of a decision's question: the
+ * event's type and its own fields.
+ * @typedef {(entry: Record<string, unknown>, label: Label|null) => {type: string, fields: Record<string, unknown>}} Logs
  */
 
 /**
@@ -272,12 +285,13 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
  * each flag's values by field, the kind of entry it writes — null for an
  * event that is no entry — its content, checked in that kind's shape, and,
  * for a decision, whether it lands unchecked: true until the one-decision
- * check finds it holds one rule; the id it lands as, minted by its raise,
+ * check finds it holds one rule — and its question's label, null until the
+ * labeller gives one; the id it lands as, minted by its raise,
  * or null for one minted under the lock; what it checks of the ledger under
  * the lock before its links resolve, and after, and what it sets from it
  * there; the trust log's event it logs, or null; and the ledger as it stood
  * before the lock, folded the first time a step reads it.
- * @typedef {{verb: string, said: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, id: string|null, checkRead: ReadCheck, checkLinks: LinksCheck, mints: Mints, logs: Logs|null, before: () => Folded}} Request
+ * @typedef {{verb: string, said: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, label: Label|null, id: string|null, checkRead: ReadCheck, checkLinks: LinksCheck, mints: Mints, logs: Logs|null, before: () => Before}} Request
  */
 
 /**
@@ -309,12 +323,14 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
  * What a raise lands (raise.cjs) — the person's answer to it, or Claude's
  * call the decision point lets proceed: the command asking, as its refusals
  * name it; where the raise was drawn; how it lands, and its links by full
- * id, as the raise sealed them; the line's content; the id it lands as,
+ * id, as the raise sealed them; the line's content; the label its draw
+ * gave the call, null where it gave none, and a decision it lands takes its
+ * kind from; the id it lands as,
  * minted at the draw, or null for one minted under the lock; the trust
  * log's event it logs, or null — a fact's answer logs none; what it checks
  * of the ledger under the lock before its links resolve; and what it sets
  * from it there, where it sets anything.
- * @typedef {{said: string, place: Place, lands: Lands, linked: Linked, content: Record<string, unknown>, id: string|null, logs: Logs|null, checkRead: ReadCheck, mints?: Mints}} Raised
+ * @typedef {{said: string, place: Place, lands: Lands, linked: Linked, content: Record<string, unknown>, label?: Label|null, id: string|null, logs: Logs|null, checkRead: ReadCheck, mints?: Mints}} Raised
  */
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
@@ -479,14 +495,14 @@ const RAISED = Object.freeze({ decide: WRITES.decide, replace: WRITES.replace, k
 const FLAG_FIELDS = new Set([...Object.values(WRITES), KEEP, PARK, UNPARK].flatMap((w) => w.flags.map((flag) => flag.field)));
 
 /** The fields the engine gives an entry, never its content. */
-const ENGINE_FIELDS = new Set([...HEADER.map((f) => f.name), 'of', 'unchecked', 'number']);
+const ENGINE_FIELDS = new Set([...HEADER.map((f) => f.name), 'of', 'unchecked', 'kind', 'hard_to_undo', 'number']);
 
 /** The kinds of finding that are measurements, whose command the closing pass runs again (9.9.7). */
 const MEASURED = Object.freeze(['measured', 'exploratory']);
 
 /** The content a write may leave out, and what it takes instead. @type {Readonly<Record<string, unknown>>} */
 const DEFAULTS = Object.freeze({
-  rules_out: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, given: 'own', command: null, result: null, cites: [],
+  rules_out: [], product_wide: false, sealed: null, alternatives: [], evidence: [], given: 'own', command: null, result: null, cites: [],
 });
 
 /** @param {Flag} flag */
@@ -906,22 +922,37 @@ function followed(write, linked, read) {
 }
 
 /**
- * The ledger folded, read against liveness as the manifests say it now.
+ * The ids' facts, and the text of each question's wording, which a
+ * decision's label reads (labeller.cjs), in the one pass.
+ * @type {import('./ledger-fold.cjs').Fold<{facts: Map<string, IdFacts>, asked: Map<string, string>}>}
+ */
+const WORDED = Object.freeze({
+  start: () => ({ facts: ID_FACTS.start(), asked: new Map() }),
+  step: (state, event, place) => {
+    ID_FACTS.step(state.facts, event, place);
+    if (entryKind(event) === 'question') state.asked.set(/** @type {string} */ (event.id), /** @type {string} */ (event.text));
+  },
+});
+
+/**
+ * The ledger folded with each question's wording, read against liveness as
+ * the manifests say it now.
  * @param {Address} at @param {string[]} warnings
- * @returns {Folded}
+ * @returns {Before}
  */
 function readNow(at, warnings) {
-  return { facts: foldLedger(at.root, ID_FACTS, warnings), live: liveness(at.root) };
+  const { facts, asked } = foldLedger(at.root, WORDED, warnings);
+  return { facts, asked, live: liveness(at.root) };
 }
 
 /**
  * The ledger as it stands before the lock, folded the first time a step
  * asks for it and never again.
  * @param {Address} at @param {string[]} warnings
- * @returns {() => Folded}
+ * @returns {() => Before}
  */
 function readBefore(at, warnings) {
-  /** @type {Folded|null} */
+  /** @type {Before|null} */
   let read = null;
   return () => {
     read ??= readNow(at, warnings);
@@ -981,13 +1012,13 @@ function contentFields(said, write, given, replaced) {
 }
 
 /**
- * Claude's call logged (16.3.7), naming the entry, with its sort — null
- * where no raise sorted it — its kind and label left for the labeller.
+ * Claude's call logged (16.3.7), naming the entry, its kind and the label
+ * it was composed from, and its sort — null where no raise sorted it.
  * @param {'one'|'several'|null} sort
  * @returns {Logs}
  */
 function callLogged(sort) {
-  return ({ id }) => ({ type: 'call', fields: { entry: id, kind: null, label: null, sort } });
+  return ({ id, kind }, label) => ({ type: 'call', fields: { entry: id, kind, label, sort } });
 }
 
 /** The person's reversal logged (16.12.1), naming the entry and the entry it reverses. @type {Logs} */
@@ -1159,6 +1190,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
     verb, said, write, at, session, given, kind,
     content: fields,
     unchecked: true,
+    label: null,
     id: null,
     checkRead: nothingToCheck,
     checkLinks: ANSWERING.has(write) ? unparked(said) : linksUnchecked,
@@ -1191,7 +1223,7 @@ function valuesOf(value) {
  * @param {string} cwd @param {Raised} raised @param {string[]} warnings
  * @returns {Request}
  */
-function raisedRequest(cwd, { said, place, lands, linked, content, id, logs, checkRead, mints = NOTHING_MINTED }, warnings) {
+function raisedRequest(cwd, { said, place, lands, linked, content, label = null, id, logs, checkRead, mints = NOTHING_MINTED }, warnings) {
   const write = RAISED[lands];
   const at = addressOf(cwd, said, dotpathOf(place), write);
   const given = new Map(write.flags.map((flag) => [flag.field, valuesOf(linked[flag.field])]));
@@ -1204,6 +1236,7 @@ function raisedRequest(cwd, { said, place, lands, linked, content, id, logs, che
     kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
     content: contentFields(said, write, content, replaced),
     unchecked: true,
+    label,
     id, checkRead, checkLinks: linksUnchecked, mints, logs, before,
   };
 }
@@ -1216,7 +1249,7 @@ function raisedRequest(cwd, { said, place, lands, linked, content, id, logs, che
  * @returns {Record<string, unknown>}
  */
 function eventOf(request, read) {
-  const { write, at, session, kind, content, unchecked } = request;
+  const { write, at, session, kind, content, unchecked, label } = request;
   request.checkRead(read);
   const linked = resolvedLinks(request, read);
   write.checkLinked(request.said, linked, read);
@@ -1224,33 +1257,66 @@ function eventOf(request, read) {
   checkUnmeasured(request, linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
-    ...content, ...linked, ...followed(write, linked, read), ...(kind === 'decision' ? { unchecked } : {}),
+    ...content, ...linked, ...followed(write, linked, read), ...(kind === 'decision' ? decisionGiven(label, unchecked) : {}),
   };
 }
 
 /**
- * A decision's links resolved and checked before the one-decision call,
- * against the ledger as read before the lock, as the lock checks them again,
- * so no call is spent on a write its links refuse. Answers the entries they
- * name, by short id, for the call's refusal.
+ * What the engine gives a decision: the kind and the hard-to-undo mark its
+ * question's label gives, each null where it has none, and whether it
+ * lands unchecked.
+ * @param {Label|null} label @param {boolean} unchecked
+ */
+function decisionGiven(label, unchecked) {
+  return { ...labelFields(label), unchecked };
+}
+
+/**
+ * What the labeller reads of a decision (labeller.cjs, 16.11.2): the
+ * question's wording, `asked`, and, where the decision is Claude's own
+ * call, its answer and what it rules out — the person's, or one carried
+ * over, giving the wording alone.
+ * @param {Record<string, unknown>} content @param {string} asked
+ */
+function labelledText(content, asked) {
+  if (!claudesCall(content)) return questionText(asked, []);
+  return questionText(asked, [/** @type {string} */ (content.text), .../** @type {string[]} */ (content.rules_out)]);
+}
+
+/**
+ * A decision's links resolved and checked before the calls, against the
+ * ledger as read before the lock, as the lock checks them again, so no call
+ * is spent on a write its links refuse. Answers the entries they name, by
+ * short id, for the one-decision check's refusal, and what the labeller
+ * reads of the decision.
  * @param {Request} request
- * @returns {import('./ledger-one-decision.cjs').Named}
+ * @returns {{named: import('./ledger-one-decision.cjs').Named, text: string}}
  */
 function linkedBeforeCall(request) {
   const read = request.before();
   const { answers, replaces } = eventOf(request, read);
   const short = (/** @type {unknown} */ id) => shortId(/** @type {string} */ (id), read.facts.keys());
-  return { answers: short(answers), replaces: replaces === undefined ? null : short(replaces) };
+  const asked = /** @type {string} */ (read.asked.get(/** @type {string} */ (answers)));
+  return { named: { answers: short(answers), replaces: replaces === undefined ? null : short(replaces) }, text: labelledText(request.content, asked) };
 }
 
 /**
  * A write as asked, a decision among them judged by the one-decision check,
- * its run logged from `cwd`.
+ * its run logged from `cwd`, and labelled by the labeller's call, started
+ * before the check, waited on once it answers and cancelled where it
+ * refuses.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
  * @returns {Request}
  */
-function oneDecisionChecked(cwd, request, warnings) {
-  return request.kind === 'decision' ? checkOneDecision(cwd, request, linkedBeforeCall(request), warnings) : request;
+function checkedAndLabelled(cwd, request, warnings) {
+  if (request.kind !== 'decision') return request;
+  const { named, text } = linkedBeforeCall(request);
+  const labelling = startLabel(text);
+  try {
+    return { ...checkOneDecision(cwd, request, named, warnings), label: labelling.wait() };
+  } finally {
+    labelling.cancel();
+  }
 }
 
 /**
@@ -1330,7 +1396,7 @@ function land(cwd, request, warnings) {
     return { id: short, outcome: commitEntry(cwd, request, id, warnings), line: null, held };
   }
   if (logs !== null) {
-    const { type, fields: own } = logs({ ...fields, id });
+    const { type, fields: own } = logs({ ...fields, id }, request.label);
     keepEvent(newEvent(type, own, cwd), at.root, id);
   }
   const voided = voidOnQuestion(cwd, at, write, fields);
@@ -1369,7 +1435,7 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    return landed(cwd, oneDecisionChecked(cwd, requestOf(cwd, verb, args, stdin, warnings), warnings), warnings).landed;
+    return landed(cwd, checkedAndLabelled(cwd, requestOf(cwd, verb, args, stdin, warnings), warnings), warnings).landed;
   } catch (err) {
     throw carrying(err, warnings);
   }
@@ -1408,5 +1474,5 @@ function landRaised(cwd, raised, warnings) {
 }
 
 module.exports = {
-  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, phasesOf, contentFields, checkSaid, checkUnsealed,
+  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, phasesOf, contentFields, decisionGiven, checkSaid, checkUnsealed,
 };

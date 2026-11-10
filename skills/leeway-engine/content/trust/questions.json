@@ -1,0 +1,74 @@
+[
+  {
+    "id": "process",
+    "q": "Is the question about the working session rather than the thing being built?",
+    "true": "whether to commit, continue, move on, pause, which topic or step to take next, whether to run a review or a check, how to organise the work",
+    "false": "anything about what the product does, how it looks, or how it is built"
+  },
+  {
+    "id": "checkable",
+    "q": "Is the answer a fact Claude could find out without the person, by reading the code, the records or documentation, running something, measuring, or trying the options?",
+    "true": "whether something already exists or works a certain way, what it costs in memory or time, what a library or the operating system supports, what an earlier decision said",
+    "false": "what the person wants, prefers, or thinks the product should be"
+  },
+  {
+    "id": "user_sees",
+    "q": "If it went the other way, would a person using the finished product see or feel a difference?",
+    "true": "what appears on screen, what happens when they act, what they are told, which features exist, how fast something feels",
+    "false": "only the code, the internal design, the tests, the tools or the working process would differ"
+  },
+  {
+    "id": "looks",
+    "q": "Is it about how something looks?",
+    "true": "layout, colour, typography, icons, spacing, animation, visual style, where something sits on screen",
+    "false": "what something does, what it says, or how it works"
+  },
+  {
+    "id": "words",
+    "q": "Is it about the exact words a user reads or types?",
+    "true": "labels, names users see or type, command names, messages, notification text, the wording of help or errors",
+    "false": "what a feature does; names that live only in the code"
+  },
+  {
+    "id": "flow",
+    "q": "Is it about the steps a user goes through?",
+    "true": "what happens next after a user acts, the order of screens or prompts, what a user must do to get somewhere, when the product interrupts them",
+    "false": "a single screen's content or look, or behaviour the user does not step through"
+  },
+  {
+    "id": "scope",
+    "q": "Is it about whether something is included in the work at all, or done now versus later?",
+    "true": "adding or dropping a feature or a case, deferring something, cutting something to ship sooner",
+    "false": "how something already included should behave or be built"
+  },
+  {
+    "id": "contract",
+    "q": "Does the choice fix something that other code, other programs or saved data will come to rely on?",
+    "true": "the shape of stored data or files, a command-line interface or API that other things call, a protocol or message format between parts, a public setting",
+    "false": "something inside one part, which can change without touching anything else"
+  },
+  {
+    "id": "danger",
+    "q": "Could one of the options destroy, overwrite or expose the user's data or secrets, or weaken permissions or security?",
+    "true": "deleting or overwriting saved work, losing data on a crash, credentials, access control, sandboxing",
+    "false": "anything else"
+  },
+  {
+    "id": "hard_to_undo",
+    "q": "If it were built one way and changed later, would the change reach beyond the piece itself?",
+    "true": "migrating saved data, changing other parts that depend on it, breaking what users already rely on or have learned",
+    "false": "the piece can be changed on its own, with nothing else touched"
+  },
+  {
+    "id": "one_is_wrong",
+    "q": "Would one of the options be a mistake on the merits?",
+    "true": "one option breaks something, loses data, misleads the user, contradicts an earlier decision, or costs clearly more for no gain",
+    "false": "every option is sound and the choice is about what the person prefers or how they picture the product; or the question offers no real alternative"
+  },
+  {
+    "id": "internals",
+    "q": "To answer, would the person need to understand how the code works inside?",
+    "true": "the options are described in terms of mechanisms, processes, data structures or code paths",
+    "false": "the question can be answered from what the product does for the person using it"
+  }
+]

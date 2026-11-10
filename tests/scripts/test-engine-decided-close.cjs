@@ -7,8 +7,8 @@
 // its close asks, a decision the record widens already taking no second
 // line, the yes refused while a line widens a decision replaced since, a
 // line widening the replacement replacing it and a withdrawal taking a line
-// out, one rule standing, a yes killed after they landed run again (P9,
-// 8.9.2); a message delivered or a question opened since the close voiding
+// out, each labelled from the question it answers, one rule standing, a yes
+// killed after they landed run again (P9, 8.9.2); a message delivered or a question opened since the close voiding
 // it, and a feature's discussion entered again, an epic's keeping it, the
 // payload staged against it refused by the screen and the yes alike, and a
 // decision changed since voiding nothing; a topic decided at its gate taking
@@ -27,13 +27,14 @@ const fs = require('fs');
 const { ok, output, refusedPristine, sectionOf, readManifest, statePath, killedAt, stateGit, layout } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
 const { SOLO, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, screen, staged, answer, run, reverse } = decidedHelpers(dir);
 const { entries } = ledgerHelpers(dir);
 
 describe('a topic set back in progress (P9, 10.2.7)', () => {
-  it('shows its gate again only once closed afresh, counting the verdicts this close asks; a decision widened already takes no second line, the yes refuses while a line widens a decision replaced since, until a line widening the replacement at the end of its chain replaces it or a withdrawal takes it out, one rule standing once a yes killed after they landed runs again', () => {
+  it('shows its gate again only once closed afresh, counting the verdicts this close asks; a decision widened already takes no second line, the yes refuses while a line widens a decision replaced since, until a line widening the replacement at the end of its chain replaces it or a withdrawal takes it out, each labelled from the question it answers, one rule standing once a yes killed after they landed runs again', () => {
     close();
     reverse(NOTE_MAP.title.answer, 'Hello.');
     staged({ lines: [
@@ -87,7 +88,8 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     const reshaped = writeIn(dir(), 'replace', NOTE, ['--replaces', local, '--reason', 'changed-mind'], { ...PERSON, drops: ['first'], text: 'The note window, then the tour.', why: 'The tour still helps.' });
     assert.match(refusedPristine(dir(), yes, { env: SESSION }).error, /^decided yes: withdrawal 1 cannot land — .*; render decided fumi\.note-window --file <payload\.json> stages it again$/, 'a withdrawal whose decision was replaced since it was staged lands nothing, the line beside it neither');
     staged({ lines: [replacing], withdraws: [withdrawing], candidates: [] });
-    killedAt({ method: 'renameSync', file: `${UNIT}/manifest.json`, when: 'before' }, dir(), yes, { env: SESSION });
+    const labelled = { 'Is sync on at first run?': labelAnswers('contract'), 'How does first run open?': labelAnswers('look', { hardToUndo: true }), '': 'no-login' };
+    killedAt({ method: 'renameSync', file: `${UNIT}/manifest.json`, when: 'before' }, dir(), yes, { env: { ...SESSION, CLAUDE_STUB_ANSWERS: JSON.stringify(labelled) } });
     const landed = entries().length;
     assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync is off until you turn it on.'], 'the replacement and the withdrawal landed before the kill');
     run(answer('decided', 'y'));
@@ -95,7 +97,8 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['note-window'].status, 'completed');
     assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync is off until you turn it on.'],
       'one rule stands: the line widening the replacement replaced the line widening the decision it replaced, and the withdrawn line left the record');
-    const withdrawal = entries().filter(({ event }) => event === 'replaced').at(-1);
+    const [line, withdrawal] = entries().filter(({ event }) => event === 'replaced').slice(-2);
+    assert.deepStrictEqual([line, withdrawal].map(({ kind, hard_to_undo: hard }) => [kind, hard]), [['contract', false], ['look', true]], 'the replacing line or the withdrawal landed unlabelled');
     assert.deepStrictEqual({ by: withdrawal.by, topic: withdrawal.topic, text: withdrawal.text, why: withdrawal.why, wide: withdrawal.product_wide, drops: withdrawal.drops, reliesOn: withdrawal.relies_on.map((/** @type {string} */ id) => id.startsWith(reshaped)) },
       { by: 'person', topic: null, text: 'The note window, then the tour.', why: 'Only the note window opens on the tour now.', wide: false, drops: ['First run shows the product before it asks.'], reliesOn: [true] },
       'the withdrawal replaces the line, at the unit\'s level and not for the product, by the decision the widened one now stands as');

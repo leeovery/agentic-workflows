@@ -30,7 +30,9 @@
 //   point no source settles, to raise at the end (21.6.10); and its
 //   `assets`, each `{path, status}`, a file the state holds, linked as it
 //   is canonical or reference. Every entry moves no one; a decision lands
-//   unchecked, for the late one-decision check after the migration.
+//   unchecked, for the late one-decision check after the migration, and
+//   unlabelled, its kind and hard-to-undo mark null: no call is made while
+//   the migration runs.
 // - Kept: the rules the records directive's check holds a topic's record to
 //   (079-records.check.cjs) — its sections cited, its old map, its threads
 //   and its imports, and in discovery no decision and nothing product-wide —
@@ -78,7 +80,7 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
-const { WRITES, contentFields, checkSaid, checkUnsealed } = require('./ledger-write.cjs');
+const { WRITES, contentFields, checkSaid, checkUnsealed, decisionGiven } = require('./ledger-write.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 
@@ -271,7 +273,7 @@ function recordLines(place, entries, session) {
     checkSaid(said, event === 'decided' ? 'decision' : event === 'found' ? 'finding' : 'question', content);
     const id = newId();
     before.set(ref, { id, event, raised: raise === true });
-    lines.push({ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? { unchecked: true } : {}) }, id });
+    lines.push({ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? decisionGiven(null, true) : {}) }, id });
     lines.push(...assetLines(said, place, assets, id, tags));
     kept.push({ ref, id });
   });

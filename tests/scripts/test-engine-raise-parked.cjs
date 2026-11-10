@@ -44,12 +44,14 @@ const {
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { DISCUSSING } = require(path.join(SCRIPTS, 'domain/questions.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { SURFACES } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 const { recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 
 mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
@@ -198,7 +200,7 @@ function parkedLine(own = {}) {
   return {
     v: 1, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question: full(made.where), replaces: null, reason: null, cause: null, relies_on: [], task: '2.3', number: 1,
-    call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, ...own,
+    call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, ...own,
   };
 }
 
@@ -211,7 +213,7 @@ function parkedLine(own = {}) {
 function parked(number, task, own = {}) {
   const { id } = appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
-    question: full(made.where), replaces: null, reason: null, cause: null, relies_on: [], task, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, ...own,
+    question: full(made.where), replaces: null, reason: null, cause: null, relies_on: [], task, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, ...own,
   }, []);
   return /** @type {string} */ (id);
 }
@@ -410,6 +412,41 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
   });
 });
 
+describe('the label a park seals (16.11.5)', () => {
+  /** The conversation, the stub labelling the call `danger`, hard to undo, and judging nothing. */
+  const labelled = () => conversation({ CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('danger', { hardToUndo: true }) }) });
+  const LABEL = { labeller: 'claude-sonnet-stub', answers: ORDER.map((key) => key === 'danger' || key === 'hard_to_undo') };
+
+  it('labels the call it parks beside its rows\' checks, sealing the label on the parked line; raise draw seals it from the park, and the answer lands its kind and hard-to-undo mark, its raise event the label', async () => {
+    const { res } = await park(made.where, '2.3', { env: labelled() });
+
+    assert.deepStrictEqual(lastEntry(), { ...parkedLine({ label: LABEL }), id: full(res.id) });
+    const drawn = draw('Q1').res.raise;
+    assert.deepStrictEqual(seals()?.[drawn].label, LABEL);
+    answer(drawn, ['--pick', '1']);
+    assert.deepStrictEqual([lastEntry().kind, lastEntry().hard_to_undo, logged().at(-1)?.kind, logged().at(-1)?.label], ['danger', true, 'danger', LABEL]);
+  });
+
+  it('a task joining a question waiting copies its first park\'s label, labelling nothing', async () => {
+    await park(made.where, '2.3', { env: labelled() });
+    const log = path.join(config(), 'joined-calls.jsonl');
+
+    const { res } = await park(made.where, '2.5', { env: conversation({ CLAUDE_STUB_ANSWERS: JSON.stringify({ '': labelAnswers('words') }), CLAUDE_STUB_LOG: log }) });
+
+    assert.deepStrictEqual(lastEntry(), { ...parkedLine({ task: '2.5', label: LABEL }), id: full(res.id) });
+    assert.ok(!fs.existsSync(log), 'a task joining a question waiting put a call');
+  });
+
+  it('16.3.8: a fact parks unlabelled, its label never asked', async () => {
+    const log = path.join(config(), 'fact-calls.jsonl');
+
+    await okSectionsAsync(dir, ['raise', BUILD, '--answers', made.size, '--fact', '--parks', '2.3'], { env: conversation({ CLAUDE_STUB_ANSWERS: JSON.stringify({ '': labelAnswers('words') }), CLAUDE_STUB_LOG: log }), stdin: JSON.stringify(FACT) });
+
+    assert.strictEqual(lastEntry().label, null);
+    assert.ok(!fs.existsSync(log), 'a fact put a call');
+  });
+});
+
 describe('what waits (12.13.6, 12.13.7)', () => {
   it('raise waiting lists the unit\'s questions waiting, oldest first: each by its number and its park\'s id, what it asks and the question it is about, the tasks it parks, when it parked and how many minutes it has waited', async (t) => {
     const q1 = (await park(made.where, '2.3')).res;
@@ -448,7 +485,7 @@ describe('what waits (12.13.6, 12.13.7)', () => {
     appended({
       event: 'replaced', replaces: full(made.frameless), reason: 'was-wrong', cause: null, drops: ['frameless'], of: 'decision',
       answers: full(made.frame), text: 'A thin frame.', why: 'It stands out.', rules_out: [], relies_on: [], product_wide: false, sealed: null,
-      alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null,
+      alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null,
     });
     assert.deepStrictEqual(waitingNumbers(), ['Q4']);
 
@@ -497,7 +534,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     const { at, ...sealed } = seals()?.[res.raise];
     assert.deepStrictEqual(sealed, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'implementation', topic: null },
-      answers: full(made.where), relies_on: [full(made.frameless)], replaces: null, call: CALL, fact: false, rows_judged: ['1'], reason: EVERY_CALL_ASKS,
+      answers: full(made.where), relies_on: [full(made.frameless)], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, reason: EVERY_CALL_ASKS,
       answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'] },
     });
 

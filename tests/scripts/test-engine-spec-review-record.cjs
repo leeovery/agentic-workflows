@@ -22,7 +22,8 @@
 //
 // Layer: verb. World, built once and copied: an epic, `payments`, its one
 // topic `cards` decided, its entries written through the ledger's verbs — a
-// decision of the person's, a call of Claude's, a "don't care" decision, a
+// decision of the person's, labelled by the stub armed for it (labels.cjs),
+// a call of Claude's, a "don't care" decision, a
 // finding and a question left open — and one carried over as the migration
 // writes it, and its spec landed citing them.
 // ---------------------------------------------------------------------------
@@ -37,13 +38,12 @@ const {
   ok, refusedPristine, statePath, layout, writeState, readState, commitAll, fixtureFrom, cleanupFixture, treeSnapshot,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
+const { MADE, SESSION, ledgerHelpers } = require('./ledger-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { specPage, lineTicks, HARD_TO_UNDO } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
+const { specPage } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
 const { settleReview } = require(path.join(SCRIPTS, 'domain/spec-review.cjs'));
-const { specReading } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
-const { withTraceView } = require(path.join(SCRIPTS, 'domain/spec-trace.cjs'));
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 const UNIT = 'payments';
@@ -95,8 +95,8 @@ const world = fixtureFrom('spec-review-', (dir) => {
   const { write, carriedOver } = ledgerHelpers(() => dir);
   const at = `${UNIT}.discussion.cards`;
   const ask = (/** @type {string} */ text) => write('ask', at, [], { ...PERSON, text }).id;
-  const decide = (/** @type {string} */ question, /** @type {string} */ text, content = {}) => write('decide', at, ['--answers', question], { ...PERSON, text, why: `Why: ${text}`, ...content }).id;
-  made.taken = decide(ask('Which cards are taken?'), 'Visa and Mastercard.');
+  const decide = (/** @type {string} */ question, /** @type {string} */ text, content = {}, env = SESSION) => write('decide', at, ['--answers', question], { ...PERSON, text, why: `Why: ${text}`, ...content }, env).id;
+  made.taken = decide(ask('Which cards are taken?'), 'Visa and Mastercard.', {}, { ...SESSION, ...labelling('Which cards are taken?', 'contract') });
   made.call = decide(ask('What of an unknown brand?'), 'Refused.', MADE);
   made.radius = decide(ask('What radius are the corners?'), 'Ten points.', { ...MADE, given: 'dont-care' });
   made.brand = write('find', at, [], { ...MADE, text: 'The form shows the card\'s brand.', how: 'read in the code', known: 'read' }).id;
@@ -181,18 +181,24 @@ describe('Claude\'s tick, drawn from the entries each line cites (11.11.15, 11.S
     assert.deepStrictEqual([flagged('claude'), flagged('builder')], [['1-1-2', '1-1-6'], ['1-1-3', '1-1-8']]);
   });
 
-  it('11.S36\'s drawn half: a line restating the person\'s decision marked hard to undo stays open, its reason saying its question was; unmarked, it carries the tick (P8)', () => {
-    const { lines } = specReading(readState(dir, SPEC));
-    const marked = withTraceView(dir, UNIT, [], (view) => {
-      const decision = /** @type {{line: Record<string, unknown>}} */ (view.entries.get(full(made.taken)));
-      const unmarked = lineTicks(view, lines).ticks.get('1.1.1');
-      decision.line[HARD_TO_UNDO] = true;
-      return [unmarked, lineTicks(view, lines).ticks.get('1.1.1')];
-    });
+  it('11.S36\'s drawn half: a line restating the person\'s decision whose question the labeller marked hard to undo stays open, its reason saying so; one whose question went unlabelled stays open too, never read as easy to undo; labelled and unmarked, it carries the tick (P8)', () => {
+    const { write } = ledgerHelpers(() => dir);
+    const at = `${UNIT}.specification`;
+    /** The person's decision at the spec, its question labelled as `labelled` gives, where it gives one: its short id. @param {string} question @param {{hardToUndo: boolean}} [labelled] */
+    const decided = (question, labelled) => write('decide', at, ['--answers', write('ask', at, [], { ...PERSON, text: question }).id], { ...PERSON, text: 'Yes.', why: 'Because.' }, {
+      ...SESSION, ...(labelled === undefined ? {} : labelling(question, 'behaviour', labelled)),
+    }).id;
+    const hard = decided('Is a refund final?', { hardToUndo: true });
+    const unlabelled = decided('Is a receipt kept?');
+    writeState(dir, SPEC, spec([...STATEMENTS(), `1.1.9 A refund is final. [${hard}]`, `1.1.10 A receipt is kept. [${unlabelled}]`]));
+    ok(dir, ['spec', 'land', UNIT]);
 
-    assert.deepStrictEqual(marked, [
+    const { ticks } = specPage(dir, UNIT);
+
+    assert.deepStrictEqual(['1-1-1', '1-1-9', '1-1-10'].map((id) => ticks.get(id)), [
       { v: 'soft', why: `Restates your decision ${made.taken} of ${dayOf(made.taken)}` },
-      { v: 'open', why: `Restates your decision ${made.taken}, its question marked hard to undo` },
+      { v: 'open', why: `Restates your decision ${hard}, its question marked hard to undo` },
+      { v: 'open', why: `Restates your decision ${unlabelled}, its question unlabelled, so not known to be easy to undo` },
     ]);
   });
 });

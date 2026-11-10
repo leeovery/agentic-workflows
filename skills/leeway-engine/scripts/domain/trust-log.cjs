@@ -95,7 +95,8 @@ const { LEDGER } = require('./ledger-events.cjs');
 const { idsOf } = require('./ledger-check.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { callerModel, conversationDir, conversationsRoot } = require('./conversation.cjs');
-const { MODEL, SESSION, readTrustEvent, trustEvent } = require('./trust-events.cjs');
+const { SESSION, readTrustEvent, trustEvent } = require('./trust-events.cjs');
+const { MODEL } = require('./event-fields.cjs');
 const { TRUST_LOG, PENDING } = require('./user-files.cjs');
 const { migrationRuns } = require('./state-worktree.cjs');
 

@@ -41,7 +41,8 @@ const {
   ok, refusedPristine, statePath, layout, writeState, commitAll, fixtureFrom, cleanupFixture, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
+const { MADE, SESSION, ledgerHelpers } = require('./ledger-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { specPage } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
@@ -94,8 +95,8 @@ const world = fixtureFrom('spec-page-', (dir) => {
   const { write } = ledgerHelpers(() => dir);
   const at = `${UNIT}.discussion.cards`;
   const ask = (/** @type {string} */ text) => write('ask', at, [], { ...PERSON, text }).id;
-  const decide = (/** @type {string} */ question, /** @type {string} */ text, content = {}) => write('decide', at, ['--answers', question], { ...PERSON, text, why: `Why: ${text}`, ...content }).id;
-  made.taken = decide(ask('Which cards are taken?'), 'Visa and Mastercard.');
+  const decide = (/** @type {string} */ question, /** @type {string} */ text, content = {}, env = SESSION) => write('decide', at, ['--answers', question], { ...PERSON, text, why: `Why: ${text}`, ...content }, env).id;
+  made.taken = decide(ask('Which cards are taken?'), 'Visa and Mastercard.', {}, { ...SESSION, ...labelling('Which cards are taken?', 'contract') });
   made.call = decide(ask('What of an unknown brand?'), 'Refused.', MADE);
   made.radius = decide(ask('What radius are the corners?'), 'Ten points.', { ...MADE, given: 'dont-care' });
   made.brand = write('find', at, [], { ...MADE, text: 'The form shows the card\'s brand.', how: 'read in the code', known: 'read' }).id;
