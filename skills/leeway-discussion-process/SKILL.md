@@ -32,9 +32,9 @@ node .claude/skills/leeway-engine/scripts/engine.cjs enter discussion {work_unit
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names: the brief; for a unit's one topic, discovery's logs and the seeds; the record of each topic decided so far, never its log; the product record, with what discovery found of the product, this work and this topic; each spike; each `earlier` read, the record this topic left where an epic postponed it, read in full as input and never changed; and on resume this topic's record, its map, its `affected` entries and its log. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced. Search earlier work units' entries in the topic's area with `knowledge query`.
+Then read what the DATA names: the brief; for a unit's one topic, discovery's logs and the seeds; the record of each topic decided so far, never its log; the product record, with what discovery found of the product, this work and this topic; each spike; at a first opening, what this topic holds from before, each read in full as input and never changed — the `earlier brief`, `earlier record`, `earlier log` and each `earlier mail` it left where an epic postponed it, or, where its unit moved here from another type, the `earlier record`, `earlier log`, `earlier build log`, `earlier summary` and each `earlier review round` — and each `kept branch` and `kept work`, what a quick-fix moved here kept for the person; and on resume this topic's record, its map, its `affected` entries and its log. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced. Search earlier work units' entries in the topic's area with `knowledge query`.
 
-Then open the conversation; never stop in silence once you have read.
+Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives.
 
 ## The Opening
 
@@ -99,7 +99,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - A question → `ledger ask {place} [--part-of {id}]`, `{"text", "by": "person|claude|review", "who_moved_whom": "none"}`.
 - A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where measured or exploratory.
 - A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "given", "who_moved_whom": "none"}` — `given` `your-call` or `dont-care` with `"by": "claude"`.
-- A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
+- A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
 - A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`; each `{"by", "who_moved_whom"}`.
 - A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
 - The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
@@ -107,7 +107,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - Mail → `topic mailbox`, `topic answered`; a message out → `topic send`; a single-topic unit's point of its own → `workunit pivot`, `topic add`.
 - An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
-- An experiment → `experiment create`, then `render experiment-spawn-gate`.
+- An experiment → `experiment create`, then `render experiment-spawn-gate`; one no one will run → `experiment abandon {work_unit} {topic} {id} --reason "{reason}"`.
 - Something put off for later → `render horizon-pick --park`, `roadmap add`, then for a question `ledger move --to roadmap:{item}`.
 - A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
 - The talk moving up → `render wait-agents`, then `enter discovery {work_unit}|product --move`.

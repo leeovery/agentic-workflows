@@ -12,7 +12,8 @@
 // finding citing it following (19.S30); every refusal, writing nothing — a
 // type that does not move, a move its type does not take, a unit not in
 // progress or of a retired type, a quick-fix its old scoping made, a unit
-// past its spec, a bugfix away from its investigation — and the yes's
+// past its spec, a bugfix away from its investigation or with its root
+// cause's validation not taken in since it was logged (19.4.7) — and the yes's
 // checks made again against the unit as it stands; and the yes stopped
 // before its save run again whole, answering what the second call did. A
 // quick-fix's stage and yes are test-engine-workunit-move.cjs's.
@@ -35,6 +36,7 @@ const {
   QF, BUG, EPIC, ENGINE, BRANCH, KEPT, STAGED, INVESTIGATION_LOG, EARLIER, fixFile, made, world,
   moveHelpers,
 } = require('./workunit-move-world.cjs');
+const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { taskBranch, isUnitBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
@@ -132,6 +134,28 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
       'a bugfix moves to a feature from its investigation, and fixed\'s has concluded — the work carries on in its spec',
       'a bugfix moves to a feature from its investigation, and fresh\'s has not begun',
     ]);
+  });
+
+  it('refuses a bugfix whose root cause logged has no validation taken in since it was — none dispatched, then one still running — each naming its way on, and stages it once that validation is taken in (19.4.7)', () => {
+    dir = world();
+    const at = `${BUG}.investigation.${BUG}`;
+    const { write } = ledgerHelpers(() => dir);
+    const cause = write('ask', at, [], { ...MADE, text: 'What empties the saved state?' }).id;
+    const rootCause = write('decide', at, ['--answers', cause], { ...MADE, text: 'Every save takes the session list as the whole truth.', why: 'The capture is all it reads.' }).id;
+    ok(dir, ['investigation-log', 'root-cause', BUG, '--entry', rootCause]);
+    const none = refusedStage(BUG, 'feature');
+    const row = ok(dir, ['agent', 'dispatch', BUG, 'investigation', BUG, '--kind', 'root-cause-validation'], { env: env() });
+    const running = refusedStage(BUG, 'feature');
+    fs.writeFileSync(row.file, `# Validation — ${row.id}\n\n## Summary\n\nIt holds.\n\n## Findings\n\nNone identified.\n`);
+    ok(dir, ['agent', 'scan', BUG, 'investigation', BUG], { env: env() });
+    ok(dir, ['agent', 'ack', BUG, 'investigation', BUG, row.id, '--clean'], { env: env() });
+
+    const waits = `${BUG} moves to a feature once its root cause's validation is taken in, and the root cause ${rootCause}`;
+    assert.deepStrictEqual([none, running], [
+      `${waits} has not been validated since it was logged — both validations always run: engine agent dispatch ${BUG} investigation ${BUG} --kind root-cause-validation, its brief engine brief root-cause-validation ${BUG} --agent <id>, and its report taken in`,
+      `${waits} is being validated — ${row.id} is still running — the move waits for its report`,
+    ]);
+    assert.deepStrictEqual(staged(BUG, 'feature').res, { ok: true, work_unit: BUG, from: 'bugfix', to: 'feature' });
   });
 
   it('checks the move again at the yes, against the unit as it stands, nothing moved: a fix of the quick-fix landed since the stage, the unit cancelled since, its spec written since, its investigation concluded since', () => {

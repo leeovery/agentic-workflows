@@ -202,6 +202,17 @@ function earlierLines(cwd, manifest, unit, topic) {
 /** A DATA line's key, put to each value. @param {string} key @returns {(value: string) => Line} */
 const as = (key) => (value) => [key, value];
 
+/** The DATA's key for each piece a move carried to the topic (`carriedBefore`), which the opening skill reads by it. */
+const CARRIED = Object.freeze({
+  record: 'earlier record',
+  investigationLog: 'earlier log',
+  buildLog: 'earlier build log',
+  summary: 'earlier summary',
+  reviewRound: 'earlier review round',
+  branch: 'kept branch',
+  work: 'kept work',
+});
+
 /**
  * What a moved unit's topic holds from the type it was (workunit-move.cjs,
  * 19.5.16), read at its first opening as input it never changes, each by
@@ -224,13 +235,13 @@ function carriedBefore({ cwd, unit, topic = '', notes }) {
     rounds.push(...report);
   }
   return [
-    ...(carriedTo(stateRoot(cwd), unit, topic, notes) ? [as('earlier record')(`\`${recordCall(unit, topic)}\``)] : []),
-    ...earlier(EARLIER.investigationLog).map(as('earlier log')),
-    ...earlier(`${EARLIER.build}/log.md`).map(as('earlier build log')),
-    ...earlier(EARLIER.summary).map(as('earlier summary')),
-    ...rounds.map(as('earlier review round')),
-    ...keptBranches(cwd, unit).map(as('kept branch')),
-    ...keptAside(cwd, unit).map(keptWords).map(as('kept work')),
+    ...(carriedTo(stateRoot(cwd), unit, topic, notes) ? [as(CARRIED.record)(`\`${recordCall(unit, topic)}\``)] : []),
+    ...earlier(EARLIER.investigationLog).map(as(CARRIED.investigationLog)),
+    ...earlier(`${EARLIER.build}/log.md`).map(as(CARRIED.buildLog)),
+    ...earlier(EARLIER.summary).map(as(CARRIED.summary)),
+    ...rounds.map(as(CARRIED.reviewRound)),
+    ...keptBranches(cwd, unit).map(as(CARRIED.branch)),
+    ...keptAside(cwd, unit).map(keptWords).map(as(CARRIED.work)),
   ];
 }
 
@@ -558,4 +569,4 @@ function enter(cwd, argv) {
   return enterThrough(ENTRIES, cwd, argv);
 }
 
-module.exports = { ENTER_USAGE, ENTRIES, enter, enterThrough };
+module.exports = { ENTER_USAGE, ENTRIES, CARRIED, enter, enterThrough };

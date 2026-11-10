@@ -56,7 +56,7 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 
 ### Work types and topics
 
-A *work type* is one of four pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.workflows/` and its own `manifest.json`.
+A *work type* is one of four pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.leeway/` and its own `manifest.json`.
 
 - **Epic**: multi-topic, multi-session — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
 - **Feature**: single-topic — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
@@ -70,8 +70,8 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Start** (`leeway`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
 - **Discovery** (`leeway-discovery`) — the product's conversation, where new work starts, and an epic's discovery, where its map is shaped and changed.
 - **Navigation** (`leeway-continue-epic`, `leeway-continue-linear`) — a work unit's continue menu.
-- **Phase skills** (`leeway-{phase}-process`) — one per phase after discovery; what each holds is in CONVENTIONS.md (The Phase Skill).
-- **Bridge** (`leeway-bridge`) — where the work goes after a phase concludes or pauses.
+- **Phase skills** (`leeway-{phase}-process`) — one per phase after discovery, and a quick-fix's own, `leeway-quick-fix-process`, from its first fix to its close; what each holds is in CONVENTIONS.md (The Phase Skill).
+- **Bridge** (`leeway-bridge`) — where the work goes when an experiment's session leaves it: the experiment invokes it once its series has nothing left to work, or the person picks the menu (`next-experiment.md`).
 - **Capture** (`leeway-log-idea`, `leeway-log-bug`, `leeway-log-quickfix`) — write to the inbox; no steps, no gates.
 - **Project-level** — `leeway-roadmap` (the product roadmap, and starting work from it through discovery), `leeway-help` (the walkthrough and reference cards).
 - **Shared references** (`skills/leeway-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
@@ -83,27 +83,29 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 ### Paths
 
-`{topic}` is `{work_unit}` for the single-topic types.
+`{topic}` is `{work_unit}` for the single-topic types. `.leeway/` is the state, in the repository's main checkout: a worktree of its own branch, `leeway-state` (`kernel/state-root.cjs`).
 
-- `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, the brownfield offer's answer
-- `.workflows/{work_unit}/manifest.json` — work-unit manifest
-- `.workflows/{work_unit}/discovery/session-NNN.md` — discovery session logs
-- `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
-- `.workflows/{work_unit}/spec.md` — the unit's one spec
-- `.workflows/{work_unit}/summary.md` — a quick-fix's short record after the work
-- `.workflows/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
-- `.workflows/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
-- `.workflows/{work_unit}/seeds/` — the inbox items the unit was started from
-- `.workflows/{work_unit}/assets/` — the files the user shared
-- `.workflows/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
-- `.workflows/{work_unit}/.state/` — per-unit analysis files
-- `.workflows/.state/` — the migrations ledger, `environment-setup.md`
-- `.workflows/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
-- `.workflows/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
-- `.workflows/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
-- `.workflows/.roadmap/` — the roadmap's notes
-- `.workflows/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes
-- `.workflows/.knowledge/` — the checkout-local knowledge store and config, gitignored
+- `.leeway/manifest.json` — project manifest: work-unit registry, defaults, roadmap, the brownfield offer's answer
+- `.leeway/.ledger.jsonl` — the ledger: every question, finding and decision, one event a line
+- `.leeway/{work_unit}/manifest.json` — work-unit manifest
+- `.leeway/{work_unit}/discovery/session-NNN.md` — discovery session logs
+- `.leeway/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
+- `.leeway/{work_unit}/spec.md` — the unit's one spec
+- `.leeway/{work_unit}/summary.md` — a quick-fix's short record after the work
+- `.leeway/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
+- `.leeway/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
+- `.leeway/{work_unit}/seeds/` — the inbox items the unit was started from
+- `.leeway/{work_unit}/assets/` — the files the user shared
+- `.leeway/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
+- `.leeway/{work_unit}/.state/` — per-unit analysis files
+- `.leeway/.state/` — the migrations ledger, `environment-setup.md`
+- `.leeway/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
+- `.leeway/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
+- `.leeway/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
+- `.leeway/.roadmap/` — the roadmap's notes
+- `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes
+- `.leeway/.knowledge/` — the checkout-local knowledge store and config, gitignored
+- `refs/leeway/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
 - `~/.config/leeway/` (or `LEEWAY_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, and `conversations/{session-id}/`, per-conversation state
 
 ### State
@@ -122,7 +124,7 @@ Everything else reaches a tool through the driver the project manifest's `driver
 
 ## Migrations
 
-Migrations keep existing projects' `.workflows/` in step with the current design, run by `engine boot` at `/leeway`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/leeway-migrate/scripts/migrate.cjs`.
+Migrations keep existing projects' `.leeway/` in step with the current design, run by `engine boot` at `/leeway`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/leeway-migrate/scripts/migrate.cjs`.
 
 - **Upgrades live in migrations, never in code.** Converting, renaming, deleting or tolerating a shape an older version left behind is a migration. Runtime code may keep the current version's own requirements in place, but never recognises what an earlier version did — runtime code handling old leftovers can never be deleted.
 - **A released migration is never touched** — not edited, not deleted; a correction is a new migration.

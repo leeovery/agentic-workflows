@@ -37,6 +37,11 @@
 //   it stands — on start this work's screen before the move's yes, in its
 //   answer, at the topic's first opening (enter.cjs) and on the cancel's
 //   receipt (`keptAside`, `keptWords`, R26).
+// - A move's yes sets aside what the fix holding the checkout had not
+//   committed as a park does, at the same ref, so the checkout is taken
+//   back clean (workunit-move.cjs); start this work's screen names it
+//   before the yes (`asideWords`). Each piece's commit says why it was set
+//   aside, which `keptAside` reads back.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -52,6 +57,21 @@ const { taskId, parseTaskId, taskName, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
+
+/**
+ * Why a fix's work is set aside, as its commit and every line naming it say
+ * it, and what a set-aside that fails says did not happen: a question's
+ * park, or a move of the quick-fix.
+ */
+const WHY = Object.freeze({
+  park: { why: 'when a question parked it', none: 'no question parked the fix' },
+  move: { why: 'as the quick-fix moved', none: 'nothing moved' },
+});
+
+/** @typedef {keyof typeof WHY} Why */
+
+/** What a set-aside commit's subject says before its why. */
+const SET_ASIDE = '\'s work, set aside ';
 
 /** The start that puts a fix's work back. @param {TaskRef} ref */
 const startCall = (ref) => `engine task start ${ref.unit} ${shownTask(ref)}`;
@@ -101,16 +121,16 @@ const FROM_INPUT = Object.freeze(['--pathspec-from-file=-', '--pathspec-file-nul
 /**
  * The part's paths committed on its HEAD, its untracked files among them,
  * through an index of its own, touching neither the checkout nor its index:
- * the commit.
- * @param {Held} held @param {TaskRef} ref @returns {string}
+ * the commit, its subject saying why.
+ * @param {Held} held @param {TaskRef} ref @param {Why} why @returns {string}
  */
-function asideCommit({ top, paths }, ref) {
+function asideCommit({ top, paths }, ref, why) {
   const env = { GIT_INDEX_FILE: gitPath(top, `leeway-aside-${process.pid}.index`) };
   try {
     git(top, ['read-tree', 'HEAD'], env);
     git(top, ['--literal-pathspecs', 'add', '--all', ...FROM_INPUT], env, paths.join('\0'));
     const tree = git(top, ['write-tree'], env).trim();
-    return git(top, ['commit-tree', tree, '-p', 'HEAD', '-m', `${taskName(ref)}'s work, set aside when a question parked it`]).trim();
+    return git(top, ['commit-tree', tree, '-p', 'HEAD', '-m', `${taskName(ref)}${SET_ASIDE}${WHY[why].why}`]).trim();
   } finally {
     fs.rmSync(env.GIT_INDEX_FILE, { force: true });
   }
@@ -143,25 +163,26 @@ function undone({ top, paths, sha }, ref) {
 }
 
 /**
- * What the checkout holds not committed set aside for the fix parked (the
- * header's), and the checkout left clean at its tip: answers each path set
- * aside, from the project, in order, none where it held nothing. All or
- * nothing: where any step fails, every part is undone (`undone`) and the
- * set-aside refused in the words of `said`, saying so.
- * @param {string} cwd @param {TaskRef} ref @param {string} said @returns {string[]}
+ * What the checkout holds not committed set aside for the fix parked, or
+ * holding it as the quick-fix moves (the header's), and the checkout left
+ * clean at its tip: answers each path set aside, from the project, in
+ * order, none where it held nothing. All or nothing: where any step fails,
+ * every part is undone (`undone`) and the set-aside refused in the words of
+ * `said`, saying so.
+ * @param {string} cwd @param {TaskRef} ref @param {string} said @param {Why} [why] @returns {string[]}
  */
-function setAside(cwd, ref, said) {
+function setAside(cwd, ref, said, why = 'park') {
   const dirt = dirtByRepo(projectRepos(codeRoot(cwd)));
   try {
     for (const held of dirt) {
-      const sha = asideCommit(held, ref);
+      const sha = asideCommit(held, ref, why);
       git(held.top, ['update-ref', asideRef(ref), sha, '']);
       held.sha = sha;
     }
     dirt.forEach(cleaned);
   } catch (err) {
     for (const held of dirt) undone(held, ref);
-    throw new Error(`${said}: ${taskName(ref)}'s work could not be set aside, so nothing was: the checkout holds it as before, none of it staged, and no question parked the fix — ${messageOf(err)}`);
+    throw new Error(`${said}: ${taskName(ref)}'s work could not be set aside, so nothing was: the checkout holds it as before, none of it staged, and ${WHY[why].none} — ${messageOf(err)}`);
   }
   return dirt.flatMap(({ shown }) => shown).sort();
 }
@@ -205,23 +226,46 @@ function asideRefusal(cwd, ref) {
 /**
  * Every fix of `unit` whose work is set aside, a line for each repository
  * holding it, in the tracker's order — what a move and a cancel keep
- * (R26): its task, the repository by its folder, the ref, the call that
- * shows the work, and the call that brings it into the checkout as it now
- * stands, whatever branch it has out.
+ * (R26): its task, the repository by its folder, the ref, why it was set
+ * aside, as its commit says, the call that shows the work, and the call
+ * that brings it into the checkout as it now stands, whatever branch it has
+ * out.
  * @param {string} cwd @param {string} unit @returns {Kept[]}
  */
 function keptAside(cwd, unit) {
-  return projectRepos(codeRoot(cwd)).flatMap((repo) => git(repo.path, ['for-each-ref', '--format=%(refname)', `refs/leeway/aside/${unit}/`]).split('\n').filter(Boolean)
-    .map((ref) => ({ ref: parseTaskId(ref.slice(ref.lastIndexOf('/') + 1)), repo, name: ref })))
+  return projectRepos(codeRoot(cwd)).flatMap((repo) => git(repo.path, ['for-each-ref', '--format=%(refname)%09%(contents:subject)', `refs/leeway/aside/${unit}/`]).split('\n').filter(Boolean)
+    .map((line) => {
+      const [name, subject] = line.split('\t');
+      return { ref: parseTaskId(name.slice(name.lastIndexOf('/') + 1)), repo, name, why: subject.slice(subject.indexOf(SET_ASIDE) + SET_ASIDE.length) };
+    }))
     .sort((a, b) => a.ref.phase - b.ref.phase || a.ref.n - b.ref.n)
-    .map(({ ref, repo, name }) => ({
-      task: shownTask(ref), repo: repoName(repo), ref: name, see: `${gitIn(repo)} diff ${name}^ ${name}`, recover: `${gitIn(repo)} cherry-pick --no-commit ${name}`,
-    }));
+    .map(({ ref, repo, name, why }) => ({ task: shownTask(ref), repo: repoName(repo), ref: name, why, ...calls(repo, name) }));
 }
 
-/** @typedef {{task: string, repo: string, ref: string, see: string, recover: string}} Kept */
+/** The calls that show a piece of a fix's work set aside at `name` in `repo`, and bring it into the checkout. @param {Repo} repo @param {string} name */
+const calls = (repo, name) => ({ see: `${gitIn(repo)} diff ${name}^ ${name}`, recover: `${gitIn(repo)} cherry-pick --no-commit ${name}` });
+
+/** Where a repository is, as the person reads it. @param {string} repo its folder, `.` the project's own */
+const keptIn = (repo) => (repo === '.' ? 'in the project\'s repository' : `in ${repo}`);
+
+/** @typedef {{task: string, repo: string, ref: string, why: string, see: string, recover: string}} Kept */
 
 /** A fix's kept work as the person reads it, wherever it is named (`keptAside`). @param {Kept} kept */
-const keptWords = ({ task, repo, ref, see, recover }) => `Task ${task}'s work, set aside when a question parked it, is kept ${repo === '.' ? 'in the project\'s repository' : `in ${repo}`} at ${ref} — see it with ${see}; bring it into the checkout with ${recover}, settling any conflict`;
+const keptWords = ({ task, repo, ref, why, see, recover }) => `Task ${task}'s work, set aside ${why}, is kept ${keptIn(repo)} at ${ref} — see it with ${see}; bring it into the checkout with ${recover}, settling any conflict`;
 
-module.exports = { asideRef, heldAside, setAside, putBack, asideRefusal, keptAside, keptWords };
+/**
+ * What the checkout holds not committed for the fix holding it, which a
+ * move's yes sets aside (the header's), as start this work's screen names it
+ * before the yes: a line for each repository holding any, none where it
+ * holds nothing.
+ * @param {string} cwd @param {TaskRef} ref @returns {string[]}
+ */
+function asideWords(cwd, ref) {
+  const name = asideRef(ref);
+  return dirtByRepo(projectRepos(codeRoot(cwd))).map(({ repo, shown }) => {
+    const { see, recover } = calls(repo, name);
+    return `Task ${shownTask(ref)}'s work not committed — ${shown.join(', ')} — is set aside as the quick-fix moves and kept ${keptIn(repoName(repo))} at ${name} — see it then with ${see}; bring it into the checkout with ${recover}, settling any conflict`;
+  });
+}
+
+module.exports = { asideRef, heldAside, setAside, putBack, asideRefusal, keptAside, keptWords, asideWords };

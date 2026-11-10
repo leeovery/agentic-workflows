@@ -1,5 +1,19 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// The bridge's gateway (leeway-bridge/scripts/gateway.cjs), which the bridge
+// runs for a single-topic unit, an epic returning to its menu: `discover`,
+// the unit's next phase as the engine derives it — a conversation paused on
+// an experiment's evidence routed to the experiment, a unit past its
+// pipeline's end done — and `format`, its dump, the route that phase is
+// entered by, none past the end or into a build under the old plan (P12);
+// and the script's usage and dump, run as the skill runs it.
+//
+// Layer: verb, the script's two calls spawned as a process. World: the
+// project world (`setupFixture`), copied for each test, each unit's
+// manifest written by hand.
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -58,20 +72,6 @@ describe('leeway-bridge discovery', () => {
     assert.strictEqual(discover(dir, 'pay').next_phase, 'experiment');
   });
 
-  it('computes next_phase for epic same as other types', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: {
-          items: { 'auth-design': { status: 'completed' }, 'data-model': { status: 'in-progress' } },
-        },
-      },
-    });
-    const r = discover(dir, 'v1');
-    assert.strictEqual(r.next_phase, 'discussion');
-    assert.strictEqual(r.epic_detail, undefined);
-  });
-
   it('computes bugfix pipeline correctly', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
@@ -81,12 +81,6 @@ describe('leeway-bridge discovery', () => {
     assert.strictEqual(r.next_phase, 'specification');
   });
 
-  it('returns status from manifest', () => {
-    createManifest(dir, 'auth', { work_type: 'feature', status: 'in-progress' });
-    const r = discover(dir, 'auth');
-    assert.strictEqual(r.status, 'in-progress');
-  });
-
   it('ignores a flat phase status', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
@@ -94,23 +88,6 @@ describe('leeway-bridge discovery', () => {
     });
     const r = discover(dir, 'auth');
     assert.strictEqual(r.next_phase, 'discussion');
-  });
-
-  it('epic returns next_phase without epic_detail', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: {
-          items: {
-            'exploration': { status: 'completed' },
-            'architecture': { status: 'in-progress' },
-          },
-        },
-      },
-    });
-    const r = discover(dir, 'v1');
-    assert.strictEqual(r.epic_detail, undefined);
-    assert.strictEqual(r.work_type, 'epic');
   });
 });
 
@@ -198,16 +175,6 @@ describe('leeway-bridge format', () => {
       ['next_phase: implementation', 'next_route: /leeway-quick-fix-process quick-fix rename-api'],
       ['next_phase: review', 'next_route: /leeway-review-process quick-fix rename-api'],
     ]);
-  });
-
-  it('epic dump carries no route and no section', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: { discussion: { items: { 'auth-design': { status: 'completed' } } } },
-    });
-    const out = format(discover(dir, 'v1'));
-    assert.ok(!out.includes('_route'));
-    assert.ok(!out.includes('MENU: revisit phases'));
   });
 
   it('a bugfix\'s route names the skill its next phase is entered through', () => {

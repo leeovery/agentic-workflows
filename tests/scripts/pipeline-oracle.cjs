@@ -243,12 +243,14 @@ function auditState(dir, label) {
       }
     }
 
-    // The bridge can always read the unit, and the linear continue menu
-    // renders it — its view, or the not-found display for an epic or a
-    // closed unit.
-    const bridged = BRIDGE.discover(dir, wu);
-    assert.ok(!bridged.error, ctx(`${wu}: bridge gateway errored: ${bridged.error}`));
-    BRIDGE.format(bridged);
+    // The bridge can always read a single-topic unit — it runs its gateway
+    // for no epic — and the linear continue menu renders the unit: its
+    // view, or the not-found display for an epic or a closed unit.
+    if (manifest.work_type !== 'epic') {
+      const bridged = BRIDGE.discover(dir, wu);
+      assert.ok(!bridged.error, ctx(`${wu}: bridge gateway errored: ${bridged.error}`));
+      BRIDGE.format(bridged);
+    }
     LINEAR_GATEWAY.view(dir, wu);
   }
 

@@ -58,7 +58,8 @@
 // - The reader (`huntIn`) takes every entry under the fixed headings in
 //   order: each hypothesis by its number at its latest line, the bodies of
 //   all its lines in order; the last root cause and the last fix direction,
-//   each one the latest; the rest as listed. An entry that does not read as
+//   each one the latest; the rest as listed, but a validation's line, which
+//   no gate reads and is checked for its shape alone. An entry that does not read as
 //   its heading's shape is passed over, said among the warnings.
 // - What the hunt rests on (`huntEntries`), read by its conclude and its
 //   validations' briefs: the root cause, the current entry its line points
@@ -120,12 +121,12 @@ const HYPOTHESIS_NAME = /^H([1-9][0-9]*)$/;
 /** @typedef {{name: string, title: string, state: string, by: string|null, body: string[]}} Hypothesis */
 /** @typedef {{name: string, title: string, showed: string, entry: string, body: string[]}} Experiment */
 /** @typedef {{text: string, entry: string, body: string[]}} Pointed */
-/** @typedef {{which: string, found: string, did: string, body: string[]}} Validation */
 /**
  * The hunt as the log holds it: the symptoms, each hypothesis by its number,
- * the experiments, the latest root cause and fix direction, null before one
- * is logged, and the validations.
- * @typedef {{symptoms: Symptom[], hypotheses: Hypothesis[], experiments: Experiment[], rootCause: Pointed|null, validations: Validation[], fixDirection: Pointed|null}} Hunt
+ * the experiments, and the latest root cause and fix direction, null before
+ * one is logged. A validation's line is the log's account of it, read by no
+ * gate: the agent's own rows say where each stands (agent-state.cjs).
+ * @typedef {{symptoms: Symptom[], hypotheses: Hypothesis[], experiments: Experiment[], rootCause: Pointed|null, fixDirection: Pointed|null}} Hunt
  */
 
 /** The state a call names, as its line says it. @param {string} state */
@@ -166,12 +167,7 @@ const READS = Object.freeze({
     hunt.rootCause = { text: said[1], entry: said[2], body };
     return null;
   },
-  [HUNT_HEADINGS.validation]: (hunt, entry, body) => {
-    const said = VALIDATION_LINE.exec(entry);
-    if (said === null) return 'does not read as a validation';
-    hunt.validations.push({ which: /** @type {string} */ (Object.keys(VALIDATIONS).find((which) => VALIDATIONS[/** @type {keyof typeof VALIDATIONS} */ (which)] === said[1])), found: said[2], did: said[3], body });
-    return null;
-  },
+  [HUNT_HEADINGS.validation]: (_hunt, entry) => (VALIDATION_LINE.test(entry) ? null : 'does not read as a validation'),
   [HUNT_HEADINGS.fixDirection]: (hunt, entry, body) => {
     const said = POINTED_LINE.exec(entry);
     if (said === null) return 'does not read as a fix direction';
@@ -187,7 +183,7 @@ const READS = Object.freeze({
  */
 function huntIn(text, rel, warnings) {
   /** @type {Hunt} */
-  const hunt = { symptoms: [], hypotheses: [], experiments: [], rootCause: null, validations: [], fixDirection: null };
+  const hunt = { symptoms: [], hypotheses: [], experiments: [], rootCause: null, fixDirection: null };
   for (const { heading, entry, body } of listedIn(text, HEADINGS)) {
     const passed = READS[heading](hunt, entry, body);
     if (passed !== null) warnings.push(`${rel}: "${entry}" under ## ${heading} ${passed}, and is passed over`);

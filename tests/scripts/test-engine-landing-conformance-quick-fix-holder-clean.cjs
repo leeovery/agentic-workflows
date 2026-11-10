@@ -101,7 +101,7 @@ for (const { name } of listDrivers('landing')) {
       assert.strictEqual(raised.line, `Task 1.1 parks on Q1, waiting for you: ${CALL.question} What the checkout held not committed is set aside until it starts again: src/alias.js. The other tasks carry on.`);
       assert.strictEqual(start, `task start: task 1.1 of ${UNIT} is built in the project's own checkout, which holds changes not committed — notes/mine.md — so it was not put on ${UNIT}'s branch: commit them or set them aside, then start the task again`);
       assert.strictEqual(other.kept_aside, undefined);
-      assert.deepStrictEqual(closed.kept_aside, [{ task: '1.1', repo: '.', ref: ASIDE, see: `git diff ${ASIDE}^ ${ASIDE}`, recover: `git cherry-pick --no-commit ${ASIDE}` }]);
+      assert.deepStrictEqual(closed.kept_aside, [{ task: '1.1', repo: '.', ref: ASIDE, why: 'when a question parked it', see: `git diff ${ASIDE}^ ${ASIDE}`, recover: `git cherry-pick --no-commit ${ASIDE}` }]);
       assert.ok(screen.includes(`⚑ Task 1.1's work, set aside when a question parked it, is kept in the project's repository at ${ASIDE} — see it with git diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with git cherry-pick --no-commit ${ASIDE}, settling any conflict`), screen);
       assert.strictEqual(fs.readFileSync(path.join(at, 'src/alias.js'), 'utf8'), 'module.exports = \'color\';\n');
     });

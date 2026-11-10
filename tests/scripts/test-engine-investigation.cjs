@@ -299,7 +299,6 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
       ],
       experiments: [{ name: 'E1', title: 'Kill every session', showed: 'each kill shrank it · 3 → 0', entry: full(made.kill), body: [] }],
       rootCause: { text: 'Every save takes the session list as the whole truth.', entry: full(made.rootCause), body: [] },
-      validations: [{ which: 'root-cause', found: 'the capture can come back empty mid-shutdown', did: 'added the shutdown race to the cause', body: [] }],
       fixDirection: { text: 'How should restore stop losing sessions?', entry: full(made.fix), body: [] },
     });
     assert.deepStrictEqual(warnings, []);

@@ -1,5 +1,21 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// The start skill's projections (leeway-engine/scripts/domain/projections/
+// start.cjs, read through start.cjs, inbox-set.cjs and workunit-manage.cjs):
+// the overview and the start menu, the empty state, the inbox pickup, the
+// archived store, the working set and its gates, manage's list and a unit's
+// manage view, the absorb target menu, the brownfield offer's answer, the
+// roadmap's rows, and the completed and cancelled lists — each a golden of
+// the screen whole, its gate payload held to the menu it states
+// (gate-audit.cjs).
+//
+// Layer: verb, each projection called in process over the state the start
+// reads. World: the project world (`setupFixture`), copied for each test,
+// its manifests and inbox files written by hand in the shapes the discovery
+// suites produce.
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');

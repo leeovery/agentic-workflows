@@ -191,14 +191,16 @@ function ledgerPast(root, unit, topic, after, warnings) {
 /**
  * Why a topic cannot close yet: an experiment of its own still out —
  * conceived, designed, approved or running — its report owed, so something
- * of the person's is open (11.2.1); or null where none is.
+ * of the person's is open (11.2.1), naming the abandon that frees one no
+ * one will run; or null where none is.
  * @param {Named} named
  */
-function experimentsOut({ manifest, topic }) {
+function experimentsOut({ unit, manifest, topic }) {
   const records = manifest.phases?.experiment?.items?.[/** @type {string} */ (topic)]?.experiments ?? {};
   const out = Object.entries(records).filter(([id, record]) => isParentExperimentId(id) && !EXPERIMENT_TERMINAL_STATUSES.includes(record.status)).map(([id]) => id);
   if (out.length === 0) return null;
-  return `${topic}'s experiment ${out.join(', ')} is still out — the topic closes once each has concluded or been abandoned, and its report is read`;
+  const abandons = out.map((id) => `engine experiment abandon ${unit} ${topic} ${id} --reason "<one line>"`).join(', ');
+  return `${topic}'s experiment ${out.join(', ')} is still out — the topic closes once each has concluded or been abandoned, and its report is read; one no one will run is abandoned: ${abandons}`;
 }
 
 /** No message waiting in the topic's mail (10.2.7). @param {Named} named */

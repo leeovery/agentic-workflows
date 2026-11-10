@@ -1,6 +1,6 @@
 # Backlogging
 
-*Shared reference. Loaded by the `## Backlogging` section on the discussion, investigation, specification, implementation, quick-fix and review processing skills, and by the build's `outside-the-plan.md`.*
+*Shared reference. Loaded by the `## Backlogging` section on the investigation, specification, implementation, quick-fix and review processing skills, and by the build's `outside-the-plan.md`.*
 
 ---
 

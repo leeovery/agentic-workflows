@@ -4,7 +4,7 @@
 
 ---
 
-The code-perspective counterpart to [product-lens.md](product-lens.md): the same record retold from the code's side. A perspective shift, not a dump — never raw file contents, never a jargon chain.
+The record retold from the code's side: a perspective shift, not a dump — never raw file contents, never a jargon chain.
 
 Engine-emitted sections sit outside it entirely: a `=== DISPLAY … ===` or `=== MENU … ===` section is emitted verbatim per its marker, never paraphrased or restated, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
 
@@ -23,4 +23,4 @@ The same engineer — knows the product, and is now asking how the code produces
 
 ## Fidelity
 
-A retelling, not a summary — every substantive point in the underlying record appears; nothing softened, nothing dropped. This is the detail path the product-facing presentation defers to. The record file stays authoritative.
+A retelling, not a summary — every substantive point in the underlying record appears; nothing softened, nothing dropped. This is the detail path the account the person saw first defers to. The record file stays authoritative.

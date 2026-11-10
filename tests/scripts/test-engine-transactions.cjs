@@ -1,5 +1,23 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// The lifecycle transactions (leeway-engine/scripts/domain/transitions.cjs
+// and workunit-lifecycle.cjs): `topic cancel` and `topic reactivate` at an
+// epic's discovery map, the stash and the map's order each keeps; a topic's
+// start as `enter` runs it, the discovery map gating the birth of a phase
+// item; the guards the other verbs keep on an unstarted topic, and no verb
+// of its own for a topic's start, reopen or complete; a unit's completion,
+// as finish runs it in process; `workunit cancel` and `workunit
+// reactivate`; each transition refusing what the field surface refuses;
+// and the engine's usage banner. Each commits what it wrote, and a refusal
+// writes nothing.
+//
+// Layer: verb. Worlds: the epic `payments` twice — with plural phase items
+// and a map carrying its order, and with a map holding every shape the
+// cancel meets — a feature, and a quick-fix finished, each built once
+// (`fixtureFrom`) and copied for each test.
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');

@@ -1,5 +1,18 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// The linear continue menu's projections (leeway-engine/scripts/domain/
+// projections/workunit.cjs, read through workunit-detail.cjs): a
+// single-topic unit's status display, its proceed and revisit menu, its
+// data body and its revisit-phases section, across the feature, the bugfix
+// and the quick-fix; and the type registry they read. Each a golden of the
+// screen whole.
+//
+// Layer: verb, each projection called in process on the unit as
+// `activeWorkUnit` reads it. World: the project world (`setupFixture`),
+// copied for each test, each unit's manifest written by hand.
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
