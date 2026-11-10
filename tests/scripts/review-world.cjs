@@ -372,6 +372,19 @@ async function replacedAtReview(replaces) {
   return (await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--replaces', replaces, '--reason', 'was-wrong'], { env: env(), stdin: JSON.stringify(MAILED) })).res;
 }
 
+/** Round 1 recorded passing, every report of it clean. */
+function reviewPassed() {
+  enter();
+  reported(1, EVERY);
+  recorded({ can_now: ['Pay by card.'], findings: [] });
+}
+
+/** The review passed, then finish's checklist worked and closed (`finishClosed`). */
+function finishReady() {
+  reviewPassed();
+  finishClosed();
+}
+
 /** Finish's checklist worked and closed, as Claude closes it before its screen: phase 1's design and the inbox skipped, the build's log closed. */
 function finishClosed() {
   ok(dir, ['checklist', 'skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.'], { env: env() });
@@ -404,6 +417,6 @@ function storedBriefs() {
 module.exports = {
   UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
-  decided, reviewCall, filed, raisedAtReview, replacedAtReview, finishClosed, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
+  decided, reviewCall, filed, raisedAtReview, replacedAtReview, reviewPassed, finishClosed, finishReady, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

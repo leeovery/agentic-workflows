@@ -698,11 +698,11 @@ function readyClose(cwd, unit) {
  * skips it shows (6.4.5) — every phase start's and close's, as their records
  * keep them, then its own marked before it. Refused while the checklist is
  * open: closed never, or an item the engine checks failing now.
- * @param {string} cwd @param {string} unit
+ * @param {string} cwd @param {string} unit @param {Map<string, any>} [reads] what the call has read of the unit already
  * @returns {{closed: string, skips: Skip[], warnings: string[]}}
  */
-function finishClose(cwd, unit) {
-  const checklist = named(cwd, 'finish', [unit]);
+function finishClose(cwd, unit, reads) {
+  const checklist = named(cwd, 'finish', [unit], reads);
   const record = recordAt(checklist.manifest, checklist.path);
   const closedAt = record?.closed;
   if (record === undefined || closedAt === undefined) throw new Error(`finish is open — its items are worked, then it is closed: checklist close finish ${unit}`);

@@ -71,7 +71,7 @@
 //   verdict still to ask, a quick-fix's checkout clean among it
 //   (`finishLandRefusal`, `refuseLanding`), so neither lands what the
 //   other would refuse. The yes reads it once and lands past it
-//   (`finishLanding`); `land finish` called on its own reads it itself.
+//   (`finishMerge`); `land finish` called on its own reads it itself.
 // ---------------------------------------------------------------------------
 
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -85,7 +85,7 @@ const {
 const { trackedBuild } = require('./task-verbs.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
-const { finishLanding, quickFixLanding } = require('./landing.cjs');
+const { finishMerge, quickFixLanding } = require('./landing.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
@@ -115,21 +115,22 @@ const FINISH_USAGE = 'finish yes <work-unit>';
  * its checklist's close (`finishClose`) — read off the unit's records
  * alone — with a quick-fix's fixes done, null for any other unit. The
  * review phase over is read first where `reviewOver`, as the verbs read
- * it; the board, which takes no writer lock, leaves it to finish's
+ * it, once for the refusal and the close's `review-passed` item; the board, which takes no writer lock, leaves it to finish's
  * `review-passed` item.
  * @param {string} cwd @param {string} unit @param {boolean} [reviewOver]
  */
 function finishStanding(cwd, unit, reviewOver = true) {
   const manifest = unitInProgress(cwd, unit);
-  const refused = buildRefusal(manifest) ?? (reviewOver ? reviewOverRefusal(cwd, unit, manifest) : null);
+  const reads = new Map();
+  const refused = buildRefusal(manifest) ?? (reviewOver ? reviewOverRefusal(cwd, unit, manifest, reads) : null);
   if (refused !== null) throw new Error(refused);
-  if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit) };
+  if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit, reads) };
   const fixes = recordedFixes(cwd, manifest);
   /** @type {string[]} */
   const warnings = [];
   refuseAskedOpen(cwd, unit, warnings);
   if (!reviewAsked(manifest)) refuseNotesStanding(cwd, unit);
-  const close = finishClose(cwd, unit);
+  const close = finishClose(cwd, unit, reads);
   return { manifest, fixes, ...close, warnings: [...warnings, ...close.warnings] };
 }
 
@@ -305,7 +306,7 @@ function landStanding(cwd, unit, standing) {
   const { warnings, fixes } = standing;
   return carryingAll(warnings, () => {
     refuseLanding(cwd, unit, standing);
-    const landed = finishLanding(cwd, unit);
+    const landed = finishMerge(cwd, unit);
     if (fixes === null) return landed;
     const checkout = checkOutLanding(cwd, unit);
     return checkout === null ? landed : { ...landed, checkout };

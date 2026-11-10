@@ -1,27 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What finish's suites share (test-engine-finish-*.cjs), over
-// review-world.cjs's world: the review phase passed, finish's checklist then
-// closed, the screen as a conversation draws it, and a refusal that writes
-// and commits nothing.
+// What finish's suites share (test-engine-finish*.cjs), over
+// review-world.cjs's world: the screen as a conversation draws it, and a
+// refusal that writes and commits nothing.
 // ---------------------------------------------------------------------------
 
 const { output } = require('./engine-harness.cjs');
-const { UNIT, EVERY, env, enter, reported, recorded, finishClosed, refusedPristine } = require('./review-world.cjs');
-
-/** Round 1 recorded passing, every report of it clean. */
-function reviewPassed() {
-  enter();
-  reported(1, EVERY);
-  recorded({ can_now: ['Pay by card.'], findings: [] });
-}
-
-/** The review passed, then finish's checklist worked and closed (`finishClosed`). */
-function finishReady() {
-  reviewPassed();
-  finishClosed();
-}
+const { UNIT, env, refusedPristine } = require('./review-world.cjs');
 
 /** Finish's screen and refusals for the project `dirOf` names. @param {() => string} dirOf */
 function finishHelpers(dirOf) {
@@ -34,4 +20,4 @@ function finishHelpers(dirOf) {
   return { screen, refused };
 }
 
-module.exports = { reviewPassed, finishReady, finishHelpers };
+module.exports = { finishHelpers };

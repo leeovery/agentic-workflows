@@ -18,7 +18,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const {
-  UNIT, SESSION_ID, EVERY, calls, useWorld, env, enter, reported, named, recorded, fixPhaseWritten, fixBuilt, fixClosed, fixParked, raisedAtReview, replacedAtReview, finishClosed, taskMade, firstRoundFailed, ok,
+  UNIT, SESSION_ID, calls, useWorld, env, enter, reported, named, recorded, fixPhaseWritten, fixBuilt, fixClosed, fixParked, raisedAtReview, replacedAtReview, reviewPassed, finishClosed, taskMade, firstRoundFailed, ok,
 } = require('./review-world.cjs');
 const { fixture, misfits, standingOn } = require('./board-world.cjs');
 const { facts, placed, reviewBoard } = require('./review-board-world.cjs');
@@ -124,9 +124,7 @@ describe('where the review stands on every view that reads it (S1)', () => {
   });
 
   it('the phase over and finish\'s checklist closed, so its screen draws: finish waits on the person on the tab, in WAITING ON YOU and in All work\'s count and row (D18, D37) — and not while a task of the round\'s fix phase is still to be done', () => {
-    enter();
-    reported(1, EVERY);
-    recorded({ can_now: ['Pay by card.'], findings: [] });
+    reviewPassed();
     fixPhaseWritten(3, [['Mail the receipt', '§1.2']]);
     const fixing = standingOn(board, UNIT);
     fixClosed(3, 1);

@@ -35,7 +35,7 @@ const fs = require('fs');
 const path = require('path');
 const { output, traced } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, taskMade, cutUnmerged, fixBuilt, fixClosed, raisedAtReview, data,
+  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, taskMade, cutUnmerged, fixBuilt, fixClosed, raisedAtReview, reviewPassed, data,
   ok, okSections, refusedPristine, statePath, writeState, git, stateGit, assert,
 } = require('./review-world.cjs');
 
@@ -228,9 +228,7 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
   });
 
   it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read', () => {
-    enter();
-    reported(1, EVERY);
-    recorded({ can_now: ['Pay by card.'], findings: [] });
+    reviewPassed();
 
     assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, BASE_LINE, reportLine(1), ...readsAfter()]));
   });

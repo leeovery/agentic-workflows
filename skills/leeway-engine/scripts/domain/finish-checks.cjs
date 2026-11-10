@@ -34,7 +34,8 @@
 //   its way on is the unit's index. A base set up
 //   that does not read takes the item off, said as a warning.
 //
-// A call reads each once for all its items (phase-checks.cjs, `once`).
+// A call reads each once for all its items (phase-checks.cjs, `once`),
+// finish's refusal of a review phase not over among them.
 //
 // Finish waits on the review phase over where the unit has one — a phase
 // of the cut not closed, in step one not merged, a fix task neither done
@@ -141,11 +142,12 @@ function recordsWay(at) {
 
 /**
  * Why the unit's finish waits on its review phase, with the way on (the
- * header's) — null where it has none, or it is over.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {string|null}
+ * header's) — null where it has none, or it is over. Read into `reads`,
+ * which the call's checklist then reads its items through.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Map<string, any>} [reads] @returns {string|null}
  */
-function reviewOverRefusal(cwd, unit, manifest) {
-  const at = reading(cwd, unit, manifest);
+function reviewOverRefusal(cwd, unit, manifest, reads = new Map()) {
+  const at = { ...reading(cwd, unit, manifest), reads };
   return hasReviewPhase(at) && !reviewPassed(at) ? `${unit} finishes once its review phase is over — ${reviewWay(at)}` : null;
 }
 
