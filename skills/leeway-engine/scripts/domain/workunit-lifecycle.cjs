@@ -157,8 +157,7 @@ function cancelWorkUnit(cwd, workUnit) {
 
 /**
  * Re-index a work unit's chunk-backed material: the bulk pass scoped to the
- * unit — the shape-valid seeds, the analysis caches, the record copies and
- * the short record.
+ * unit — the analysis caches, the record copies and the short record.
  *
  * `clearFirst` (pivot) removes the unit's chunks before re-indexing: a pivot
  * restamps the work_type of chunks already indexed, which the bulk pass

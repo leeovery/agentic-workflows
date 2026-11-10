@@ -220,12 +220,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-06-30-session-rename-orphans-resume-hook.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-06-30T19:49:22Z"
-    }
-  ],
   "completed_at": "2026-07-01"
 }

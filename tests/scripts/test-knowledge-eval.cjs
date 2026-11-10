@@ -19,13 +19,13 @@ const assert = require('node:assert');
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
 const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
-const { setupFixtureAt, statePath } = require('./engine-harness.cjs');
+const { setupFixtureAt, statePath, layout } = require('./engine-harness.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
-const SOURCE = 'same-second-tasks-sort-by-id/seeds/2026-09-21-same-second-tasks-sort-by-id.md';
+const SOURCE = layout.record('same-second-tasks-sort-by-id', '2026-09-21-same-second-tasks-sort-by-id');
 const ANCHOR = 'All five had been created inside the same wall-clock second';
-const OTHER = 'ready-includes-in-progress/seeds/2026-06-02-ready-includes-in-progress.md';
+const OTHER = layout.record('ready-includes-in-progress', '2026-06-02-ready-includes-in-progress');
 const OTHER_ANCHOR = 'The in-progress task ends up dangling';
 const OTHER_TOPIC = '2026-06-02-ready-includes-in-progress';
 
@@ -74,7 +74,7 @@ describe('knowledge eval — keyword mode', () => {
       }),
       tickCase({ id: 'boosts-not-a-list', options: { boosts: 'work-unit' } }),
       negativeCase({ id: 'negative-filtered', options: { 'work-type': 'epic' } }),
-      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'seeds' } }),
+      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'record' } }),
       tickCase({
         id: 'names-absent',
         options: { 'work-unit': 'same-second-tasks-sort-by-id, nowhere', boosts: [{ field: 'phase', value: 'analysis' }, { field: 'topic', value: OTHER_TOPIC }] },
@@ -258,20 +258,19 @@ async function fakeEndpoint(dimensions) {
 }
 
 /**
- * A bugfix with two seeds, in a fresh directory under
+ * A bugfix with two topics' records, in a fresh directory under
  * `parent`, configured to embed with the provider `identity` names.
  * @param {string} parent @param {Record<string, any>} identity
  */
-function seededProject(parent, identity) {
+function recordedProject(parent, identity) {
   const root = setupFixtureAt(fs.mkdtempSync(path.join(parent, 'project-')));
   const topics = ['refresh', 'revocation'];
   writeJson(statePath(root, 'manifest.json'), { work_units: { auth: { work_type: 'bugfix' } } });
   writeJson(statePath(root, 'auth', 'manifest.json'), {
-    name: 'auth', work_type: 'bugfix', status: 'in-progress', created: '2026-01-01',
-    phases: {}, seeds: topics.map((topic) => ({ path: `seeds/${topic}.md`, source: 'inbox:bug' })),
+    name: 'auth', work_type: 'bugfix', status: 'in-progress', created: '2026-01-01', phases: {},
   });
   for (const topic of topics) {
-    writeFile(statePath(root, 'auth', 'seeds', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
+    writeFile(statePath(root, layout.record('auth', topic)), `# ${topic}\n\nThe ${topic} decision.\n`);
   }
   writeJson(knowledgeFiles(statePath(root)).config, { knowledge: identity });
   return root;
@@ -330,11 +329,11 @@ describe('knowledge eval — the embedding cache', () => {
     const endpoint = await fakeEndpoint(8);
     const cache = embeddings.embeddingCache(cacheDir, endpoint.identity);
     try {
-      await knowledgeEval.runKnowledge(seededProject(scratch, endpoint.identity), ['index'], cacheDir);
+      await knowledgeEval.runKnowledge(recordedProject(scratch, endpoint.identity), ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2);
       assert.ok(endpoint.texts.every((text) => cache.read(text) !== null), 'every text embedded is cached');
 
-      const rebuilt = seededProject(scratch, endpoint.identity);
+      const rebuilt = recordedProject(scratch, endpoint.identity);
       await knowledgeEval.runKnowledge(rebuilt, ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2, 'the rebuild sent the endpoint nothing');
       assert.strictEqual(store.readMetadata(knowledgeFiles(statePath(rebuilt)).metadata).provider, 'openai-compatible');

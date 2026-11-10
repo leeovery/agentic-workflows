@@ -12,12 +12,5 @@
         }
       }
     }
-  },
-  "seeds": [
-    {
-      "path": "seeds/2026-06-05-resume-survives-worktree-cwd-move.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-06-05T16:13:01Z"
-    }
-  ]
+  }
 }

@@ -27,7 +27,7 @@ const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowled
 const { loadSettings } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
 const { syncKnowledge } = require('../../skills/leeway-engine/scripts/domain/knowledge/sync.cjs');
 const { embeddingEndpoint, engineKnowledge, recordLaunches } = require('./knowledge-harness.cjs');
-const { setupFixture, cleanupFixture, statePath } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
 const STUB = { provider: 'stub', dimensions: 8 };
 const ENGINE_CJS = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
@@ -38,7 +38,7 @@ function writeJson(p, obj) {
 }
 
 /**
- * A bugfix whose seeds are on disk, its knowledge
+ * A bugfix whose topics' records are on disk, its knowledge
  * configured as `knowledge` says, no store yet.
  * @param {Record<string, any>} knowledge @param {string[]} [topics]
  */
@@ -47,33 +47,31 @@ function buildProject(knowledge, topics = ['alpha']) {
   writeJson(path.join(root, '.leeway', 'manifest.json'), { work_units: { pay: { work_type: 'bugfix' } } });
   writeJson(path.join(root, '.leeway', 'pay', 'manifest.json'), {
     name: 'pay', work_type: 'bugfix', status: 'in-progress',
-    phases: {}, seeds: topics.map((t) => ({ path: `seeds/${t}.md`, source: 'inbox:bug' })),
+    phases: {},
   });
-  for (const topic of topics) writeSeed(root, topic, `The ${topic} decision.`);
+  for (const topic of topics) writeRecord(root, topic, `The ${topic} decision.`);
   writeJson(files(root).config, { knowledge });
   return root;
 }
 
 /** @param {string} root @param {string} topic @param {string} body */
-function writeSeed(root, topic, body) {
-  const file = path.join(root, '.leeway', 'pay', 'seeds', `${topic}.md`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `# ${topic}\n\n${body}\n`);
+function writeRecord(root, topic, body) {
+  createFile(statePath(root), layout.record('pay', topic), `# ${topic}\n\n${body}\n`);
 }
 
-/** A seed as the project names it. @param {string} topic */
-const seed = (topic) => `.leeway/pay/seeds/${topic}.md`;
+/** A topic's record as the project names it. @param {string} topic */
+const record = (topic) => `.leeway/${layout.record('pay', topic)}`;
 
-/** A seed's absolute path, as a regular expression matches it. @param {string} root @param {string} topic */
-const named = (root, topic) => path.join(root, seed(topic)).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+/** A topic's record's absolute path, as a regular expression matches it. @param {string} root @param {string} topic */
+const named = (root, topic) => path.join(root, record(topic)).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
-/** A seed as the store knows it, state-relative. @param {string} topic */
-const identity = (topic) => `pay/seeds/${topic}.md`;
+/** A topic's record as the store knows it, state-relative. @param {string} topic */
+const identity = (topic) => layout.record('pay', topic);
 
 /** The project's knowledge files, in its state. @param {string} root */
 const files = (root) => knowledgeFiles(statePath(root));
 
-/** One seed's keyword side written as its project's config says. @param {string} root @param {string} topic */
+/** One record's keyword side written as its project's config says. @param {string} root @param {string} topic */
 const indexOne = (root, topic) => indexPath(statePath(root), identity(topic), loadSettings(files(root)));
 
 /** @param {string} root */
@@ -97,7 +95,7 @@ describe('the launch — only a provider that can embed, only while chunks await
   it('a single-file index over a provider that can embed launches the fill for its project', async (t) => {
     const launched = recordLaunches(t);
     root = buildProject(STUB);
-    const res = await engineKnowledge(root, ['index', seed('alpha')]);
+    const res = await engineKnowledge(root, ['index', record('alpha')]);
     assert.strictEqual(res.code, 0, res.stderr);
     assert.deepStrictEqual(launched, [statePath(root)]);
     assert.deepStrictEqual(awaiting(root), ['alpha'], 'the keyword side alone was written');
@@ -106,7 +104,7 @@ describe('the launch — only a provider that can embed, only while chunks await
   it('a keyword-only store never launches one', async (t) => {
     const launched = recordLaunches(t);
     root = buildProject({ provider: null });
-    assert.strictEqual((await engineKnowledge(root, ['index', seed('alpha')])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index', record('alpha')])).code, 0);
     assert.deepStrictEqual(launched, []);
   });
 
@@ -116,7 +114,7 @@ describe('the launch — only a provider that can embed, only while chunks await
     root = buildProject(openai);
     store.saveStore(store.createStore(), files(root).store);
     store.writeMetadata(files(root).metadata, { ...openai, last_indexed: null });
-    assert.strictEqual((await engineKnowledge(root, ['index', seed('alpha')])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index', record('alpha')])).code, 0);
     assert.deepStrictEqual(awaiting(root), ['alpha']);
     assert.deepStrictEqual(launched, []);
   });
@@ -126,7 +124,7 @@ describe('the launch — only a provider that can embed, only while chunks await
     const launched = recordLaunches(t);
     await engineKnowledge(root, ['index']);
     launched.length = 0;
-    assert.strictEqual((await engineKnowledge(root, ['index', seed('alpha')])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index', record('alpha')])).code, 0);
     assert.deepStrictEqual(awaiting(root), [], 'the re-index reused the vector its text already had');
     assert.deepStrictEqual(launched, []);
   });
@@ -158,7 +156,7 @@ describe('the launch — only a provider that can embed, only while chunks await
     root = buildProject(STUB, ['alpha', 'beta']);
     syncKnowledge(root, [{ index: identity('alpha') }, { index: identity('beta') }], []);
     launched.length = 0;
-    syncKnowledge(root, [{ remove: { workUnit: 'pay', phase: 'seeds', topic: 'alpha' } }], []);
+    syncKnowledge(root, [{ remove: { workUnit: 'pay', phase: 'record', topic: 'alpha' } }], []);
     assert.deepStrictEqual(awaiting(root), ['beta'], 'a chunk still awaits, but no write of this transaction left it');
     assert.deepStrictEqual(launched, []);
   });
@@ -220,7 +218,7 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
 
   it('a chunk re-cut while its text was embedded takes no stale vector — and its new text is embedded in turn', async () => {
     const provider = spy(() => {
-      writeSeed(root, 'alpha', 'The alpha decision, revised.');
+      writeRecord(root, 'alpha', 'The alpha decision, revised.');
       indexOne(root, 'alpha');
     });
     const vectoring = await fillVectors(files(root), STUB, provider, () => true);
@@ -331,7 +329,7 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
     await fill(statePath(root));
     const recorded = metadata(root).fill_failure;
     assert.ok(recorded);
-    writeSeed(root, 'alpha', 'The alpha decision, revised.');
+    writeRecord(root, 'alpha', 'The alpha decision, revised.');
     indexOne(root, 'alpha');
     assert.strictEqual(metadata(root).fill_failure, recorded);
   });
@@ -347,7 +345,7 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
 
   it('the fill verb is silent when it lands everything, and says what fell short otherwise', async () => {
     assert.deepStrictEqual(await engineKnowledge(root, ['fill']), { code: 0, stdout: '', stderr: '' });
-    writeSeed(root, 'alpha', 'The alpha decision, revised.');
+    writeRecord(root, 'alpha', 'The alpha decision, revised.');
     indexOne(root, 'alpha');
     endpoint.mode = 'quota';
     const short = await engineKnowledge(root, ['fill']);

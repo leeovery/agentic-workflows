@@ -2,7 +2,9 @@
 
 // The knowledge base's eval harness: judged queries over a frozen snapshot of
 // three real projects, measuring how often retrieval returns the passage an
-// agent needed, how high, and at what cost in output. Each project's fixture
+// agent needed, how high, and at what cost in output. The snapshot's
+// indexable corpus is the old seed texts, held as record copies until 29.17
+// re-makes the eval over real records. Each project's fixture
 // is copied and indexed through `engine knowledge index`; every case runs in
 // process through the query function `engine knowledge query` calls, and the
 // measurements compare exactly with a pinned baseline.

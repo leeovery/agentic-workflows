@@ -245,6 +245,8 @@ describe('today\'s places (E4)', () => {
       spike: layout.spike('.product', '001-pricing', 'index.html'),
       brief: layout.brief('pay', 'auth'),
       seed: layout.seed('pay', '2026-10-30--smart-retry'),
+      record: layout.record('pay', 'auth'),
+      summary: layout.summary('pay'),
       unitState: layout.unitState('pay', 'discussion-consolidation-analysis.md'),
       run: layout.run('pay', '3.S2', '001'),
     };

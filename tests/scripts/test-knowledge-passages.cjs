@@ -16,7 +16,7 @@ const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store
 const { chunk } = require('../../skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs');
 const { withPassages } = require('../../skills/leeway-engine/scripts/domain/knowledge/passages.cjs');
 
-const SOURCE = '.workflows/auth/seeds/auth.md';
+const SOURCE = '.leeway/.knowledge/records/auth/auth.md';
 
 const FILE = [
   '---',
@@ -41,14 +41,14 @@ const FILE = [
 /** The file's chunk, as the store holds it. @param {string} content */
 function chunkDoc(content) {
   return {
-    id: 'auth-seeds-auth-001',
+    id: 'auth-record-auth-001',
     content,
     heading_path: '',
     work_unit: 'auth',
     work_type: 'feature',
-    phase: 'seeds',
+    phase: 'record',
     topic: 'auth',
-    confidence: 'low',
+    confidence: 'high',
     source_file: SOURCE,
     timestamp: 1700000000000,
   };

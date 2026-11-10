@@ -548,12 +548,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-08-17-open-with-forced-filter.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-09-10T07:03:23Z"
-    }
-  ],
   "completed_at": "2026-09-16"
 }

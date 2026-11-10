@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
+const { layout } = harness;
 const { moveFiles } = require('../../skills/leeway-engine/scripts/domain/inbox.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture, createFile: writeFile, lastMessage, ok: engine, refuses: engineFails } = harness;
@@ -328,10 +329,11 @@ describe('the knowledge store never rides an engine commit', () => {
 // also holds chunks the change must leave alone — another work unit's — so a
 // change that wiped too much fails as surely as one that took too little.
 describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
-  const SEED = 'payments/seeds/notes.md';
-  const OTHER_UNIT = 'billing/seeds/rates.md';
-  // An epic with a topic still in discussion and two decided; and a
-  // finished quick-fix beside it. Each unit holds one indexed seed.
+  const RECORD = layout.record('payments', 'session-model');
+  const OTHER_UNIT = layout.summary('billing');
+  // An epic with a topic still in discussion and two decided, one decided
+  // topic's record indexed; and a finished quick-fix beside it, its short
+  // record indexed.
   const indexedWorld = world((dir) => {
     writeFile(dir, '.leeway/payments/manifest.json', json({
       name: 'payments', work_type: 'epic', status: 'in-progress',
@@ -339,17 +341,15 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
         discovery: { items: { 'auth-flow': { source: 'discovery', order: 1 }, 'session-model': { source: 'discovery', order: 2 }, 'fee-model': { source: 'discovery', order: 3 } } },
         discussion: { items: { 'auth-flow': { status: 'in-progress' }, 'session-model': { status: 'completed' }, 'fee-model': { status: 'completed' } } },
       },
-      seeds: [{ path: 'seeds/notes.md', source: 'inbox:idea' }],
     }));
     writeFile(dir, '.leeway/billing/manifest.json', json({
       name: 'billing', work_type: 'quick-fix', status: 'in-progress',
       phases: { planning: { items: { billing: { status: 'completed' } } }, implementation: { items: { billing: { status: 'completed' } } }, review: { items: { billing: { status: 'completed' } } } },
-      seeds: [{ path: 'seeds/rates.md', source: 'inbox:bug' }],
     }));
-    for (const file of [SEED, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);
+    for (const file of [RECORD, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);
     commitAll(dir, 'init');
     harness.keywordOnlyKnowledge(dir);
-    for (const file of [SEED, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.leeway', file)]);
+    for (const file of [RECORD, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.leeway', file)]);
   });
   let dir;
   beforeEach(() => { dir = indexedWorld(); });
@@ -359,14 +359,14 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
 
   it('a Discovery-unit cancel leaves the store as it stands — a conversation indexes no artifact', () => {
     assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SEED]);
+    assert.deepStrictEqual(indexed(), [RECORD, OTHER_UNIT]);
   });
 
   it('a work-unit cancel takes the unit\'s chunks, and a reactivate brings back its artifacts — another unit\'s untouched', () => {
     assert.deepStrictEqual(engine(dir, ['workunit', 'cancel', 'payments']).warnings, []);
     assert.deepStrictEqual(indexed(), [OTHER_UNIT]);
     assert.deepStrictEqual(engine(dir, ['workunit', 'reactivate', 'payments']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SEED]);
+    assert.deepStrictEqual(indexed(), [RECORD, OTHER_UNIT]);
   });
 
   it('a work-unit complete leaves the store as it stands', () => {
@@ -377,8 +377,8 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
 
   it('a work-unit complete over a cancelled, finished unit re-indexes it — another unit\'s untouched', () => {
     engine(dir, ['workunit', 'cancel', 'billing']);
-    assert.deepStrictEqual(indexed(), [SEED]);
+    assert.deepStrictEqual(indexed(), [RECORD]);
     assert.deepStrictEqual(harness.completeUnit(dir, 'billing').warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SEED]);
+    assert.deepStrictEqual(indexed(), [RECORD, OTHER_UNIT]);
   });
 });

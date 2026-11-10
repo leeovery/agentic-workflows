@@ -54,7 +54,7 @@ const { productSession } = require('./discovery-session.cjs');
 const { SHAPED_BY } = require('./discovery-entry.cjs');
 const { draftIn, writeBrief, twinRefusal } = require('./discovery-map.cjs');
 const {
-  FIRST_LOG, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, indexLanded, createdPaths, landedSeeds,
+  FIRST_LOG, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, createdPaths, landedSeeds,
 } = require('./workunit-create.cjs');
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { startThisWorkScreen } = require('./projections/discovery-gates.cjs');
@@ -300,7 +300,6 @@ function startThisWorkYes(cwd) {
 
   /** @type {string[]} */
   const warnings = [];
-  indexLanded(cwd, name, landed, warnings);
   const paths = [...createdPaths(name, landed), ...(closed === null ? [] : [PRODUCT_SESSIONS])];
   const outcome = commitStateTail(cwd, paths, `discovery(${name}): start this work (${type})`, warnings);
   /** @type {Record<string, unknown>} */

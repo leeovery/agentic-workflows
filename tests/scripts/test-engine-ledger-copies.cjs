@@ -31,7 +31,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
 const { UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, ledgerHelpers, useCopiesWorld } = require('./ledger-world.cjs');
-const { ok, callAsync, indexedFiles, statePath, stateGit, layout, completeUnit } = require('./engine-harness.cjs');
+const { ok, callAsync, indexedFiles, statePath, stateGit, layout, completeUnit, writeState, readManifest } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
@@ -419,7 +419,7 @@ describe('a command run under the writer lock', () => {
   });
 });
 
-describe('the knowledge base\'s reach (22.6.1)', () => {
+describe('the knowledge base\'s reach (22.6.1, 22.6.12)', () => {
   it('indexes a topic\'s record and never its log, at a write and at a full index (9.S43)', async () => {
     const log = statePath(dir(), UNIT, 'topics/note-window/log.md');
     fs.mkdirSync(path.dirname(log), { recursive: true });
@@ -431,6 +431,30 @@ describe('the knowledge base\'s reach (22.6.1)', () => {
     assert.strictEqual(full.code, 0, full.stderr);
     assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
     assert.doesNotMatch((await callAsync(dir(), ['knowledge', 'query', 'corduroy', 'marmalade'])).stdout, /Corduroy/);
+  });
+
+  it('answers from the records alone — never from a seed, an asset, an inbox item or the product record\'s file — and reaches an asset through the entry that links it (22.S30, 9.S54)', async () => {
+    const sketch = layout.assets(UNIT, 'panel-sketch.md');
+    writeState(dir(), sketch, '# Panel sketch\n\nQuokka sketch.\n');
+    writeState(dir(), layout.seed(UNIT, 'floating-notes'), '# Floating notes\n\nQuokka seed.\n');
+    writeState(dir(), layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir(), UNIT), seeds: [{ path: 'seeds/floating-notes.md', source: 'inbox:idea' }] }, null, 2) + '\n');
+    writeState(dir(), layout.inbox('ideas', '2026-01-06--quokka.md'), '# Quokka\n\nQuokka idea.\n');
+    write('find', NOTE, [], { ...MADE, text: 'Quokka notes float.', how: 'the person said so', known: 'read', product_wide: true });
+    const { decision } = floatingPanel();
+    ok(dir(), ['asset', 'add', UNIT, sketch, '--entry', decision, '--status', 'reference'], { env: SESSION });
+    const full = await callAsync(dir(), ['knowledge', 'index'], { env: SESSION });
+    assert.strictEqual(full.code, 0, full.stderr);
+
+    /** The files a query's results came from, state-relative. @param {string[]} terms */
+    const sources = async (...terms) => {
+      const { stdout } = await callAsync(dir(), ['knowledge', 'query', ...terms]);
+      return { stdout, files: [...stdout.matchAll(/^Source: (.+?)(?::L[\d-]+)?$/gm)].map(([, file]) => path.relative(statePath(dir()), file)) };
+    };
+    assert.match(/** @type {string} */ (copy('.knowledge/product.md')), /Quokka notes float\./);
+    assert.deepStrictEqual((await sources('quokka')).files, [NOTE_COPY]);
+    const found = await sources('panel sketch');
+    assert.deepStrictEqual(found.files, [NOTE_COPY]);
+    assert.match(found.stdout, new RegExp(`^- ${sketch}, reference$`, 'm'));
   });
 
   it('finds one unit\'s records from a session in another (22.S20)', async () => {

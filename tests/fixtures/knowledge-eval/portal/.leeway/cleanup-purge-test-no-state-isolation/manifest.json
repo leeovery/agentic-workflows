@@ -76,12 +76,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-06-02-cleanup-purge-test-no-state-isolation.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-06-04T14:26:38Z"
-    }
-  ],
   "completed_at": "2026-06-04"
 }

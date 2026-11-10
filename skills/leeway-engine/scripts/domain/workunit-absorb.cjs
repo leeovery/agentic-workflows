@@ -296,8 +296,7 @@ function placeTopic(cwd, epicManifest, into, topic, series) {
  * shared landing discipline (a renamed file or spike has its links
  * rewritten in the moved topic folder) — carry each phase item whole onto the epic beside
  * its map row, carry the feature's ledger lines to the epic topic, remove
- * the feature's knowledge-base chunks and index the moved artifacts at
- * their epic identities (warn-don't-block), delete the feature (directory
+ * the feature's knowledge-base chunks (warn-don't-block), delete the feature (directory
  * and project-manifest registration), and commit it all at once. Git
  * history serves as provenance.
  * @param {string} cwd project root
@@ -450,12 +449,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
     fs.rmSync(statePath(cwd, feature), { recursive: true, force: true });
 
-    // KB: drop the feature's chunks, index the moved seeds at their epic
-    // identities.
-    syncKnowledge(cwd, [
-      { remove: { workUnit: feature } },
-      ...moved.seedPlan.map((move) => ({ index: `${into}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
-    ], warnings);
+    syncKnowledge(cwd, [{ remove: { workUnit: feature } }], warnings);
 
     purgeWorkUnitCache(cwd, feature);
     carryMarks(root, feature, into, warnings);

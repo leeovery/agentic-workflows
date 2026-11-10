@@ -108,12 +108,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-06-02-ready-includes-in-progress.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-06-03T07:38:35Z"
-    }
-  ],
   "completed_at": "2026-06-03"
 }

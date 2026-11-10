@@ -1073,22 +1073,5 @@
       }
     }
   },
-  "seeds": [
-    {
-      "path": "seeds/2026-08-16-hook-set-persists-degenerate-pane-key.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-08-22T09:02:24Z"
-    },
-    {
-      "path": "seeds/2026-08-21-resume-hooks-vanish-when-pane-moves.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-08-22T09:02:24Z"
-    },
-    {
-      "path": "seeds/2026-06-29-some-sessions-skip-resume-on-reboot.md",
-      "source": "inbox:bug",
-      "seeded_at": "2026-08-22T09:02:24Z"
-    }
-  ],
   "completed_at": "2026-09-09"
 }

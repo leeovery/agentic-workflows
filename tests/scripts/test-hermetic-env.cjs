@@ -18,7 +18,7 @@ const { spawnSync } = require('child_process');
 
 const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
 const { recordLaunches } = require('./knowledge-harness.cjs');
-const { setupGitFixture, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { setupGitFixture, statePath, cleanupFixture, layout } = require('./engine-harness.cjs');
 
 const HERMETIC_MODULE = './hermetic-env.cjs';
 
@@ -45,10 +45,11 @@ function offenders(dir) {
 /** A project whose state holds one indexable document. */
 function setupProject() {
   const dir = setupGitFixture('hermetic-');
-  fs.mkdirSync(statePath(dir, 'auth', 'seeds'), { recursive: true });
+  fs.mkdirSync(statePath(dir, 'auth'), { recursive: true });
+  fs.mkdirSync(path.dirname(statePath(dir, layout.record('auth', 'auth'))), { recursive: true });
   fs.writeFileSync(statePath(dir, 'auth', 'manifest.json'),
     JSON.stringify({ name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} }));
-  fs.writeFileSync(statePath(dir, 'auth', 'seeds', 'auth.md'),
+  fs.writeFileSync(statePath(dir, layout.record('auth', 'auth')),
     '# Auth\n\nToken refresh is decided here.\n');
   return dir;
 }
@@ -66,7 +67,7 @@ function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
     const env = configDir === undefined ? {} : { LEEWAY_CONFIG_DIR: configDir };
-    const res = engine.run(['knowledge', 'index', statePath(project, 'auth', 'seeds', 'auth.md')], { cwd: project, env });
+    const res = engine.run(['knowledge', 'index', statePath(project, layout.record('auth', 'auth'))], { cwd: project, env });
     const metadataFile = statePath(project, '.knowledge', 'metadata.json');
     return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
   } finally {

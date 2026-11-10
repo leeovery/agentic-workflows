@@ -27,7 +27,7 @@ const { createState, repairStateWorktree } = require('../../skills/leeway-engine
 const stateRoot = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
 const { WRITER_LOCK } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 const { LEDGER } = require('../../skills/leeway-engine/scripts/domain/ledger-events.cjs');
-const { KNOWLEDGE_DIR } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { KNOWLEDGE_DIR, RECORDS_DIR } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
 
 const { STATE_DIR_NAME } = stateRoot;
 
@@ -264,6 +264,10 @@ const layout = Object.freeze({
   spike: (owner, spike, ...segments) => [owner, 'spikes', spike, ...segments].join('/'),
   /** A topic's brief. @param {string} unit @param {string} topic */
   brief: (unit, topic) => `${unit}/topics/${topic}/brief.md`,
+  /** A record's rendered copy: a topic's, or with no topic the unit's own level's. @param {string} unit @param {string} [topic] */
+  record: (unit, topic) => (topic === undefined ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`),
+  /** A quick-fix's short record after the work. @param {string} unit */
+  summary: (unit) => `${unit}/summary.md`,
   /** A unit's seed, an inbox item it was started from. @param {string} unit @param {string} name the file's stem */
   seed: (unit, name) => `${unit}/seeds/${name}.md`,
   /** A unit's analysis file. @param {string} unit @param {string} name */

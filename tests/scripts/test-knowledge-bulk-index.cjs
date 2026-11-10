@@ -23,7 +23,7 @@ const { InvalidRequestError, QuotaError } = require('../../skills/leeway-engine/
 const { indexBulk } = require('../../skills/leeway-engine/scripts/domain/knowledge/bulk.cjs');
 const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowledge/indexing.cjs');
 const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, heldCall, recordLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
-const { setupFixture, cleanupFixture, statePath } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
 const { loadStore, saveStore, withLock } = store;
 const CFG = { provider: 'stub', dimensions: 128 };
@@ -34,33 +34,22 @@ function writeJson(p, obj) {
   fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n');
 }
 
-function seedPath(root, topic) {
-  return path.join(root, '.leeway', 'payments', 'seeds', `${topic}.md`);
-}
 
 /** A string as the regular expression that matches it literally. @param {string} text */
 function literal(text) {
   return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 }
 
-/** A seed of the epic on its manifest, once. @param {string} root @param {string} topic */
-function registerSeed(root, topic) {
-  const file = path.join(root, '.leeway', 'payments', 'manifest.json');
-  const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const entry = `seeds/${topic}.md`;
-  if (manifest.seeds.some((seed) => seed.path === entry)) return;
-  manifest.seeds.push({ path: entry, source: 'inbox:idea' });
-  writeJson(file, manifest);
-}
+/** A topic of the epic's record copy. @param {string} root @param {string} topic */
+const recordPath = (root, topic) => statePath(root, layout.record('payments', topic));
 
-function writeSeed(root, topic, body) {
-  fs.mkdirSync(path.dirname(seedPath(root, topic)), { recursive: true });
-  fs.writeFileSync(seedPath(root, topic), `# ${topic}\n\n${body}\n`);
-  registerSeed(root, topic);
+/** @param {string} root @param {string} topic @param {string} body */
+function writeRecord(root, topic, body) {
+  createFile(statePath(root), layout.record('payments', topic), `# ${topic}\n\n${body}\n`);
 }
 
 /**
- * A feature beside the epic, registered, its seed on disk.
+ * A feature beside the epic, registered, its topic's record on disk.
  * @param {string} root @param {string} name @param {Record<string, any>} [unit]  over the manifest's own fields
  */
 function addFeature(root, name, unit = {}) {
@@ -70,22 +59,20 @@ function addFeature(root, name, unit = {}) {
   writeJson(registry, project);
   writeJson(path.join(root, '.leeway', name, 'manifest.json'), {
     name, work_type: 'feature', status: 'in-progress', created: '2026-01-01', ...unit,
-    phases: {}, seeds: [{ path: `seeds/${name}.md`, source: 'inbox:idea' }],
+    phases: {},
   });
-  const file = path.join(root, '.leeway', name, 'seeds', `${name}.md`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `# ${name}\n\nThe ${name} decision.\n`);
+  createFile(statePath(root), layout.record(name, name), `# ${name}\n\nThe ${name} decision.\n`);
 }
 
-/** An epic whose three seeds are on disk, no store yet. */
+/** An epic whose three topics' records are on disk, no store yet. */
 function buildProject() {
   const root = setupFixture('kb-bulk-');
   writeJson(path.join(root, '.leeway', 'manifest.json'), { work_units: { payments: { work_type: 'epic' } } });
   writeJson(path.join(root, '.leeway', 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
-    phases: {}, seeds: [],
+    phases: {},
   });
-  for (const topic of TOPICS) writeSeed(root, topic, `The ${topic} decision.`);
+  for (const topic of TOPICS) writeRecord(root, topic, `The ${topic} decision.`);
   fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
   return root;
 }
@@ -129,7 +116,7 @@ function awaitingTopics(root) {
   return store.chunksWithoutVector(loadStore(storeFile(root))).map((chunk) => chunk.topic);
 }
 
-/** A seed long enough to chunk by its sections, one chunk per body. */
+/** A record cut by its sections, one chunk per body. */
 function sectioned(bodies) {
   const filler = Array.from({ length: 20 }, (_, i) => `Line ${i} of the reasoning.`).join('\n');
   return bodies.map((body, i) => `## Section ${i + 1}\n\n${body}\n\n${filler}`).join('\n\n');
@@ -148,9 +135,9 @@ function bulk(root, output, cfg, provider, scope = null) {
   });
 }
 
-/** The single-file index of one of the epic's seeds. @param {string} root @param {string} topic */
+/** The single-file index of one of the epic's records. @param {string} root @param {string} topic */
 function indexOne(root, topic, cfg = CFG, provider = null) {
-  return indexPath(statePath(root), `payments/seeds/${topic}.md`, { cfg, provider });
+  return indexPath(statePath(root), layout.record('payments', topic), { cfg, provider });
 }
 
 describe('knowledge bulk index — keywords in one write, then vectors batch by batch', () => {
@@ -174,7 +161,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
   /** Index every topic once, then edit each so the next run finds all three changed. */
   async function indexThenEditAll() {
     await bulk(root, output, CFG, spyProvider());
-    for (const topic of TOPICS) writeSeed(root, topic, `The ${topic} decision, revised.`);
+    for (const topic of TOPICS) writeRecord(root, topic, `The ${topic} decision, revised.`);
     output.stdout = '';
     output.loads = 0;
     output.saves = 0;
@@ -215,7 +202,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     const db = loadStore(storeFile(root));
     for (const topic of TOPICS) {
       assert.deepStrictEqual(store.searchKeyword(db, { term: topic }).map((hit) => hit.topic), [topic]);
-      assert.match(output.stderr, new RegExp(`^Failed to embed ${literal(seedPath(root, topic))}: request refused: the account is out of quota \\(HTTP 429\\)$`, 'm'));
+      assert.match(output.stderr, new RegExp(`^Failed to embed ${literal(recordPath(root, topic))}: request refused: the account is out of quota \\(HTTP 429\\)$`, 'm'));
     }
     assert.strictEqual(store.chunksWithoutVector(db).length, 3);
     assert.match(output.stderr, /^Each is searchable by keyword; its vectors come at the next start\.$/m);
@@ -225,7 +212,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
 
   it('embeds, at the next bulk index, only the chunks awaiting vectors', async () => {
     await bulk(root, output, CFG, spyProvider());
-    writeSeed(root, 'alpha', 'The alpha decision, revised.');
+    writeRecord(root, 'alpha', 'The alpha decision, revised.');
     await bulk(root, output, CFG, spyProvider({ answers: 0 }));
     const provider = spyProvider();
     const summary = await bulk(root, output, CFG, provider);
@@ -237,7 +224,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
   });
 
   it('keeps every vector that landed when a later batch fails', async () => {
-    writeSeed(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
+    writeRecord(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
     const provider = spyProvider({ answers: 1 });
     const summary = await bulk(root, output, CFG, provider);
     const alpha = chunksFor(root, 'alpha');
@@ -254,27 +241,27 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     const summary = await bulk(root, output, CFG, provider);
     assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 1, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 1 + TOPICS.length);
-    assert.match(output.stderr, new RegExp(`^Failed to embed ${literal(seedPath(root, 'beta'))}: HTTP 400: input refused$`, 'm'));
+    assert.match(output.stderr, new RegExp(`^Failed to embed ${literal(recordPath(root, 'beta'))}: HTTP 400: input refused$`, 'm'));
     assert.strictEqual(chunksFor(root, 'beta').length, 1, 'written by keyword');
     assert.deepStrictEqual(store.chunksWithoutVector(loadStore(storeFile(root))).map((chunk) => chunk.topic), ['beta']);
     assert.strictEqual(output.saves, 2);
   });
 
   it('falls back to text by text within a file the endpoint refused, so its other chunks get their vectors', async () => {
-    writeSeed(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
+    writeRecord(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
     const summary = await bulk(root, output, CFG, spyProvider({ refuse: (text) => text.includes('The second ruling.') }));
     assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 1, keyUnresolved: false });
     const [refused] = store.chunksWithoutVector(loadStore(storeFile(root)));
     assert.match(refused.content, /The second ruling\./);
     assert.strictEqual(chunksFor(root, 'alpha').length, 3);
     assert.strictEqual(output.stderr, [
-      `Failed to embed ${seedPath(root, 'alpha')}: HTTP 400: input refused`,
+      `Failed to embed ${recordPath(root, 'alpha')}: HTTP 400: input refused`,
       'Each is searchable by keyword; a chunk the endpoint refused goes without a vector.',
     ].join('\n') + '\n');
   });
 
   it('embeds the batches after one whose input the endpoint refused', async () => {
-    writeSeed(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
+    writeRecord(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
     const summary = await bulk(root, output, CFG, spyProvider({ refuse: (text) => text.includes('Ruling 50.') }));
     assert.strictEqual(summary.awaiting, 1);
     assert.deepStrictEqual(awaitingTopics(root), ['alpha']);
@@ -294,7 +281,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
 
     const summary = await bulk(root, output, CFG, spyProvider());
     assert.deepStrictEqual(summary, { new: 0, changed: 1, removed: 0, unchanged: 2, failed: 0, awaiting: 0, keyUnresolved: false });
-    assert.match(output.stdout, new RegExp(`^Indexed ${literal(seedPath(root, 'beta'))} — 1 chunks \\(changed\\)$`, 'm'));
+    assert.match(output.stdout, new RegExp(`^Indexed ${literal(recordPath(root, 'beta'))} — 1 chunks \\(changed\\)$`, 'm'));
     assert.match(chunksFor(root, 'beta')[0].content, /The beta decision\./);
   });
 
@@ -310,9 +297,8 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
   });
 
   it('embeds a text two files share once, though the files land in different batches', async () => {
-    writeSeed(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
-    fs.copyFileSync(seedPath(root, 'alpha'), seedPath(root, 'delta'));
-    registerSeed(root, 'delta');
+    writeRecord(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
+    fs.copyFileSync(recordPath(root, 'alpha'), recordPath(root, 'delta'));
     const provider = spyProvider();
     await bulk(root, output, CFG, provider);
     const sent = provider.batches.flat();
@@ -368,17 +354,17 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
 
   it('fails every file in a batch that failed transiently, with no per-file calls, and still retires', async (t) => {
     await indexThenEditAll();
-    fs.rmSync(seedPath(root, 'gamma'));
+    fs.rmSync(recordPath(root, 'gamma'));
     const provider = spyProvider({ unreachable: true });
     const summary = await withoutBackoff(t, () => bulk(root, output, CFG, provider));
     assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 1, unchanged: 0, failed: 0, awaiting: 2, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 3, 'the one batch, retried — never file by file');
     for (const batch of provider.batches) assert.strictEqual(batch.length, 2);
     for (const topic of ['alpha', 'beta']) {
-      assert.match(output.stderr, new RegExp(`^Failed to embed ${literal(seedPath(root, topic))}: embedding request failed \\(network error\\): fetch failed$`, 'm'));
+      assert.match(output.stderr, new RegExp(`^Failed to embed ${literal(recordPath(root, topic))}: embedding request failed \\(network error\\): fetch failed$`, 'm'));
       assert.match(chunksFor(root, topic)[0].content, /revised/, `${topic}'s edit is searchable by keyword`);
     }
-    assert.match(output.stdout, new RegExp(`^Removed ${literal(seedPath(root, 'gamma'))} — 1 chunks \\(source deleted\\)$`, 'm'));
+    assert.match(output.stdout, new RegExp(`^Removed ${literal(recordPath(root, 'gamma'))} — 1 chunks \\(source deleted\\)$`, 'm'));
     assert.strictEqual(chunksFor(root, 'gamma').length, 0);
     assert.strictEqual(output.saves, 1, 'the keyword side, and no vectors to save');
   });
@@ -386,11 +372,11 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
   it("reloads under the lock when a peer wrote the store mid-run, keeping the peer's write", async () => {
     await indexThenEditAll();
     const peerWrite = async () => {
-      writeSeed(root, 'peer', 'A peer indexed this.');
+      writeRecord(root, 'peer', 'A peer indexed this.');
       const db = loadStore(storeFile(root));
       store.insertDocument(db, {
-        id: 'payments-seeds-peer-001', content: 'A peer indexed this.', heading_path: 'peer', work_unit: 'payments', work_type: 'epic',
-        phase: 'seeds', topic: 'peer', confidence: 'low', source_file: 'payments/seeds/peer.md',
+        id: 'payments-record-peer-001', content: 'A peer indexed this.', heading_path: 'peer', work_unit: 'payments', work_type: 'epic',
+        phase: 'record', topic: 'peer', confidence: 'high', source_file: layout.record('payments', 'peer'),
         timestamp: Date.now(), embedding: new StubProvider({ dimensions: CFG.dimensions }).embed('peer'),
       });
       saveStore(db, storeFile(root));
@@ -407,14 +393,14 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     await indexThenEditAll();
     let retiring = true;
     store.withLock = (lockPath, fn) => {
-      if (retiring) fs.rmSync(seedPath(root, 'beta'));
+      if (retiring) fs.rmSync(recordPath(root, 'beta'));
       retiring = false;
       return withLock(lockPath, fn);
     };
     const summary = await bulk(root, output, CFG, spyProvider());
     assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 1, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: false });
-    assert.match(output.stdout, new RegExp(`^Removed ${literal(seedPath(root, 'beta'))} — 1 chunks \\(source deleted\\)$`, 'm'));
-    assert.doesNotMatch(output.stdout, new RegExp(`^Indexed ${literal(seedPath(root, 'beta'))}`, 'm'));
+    assert.match(output.stdout, new RegExp(`^Removed ${literal(recordPath(root, 'beta'))} — 1 chunks \\(source deleted\\)$`, 'm'));
+    assert.doesNotMatch(output.stdout, new RegExp(`^Indexed ${literal(recordPath(root, 'beta'))}`, 'm'));
     assert.strictEqual(chunksFor(root, 'beta').length, 0);
   });
 
@@ -463,9 +449,9 @@ describe('knowledge index — vectors keyed by their text', () => {
   beforeEach(async () => {
     root = buildProject();
     output = { stdout: '', stderr: '' };
-    writeSeed(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
+    writeRecord(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
     await bulk(root, output, CFG, spyProvider());
-    writeSeed(root, 'alpha', sectioned(['The first ruling.', 'The second ruling, revised.', 'The third ruling.']));
+    writeRecord(root, 'alpha', sectioned(['The first ruling.', 'The second ruling, revised.', 'The third ruling.']));
   });
 
   afterEach(() => {
@@ -501,9 +487,8 @@ describe('knowledge index — vectors keyed by their text', () => {
   });
 
   it('a new file whose text the store already holds reaches no provider', async () => {
-    fs.copyFileSync(seedPath(root, 'beta'), seedPath(root, 'delta'));
-    registerSeed(root, 'delta');
-    writeSeed(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
+    fs.copyFileSync(recordPath(root, 'beta'), recordPath(root, 'delta'));
+    writeRecord(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
     const provider = spyProvider();
     const summary = await bulk(root, output, CFG, provider);
     assert.deepStrictEqual(summary, { new: 1, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0, keyUnresolved: false });
@@ -520,7 +505,7 @@ describe('knowledge index — chunks another chunker version cut', () => {
   let vectors;
 
   /**
-   * Index the epic's seeds under `cfg`, then leave every chunk recording
+   * Index the epic's records under `cfg`, then leave every chunk recording
    * chunker `version` — none where undefined — and no heading path, so a
    * re-cut shows in what the chunk records.
    * @param {number|undefined} version
@@ -555,7 +540,7 @@ describe('knowledge index — chunks another chunker version cut', () => {
   beforeEach(() => {
     root = buildProject();
     output = { stdout: '', stderr: '' };
-    for (const topic of TOPICS) writeSeed(root, topic, sectioned([`The ${topic} ruling.`, `The ${topic} caveat.`, `The ${topic} follow-up.`]));
+    for (const topic of TOPICS) writeRecord(root, topic, sectioned([`The ${topic} ruling.`, `The ${topic} caveat.`, `The ${topic} follow-up.`]));
   });
 
   afterEach(() => {
@@ -611,7 +596,7 @@ describe('knowledge index — a key that does not resolve', () => {
   });
 
   it('writes a changed file by keyword at a single-file index, its store keeping the provider whose key waits', () => {
-    writeSeed(root, 'alpha', 'The alpha decision, revised.');
+    writeRecord(root, 'alpha', 'The alpha decision, revised.');
     const written = indexOne(root, 'alpha', OPENAI, null);
     assert.strictEqual(written.embedder.missingKey.message, KEY_FIX);
     const db = loadStore(storeFile(root));
@@ -620,11 +605,11 @@ describe('knowledge index — a key that does not resolve', () => {
   });
 
   it('writes every changed file by keyword at a bulk index, and the next with the key fills their vectors', async () => {
-    for (const topic of ['alpha', 'beta']) writeSeed(root, topic, `The ${topic} decision, revised.`);
+    for (const topic of ['alpha', 'beta']) writeRecord(root, topic, `The ${topic} decision, revised.`);
     const keyless = await bulk(root, output, OPENAI, null);
     assert.deepStrictEqual(keyless, { new: 0, changed: 2, removed: 0, unchanged: 1, failed: 0, awaiting: 2, keyUnresolved: true });
     for (const topic of ['alpha', 'beta']) {
-      assert.ok(output.stderr.includes(`Failed to embed ${seedPath(root, topic)}: ${KEY_FIX}\n`), topic);
+      assert.ok(output.stderr.includes(`Failed to embed ${recordPath(root, topic)}: ${KEY_FIX}\n`), topic);
     }
     assert.deepStrictEqual(store.searchKeyword(loadStore(storeFile(root)), { term: 'revised' }).map((hit) => hit.topic).sort(), ['alpha', 'beta']);
 
@@ -674,20 +659,20 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
 
   it('a single-file index writes by keyword and launches the fill; a fill that falls short exits non-zero, and a search says why until one lands', async (t) => {
     const launched = recordLaunches(t);
-    const indexed = await cli('index', '.leeway/payments/seeds/alpha.md');
-    assert.deepStrictEqual(indexed, { code: 0, stdout: `Indexed 1 chunks from ${seedPath(root, 'alpha')}\n`, stderr: '' });
+    const indexed = await cli('index', `.leeway/${layout.record('payments', 'alpha')}`);
+    assert.deepStrictEqual(indexed, { code: 0, stdout: `Indexed 1 chunks from ${recordPath(root, 'alpha')}\n`, stderr: '' });
     assert.deepStrictEqual(launched, [statePath(root)], 'the fill works on the state\'s store');
     assert.deepStrictEqual(endpoint.requests, [], 'the index itself embeds nothing');
 
     endpoint.mode = 'quota';
     const short = await cli('fill');
     assert.strictEqual(short.code, 1);
-    assert.match(short.stderr, new RegExp(`^Failed to embed ${literal(seedPath(root, 'alpha'))}: Embeddings endpoint request refused: the account is out of quota \\(HTTP 429\\)\\. .*\\nEach is searchable by keyword; its vectors come at the next start\\.\\n$`));
+    assert.match(short.stderr, new RegExp(`^Failed to embed ${literal(recordPath(root, 'alpha'))}: Embeddings endpoint request refused: the account is out of quota \\(HTTP 429\\)\\. .*\\nEach is searchable by keyword; its vectors come at the next start\\.\\n$`));
 
     endpoint.mode = 'ok';
     const queried = await cli('query', 'the alpha decision');
     assert.strictEqual(queried.code, 0);
-    assert.match(queried.stdout, new RegExp(`^\\[1 chunks await vectors — searched by keyword alone; each start retries them\\]\\n\\[the last vector fill fell short — ${literal(seedPath(root, 'alpha'))}: Embeddings endpoint request refused: the account is out of quota \\(HTTP 429\\)\\. .*\\]\\n\\[1 results\\]\\n`));
+    assert.match(queried.stdout, new RegExp(`^\\[1 chunks await vectors — searched by keyword alone; each start retries them\\]\\n\\[the last vector fill fell short — ${literal(recordPath(root, 'alpha'))}: Embeddings endpoint request refused: the account is out of quota \\(HTTP 429\\)\\. .*\\]\\n\\[1 results\\]\\n`));
     assert.match((await cli('status')).stdout, /^Chunks awaiting vectors: 1$/m);
 
     assert.deepStrictEqual(await cli('fill'), { code: 0, stdout: '', stderr: '' });

@@ -339,12 +339,5 @@
         }
       }
     }
-  },
-  "seeds": [
-    {
-      "path": "seeds/2026-08-21-lazy-resume-on-attach.md",
-      "source": "inbox:idea",
-      "seeded_at": "2026-09-16T14:47:16Z"
-    }
-  ]
+  }
 }
