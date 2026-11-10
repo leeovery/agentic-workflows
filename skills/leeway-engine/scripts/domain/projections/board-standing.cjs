@@ -29,6 +29,7 @@
 //   settled, the build once begun, the review once the build has finished —
 //   or complete, since the day the phase before it closed; a migrated unit
 //   of a type the reshape retires, the migration's cut it waits on (E6).
+//   The menus' rows read it too (progress.cjs), so it reads the unit alone.
 // - How the phase it is in stands: stopped where nothing of its tasks can
 //   go on without an answer — its build's, the review's round and fix tasks
 //   among it, a quick-fix's fixes and its review's alike, by the build's
@@ -59,7 +60,7 @@
 // ---------------------------------------------------------------------------
 
 const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
-const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
+const { specBegun, specUnderWay } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
 const {
   phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec, quickFixBuild, tasksBegun, fixesBegun, reviewAsked, startedOn,
@@ -72,6 +73,7 @@ const { investigationWaits } = require('./board-investigation.cjs');
 const { raisedWaits, closeWait } = require('./board-quick-fix.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
+/** What where a unit has come to reads of it: the project, the unit and its manifest, and one read of anything read twice. @typedef {Pick<BoardAt, 'cwd'|'unit'|'manifest'|'once'>} UnitRead */
 /** @typedef {import('../board-model.cjs').UnitNow} UnitNow */
 /** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
 /** @typedef {import('../board-model.cjs').Fact} Fact */
@@ -111,7 +113,7 @@ function builtOn(manifest) {
   return latest(Object.entries(manifest.checklists ?? {}).filter(([key]) => /^phase-\d+-close$/.test(key)).map(([, record]) => record?.closed));
 }
 
-/** The day each phase closed, by the phase it reads (the header's). @type {Readonly<Record<string, (at: BoardAt) => string|null>>} */
+/** The day each phase closed, by the phase it reads (the header's). @type {Readonly<Record<string, (at: UnitRead) => string|null>>} */
 const CLOSED = Object.freeze({
   discovery: ({ manifest }) => (manifest.work_type === 'epic' ? approvedOn(manifest) : startedOn(manifest)),
   discussion: ({ manifest }) => latest(Object.values(manifest.checklists?.decided ?? {}).map((record) => record?.closed)),
@@ -121,11 +123,8 @@ const CLOSED = Object.freeze({
   review: ({ manifest }) => latest([manifest.completed_at]),
 });
 
-/** The day a phase closed, by the phase it reads, null where its records keep none. @param {BoardAt} at @param {string} reads */
-const closedOn = (at, reads) => /** @type {Record<string, (at: BoardAt) => string|null>} */ (CLOSED)[reads]?.(at) ?? null;
-
-/** Whether the unit's specification is under way or done: from its entry, once the topics are settled, or once written. @param {BoardAt} at */
-const specBegun = (at) => topicsSettled(at.manifest) || pastItsSpec(at.cwd, at.manifest);
+/** The day a phase closed, by the phase it reads, null where its records keep none. @param {UnitRead} at @param {string} reads */
+const closedOn = (at, reads) => /** @type {Record<string, (at: UnitRead) => string|null>} */ (CLOSED)[reads]?.(at) ?? null;
 
 /**
  * Where a quick-fix's phase stands (the header's): its implementation from
@@ -140,16 +139,16 @@ function quickFixStatus(manifest, reads) {
   return fixesBegun(manifest) ? 'running' : 'later';
 }
 
-/** Where a phase stands, by the status of the phase it reads. @param {BoardAt} at @param {string} reads @returns {Status} */
+/** Where a phase stands, by the status of the phase it reads. @param {UnitRead} at @param {string} reads @returns {Status} */
 function statusOf(at, reads) {
   if (reads === 'discovery' || (reads === 'discussion' && closedIntoSpec(at.manifest))) return 'complete';
   if (quickFixBuild(at.manifest)) return quickFixStatus(at.manifest, reads);
-  const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, reads === 'specification' && specBegun(at));
+  const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, reads === 'specification' && specBegun(at.cwd, at.manifest));
   if (status === 'completed') return 'complete';
   return status === 'in-progress' ? 'running' : 'later';
 }
 
-/** The unit's phases from discovery (the header's), read once a call. @param {BoardAt} at @returns {PhaseAt[]} */
+/** The unit's phases from discovery (the header's), read once a call. @param {UnitRead} at @returns {PhaseAt[]} */
 const phasesAt = (at) => at.once('phases', () => {
   const after = phasesAfter(at.manifest);
   const shaping = at.manifest.work_type === 'epic' && !pastDiscovery(at.manifest);
@@ -161,17 +160,17 @@ const phasesAt = (at) => at.once('phases', () => {
   return [of('discovery', 'discovery'), ...after.map(([phase, reads]) => of(phase, reads))];
 });
 
-/** Where an epic past its discovery has come to, by its stages (the header's). @param {BoardAt} at @returns {UnitNow} */
+/** Where an epic past its discovery has come to, by its stages (the header's). @param {UnitRead} at @returns {UnitNow} */
 function epicNow(at) {
   const { manifest } = at;
   if (manifest.status === 'completed') return { phase: 'complete', since: closedOn(at, 'review') };
   if (buildFinished(manifest)) return { phase: 'review', since: closedOn(at, 'implementation') };
   if (buildBegun(manifest)) return { phase: 'build', since: closedOn(at, 'specification') };
-  if (specBegun(at)) return { phase: 'specification', since: closedOn(at, 'discussion') };
+  if (specBegun(at.cwd, at.manifest)) return { phase: 'specification', since: closedOn(at, 'discussion') };
   return { phase: 'discussion', since: closedOn(at, 'discovery') };
 }
 
-/** Where any other unit has come to: the first phase not complete, since the one before it closed, else complete. @param {BoardAt} at @returns {UnitNow} */
+/** Where any other unit has come to: the first phase not complete, since the one before it closed, else complete. @param {UnitRead} at @returns {UnitNow} */
 function linearNow(at) {
   const phases = phasesAt(at);
   const now = phases.findIndex(({ status }) => status !== 'complete');
@@ -182,14 +181,30 @@ function linearNow(at) {
 /** Where a unit of a type the reshape retires has come to: the migration's cut, which it waits on. @type {UnitNow} */
 const AT_THE_CUT = Object.freeze({ phase: 'cut', since: null });
 
-/** Where the unit has come to (the header's). @param {BoardAt} at @returns {UnitNow} */
+/** Where the unit has come to (the header's). @param {UnitRead} at @returns {UnitNow} */
 function unitNow(at) {
   if (retiredRefusal(at.manifest) !== null) return AT_THE_CUT;
   return pastDiscovery(at.manifest) ? epicNow(at) : linearNow(at);
 }
 
-/** Where the unit has come to, read once a call. @param {BoardAt} at @returns {UnitNow} */
+/** Where the unit has come to, read once a call. @param {UnitRead} at @returns {UnitNow} */
 const nowOf = (at) => at.once('now', () => unitNow(at));
+
+/**
+ * A unit as where it has come to reads it outside a board call — a menu's
+ * row, what waits on the person — its own one read of anything read twice.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {UnitRead}
+ */
+function unitRead(cwd, manifest) {
+  /** @type {Map<string, unknown>} */
+  const reads = new Map();
+  /** @type {UnitRead['once']} */
+  const once = (key, read) => {
+    if (!reads.has(key)) reads.set(key, read());
+    return /** @type {any} */ (reads.get(key));
+  };
+  return { cwd, unit: manifest.name, manifest, once };
+}
 
 /**
  * Approve the map, while a map is staged: its topics in order and what it
@@ -239,7 +254,7 @@ const waitingOn = (at) => at.once('waiting-on', () => {
   return [
     ...mapWaits(at),
     ...investigationWaits(at),
-    ...(buildBegun(at.manifest) || !specBegun(at) ? [] : specWaits(at)),
+    ...(specUnderWay(at.cwd, at.manifest) ? specWaits(at) : []),
     ...questions,
     ...raisedWaits(at),
     ...(questions.length === 0 ? finishLine(at) : []),
@@ -276,4 +291,4 @@ function waitsFacts(waiting, atMenu) {
   return [atMenu ? { text, needs: false, waits: true } : { text, needs: true }];
 }
 
-module.exports = { phasesAt, nowOf, waitingOn, standingOf, tasksStopped, holds, waitsFacts, closedOn, pastDiscovery };
+module.exports = { phasesAt, nowOf, unitRead, waitingOn, standingOf, tasksStopped, holds, waitsFacts, closedOn, pastDiscovery };

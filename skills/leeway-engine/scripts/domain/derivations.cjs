@@ -138,6 +138,22 @@ function fixesBegun(manifest) {
 }
 
 /**
+ * Whether a quick-fix's fixes are under way: begun, the unit in progress.
+ * @param {Record<string, any>} manifest
+ */
+function fixesUnderWay(manifest) {
+  return quickFixBuild(manifest) && fixesBegun(manifest) && manifest.status === 'in-progress';
+}
+
+/**
+ * Whether a bug's investigation is under way: its topic's item in progress.
+ * @param {Record<string, any>} manifest
+ */
+function investigationUnderWay(manifest) {
+  return manifest.work_type === 'bugfix' && itemOf(manifest, 'investigation', manifest.name)?.status === 'in-progress';
+}
+
+/**
  * Whether the tracker holds the unit's tasks: its build by the cut begun,
  * or a quick-fix's fixes begun.
  * @param {Record<string, any>} manifest
@@ -1397,6 +1413,8 @@ module.exports = {
   FIXES_PHASE,
   quickFixBuild,
   fixesBegun,
+  fixesUnderWay,
+  investigationUnderWay,
   tasksBegun,
   reviewAsked,
   quickFixReviewRefusal,

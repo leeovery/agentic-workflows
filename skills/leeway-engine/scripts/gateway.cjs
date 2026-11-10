@@ -26,7 +26,7 @@
  *   `gateway.cjs {work_unit}`).
  */
 
-const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, emitAs, openGate, section } = require('./domain/projections/surfaces.cjs');
+const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, emitAs, openGate, menuSection } = require('./domain/projections/surfaces.cjs');
 const { markConversation } = require('./domain/conversation.cjs');
 const { recordGateShown } = require('./domain/gate.cjs');
 
@@ -56,12 +56,13 @@ function displayBlock(body) {
 }
 
 /**
+ * A navigation skill's menu, which may carry the help row as every menu may.
  * @param {string} name  the gate the menu states (16.11.9) — the gateway's own, never another menu's
  * @param {string} body  menu block, pre-rendered — empty renders no section: no gate, no marker
  */
 function menuBlock(name, body) {
   const menu = String(body).replace(/\n+$/, '');
-  return menu === '' ? '' : section(`MENU: ${name}`, emitAs('markdown'), menu);
+  return menu === '' ? '' : menuSection(name, emitAs('markdown'), menu);
 }
 
 // `key: value` lines for flat values; nested objects/arrays render as compact

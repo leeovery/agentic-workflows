@@ -149,8 +149,15 @@
 // - Whether the ledger names a topic: an event written on it, or a move to
 //   it, live or not. The ledger keeps every line (5.3.4), so a topic it
 //   names keeps its name for good.
+//
+// A call that writes nothing and asks many reads of the ledger — what waits
+// on the person in each unit — takes them as one (`readOnce`): the ledger
+// checked and folded once, the file held open, and every read of the same
+// fold made under it, however deep, meeting that one; a caller's fold
+// already read is held the same way (`holding`).
 // ---------------------------------------------------------------------------
 
+const { AsyncLocalStorage } = require('async_hooks');
 const { withLedger } = require('./ledger.cjs');
 const { rehomedPlaces, asRehomed } = require('./ledger-rehomed.cjs');
 const { PRODUCT, entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs');
@@ -334,6 +341,8 @@ const ID_FACTS = {
  * @returns {T}
  */
 function readFolded(root, fold, notes, answer) {
+  const read = held.getStore();
+  if (read !== undefined && read.root === root && fold === ID_FACTS) return answer(/** @type {S} */ (/** @type {unknown} */ (read.facts)), read.entryAt);
   return withLedger(root, notes, (ledger) => {
     const carried = rehomedPlaces([...ledger.named('rehomed')].map(({ event }) => event));
     const state = fold.start();
@@ -351,6 +360,40 @@ function readFolded(root, fold, notes, answer) {
  */
 function foldLedger(root, fold, notes) {
   return readFolded(root, fold, notes, (state) => state);
+}
+
+/**
+ * The ledger a call reads as one: its state root, the ids' facts, and the
+ * entry at any place, the file held open.
+ * @typedef {{root: string, facts: Map<string, IdFacts>, entryAt: (place: EntryPlace) => Record<string, unknown>}} Held
+ */
+/** The read each call taking its reads as one holds (the header's). @type {AsyncLocalStorage<Held>} */
+const held = new AsyncLocalStorage();
+
+/**
+ * `fn` with `facts` and `entryAt` held for `root` (the header's): every read
+ * of the ids' facts under it meets them.
+ * @template T @param {string} root @param {Map<string, IdFacts>} facts @param {Held['entryAt']} entryAt @param {() => T} fn @returns {T}
+ */
+const holding = (root, facts, entryAt, fn) => held.run({ root, facts, entryAt }, fn);
+
+/**
+ * `answer`, for a call that writes nothing, given the ledger checked and
+ * folded once, every read of the ids' facts it makes meeting that one (the
+ * header's).
+ * @template T
+ * @param {string} root @param {string[]} notes what a landing the read's check finished said, pushed to
+ * @param {(facts: Map<string, IdFacts>, entryAt: Held['entryAt']) => T} answer
+ * @returns {T}
+ */
+function readOnce(root, notes, answer) {
+  return readFolded(root, ID_FACTS, notes, (facts, entryAt) => holding(root, facts, entryAt, () => answer(facts, entryAt)));
+}
+
+/** The ids' facts a call holds for `root`, read once (`readOnce`, `holding`), or null where it holds none. @param {string} root @returns {Map<string, IdFacts>|null} */
+function heldFacts(root) {
+  const read = held.getStore();
+  return read !== undefined && read.root === root ? read.facts : null;
 }
 
 /**
@@ -1127,7 +1170,7 @@ function discoveredOf(folded, unit, topic) {
 }
 
 module.exports = {
-  ID_FACTS, readFolded, foldLedger, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
+  ID_FACTS, readFolded, foldLedger, readOnce, holding, heldFacts, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
   keptOf, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
   movedToBy,
 };

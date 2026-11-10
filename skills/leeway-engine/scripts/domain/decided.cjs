@@ -20,6 +20,8 @@
 //   (checklist.cjs): a topic a message set back in progress (10.2.7) is
 //   worked afresh and closed again before its gate shows again. It refuses
 //   a unit not in progress and a topic whose discussion is not in progress.
+//   Its gate waits on the person while its screen stands, Claude's payload
+//   staged against the close (`decidedDraws`).
 // - Claude's payload — the proposed product-record lines, the record's lines it
 //   withdraws, and the new-topic candidates — is staged in the topic's cache
 //   with `--file`, against the close it was drawn for, and nothing reaches the
@@ -119,7 +121,7 @@ const { runningAgents } = require('./agent-state.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
-const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, refusing } = require('./staged-payload.cjs');
+const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, refusing, stands } = require('./staged-payload.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./topic-map.cjs').Row} Row */
@@ -482,6 +484,20 @@ function stagedFor(cwd, manifest, topic, closed) {
   if (staged.closed !== closed) throw new Error(`what is staged for ${topic} was drawn for an earlier close — ${stages} stages it again`);
   return staged;
 }
+
+/**
+ * What the decided screen stands on past the record it draws, refused where
+ * it cannot show: the topic open as the gate stands on it, its close, and
+ * Claude's payload staged against that close.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function decidedStanding(cwd, unit, topic) {
+  const manifest = gateTopic(cwd, unit, topic);
+  return stagedFor(cwd, manifest, topic, decidedClose(cwd, unit, topic).closed);
+}
+
+/** Whether the decided screen draws, as `render decided` stands on it: what waits on the person in the unit (waits.cjs). @param {string} cwd @param {string} unit @param {string} topic */
+const decidedDraws = (cwd, unit, topic) => stands(() => decidedStanding(cwd, unit, topic));
 
 /**
  * The record's side of the decided screen, read in one pass of the ledger:
@@ -891,4 +907,4 @@ function runDecidedVerb(cwd, [verb, ...args], opts, flags) {
   throw usage();
 }
 
-module.exports = { DECIDED_USAGE, runDecidedVerb, decidedSurface, decidedStrikeSurface, waitAgentsSurface, closesIntoSpec, featureClose, closingYes };
+module.exports = { DECIDED_USAGE, runDecidedVerb, decidedSurface, decidedStrikeSurface, waitAgentsSurface, closesIntoSpec, featureClose, closingYes, decidedDraws };

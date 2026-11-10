@@ -451,17 +451,44 @@ function gateName(name) {
 }
 
 /**
+ * One `=== NAME (instruction) ===` demarcated section, a MENU carrying its
+ * gate payload immediately above it where the gate surface announced, so a
+ * surface drawing the gate never has to read the markdown back out.
+ * @param {string} name @param {string} instruction @param {string} body
+ * @returns {string}
+ */
+function sectionOf(name, instruction, body) {
+  const block = `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
+  return name.startsWith('MENU') ? gateBlock(gateName(name)) + block : block;
+}
+
+// The help row is a menu's alone (18.9.4): a question typed at a gate or a
+// raise sets it aside, so neither carries one.
+const HELP_ROW = /^\*\*`h\/help`\*\*/m;
+
+/**
  * One `=== NAME (instruction) ===` demarcated section — the one place a
- * MENU's marker is built, so every MENU states the gate shown. A MENU
- * carries its gate payload immediately above it where the gate surface
- * announced, so a surface drawing the gate never has to read the markdown
- * back out.
+ * MENU's marker is built but a menu's (`menuSection`), so every MENU states
+ * the gate shown. A MENU here is a gate's or a raise's, and one drawing the
+ * help row is refused.
  * @param {string} name @param {string} instruction @param {string} body
  * @returns {string}
  */
 function section(name, instruction, body) {
-  const block = `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
-  return name.startsWith('MENU') ? gateBlock(gateName(name)) + block : block;
+  if (name.startsWith('MENU') && HELP_ROW.test(body)) {
+    throw new Error(`${gateName(name)}: a gate or a raise carries no h/help row — a question typed at it sets it aside (18.9.4); only a menu draws help`);
+  }
+  return sectionOf(name, instruction, body);
+}
+
+/**
+ * A menu's MENU section, under the gate `name` — the one way a MENU carries
+ * the help row.
+ * @param {string} name @param {string} instruction @param {string} body
+ * @returns {string}
+ */
+function menuSection(name, instruction, body) {
+  return sectionOf(`MENU: ${name}`, instruction, body);
 }
 
 // The four render forms (CONVENTIONS.md: The Design System, Forms), each said
@@ -710,13 +737,15 @@ function promptOption(label, description, { next } = {}) {
 
 /**
  * Numbered-range option line — a span of selectable numbers, both bounds
- * inside one code span.
+ * inside one code span. `next` is what answering the row leads to
+ * (gate.cjs).
  * @param {number|string} first @param {number|string} last @param {string} label
+ * @param {{next?: Next}} [opts]
  * @returns {string}
  */
-function rangeOption(first, last, label) {
+function rangeOption(first, last, label, { next } = {}) {
   const line = `**\`${first}–${last}\`** → ${label}`;
-  recordTyped(line, `${first}–${last}`, label);
+  recordTyped(line, `${first}–${last}`, label, next);
   return line;
 }
 
@@ -797,5 +826,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, gateSurfaceAnnounced, openGate, gateShown, illustrate, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, gateSurfaceAnnounced, openGate, gateShown, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
 

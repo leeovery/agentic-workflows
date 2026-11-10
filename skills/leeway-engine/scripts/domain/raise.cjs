@@ -87,7 +87,12 @@
 //   the first lean — and so does a draw whose seal another, drawn at once,
 //   wrote while it waited. A seal of another version is never matched, and
 //   stays as written. The layout hook refuses Claude's own writes to it
-//   (layout-hook.cjs).
+//   (layout-hook.cjs). A seal waits on the person in the conversation that
+//   drew it alone, where it can be shown and answered: a bug's investigation
+//   under way, at its topic and its own level, and a quick-fix's fixes under
+//   way, at its build and its review, are where a raise of no parked
+//   question waits (`raisePlaces`; board-investigation.cjs,
+//   board-quick-fix.cjs, waits.cjs).
 // - The decision point's answer is the response's, with its reason. An ask
 //   draws the screen. A proceed lands Claude's call, drawing nothing and
 //   sealing nothing: Claude's decision answering the question — the lean
@@ -229,7 +234,7 @@ const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
-const { topicTitles, quickFixBuild } = require('./derivations.cjs');
+const { topicTitles, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
@@ -656,6 +661,18 @@ function steppedBackSealed(folded, question) {
 function sealsAt(session, { unit, phase, topic }) {
   return /** @type {Seal[]} */ (Object.values(readSeals(session)).filter((seal) => isSeal(seal) && seal.place.unit === unit && seal.place.phase === phase && seal.place.topic === topic))
     .sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** A bug's investigation's places: its topic, and its own level. @param {string} unit @returns {Place[]} */
+const investigationPlaces = (unit) => [unit, null].map((topic) => ({ unit, phase: 'investigation', topic }));
+
+/** A quick-fix's fixes' places: its build, and its review. @param {string} unit @returns {Place[]} */
+const fixPlaces = (unit) => BUILD_PHASES.map((phase) => ({ unit, phase, topic: null }));
+
+/** The places a raise of no parked question waits at in the unit now (the header's). @param {Record<string, any>} manifest @returns {Place[]} */
+function raisePlaces(manifest) {
+  if (investigationUnderWay(manifest)) return investigationPlaces(manifest.name);
+  return fixesUnderWay(manifest) ? fixPlaces(manifest.name) : [];
 }
 
 /**
@@ -1488,4 +1505,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits, investigationPlaces, fixPlaces, raisePlaces };

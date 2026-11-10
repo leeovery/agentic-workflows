@@ -22,6 +22,7 @@ const {
   awaitedExperiments, waits, topicWaits, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   cancelPlan, postponePlan, postponeTarget, postponeClashPhrase, postponedItem, topicKey, noTopicRefusal,
+  fixesUnderWay, investigationUnderWay,
 } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
 /**
@@ -1388,6 +1389,25 @@ describe('reads + derivations', () => {
 
     it('CLOSED_LIFECYCLES names the lifecycles that leave the board', () => {
       assert.deepStrictEqual(CLOSED_LIFECYCLES, ['cancelled', 'postponed']);
+    });
+  });
+
+  describe('the work under way where a raise waits — a quick-fix\'s fixes, a bug\'s investigation (raise.cjs, the board and the waits)', () => {
+    it('a quick-fix\'s fixes are under way once begun, while it is in progress', () => {
+      const quickFix = (/** @type {Record<string, unknown>} */ more) => ({ name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {}, ...more });
+
+      assert.deepStrictEqual([
+        fixesUnderWay(quickFix({ fixes: { started: '2026-11-01T00:00:00.000Z' } })),
+        fixesUnderWay(quickFix({})),
+        fixesUnderWay(quickFix({ fixes: { started: '2026-11-01T00:00:00.000Z' }, status: 'completed' })),
+        fixesUnderWay({ ...quickFix({ fixes: {} }), work_type: 'feature' }),
+      ], [true, false, false, false]);
+    });
+
+    it('a bug\'s investigation is under way while its topic\'s item is in progress', () => {
+      const bug = (/** @type {string} */ status, type = 'bugfix') => ({ name: 'crash', work_type: type, status: 'in-progress', phases: { investigation: { items: { crash: { status } } } } });
+
+      assert.deepStrictEqual([bug('in-progress'), bug('completed'), bug('in-progress', 'feature')].map(investigationUnderWay), [true, false, false]);
     });
   });
 

@@ -279,4 +279,4 @@ function answerQueue(shower, root) {
   return { departures: queueOf(shower.folded, evidenceOf(root)).map((id) => departureRow(shower, id)) };
 }
 
-module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, departureRow, verdictAsked, answerQueue, closeDepartures };
+module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, queueOf, departureRow, verdictAsked, answerQueue, closeDepartures };

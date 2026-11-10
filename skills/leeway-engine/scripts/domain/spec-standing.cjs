@@ -29,6 +29,9 @@
 //   postponed to the roadmap (18.5.2), and an epic with none live has its
 //   map shaped in its discovery or a topic pulled forward from the roadmap.
 //   A quick-fix's pipeline holds none (11.1.6, topic-standing.cjs).
+// - The spec is begun once its topics are settled or it is written, and
+//   under way from then until the build begins: what waits on the person
+//   there is read only then (board-standing.cjs, waits.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -163,4 +166,10 @@ function entryRefusal(manifest) {
   return manifest.work_type === 'epic' ? epicOpen(manifest) : OPEN_TOPIC[manifest.work_type](manifest.name);
 }
 
-module.exports = { specStanding, pastItsSpec, pastSpecRefusal, assertBeforeSpec, specTopics, topicsSettled, entryRefusal };
+/** Whether the unit's spec is begun: its topics settled, or it written (the header's). @param {string} cwd @param {Record<string, any>} manifest */
+const specBegun = (cwd, manifest) => topicsSettled(manifest) || pastItsSpec(cwd, manifest);
+
+/** Whether the unit's spec is under way: begun, the build not (the header's). @param {string} cwd @param {Record<string, any>} manifest */
+const specUnderWay = (cwd, manifest) => !buildBegun(manifest) && specBegun(cwd, manifest);
+
+module.exports = { specStanding, pastItsSpec, pastSpecRefusal, assertBeforeSpec, specTopics, topicsSettled, specBegun, specUnderWay, entryRefusal };

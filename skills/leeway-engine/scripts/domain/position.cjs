@@ -38,7 +38,10 @@
 // They ride with their task and go with it. The start menu is no position:
 // boot drops the calling conversation's own before anything else it does,
 // keeping the place it left where that names a phase, until a position is
-// recorded again; and `session repair` drops it too.
+// recorded again; and `session repair` drops it too. A menu's render leaves
+// the conversation as these do (menus.cjs): the start menu and the
+// project's menus beside it drop the position as `session repair` does, and
+// the epic's menu and the roadmap arrive as `session label` does.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs the workflows: recording a position marks the conversation first

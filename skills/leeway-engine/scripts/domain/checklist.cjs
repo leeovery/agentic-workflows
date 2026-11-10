@@ -95,7 +95,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjec
 const { workUnitNameRefusal, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, liveTopics } = require('./ledger-units.cjs');
-const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, heldFacts, mapOf } = require('./ledger-fold.cjs');
 const { SPEC_FILE, readSpec, specSections, specStatements } = require('./spec-sections.cjs');
 const { topicsSettled } = require('./spec-standing.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
@@ -173,17 +173,24 @@ function questionsClosed({ cwd, unit, topic, warnings }) {
 
 /**
  * The ledger's last line, and whether a line past `after` opened a question
- * on the topic: one asked there, or moved to it.
+ * on the topic: one asked there, or moved to it — from the ledger the call
+ * holds folded once, where it holds one (ledger-fold.cjs), else a scan of
+ * its own.
  * @param {string} root @param {string} unit @param {string} topic @param {number} after @param {string[]} warnings
  * @returns {{last: number, opened: boolean}}
  */
 function ledgerPast(root, unit, topic, after, warnings) {
+  /** @param {{unit?: unknown, event?: unknown, topic?: unknown, to?: unknown}} line @param {number} number */
+  const opens = (line, number) => number > after && line.unit === unit && ((line.event === 'asked' && line.topic === topic) || (line.event === 'moved' && line.to === topic));
+  const held = heldFacts(root);
+  if (held !== null) {
+    return [...held.values()].reduce((state, facts) => ({ last: Math.max(state.last, facts.place.number), opened: state.opened || opens(facts, facts.place.number) }), { last: 0, opened: false });
+  }
   return foldLedger(root, {
     start: () => /** @type {{last: number, opened: boolean}} */ ({ last: 0, opened: false }),
     step: (state, event, place) => {
       state.last = place.number;
-      const opens = event.unit === unit && ((event.event === 'asked' && event.topic === topic) || (event.event === 'moved' && event.to === topic));
-      if (opens && place.number > after) state.opened = true;
+      if (opens(event, place.number)) state.opened = true;
     },
   }, warnings);
 }

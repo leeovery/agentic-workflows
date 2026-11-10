@@ -46,12 +46,11 @@ const { fact, placeFact } = require('../board-model.cjs');
 const { readShown } = require('../ledger-read.cjs');
 const { factsOf, madeOn, isCurrent } = require('../ledger-fold.cjs');
 const { shortId } = require('../ledger-ids.cjs');
-const { sealsAt, sealWaits } = require('../raise.cjs');
+const { sealsAt, sealWaits, fixPlaces } = require('../raise.cjs');
 const { askedOpenIds } = require('../questions.cjs');
-const { BUILD_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { pairPassed, beingRead } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
-const { quickFixBuild, fixesBegun, startedOn, FIXES_PHASE } = require('../derivations.cjs');
+const { fixesUnderWay, startedOn, FIXES_PHASE } = require('../derivations.cjs');
 const { closeVerdicts } = require('../finish.cjs');
 const { summaryRecords, RECORD_SECTIONS } = require('../quick-fix-record.cjs');
 const { seedOrigin } = require('../inbox.cjs');
@@ -67,7 +66,7 @@ const { taskLine, standingAt, questionsOf, roundsRead } = require('./board-build
 /** @typedef {import('../board-model.cjs').Question} Question */
 
 /** Whether the unit is a quick-fix whose fixes are under way. @param {BoardAt} at */
-const fixing = ({ manifest }) => quickFixBuild(manifest) && fixesBegun(manifest) && manifest.status === 'in-progress';
+const fixing = ({ manifest }) => fixesUnderWay(manifest);
 
 /** A fix's rounds when none is told. @type {FixLine['rounds']} */
 const NO_ROUNDS = Object.freeze({ sent_back: 0, reading: null, passed: null, settled: false });
@@ -133,7 +132,7 @@ const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at
     }),
     raised: [
       ...askedOpenIds(folded, at.unit).map((id) => ({ kind: /** @type {const} */ ('raised'), id: short(id), text: String(show(id).text).replace(/\s+/g, ' ').trim(), page: null })),
-      ...BUILD_PHASES.flatMap((phase) => sealsAt(at.session, { unit: at.unit, phase, topic: null })).filter((seal) => seal.answers === null && sealWaits(folded, seal))
+      ...fixPlaces(at.unit).flatMap((place) => sealsAt(at.session, place)).filter((seal) => seal.answers === null && sealWaits(folded, seal))
         .map((seal) => ({ kind: /** @type {const} */ ('raised'), id: shortId(seal.id, ids), text: seal.call.question, page: null })),
     ],
   };
