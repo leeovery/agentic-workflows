@@ -108,7 +108,8 @@ const MODEL = type('a model id', (v) => typeof v === 'string' && v.length <= 64 
 // The labeller's twelve questions (16.11.2).
 const QUESTIONS = 12;
 
-// A label (16.11.5): the labeller's model id, and its twelve answers, true or false.
+// A label (16.11.5): the labeller's model id, and its twelve answers, true
+// or false.
 const LABEL = type(
   `a label: the labeller's model id, and its ${QUESTIONS} answers, true or false`,
   (v) => isObject(v) && Object.keys(v).length === 2 && MODEL.test(v.labeller)

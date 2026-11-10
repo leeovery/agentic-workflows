@@ -17,9 +17,12 @@
 //   question of Claude's a call.
 // - The call: Sonnet (16.19.6), at the effort the measured raw call ran
 //   (`trust/label_raw.py`), as long as the one-decision check it runs beside
-//   may take — put beside the work a raise's draw waits on (`labelledBeside`),
-//   or started beside a decision's check, which is waited on synchronously
-//   (`startLabel`, kernel/claude-call.cjs `startClaude`).
+//   may take — put beside the work a raise's draw waits on
+//   (`labelledBeside`), or started beside a decision's check, which is waited
+//   on synchronously (`startLabel`, kernel/claude-call.cjs `startClaude`),
+//   each cancelled where that work refuses, so a refusal never waits on a
+//   label it throws away; and several put at once, a topic's product-record
+//   lines at its yes (`labelsAtOnce`).
 // - The label (16.11.5, 16.19.11): the twelve answers, true or false, in
 //   16.11.2's order, and the labeller that wrote them, by the full id of the
 //   model that answered. Null where the call fails in any way, or names no
@@ -98,39 +101,42 @@ function askOf(text) {
 }
 
 /**
- * The label of the question `text` holds (`questionText`), put to the
- * separate call: null where it fails.
+ * The label of the question `text` holds (`questionText`), its call started
+ * now: `wait()` blocks until it answers and `answered()` answers later, each
+ * null where the call fails or outlives its time; `cancel()` ends the call
+ * unanswered.
  * @param {string} text
- * @returns {Promise<Label|null>}
- */
-async function labelAsync(text) {
-  return labelOf(await claudeCall.askClaudeAsync(askOf(text)));
-}
-
-/**
- * The label of the question `text` holds, its call started now: `wait()`
- * blocks until it answers, null where it fails or outlives its time.
- * @param {string} text
- * @returns {{wait: () => Label|null}}
+ * @returns {{wait: () => Label|null, answered: () => Promise<Label|null>, cancel: () => void}}
  */
 function startLabel(text) {
   const started = claudeCall.startClaude(askOf(text));
-  return { wait: () => labelOf(started.wait()) };
+  return { wait: () => labelOf(started.wait()), answered: async () => labelOf(await started.answered()), cancel: started.cancel };
 }
 
 /**
- * `work`, and the label of `text` put at once beside it: both awaited
- * whatever `work` does, so a refusal never leaves the label's call running.
+ * The labels of the questions `texts` hold, in their order, their calls put
+ * at once, so they take about one call's time.
+ * @param {string[]} texts
+ * @returns {(Label|null)[]}
+ */
+function labelsAtOnce(texts) {
+  const labelling = texts.map(startLabel);
+  return labelling.map((started) => started.wait());
+}
+
+/**
+ * `work`, and the label of `text` put at once beside it: the label awaited
+ * once the work answers, its call cancelled where the work refuses.
  * @template T
  * @param {Promise<T>} work @param {string} text
  * @returns {Promise<{done: T, label: Label|null}>}
  */
 async function labelledBeside(work, text) {
-  const labelling = labelAsync(text);
+  const labelling = startLabel(text);
   try {
-    return { done: await work, label: await labelling };
+    return { done: await work, label: await labelling.answered() };
   } finally {
-    await labelling;
+    labelling.cancel();
   }
 }
 
@@ -182,4 +188,4 @@ function labelFields(label) {
   return { kind: kindOf(label), hard_to_undo: hardToUndo(label) };
 }
 
-module.exports = { ORDER, SCHEMA, promptOf, questionText, labelAsync, startLabel, labelledBeside, compose, kindOf, hardToUndo, checkable, danger, labelFields };
+module.exports = { ORDER, SCHEMA, promptOf, questionText, startLabel, labelsAtOnce, labelledBeside, compose, kindOf, hardToUndo, checkable, danger, labelFields };

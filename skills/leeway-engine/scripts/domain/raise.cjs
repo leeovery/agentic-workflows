@@ -128,20 +128,19 @@
 //   sealed with the rows the check judged, the decision point's reason and
 //   the label (12.13.4, 16.1.2) — and answers the one line Claude says
 //   (12.13.3). The task stays in progress, held; what depends on it is what
-//   the tracker's links hold back. A task parked is raised to the person, so a stop its
-//   builder made comes off it (position.cjs). Raised while a question
-//   already waits on its subject, it judges no row and asks nothing: where
-//   that question parks its task,
-//   or it names none — a rerun after a kill among them — it parks nothing
-//   and answers that question; else its task joins the question, parked
-//   under its number with its first park's call as sealed and its label,
-//   copied under the writer lock. Its line, and the one an `already`
-//   answers, say the question as it is worded now, and, where it names no
-//   task, the tasks the question parks. While a question waits, any raise on its
-//   subject outside the build — one asking as one proceeding — is refused,
-//   naming its raise: before a row is judged, under the lock as a proceed
-//   or an answer lands, and at "I don't follow", for a park that came after
-//   it was drawn (questions.cjs).
+//   the tracker's links hold back. A task parked is raised to the person, so
+//   a stop its builder made comes off it (position.cjs). Raised while a
+//   question already waits on its subject, it judges no row and asks nothing:
+//   where that question parks its task, or it names none — a rerun after a
+//   kill among them — it parks nothing and answers that question; else its
+//   task joins the question, parked under its number with its first park's
+//   call as sealed and its label, copied under the writer lock. Its line, and
+//   the one an `already` answers, say the question as it is worded now, and,
+//   where it names no task, the tasks the question parks. While a question
+//   waits, any raise on its subject outside the build — one asking as one
+//   proceeding — is refused, naming its raise: before a row is judged, under
+//   the lock as a proceed or an answer lands, and at "I don't follow", for a
+//   park that came after it was drawn (questions.cjs).
 // - `raise draw <unit> <question>` (12.13.10, 12.13.20): a question waiting,
 //   by its number or a park's id, raised in full once the person says they
 //   are ready — sealed in the conversation from its first park alone, never

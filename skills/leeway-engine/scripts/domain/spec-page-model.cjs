@@ -32,8 +32,9 @@
 // `hard_to_undo: true` beside the kind of its question, or on one whose
 // question no label marks either way, `hard_to_undo` null — the labeller's
 // call having failed — stays open, its reason saying which; so does one
-// that does not trace (spec-trace.cjs), its reason why. A scenario takes its tick from the statements it draws
-// on — it carries it where every one does — and none of their flags.
+// that does not trace (spec-trace.cjs), its reason why. A scenario takes
+// its tick from the statements it draws on — it carries it where every one
+// does — and none of their flags.
 // ---------------------------------------------------------------------------
 
 const { fingerprint } = require('../kernel/fingerprint.cjs');

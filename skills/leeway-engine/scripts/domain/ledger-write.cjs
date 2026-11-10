@@ -146,13 +146,14 @@
 //   reused — so no call is spent on a write they refuse, and it is judged,
 //   one rule or several, by the separate Claude call, which no peer waits on
 //   either, and labelled meanwhile by the labeller's call, started before
-//   the check and waited on after it, so the write stays synchronous
-//   (kernel/claude-call.cjs `startClaude`). Under the lock the ledger is
-//   folded (ledger-fold.cjs), the place's liveness read again, every link
-//   resolved and its currency and relations checked again, the trust log's
-//   event built and kept, the entry appended, the event landed in the trust
-//   log, and the ledger committed, so no peer's write or lifecycle change
-//   lands between the check and the append. The answer is made once the lock is
+//   the check, waited on once it answers and cancelled where it refuses, so
+//   the write stays synchronous (kernel/claude-call.cjs `startClaude`).
+//   Under the lock the ledger is folded (ledger-fold.cjs), the place's
+//   liveness read again, every link resolved and its currency and relations
+//   checked again, the trust log's event built and kept, the entry appended,
+//   the event landed in the trust log, and the ledger committed, so no
+//   peer's write or lifecycle change lands between the check and the
+//   append. The answer is made once the lock is
 //   released: the entry's short id, the commit, and as warnings a push that
 //   failed and what a landing finished on the way said, which a refusal
 //   carries too.
@@ -1302,7 +1303,8 @@ function linkedBeforeCall(request) {
 /**
  * A write as asked, a decision among them judged by the one-decision check,
  * its run logged from `cwd`, and labelled by the labeller's call, started
- * before the check and waited on once it answers or refuses.
+ * before the check, waited on once it answers and cancelled where it
+ * refuses.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
  * @returns {Request}
  */
@@ -1313,7 +1315,7 @@ function checkedAndLabelled(cwd, request, warnings) {
   try {
     return { ...checkOneDecision(cwd, request, named, warnings), label: labelling.wait() };
   } finally {
-    labelling.wait();
+    labelling.cancel();
   }
 }
 

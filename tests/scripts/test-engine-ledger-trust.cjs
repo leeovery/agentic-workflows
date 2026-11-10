@@ -300,11 +300,13 @@ describe('the label (16.11, 16.13.4, 16.19.8)', () => {
 
   it('labels a replacement of a decision from the question the decision answers, in its wording now', () => {
     const log = path.join(config(), 'calls.jsonl');
-    const old = decide(ask().id).id;
+    const question = ask().id;
+    const old = decide(question).id;
+    write('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['at its most basic'], text: 'What is a note?' }, SESSION);
 
     const own = write('replace', NOTE, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['near-frameless'], text: 'A frameless surface.', why: 'Lighter.' }, labelled(log)).id;
 
-    assert.deepStrictEqual(labellersCalls(log).map(({ input }) => input), [`${QUESTION}\n\nThe answers offered:\n- A frameless surface.`]);
+    assert.deepStrictEqual(labellersCalls(log).map(({ input }) => input), ['What is a note?\n\nThe answers offered:\n- A frameless surface.']);
     assert.deepStrictEqual(logged(), [callOf(old), { ...callOf(own), kind: 'contract', label: LABEL }]);
   });
 
@@ -319,7 +321,7 @@ describe('the label (16.11, 16.13.4, 16.19.8)', () => {
     assert.deepStrictEqual([line.kind, line.unchecked], ['contract', false], 'the check or the label met nothing running beside it');
   });
 
-  it('where the one-decision check refuses the write, appends and logs nothing, the label it asked for waited on and set aside', () => {
+  it('where the one-decision check refuses the write, appends and logs nothing, the label it asked for cancelled (test-engine-ledger-check.cjs)', () => {
     const log = path.join(config(), 'calls.jsonl');
     const question = ask().id;
     const before = ledgerText();
@@ -330,7 +332,6 @@ describe('the label (16.11, 16.13.4, 16.19.8)', () => {
 
     assert.strictEqual(ledgerText(), before);
     assert.deepStrictEqual(logged(), []);
-    assert.strictEqual(labellersCalls(log).length, 1);
   });
 
   it('leaves the kind and the mark null where the label\'s call fails, its call carrying no label', () => {

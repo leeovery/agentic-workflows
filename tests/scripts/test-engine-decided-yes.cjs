@@ -19,8 +19,10 @@
 // nothing, and a yes run again after a kill
 // landing nothing twice — a restage after it taking no second line; the
 // yes refused with nothing staged, a verdict still to ask, or no
-// conversation; and a product-record line changed through a comment, never
-// struck (9.S55).
+// conversation; a product-record line changed through a comment, never
+// struck (9.S55); and each line landing with the kind and hard-to-undo mark
+// its question's label gives, the labels put at once, so a spec line
+// restating one reads by its mark.
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs).
 // ---------------------------------------------------------------------------
@@ -30,10 +32,13 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const path = require('path');
 
-const { ok, refusedPristine, sectionOf, readManifest, readState, statePath, layout, stateGit, lastMessage, killedAt } = require('./engine-harness.cjs');
+const { ok, refusedPristine, sectionOf, readManifest, readState, writeState, statePath, layout, stateGit, lastMessage, killedAt } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
 const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
+const { specPage } = require('../../skills/leeway-engine/scripts/domain/spec-page-model.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, staged, answer, run, reverse } = decidedHelpers(dir);
@@ -89,6 +94,31 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     assert.strictEqual(lastMessage(dir()), 'decided(fumi): note-window');
     assert.deepStrictEqual(committedPaths(), [layout.manifest(UNIT), layout.brief(UNIT, 'removing-fumi')].sort(), 'the yes commits the map and the brief it installed');
     assert.ok(!fs.existsSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json')), 'the staged payload goes');
+  });
+
+  it('lands each line with the kind and hard-to-undo mark its question\'s label gives, the labels put at once, so a spec line restating one reads by its mark', () => {
+    close();
+    staged({
+      lines: [
+        { text: 'Sync stays off until you turn it on.', why: 'The sync call holds for the whole product.', widens: NOTE_MAP.sync.answer },
+        { text: 'First run shows the product before it asks.', why: 'The tour first holds everywhere.', widens: NOTE_MAP.shape.answer },
+      ],
+      candidates: [],
+    });
+    const meet = path.join(dir(), 'meet');
+    fs.mkdirSync(meet);
+    const labelled = { 'Is sync on at first run?': labelAnswers('contract', { hardToUndo: true }), 'How does first run open?': labelAnswers('look'), '': 'no-login' };
+
+    const { lines } = ok(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: { ...SESSION, CLAUDE_STUB_ANSWERS: JSON.stringify(labelled), CLAUDE_STUB_MEET: `2:${meet}` } });
+
+    const landed = lines.map((/** @type {string} */ id) => /** @type {Record<string, unknown>} */ (entries().find((e) => e.id === full(id))));
+    assert.deepStrictEqual(landed.map(({ kind, hard_to_undo: hard }) => [kind, hard]), [['contract', true], ['look', false]], 'the labels were put one after another, or not at all');
+    writeState(dir(), layout.unit(UNIT, 'spec.md'), ['# Fumi', '', '## 1. First run', '', '### 1.1 Opening', '', `1.1.1 Sync stays off until you turn it on. [${lines[0]}]`, '', `1.1.2 First run shows the product first. [${lines[1]}]`, ''].join('\n'));
+    const { ticks } = specPage(dir(), UNIT);
+    assert.deepStrictEqual(['1-1-1', '1-1-2'].map((id) => ticks.get(id)), [
+      { v: 'open', why: `Restates your decision ${lines[0]}, its question marked hard to undo` },
+      { v: 'soft', why: `Restates your decision ${lines[1]} of ${/** @type {string} */ (landed[1].at).slice(0, 10)}` },
+    ]);
   });
 
   it('8.S60: refuses a name the person struck at a yes when a later close stages it', () => {

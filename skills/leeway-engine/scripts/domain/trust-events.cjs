@@ -58,12 +58,12 @@
 // them, by the id of the model its call ran on (16.11.5, 16.19.6,
 // 16.19.11). The kind and the label are null where the labeller gave none,
 // a fact never labelled (labeller.cjs); the sort is Claude's, carried by its
-// raise or its call (raise.cjs), null on a call no raise made. An event whose fields
-// contradict each other is no event: free text pressed or naming a row,
-// read as a row though it is no free text, or a row's key answer naming
+// raise or its call (raise.cjs), null on a call no raise made. An event whose
+// fields contradict each other is no event: free text pressed or naming a
+// row, read as a row though it is no free text, or a row's key answer naming
 // none; a raise followed with no entry, or not followed with an answer, a
-// reading or an entry; an entry reversing itself; and a correction of both
-// or of neither.
+// reading or an entry; an entry reversing itself; and a correction of both or
+// of neither.
 //
 // One file serves every project on the machine, and each project runs the
 // engine its own copy of the workflows installs, so engines of several

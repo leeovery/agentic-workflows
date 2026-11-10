@@ -11,8 +11,11 @@
 // — no login, a rate limit, a timeout, an answer that does not fit, a
 // binary that will not start. The form answering later puts the same call,
 // gives the same answers, and runs beside the calls put with it; the started
-// form puts it too, runs while its caller waits on another call, and at its
-// limit has its process group killed, the call it ran gone.
+// form puts it too, runs while its caller waits on another call, at its
+// limit has its process group killed, the call it ran gone, and cancelled
+// ends at once. Whatever ends its caller, the call ends by its limit and
+// leaves no folder: a caller killed while it waits leaves the call to end
+// at its limit, or as it answers, and both folders gone.
 //
 // Driven through the suite's stub binary (claude-stub.cjs), which records
 // what each call handed it.
@@ -25,8 +28,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawn, spawnSync } = require('child_process');
 
-const { askClaude, askClaudeAsync, startClaude } = require('../../skills/leeway-engine/scripts/kernel/claude-call.cjs');
+const KERNEL = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/claude-call.cjs');
+const { askClaude, askClaudeAsync, startClaude } = require(KERNEL);
 
 const STUB = path.join(__dirname, 'claude-stub.cjs');
 const SYSTEM = 'Answer whether the row is about the session.\n\nOne line.';
@@ -290,7 +295,7 @@ describe('the call\'s answer', () => {
     const answer = askClaude(ASK);
 
     assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
-    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*ENOENT/);
+    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*no-such-claude/);
   });
 });
 
@@ -325,7 +330,7 @@ describe('the call answering later', () => {
     setEnv({ LEEWAY_CLAUDE: path.join(scratch, 'no-such-claude') });
     const answer = await askClaudeAsync(ASK);
     assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
-    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*ENOENT/);
+    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*no-such-claude/);
   });
 
   it('refuses a schema an answer cannot be checked against, before any call', async () => {
@@ -336,7 +341,7 @@ describe('the call answering later', () => {
   });
 });
 
-/** Whether the process `pid` names still runs. @param {number} pid */
+/** Whether the process `pid` names still runs — a process group, given negative. @param {number} pid */
 function running(pid) {
   try {
     process.kill(pid, 0);
@@ -344,6 +349,36 @@ function running(pid) {
   } catch {
     return false;
   }
+}
+
+/** Wait until `done` holds, or `ms` passes. @param {() => boolean} done @param {number} ms */
+async function until(done, ms) {
+  for (const by = Date.now() + ms; !done() && Date.now() < by;) await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
+/** The process that left the first mark at the stub's barrier, once it has. @param {string} meet */
+async function marked(meet) {
+  await until(() => fs.readdirSync(meet).length > 0, 5000);
+  return Number(fs.readdirSync(meet)[0]);
+}
+
+/** The process group `pid` runs in. @param {number} pid */
+function groupOf(pid) {
+  return Number(spawnSync('ps', ['-o', 'pgid=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim());
+}
+
+/**
+ * A caller of its own, putting a call `ask` by `form` — `askClaude`, or
+ * `startClaude` waited on — with the stub answering `answers` and meeting
+ * at `meet`, its temp folder `temp`.
+ * @param {'askClaude'|'startClaude'} form @param {object} ask @param {Record<string, unknown>} answers @param {string} meet @param {string} temp
+ */
+function caller(form, ask, answers, meet, temp) {
+  const waits = `require(${JSON.stringify(KERNEL)}).${form}(${JSON.stringify(ask)})${form === 'startClaude' ? '.wait()' : ''};`;
+  return spawn(process.execPath, ['-e', waits], {
+    env: { ...process.env, TMPDIR: temp, CLAUDE_STUB_ANSWERS: JSON.stringify(answers), CLAUDE_STUB_MEET: meet },
+    stdio: 'ignore',
+  });
 }
 
 describe('the call started, waited on later', () => {
@@ -409,7 +444,7 @@ describe('the call started, waited on later', () => {
     const answer = startClaude(ASK).wait();
 
     assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
-    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude/);
+    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*no-such-claude/);
   });
 
   it('refuses a schema an answer cannot be checked against, before any call', () => {
@@ -417,5 +452,57 @@ describe('the call started, waited on later', () => {
 
     assert.throws(() => startClaude({ ...ASK, schema: { ...SCHEMA, pattern: '^r' } }), /the call's schema uses pattern, which the engine cannot check an answer against/);
     assert.deepStrictEqual(calls(), []);
+  });
+
+  it('cancelled, ends at once — the call it ran gone, both folders removed — and answers as cancelled; a cancel once it has answered changes nothing', { timeout: KILLED_WITHIN_MS }, async () => {
+    const [meet, temp] = [path.join(scratch, 'meet'), path.join(scratch, 'temp')];
+    fs.mkdirSync(meet);
+    fs.mkdirSync(temp);
+    arm({ '': 'timeout' });
+    setEnv({ CLAUDE_STUB_MEET: `1:${meet}`, TMPDIR: temp });
+    const started = startClaude(ASK);
+    const pid = await marked(meet);
+
+    started.cancel();
+
+    assert.deepStrictEqual(started.wait(), { cannot: 'failed', detail: 'cancelled before it answered' });
+    assert.deepStrictEqual(fs.readdirSync(temp), [], 'the call left its folders behind');
+    await until(() => !running(pid), 5000);
+    assert.ok(!running(pid), 'the call outlived its cancel');
+    arm({ '': ANSWER });
+    const answered = startClaude(ASK);
+    const answer = answered.wait();
+    answered.cancel();
+    assert.deepStrictEqual([answer, answered.wait()], [{ answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' }, { answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' }]);
+  });
+
+  it('its caller killed while it waits — the waiting form\'s, as the one-decision check waits — ends at its limit all the same, its group killed, the call deaf to SIGTERM among it, and leaves no folder', { timeout: KILLED_WITHIN_MS }, async () => {
+    const [meet, temp] = [path.join(scratch, 'meet'), path.join(scratch, 'temp')];
+    fs.mkdirSync(meet);
+    fs.mkdirSync(temp);
+    const waiting = caller('askClaude', { ...ASK, timeoutMs: 1000 }, { '': 'timeout' }, `1:${meet}`, temp);
+    const group = groupOf(await marked(meet));
+
+    waiting.kill('SIGKILL');
+
+    await until(() => !running(-group) && fs.readdirSync(temp).length === 0, 5000);
+    assert.ok(!running(-group), 'the call ran on past its limit');
+    assert.deepStrictEqual(fs.readdirSync(temp), [], 'the call left its folders behind');
+  });
+
+  it('its caller killed while it waits, removes both folders and ends its group as it answers, never waiting on its limit', { timeout: KILLED_WITHIN_MS }, async () => {
+    const [meet, temp] = [path.join(scratch, 'meet'), path.join(scratch, 'temp')];
+    fs.mkdirSync(meet);
+    fs.mkdirSync(temp);
+    const waiting = caller('startClaude', { ...ASK, timeoutMs: 60000 }, { '': ANSWER }, `2:${meet}`, temp);
+    const group = groupOf(await marked(meet));
+
+    waiting.kill('SIGKILL');
+    await until(() => !running(waiting.pid ?? 0), 5000);
+    fs.writeFileSync(path.join(meet, 'met'), '');
+
+    await until(() => !running(-group) && fs.readdirSync(temp).length === 0, 5000);
+    assert.ok(!running(-group), 'the call\'s group outlived its answer');
+    assert.deepStrictEqual(fs.readdirSync(temp), [], 'the call left its folders behind');
   });
 });

@@ -15,8 +15,8 @@
 //   the person removes it (review-tree.cjs); and one line counting the calls
 //   decided for the person, by the kind each carries, the unlabelled last.
 //   Its detailed checks are in a file, never shown (14.4.2). `review round`
-//   writes it as `round-{N}.md`, what the round decided — its fix tasks as filed, no
-//   standing claimed, the calls as the round was recorded, and no
+//   writes it as `round-{N}.md`, what the round decided — its fix tasks as
+//   filed, no standing claimed, the calls as the round was recorded, and no
 //   set-aside; the screen draws each fix's standing, the calls and the
 //   set-aside as they are.
 // - The report closing the review phase (14.4.3), the certificate: whether

@@ -5,11 +5,12 @@
 // question Claude put, read by the separate Claude call (16.11, 16.19). The
 // kind each set of twelve answers composes, as `trust/kinds.py` composes it
 // (16.S39); the call, the stated `claude -p` on Sonnet at effort high from
-// a fresh empty folder, Claude's words on stdin (16.S57, 26.S9); the label,
-// all twelve answers in 16.11.2's order beside the labeller that wrote them
-// (16.S38, 27.S2), null on any failure; the questions the release ships;
-// a label put beside other work, awaited whatever that work does; and a
-// label started beside a call its caller waits on, waited on after it.
+// a fresh empty folder, Claude's words on stdin (16.S57, 26.S9), several
+// put at once; the label, all twelve answers in 16.11.2's order beside the
+// labeller that wrote them (16.S38, 27.S2), null on any failure; the
+// questions the release ships; and a label put beside other work, awaited
+// once the work answers, its call cancelled where the work refuses. How a
+// started call runs, answers and fails is the kernel's (test-claude-call).
 //
 // Layer: unit. The separate call is the stub binary (claude-stub.cjs),
 // which records what each call handed it.
@@ -26,9 +27,8 @@ const path = require('path');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const labeller = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
-const { askClaude } = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
 
-const { ORDER, compose, kindOf, hardToUndo, checkable, danger, labelFields, questionText, labelAsync, startLabel, labelledBeside } = labeller;
+const { ORDER, compose, kindOf, hardToUndo, checkable, danger, labelFields, questionText, startLabel, labelsAtOnce, labelledBeside } = labeller;
 
 // 16.11.2's order.
 const QUESTIONS = ['process', 'checkable', 'user_sees', 'looks', 'words', 'flow', 'scope', 'contract', 'danger', 'hard_to_undo', 'one_is_wrong', 'internals'];
@@ -75,6 +75,16 @@ function arm(answer, env = {}) {
 /** What each call handed the stub. @returns {{argv: string[], cwd: string, held: string[], env: Record<string, string|null>, input: string}[]} */
 const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
 
+/** Whether the process `pid` names still runs. @param {number} pid */
+function running(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 describe('the kind twelve answers compose (16.11.3, 16.11.4)', () => {
   // `trust/kinds.py` `compose()`, case by case: each kind from its question,
   // in 16.11.3's order, the first yes deciding.
@@ -120,11 +130,14 @@ describe('what a label marks (16.11.7, 16.5.1)', () => {
 });
 
 describe('the call (16.19.3–16.19.6, 16.S57, 26.S9)', () => {
-  it('16.S57, 26.S9: is the stated claude -p on Sonnet at effort high, never --bare, the shipped questions its prompt and their answers its schema, from a fresh empty folder, Claude\'s words alone on stdin', async () => {
-    arm(answered());
+  it('16.S57, 26.S9: is the stated claude -p on Sonnet at effort high, never --bare, the shipped questions its prompt and their answers its schema, from a fresh empty folder, Claude\'s words alone on stdin; several put at once, meeting before either answers, each its own question\'s label', () => {
+    const meet = path.join(scratch, 'meet');
+    fs.mkdirSync(meet);
+    arm(answered('user_sees', 'words'), { CLAUDE_STUB_MEET: `2:${meet}` });
 
-    await Promise.all([labelAsync(questionText(QUESTION, ROWS)), labelAsync(questionText(QUESTION, []))]);
+    const labels = labelsAtOnce([questionText(QUESTION, ROWS), questionText(QUESTION, [])]);
 
+    assert.deepStrictEqual(labels.map(kindOf), ['words', 'words'], 'the calls were put one after another');
     const made = calls();
     const shipped = JSON.parse(fs.readFileSync(path.join(SCRIPTS, '../content/trust/questions.json'), 'utf8'));
     for (const call of made) {
@@ -140,10 +153,10 @@ describe('the call (16.19.3–16.19.6, 16.S57, 26.S9)', () => {
     assert.deepStrictEqual(made.map((call) => call.input).sort(), [QUESTION, `${QUESTION}\n\nThe answers offered:\n- ${ROWS[0]}\n- ${ROWS[1]}`]);
   });
 
-  it('runs with auto-memory off', async () => {
+  it('runs with auto-memory off', () => {
     arm(answered(), { CLAUDE_STUB_LOG_VALUES: 'CLAUDE_CODE_DISABLE_AUTO_MEMORY' });
 
-    await labelAsync(QUESTION);
+    startLabel(QUESTION).wait();
 
     assert.strictEqual(calls()[0].env.CLAUDE_CODE_DISABLE_AUTO_MEMORY, '1');
   });
@@ -154,27 +167,23 @@ describe('the call (16.19.3–16.19.6, 16.S57, 26.S9)', () => {
 });
 
 describe('the label (16.11.5, 16.19.11, 16.S38, 27.S2)', () => {
-  it('27.S2: holds all twelve answers in 16.11.2\'s order and the labeller that wrote them, by the full id of the model that answered', async () => {
+  it('27.S2: holds all twelve answers in 16.11.2\'s order and the labeller that wrote them, by the full id of the model that answered', () => {
     arm(answered('user_sees', 'words', 'hard_to_undo'), { CLAUDE_STUB_MODELS: JSON.stringify(['claude-haiku-4-5', 'claude-sonnet-5-0']) });
 
-    const label = await labelAsync(QUESTION);
+    const label = startLabel(QUESTION).wait();
 
     assert.deepStrictEqual(label, { labeller: 'claude-sonnet-5-0', answers: answering('user_sees', 'words', 'hard_to_undo') });
     assert.deepStrictEqual(ORDER, QUESTIONS);
   });
 
   for (const [why, answer, env] of /** @type {[string, unknown, Record<string, string>][]} */ ([
-    ['no login serves it', 'no-login', {}],
-    ['a rate limit', 'rate-limit', {}],
-    ['an outage', 'failed', {}],
-    ['an answer that never fits the schema', 'misfit', {}],
-    ['an answer of another shape', { rules: ['One rule.'] }, {}],
-    ['no model the trust log can key', answered(), { CLAUDE_STUB_MODELS: JSON.stringify(['Sonnet 5']) }],
+    ['it cannot run', 'rate-limit', {}],
+    ['it names no model the trust log can key', answered(), { CLAUDE_STUB_MODELS: JSON.stringify(['Sonnet 5']) }],
   ])) {
-    it(`is null where the call fails — ${why} — so the question asks (16.19.8)`, async () => {
+    it(`is null where the call fails — ${why} — so the question asks (16.19.8)`, () => {
       arm(answer, env);
 
-      assert.strictEqual(await labelAsync(QUESTION), null);
+      assert.strictEqual(startLabel(QUESTION).wait(), null);
     });
   }
 });
@@ -196,42 +205,23 @@ describe('a label put beside other work', () => {
     assert.deepStrictEqual([done, kindOf(label)], ['checked', 'scope']);
   });
 
-  it('refuses as the work refuses, once the label\'s call has answered, so none is left running', async () => {
-    arm(answered());
-
-    await assert.rejects(labelledBeside(Promise.reject(new Error('several rules')), QUESTION).then(() => null, (err) => {
-      assert.strictEqual(calls().length, 1, 'the refusal came before the label\'s call answered');
-      throw err;
-    }), /several rules/);
-  });
-});
-
-describe('a label started beside a call its caller waits on', () => {
-  it('runs while the caller waits on its own call — the two meet before either answers — and is the label once waited on', () => {
+  it('refuses as the work refuses, the label\'s call cancelled: none left running, its folder gone', { timeout: 10000 }, async () => {
     const meet = path.join(scratch, 'meet');
     fs.mkdirSync(meet);
-    arm(answered('contract', 'hard_to_undo'), { CLAUDE_STUB_MEET: `2:${meet}` });
+    arm('timeout', { CLAUDE_STUB_MEET: `1:${meet}` });
+    const refused = new Promise((_resolve, reject) => {
+      const look = setInterval(() => {
+        if (fs.readdirSync(meet).length === 0) return;
+        clearInterval(look);
+        reject(new Error('several rules'));
+      }, 10);
+    });
 
-    const labelling = startLabel(QUESTION);
-    const checked = askClaude({ system: 'Check it.', schema: labeller.SCHEMA, model: 'opus', effort: 'high', input: 'The answer: kept.', timeoutMs: 20000 });
+    await assert.rejects(labelledBeside(refused, QUESTION), /several rules/);
 
-    assert.ok('answer' in checked, 'the caller\'s own call met no label running beside it');
-    assert.deepStrictEqual(labelling.wait(), { labeller: 'claude-sonnet-stub', answers: answering('contract', 'hard_to_undo') });
-  });
-
-  it('puts the call the label answering later puts', async () => {
-    arm(answered());
-
-    startLabel(questionText(QUESTION, ROWS)).wait();
-    await labelAsync(questionText(QUESTION, ROWS));
-
-    const [started, later] = calls();
-    assert.deepStrictEqual([started.argv, started.input], [later.argv, later.input]);
-  });
-
-  it('is null where the call fails', () => {
-    arm('rate-limit');
-
-    assert.strictEqual(startLabel(QUESTION).wait(), null);
+    const [pid] = fs.readdirSync(meet).map(Number);
+    for (const by = Date.now() + 5000; running(pid) && Date.now() < by;) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(!running(pid), 'the label\'s call outlived the refusal');
+    assert.ok(!fs.existsSync(calls()[0].cwd), 'the label\'s folder outlived the refusal');
   });
 });

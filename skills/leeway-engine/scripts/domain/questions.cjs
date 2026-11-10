@@ -10,8 +10,9 @@
 //   the same thing — the question, in any of its wordings, or the decision a
 //   replacement would replace — each a task that met it while it waited and
 //   joined it, its line holding the first park's sealed call and its label,
-//   copied under the writer lock, so a question is labelled once. It goes by its first park, which it is drawn from, and
-//   parks every task its parks name but where a close has taken the task off
+//   copied under the writer lock, so a question is labelled once. It goes
+//   by its first park, which it is drawn from, and parks every task its
+//   parks name but where a close has taken the task off
 //   that park, an `unparked` line naming it: a park made outside any task —
 //   the task writer's, the consolidation agent's or the phase review's
 //   (12.5.5) — names none, and a question parking nothing waits as any other,
