@@ -35,7 +35,8 @@
 //   that does not read takes the item off, said as a warning.
 //
 // A call reads each once for all its items (phase-checks.cjs, `once`),
-// finish's refusal of a review phase not over among them.
+// and finish's refusals read through the same (`reviewOverRefusal`,
+// `stillOpen`, `notesLeft`; finish.cjs).
 //
 // Finish waits on the review phase over where the unit has one — a phase
 // of the cut not closed, in step one not merged, a fix task neither done
@@ -47,7 +48,7 @@
 const fs = require('fs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
-const { once, reading } = require('./phase-checks.cjs');
+const { once } = require('./phase-checks.cjs');
 const { reviewAsked, quickFixBuild } = require('./derivations.cjs');
 const { reviewRefusal } = require('./review-entry.cjs');
 const { reviewStanding, endedRefusal, notesStanding, recordedRounds } = require('./review-phase.cjs');
@@ -142,16 +143,14 @@ function recordsWay(at) {
 
 /**
  * Why the unit's finish waits on its review phase, with the way on (the
- * header's) — null where it has none, or it is over. Read into `reads`,
- * which the call's checklist then reads its items through.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Map<string, any>} [reads] @returns {string|null}
+ * header's) — null where it has none, or it is over.
+ * @param {Reading} at @returns {string|null}
  */
-function reviewOverRefusal(cwd, unit, manifest, reads = new Map()) {
-  const at = { ...reading(cwd, unit, manifest), reads };
-  return hasReviewPhase(at) && !reviewPassed(at) ? `${unit} finishes once its review phase is over — ${reviewWay(at)}` : null;
+function reviewOverRefusal(at) {
+  return hasReviewPhase(at) && !reviewPassed(at) ? `${at.unit} finishes once its review phase is over — ${reviewWay(at)}` : null;
 }
 
 module.exports = {
-  reviewOverRefusal,
+  reviewOverRefusal, stillOpen, notesLeft,
   hasReviewPhase, reviewPassed, reviewWay, questionsAnswered, questionsWay, answersNotes, notesAnswered, notesWay, askedWay, knowledgeSetUp, recordsIndexed, recordsWay,
 };

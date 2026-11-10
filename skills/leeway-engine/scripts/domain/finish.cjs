@@ -90,14 +90,14 @@ const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const { finishScreen, closeScreen } = require('./projections/finish.cjs');
-const { setAsideHeld, notesStanding, recordedRounds } = require('./review-phase.cjs');
-const { reviewOverRefusal } = require('./finish-checks.cjs');
+const { setAsideHeld } = require('./review-phase.cjs');
+const { reviewOverRefusal, stillOpen, notesLeft } = require('./finish-checks.cjs');
+const { reading } = require('./phase-checks.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { recordedFixes, pairVerdict } = require('./quick-fix-record.cjs');
 const { shownTask } = require('./task-id.cjs');
 const { refuseDirtyClose, checkOutLanding } = require('./fix-branch.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
-const { askedOpen } = require('./questions.cjs');
 const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -115,32 +115,32 @@ const FINISH_USAGE = 'finish yes <work-unit>';
  * its checklist's close (`finishClose`) — read off the unit's records
  * alone — with a quick-fix's fixes done, null for any other unit. The
  * review phase over is read first where `reviewOver`, as the verbs read
- * it, once for the refusal and the close's `review-passed` item; the board, which takes no writer lock, leaves it to finish's
- * `review-passed` item.
+ * it; the board, which takes no writer lock, leaves it to finish's
+ * `review-passed` item. What the refusals read, the close's engine items
+ * read no more (`reading`, phase-checks.cjs).
  * @param {string} cwd @param {string} unit @param {boolean} [reviewOver]
  */
 function finishStanding(cwd, unit, reviewOver = true) {
   const manifest = unitInProgress(cwd, unit);
-  const reads = new Map();
-  const refused = buildRefusal(manifest) ?? (reviewOver ? reviewOverRefusal(cwd, unit, manifest, reads) : null);
-  if (refused !== null) throw new Error(refused);
-  if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit, reads) };
-  const fixes = recordedFixes(cwd, manifest);
   /** @type {string[]} */
   const warnings = [];
-  refuseAskedOpen(cwd, unit, warnings);
-  if (!reviewAsked(manifest)) refuseNotesStanding(cwd, unit);
-  const close = finishClose(cwd, unit, reads);
+  const at = reading(cwd, unit, manifest, warnings);
+  const refused = buildRefusal(manifest) ?? (reviewOver ? reviewOverRefusal(at) : null);
+  if (refused !== null) throw new Error(refused);
+  if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit, at.reads) };
+  const fixes = recordedFixes(cwd, manifest);
+  refuseAskedOpen(unit, stillOpen(at));
+  if (!reviewAsked(manifest)) refuseNotesStanding(unit, notesLeft(at));
+  const close = finishClose(cwd, unit, at.reads);
   return { manifest, fixes, ...close, warnings: [...warnings, ...close.warnings] };
 }
 
 /**
  * Refuse a quick-fix's close over a note for later standing, naming each
  * and the verb that answers them (R24).
- * @param {string} cwd @param {string} unit
+ * @param {string} unit @param {string[]} notes
  */
-function refuseNotesStanding(cwd, unit) {
-  const notes = notesStanding(cwd, unit, recordedRounds(cwd, unit));
+function refuseNotesStanding(unit, notes) {
   if (notes.length > 0) throw new Error(`${unit} closes once each note for later is filed to the inbox or dropped — ${notes.join(', ')}: quick-fix notes ${unit} --file <notes.json>`);
 }
 
@@ -269,10 +269,9 @@ function refuseLanding(cwd, unit, { verdict, fixes }) {
 /**
  * Refuse a quick-fix's close over a question asked in its conversation
  * still open, naming each and the raise that asks it again.
- * @param {string} cwd @param {string} unit @param {string[]} warnings
+ * @param {string} unit @param {import('./questions.cjs').AskedOpen[]} open
  */
-function refuseAskedOpen(cwd, unit, warnings) {
-  const open = askedOpen(cwd, unit, warnings);
+function refuseAskedOpen(unit, open) {
   if (open.length === 0) return;
   const named = open.map(({ id, asks }) => `${id} ${asks}`).join('; ');
   const ways = open.map(({ id, place }) => `raise ${place} --answers ${id}`).join(', ');

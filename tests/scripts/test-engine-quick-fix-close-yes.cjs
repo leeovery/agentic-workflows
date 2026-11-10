@@ -9,7 +9,8 @@
 // one commit, its fixes in the order they were done (19.5.17), putting the
 // checkout back on the branch it lands on, completing the unit and naming
 // the start menu, its folder then holding `build/` and `summary.md` alone of
-// the work (4.S23), its record found once it is closed (22.S22). Its screen
+// the work (4.S23), its record found once it is closed (22.S22), its
+// questions and notes read once, as its checklist alone reads them. Its screen
 // is test-engine-quick-fix-close.cjs's; the landing as one pull request, on
 // every driver, GitHub's among them (19.S38),
 // test-engine-landing-conformance-quick-fix.cjs's.
@@ -27,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, callAsync, okSectionsAsync, refusedPristine, git, stateGit, statePath, readManifest, cleanupFixture, keywordOnlyKnowledge,
+  ok, callAsync, okSectionsAsync, refusedPristine, git, stateGit, statePath, readManifest, cleanupFixture, keywordOnlyKnowledge, traced, layout,
 } = require('./engine-harness.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const { UNIT, PLACE, DESCRIPTION, checklistClosed } = require('./quick-fix-world.cjs');
@@ -42,18 +43,36 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
+/**
+ * A call that must succeed, and what it read: the ledger, a git call each
+ * time, and the notes answered at the close, a look each time.
+ * @param {import('node:test').TestContext} t @param {string[]} args
+ */
+function reading(t, args) {
+  const looks = t.mock.method(fs, 'existsSync');
+  try {
+    const { result, commands } = traced(() => run(args));
+    const notes = looks.mock.calls.filter(({ arguments: [file] }) => file === statePath(dir, layout.unit(UNIT, 'build', 'notes-answered.json'))).length;
+    return { result, ledger: commands.filter((command) => command === "cat-file '--batch-check=%(objectname) %(objecttype) %(objectsize)'").length, notes };
+  } finally {
+    looks.mock.restore();
+  }
+}
+
 describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
-  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23)', () => {
+  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23) — reading its questions and notes once, as its checklist alone does, the ledger besides for the verdict asked and the completion', (t) => {
     dir = world();
     closeable();
     fs.writeFileSync(path.join(dir, 'src', 'stray.js'), 'stray\n');
     const main = git(dir, ['rev-parse', 'main']).trim();
     const dirty = [refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1']), git(dir, ['rev-parse', 'main']).trim()];
     fs.rmSync(path.join(dir, 'src', 'stray.js'));
-    const done = run(['finish', 'yes', UNIT]);
+    const checked = reading(t, ['checklist', 'show', 'finish', UNIT]);
+    const { result: done, ledger, notes } = reading(t, ['finish', 'yes', UNIT]);
 
     const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`;
     assert.deepStrictEqual(dirty, [`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main]);
+    assert.deepStrictEqual([checked.notes > 0, notes, ledger - checked.ledger], [true, checked.notes, 2]);
     assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
       ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
       committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },

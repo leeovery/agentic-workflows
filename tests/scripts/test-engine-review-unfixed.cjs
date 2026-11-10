@@ -11,7 +11,7 @@
 // is recorded, and one that passed is an item of the round, `unfixed#1`,
 // serious, which a finding answers, and the round fails (15.5.6, 15.S20).
 // The runs themselves are test-engine-verify-unfixed.cjs's; a unit of
-// another type, whose DATA holds none of this, test-engine-review-entry.cjs's.
+// another type, whose DATA holds none of this, test-engine-review-entry-answer.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test, its unit
 // made a bugfix and its runs on the unfixed code written by hand: the
