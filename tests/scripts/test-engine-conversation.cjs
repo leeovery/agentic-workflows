@@ -143,7 +143,7 @@ describe('the mark', () => {
   });
 
   it('a call that fails marks it all the same', () => {
-    harness.refuses(dir, ['topic', 'start', 'nowhere', 'discussion', 'nowhere'], { env: session('sess-1') });
+    harness.refuses(dir, ['topic', 'cancel', 'nowhere', 'discovery', 'nowhere'], { env: session('sess-1') });
     assert.ok(fs.existsSync(marker('sess-1')));
   });
 

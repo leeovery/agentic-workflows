@@ -48,7 +48,7 @@ const { codeChanges, linksHeldOut, stagedHeldOut } = require('./domain/worktree-
 const { quoted } = require('./domain/landing-git.cjs');
 const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
-const { startTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
+const { cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
 const { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage } = require('./domain/mail.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
@@ -243,7 +243,6 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
 ${LOG_USAGE.replace(/^/gm, '  ')}
 ${HUNT_USAGE.replace(/^/gm, '  ')}
   ${CONCLUDE_USAGE}
-  topic start <work-unit> <phase> <topic>
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
   ${MAILBOX_USAGE}
@@ -263,7 +262,6 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${ENTER_USAGE}
   layout guard                       (hook before Write, Edit and NotebookEdit; its JSON on stdin)
   shell guard                        (hook before Bash; its JSON on stdin)
-  topic reopen <work-unit> <phase> <topic>
   topic cancel <work-unit> discovery <topic>
   topic reactivate <work-unit> discovery <topic>
   topic postpone <work-unit> <topic> --horizon "<horizon>"
@@ -777,31 +775,24 @@ function runInvestigation(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/reopen are manifest-side lifecycle
-// bookkeeping with no commit — the calling session's commit cadence picks the
-// change up; send commits its own delivery.
-// cancel/reactivate act on a topic's unit, `discovery` (the map row with its
-// discussion and experiments) — one transaction per call: the manifest write
-// and a scoped commit.
+// topic — a topic's mail, its map, and its unit's lifecycle. A topic is
+// started by `enter`, and closes through its phase's own door. send commits
+// its own delivery. cancel/reactivate act on a topic's unit, `discovery` (the
+// map row with its discussion and experiments) — one transaction per call:
+// the manifest write and a scoped commit.
 // The JSON response reports what happened — no follow-up read needed.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
-// topic: `start` (opening it), `answered` (taking a message out of its own
-// mailbox), and `mailbox` (the loop checks it every turn, so a turn with no
-// writes still registers). `send` never beats — delivery acts on the TARGET
-// topic from the origin's session, and a beat there would stamp the origin
-// process onto a topic it does not hold. Nor do `cancel`, `reactivate` or
-// `reopen`: those are analysis and navigation actors reaching across topics.
+// topic: `answered` (taking a message out of its own mailbox), and `mailbox`
+// (the loop checks it every turn, so a turn with no writes still registers).
+// `send` never beats — delivery acts on the TARGET topic from the origin's
+// session, and a beat there would stamp the origin process onto a topic it
+// does not hold. Nor do `cancel` or `reactivate`: those are analysis and
+// navigation actors reaching across topics.
 // ---------------------------------------------------------------------------
 
-const TOPIC_COMMANDS = { start: startTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
-
-// The self-referential verbs among those dispatched through TOPIC_COMMANDS;
-// `mailbox` and `answered` beat at their own branches.
-const TOPIC_BEATS = ['start'];
-
-// The verbs whose phase argument names a topic's unit, not a phase item.
-const UNIT_VERBS = ['cancel', 'reactivate'];
+/** The unit verbs, whose phase argument names a topic's unit, `discovery`. */
+const UNIT_VERBS = { cancel: cancelTopic, reactivate: reactivateTopic };
 
 /**
  * A session hook target's session id: the argument when given, else the
@@ -1021,23 +1012,19 @@ function runTopic(call, argv) {
       respondSections(call, mapReceipt(change));
       return;
     }
-    if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error(`Usage: engine topic <start|send|reopen|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
+    if (!Object.hasOwn(UNIT_VERBS, command)) {
+      throw new Error(`Usage: engine topic <send|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
     }
-    const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
     if (!workUnit || !phase || !topic || rest.length !== 3) {
-      const phaseArg = UNIT_VERBS.includes(command) ? 'discovery' : '<phase>';
-      throw new Error(`Usage: engine topic ${command} <work-unit> ${phaseArg} <topic>`);
+      throw new Error(`Usage: engine topic ${command} <work-unit> discovery <topic>`);
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
       respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.topic, 'cancelled') });
       return;
     }
-    const result = fn(call.cwd, workUnit, phase, topic);
-    if (TOPIC_BEATS.includes(command)) beatQuietly(call.cwd, workUnit, phase, topic);
-    respond(call, result);
+    respond(call, UNIT_VERBS[/** @type {keyof typeof UNIT_VERBS} */ (command)](call.cwd, workUnit, phase, topic));
   } catch (err) {
     failJson(call, err);
   }

@@ -61,6 +61,7 @@ const { versionOf } = require('../../skills/leeway-engine/scripts/domain/git-flo
 const { atLeast } = require('../../skills/leeway-engine/scripts/kernel/version.cjs');
 const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
 const { followingLiveness } = require('../../skills/leeway-engine/scripts/domain/ledger-copies.cjs');
+const { startTopic } = require('../../skills/leeway-engine/scripts/domain/transitions.cjs');
 const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
@@ -957,6 +958,23 @@ function completeUnit(dir, workUnit, message = `finish(${workUnit}): completed`)
   return /** @type {ReturnType<typeof completeWorkUnit>} */ (completed);
 }
 
+/**
+ * A topic's phase item started as `enter` starts it, in process: a start has
+ * no verb of its own, so a suite that needs a started item runs the function
+ * `enter` runs, under the state lock every writing verb takes and with the
+ * ledger's copies following it, and nothing else `enter` does — no position,
+ * no heartbeat.
+ * @param {string} dir @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function startItem(dir, workUnit, phase, topic) {
+  /** @type {ReturnType<typeof startTopic>|undefined} */
+  let started;
+  followingLiveness({ cwd: dir, out: () => {}, err: () => {} }, findStateRoot(dir), () => {
+    started = startTopic(dir, workUnit, phase, topic);
+  });
+  return /** @type {ReturnType<typeof startTopic>} */ (started);
+}
+
 module.exports = {
   ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
   call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, holdLock, lockAttempts, contend, killedAt,
@@ -965,6 +983,6 @@ module.exports = {
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs, accountFiles, accountTaken,
-  NO_SPACE, failingTrustAppends, completeUnit,
+  NO_SPACE, failingTrustAppends, completeUnit, startItem,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment,
 };

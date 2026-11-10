@@ -1,17 +1,16 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: topic transitions — start, complete, reopen, cancel, and
-// reactivate, each a single transaction from the caller's perspective — and
-// the parking a message's landing applies to the topic it reaches (mail.cjs).
+// Domain ring: topic transitions — start, cancel, reactivate and postpone,
+// each a single transaction from the caller's perspective — and the parking a
+// message's landing applies to the topic it reaches (mail.cjs).
 //
-// start/complete/reopen are phase-item lifecycle bookkeeping: a manifest
-// write and no git commit — the calling session's commit cadence picks the
-// manifest change up. cancel/reactivate are the epic transactions over a
-// topic's unit: manifest write, scoped git commit. Past the
-// unit's spec no topic is reopened, nor a map topic cancelled or reactivated
-// (4.11.2, 18.4.19, spec-standing.cjs); a topic is postponed until ready to
-// build's yes (P3).
+// start is `enter`'s, phase-item lifecycle bookkeeping: a manifest write and
+// no git commit — the entry's own commit picks the manifest change up.
+// cancel/reactivate are the epic transactions over a topic's unit: manifest
+// write, scoped git commit. Past the unit's spec no map topic is cancelled or
+// reactivated (4.11.2, 18.4.19, spec-standing.cjs); a topic is postponed until
+// ready to build's yes (P3).
 //
 // Validation throws loud and specific before anything is touched. Every
 // load→mutate→save runs under the work unit's manifest lock (the same lock
@@ -34,7 +33,7 @@ const { closeInFlight } = require('./agent-state.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, DERIVED_PHASES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, DERIVED_PHASES, EXPERIMENT_SPAWN_PHASES, BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
@@ -116,26 +115,6 @@ function postponedRefusal(phase, topic) {
  */
 
 /**
- * The phase item for `topic`, or a loud error.
- * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, promoted_to?: string}}
- */
-function phaseItem(manifest, phase, topic) {
-  assertLegalWrite(phase, 'cancelled');
-  const phases = manifest && manifest.phases;
-  const ph = phases && typeof phases === 'object' ? phases[phase] : undefined;
-  const items = ph && typeof ph === 'object' ? ph.items : undefined;
-  if (!items || typeof items !== 'object') {
-    throw new Error(`no ${phase} items in the manifest (phases.${phase}.items)`);
-  }
-  const item = items[topic];
-  if (!item || typeof item !== 'object') {
-    throw new Error(`no ${phase} item "${topic}" in the manifest (phases.${phase}.items)`);
-  }
-  return item;
-}
-
-/**
  * @typedef {object} TopicStartResult
  * @property {string} topic
  * @property {string} phase
@@ -192,8 +171,8 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
 /**
  * Start a phase item: create it with `status: in-progress` when absent
  * (init-phase semantics), or set an existing item back to `in-progress`.
- * A completed item must go through reopen — resuming is not starting — and
- * a cancelled item through reactivate. On an epic the discovery map gates
+ * A completed item reopens only through a message sent to it — resuming is
+ * not starting — and a cancelled item through reactivate. On an epic the discovery map gates
  * the birth (see assertMapAllowsStart). No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
@@ -204,7 +183,7 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
 function startTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
   assertNotBuildPlace(phase);
-  assertNotDerived(phase, 'the experiment item is derived bookkeeping — the spawn creates and reopens it (experiment create), never topic start');
+  assertNotDerived(phase, 'the experiment item is derived bookkeeping — the spawn creates and reopens it (experiment create), never a start');
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     assertNoSpecItem(manifest, phase);
@@ -214,7 +193,7 @@ function startTopic(cwd, workUnit, phase, topic) {
 
     const existing = items[topic] && typeof items[topic] === 'object' ? items[topic] : undefined;
     if (existing && existing.status === 'completed') {
-      throw new Error(`${phase} item "${topic}" is already completed — reopen it instead`);
+      throw new Error(`${phase} item "${topic}" is already completed — a message sent to it reopens it`);
     } else if (existing && existing.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     } else if (existing && existing.status === 'postponed') {
@@ -319,54 +298,6 @@ function parkMessageItem(items, phase, topic) {
     return { status: 'unstarted', created: false, status_before: null, dirty: true };
   }
   return { status: before, created: false, status_before: before, dirty: false };
-}
-
-/**
- * @typedef {object} TopicReopenResult
- * @property {string} topic
- * @property {string} phase
- * @property {string} status   always `in-progress`
- */
-
-/**
- * Reopen a completed phase item: set `status: in-progress`. Only a
- * completed item reopens — anything else keeps its own flow (a cancelled
- * item must go through reactivate). No git commit.
- * @param {string} cwd project root
- * @param {string} workUnit
- * @param {string} phase
- * @param {string} topic
- * @returns {TopicReopenResult}
- */
-function reopenTopic(cwd, workUnit, phase, topic) {
-  assertLegalWrite(phase, 'in-progress');
-  assertNotBuildPlace(phase);
-  assertNotDerived(phase, 'the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
-  if (phase === 'discussion') {
-    throw new Error('a discussion decided, or closed into its spec, reopens through a message sent to it (topic send), never topic reopen');
-  }
-  return withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertNoSpecItem(manifest, phase);
-    if (TOPIC_PHASES.includes(phase)) assertBeforeSpec(cwd, manifest, 'change');
-    const item = phaseItem(manifest, phase, topic);
-    if (item.status === 'cancelled') {
-      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-    }
-    if (item.status === 'postponed') {
-      throw new Error(postponedRefusal(phase, topic));
-    }
-    if (item.status === 'promoted') {
-      throw new Error(promotedRefusal(phase, topic, item));
-    }
-    if (item.status !== 'completed') {
-      throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
-    }
-    item.status = 'in-progress';
-
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { topic, phase, status: 'in-progress' };
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -830,4 +761,4 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
   });
 }
 
-module.exports = { startTopic, parkMessageItem, reopenTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, releaseExperimentWaits, assertLegalTopicName };
+module.exports = { startTopic, parkMessageItem, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, releaseExperimentWaits, assertLegalTopicName };

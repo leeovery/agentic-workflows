@@ -124,7 +124,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
 
   it('a refusal answers {ok:false} on stderr with exit 1, and writes nothing', () => {
     const before = manifestOf(dir);
-    const res = engine.run(['topic', 'reopen', 'payments', 'investigation', 'absent'], { cwd: dir });
+    const res = engine.run(['manifest', 'set', 'payments.investigation.payments', 'status', 'bogus'], { cwd: dir });
     assert.strictEqual(res.code, 1);
     assert.strictEqual(res.stdout, '', 'a refusal says nothing on stdout');
     assert.strictEqual(JSON.parse(res.stderr).ok, false);
@@ -393,7 +393,7 @@ describe('the two doors answer alike', () => {
     'a read': [['manifest', 'get', 'payments.investigation.payments', 'status'], 0],
     'an expected miss': [['manifest', 'key-of', 'payments.investigation', 'items', 'absent'], 2],
     'a mutation': [['manifest', 'set', 'payments.investigation.payments', 'brief_incorporated=true'], 0],
-    'a refusal': [['topic', 'reopen', 'payments', 'investigation', 'absent'], 1],
+    'a refusal': [['manifest', 'set', 'payments.investigation.payments', 'status', 'bogus'], 1],
     'a usage': [['workunit'], 1],
     'a render surface': [['render', 'cancel-gate', 'payments'], 0],
   })) {

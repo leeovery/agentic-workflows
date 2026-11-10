@@ -21,7 +21,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { stateGit, sectionOf, completeUnit } = require('./engine-harness.cjs');
+const { stateGit, sectionOf, completeUnit, startItem } = require('./engine-harness.cjs');
 const { Sim, sessionLog, menuEntry, enterEntry, discussed, askedOn } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
@@ -242,7 +242,7 @@ describe('pipeline simulation: workunit', () => {
     sim.refuses(['manifest', 'set', `${wu}.`, 'field', 'x'], /empty segments/);
     sim.refuses(['manifest', 'set', `${wu}.discussion.${wu}`, 'status', 'concluded'], /Must be one of/);
     sim.refuses(['commit', '', '-m', 'nope'], /./);
-    sim.refuses(['topic', 'start', wu, 'cooking', wu], /Invalid phase|unknown/);
+    assert.throws(() => startItem(sim.dir, wu, 'cooking', wu), { message: /unknown or non-lifecycle phase "cooking"/ });
 
     // A taken name refuses whatever type the second call names, over an
     // untouched world.

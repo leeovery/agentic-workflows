@@ -1000,7 +1000,7 @@ function computeTopicLifecycle(manifest, topicName) {
   }
   // A discussion cancelled or postponed on its own item reads as that
   // closure — the only reading a topic with no map row has. It must not
-  // fall through to fresh: its item refuses `topic start`, and the way back
+  // fall through to fresh: its item refuses a start, and the way back
   // is reactivate.
   if (ds === 'cancelled') {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, discussion_state: ds };

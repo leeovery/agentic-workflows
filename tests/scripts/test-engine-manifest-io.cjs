@@ -33,7 +33,7 @@ const { PS_TIMEOUT_MS, processStartTime } = require(PROCESS_PATH);
 const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/leeway-engine/scripts/engine.cjs');
 
 const {
-  ok, childLimits, stateGit, commitAll, cleanupFixture, lockAttempts, contend, withEnv, setupGitFixture, statePath, layout, createFile, writeState, readManifest, STATE_DIR_NAME,
+  ok, childLimits, stateGit, commitAll, cleanupFixture, lockAttempts, contend, withEnv, setupGitFixture, statePath, layout, createFile, writeState, readManifest, STATE_DIR_NAME, startItem,
 } = harness;
 
 function writeEpicFixture(dir) {
@@ -524,21 +524,19 @@ describe('structurally corrupt manifests refuse writes', () => {
     untouched();
   });
 
-  it('string `phases` + topic start: refusal, manifest pristine — no silent coercion', () => {
+  it('string `phases` + a start: refusal, manifest pristine — no silent coercion', () => {
     const untouched = plant(layout.manifest('unit'), JSON.stringify({
       name: 'unit', work_type: 'epic', status: 'in-progress', phases: 'oops',
     }, null, 2) + '\n');
-    const res = engineFail(['topic', 'start', 'unit', 'discussion', 'auth']);
-    assert.match(res.error, /"phases" is not an object \(found string\)/);
+    assert.throws(() => startItem(dir, 'unit', 'discussion', 'auth'), { message: /"phases" is not an object \(found string\)/ });
     untouched();
   });
 
-  it('array `phases` + topic start: refusal — fields set into an array are stringify-dropped', () => {
+  it('array `phases` + a start: refusal — fields set into an array are stringify-dropped', () => {
     const untouched = plant(layout.manifest('unit'), JSON.stringify({
       name: 'unit', work_type: 'epic', status: 'in-progress', phases: [],
     }, null, 2) + '\n');
-    const res = engineFail(['topic', 'start', 'unit', 'discussion', 'auth']);
-    assert.match(res.error, /"phases" is not an object \(found array\)/);
+    assert.throws(() => startItem(dir, 'unit', 'discussion', 'auth'), { message: /"phases" is not an object \(found array\)/ });
     untouched();
   });
 
@@ -617,8 +615,7 @@ describe('engine writes take the writer lock', () => {
   it('a dead holder\'s claim is taken over at once: the write proceeds, the lock is cleaned up', () => {
     fs.writeFileSync(lock, DEAD);
 
-    const res = ok(dir, ['topic', 'start', 'payments', 'discussion', 'auth-flow']);
-    assert.strictEqual(res.ok, true);
+    assert.strictEqual(startItem(dir, 'payments', 'discussion', 'auth-flow').status, 'in-progress');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['auth-flow'].status, 'in-progress');
     assert.ok(!fs.existsSync(lock), 'the dead claim taken over and not left behind');
   });

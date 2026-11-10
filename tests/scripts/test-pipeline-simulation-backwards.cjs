@@ -35,10 +35,9 @@ describe('pipeline simulation: backwards', () => {
     discussed(sim, wu, wu);
 
     // The bridge offers no way back into the closed discussion: no revisit
-    // menu, and topic reopen does not take it.
+    // menu.
     arrive(sim, wu);
     sim.refuses(['render', 'revisit-phases', wu], /has no completed earlier phase to revisit/);
-    sim.refuses(['topic', 'reopen', wu, 'discussion', wu], /^a discussion decided, or closed into its spec, reopens through a message sent to it/);
 
     // Entered again, the discussion goes on, so its close is void in the
     // entry's own commit: the spec waits until it closes again.
@@ -73,10 +72,5 @@ describe('pipeline simulation: backwards', () => {
     shut();
     const decision = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions[0].id;
     sim.refuses(['ledger', 'replace', at, '--replaces', decision, '--reason', 'changed-mind'], past('replace'), null, JSON.stringify({ ...person, text: 'Dropped.', why: 'So.', drops: [] }));
-    sim.refuses(['topic', 'reopen', wu, 'specification', wu], /^revisit's spec keeps no items — it is entered at the work unit/);
-
-    // The build's places stand by its cut: no topic verb reopens them.
-    sim.refuses(['topic', 'reopen', wu, 'implementation', wu], /^implementation stands by the build's cut — it is entered by `engine enter implementation <work-unit>`/);
-    sim.refuses(['topic', 'reopen', wu, 'review', wu], /^review stands by the build's cut/);
   });
 });

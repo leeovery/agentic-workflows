@@ -114,10 +114,6 @@ describe('every door the spec closes refuses, writing nothing, with the way on f
     ], [past.cancel('fumi'), past.change('fumi')]);
   });
 
-  it('a topic reopened — a bugfix\'s investigation concluded — a change settled in the spec', () => {
-    assert.strictEqual(refusedPristine(dir, ['topic', 'reopen', 'crash', 'investigation', 'crash']).error, past.change('crash'));
-  });
-
   it('a roadmap item pulled forward into the epic, the topic it postponed back to its row or an idea as a new one: it stays on the roadmap', () => {
     assert.deepStrictEqual([
       refusedPristine(dir, ['roadmap', 'pull-forward', 'widgets', '--into', 'fumi']).error,

@@ -168,9 +168,6 @@ describe('pipeline simulation: bugfix', () => {
     // A build by its cut leaves nothing to revisit — never the spec
     // (11.9.1), nor the investigation the spec closed (4.11.2).
     sim.refuses(['render', 'revisit-phases', wu], /"crash-fix" has no completed earlier phase to revisit/);
-    // Past its spec the investigation is not reopened: a change is settled
-    // in the spec.
-    sim.refuses(['topic', 'reopen', wu, 'investigation', wu], /^crash-fix has its spec — a topic exists only before it/);
   });
 
   it('bugfix moved to a feature from its investigation (19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {

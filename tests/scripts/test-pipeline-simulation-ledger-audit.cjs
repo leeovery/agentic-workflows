@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { startItem } = require('./engine-harness.cjs');
 const { Sim, mappedEpic } = require('./pipeline-world.cjs');
 const { auditState, ledgerAuditsOf } = require('./pipeline-oracle.cjs');
 
@@ -29,7 +30,7 @@ describe('pipeline simulation: the oracle\'s ledger audit', () => {
   it('the oracle audits the ledger once per state it reads: a step that leaves every read as it was passes as it was, and a step that changes any of them — a copy, not the ledger or a manifest — is audited afresh, a stale copy failing', () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
-    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
+    startItem(sim.dir, wu, 'discussion', 'note-window');
     sim.run(['ledger', 'ask', `${wu}.discussion.note-window`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What does the note window cover?' }));
     const before = ledgerAuditsOf(sim.dir);
     sim.run(['presence', 'beat', wu, 'discussion', 'note-window']);

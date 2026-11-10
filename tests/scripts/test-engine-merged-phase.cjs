@@ -16,7 +16,7 @@ const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { call, ok, output, refuses, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { call, ok, output, refuses, commitAll, fixtureFrom, cleanupFixture, startItem } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { WORK_TYPE_PIPELINES, VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { TOPIC_PHASES } = require('../../skills/leeway-engine/scripts/domain/ledger-units.cjs');
@@ -60,7 +60,7 @@ describe('research is no skill and no phase', () => {
     assert.ok(!TOPIC_PHASES.includes('research'));
     assert.strictEqual(Object.hasOwn(VALID_PHASE_STATUSES, 'research'), false);
     assert.match(refuses(dir, ['manifest', 'set', `${EPIC}.research.alpha`, 'status', 'in-progress']).error, /^Invalid phase "research"/);
-    assert.match(refuses(dir, ['topic', 'start', EPIC, 'research', 'alpha']).error, /^unknown or non-lifecycle phase "research"/);
+    assert.throws(() => startItem(dir, EPIC, 'research', 'alpha'), { message: /^unknown or non-lifecycle phase "research"/ });
   });
 });
 

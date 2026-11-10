@@ -23,7 +23,7 @@ const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState, readManifest } = harness;
+const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState, readManifest, startItem } = harness;
 const { headFiles, statusLines, codeHeadFiles, codeStatusLines, holdStateRef, epicManifest, implementing, setupTwoTopicFixture, building, FOR_TASK, startBuilding } = require('./commit-door-world.cjs');
 const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/leeway-engine/scripts/domain/commit.cjs');
 
@@ -81,7 +81,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // may be sitting in it idle-but-alive. Terminal status releases a slot
     // this session holds; it must never release one this session is only
     // visiting.
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-b']);
+    startItem(dir, 'payments', 'investigation', 'topic-b');
     closed('topic-b');
     const peer = beatFile('investigation', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
@@ -105,9 +105,6 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // foreign mailbox must not manufacture a hold there.
     ok(dir, ['topic', 'mailbox', 'payments', 'topic-a'], { env: me });
     assert.ok(!beaten('discussion', 'topic-a'), 'a mailbox read never creates a heartbeat');
-
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a'], { env: me });
-    assert.ok(beaten('investigation', 'topic-a'), 'start opens the session\'s own topic');
 
     writeState(dir, layout.mailbox('payments', 'topic-a', '001-first.md'), 'First\n');
     commitAll(dir, 'a delivered message');
@@ -149,8 +146,10 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('a commit on a closed item releases the slot, and every commit after it keeps it released', () => {
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
-    assert.ok(beaten('investigation', 'topic-a'), 'start opens the topic');
+    startItem(dir, 'payments', 'investigation', 'topic-a');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nunder way\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): under way', '--topic', 'investigation/topic-a']);
+    assert.ok(beaten('investigation', 'topic-a'), 'a live item\'s cadence commit holds it');
 
     // A terminal item is finished, whatever the session does next: no commit
     // after its close re-takes the slot.
@@ -160,18 +159,6 @@ describe('mechanical heartbeats: the self-referential rule', () => {
       ok(dir, ['commit', 'payments', '-m', `investigation(payments): ${step} topic-a`, '--topic', 'investigation/topic-a']);
       assert.ok(!beaten('investigation', 'topic-a'), `the ${step} commit leaves it released`);
     }
-  });
-
-  it('a reopened item beats again', () => {
-    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
-    closed('topic-a');
-    ok(dir, ['commit', 'payments', '-m', 'investigation(payments): conclude topic-a', '--topic', 'investigation/topic-a']);
-    assert.ok(!beaten('investigation', 'topic-a'), 'closed and released');
-
-    ok(dir, ['topic', 'reopen', 'payments', 'investigation', 'topic-a']);
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nreopened\n');
-    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): reconcile', '--topic', 'investigation/topic-a']);
-    assert.ok(beaten('investigation', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
   });
 
   it('a --topic commit on a topic with no manifest item neither beats nor clears', () => {

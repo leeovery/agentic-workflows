@@ -10,7 +10,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
-const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit } = harness;
+const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit, startItem } = harness;
 
 /** Run `engine render` expecting success; returns the whole stdout (sections). */
 const render = (dir, args) => harness.output(dir, ['render', ...args]);
@@ -275,7 +275,7 @@ describe('engine topic reactivate', () => {
   });
 });
 
-describe('engine topic start', () => {
+describe('a topic\'s start — the function `enter` runs', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -285,9 +285,9 @@ describe('engine topic start', () => {
     delete m0.phases.investigation;
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
     commitAll(dir, 'no investigation');
-    const res = engine(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
+    const res = startItem(dir, 'payments', 'investigation', 'auth-flow');
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'auth-flow', phase: 'investigation', status: 'in-progress', created: true });
+    assert.deepStrictEqual(res, { topic: 'auth-flow', phase: 'investigation', status: 'in-progress', created: true });
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.investigation.items, { 'auth-flow': { status: 'in-progress' } });
@@ -297,7 +297,7 @@ describe('engine topic start', () => {
   });
 
   it('creates alongside existing items in a populated phase — siblings untouched', () => {
-    const res = engine(dir, ['topic', 'start', 'payments', 'investigation', 'settlement']);
+    const res = startItem(dir, 'payments', 'investigation', 'settlement');
 
     assert.strictEqual(res.created, true);
     const m = readManifest(dir, 'payments');
@@ -313,41 +313,36 @@ describe('engine topic start', () => {
     m0.phases.investigation.items['auth-flow'].note = 'keep me';
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
+    const res = startItem(dir, 'payments', 'investigation', 'auth-flow');
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'auth-flow', phase: 'investigation', status: 'in-progress', created: false });
+    assert.deepStrictEqual(res, { topic: 'auth-flow', phase: 'investigation', status: 'in-progress', created: false });
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.investigation.items['auth-flow'], { status: 'in-progress', note: 'keep me' });
   });
 
-  it('rejects starting a completed item — reopen owns that path', () => {
-    const err = engineFails(dir, ['topic', 'start', 'payments', 'investigation', 'fee-model']);
-    assert.match(err.error, /already completed — reopen it instead/);
+  it('rejects starting a completed item — a message sent to it reopens it', () => {
+    assert.throws(() => startItem(dir, 'payments', 'investigation', 'fee-model'), { message: /already completed — a message sent to it reopens it/ });
   });
 
   it('rejects starting a cancelled item — reactivate owns that path', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'refund-policy']);
-    const err = engineFails(dir, ['topic', 'start', 'payments', 'discussion', 'refund-policy']);
-    assert.match(err.error, /is cancelled — reactivate it instead/);
+    assert.throws(() => startItem(dir, 'payments', 'discussion', 'refund-policy'), { message: /is cancelled — reactivate it instead/ });
   });
 
-  it('rejects unknown work unit, phase, and missing args — loud and specific', () => {
-    assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'investigation', 'auth-flow']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']).error, /unknown or non-lifecycle phase "research"/);
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'investigation']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <start\|send\|reopen\|cancel\|reactivate\|postpone\|mailbox\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
+  it('rejects an unknown work unit and phase — loud and specific', () => {
+    assert.throws(() => startItem(dir, 'ghost', 'investigation', 'auth-flow'), { message: /manifest not found/ });
+    assert.throws(() => startItem(dir, 'payments', 'nonsense', 'auth-flow'), { message: /unknown or non-lifecycle phase "nonsense"/ });
+    assert.throws(() => startItem(dir, 'payments', 'research', 'auth-flow'), { message: /unknown or non-lifecycle phase "research"/ });
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <send\|cancel\|reactivate\|postpone\|mailbox\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
   });
 
   it('refuses a specification item on every unit, a quick-fix\'s too — the spec is entered at the work unit — and a planning item, a phase no table holds', () => {
     writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({ name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {} }, null, 2) + '\n');
     const before = ['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.leeway', unit, 'manifest.json'), 'utf8'));
-    for (const verb of ['start', 'reopen']) {
-      for (const unit of ['payments', 'typo']) {
-        assert.strictEqual(engineFails(dir, ['topic', verb, unit, 'specification', unit]).error,
-          `${unit}'s spec keeps no items — it is entered at the work unit: engine enter specification ${unit}`, `${verb} ${unit}`);
-        assert.match(engineFails(dir, ['topic', verb, unit, 'planning', unit]).error, /^unknown or non-lifecycle phase "planning"/, `${verb} ${unit}`);
-      }
+    for (const unit of ['payments', 'typo']) {
+      assert.throws(() => startItem(dir, unit, 'specification', unit),
+        { message: `${unit}'s spec keeps no items — it is entered at the work unit: engine enter specification ${unit}` }, unit);
+      assert.throws(() => startItem(dir, unit, 'planning', unit), { message: /^unknown or non-lifecycle phase "planning"/ }, unit);
     }
     assert.deepStrictEqual(['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.leeway', unit, 'manifest.json'), 'utf8')), before, 'nothing written');
   });
@@ -357,20 +352,18 @@ describe('engine topic start', () => {
       name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {},
     }, null, 2) + '\n');
     const before = fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8');
-    for (const verb of ['start', 'reopen']) {
-      for (const phase of ['implementation', 'review']) {
-        assert.strictEqual(engineFails(dir, ['topic', verb, 'typo', phase, 'typo']).error,
-          `${phase} stands by the build's cut — it is entered by \`engine enter ${phase} <work-unit>\`, never written by a topic verb`, `${verb} ${phase}`);
-      }
+    for (const phase of ['implementation', 'review']) {
+      assert.throws(() => startItem(dir, 'typo', phase, 'typo'),
+        { message: `${phase} stands by the build's cut — it is entered by \`engine enter ${phase} <work-unit>\`, never written by a topic verb` }, phase);
     }
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8'), before, 'nothing written');
   });
 
   it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
     parkStub(dir, 'investigation', 'parked-topic');
-    const res = engine(dir, ['topic', 'start', 'payments', 'investigation', 'parked-topic']);
+    const res = startItem(dir, 'payments', 'investigation', 'parked-topic');
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'parked-topic', phase: 'investigation', status: 'in-progress', created: false });
+    assert.deepStrictEqual(res, { topic: 'parked-topic', phase: 'investigation', status: 'in-progress', created: false });
     assert.strictEqual(readManifest(dir, 'payments').phases.investigation.items['parked-topic'].status, 'in-progress');
   });
 });
@@ -382,11 +375,6 @@ describe('unstarted guards across the other verbs', () => {
     parkStub(dir, 'investigation', 'parked-topic');
   });
   afterEach(() => { cleanupFixture(dir); });
-
-  it('reopen refuses an unstarted stub with the existing not-completed message', () => {
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'parked-topic']);
-    assert.match(err.error, /is not completed \(status: unstarted\) — only a completed item can be reopened/);
-  });
 
   it('a topic cancel stashes unstarted as previous_status; reactivate restores it', () => {
     parkStub(dir, 'discussion', 'parked-topic');
@@ -401,84 +389,18 @@ describe('unstarted guards across the other verbs', () => {
   });
 });
 
-describe('topic verbs without section folds', () => {
+describe('topic start, reopen and complete — no verbs of their own', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('every topic verb appends nothing — receipts are render surfaces', () => {
-    assert.strictEqual(okSections(dir, ['topic', 'start', 'payments', 'investigation', 'brand-new']).sections, '',
-      'start appends no sections');
-    assert.strictEqual(okSections(dir, ['topic', 'reopen', 'payments', 'investigation', 'fee-model']).sections, '',
-      'reopen appends no sections');
-  });
-});
-
-describe('topic complete — no verb of its own', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('is refused as no topic verb: each phase closes through its own door', () => {
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']).error,
-      /^Usage: engine topic <start\|send\|reopen\|cancel\|/);
-    assert.strictEqual(readManifest(dir, 'payments').phases.investigation.items['auth-flow'].status, 'in-progress');
-  });
-
-  it('start refuses a completed item — resuming is not starting', () => {
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'investigation', 'fee-model']).error, /already completed/);
-  });
-});
-
-describe('engine topic reopen', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('sets a completed item back to in-progress — no KB attempt, no commit', () => {
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'investigation', 'fee-model']);
-
-    assert.deepStrictEqual(res, { ok: true, topic: 'fee-model', phase: 'investigation', status: 'in-progress' });
-
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.investigation.items, {
-      'auth-flow': { status: 'in-progress' },
-      'fee-model': { status: 'in-progress' },
-    });
-    // No commit inside — the manifest change is left for the session's cadence.
-    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
-    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
-  });
-
-  it('refuses a discussion, whatever it stands at — a decided one reopens through a message sent to it', () => {
+  it('each answers the usage, writing nothing: a topic starts at `enter`, and closes and reopens through its phase\'s own doors', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    for (const topic of ['session-model', 'refund-policy']) {
-      assert.strictEqual(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', topic]).error,
-        'a discussion decided, or closed into its spec, reopens through a message sent to it (topic send), never topic reopen');
+    for (const [verb, topic] of [['start', 'brand-new'], ['reopen', 'fee-model'], ['complete', 'auth-flow']]) {
+      assert.match(engineFails(dir, ['topic', verb, 'payments', 'investigation', topic]).error,
+        /^Usage: engine topic <send\|cancel\|reactivate\|postpone\|mailbox\|answered\|/, verb);
     }
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
-  });
-
-  it('refuses an in-progress item — nothing touched', () => {
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'auth-flow']);
-    assert.match(err.error, /is not completed \(status: in-progress\) — only a completed item can be reopened/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
-  });
-
-  it('refuses a cancelled item — reactivate owns that path', () => {
-    const m = epicManifest();
-    m.phases.investigation.items['auth-flow'] = { status: 'cancelled' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'auth-flow']);
-    assert.match(err.error, /is cancelled — reactivate it instead/);
-  });
-
-  it('rejects unknown work unit, phase, missing item, and missing args — loud and specific', () => {
-    assert.match(engineFails(dir, ['topic', 'reopen', 'ghost', 'investigation', 'fee-model']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'nonsense', 'fee-model']).error, /unknown or non-lifecycle phase "nonsense"/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'ghost']).error, /no investigation item "ghost"/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation']).error, /Usage: engine topic reopen/);
   });
 });
 
@@ -783,18 +705,13 @@ describe('engine workunit reactivate', () => {
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
   const { VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
-  it('discovery is not a lifecycle phase — start and reopen refuse it; cancel addresses the unit', () => {
+  it('discovery is not a lifecycle phase — a start refuses it; cancel addresses the unit', () => {
     const dir = harness.setupGitFixture('engine-tx-');
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': {} } } },
     }, null, 2));
-    for (const verb of ['start', 'reopen']) {
-      assert.match(
-        engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
-        /non-lifecycle phase "discovery"[\s\S]*discovery tooling/
-      );
-    }
+    assert.throws(() => startItem(dir, 'payments', 'discovery', 'auth-flow'), { message: /non-lifecycle phase "discovery"[\s\S]*discovery tooling/ });
     // the invalid state the live drive produced must now be impossible
     const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     assert.strictEqual(m.phases.discovery.items['auth-flow'].status, undefined);
@@ -812,15 +729,13 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
 });
 
 describe('engine usage banner', () => {
-  it('lists every topic transition, reopen included', () => {
+  it('lists every topic verb', () => {
     const res = call(process.cwd(), ['bogus-command']);
     assert.strictEqual(res.code, 1);
     for (const line of [
-      'topic start <work-unit> <phase> <topic>',
       'topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>',
       'topic mailbox <work-unit> <topic>',
       'topic answered <work-unit> <topic> <NNN-slug> --entry <id>',
-      'topic reopen <work-unit> <phase> <topic>',
       'topic cancel <work-unit> discovery <topic>',
       'topic reactivate <work-unit> discovery <topic>',
       'experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)',
@@ -834,7 +749,7 @@ describe('engine usage banner', () => {
   });
 });
 
-describe('engine topic start — the discovery map gates the birth of a phase item', () => {
+describe('a topic\'s start — the discovery map gates the birth of a phase item', () => {
   const mapped = harness.fixtureFrom('engine-tx-', (dir) => {
     writeFile(dir, '.leeway/mapped/manifest.json', JSON.stringify({
       name: 'mapped',
@@ -861,32 +776,30 @@ describe('engine topic start — the discovery map gates the birth of a phase it
   afterEach(() => { cleanupFixture(dir); });
 
   it('a marker-only cancelled row refuses the birth — the reactivate is the way back', () => {
-    assert.strictEqual(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'iota']).error,
-      'discussion can\'t start on "iota" — it is cancelled and stays on the map as record; the epic menu names its next step');
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'iota'), { message: 'discussion can\'t start on "iota" — it is cancelled and stays on the map as record; the epic menu names its next step' });
     assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.iota, undefined, 'nothing born');
   });
 
   it('the map\'s own next action passes: a fresh topic is born, a parked stub flips, a live one resumes', () => {
-    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'beta']).created, true);
-    assert.deepStrictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'epsilon']), { ok: true, topic: 'epsilon', phase: 'discussion', status: 'in-progress', created: false });
-    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'gamma']).created, false);
+    assert.strictEqual(startItem(dir, 'mapped', 'discussion', 'beta').created, true);
+    assert.deepStrictEqual(startItem(dir, 'mapped', 'discussion', 'epsilon'), { topic: 'epsilon', phase: 'discussion', status: 'in-progress', created: false });
+    assert.strictEqual(startItem(dir, 'mapped', 'discussion', 'gamma').created, false);
   });
 
   it('a topic off the map is refused, writing nothing; a non-epic work unit is ungated by the map', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8');
-    assert.strictEqual(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).error,
-      'discussion can\'t start on "unmapped" — it is not on the map; a topic starts from its row on the epic menu');
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'unmapped'), { message: 'discussion can\'t start on "unmapped" — it is not on the map; a topic starts from its row on the epic menu' });
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8'), before);
     writeFile(dir, '.leeway/feat/manifest.json', JSON.stringify({
       name: 'feat', work_type: 'feature', status: 'in-progress',
       phases: { discovery: { items: { feat: { source: 'discovery' } } } },
     }, null, 2) + '\n');
-    assert.strictEqual(engine(dir, ['topic', 'start', 'feat', 'discussion', 'feat']).created, true);
+    assert.strictEqual(startItem(dir, 'feat', 'discussion', 'feat').created, true);
   });
 
   it('the terminal-status refusals keep their own words ahead of the map', () => {
     engine(dir, ['topic', 'cancel', 'mapped', 'discovery', 'zeta']);
-    assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'zeta']).error, /is cancelled — reactivate it instead/);
-    assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'delta']).error, /already completed — reopen it instead/);
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'zeta'), { message: /is cancelled — reactivate it instead/ });
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'delta'), { message: /already completed — a message sent to it reopens it/ });
   });
 });
