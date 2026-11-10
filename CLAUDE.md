@@ -44,16 +44,15 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 ### Stages and phases
 
-The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification) — specify and plan; **Delivery** (implementation, review) — build and verify.
+The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (specification) — specify and cut into phases; **Delivery** (implementation, review) — build and verify.
 
 1. **Discovery** (`leeway-discovery`) — one conversation at two levels, where nothing is decided: the product's, which finds each piece of work's type and creates its unit at start this work, its other output the roadmap; and an epic's, whose map of topics lands with each topic's brief at approve the map.
 2. **Experiment** (`leeway-experiment-process`) — the laboratory a discussion spawns to measure what a decision rests on; never a topic's first phase.
 3. **Discussion** (`leeway-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
 4. **Investigation** (`leeway-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
-5. **Scoping** (`leeway-scoping-process`) — quick-fix: context, spec and plan in one pass.
-6. **Specification** (`leeway-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
-7. **Implementation** (`leeway-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built by TDD.
-8. **Review** (`leeway-review-process`) — verify the built change against the specification, its findings landing as fix tasks.
+5. **Specification** (`leeway-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
+6. **Implementation** (`leeway-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built by TDD; a quick-fix's is its own skill (`leeway-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
+7. **Review** (`leeway-review-process`) — verify the built change against the specification, its findings landing as fix tasks; a quick-fix's only when the person asks for one at its close.
 
 ### Work types and topics
 
@@ -62,7 +61,7 @@ A *work type* is one of four pipeline shapes; a *work unit* is a named instance 
 - **Epic**: multi-topic, multi-session — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
 - **Feature**: single-topic — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
 - **Bugfix**: Discovery → Investigation → Specification → Implementation → Review
-- **Quick-fix**: Discovery → Scoping → Implementation → Review
+- **Quick-fix**: Discovery → Implementation → Review (on request)
 
 A *topic* is the item within a phase; every phase keeps per-topic items in the manifest. For the three single-topic types the topic is the work unit. An epic names its topics apart from the work unit. Lifecycle operations — work-unit status, pivot, absorb, topic cancel, postpone and reactivate, the soft gates and hard blocks, staleness — are in `docs/lifecycle-operations.md` and `docs/reliability.md`.
 
@@ -80,7 +79,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Drivers** (`skills/leeway-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
 - **Gate mods** (`leeway-gates`, `leeway-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
 - **Agents** — `agents/` are the subagents the product dispatches (`docs/agents.md`).
-- **Development only** — `.claude/agents/` and `.claude/skills/` (`create-output-format`, `prose-test`, `review-work`) serve work on this repo and never ship.
+- **Development only** — `.claude/agents/` and `.claude/skills/` (`prose-test`, `review-work`) serve work on this repo and never ship.
 
 ### Paths
 
@@ -90,12 +89,9 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/{work_unit}/manifest.json` — work-unit manifest
 - `.workflows/{work_unit}/discovery/session-NNN.md` — discovery session logs
 - `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
-- `.workflows/{work_unit}/investigation/{topic}.md`
 - `.workflows/{work_unit}/spec.md` — the unit's one spec
-- `.workflows/{work_unit}/planning/{topic}/planning.md` — a quick-fix's plan, written by scoping, plus `phase-{N}-tasks.md` and the task files
 - `.workflows/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
 - `.workflows/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
-- `.workflows/{work_unit}/imports/` — files the user shared
 - `.workflows/{work_unit}/seeds/` — the inbox items the unit was started from
 - `.workflows/{work_unit}/.state/` — per-unit analysis files
 - `.workflows/.state/` — the migrations ledger, `environment-setup.md`
@@ -111,20 +107,14 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 Workflow state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/leeway-engine/references/commands.md`.
 
-## Adding New Output Formats
+## Tool Names (IMPORTANT)
 
-Use `/create-output-format` to scaffold a new plan output format: five files under `skills/leeway-scoping-process/references/output-formats/{format}/` (`about.md`, `authoring.md`, `reading.md`, `updating.md`, `graph.md`). The contract and templates live in `.claude/skills/create-output-format/references/`.
-
-## Output Format References (IMPORTANT)
-
-**NEVER list output format names (tick, linear, local-markdown, etc.) anywhere except:**
-- `skills/leeway-scoping-process/references/output-formats.md` - the authoritative list
-- `skills/leeway-scoping-process/references/output-formats/{format}/` - individual format directories
-- `README.md` - user-facing documentation where format options are presented
+**NEVER name a tool a driver wraps (tick, linear, etc.) anywhere except:**
 - `skills/leeway-engine/scripts/drivers/**` - the drivers, the only engine code that names a tool
 - `tests/drivers/**` - a driver's test fixtures, which find and pin its real tool; a new suite generic over drivers names none
+- `README.md` - user-facing documentation where the tool options are presented
 
-Other phases reference a format through the plan's `format` manifest field, and load only the per-concern file they need (e.g. `{format}/reading.md`).
+Everything else reaches a tool through the driver the project manifest's `drivers` setting picks.
 
 ## Migrations
 

@@ -418,7 +418,7 @@ describe('conversation position', () => {
 
   it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
     const quickFix = skillAt('fix', 'implementation', 'quick-fix');
-    const skills = [...VALID_PHASES.filter((phase) => !['scoping', 'planning'].includes(phase)).map((phase) => skillAt('pay', phase)), quickFix, ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
+    const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), quickFix, ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
     assert.strictEqual(skills.length, 10);
     for (const skill of skills) assert.ok(skill !== null && HANDOFF_TARGETS.includes(skill), `${skill} is a skill a conversation opens on`);
     const whole = [...WHOLE.map((phase) => skillAt('pay', phase)), quickFix];

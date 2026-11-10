@@ -250,16 +250,12 @@ const layout = Object.freeze({
   topic: (unit, topic, ...segments) => [unit, 'topics', topic, ...segments].join('/'),
   /** A unit's assets, a folder whose names are its own, or a path in it. @param {string} unit @param {...string} segments */
   assets: (unit, ...segments) => [unit, 'assets', ...segments].join('/'),
-  /** A topic's document: a discussion's log, an investigation's file. @param {string} unit @param {'discussion'|'investigation'} phase @param {string} topic */
-  doc: (unit, phase, topic) => (phase === 'discussion' ? `${unit}/topics/${topic}/log.md` : `${unit}/${phase}/${topic}.md`),
+  /** A topic's document, its conversation's log — a discussion's or an investigation's. @param {string} unit @param {'discussion'|'investigation'} phase @param {string} topic */
+  doc: (unit, phase, topic) => `${unit}/topics/${topic}/log.md`,
   /** A topic's mailbox, or a message waiting in it. @param {string} unit @param {string} topic @param {string} [name] */
   mailbox: (unit, topic, name) => [unit, 'topics', topic, 'mail', ...(name === undefined ? [] : [name])].join('/'),
   /** A topic's experiment record, or a path in it. @param {string} unit @param {string} topic @param {...string} segments */
   experiment: (unit, topic, ...segments) => [unit, 'topics', topic, 'experiments', ...segments].join('/'),
-  /** @param {string} unit @param {string} topic */
-  spec: (unit, topic) => `${unit}/specification/${topic}/specification.md`,
-  /** @param {string} unit @param {string} topic */
-  plan: (unit, topic) => `${unit}/planning/${topic}/planning.md`,
   /** A unit's discovery session log. @param {string} unit @param {string} number zero-padded */
   session: (unit, number) => `${unit}/discovery/session-${number}.md`,
   /** The product's conversation's session log. @param {string} number zero-padded */
@@ -268,8 +264,8 @@ const layout = Object.freeze({
   spike: (owner, spike, ...segments) => [owner, 'spikes', spike, ...segments].join('/'),
   /** A topic's brief. @param {string} unit @param {string} topic */
   brief: (unit, topic) => `${unit}/topics/${topic}/brief.md`,
-  /** A file the person shared. @param {string} unit @param {...string} segments */
-  imports: (unit, ...segments) => [unit, 'imports', ...segments].join('/'),
+  /** A unit's seed, an inbox item it was started from. @param {string} unit @param {string} name the file's stem */
+  seed: (unit, name) => `${unit}/seeds/${name}.md`,
   /** A unit's analysis file. @param {string} unit @param {string} name */
   unitState: (unit, name) => `${unit}/.state/${name}`,
   /** A scenario's verification run, or its runs folder. @param {string} unit @param {string} scenario @param {string} [number] zero-padded */

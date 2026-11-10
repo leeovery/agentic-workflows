@@ -10,7 +10,7 @@
 // duplicated here.
 // ---------------------------------------------------------------------------
 
-const { EPIC_PHASES, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { EPIC_PHASES, LEGACY_PHASES, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const { loadProjectManifest } = require('./reads.cjs');
 const {
   phaseItems,
@@ -54,8 +54,6 @@ const { buildStanding } = require('./build-entry.cjs');
  * @typedef {object} PhaseEntry
  * @property {string} name
  * @property {string} status
- * @property {string|boolean} [reconcile_needed]  a live reconcile flag — the upstream phase that
- *                                             moved, or `true` for a brief flag
  * @property {ExperimentRow[]} [experiments]   experiment items — the live (non-terminal)
  *                                             top-level records, id order; the menu's
  *                                             topic-grain entry reads them for its tail
@@ -68,7 +66,6 @@ const { buildStanding } = require('./build-entry.cjs');
  * @typedef {object} ItemRef
  * @property {string} name
  * @property {string} phase
- * @property {string|boolean} [reconcile_needed]  completed items only — a live reconcile flag
  */
 
 /** @typedef {'discovery'} UnitStage */
@@ -173,7 +170,6 @@ const { buildStanding } = require('./build-entry.cjs');
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
  * @property {boolean} needs_sequencing
  * @property {MapSummary|null} map_summary
- * @property {number} imports_count
  * @property {number} seeds_count
  * @property {{gap_analysis: AnalysisCache}} analysis_caches
  */
@@ -336,7 +332,7 @@ function buildAnalysisCaches(cwd, manifest) {
 }
 
 /** The phases an old unit keeps items in past its discussions (P12). */
-const PAST_THE_TOPICS = ['specification', 'planning', 'implementation', 'review'];
+const PAST_THE_TOPICS = ['specification', ...LEGACY_PHASES, 'implementation', 'review'];
 
 /**
  * Build the full epic detail for one work unit's manifest.
@@ -360,7 +356,6 @@ function epicDetail(cwd, manifest) {
     for (const item of items) {
       /** @type {PhaseEntry} */
       const entry = { name: item.name, status: item.status || 'unknown' };
-      if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
 
       // A live series' open experiments ride the entry — the topic's menu
       // row counts them, appearing at the first spawn and retiring when no
@@ -399,10 +394,7 @@ function epicDetail(cwd, manifest) {
       // the old plan's build waits on the migration's cut (P12). None joins
       // the resume candidates.
       if (item.status === 'completed' && !DERIVED_PHASES.includes(phase) && !PAST_THE_TOPICS.includes(phase)) {
-        completedItems.push({
-          name: item.name, phase,
-          ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
-        });
+        completedItems.push({ name: item.name, phase });
       }
     }
 
@@ -427,7 +419,6 @@ function epicDetail(cwd, manifest) {
     convergenceState = allSettled ? 'settled' : 'in-progress';
   }
 
-  const importsCount = Array.isArray(manifest.imports) ? manifest.imports.length : 0;
   const seedsCount = Array.isArray(manifest.seeds) ? manifest.seeds.length : 0;
 
   return {
@@ -448,7 +439,6 @@ function epicDetail(cwd, manifest) {
     convergence_state: convergenceState,
     needs_sequencing: builtMap.needs_sequencing,
     map_summary: mapSummary,
-    imports_count: importsCount,
     seeds_count: seedsCount,
     analysis_caches: buildAnalysisCaches(cwd, manifest),
   };

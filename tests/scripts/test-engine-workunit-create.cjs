@@ -7,11 +7,9 @@
 // epic's first session takes, and its inbox seeds, each moved with its
 // folder's source tag, their removal in the creation's commit and nothing
 // else of the inbox; a seed that is no live inbox item refused, nothing
-// touched. Then what only `workunit create` takes until its imports move to
-// the assets (29.15): its imports, landed under normalised names, a missing
-// one failing fast; its model-authored log; a failed registration putting
-// the unit back; the knowledge base indexing what landed, warn-don't-block;
-// and its argument refusals. The gate itself is
+// touched. Then what only `workunit create` takes: its model-authored log;
+// a failed registration putting the unit back; the knowledge base indexing
+// what landed, warn-don't-block; and its argument refusals. The gate itself is
 // test-engine-start-this-work.cjs's.
 //
 // Layer: verb. World: discovery's gate suites' (discovery-gates-world.cjs).
@@ -26,7 +24,7 @@ const path = require('path');
 
 const {
   ENGINE, ok, refuses, refusedPristine, output, readManifest, readState, statePath, stateGit, lastMessage, touched, head, layout, writeState,
-  indexedFiles, hasStore, unreadableKnowledge, commitOnState,
+  indexedFiles, unreadableKnowledge, commitOnState,
 } = require('./engine-harness.cjs');
 const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
@@ -122,75 +120,24 @@ describe('a created unit, through start this work', () => {
   });
 });
 
-describe('workunit create, its imports and its log (until 29.15)', () => {
-  /** `workunit create` landing `sources` as imports: its answer. @param {string[]} sources */
-  const landImports = (sources) => ok(dir(), createArgs('payments', 'feature', sources.flatMap((s) => ['--import', s])));
-
-  it('installs the log verbatim, copies each import under its normalised name — markdown-ish ones as .md — and commits once', () => {
-    codeFile('notes/My Design DOC.txt', 'a\n');
-    codeFile('notes/UPPER.MD', 'b\n');
-    codeFile('notes/plain', 'c\n');
-    codeFile('notes/weird  name!!.md', 'd\n');
+describe('workunit create, its log', () => {
+  it('installs the log verbatim and commits once', () => {
     const before = head(dir());
-    const res = landImports(['notes/My Design DOC.txt', 'notes/UPPER.MD', 'notes/plain', 'notes/weird  name!!.md']);
-    assert.deepStrictEqual(res.imports, ['my-design-doc.md', 'upper.md', 'plain.md', 'weird-name.md'].map((name) => ({ path: landed(`imports/${name}`) })));
-    assert.deepStrictEqual([res.skipped_imports, res.session_log, readState(dir(), layout.session('payments', '001'))], [[], landed('discovery/session-001.md'), SESSION_LOG]);
-    const [entry] = readManifest(dir(), 'payments').imports;
-    assert.deepStrictEqual([Object.keys(entry), entry.origin], [['path', 'imported_at', 'origin'], 'discovery'], 'a new unit\'s files come in through discovery');
-    assert.ok(fs.existsSync(path.join(dir(), 'notes/My Design DOC.txt')), 'an import is copied, its source untouched');
+    const res = ok(dir(), createArgs('payments', 'feature'));
+    assert.deepStrictEqual([res.session_log, readState(dir(), layout.session('payments', '001'))], [landed('discovery/session-001.md'), SESSION_LOG]);
     assert.deepStrictEqual([lastMessage(dir()), stateGit(dir(), ['rev-list', '--count', `${before}..HEAD`]).trim()], ['discovery(payments): create work unit (feature)', '1']);
   });
 
-  it('skips a dotfile, reporting it, and indexes only what landed', () => {
-    codeFile('notes/.env', 'SECRET=1\n');
-    codeFile('notes/good.md', 'fine\n');
-    const res = landImports(['notes/.env', 'notes/good.md']);
-    assert.deepStrictEqual([res.skipped_imports, res.imports], [['notes/.env'], [{ path: landed('imports/good.md') }]]);
-    assert.deepStrictEqual(indexedFiles(dir()), ['payments/imports/good.md']);
-  });
-
-  it('suffixes a collision\'s stem, never its extension — the same source twice, and distinct sources normalising alike', () => {
-    codeFile('notes/a b.md', 'one\n');
-    codeFile('notes/a  b.md', 'two\n');
-    codeFile('notes/shot.png', 'one\n');
-    codeFile('notes/SHOT.png', 'two\n');
-    const res = landImports(['notes/a b.md', 'notes/a b.md', 'notes/a  b.md', 'notes/shot.png', 'notes/SHOT.png']);
-    assert.deepStrictEqual(res.imports, ['a-b.md', 'a-b-2.md', 'a-b-3.md', 'shot.png', 'shot-2.png'].map((name) => ({ path: landed(`imports/${name}`) })));
-    assert.deepStrictEqual([fs.readFileSync(landed('imports/a-b-3.md'), 'utf8'), fs.readFileSync(landed('imports/shot-2.png'), 'utf8')], ['two\n', 'two\n']);
-  });
-
-  it('keeps a non-markdown extension, lowercased, never indexing it, and lands every source 0644', () => {
-    codeFile('notes/Screenshot One.JPEG', 'jpeg bytes\n');
-    codeFile('notes/design.txt', 'plain text\n');
-    fs.chmodSync(codeFile('notes/locked.png', 'png bytes\n'), 0o600);
-    const res = landImports(['notes/Screenshot One.JPEG', 'notes/design.txt', 'notes/locked.png']);
-    assert.deepStrictEqual(res.imports, ['screenshot-one.jpeg', 'design.md', 'locked.png'].map((name) => ({ path: landed(`imports/${name}`) })));
-    assert.deepStrictEqual(indexedFiles(dir()), ['payments/imports/design.md']);
-    assert.strictEqual(fs.statSync(landed('imports/locked.png')).mode & 0o777, 0o644);
-  });
-
-  it('fails fast on every missing import, a folder among them — nothing touched, no store built', () => {
-    codeFile('notes/good.md', 'fine\n');
-    fs.mkdirSync(path.join(dir(), 'notes/album'));
-    const err = refusedPristine(dir(), createArgs('payments', 'epic', ['--import', 'notes/good.md', '--import', 'notes/ghost.md', '--import', 'notes/album', '--seed', `.leeway/${IDEA}`]));
-    assert.match(err.error, /import path\(s\) not found, not a file, or unreadable: notes\/ghost\.md, notes\/album/);
-    assert.deepStrictEqual(err.missing_imports, ['notes/ghost.md', 'notes/album']);
-    assert.strictEqual(hasStore(dir()), false);
-  });
-
   it('puts the unit back where its registration fails — no folder, its seed back in the inbox', () => {
-    codeFile('notes/design.md', 'notes\n');
-    const args = createArgs('payments', 'epic', ['--import', 'notes/design.md', '--seed', `.leeway/${IDEA}`]);
+    const args = createArgs('payments', 'epic', ['--seed', `.leeway/${IDEA}`]);
     const refused = failingWrites(manifestTemp(statePath(dir())), () => refusedPristine(dir(), args));
     assert.strictEqual(refused.error, 'disk full');
   });
 
   it('warns where the knowledge base cannot index what landed, and still commits', () => {
     unreadableKnowledge(dir());
-    codeFile('notes/design.md', 'notes\n');
-    const res = ok(dir(), createArgs('payments', 'epic', ['--import', 'notes/design.md', '--seed', `.leeway/${IDEA}`]));
+    const res = ok(dir(), createArgs('payments', 'epic', ['--seed', `.leeway/${IDEA}`]));
     assert.deepStrictEqual(res.warnings.map((/** @type {string} */ w) => w.replace(/ at .*/s, '')), [
-      'knowledge index (imports/design.md) failed: loadStore: corrupted store file',
       'knowledge index (seeds/2026-06-01-smart-retry.md) failed: loadStore: corrupted store file',
     ]);
     assert.strictEqual(lastMessage(dir()), 'discovery(payments): create work unit (epic)');
@@ -214,7 +161,7 @@ describe('workunit create, refused', () => {
     assert.match(refusedPristine(dir(), ['workunit', 'create', 'payments', 'epic', '--description', 'd', '--session-log-file', '.leeway/.cache/ghost.md']).error, /session log file not found/);
     const usage = /Usage: engine workunit create .* --session-log-file <path>/;
     for (const args of [[], ['payments'], ['payments', 'epic'], ['payments', 'feature', '--description', 'd']]) assert.match(refuses(dir(), ['workunit', 'create', ...args]).error, usage);
-    assert.match(refuses(dir(), ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|move\|position>/);
+    assert.match(refuses(dir(), ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb\|move\|position>/);
   });
 
   it('validates work types through the shared schema module, never a local literal', () => {

@@ -30,9 +30,9 @@ const CHOSEN_NOTE = '[keyword-only mode — configure embedding provider for sem
 const indexedWorld = fixtureFrom('kb-query-door-', (root) => {
   configureKnowledge(root, KEYWORD_ONLY);
   const files = {
-    'auth/investigation/auth.md': 'Token refresh design for auth.',
+    'auth/seeds/auth.md': 'Token refresh design for auth.',
     '.knowledge/records/auth/auth.md': 'Token refresh decided for auth.',
-    'data/investigation/data.md': 'Token storage design for data.',
+    'data/seeds/data.md': 'Token storage design for data.',
     '.knowledge/records/payments/billing.md': 'Token billing decided.',
     '.knowledge/records/payments/invoicing.md': 'Token invoicing decided.',
   };
@@ -87,16 +87,16 @@ describe('engine knowledge query', () => {
 
   it('--boost:work-unit lifts that unit\'s results above the rest, and keeps the rest', async () => {
     const boosted = hits((await query('token', '--boost:work-unit', 'data')).stdout);
-    assert.strictEqual(boosted[0], 'investigation data/data');
+    assert.strictEqual(boosted[0], 'seeds data/data');
     assert.strictEqual(boosted.length, 5);
   });
 
   it('keeps only what each filter flag names: --phase, --work-type as a comma list, --work-unit and --topic', async () => {
     const filtered = async (/** @type {string[]} */ flags) => hits((await query('token', ...flags)).stdout).sort();
-    assert.deepStrictEqual(await filtered(['--phase', 'investigation']), ['investigation auth/auth', 'investigation data/data']);
+    assert.deepStrictEqual(await filtered(['--phase', 'seeds']), ['seeds auth/auth', 'seeds data/data']);
     assert.deepStrictEqual(await filtered(['--work-type', 'epic']), ['record payments/billing', 'record payments/invoicing']);
     assert.strictEqual((await filtered(['--work-type', 'feature,epic'])).length, 5);
-    assert.deepStrictEqual(await filtered(['--work-unit', 'auth']), ['investigation auth/auth', 'record auth/auth']);
+    assert.deepStrictEqual(await filtered(['--work-unit', 'auth']), ['record auth/auth', 'seeds auth/auth']);
     assert.deepStrictEqual(await filtered(['--topic', 'billing']), ['record payments/billing']);
   });
 
@@ -149,21 +149,21 @@ describe('engine knowledge query — the conversation\'s last query (22.6.10)', 
 
   it('kept with its terms, each filter as its flag gave it, and what it printed — the last query alone', async () => {
     await asked('storage');
-    const answer = await asked('token', 'refresh', '--work-unit', 'auth', '--limit', '2', '--boost:phase', 'investigation');
+    const answer = await asked('token', 'refresh', '--work-unit', 'auth', '--limit', '2', '--boost:phase', 'seeds');
 
     assert.deepStrictEqual(lastQuery(SESSION_ID), {
-      terms: ['token', 'refresh'], filters: ['--work-unit auth', '--limit 2', '--boost:phase investigation'], outcome: { returned: answer.stdout },
+      terms: ['token', 'refresh'], filters: ['--work-unit auth', '--limit 2', '--boost:phase seeds'], outcome: { returned: answer.stdout },
     });
   });
 
   it('a query that fails kept with what it said as it failed — a refusal and a usage alike', async () => {
     await asked('  ');
     const blank = lastQuery(SESSION_ID)?.outcome;
-    await asked('--phase', 'investigation');
+    await asked('--phase', 'seeds');
     const bare = lastQuery(SESSION_ID);
 
     assert.deepStrictEqual(blank, { failed: `Empty search term. \`engine knowledge query\` requires at least one non-empty positional term. If you intended to list everything indexed, use \`${ENGINE_COMMAND} knowledge status\` instead.` });
-    assert.deepStrictEqual([bare?.terms, bare?.filters, bare?.outcome && 'failed' in bare.outcome && bare.outcome.failed.split(' ').slice(0, 4).join(' ')], [[], ['--phase investigation'], 'Usage: engine knowledge query']);
+    assert.deepStrictEqual([bare?.terms, bare?.filters, bare?.outcome && 'failed' in bare.outcome && bare.outcome.failed.split(' ').slice(0, 4).join(' ')], [[], ['--phase seeds'], 'Usage: engine knowledge query']);
   });
 
   it('a query with no conversation keeps nothing', async () => {

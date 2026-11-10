@@ -77,7 +77,6 @@ describe('epic projections: dashboard (map branch)', () => {
     return detailFor(dir, 'quiz-competition-v1', {
       work_type: 'epic',
       seeds: [{ path: 'seeds/x.md', source: 'inbox:idea' }],
-      imports: [{ path: 'imports/a.md' }],
       phases: {
         discovery: {
           items: {
@@ -97,7 +96,6 @@ describe('epic projections: dashboard (map branch)', () => {
     '',
     'MATERIAL',
     '  · seeded from the inbox',
-    '  · 1 import',
     '',
     '  ⚑ 1 new topic(s) added to the map from gap-analysis.',
     '',
@@ -264,27 +262,6 @@ describe('epic projections: dashboard (map branch)', () => {
         '',
       ].join('\n')
     );
-  });
-
-  it('a flagged completed item carries the input-moved cue on the dashboard and key', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { 'menu-admin': { source: 'discovery', order: 1 } } },
-        discussion: { items: { 'menu-admin': { status: 'completed' } } },
-        specification: { items: { 'menu-admin': { status: 'completed', reconcile_needed: 'discussion', sources: { 'menu-admin': { status: 'stale' } } } } },
-        planning: {
-          items: {
-            'menu-admin': { status: 'completed', reconcile_needed: 'specification' },
-            'other-topic': { status: 'in-progress', reconcile_needed: 'specification' },
-          },
-        },
-      },
-    });
-    const out = epicDashboard('v1', d);
-    assert.match(out, /Menu Admin\s+\[completed · input moved\]/, out);
-    const key = epicKey(d);
-    assert.ok(key.includes('input moved             — an upstream artifact was revised'), key);
   });
 
   it('an unstarted stub renders fresh with the mail waiting cue and counts as fresh', () => {
@@ -1456,11 +1433,10 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     assert.strictEqual(drawLabel(epicMenu('v1', billing({ status: 'unstarted' })).keys[0].label), 'Start discussion for "Billing" — *mail waiting*');
   });
 
-  it('the map row cues the waiting discussion — awaiting each experiment, and nothing for a flag', () => {
+  it('the map row cues the waiting discussion — awaiting each experiment', () => {
     const cue = (d) => epicDashboard('v1', d).match(/↳ [^\n]*/)[0];
     assert.strictEqual(cue(billing({ status: 'in-progress' })), '↳ Discussing');
     assert.strictEqual(cue(billing({ status: 'in-progress', awaiting_experiments: ['E1'] })), '↳ Discussing · awaiting E1');
-    assert.strictEqual(cue(billing({ status: 'completed', reconcile_needed: true })), '↳ Decided', 'a discussion\'s flag raises no cue');
   });
 
   // The cue reads the mailbox, not the status: a landing on a concluded topic

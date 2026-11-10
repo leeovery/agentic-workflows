@@ -8,7 +8,7 @@
 //
 //   gateway.cjs view {work_unit}
 //       → DATA + TITLE + DISPLAY snapshot, with the proceed/revisit MENU when
-//         there is anything to revisit or finalise; the not-found display
+//         there is anything to revisit; the not-found display
 //         when no feature, bugfix or quick-fix by that name is in progress
 //
 // That call is the whole legal surface: the bare call, an unknown verb, a

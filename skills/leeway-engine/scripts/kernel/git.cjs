@@ -281,7 +281,7 @@ function stageFiles(cwd, { addable, held }) {
  * The `add` catches untracked files among the paths. Pathspecs git knows
  * nothing about are dropped: it refuses one that matches nothing, and a
  * scope naming a path its transaction never created is normal (an absent
- * mailbox, a work unit with no imports).
+ * mailbox, a work unit with no seeds).
  *
  * `nested` names the folders of the repos nested in this one, held out of
  * the paths that reach inside them (`heldOutOf`). A nested folder named

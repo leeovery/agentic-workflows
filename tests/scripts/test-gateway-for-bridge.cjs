@@ -10,9 +10,6 @@ const { setupFixture, cleanupFixture, createManifest, createFile } = require('./
 const { discover, format } = require('../../skills/leeway-bridge/scripts/gateway.cjs');
 
 const GATEWAY = path.resolve(__dirname, '../../skills/leeway-bridge/scripts/gateway.cjs');
-const { auditingRender } = require('./gate-audit.cjs');
-
-const renderSurface = auditingRender(require('../../skills/leeway-engine/scripts/domain/render.cjs').renderSurface);
 
 describe('leeway-bridge discovery', () => {
   let dir;
@@ -69,22 +66,6 @@ describe('leeway-bridge discovery', () => {
     });
     const r = discover(dir, 'done');
     assert.strictEqual(r.next_phase, 'done');
-  });
-
-  it('a live reconcile flag keeps the pipeline off done — the flagged phase is next', () => {
-    createManifest(dir, 'moved', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { moved: { status: 'completed' } } },
-        specification: { items: { moved: { status: 'completed' } } },
-        planning: { items: { moved: { status: 'completed' } } },
-        implementation: { items: { moved: { status: 'completed' } } },
-        review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
-      },
-    });
-    const r = discover(dir, 'moved');
-    assert.strictEqual(r.next_phase, 'review');
-    assert.deepStrictEqual(r.reconcile_pending, ['review/moved (implementation)']);
   });
 
   it('a conversation paused on experiment evidence routes the bridge to the experiment', () => {
@@ -153,29 +134,18 @@ describe('leeway-bridge discovery', () => {
     assert.strictEqual(r.phases.implementation.exists, true);
   });
 
-  it('reports planning as not existing when no manifest entry', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir, 'auth');
-    assert.strictEqual(r.phases.planning.exists, false);
-  });
-
   it('returns status from manifest', () => {
     createManifest(dir, 'auth', { work_type: 'feature', status: 'in-progress' });
     const r = discover(dir, 'auth');
     assert.strictEqual(r.status, 'in-progress');
   });
 
-  it('detects investigation file existence', () => {
+  it('detects the investigation by its log', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
       phases: { investigation: { items: { crash: { status: 'in-progress' } } } },
     });
-    createFile(dir, '.leeway/crash/investigation/crash.md', '# Investigation');
+    createFile(dir, '.leeway/crash/topics/crash/log.md', '# Investigation');
     const r = discover(dir, 'crash');
     assert.strictEqual(r.phases.investigation.exists, true);
     assert.strictEqual(r.phases.investigation.status, 'in-progress');
@@ -228,7 +198,6 @@ describe('leeway-bridge format', () => {
       '=== auth (feature) ===',
       'next_phase: discussion',
       'completed_phases: (none)',
-      'reconcile_pending: (none)',
       'revisitable_phases: (none)',
       'next_route: /leeway-discussion-process feature auth',
       'revisit_routes: (none)',
@@ -250,8 +219,7 @@ describe('leeway-bridge format', () => {
     assert.strictEqual(out, [
       '=== auth (feature) ===',
       'next_phase: implementation',
-      'completed_phases: discussion, specification, planning',
-      'reconcile_pending: (none)',
+      'completed_phases: discussion, specification',
       'revisitable_phases: (none)',
       'next_route: (none)',
       'revisit_routes: (none)',
@@ -266,7 +234,6 @@ describe('leeway-bridge format', () => {
       '=== auth (feature) ===',
       `next_phase: ${next}`,
       `completed_phases: ${completed}`,
-      'reconcile_pending: (none)',
       'revisitable_phases: (none)',
       `next_route: /leeway-${next}-process feature auth`,
       'revisit_routes: (none)',
@@ -276,14 +243,13 @@ describe('leeway-bridge format', () => {
     assert.strictEqual(format(discover(dir, 'auth')), dump('implementation', 'discussion, specification'));
     createManifest(dir, 'auth', { ...built, checklists: { 'phase-1-close': { items: {}, closed: '2026-11-01T00:00:00.000Z' } } });
     assert.strictEqual(format(discover(dir, 'auth')), dump('review', 'discussion, specification, implementation'));
-    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'auth', prev: 'implementation', next: 'review' }), '');
   });
 
   it('completed pipeline reports next_phase done — nothing revisitable, no section', () => {
     createManifest(dir, 'rename-api', {
       work_type: 'quick-fix',
       phases: {
-        scoping: { items: { 'rename-api': { status: 'completed' } } },
+        planning: { items: { 'rename-api': { status: 'completed' } } },
         implementation: { items: { 'rename-api': { status: 'completed' } } },
         review: { items: { 'rename-api': { status: 'completed' } } },
       },
@@ -292,8 +258,7 @@ describe('leeway-bridge format', () => {
     assert.strictEqual(out, [
       '=== rename-api (quick-fix) ===',
       'next_phase: done',
-      'completed_phases: scoping, implementation, review',
-      'reconcile_pending: (none)',
+      'completed_phases: implementation, review',
       'revisitable_phases: (none)',
       'next_route: (none)',
       'revisit_routes: (none)',
@@ -312,22 +277,6 @@ describe('leeway-bridge format', () => {
       ['next_phase: implementation', 'revisitable_phases: (none)', 'next_route: /leeway-quick-fix-process quick-fix rename-api'],
       ['next_phase: review', 'revisitable_phases: (none)', 'next_route: /leeway-review-process quick-fix rename-api'],
     ]);
-  });
-
-  it('a flagged phase surfaces in the dump and takes next_phase', () => {
-    createManifest(dir, 'moved', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { moved: { status: 'completed' } } },
-        specification: { items: { moved: { status: 'completed', reconcile_needed: 'discussion' } } },
-        planning: { items: { moved: { status: 'completed' } } },
-        implementation: { items: { moved: { status: 'completed' } } },
-        review: { items: { moved: { status: 'completed' } } },
-      },
-    });
-    const out = format(discover(dir, 'moved'));
-    assert.match(out, /^next_phase: specification$/m);
-    assert.match(out, /^reconcile_pending: specification\/moved \(discussion\)$/m);
   });
 
   it('epic dump carries no revisitable line, no routes and no section', () => {

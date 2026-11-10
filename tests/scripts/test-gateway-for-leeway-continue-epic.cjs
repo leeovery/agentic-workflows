@@ -587,7 +587,6 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
     const out = formatScoped('v1', discover(dir, 'v1'));
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
-      'reconcile_pending: (none)',
       'analysis_caches: gap_analysis=absent',
       'needs_sequencing: true',
       'discovery_map (2):',
@@ -605,7 +604,6 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
     const out = formatScoped('v1', discover(dir, 'v1'));
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
-      'reconcile_pending: (none)',
       'analysis_caches: gap_analysis=absent',
       'needs_sequencing: false',
       'discovery_map (0):',
@@ -651,28 +649,10 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
 
 });
 
-describe('leeway-continue-epic detail counts (imports/seeds)', () => {
+describe('leeway-continue-epic detail counts (seeds)', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
-
-  it('imports_count reports the length of manifest.imports[]', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      imports: [
-        { path: 'imports/seed-conversation.md', imported_at: '2026-05-10T10:00:00Z' },
-        { path: 'imports/early-thoughts.md', imported_at: '2026-05-10T10:01:00Z' },
-      ],
-    });
-    const d = discover(dir, 'v1');
-    assert.strictEqual(d.imports_count, 2);
-  });
-
-  it('imports_count is zero when the field is missing', () => {
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    const d = discover(dir, 'v1');
-    assert.strictEqual(d.imports_count, 0);
-  });
 
   it('seeds_count reports the length of manifest.seeds[]', () => {
     createManifest(dir, 'v1', {

@@ -341,7 +341,7 @@ describe('engine code diff and status: the change not yet committed', () => {
   });
 
   it('a repo inside the project\'s .leeway/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
-    const imported = initRepo(statePath(dir, layout.imports('pay', 'checkout')));
+    const imported = initRepo(statePath(dir, layout.assets('pay', 'checkout')));
     createFile(imported, 'lib.js', '1\n');
     commitAll(imported, `${PREFIX}1 — an imported checkout`);
     createFile(imported, 'lib.js', '2\n');

@@ -8,7 +8,7 @@
 // kernel/manifest-schema, IO and locking from kernel/manifest-io.
 //
 // Output contract, deliberately split:
-//   Reads (get, exists, list, key-of, resolve) print bare stdout — they are
+//   Reads (get, exists, list, key-of) print bare stdout — they are
 //   prose substitution surfaces. Their errors keep the `Error: …` stderr
 //   convention (exit 1 = real error, exit 2 = expected miss) via the
 //   `exitCode` carried on the throw.
@@ -21,7 +21,6 @@ const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
-const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { UNIT_PHASES, promotedRefusal } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const {
@@ -35,11 +34,6 @@ const {
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
 } = require('../kernel/manifest-schema.cjs');
-
-// Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
-// Derived from INDEXED_ARTIFACTS, the one table declaring what the KB
-// indexes and where, so the resolve scope can never drift from it.
-const INDEXED_PHASES = Object.keys(INDEXED_ARTIFACTS);
 
 /**
  * @param {string} msg
@@ -337,15 +331,6 @@ function validateSet(segments, value, fieldSegments = segments) {
       }
       return;
     }
-
-    // phases.<phase>.items.<item>.storage_paths — the format's declared
-    // pathspecs, staged by `engine commit --plan`. Guarded at write time so a
-    // bad entry can never reach a commit: relative, no traversal, never the
-    // whole tree.
-    if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'storage_paths') {
-      validateStoragePaths(value);
-      return;
-    }
   }
 }
 
@@ -521,25 +506,13 @@ function assertNotHeld(manifest, segments, workUnit) {
 
 /**
  * A held phase item takes no delete either — the whole item or any field of
- * it: a reconcile's `delete items.{name}` over a held item would erase the
- * stash with the item.
+ * it: a `delete items.{name}` over a held item would erase the stash with
+ * the item.
  * @param {any} manifest @param {string[]} segments @param {string} workUnit
  */
 function assertNotHeldDelete(manifest, segments, workUnit) {
   const target = heldItemAt(manifest, segments);
   if (target) refuseHeld(workUnit, target);
-}
-
-/** @param {*} value */
-function validateStoragePaths(value) {
-  if (!Array.isArray(value) || value.some((p) => typeof p !== 'string')) {
-    fail(`Invalid storage_paths ${JSON.stringify(value)}. Must be an array of relative pathspec strings (may be empty)`);
-  }
-  for (const p of value) {
-    if (p === '' || p === '.' || p.startsWith('/') || p.split('/').includes('..')) {
-      fail(`Invalid storage_paths entry ${JSON.stringify(p)}: pathspecs are relative, never ".", "..", or absolute`);
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -624,7 +597,7 @@ function parseValue(raw) {
   }
 }
 
-// Deep equality used by `pull` so object-shaped array entries (e.g. imports[]
+// Deep equality used by `pull` so object-shaped array entries (e.g. seeds[]
 // records) can be matched by value, not by reference. Order-independent for
 // object keys.
 /** @param {*} a @param {*} b @returns {boolean} */
@@ -847,36 +820,6 @@ function cmdKeyOf(cwd, args, out) {
   out(key + '\n');
 }
 
-/**
- * Map `wu.phase[.topic]` to artifact file paths on disk — the knowledge
- * CLI's artifact discovery.
- * @param {string} cwd @param {string[]} args @param {Sink} out
- */
-function cmdResolve(cwd, args, out) {
-  if (!args[0]) {
-    fail('Usage: engine manifest resolve <work_unit>.<phase>[.<topic>]\nResolves artifact file paths for indexed phases.');
-  }
-
-  const { workUnit, phase, topic } = parsePath(args[0]);
-
-  if (!phase) {
-    fail('resolve requires at least 2 segments: <work_unit>.<phase>[.<topic>]');
-  }
-
-  if (!INDEXED_PHASES.includes(phase)) {
-    fail(`Phase "${phase}" is not indexed by the knowledge base. Indexed phases: ${INDEXED_PHASES.join(', ')}`);
-  }
-
-  // Validate that the work unit exists by reading its manifest.
-  readManifest(cwd, workUnit);
-
-  if (!topic) {
-    fail(`resolve for ${phase} requires 3 segments: <work_unit>.${phase}.<topic>`);
-  }
-
-  out(path.join(stateRoot(cwd), INDEXED_ARTIFACTS[phase](workUnit, topic)) + '\n');
-}
-
 // ---------------------------------------------------------------------------
 // Mutations — one lock, one write, one decision-ready response object
 // ---------------------------------------------------------------------------
@@ -1035,12 +978,8 @@ function cmdPush(cwd, args) {
     fail(`"${fieldSegments[0]}" is a guarded state container — its fields take vocabulary values via set, never array pushes`);
   }
   const segments = resolveSegments(phase, topic, fieldSegments);
-  // storage_paths is guarded at write time on every route — set validates the
-  // whole array; push validates the one entry it appends.
-  // awaiting_experiments takes the same treatment.
-  if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'storage_paths') {
-    validateStoragePaths([value]);
-  }
+  // awaiting_experiments is guarded at write time on every route — set
+  // validates the whole array; push validates the one entry it appends.
   if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'awaiting_experiments') {
     validateAwaitingExperiments([value]);
   }
@@ -1261,11 +1200,11 @@ function cmdApply(cwd, args) {
 // Dispatch
 // ---------------------------------------------------------------------------
 
-const READS = { get: cmdGet, exists: cmdExists, list: cmdList, 'key-of': cmdKeyOf, resolve: cmdResolve };
+const READS = { get: cmdGet, exists: cmdExists, list: cmdList, 'key-of': cmdKeyOf };
 const MUTATIONS = { set: cmdSet, push: cmdPush, pull: cmdPull, delete: cmdDelete, apply: cmdApply };
 
 const USAGE =
-  'Usage: engine manifest <get|set|push|pull|delete|apply|exists|list|key-of|resolve> …\n' +
+  'Usage: engine manifest <get|set|push|pull|delete|apply|exists|list|key-of> …\n' +
   'Dot-path addressing: <work-unit>[.<phase>[.<topic>]]; the `project` prefix routes to the project manifest.';
 
 /** @param {string} command */
@@ -1291,4 +1230,4 @@ function runFieldCommand(cwd, command, args, out) {
   fail(USAGE);
 }
 
-module.exports = { runFieldCommand, isRead, INDEXED_PHASES };
+module.exports = { runFieldCommand, isRead };

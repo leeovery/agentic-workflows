@@ -14,16 +14,16 @@
 // - Validation is complete before any mutation: on failure both work units
 //   are byte-identical to before the call.
 // - What moves: the feature's topic folder whole — its log, brief, mail and
-//   experiments — to the epic topic's (4.11.5); its imports, seeds and
-//   assets into the epic's, each under the landing's dedupe; its spikes into
+//   experiments — to the epic topic's (4.11.5); its seeds and assets into
+//   the epic's, each under the landing's dedupe; its spikes into
 //   the epic's, a slug the epic's spikes hold already suffixed `-2`, `-3`,
 //   so no two spikes share one, each spike's twin in the cache with it; each
 //   phase item whole; and a map row with no summary, in the same save as
 //   the items. A dot-named asset is tooling state, never material. The
 //   feature's discovery logs go with it.
 // - The link rewrite: the engine rewrites only a path its own rename broke,
-//   in a document its own move relocated — an import's, a seed's, an
-//   asset's or a spike's the dedupe renamed, in each markdown file of the
+//   in a document its own move relocated — a seed's, an asset's or a
+//   spike's the dedupe renamed, in each markdown file of the
 //   moved topic folder.
 // - The ledger (5.8.18): one carry at the epic's topic,
 //   `{epic}.discussion.{topic}`, listing by id every line made at a place of
@@ -72,8 +72,7 @@ const { carryMarks } = require('./ledger-since.cjs');
 const { appendEntry, commitLedger } = require('./ledger.cjs');
 const { foldLedger } = require('./ledger-fold.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { dedupe, isIndexableImport, importArtifact, homeLinkPattern } = require('./import-landing.cjs');
-const { IMPORT_PHASES } = require('../kernel/manifest-schema.cjs');
+const { dedupe, homeLinkPattern } = require('./import-landing.cjs');
 const { addBatchTo, discoveryItems, topicNameRefusal } = require('./discovery-map.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { reaimAbsorbed, landingOf } = require('./roadmap.cjs');
@@ -93,8 +92,6 @@ const { assertBeforeSpec } = require('./spec-standing.cjs');
  * @property {string} topic     the new topic's name in the epic
  * @property {{path: string, status: string}} discussion  the moved discussion's log (absolute path)
  * @property {{path: string, status: string, experiments: string[]}} [experiment]  the moved experiment series (absolute path), when the feature had one
- * @property {{path: string}[]} imports  moved import entries (absolute)
- * @property {{from: string, to: string}[]} renamed_imports  imports the dedupe renamed, links rewritten in the moved topic folder
  * @property {{path: string}[]} assets  moved assets (absolute)
  * @property {{from: string, to: string}[]} renamed_assets  assets the dedupe renamed, links rewritten in the moved topic folder
  * @property {{path: string}[]} spikes  moved spikes' folders (absolute)
@@ -120,20 +117,18 @@ function phaseItems(manifest, phase) {
 }
 
 /**
- * Validate a tracked file entry (`imports[]`/`seeds[]`) and plan its move.
+ * Validate the feature's `seeds[]` entries and plan their moves.
  * Shape-invalid entries are refused, not skipped — the feature directory is
  * deleted afterwards, so a silently skipped file would be lost.
  * @param {string} cwd @param {string} feature @param {string} epic
- * @param {string} field  `imports` | `seeds`
  * @param {unknown[]} entries
  * @returns {(Move & {entry: Record<string, any>})[]}
  */
-function planTrackedMoves(cwd, feature, epic, field, entries) {
-  // Any extension — an import is whatever the user shared — with the first
-  // character guarding dotfiles and traversal, and the single segment
-  // refusing a subdirectory.
-  const shape = new RegExp(`^${field}/[^./][^/]*\\.[^./]+$`);
-  const destDir = statePath(cwd, epic, field);
+function planSeeds(cwd, feature, epic, entries) {
+  // The first character guards dotfiles and traversal, and the single
+  // segment refuses a subdirectory.
+  const shape = /^seeds\/[^./][^/]*\.[^./]+$/;
+  const destDir = statePath(cwd, epic, 'seeds');
   /** @type {Set<string>} */
   const taken = new Set();
   /** @type {(Move & {entry: Record<string, any>})[]} */
@@ -141,12 +136,12 @@ function planTrackedMoves(cwd, feature, epic, field, entries) {
   for (const entry of entries) {
     const rel = entry && typeof entry === 'object' ? /** @type {Record<string, any>} */ (entry).path : null;
     if (typeof rel !== 'string' || !shape.test(rel)) {
-      throw new Error(`feature "${feature}" has a malformed ${field} entry (${JSON.stringify(rel)}) — fix the manifest before absorbing`);
+      throw new Error(`feature "${feature}" has a malformed seeds entry (${JSON.stringify(rel)}) — fix the manifest before absorbing`);
     }
     if (!fs.existsSync(statePath(cwd, feature, rel))) {
-      throw new Error(`feature "${feature}" ${field} file missing on disk: ${statePath(cwd, feature, rel)}`);
+      throw new Error(`feature "${feature}" seeds file missing on disk: ${statePath(cwd, feature, rel)}`);
     }
-    const basename = rel.slice(field.length + 1);
+    const basename = rel.slice('seeds/'.length);
     const dest = dedupe(basename, destDir, taken);
     taken.add(dest);
     moves.push({ entry: /** @type {Record<string, any>} */ (entry), basename, dest });
@@ -201,23 +196,6 @@ function planSpikes(root, feature, epic) {
   });
 }
 
-/**
- * An import's origin follows the material: a feature session's
- * `{phase}/{feature}` becomes `{phase}/{topic}`, the same session's work
- * under its new name. Every other origin — `discovery`, `roadmap` — is the
- * feature's own history and carries unchanged.
- * @param {string} origin @param {string} feature @param {string} topic
- * @returns {string}
- */
-function reaimImportOrigin(origin, feature, topic) {
-  const slash = origin.indexOf('/');
-  if (slash === -1) return origin;
-  const phase = origin.slice(0, slash);
-  return IMPORT_PHASES.includes(phase) && origin.slice(slash + 1) === feature
-    ? `${phase}/${topic}`
-    : origin;
-}
-
 /** The moves the dedupe renamed. @param {Move[]} moves @returns {{from: string, to: string}[]} */
 function renamesOf(moves) {
   return moves.filter((move) => move.basename !== move.dest).map((move) => ({ from: move.basename, to: move.dest }));
@@ -231,7 +209,7 @@ function renamesOf(moves) {
  * different file), so the substitution is exact and a re-run changes
  * nothing.
  * @param {string} file absolute path to the moved document
- * @param {string} home `imports` | `assets`
+ * @param {string} home the home moved: `seeds`, `assets` or `spikes`
  * @param {{from: string, to: string}[]} renames
  */
 function rewriteLinks(file, home, renames) {
@@ -313,11 +291,10 @@ function placeTopic(cwd, epicManifest, into, topic, series) {
 
 /**
  * Absorb a feature into an in-progress epic as `topic`: move its topic
- * folder, imports, seeds, assets and spikes into the epic — manifest entries
+ * folder, seeds, assets and spikes into the epic — manifest entries
  * carrying their original timestamps, filename collisions suffixed on the
  * shared landing discipline (a renamed file or spike has its links
- * rewritten in the moved topic folder, and a feature-session import origin is
- * re-aimed at the topic) — carry each phase item whole onto the epic beside
+ * rewritten in the moved topic folder) — carry each phase item whole onto the epic beside
  * its map row, carry the feature's ledger lines to the epic topic, remove
  * the feature's knowledge-base chunks and index the moved artifacts at
  * their epic identities (warn-don't-block), delete the feature (directory
@@ -376,12 +353,11 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       const experimentItem = phaseItems(featureManifest, 'experiment')[feature];
       placeTopic(cwd, epicManifest, into, topic, Boolean(experimentItem));
 
-      const importPlan = planTrackedMoves(cwd, feature, into, 'imports', Array.isArray(featureManifest.imports) ? featureManifest.imports : []);
-      const seedPlan = planTrackedMoves(cwd, feature, into, 'seeds', Array.isArray(featureManifest.seeds) ? featureManifest.seeds : []);
+      const seedPlan = planSeeds(cwd, feature, into, Array.isArray(featureManifest.seeds) ? featureManifest.seeds : []);
       const assetPlan = planAssets(cwd, feature, into);
       const spikePlan = planSpikes(root, feature, into);
       /** @type {[string, Move[]][]} */
-      const homes = [['imports', importPlan], ['seeds', seedPlan], ['assets', assetPlan], ['spikes', spikePlan]];
+      const homes = [['seeds', seedPlan], ['assets', assetPlan], ['spikes', spikePlan]];
       const waiting = mailboxDepth(root, feature, feature);
 
       // Read (and refuse corrupt JSON) before anything mutates; the
@@ -431,13 +407,6 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
         const experiment = ensureContainer(epicPhases, 'experiment', 'phases.experiment');
         ensureContainer(experiment, 'items', 'phases.experiment.items')[topic] = copyWhole(experimentItem);
       }
-      for (const move of importPlan) {
-        if (!Array.isArray(epicManifest.imports)) epicManifest.imports = [];
-        /** @type {Record<string, any>} */
-        const entry = { ...move.entry, path: `imports/${move.dest}` };
-        if (typeof entry.origin === 'string') entry.origin = reaimImportOrigin(entry.origin, feature, topic);
-        epicManifest.imports.push(entry);
-      }
       for (const move of seedPlan) {
         if (!Array.isArray(epicManifest.seeds)) epicManifest.seeds = [];
         epicManifest.seeds.push({ ...move.entry, path: `seeds/${move.dest}` });
@@ -451,7 +420,6 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
       return {
         discussionStatus: discussionItem.status,
-        importPlan,
         seedPlan,
         assetPlan,
         spikePlan,
@@ -482,12 +450,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
     fs.rmSync(statePath(cwd, feature), { recursive: true, force: true });
 
-    // KB: drop the feature's chunks, index the moved imports and seeds at their
-    // epic identities.
+    // KB: drop the feature's chunks, index the moved seeds at their epic
+    // identities.
     syncKnowledge(cwd, [
       { remove: { workUnit: feature } },
-      ...moved.importPlan.filter((m) => isIndexableImport(m.dest))
-        .map((move) => ({ index: importArtifact(into, move.dest), label: `knowledge index (imports/${move.dest})` })),
       ...moved.seedPlan.map((move) => ({ index: `${into}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
     ], warnings);
 
@@ -503,8 +469,6 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       epic: into,
       topic,
       discussion: { path: statePath(cwd, topicLog(into, topic)), status: moved.discussionStatus },
-      imports: moved.importPlan.map((move) => ({ path: statePath(cwd, into, 'imports', move.dest) })),
-      renamed_imports: renamesOf(moved.importPlan),
       assets: moved.assetPlan.map((move) => ({ path: statePath(cwd, into, 'assets', move.dest) })),
       renamed_assets: renamesOf(moved.assetPlan),
       spikes: moved.spikePlan.map((move) => ({ path: statePath(cwd, into, 'spikes', move.dest) })),

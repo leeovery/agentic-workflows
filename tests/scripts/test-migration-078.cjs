@@ -835,12 +835,10 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(read('core/manifest.json'), json(manifestOf('core')), 'in the engine\'s serialisation');
     });
 
-    it('drops every discussion\'s reconcile flag, whatever it holds, carries none from research, and keeps a later phase\'s', () => {
-      assert.deepStrictEqual(
-        Object.entries(manifestOf('core').phases.discussion.items).filter(([, item]) => 'reconcile_needed' in item).map(([topic]) => topic),
-        [],
-      );
-      assert.strictEqual(manifestOf('shop').phases.planning.items.ranking.reconcile_needed, 'specification');
+    it('drops every item\'s reconcile flag, whatever it holds and whatever phase holds it, and carries none from research', () => {
+      const flagged = (/** @type {string} */ unit) => Object.entries(manifestOf(unit).phases)
+        .flatMap(([phase, entry]) => Object.entries(entry.items || {}).filter(([, item]) => 'reconcile_needed' in item).map(([topic]) => `${phase}/${topic}`));
+      assert.deepStrictEqual([flagged('core'), flagged('shop')], [[], []]);
     });
 
     it('keeps no spec or planning items where nothing is built, its specs and plans reference assets and its one spec written fresh (21.8.2, 21.8.3)', () => {
@@ -880,7 +878,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         },
         discussion: { items: { ranking: { status: 'completed' }, 'event-tracking': { status: 'completed' }, 'usage-analysis': { status: 'completed' } } },
         specification: { items: { ranking: { status: 'completed', sources: { ranking: { status: 'incorporated' } } } } },
-        planning: { items: { ranking: { status: 'completed', format: 'sample-format', phase: 2, task: 1, reconcile_needed: 'specification', task_map: { 'ranking-1-1': 'ext-a1' }, storage_paths: ['.tracker'] } } },
+        planning: { items: { ranking: { status: 'completed', format: 'sample-format', phase: 2, task: 1, task_map: { 'ranking-1-1': 'ext-a1' }, storage_paths: ['.tracker'] } } },
         implementation: { items: { ranking: { status: 'in-progress', current_phase: 2, current_task: 'ranking-2-1', completed_tasks: ['ranking-1-1'], bank: [{ finding: 'later' }] } } },
         review: { items: { ranking: { status: 'in-progress', reviewed_tasks: ['ranking-1-1'] } } },
       });

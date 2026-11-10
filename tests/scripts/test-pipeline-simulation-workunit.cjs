@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's work-unit lifecycle: complete, reactivate,
 // cancel and reactivate; a feature pivoted to an epic; a feature absorbed
-// into an epic; reference imports re-homed by absorb; and the guards
+// into an epic; shared files re-homed by absorb; and the guards
 // holding mid-pipeline.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -196,23 +196,20 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual(read(['record', epic, 'stray-topic']).decisions.map((/** @type {{id: string}} */ d) => d.id), [owned, costed]);
   });
 
-  it('reference imports: a discussion lands files, absorb re-homes them over a collision', () => {
+  it('shared files: a discussion lands them in its assets, absorb re-homes them over a collision', () => {
     const feat = 'ledger';
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'Ledger', '--session-log-file', sessionLog(sim, feat)]);
 
     // The discussion lands what the user shared mid-session — a binary and a
-    // markdown source — stamped with its own origin, and its log links them.
+    // markdown source — and its log links them.
     menuEntry(sim, feat);
     enterEntry(sim, feat, 'discussion', feat);
     sim.write('shared/Dockset 05.PNG', 'png bytes\n');
     sim.write('shared/Onboarding.txt', 'the walkthrough\n');
-    const landed = sim.run(['workunit', 'import', feat, 'shared/Dockset 05.PNG', 'shared/Onboarding.txt', '--from', `discussion/${feat}`]);
-    assert.deepStrictEqual(landed.imports, [
-      { path: path.join(sim.dir, `.leeway/${feat}/imports/dockset-05.png`), origin: `discussion/${feat}` },
-      { path: path.join(sim.dir, `.leeway/${feat}/imports/onboarding.md`), origin: `discussion/${feat}` },
-    ]);
+    const landed = sim.run(['asset', 'import', feat, 'shared/Dockset 05.PNG', 'shared/Onboarding.txt']);
+    assert.deepStrictEqual(landed.imports, [`${feat}/assets/dockset-05.png`, `${feat}/assets/onboarding.md`]);
     sim.write(`.leeway/${feat}/topics/${feat}/log.md`,
-      `# Discussion — ${feat}\n\n![the fifth onboarding screen](../../imports/dockset-05.png)\n`);
+      `# Discussion — ${feat}\n\n![the fifth onboarding screen](../../assets/dockset-05.png)\n`);
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
 
     // The epic already holds a file of the same name from its own opener.
@@ -220,23 +217,18 @@ describe('pipeline simulation: workunit', () => {
     sim.run(['workunit', 'create', epic, 'epic', '--description', 'Platform', '--session-log-file', sessionLog(sim, epic)]);
     sim.run(['discovery-session', 'close', epic, '-m', `discovery(${epic}): shape`]);
     sim.write('shared/dockset-05.png', "the epic's own shot\n");
-    sim.run(['workunit', 'import', epic, 'shared/dockset-05.png', '--from', 'discovery']);
+    sim.run(['asset', 'import', epic, 'shared/dockset-05.png']);
 
-    // Absorb re-homes the material: the collision suffixes, the links the
-    // rename broke are rewritten in the documents absorb moved, and the
-    // feature-session origins follow the topic.
+    // Absorb re-homes the material: the collision suffixes, and the links the
+    // rename broke are rewritten in the documents absorb moved.
     const topic = 'ledger-work';
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic]);
-    assert.deepStrictEqual(absorbed.renamed_imports, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
+    assert.deepStrictEqual(absorbed.renamed_assets, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
     const read = (rel) => fs.readFileSync(path.join(sim.dir, rel), 'utf8');
-    assert.match(read(`.leeway/${epic}/topics/${topic}/log.md`), /\.\.\/\.\.\/imports\/dockset-05-2\.png/);
-    assert.deepStrictEqual(sim.manifest(epic).imports.map((e) => [e.path, e.origin]), [
-      ['imports/dockset-05.png', 'discovery'],
-      ['imports/dockset-05-2.png', `discussion/${topic}`],
-      ['imports/onboarding.md', `discussion/${topic}`],
-    ]);
-    const renamedArg = absorbed.renamed_imports.map((r) => `${r.from}:${r.to}`).join(',');
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'imports',
+    assert.match(read(`.leeway/${epic}/topics/${topic}/log.md`), /\.\.\/\.\.\/assets\/dockset-05-2\.png/);
+    assert.deepStrictEqual(fs.readdirSync(path.join(sim.dir, `.leeway/${epic}/assets`)).sort(), ['dockset-05-2.png', 'dockset-05.png', 'onboarding.md']);
+    const renamedArg = absorbed.renamed_assets.map((r) => `${r.from}:${r.to}`).join(',');
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'assets',
       '--renamed', renamedArg], { expect: 'content' }),
     /• Renamed: dockset-05\.png → dockset-05-2\.png \(links rewritten\)/);
   });

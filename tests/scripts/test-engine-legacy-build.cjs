@@ -28,6 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
+const { manageUnitView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
 const { call } = require('./engine-harness.cjs');
 const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
@@ -113,7 +114,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
       const view = linear.view(dir, name);
       assert.deepStrictEqual(lines(view, /^  ([a-z]|[0-9])  /), [`  b  back  back  ${name}  → (internal)`], name);
       assert.ok(view.includes(`· · · · · · · · · · · ·\n${waiting(name)}\n\n**\`◆ What next?\`**\n\n**\`b/back\`** → Return to the start menu`), name);
-      assert.ok(view.includes('\nfinalising: false\n') && !view.includes('ready to finalise'), name);
+      assert.ok(!view.includes('finalis'), name);
     }
     assert.deepStrictEqual(lines(linear.view(dir, 'old-bugfix'), /^  [├└]─ /), [
       '  ├─ ✓ Investigation     [completed]',
@@ -140,7 +141,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
   it('the start menu reads its next phase off its items, never offering to finalise it, and a closed one its last', () => {
     const menu = start.discover(dir);
     assert.deepStrictEqual({
-      units: ['epics', 'features', 'bugfixes'].flatMap((group) => menu[group].work_units.map((u) => `${u.name}: ${u.phase_label}${u.finalising ? ', finalising' : ''}`)),
+      units: ['epics', 'features', 'bugfixes'].flatMap((group) => menu[group].work_units.map((u) => `${u.name}: ${u.phase_label}`)),
       closed: [...menu.completed, ...menu.cancelled].map((u) => `${u.name}: ${u.last_phase}`),
     }, {
       units: [
@@ -189,7 +190,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
   });
 
   it('manage offers it no done, and the revisit list refuses it', () => {
-    assert.deepStrictEqual(LIVE.filter((name) => manageDetail(dir, name).implementation_completed), []);
+    assert.deepStrictEqual(LIVE.filter((name) => manageUnitView(manageDetail(dir, name)).menu.includes('d/done')), []);
     assert.strictEqual(JSON.parse(call(dir, ['render', 'revisit-phases', 'built-feature']).stderr).error,
       'render revisit-phases: "built-feature" has no completed earlier phase to revisit');
   });

@@ -43,7 +43,6 @@ describe('pipeline simulation: backwards', () => {
     const dump = BRIDGE.format(BRIDGE.discover(sim.dir, wu));
     assert.match(dump, /^revisitable_phases: \(none\)$/m);
     assert.match(dump, /^revisit_routes: \(none\)$/m);
-    sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
     sim.refuses(['render', 'revisit-phases', wu], /has no completed earlier phase to revisit/);
     sim.refuses(['topic', 'reopen', wu, 'discussion', wu], /^a discussion decided, or closed into its spec, reopens through a message sent to it/);
 

@@ -4,14 +4,14 @@
 // Domain ring: the manage detail — one work unit's lifecycle-action
 // availability, computed for the manage action menu. Which actions the menu
 // offers is the unit's state (work type, phase presence, whether it is past
-// its spec, implementation completion, a build by its cut, in-progress epics
-// before their spec for absorption), so it is derived here, in one place,
+// its spec, a build by its cut, in-progress epics before their spec for
+// absorption), so it is derived here, in one place,
 // never re-derived by the session. Pure over the project's
 // state: same files, same answer.
 // ---------------------------------------------------------------------------
 
 const { loadManifest, loadActiveManifests } = require('./reads.cjs');
-const { phaseItems, buildByCut, awaitsCut } = require('./derivations.cjs');
+const { buildByCut } = require('./derivations.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 
 /**
@@ -19,7 +19,6 @@ const { pastItsSpec } = require('./spec-standing.cjs');
  * @property {string} work_unit
  * @property {string} work_type
  * @property {string} status
- * @property {boolean} implementation_completed  any implementation item completed, on a unit not waiting on the migration's cut → `done` offered (P12)
  * @property {boolean} has_build                 a build by its cut → `view-build` offered (12.12.11)
  * @property {boolean} has_spec                  past its spec, written or concluded (absorb guard)
  * @property {boolean} has_discussion            discussion phase present (absorb guard)
@@ -53,7 +52,6 @@ function manageDetail(cwd, workUnit) {
     work_unit: workUnit,
     work_type: workType,
     status: manifest.status,
-    implementation_completed: !awaitsCut(manifest) && phaseItems(manifest, 'implementation').some((i) => i.status === 'completed'),
     has_build: buildByCut(manifest),
     has_spec: hasSpec,
     has_discussion: hasDiscussion,

@@ -1,6 +1,6 @@
 # Postponing the Topic
 
-*Shared reference. Loaded by the `## Postponing the Topic` section on the scoping processing skill, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
+*Shared reference. Loaded by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
 
 ---
 

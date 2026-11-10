@@ -19,11 +19,24 @@ const LEGACY_WORK_TYPES = Object.freeze({
   'cross-cutting': ['experiment', 'discussion', 'specification'],
 });
 
-const VALID_PHASES = [
-  'discovery', 'experiment', 'discussion', 'investigation', 'scoping',
-  'specification', 'planning', 'implementation',
-  'review'
-];
+// The engine's phase table: each phase, in pipeline order, with the stage
+// it sits in (3.1.1–3.1.4).
+const PHASE_STAGES = Object.freeze({
+  discovery: 'Discovery',
+  experiment: 'Discovery',
+  discussion: 'Discovery',
+  investigation: 'Discovery',
+  specification: 'Definition',
+  implementation: 'Delivery',
+  review: 'Delivery',
+});
+
+const VALID_PHASES = Object.keys(PHASE_STAGES);
+
+// The item names older units carry that no phase table holds: a unit built
+// under the old plan keeps its planning items, read and never written, until
+// the reshape's 29.17 cut takes it (P12).
+const LEGACY_PHASES = Object.freeze(['planning']);
 
 // Per-work-type pipeline order — the phases a unit of that type moves through
 // after discovery (the universal first phase; a map, not a pipeline phase, so
@@ -42,9 +55,8 @@ const WORK_TYPE_PIPELINES = {
 const EPIC_PHASES = Object.freeze(['discovery', ...WORK_TYPE_PIPELINES.epic]);
 
 // Derived-bookkeeping phases: the item is computed over its own records — no
-// hand lifecycle, no start-time reconcile, no resume or reactivate; the
-// phase's own verbs maintain the item. Every generic surface keys on this
-// list, never on a phase name.
+// hand lifecycle, no resume or reactivate; the phase's own verbs maintain the
+// item. Every generic surface keys on this list, never on a phase name.
 const DERIVED_PHASES = ['experiment'];
 
 /** The phases a topic exists in: those before the spec (4.11.2). */
@@ -70,11 +82,9 @@ const VALID_PHASE_STATUSES = {
   // specification is past "not yet".
   discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed'],
   investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
-  scoping:        ['in-progress', 'completed', 'cancelled'],
-  // The one spec keeps no items (P7); a quick-fix's scoping keeps its spec
-  // and its plan items until 29.15.
+  // The one spec keeps no items (P7): a unit built under the old plan keeps
+  // its spec's.
   specification:  ['in-progress', 'completed', 'cancelled'],
-  planning:       ['in-progress', 'completed', 'cancelled'],
   implementation: ['in-progress', 'completed', 'cancelled'],
   review:         ['in-progress', 'completed', 'cancelled'],
 };
@@ -152,25 +162,6 @@ function assertLegalName(kind, name) {
   if (illegal !== null) throw new Error(illegal);
 }
 
-// Where an import came from — required on every `imports[]` entry. The fixed
-// origins are the two places that belong to no phase session: `discovery`
-// (a discovery session, or the unit's creation) and `roadmap` (the project-level
-// product layer). Everything else is `{phase}/{topic}` — the session that
-// landed the file — and only the phases whose sessions read shared material
-// carry that door.
-const IMPORT_FIXED_ORIGINS = ['discovery', 'roadmap'];
-const IMPORT_PHASES = ['discussion', 'investigation'];
-
-/** @param {string} origin */
-function isImportOrigin(origin) {
-  if (typeof origin !== 'string') return false;
-  if (IMPORT_FIXED_ORIGINS.includes(origin)) return true;
-  const slash = origin.indexOf('/');
-  if (slash === -1) return false;
-  const topic = origin.slice(slash + 1);
-  return IMPORT_PHASES.includes(origin.slice(0, slash)) && isPlainName(topic);
-}
-
 // The phase whose sessions spawn experiments (9.1.4): each spawn locks the
 // spawning discussion's own item, `awaiting_experiments`.
 const EXPERIMENT_SPAWN_PHASES = ['discussion'];
@@ -238,7 +229,9 @@ const DRIVER_KINDS = /** @type {const} */ (['task', 'landing']);
 module.exports = {
   VALID_WORK_TYPES,
   LEGACY_WORK_TYPES,
+  PHASE_STAGES,
   VALID_PHASES,
+  LEGACY_PHASES,
   WORK_TYPE_PIPELINES,
   EPIC_PHASES,
   DERIVED_PHASES,
@@ -254,8 +247,6 @@ module.exports = {
   isPlainName,
   illegalNameReason,
   assertLegalName,
-  IMPORT_PHASES,
-  isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,

@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/leeway-bridge/scripts/gateway.cjs *), Ba
 
 Decide where the work goes when a phase concludes or pauses, then hand it off.
 
-A phase invokes this skill as it ends. A linear work type's next phase is derived from state, with the one real choice offered where there is one — skip review, revisit an earlier phase; an epic returns to its menu. Every route ends in the handoff but the pipeline's end, which completes the work unit.
+A phase invokes this skill as it ends. A feature's next phase is derived from state; an epic returns to its menu. Every route ends in the handoff.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
@@ -68,14 +68,6 @@ Load the continuation for the work type.
 #### If work type is `feature`
 
 Load **[feature-continuation.md](references/feature-continuation.md)** and follow its instructions as written.
-
-#### If work type is `bugfix`
-
-Load **[bugfix-continuation.md](references/bugfix-continuation.md)** and follow its instructions as written.
-
-#### If work type is `quick-fix`
-
-Load **[quickfix-continuation.md](references/quickfix-continuation.md)** and follow its instructions as written.
 
 #### If work type is `epic`
 

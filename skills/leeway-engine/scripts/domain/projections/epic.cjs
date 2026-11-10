@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { signpost, renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, PHASE_STAGES, DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { heldStatement } = require('./enter.cjs');
 const { CONVERSATION_ACTIONS, titled, itemTitle } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
@@ -45,7 +45,6 @@ const { currentPhase } = require('./build.cjs');
  * @property {string|null} route      skill invocation, or null for internal flows
  * @property {OptionLabel} label
  * @property {boolean} [recommended]
- * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
  * @property {number} [session_age]    that session's last-active age in seconds
  * @property {{work_unit: string, phase: string, topic: string}} [session_holder] the held code row taking the slot, when it is not this entry's own topic
@@ -63,18 +62,11 @@ const BUILD_PHASES = EPIC_PIPELINE.slice(EPIC_PIPELINE.indexOf('specification'))
 // plan's items shows them in its tree, never as rows.
 const TOPIC_ROW_PHASES = EPIC_PIPELINE.filter((p) => p !== 'specification' && !DERIVED_PHASES.includes(p) && !BUILD_PHASES.includes(p));
 
-// The three-D stage each pipeline phase renders under. STAGES groups the epic
-// pipeline in order by this labelling, so the dividers can never hold a phase
-// the pipeline lacks.
-const STAGE_OF = {
-  experiment: 'DISCOVERY', discussion: 'DISCOVERY',
-  specification: 'DEFINITION',
-  implementation: 'DELIVERY', review: 'DELIVERY',
-};
-
+// The epic pipeline grouped in order by the stage the phase table gives each
+// phase, so the dividers can never hold a phase the pipeline lacks.
 /** @type {{name: string, phases: string[]}[]} */
 const STAGES = EPIC_PIPELINE.reduce((/** @type {{name: string, phases: string[]}[]} */ stages, phase) => {
-  const name = STAGE_OF[/** @type {keyof typeof STAGE_OF} */ (phase)];
+  const name = PHASE_STAGES[/** @type {keyof typeof PHASE_STAGES} */ (phase)].toUpperCase();
   const last = stages[stages.length - 1];
   if (last && last.name === name) last.phases.push(phase);
   else stages.push({ name, phases: [phase] });
@@ -127,15 +119,10 @@ function displayOrder(phase, items) {
   return [...items.filter((i) => i.status === 'proposed'), ...items.filter((i) => i.status !== 'proposed')];
 }
 
-/** The tree tag one build/flat-phase item carries — a completed item with a live reconcile flag reads `input moved`. @param {PhaseEntry} item */
-function statusTag(item) {
-  return item.status === 'completed' && item.reconcile_needed !== undefined ? 'completed · input moved' : item.status;
-}
-
 /** Build the tree nodes for one build/flat phase. @param {string} phase @param {PhaseEntry[]} items @param {Record<string, string>} titles */
 function phaseNodes(phase, items, titles) {
   return displayOrder(phase, items).map((item) => {
-    const tag = statusTag(item);
+    const tag = item.status;
     const head = title({ label: itemTitle(titles, phase, item.name) });
     /** @type {{title: string, tag?: string}[]} */
     const children = [];
@@ -188,8 +175,7 @@ function mapStatusSuffix(detail) {
 
 /** The MATERIAL block above the map header — what the epic carried in. @param {EpicDetail} detail */
 function stageMaterial(detail) {
-  const showImports = detail.imports_count > 0 && detail.imports_count !== detail.discovery_map.length;
-  return materialBlock({ seeds: detail.seeds_count, imports: showImports ? detail.imports_count : 0 });
+  return materialBlock(detail.seeds_count);
 }
 
 /** Arrival callouts above the map header — what the analysis added this boot-up. @param {NewArrivals} newArrivals */
@@ -378,16 +364,11 @@ const KEY_STATUS =
   + '    cancelled   — topic removed from active work\n'
   + '    promoted    — moved to its own cross-cutting work unit';
 
-const CUE_RECONCILE =
-  '    input moved             — an upstream artifact was revised since\n'
-  + '                              this item last moved; the item\'s entry\n'
-  + '                              flow reconciles it';
-
 /**
  * Section B — the Key block, showing only categories present in the display
  * whose vocabulary the rows don't spell out themselves: phase-item status
- * tags and the `input moved` cue. Map-row lifecycle and
- * session state need no legend — their `↳` state lines carry the words.
+ * tags. Map-row lifecycle and session state need no legend — their `↳`
+ * state lines carry the words.
  * Empty string when nothing on screen earns a legend.
  * @param {EpicDetail} detail
  * @returns {string}
@@ -397,18 +378,10 @@ function epicKey(detail) {
   const phaseNames = Object.keys(detail.phases);
   if (!hasMap && phaseNames.length === 0) return '';
 
-  // The cue legend mirrors the display: with a map only build phases render
-  // item rows; without a map every phase renders.
-  const cuePhases = hasMap ? BUILD_PHASES : Object.keys(detail.phases);
-  const anyFlagged = cuePhases.some((p) => (detail.phases[p] || [])
-    .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined));
-  const blocks = [];
-  if (!hasMap || BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
-  const cueLines = [];
-  if (anyFlagged) cueLines.push(CUE_RECONCILE);
-  if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));
-  if (blocks.length === 0) return '';
-  return 'Key:\n' + blocks.join('\n\n');
+  // With a map only build phases render item rows; without a map every
+  // phase renders.
+  if (hasMap && !BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) return '';
+  return 'Key:\n' + KEY_STATUS;
 }
 
 // ---------------------------------------------------------------------------
@@ -421,8 +394,7 @@ function topicRoute(action, workUnit, topic) {
 }
 
 // The mail cue rides every row shape: the bare start rows carry it as
-// their tail; a row that already has a tail carries it as the tail's cue,
-// the way continueLabel cues `input moved`.
+// their tail; a row that already has a tail carries it as the tail's cue.
 /** @param {string} action @param {string} t the topic as screens title it @param {boolean} [mailWaiting] @returns {LabelParts} */
 function discoveryEntryLabel(action, t, mailWaiting) {
   const cue = mailWaiting ? 'mail waiting' : undefined;
@@ -433,8 +405,7 @@ function discoveryEntryLabel(action, t, mailWaiting) {
 
 /** @param {string} phase @param {PhaseEntry} item @param {Record<string, string>} titles @returns {LabelParts} */
 function continueLabel(phase, item, titles) {
-  const cue = item.reconcile_needed !== undefined ? 'input moved' : undefined;
-  return { head: `Continue "${itemTitle(titles, phase, item.name)}"`, tail: `${phase} [in-progress]`, cue };
+  return { head: `Continue "${itemTitle(titles, phase, item.name)}"`, tail: `${phase} [in-progress]` };
 }
 
 // A topic has one mailbox, so each of its rows carries the cue while mail waits.
@@ -482,7 +453,6 @@ function continueEntries(workUnit, detail, phase) {
       topic: item.name,
       route: topicRoute(`continue_${phase}`, workUnit, item.name),
       label: continueLabel(phase, item, detail.titles),
-      ...(item.reconcile_needed !== undefined ? { input_moved: true } : {}),
     }));
 }
 
@@ -621,12 +591,6 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     // A topic another session holds open is never the recommendation.
     const discovery = numbered.find((e) => CONVERSATION_ACTIONS.discussion.includes(e.action) && !e.in_session) || null;
     if (detail.convergence_state === 'in-progress') return discovery;
-    // With a flagged completed item and nothing else to start, the reconcile
-    // route IS the recommendation — resuming the flagged item clears the flag.
-    if (detail.completed.some((i) => i.reconcile_needed !== undefined)) {
-      const cOption = options.find((o) => o.action === 'resume_completed');
-      if (cOption) { cOption.recommended = true; return null; }
-    }
     if (sOption) sOption.recommended = true;
     return null;
   }
@@ -914,16 +878,13 @@ function pipelineOrdered(items) {
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCompletedMenu(workUnit, detail) {
-  const rows = pipelineOrdered(detail.completed).map((item) => {
-    const flagged = item.reconcile_needed !== undefined;
-    return {
-      phase: item.phase,
-      topic: item.name,
-      row: title({ label: itemTitle(detail.titles, item.phase, item.name), tag: flagged ? 'completed · input moved' : 'completed' }),
-      label: { head: `Resume "${itemTitle(detail.titles, item.phase, item.name)}"`, tail: item.phase, cue: flagged ? 'input moved' : undefined },
-      route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
-    };
-  });
+  const rows = pipelineOrdered(detail.completed).map((item) => ({
+    phase: item.phase,
+    topic: item.name,
+    row: title({ label: itemTitle(detail.titles, item.phase, item.name), tag: 'completed' }),
+    label: { head: `Resume "${itemTitle(detail.titles, item.phase, item.name)}"`, tail: item.phase },
+    route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
+  }));
   return selectionSubView('Completed Topics', 'No completed topics.', 'Which topic would you like to resume?', 'resume', rows);
 }
 

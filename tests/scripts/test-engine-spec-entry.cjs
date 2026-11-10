@@ -243,12 +243,8 @@ describe('what the spec reads at its entry', () => {
     ]));
   });
 
-  it('a bugfix\'s topic logs: its investigation\'s log, and beside it, while there is one, the document today\'s investigation writes — each read once on disk (19.4.15)', () => {
-    const document = `topic log: ${at(layout.doc('fixed', 'investigation', 'fixed'))}`;
-    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), document]));
-    writeState(dir, layout.topic('fixed', 'fixed', 'log.md'), '# Fixed\n');
-
-    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), `topic log: ${at(layout.topic('fixed', 'fixed', 'log.md'))}`, document]));
+  it('a bugfix\'s topic log is its investigation\'s log, read once on disk (19.4.15)', () => {
+    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), `topic log: ${at(layout.topic('fixed', 'fixed', 'log.md'))}`]));
   });
 
   it('once the spec is written, the spec and, once cut, the cut; and the agents the spec was left with, landed or lost with a process gone (9.7.8)', () => {

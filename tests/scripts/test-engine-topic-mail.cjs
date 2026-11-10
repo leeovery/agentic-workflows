@@ -171,7 +171,7 @@ function retried(res, free) {
 describe('topic send (10.1, 10.2.7)', () => {
   it('lands the message as the next file of the target\'s own mailbox, its path naming no phase, writing no entry, the scratch consumed and the message committed alone, a peer\'s dirt left as it was (10.S1, 10.S6, 5.S11)', () => {
     const ledger = readState(dir, layout.ledger);
-    writeState(dir, layout.unit(EPIC, 'specification', 'licence', 'specification.md'), '# Licence, mid-session\n');
+    writeState(dir, layout.topic(EPIC, 'licence', 'brief.md'), '# Licence, mid-session\n');
     const peer = dirt();
     const message = scratch();
     const first = withFrozenClock(() => ok(dir, ['topic', 'send', EPIC, 'commercialization', '--from', 'first-run', '--content', message, '--slug', 'lost-key']));
@@ -202,10 +202,10 @@ describe('topic send (10.1, 10.2.7)', () => {
 
   it('heals a conversation with fields but no status to not started, its fields kept', () => {
     const manifest = readManifest(dir, EPIC);
-    manifest.phases.discussion.items.licence = { reconcile_needed: true };
+    manifest.phases.discussion.items.licence = { dismissed_grounds: ['not this year'] };
     writeState(dir, layout.manifest(EPIC), JSON.stringify(manifest, null, 2) + '\n');
     send(EPIC, 'licence', 'first');
-    assert.deepStrictEqual(discussion('licence'), { reconcile_needed: true, status: 'unstarted' });
+    assert.deepStrictEqual(discussion('licence'), { dismissed_grounds: ['not this year'], status: 'unstarted' });
   });
 
   it('sets a decided topic back in progress: it shows mail waiting and is decided no longer (10.S10, P9)', () => {

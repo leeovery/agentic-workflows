@@ -158,8 +158,8 @@ function cancelWorkUnit(cwd, workUnit) {
 
 /**
  * Re-index a work unit's chunk-backed material: the bulk pass scoped to the
- * unit — every completed indexed-phase topic, the shape-valid imports and
- * seeds, the analysis caches and the record copies.
+ * unit — the shape-valid seeds, the analysis caches, the record copies and
+ * the short record.
  *
  * `clearFirst` (pivot) removes the unit's chunks before re-indexing: a pivot
  * restamps the work_type of chunks already indexed, which the bulk pass
@@ -178,9 +178,7 @@ function reindexWorkUnit(cwd, workUnit, warnings, opts) {
 /**
  * Reactivate a completed or cancelled work unit: `status: in-progress`, a
  * stale `completed_at` cleared, commit scoped to the work unit. A finished
- * pipeline (derived next phase `done`) is no bar — the reactivated unit
- * surfaces as finalising until a phase is reopened, which is exactly the
- * revisit path the navigation skills route through here. Cancellation removed
+ * pipeline (derived next phase `done`) is no bar. Cancellation removed
  * the unit's knowledge-base chunks, so reactivating from `cancelled`
  * re-indexes them (warn-don't-block); completed units retained their chunks —
  * no knowledge-base action.

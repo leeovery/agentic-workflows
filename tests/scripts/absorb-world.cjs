@@ -27,7 +27,7 @@ function writeFile(dir, rel, content) {
   fs.writeFileSync(full, content);
 }
 
-/** The absorbable feature: a discussion, an import, a seed. @param {Record<string, unknown>} [overrides] @returns {Record<string, any>} */
+/** The absorbable feature: a discussion and a seed. @param {Record<string, unknown>} [overrides] @returns {Record<string, any>} */
 function featureManifest(overrides = {}) {
   return {
     name: 'auth-flow',
@@ -35,7 +35,6 @@ function featureManifest(overrides = {}) {
     status: 'in-progress',
     created: '2026-06-01',
     description: 'auth flow work',
-    imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' }],
     seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' }],
     phases: {
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
@@ -44,13 +43,13 @@ function featureManifest(overrides = {}) {
   };
 }
 
-/** The target epic — carries a colliding import and a dismissed name. @param {Record<string, unknown>} [overrides] @returns {Record<string, any>} */
+/** The target epic — carries a seed of its own and a dismissed name. @param {Record<string, unknown>} [overrides] @returns {Record<string, any>} */
 function epicManifest(overrides = {}) {
   return {
     name: 'payments',
     work_type: 'epic',
     status: 'in-progress',
-    imports: [{ path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' }],
+    seeds: [{ path: 'seeds/roadmap.md', source: 'inbox:idea', seeded_at: '2026-05-01T08:00:00Z' }],
     phases: {
       discovery: {
         items: { 'fee-model': { source: 'discovery', summary: 'Fees' } },
@@ -75,12 +74,11 @@ function fillFixture(project, { feature = featureManifest(), epic = epicManifest
   }, null, 2) + '\n');
   writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(feature, null, 2) + '\n');
   writeFile(project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
-  writeFile(project, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(project, '.leeway/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
-  writeFile(project, '.leeway/payments/imports/roadmap.md', '# Roadmap\n');
-  // A file-only collision in the epic's imports dir — dedupe must dodge it.
-  writeFile(project, '.leeway/payments/imports/notes.md', '# Epic notes\n');
+  writeFile(project, '.leeway/payments/seeds/roadmap.md', '# Roadmap\n');
+  // A file-only collision in the epic's seeds — dedupe must dodge it.
+  writeFile(project, '.leeway/payments/seeds/notes.md', '# Epic notes\n');
   commitAll(project, 'init');
 }
 

@@ -895,7 +895,7 @@ describe('calls carry their task (12.12.5, 20.5.4)', () => {
 });
 
 describe('no questions page (27.2.7)', () => {
-  it('27.S6: the questions waiting are reached one at a time, never on a page of their own: no surface of the catalogue draws them, scoping\'s questions its only surface of questions', () => {
-    assert.deepStrictEqual(Object.keys(SURFACES).filter((name) => /question/.test(name)), ['scoping-questions']);
+  it('27.S6: the questions waiting are reached one at a time, never on a page of their own: no surface of the catalogue draws them', () => {
+    assert.deepStrictEqual(Object.keys(SURFACES).filter((name) => /question/.test(name)), []);
   });
 });

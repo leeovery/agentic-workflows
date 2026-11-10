@@ -24,9 +24,7 @@ const PHASE_WORDS: ReadonlyMap<string, string> = new Map([
   ['experiment', 'Experimenting'],
   ['discussion', 'Discussing'],
   ['investigation', 'Investigating'],
-  ['scoping', 'Scoping'],
   ['specification', 'Specifying'],
-  ['planning', 'Planning'],
   ['implementation', 'Implementing'],
   ['review', 'Reviewing'],
 ])

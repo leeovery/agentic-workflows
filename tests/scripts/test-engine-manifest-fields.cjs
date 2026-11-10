@@ -3,12 +3,12 @@
 // ---------------------------------------------------------------------------
 // `engine manifest` — the manifest field surface (domain/fields.cjs).
 //
-// Pins the ruled output split: reads (get/exists/list/key-of/resolve) print
+// Pins the ruled output split: reads (get/exists/list/key-of) print
 // bare stdout with the `Error: …` stderr exit-code convention (2 = expected
 // miss); mutations (set/push/pull/delete) answer with the engine's one-line
 // JSON response and fail as {ok:false} stderr exit 1. Then the batched set
 // under the writer lock, `apply`, the two set grammars, and the guards on
-// the vocabulary, the phases tree and storage_paths.
+// the vocabulary and the phases tree.
 // The shell suite (test-engine-manifest.sh) drives much of the same surface
 // through the CLI; where the two overlap, this file is the home.
 //
@@ -111,27 +111,12 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
 
   it('key-of: bare key on stdout; a missing value is an expected miss (exit 2)', () => {
     writeWorkUnit(dir, 'auth', 'feature', {
-      phases: { planning: { items: { auth: { task_map: { 'auth-1-1': 'tick-abc' } } } } },
+      phases: { implementation: { items: { auth: { task_map: { 'auth-1-1': 'tick-abc' } } } } },
     });
-    assert.strictEqual(runOk(dir, ['key-of', 'auth.planning.auth', 'task_map', 'tick-abc']), 'auth-1-1\n');
-    const miss = run(dir, ['key-of', 'auth.planning.auth', 'task_map', 'tick-zzz']);
+    assert.strictEqual(runOk(dir, ['key-of', 'auth.implementation.auth', 'task_map', 'tick-abc']), 'auth-1-1\n');
+    const miss = run(dir, ['key-of', 'auth.implementation.auth', 'task_map', 'tick-zzz']);
     assert.strictEqual(miss.code, 2);
     assert.match(miss.stderr, /^Error: Value "tick-zzz" not found/);
-  });
-
-  it('resolve: artifact paths for indexed phases; missing work unit is exit 2', () => {
-    writeWorkUnit(dir, 'auth', 'bugfix');
-    assert.strictEqual(
-      runOk(dir, ['resolve', 'auth.investigation.auth']),
-      path.join(dir, '.leeway/auth/investigation/auth.md') + '\n'
-    );
-    const miss = run(dir, ['resolve', 'ghost.investigation.foo']);
-    assert.strictEqual(miss.code, 2);
-    for (const phase of ['planning', 'discussion']) {
-      const unindexed = run(dir, ['resolve', `auth.${phase}.auth`]);
-      assert.strictEqual(unindexed.code, 1);
-      assert.match(unindexed.stderr, /not indexed/);
-    }
   });
 
   it('read errors keep the CLI convention: Error: line on stderr, never JSON', () => {
@@ -250,7 +235,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     writeWorkUnit(dir, 'auth', 'feature');
     assert.strictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'fix_attempts', '3']).set.fix_attempts, 3);
     assert.strictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'current_task', '~']).set.current_task, null);
-    assert.deepStrictEqual(runJson(dir, ['set', 'auth.planning.auth', 'task_map', '{"a":"b"}']).set.task_map, { a: 'b' });
+    assert.deepStrictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'task_map', '{"a":"b"}']).set.task_map, { a: 'b' });
     const item = readWorkUnit(dir, 'auth').phases.implementation.items.auth;
     assert.strictEqual(item.fix_attempts, 3);
     assert.strictEqual(item.current_task, null);
@@ -342,7 +327,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
   it('retired CLI commands and unknown sub-verbs refuse with the generic usage', () => {
     for (const verb of ['init', 'init-phase', 'project', 'create-discovery-topic', 'frobnicate']) {
       const err = runFails(dir, [verb]);
-      assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|apply\|exists\|list\|key-of\|resolve>/);
+      assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|apply\|exists\|list\|key-of>/);
     }
   });
 });
@@ -384,7 +369,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
           'stale-group': { status: 'proposed', sources: { alpha: { status: 'pending' } } },
           anchor: { status: 'in-progress', sources: { alpha: { status: 'incorporated' } } },
         } },
-        planning: { items: { portal: { status: 'in-progress', external_dependencies: { billing: { state: 'unresolved', description: 'invoice ids' } } } } },
+        implementation: { items: { portal: { status: 'in-progress', external_dependencies: { billing: { state: 'unresolved', description: 'invoice ids' } } } } },
       },
     });
   });
@@ -419,7 +404,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
 
   it('applies mixed set and delete ops across dotpaths in one call', () => {
     const file = payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved', 'external_dependencies.billing.internal_id': 'billing-1-2' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved', 'external_dependencies.billing.internal_id': 'billing-1-2' } },
       { op: 'set', path: 'payments.specification.anchor', fields: { 'sources.beta.status': 'pending' } },
       { op: 'delete', path: 'payments.specification', field: 'items.stale-group' },
     ]);
@@ -427,8 +412,8 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(res.applied, 3);
     assert.deepStrictEqual(res.ops[2], { path: 'payments.specification', deleted: 'items.stale-group' });
     const m = readWorkUnit(dir, 'payments');
-    assert.strictEqual(m.phases.planning.items.portal.external_dependencies.billing.state, 'resolved');
-    assert.strictEqual(m.phases.planning.items.portal.external_dependencies.billing.internal_id, 'billing-1-2');
+    assert.strictEqual(m.phases.implementation.items.portal.external_dependencies.billing.state, 'resolved');
+    assert.strictEqual(m.phases.implementation.items.portal.external_dependencies.billing.internal_id, 'billing-1-2');
     assert.strictEqual(m.phases.specification.items.anchor.sources.beta.status, 'pending');
     assert.strictEqual(m.phases.specification.items['stale-group'], undefined);
   });
@@ -441,13 +426,13 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'in-progress']).error, refusal);
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=in-progress', 'sources.gamma.status=pending']).error, refusal);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
       { op: 'set', path: 'payments.specification.dropped', fields: { status: 'in-progress', 'sources.gamma.status': 'pending' } },
     ])]).error, refusal);
     const after = readWorkUnit(dir, 'payments');
     assert.deepStrictEqual(after.phases.specification.items.dropped,
       { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } }, 'the stash survives');
-    assert.strictEqual(after.phases.planning.items.portal.external_dependencies.billing.state, 'unresolved', 'the refused batch wrote nothing');
+    assert.strictEqual(after.phases.implementation.items.portal.external_dependencies.billing.state, 'unresolved', 'the refused batch wrote nothing');
     // Fields other than status stay writable — the item is inert, not sealed.
     runJson(dir, ['set', 'payments.specification.dropped', 'sources.beta.status', 'pending']);
     assert.strictEqual(readWorkUnit(dir, 'payments').phases.specification.items.dropped.sources.beta.status, 'pending');
@@ -469,7 +454,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.shelved']).error,
       /discussion item "shelved" is cancelled — reactivate it instead \(engine topic reactivate payments discovery shelved\)/);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
       { op: 'delete', path: 'payments.specification', field: 'items.dropped' },
     ])]).error, refusal);
     assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
@@ -510,38 +495,38 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
 
   it('a failing delete aborts the whole batch — earlier sets do not persist', () => {
     const file = payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
       { op: 'delete', path: 'payments.specification', field: 'items.no-such-item' },
     ]);
     const err = runFails(dir, ['apply', 'payments', '--file', file]);
     assert.match(err.error, /nothing was applied/);
     const m = readWorkUnit(dir, 'payments');
-    assert.strictEqual(m.phases.planning.items.portal.external_dependencies.billing.state, 'unresolved', 'set from op 1 must not persist');
+    assert.strictEqual(m.phases.implementation.items.portal.external_dependencies.billing.state, 'unresolved', 'set from op 1 must not persist');
   });
 
   it('validates every op loudly before writing, naming the entry', () => {
     const cases = [
       [[{ op: 'merge', path: 'payments' }], /op 1 — "op" must be "set" or "delete"/],
       [[{ op: 'set', path: 'project.defaults', fields: { x: 1 } }], /op 1 — "path" must be/],
-      [[{ op: 'set', path: 'other-unit.planning.x', fields: { a: 1 } }], /op 1 — path "other-unit\.planning\.x" is outside work unit "payments"/],
-      [[{ op: 'set', path: 'payments.planning.portal', fields: {} }], /op 1 — "fields" must be a non-empty object/],
-      [[{ op: 'set', path: 'payments.planning.portal', fields: { status: 'nonsense' } }], /Invalid status/],
-      [[{ op: 'delete', path: 'payments.planning.portal', field: '' }], /op 1 — "field" must be a non-empty field path/],
+      [[{ op: 'set', path: 'other-unit.implementation.x', fields: { a: 1 } }], /op 1 — path "other-unit\.implementation\.x" is outside work unit "payments"/],
+      [[{ op: 'set', path: 'payments.implementation.portal', fields: {} }], /op 1 — "fields" must be a non-empty object/],
+      [[{ op: 'set', path: 'payments.implementation.portal', fields: { status: 'nonsense' } }], /Invalid status/],
+      [[{ op: 'delete', path: 'payments.implementation.portal', field: '' }], /op 1 — "field" must be a non-empty field path/],
     ];
     for (const [ops, re] of cases) {
       const err = runFails(dir, ['apply', 'payments', '--file', payload(ops)]);
       assert.match(err.error, re);
     }
     const m = readWorkUnit(dir, 'payments');
-    assert.strictEqual(m.phases.planning.items.portal.status, 'in-progress', 'nothing persisted across refused batches');
+    assert.strictEqual(m.phases.implementation.items.portal.status, 'in-progress', 'nothing persisted across refused batches');
   });
 
   it('values are native JSON — null is null, objects and numbers land typed', () => {
     const file = payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { task: null, phase: 3, task_map: {} } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { task: null, phase: 3, task_map: {} } },
     ]);
     runJson(dir, ['apply', 'payments', '--file', file]);
-    const item = readWorkUnit(dir, 'payments').phases.planning.items.portal;
+    const item = readWorkUnit(dir, 'payments').phases.implementation.items.portal;
     assert.strictEqual(item.task, null);
     assert.strictEqual(item.phase, 3);
     assert.deepStrictEqual(item.task_map, {});
@@ -694,52 +679,5 @@ describe('work-unit-level fields never shadow the phases tree', () => {
     const m = readWorkUnit(dir, 'pay');
     assert.strictEqual(m.phases.specification.items.pay.status, 'in-progress');
     assert.strictEqual(m.description, 'updated');
-  });
-});
-
-describe('storage_paths is guarded at write time — set and apply', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupFixture('storage-paths-');
-    writeWorkUnit(dir, 'pay', 'feature', { phases: { planning: { items: { pay: { status: 'in-progress' } } } } });
-  });
-  afterEach(() => cleanupFixture(dir));
-
-  it('set refuses traversal, absolute, dot, and non-array values; a legal array lands', () => {
-    for (const bad of ['\'["../evil"]\'', '\'["/abs"]\'', '\'["."]\'', '\'[""]\'', '"nope"']) {
-      const err = runFails(dir, ['set', 'pay.planning.pay', 'storage_paths', bad.replace(/^'|'$/g, '')]);
-      assert.match(err.error, /Invalid storage_paths/);
-    }
-    runJson(dir, ['set', 'pay.planning.pay', 'storage_paths', '[".tick/"]']);
-    assert.deepStrictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, ['.tick/']);
-  });
-
-  it('apply routes storage_paths writes through the same guard', () => {
-    const p = path.join(dir, 'ops.json');
-    fs.writeFileSync(p, JSON.stringify([{ op: 'set', path: 'pay.planning.pay', fields: { storage_paths: ['../evil'] } }]));
-    const err = runFails(dir, ['apply', 'pay', '--file', p]);
-    assert.match(err.error, /Invalid storage_paths entry/);
-    assert.strictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, undefined, 'nothing persisted');
-  });
-
-  it('push validates the one entry it appends — the write-time guard covers every route', () => {
-    for (const bad of ['../evil', '/abs', '.', '']) {
-      const err = runFails(dir, ['push', 'pay.planning.pay', 'storage_paths', bad]);
-      assert.match(err.error, /Invalid storage_paths/);
-    }
-    runJson(dir, ['push', 'pay.planning.pay', 'storage_paths', '.tick/']);
-    assert.deepStrictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, ['.tick/']);
-  });
-
-  it('apply handles set-then-delete on the same item in array order (reconcile shape)', () => {
-    const p = path.join(dir, 'ops.json');
-    fs.writeFileSync(p, JSON.stringify([
-      { op: 'set', path: 'pay.planning.pay', fields: { 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending' } },
-      { op: 'delete', path: 'pay.planning.pay', field: 'sources.alpha' },
-    ]));
-    runJson(dir, ['apply', 'pay', '--file', p]);
-    const item = readWorkUnit(dir, 'pay').phases.planning.items.pay;
-    assert.strictEqual(item.sources.alpha, undefined, 'later delete wins over earlier set');
-    assert.strictEqual(item.sources.beta.status, 'pending');
   });
 });

@@ -34,7 +34,7 @@
 // refuses, writing and committing nothing,
 // every refusal opening `quick-fix record: `: a unit the project lacks or
 // holds not in progress; one that is no quick-fix built by its own arm
-// (`quickFixBuild`, derivations.cjs) — a quick-fix today's scoping made
+// (`quickFixBuild`, derivations.cjs) — a quick-fix the old scoping made
 // among them; a task that is none of its fixes, phase 1's, or one the
 // tracker lacks; a fix closed; a fix recorded already; a fix holding no
 // commit of its own; and a file that does not read as a record, every fault

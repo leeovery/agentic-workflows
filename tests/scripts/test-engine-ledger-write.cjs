@@ -87,9 +87,9 @@ describe('tags (5.2.3)', () => {
     createManifest(dir, 'mend', { work_type: 'bugfix', phases: { investigation: { items: { mend: { status: 'in-progress' } } } } });
     const content = { ...MADE, text: 'Which phase?' };
 
-    for (const address of [`${UNIT}.investigation`, `${UNIT}.investigation.note-window`, `${UNIT}.scoping`]) {
+    for (const address of [`${UNIT}.investigation`, `${UNIT}.investigation.note-window`]) {
       refused('ask', address, [], content,
-        /^ledger ask: fumi has no (investigation|scoping) phase — its work type, epic, has discovery, experiment, discussion, specification, implementation, review$/);
+        /^ledger ask: fumi has no investigation phase — its work type, epic, has discovery, experiment, discussion, specification, implementation, review$/);
     }
     refused('ask', 'mend.discussion.mend', [], content, /^ledger ask: mend has no discussion phase — its work type, bugfix, has discovery, investigation, specification, implementation, review$/);
 
@@ -251,8 +251,8 @@ describe('scenarios', () => {
 
 describe('the writer lock and the commit', () => {
   it('commits the ledger alone to the state branch in the same verb, leaving the state\'s other changes uncommitted', () => {
-    fs.mkdirSync(statePath(dir, layout.unit(UNIT, 'imports')), { recursive: true });
-    fs.writeFileSync(statePath(dir, layout.unit(UNIT, 'imports', 'shared.md')), 'a session\'s own file\n');
+    fs.mkdirSync(statePath(dir, layout.assets(UNIT)), { recursive: true });
+    fs.writeFileSync(statePath(dir, layout.assets(UNIT, 'shared.md')), 'a session\'s own file\n');
     const before = stateGit(dir, ['status', '--porcelain']);
 
     const res = ask();

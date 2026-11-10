@@ -151,9 +151,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
 });
 
 describe('27.S8: every phase a session can be in draws a view of its own', () => {
-  /** Today's scoping, which the reshape retires (15.14), and which no view draws. */
-  const RETIRING = new Set(['scoping']);
-  const places = Object.entries(WORK_TYPE_PIPELINES).flatMap(([type, pipeline]) => (type === 'epic' ? EPIC_PHASES : pipeline).filter((phase) => !RETIRING.has(phase)).map((phase) => [type, phase]));
+  const places = Object.entries(WORK_TYPE_PIPELINES).flatMap(([type, pipeline]) => (type === 'epic' ? EPIC_PHASES : pipeline).map((phase) => [type, phase]));
 
   it('This session draws each type\'s every phase by a view of that phase, a quick-fix\'s one session by its own (27.2.9)', () => {
     const unviewed = places.filter(([type, phase]) => phaseViewOf(type, phase) === null);

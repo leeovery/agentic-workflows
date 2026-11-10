@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the scoping processing skill; by `contextual-query.md` for **B**, **C** and **D**; and by `reading-the-mailbox.md` for **G**.*
+*Shared reference. Loaded by `reading-the-mailbox.md` for **G**.*
 
 ---
 
@@ -43,8 +43,7 @@ Excerpts land in context; read further only when a result looks load-bearing —
 Confidence is intrinsic to the source phase — how much weight to give the content, never whether to use it:
 
 - `high` — record: a topic's ledger record, what was asked and what stands decided on each question. Trust the decision; a replaced answer is history the record keeps beside it.
-- `medium` — investigation: diagnostic work tied to specific symptoms. Trust the diagnosis; check the symptom is still current.
-- `low` — imports, seeds, analysis: reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
+- `low` — seeds, analysis: raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
 
 Low confidence is not low value. Weigh them, never filter them out.
 
@@ -91,7 +90,6 @@ A result (or its source file) can carry a claim you have verified is wrong or ha
 - **Discussion** — query at the start and throughout. Decisions being made now often echo or contradict decisions made elsewhere. Check before committing to a direction.
 - **Investigation** — query at the start (after initial symptoms are gathered) and throughout. Symptoms and root causes may have been seen before — a matching prior investigation can save hours.
 - **Specification** — **do not query while authoring the spec.** The spec turns discussion decisions into a golden document. Querying mid-spec pulls the document away from its own source material.
-- **Scoping** — query throughout. Quick-fix scoping benefits from knowing if the issue was discussed or investigated elsewhere — a "mechanical change" often has a history.
 
 ## G. Sibling consult at cross-topic decision points
 

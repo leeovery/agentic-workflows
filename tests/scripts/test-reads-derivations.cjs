@@ -457,10 +457,10 @@ describe('reads + derivations', () => {
       ]);
     });
 
-    it('routes a build by its cut from its own records, never from items: review items, a discussion\'s input moved, and an experiment awaited are not read (P13)', () => {
+    it('routes a build by its cut from its own records, never from items: review items and an experiment awaited are not read (P13)', () => {
       const unit = byCut('feature', [1, 2]);
       const items = {
-        discussion: { items: { test: { status: 'completed', reconcile_needed: 'specification' } } },
+        discussion: { items: { test: { status: 'completed' } } },
         experiment: { items: { test: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
         review: { items: { test: { status: 'completed' } } },
       };
@@ -498,57 +498,13 @@ describe('reads + derivations', () => {
       assert.ok(r.phase_label.includes('in-progress'));
     });
 
-    it('a flagged completed phase overrides forward routing — the pipeline never reads done past it', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
-        discussion: { items: { test: { status: 'completed' } } },
-        specification: { items: { test: { status: 'completed' } } },
-        planning: { items: { test: { status: 'completed' } } },
-        implementation: { items: { test: { status: 'completed' } } },
-        review: { items: { test: { status: 'completed', reconcile_needed: 'implementation' } } },
-      } });
-      assert.strictEqual(r.next_phase, 'review');
-      assert.strictEqual(r.phase_label, 'review (input moved — reconcile)');
-    });
-
-    it('the earliest flagged phase wins over later flags and forward routing', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
-        discussion: { items: { test: { status: 'completed' } } },
-        specification: { items: { test: { status: 'completed', reconcile_needed: 'discussion' } } },
-        planning: { items: { test: { status: 'completed' } } },
-        implementation: { items: { test: { status: 'completed', reconcile_needed: 'planning' } } },
-      } });
-      assert.strictEqual(r.next_phase, 'specification');
-      assert.strictEqual(r.phase_label, 'specification (input moved — reconcile)');
-    });
-
     it('an upstream phase in flight owns the next action — the walk routes to it, never past it', () => {
-      // Mid-revision upstream: the flag must NOT route into the spec while its
-      // input is still moving — and it must not route forward past it either.
-      // The earliest in-flight phase is the next action; its conclusion
-      // re-runs this and the flag wins then.
       const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
         discussion: { items: { test: { status: 'in-progress' } } },
-        specification: { items: { test: { status: 'completed', reconcile_needed: 'discussion' } } },
+        specification: { items: { test: { status: 'completed' } } },
       } });
       assert.strictEqual(r.next_phase, 'discussion');
       assert.strictEqual(r.phase_label, 'discussion (in-progress)');
-    });
-
-    it('a flagged in-progress item never triggers the override — completed only', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
-        discussion: { items: { test: { status: 'completed' } } },
-        specification: { items: { test: { status: 'in-progress', reconcile_needed: 'discussion' } } },
-      } });
-      assert.strictEqual(r.next_phase, 'specification');
-      assert.strictEqual(r.phase_label, 'specification (in-progress)');
-    });
-
-    it('epics are excluded from the flag override — next_phase stays phase-coarse', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'epic', phases: {
-        discussion: { items: { alpha: { status: 'completed' } } },
-        specification: { items: { alpha: { status: 'completed', reconcile_needed: 'discussion' } } },
-      } });
-      assert.strictEqual(r.next_phase, 'planning');
     });
 
     it('returns in-progress review', () => {
@@ -700,8 +656,11 @@ describe('reads + derivations', () => {
       ]);
     });
 
-    it('P12: a quick-fix built under the old plan, its scoping\'s items standing, waits on the migration\'s cut, never handed into scoping', () => {
-      const r = computeNextPhase({ work_type: 'quick-fix', status: 'in-progress', phases: { scoping: { items: { test: { status: 'in-progress' } } } } });
+    it('P12: a quick-fix built under the old plan, its scoping\'s spec and plan items standing, waits on the migration\'s cut', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', status: 'in-progress', phases: {
+        specification: { items: { test: { status: 'completed' } } },
+        planning: { items: { test: { status: 'in-progress' } } },
+      } });
       assert.deepStrictEqual(r, { next_phase: 'done', phase_label: 'waiting on the migration\'s cut' });
     });
 
@@ -1151,14 +1110,6 @@ describe('reads + derivations', () => {
     it('an unstarted stub renders fresh', () => {
       const m = loadWithPhases('auth', { discussion: 'unstarted' });
       assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'fresh', tier: '○', current_phase: null, discussion_state: 'unstarted' });
-    });
-
-    it('a reconcile flag on the discussion raises no rider — the reading is the status alone', () => {
-      const m = { work_type: 'epic', phases: {
-        discovery: { items: { fees: {} } },
-        discussion: { items: { fees: { status: 'completed', reconcile_needed: true } } },
-      } };
-      assert.deepStrictEqual(computeTopicLifecycle(m, 'fees'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', discussion_state: 'completed' });
     });
   });
 

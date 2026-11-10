@@ -2,8 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's concurrent sessions on one checkout, interleaved:
-// an investigation and a discussion whose commits stay confined, the
-// discussion's log riding along with every state commit; the code slot
+// an investigation and a discussion whose commits stay confined, each one's
+// log riding along with every state commit; the code slot
 // taken at the build's entry and freed as its conversation ends; a dead peer's
 // leavings swept; and the terminal clear that frees a finished topic's slot.
 //
@@ -72,7 +72,7 @@ describe('pipeline simulation: concurrency', () => {
     const codeSession = sim.session('code-session');
     const secondCoder = sim.session('review-session', reapedPid());
 
-    const DOC_FILE = `.leeway/${bug}/investigation/${bug}.md`;
+    const DOC_FILE = `.leeway/${bug}/topics/${bug}/log.md`;
     const TALK_FILE = `.leeway/${wu}/topics/ranking/log.md`;
     const CODE_FILE = 'src/relay/dispatch.js';
     const lines = (out) => out.split('\n').filter(Boolean);
@@ -103,29 +103,29 @@ describe('pipeline simulation: concurrency', () => {
     /** A question the discussion session asks, its commit the ledger's own. @param {string} text */
     const talkAsks = (text) => talkSession.run(['ledger', 'ask', `${wu}.discussion.ranking`], JSON.stringify({ ...claudes, text })).id;
 
-    // --- B1 · A1 · A2 · B2: a document session and a discussion, alternating
+    // --- B1 · A1 · A2 · B2: two topic sessions, alternating
     // A: an investigation session on a bugfix. B: a discussion session on
     // ranking, whose writes are the ledger's, each committing itself. Neither
-    // knows the other exists; neither commit takes the other's document —
-    // save B's log, which rides along with every state commit.
+    // knows the other exists; neither commit takes the other's files but its
+    // log, which rides along with every state commit.
     docSession.run(['topic', 'start', bug, 'investigation', bug]);
     talkSession.run(['enter', 'discussion', wu, 'ranking']);
 
     docSession.write(DOC_FILE, '# Investigation — Replay Crash\n\n## Symptoms\n\n- Batch intake stalls.\n');
     talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n');
 
-    // B's question lands with A's half-written document sitting dirty beside it.
+    // B's question lands with A's half-written log beside it, which rides along.
     const replayOrder = talkAsks('What orders a replay?');
-    confined('B1', talkScope, [DOC_FILE]);
-    assert.ok(dirty().includes(DOC_FILE), "the peer's uncommitted document survives B's commit");
+    confined('B1', [...talkScope, DOC_FILE], []);
+    assert.ok(committedPaths(true).includes(DOC_FILE), "every changed log rides along with a state commit, the peer's among them");
 
-    // A commits next, and B's log is already landed — so A's confinement is
+    // A commits next, and both logs are already landed — so A's confinement is
     // proven by what its commit does NOT reach for, not by what is dirty.
     docSession.run(['commit', bug, '-m', `investigation(${bug}): symptoms`, '--topic', `investigation/${bug}`]);
     confined('A1', docScope, [TALK_FILE]);
 
-    // Round two, both sessions still live, both amending their own document:
-    // A's commit carries B's changed log along, and nothing else of B's.
+    // Round two, both sessions still live, both amending their own log: A's
+    // commit carries B's changed log along, and nothing else of B's.
     docSession.write(DOC_FILE, '# Investigation — Replay Crash\n\n## Symptoms\n\n- Batch intake stalls.\n- Replay is not idempotent.\n');
     talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n\n## Decisions\n\n- Order by sequence number.\n');
     docSession.run(['commit', bug, '-m', `investigation(${bug}): replay`, '--topic', `investigation/${bug}`]);
@@ -175,9 +175,9 @@ describe('pipeline simulation: concurrency', () => {
     assert.deepStrictEqual(secondCoder.run(['gate', 'code gate', '--pick', 'b']).next, { kind: 'continue' });
     assert.strictEqual(codeSession.run(['enter', 'implementation', built]).entered, true);
 
-    // --- a document session commits while the code session holds ------------
-    // The doc commit never takes code dirt: each half of the checkout is the
-    // other's business, and both are running at once.
+    // --- a topic session commits while the code session holds ---------------
+    // The topic's commit never takes code dirt: each half of the checkout is
+    // the other's business, and both are running at once.
     sim.write(CODE_FILE, "export function dispatch(event) { return sink.write(event); }\n");
     talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n\n## Decisions\n\n- Order by sequence number.\n- Ties break on arrival.\n');
     const ties = talkAsks('How do ties break?');

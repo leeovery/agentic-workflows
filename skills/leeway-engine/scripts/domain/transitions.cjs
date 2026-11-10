@@ -5,29 +5,23 @@
 // reactivate, each a single transaction from the caller's perspective — and
 // the parking a message's landing applies to the topic it reaches (mail.cjs).
 //
-// start/complete/reopen are phase-item lifecycle bookkeeping: manifest write
-// plus a knowledge-base sync where the phase is indexed (index on complete;
-// reopen syncs nothing — re-completion re-indexes over the same identity).
-// No git commit — the calling session's commit cadence picks the manifest
-// change up. cancel/reactivate are the epic transactions over a topic's
-// unit: manifest write, knowledge-base sync, scoped git commit. Past the
+// start/complete/reopen are phase-item lifecycle bookkeeping: a manifest
+// write and no git commit — the calling session's commit cadence picks the
+// manifest change up. cancel/reactivate are the epic transactions over a
+// topic's unit: manifest write, scoped git commit. Past the
 // unit's spec no topic is reopened, nor a map topic cancelled or reactivated
 // (4.11.2, 18.4.19, spec-standing.cjs); a topic is postponed until ready to
 // build's yes (P3).
 //
-// The manifest write is the source of truth and lands first; the knowledge
-// base is a derived index, so its failures are recorded as warnings, never
-// blocks. Validation throws loud and specific before anything is touched.
-// Every load→mutate→save runs under the work unit's manifest lock (the same
-// lock every manifest writer honours); the KB sync and the commit run after
-// release — the lock protects the manifest read-modify-write, nothing else.
+// Validation throws loud and specific before anything is touched. Every
+// load→mutate→save runs under the work unit's manifest lock (the same lock
+// every manifest writer honours); the commit runs after release — the lock
+// protects the manifest read-modify-write, nothing else.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
@@ -40,7 +34,7 @@ const { closeInFlight } = require('./agent-state.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, DERIVED_PHASES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
@@ -124,7 +118,7 @@ function postponedRefusal(phase, topic) {
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, promoted_to?: string, reconcile_needed?: string|boolean}}
+ * @returns {{status?: string, previous_status?: string, promoted_to?: string}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -154,21 +148,15 @@ function phaseItem(manifest, phase, topic) {
  * @property {string} topic
  * @property {string} phase
  * @property {string} status   always `completed`
- * @property {string[]} warnings non-blocking failures (knowledge-base index)
  */
 
-// The one spec keeps no items (P7), a concluded spec is never corrected
-// (11.9.1), and a build is planned by its cut: a specification or planning
-// item is a quick-fix's scoping's alone.
+// The one spec keeps no items (P7), and a concluded spec is never corrected
+// (11.9.1).
 
 /** @param {Record<string, any>} manifest @param {string} phase */
-function assertScopingItem(manifest, phase) {
-  if (manifest.work_type === 'quick-fix') return;
+function assertNoSpecItem(manifest, phase) {
   if (phase === 'specification') {
     throw new Error(`${manifest.name}'s spec keeps no items — it is entered at the work unit: engine enter specification ${manifest.name}`);
-  }
-  if (phase === 'planning') {
-    throw new Error(`${manifest.name}'s build is planned by its cut — a planning item is a quick-fix's scoping's alone`);
   }
 }
 
@@ -226,7 +214,7 @@ function startTopic(cwd, workUnit, phase, topic) {
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — the spawn creates and reopens it (experiment create), never topic start');
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertScopingItem(manifest, phase);
+    assertNoSpecItem(manifest, phase);
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const ph = ensureContainer(phases, phase, `phases.${phase}`);
     const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
@@ -265,36 +253,6 @@ function assertLegalTopicName(topic) {
   if (!topic || /[\\/]/.test(topic) || topic.includes('..')) {
     throw new Error(`invalid topic name "${topic}" — no separators or ".."`);
   }
-}
-
-/**
- * Flag `topic`'s downstream neighbour when it goes stale — a reopen, never
- * the later re-completion. One hop only: the downstream phase's own
- * reconciliation earns (or doesn't earn) the next. The same-named item in
- * the work type's next pipeline phase takes the flag, the experiment slot
- * walked past unconditionally — a flag must land where a phase's start can
- * clear it, and the series item has none. A phase a topic is in flags
- * nothing: the spec keeps no items, and a concluded spec is never corrected
- * (11.9.1). A `completed` item takes the flag (value = the upstream phase
- * name, shown as its input moved wherever the item is listed; an existing
- * flag is never clobbered).
- *
- * Mutates the loaded manifest; the caller saves under its own lock.
- * @param {Record<string, any>} manifest
- * @param {string} workType
- * @param {string} phase  the phase going stale
- * @param {string} topic
- * @returns {{phase: string, topic: string}[]}  the downstream items now carrying `reconcile_needed`
- */
-function flagDownstream(manifest, workType, phase, topic) {
-  if (TOPIC_PHASES.includes(phase)) return [];
-  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
-  const at = pipeline.indexOf(phase);
-  const next = at === -1 ? undefined : pipeline.slice(at + 1).find((p) => !DERIVED_PHASES.includes(p));
-  const item = next === undefined ? undefined : itemOf(manifest, next, topic);
-  if (!item || item.status !== 'completed' || item.reconcile_needed !== undefined) return [];
-  item.reconcile_needed = phase;
-  return [{ phase: /** @type {string} */ (next), topic }];
 }
 
 /**
@@ -337,8 +295,7 @@ function releaseExperimentWaits(manifest, topic, opts = {}) {
  * as `unstarted` when absent — a parked message must never read as started
  * work — heal a status-less item to `unstarted`, leave an `unstarted` or
  * `in-progress` item untouched, and set a `completed` item back to
- * `in-progress` (a landed message reopens the conversation; no
- * knowledge-base action — re-completion re-indexes over the same identity).
+ * `in-progress` (a landed message reopens the conversation).
  * A cancelled item refuses as start refuses it; a promoted one never reaches
  * here, refused with its topic first (topic-standing.cjs), and a phase a
  * message waits in has no superseding. Mutates `items`; the caller saves
@@ -381,11 +338,10 @@ function waitClause(blocking) {
 }
 
 /**
- * Complete a phase item: set `status: completed` and, when the phase's
- * artifact is knowledge-base indexed, index it (warn-don't-block). The item
- * must exist; a cancelled item must go through reactivate first; an item
- * holding a live wait — evidence it awaits — refuses naming it. A discussion
- * never completes here: it closes on its decided checklist. No git commit.
+ * Complete a phase item: set `status: completed`. The item must exist; a
+ * cancelled item must go through reactivate first; an item holding a live
+ * wait — evidence it awaits — refuses naming it. A discussion never
+ * completes here: it closes on its decided checklist. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -401,7 +357,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
   }
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertScopingItem(manifest, phase);
+    assertNoSpecItem(manifest, phase);
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'unstarted') {
       throw new Error(`${phase} item "${topic}" is unstarted — its messages have never been worked; start the topic first`);
@@ -425,13 +381,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
   });
-
-  /** @type {string[]} */
-  const warnings = [];
-  const artifact = INDEXED_ARTIFACTS[phase];
-  if (artifact) syncKnowledge(cwd, [{ index: artifact(workUnit, topic) }], warnings);
-
-  return { topic, phase, status: 'completed', warnings };
+  return { topic, phase, status: 'completed' };
 }
 
 /**
@@ -439,16 +389,12 @@ function completeTopic(cwd, workUnit, phase, topic) {
  * @property {string} topic
  * @property {string} phase
  * @property {string} status   always `in-progress`
- * @property {{phase: string, topic: string}[]} [reconcile_flagged]  downstream items this reopen flagged for reconciliation
  */
 
 /**
- * Reopen a completed phase item: set `status: in-progress` and flag the
- * topic's downstream neighbours (flagDownstream — staleness begins at the
- * reopen, not the later re-completion). Only a completed item reopens —
- * anything else keeps its own flow (a cancelled item must go through
- * reactivate). No knowledge-base sync — the item's chunks stay live until
- * re-completion re-indexes over the same identity. No git commit.
+ * Reopen a completed phase item: set `status: in-progress`. Only a
+ * completed item reopens — anything else keeps its own flow (a cancelled
+ * item must go through reactivate). No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -464,7 +410,7 @@ function reopenTopic(cwd, workUnit, phase, topic) {
   }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertScopingItem(manifest, phase);
+    assertNoSpecItem(manifest, phase);
     if (TOPIC_PHASES.includes(phase)) assertBeforeSpec(cwd, manifest, 'change');
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
@@ -480,13 +426,9 @@ function reopenTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
     }
     item.status = 'in-progress';
-    const flagged = flagDownstream(manifest, manifest.work_type, phase, topic);
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    /** @type {TopicReopenResult} */
-    const result = { topic, phase, status: 'in-progress' };
-    if (flagged.length > 0) result.reconcile_flagged = flagged;
-    return result;
+    return { topic, phase, status: 'in-progress' };
   });
 }
 
@@ -604,19 +546,6 @@ function abandonRecords(series, ids, reason) {
 }
 
 /**
- * Drop the knowledge-base chunks of the items a hold took — the indexed
- * phases alone, the artifact table being the one home for which those are.
- * A held topic's conclusions are off the board, and retrieval must not
- * surface them; the return re-indexes.
- * @param {string} cwd @param {string} workUnit @param {string} topic
- * @param {{phase: string}[]} held @param {string[]} warnings
- */
-function removeHeldChunks(cwd, workUnit, topic, held, warnings) {
-  syncKnowledge(cwd, held.filter(({ phase }) => INDEXED_ARTIFACTS[phase])
-    .map(({ phase }) => ({ remove: { workUnit, phase, topic } })), warnings);
-}
-
-/**
  * The agents still running on each item a hold took, closed (agent-state's
  * `closeInFlight`); a store that does not read is a warning, the hold standing.
  * @param {string} cwd @param {string} workUnit @param {string} topic
@@ -632,16 +561,6 @@ function closeHeldAgents(cwd, workUnit, topic, held, warnings) {
       return [];
     }
   });
-}
-
-/**
- * Re-index each restored `completed` artifact — the removal's mirror.
- * @param {string} cwd @param {string} workUnit @param {string} topic
- * @param {RestoredItem[]} restored @param {string[]} warnings
- */
-function indexRestored(cwd, workUnit, topic, restored, warnings) {
-  syncKnowledge(cwd, restored.filter(({ phase, status }) => status === 'completed' && INDEXED_ARTIFACTS[phase])
-    .map(({ phase }) => ({ index: INDEXED_ARTIFACTS[phase](workUnit, topic) })), warnings);
 }
 
 /** @param {object} manifest @param {string} topic */
@@ -692,8 +611,7 @@ function cancelDiscoveryUnit(manifest, topic) {
 /**
  * Cancel a topic — the Discovery unit under the name — in one locked write,
  * its waiting mail moved to the inbox as ideas under the same lock (10.1.6),
- * then remove the cancelled artifacts' knowledge-base chunks
- * (warn-don't-block), release the calling session's own heartbeat on each
+ * then release the calling session's own heartbeat on each
  * item taken, run the roadmap's cancel-revert hop, and commit the manifest
  * write. Any other phase is refused: there is no phase-level cancel.
  * @param {string} cwd project root
@@ -716,7 +634,6 @@ function cancelTopic(cwd, workUnit, phase, said) {
 
   /** @type {string[]} */
   const warnings = [];
-  removeHeldChunks(cwd, workUnit, topic, taken.cancelled, warnings);
   const closedAgents = closeHeldAgents(cwd, workUnit, topic, taken.cancelled, warnings);
 
   for (const { phase: p } of taken.cancelled) clearOwnQuietly(cwd, workUnit, p, topic);
@@ -796,8 +713,8 @@ function reactivateDiscoveryUnit(manifest, topic) {
 
 /**
  * Reactivate a cancelled topic — the unit the cancel took — in one locked
- * write, re-index each restored `completed` artifact (warn-don't-block),
- * and commit the manifest write. No roadmap re-join: the revert is one-way.
+ * write, and commit the manifest write. No roadmap re-join: the revert is
+ * one-way.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase  `discovery`
@@ -817,8 +734,6 @@ function reactivateTopic(cwd, workUnit, phase, said) {
 
   /** @type {string[]} */
   const warnings = [];
-  indexRestored(cwd, workUnit, topic, returned.restored, warnings);
-
   const outcome = commitStateTail(cwd, `${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (discovery)`, warnings);
   /** @type {TopicReactivateResult} */
   const result = { topic, phase: 'discovery', status: 'reactivated', ...returned, committed: outcome.committed, warnings };
@@ -902,7 +817,6 @@ function postponeTopic(cwd, workUnit, said, { horizon } = {}) {
 
   /** @type {string[]} */
   const warnings = [];
-  removeHeldChunks(cwd, workUnit, topic, taken.postponed, warnings);
   const closedAgents = closeHeldAgents(cwd, workUnit, topic, taken.postponed, warnings);
   for (const { phase } of taken.postponed) clearOwnQuietly(cwd, workUnit, phase, topic);
 
@@ -929,23 +843,18 @@ function postponeTopic(cwd, workUnit, said, { horizon } = {}) {
 /**
  * Return a postponed Discovery unit to its epic — the pull's half of the
  * postpone, the mirror of reactivate under the pull's name: the marker
- * cleared, every stash returned, each restored `completed` artifact
- * re-indexed. One locked write and no commit — the pull's own transaction
- * stages both manifests together.
+ * cleared, every stash returned. One locked write and no commit — the
+ * pull's own transaction stages both manifests together.
  * @param {string} cwd @param {string} workUnit @param {string} topic
- * @returns {{restored: RestoredItem[], warnings: string[]}}
+ * @returns {RestoredItem[]}
  */
 function restorePostponedUnit(cwd, workUnit, topic) {
-  const restored = withWorkUnitLock(cwd, workUnit, () => {
+  return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const out = restoreDiscoveryUnit(manifest, topic, 'postponed');
+    const restored = restoreDiscoveryUnit(manifest, topic, 'postponed');
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return out;
+    return restored;
   });
-  /** @type {string[]} */
-  const warnings = [];
-  indexRestored(cwd, workUnit, topic, restored, warnings);
-  return { restored, warnings };
 }
 
 /**
@@ -984,4 +893,4 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
   });
 }
 
-module.exports = { startTopic, parkMessageItem, completeTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, flagDownstream, releaseExperimentWaits, assertLegalTopicName };
+module.exports = { startTopic, parkMessageItem, completeTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, releaseExperimentWaits, assertLegalTopicName };

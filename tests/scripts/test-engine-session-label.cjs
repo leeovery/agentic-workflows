@@ -79,8 +79,8 @@ describe('engine session label', () => {
 
   it('collapses the topic when it equals the work unit', () => {
     optIn();
-    const res = engine(['session', 'label', 'pay', 'scoping', 'pay']);
-    assert.strictEqual(res.name, 'proj-abc · pay · scoping');
+    const res = engine(['session', 'label', 'pay', 'investigation', 'pay']);
+    assert.strictEqual(res.name, 'proj-abc · pay · investigation');
   });
 
   it('labels a renamed topic by the name it goes by, in its topic\'s phases alone (8.S77)', () => {
@@ -195,8 +195,8 @@ describe('engine session label', () => {
     writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · experiment · beta', session_id: 'sess-older' });
     setTmuxName('proj-abc · pay · discussion · alpha · pay · experiment · beta');
     setTmuxId('$9');
-    const res = engine(['session', 'label', 'pay', 'planning', 'alpha']);
-    assert.strictEqual(res.name, 'proj-abc · pay · planning · alpha');
+    const res = engine(['session', 'label', 'pay', 'review', 'alpha']);
+    assert.strictEqual(res.name, 'proj-abc · pay · review · alpha');
     const records = stashRecords();
     assert.strictEqual(records.length, 1, 'both chain links consumed');
     assert.strictEqual(records[0].original, 'proj-abc');
@@ -287,7 +287,7 @@ describe('engine session label — the position record', () => {
     engine(['session', 'label', 'pay', 'experiment', 'alpha']);
     assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'experiment', topic: 'alpha' }, 'disabled');
     optIn();
-    for (const [phase, opts] of [['discussion', { noTmux: true }], ['specification', { fail: true }], ['planning', { failRename: true }]]) {
+    for (const [phase, opts] of [['discussion', { noTmux: true }], ['specification', { fail: true }], ['review', { failRename: true }]]) {
       engine(['session', 'label', 'pay', phase, 'alpha'], opts);
       assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase, topic: 'alpha' }, JSON.stringify(opts));
     }

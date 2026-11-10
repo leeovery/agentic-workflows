@@ -26,14 +26,15 @@ const {
   lastCompletedPhase,
   mailPhases,
 } = require('./derivations.cjs');
-const { WORK_TYPE_PIPELINES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, VALID_PHASES, LEGACY_PHASES } = require('../kernel/manifest-schema.cjs');
 
 // The epic pipeline — discussion → review, the completion / next-phase pipeline
 // and the start dashboard's active-phase row.
 const EPIC_PIPELINE_PHASES = WORK_TYPE_PIPELINES.epic;
 
-// Every pipeline phase across all work types — the closed-unit last-phase scan.
-const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
+// Every pipeline phase across all work types, the old plan's planning after
+// the spec — the closed-unit last-phase scan.
+const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery').flatMap((p) => (p === 'specification' ? [p, ...LEGACY_PHASES] : [p]));
 
 /**
  * The type's pipeline phases, from the schema's one home for pipeline order.
@@ -51,9 +52,6 @@ function pipelineOf(workType) {
  * @property {string} work_type
  * @property {string} next_phase
  * @property {string} phase_label
- * @property {boolean} finalising        pipeline finished (`next_phase: done`), no phase in
- *                                       flight, but the unit is still in-progress — `workunit
- *                                       complete` never ran
  * @property {string[]} [active_phases]  epics only — phases that have items
  * @property {string[]} [mail_phases]  single-topic types — phases whose mailbox holds
  *                                       messages for the unit's topic (the row's `mail waiting` cue)
@@ -225,7 +223,6 @@ function startDetail(cwd) {
       work_type: m.work_type,
       next_phase: state.next_phase,
       phase_label: state.phase_label,
-      finalising: state.finalising,
     };
     // Single-topic types cue messages waiting on the unit's own topics; an
     // epic's row carries no phase state — its dashboard cues per topic.

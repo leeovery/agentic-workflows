@@ -127,7 +127,7 @@ function statusReport(root) {
   if (manifests) {
     const plan = planIndex(root, chunks, manifests, { scope: null, pruning: pruneTest(settings.cfg, manifests.workUnits) });
     for (const [label, rows] of /** @type {Array<[string, string[]]>} */ ([
-      ['Unindexed completed artifacts', plan.fresh.map((a) => path.join(root, a.file))],
+      ['Unindexed artifacts', plan.fresh.map((a) => path.join(root, a.file))],
       ['Changed since indexing', plan.changed.map((a) => path.join(root, a.file))],
       ['Pruned below the decay floor', plan.pruned.map((a) => path.join(root, a.file))],
       ['Retired since indexing', plan.retired.map((e) => `${path.join(root, e.file)} (${e.reason})`)],

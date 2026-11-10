@@ -256,6 +256,6 @@ describe('beside the rows of what the gates mod sends', () => {
 
 describe('noteOf', () => {
   test('the place it carries on in', () => {
-    expect(noteOf('fix › scoping')).toBe('⟳ Compacted · carrying on in fix › scoping')
+    expect(noteOf('fix › implementation')).toBe('⟳ Compacted · carrying on in fix › implementation')
   })
 })

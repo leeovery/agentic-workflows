@@ -57,7 +57,6 @@ function corpusFiles() {
       }
     }
   }
-  walkMd(path.join(REPO, '.claude', 'skills', 'create-output-format'), files);
   return files.sort();
 }
 
@@ -392,17 +391,13 @@ function checkCrossFileSections(files) {
 // Check 7 — Markdown link resolution: every relative [text](path) link
 // resolves to an existing file (anchor fragment stripped). External URLs and
 // template-placeholder ({…}) paths are skipped. Links inside fenced code
-// blocks (illustrative templates) and create-output-format scaffolding
-// templates (whose links are destination-relative) are exempt.
+// blocks (illustrative templates) are exempt.
 // ---------------------------------------------------------------------------
 
 function checkLinks(files) {
   const out = [];
   const linkRe = /\[[^\]]*\]\(([^)]+)\)/g;
   for (const file of files) {
-    if (file.includes(`${path.sep}create-output-format${path.sep}references${path.sep}scaffolding${path.sep}`)) {
-      continue; // destination-relative scaffolding templates
-    }
     const dir = path.dirname(file);
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
@@ -487,8 +482,7 @@ function checkZeroOutput(files) {
 // Check 10 — Reference-file attribution: files under skills/*/references/ open
 // (after the H1) with an italic attribution line in a sanctioned form —
 // parent/sub-reference link ("*Reference for **[link](path)**…*") or shared
-// ("*Shared reference…*"). Multi-consumer output-format adapter files are
-// exempt (a single-parent attribution would be inaccurate).
+// ("*Shared reference…*").
 // ---------------------------------------------------------------------------
 
 const ATTR_REFERENCE = /^\*Reference for \*\*\[[^\]]+\]\([^)]+\)\*\*.*\*$/;
@@ -498,23 +492,18 @@ function posix(file) {
   return file.split(path.sep).join('/');
 }
 
-// In scope: reference files under a workflow skill (skills/*/references/…) or
-// under the create-output-format tooling skill. Matched on path suffix (not
-// repo-anchored) so the same logic drives corpus and temp-fixture tests.
+// In scope: reference files under a workflow skill (skills/*/references/…).
+// Matched on path suffix (not repo-anchored) so the same logic drives corpus
+// and temp-fixture tests.
 function isReferenceFile(file) {
   const p = posix(file);
-  const workflowRef = /\/skills\/[^/]+\/references\//.test(p) && !/\.claude\/skills\//.test(p);
-  const cofRef = /\/create-output-format\/references\//.test(p);
-  return workflowRef || cofRef;
+  return /\/skills\/[^/]+\/references\//.test(p) && !/\.claude\/skills\//.test(p);
 }
 
 function checkAttribution(files) {
   const out = [];
   for (const file of files) {
     if (!isReferenceFile(file)) continue;
-    const p = posix(file);
-    if (p.includes('/output-formats/')) continue; // multi-consumer adapter exemption
-    if (p.includes('/create-output-format/references/scaffolding/')) continue; // template scaffolding exemption
     const lines = readLines(file);
     const h1Idx = lines.findIndex((l) => /^# /.test(l));
     if (h1Idx === -1) {
@@ -1543,10 +1532,10 @@ function write(dir, relPath, content) {
 
 const CORPUS = corpusFiles();
 
-test('corpus is non-empty and covers all three scan roots', () => {
-  assert.ok(CORPUS.length > 200, `expected a large corpus, found ${CORPUS.length}`);
+test('corpus is non-empty and covers both scan roots', () => {
+  assert.ok(CORPUS.length > 150, `expected a large corpus, found ${CORPUS.length}`);
+  assert.ok(CORPUS.some((f) => f.includes(`${path.sep}skills${path.sep}`)), 'skills/**/*.md not scanned');
   assert.ok(CORPUS.some((f) => f.includes(`${path.sep}agents${path.sep}`)), 'agents/*.md not scanned');
-  assert.ok(CORPUS.some((f) => f.includes('create-output-format')), 'create-output-format not scanned');
 });
 
 for (const [label, fn] of CHECKS) {
@@ -1749,9 +1738,6 @@ test('check 7 (links) — catches broken links, skips fenced/external/placeholde
       '```\n[fenced](nope.md)\n```\n[ext](https://example.com/x.md)\n[tmpl]({work_unit}/f.md)\n[anchor](#section)\n'
     );
     assert.strictEqual(checkLinks([exempt]).length, 0, 'fenced/external/placeholder/anchor links must be skipped');
-
-    const scaffold = write(dir, '.claude/skills/create-output-format/references/scaffolding/about.md', '[p](../../../SKILL.md)\n');
-    assert.strictEqual(checkLinks([scaffold]).length, 0, 'scaffolding templates must be exempt');
   });
 });
 
@@ -1787,7 +1773,7 @@ test('check 9 (Zero Output Rule) — catches drift from the canonical form', () 
   });
 });
 
-test('check 10 (attribution) — catches missing/wrong attribution, skips output-formats', () => {
+test('check 10 (attribution) — catches missing/wrong attribution', () => {
   withTemp((dir) => {
     const missing = write(dir, 'skills/x/references/a.md', '# Some Reference\n\nStraight into content with no attribution.\n');
     assert.strictEqual(checkAttribution([missing]).length, 1, 'missing attribution must be caught');
@@ -1798,9 +1784,6 @@ test('check 10 (attribution) — catches missing/wrong attribution, skips output
     const refForm = write(dir, 'skills/x/references/c.md', '# C\n\n*Reference for **[skill-name](../SKILL.md)***\n\n---\n');
     const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all workflow skills.*\n');
     assert.strictEqual(checkAttribution([refForm, sharedForm]).length, 0, 'sanctioned forms must pass');
-
-    const of = write(dir, 'skills/leeway-scoping-process/references/output-formats/x/reading.md', '# Reading\n\n## Listing Tasks\n');
-    assert.strictEqual(checkAttribution([of]).length, 0, 'output-format adapters must be exempt');
   });
 });
 
@@ -1841,7 +1824,7 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
     const field = write(dir, 'skills/leeway-discussion-process/SKILL.md', sections);
     const discovery = write(dir, 'skills/leeway-discovery/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([field, discovery]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
-    const stepped = write(dir, 'skills/leeway-scoping-process/SKILL.md', sections);
+    const stepped = write(dir, 'skills/leeway-experiment-process/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([stepped]).length, 1, 'a skill still on the step model is held');
   });
 });
@@ -2589,7 +2572,7 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
     const bridge = write(dir, 'skills/leeway-bridge/SKILL.md', ['Decide where the work goes.', '', '## Step 1: Route', '', RELOAD, ''].join('\n'));
     const capture = write(dir, 'skills/leeway-log-idea/SKILL.md', 'Capture an idea.\n');
     const fenced = write(dir, 'skills/leeway-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
-    const tooling = write(dir, '.claude/skills/create-output-format/SKILL.md', `## Instructions\n\n${LOAD}\n`);
+    const tooling = write(dir, '.claude/skills/review-work/SKILL.md', `## Instructions\n\n${LOAD}\n`);
     const ok = checkFrameworkLoad([start, phase, bridge, capture, fenced, tooling]);
     assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
 
@@ -2701,7 +2684,7 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
     const deeper = write(dir, `skills/${BUILD_SKILL}/references/deeper.md`, '# Deeper\n\nTell the builder to keep a to-do list.\n');
     const builder = write(dir, 'agents/leeway-builder.md', '# Builder\n\nCheck your own work, and leave no stubs.\nRead ~/.claude/skills/house/SKILL.md.\n');
     const unloaded = write(dir, `skills/${BUILD_SKILL}/references/tdd.md`, '# TDD\n\nRed-green, tests first.\n');
-    const other = write(dir, 'skills/leeway-scoping-process/SKILL.md', '# Scoping\n\nBreak the task down; TDD.\n');
+    const other = write(dir, 'skills/leeway-experiment-process/SKILL.md', '# Experiment\n\nBreak the task down; TDD.\n');
     const agent = write(dir, 'agents/leeway-plain-search.md', '# Search\n\nKeep a to-do list.\n');
     const v = checkBuildProse([skill, loop, deeper, builder, unloaded, other, agent]);
     assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message.split(' — ')[0]]), [

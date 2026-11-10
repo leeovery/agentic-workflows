@@ -1,6 +1,6 @@
 # Read the Work's Seed
 
-*Shared reference for the experiment and scoping processing skills.*
+*Shared reference for the experiment processing skill.*
 
 ---
 

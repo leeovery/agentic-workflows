@@ -158,8 +158,8 @@
 // cycles and baseline and its gate modes, the plan's review tracking and
 // dependencies, and the
 // caches of the discovery gap analysis and the discussion analysis, whose
-// files go with them (21.5.17), and every discussion's reconcile flag,
-// whatever it holds. The dead end goes too (21.5.22): a topic marked
+// files go with them (21.5.17), and every item's reconcile flag, whatever
+// it holds. The dead end goes too (21.5.22): a topic marked
 // `handled` whose work had concluded — its discussion decided, or, with no
 // discussion of its own, its research done, as 043's umbrellas were — keeps
 // its conclusion, its discussion decided and its record carried by 079 as
@@ -282,6 +282,8 @@ const SINGLE_TOPIC_TYPES = ['feature', 'bugfix', 'cross-cutting'];
 const LOG_PHASES = ['research', 'discussion', 'investigation'];
 const LOG_HEADINGS = { research: 'Research', discussion: 'Discussion', investigation: 'Investigation' };
 const STAGING = ['staging', 'analysis_staging'];
+// What no item of any phase keeps.
+const RETIRED_ON_EVERY_ITEM = ['reconcile_needed'];
 const RETIRED_PHASES = ['research', 'scoping'];
 const RETIRED_PHASE_FIELDS = {
   discovery: ['gap_analysis_cache'],
@@ -290,7 +292,7 @@ const RETIRED_PHASE_FIELDS = {
 };
 const RETIRED_ITEM_FIELDS = {
   discovery: ['routing', 'brief_path'],
-  discussion: ['subtopics', 'reconcile_needed'],
+  discussion: ['subtopics'],
   specification: ['order', 'previous_order', 'review_cycle', 'review_baseline_words', 'tracking', 'construction_gate_mode', 'finding_gate_mode'],
   planning: ['review_cycle', 'review_baseline_words', 'approvals', 'tracking', 'external_dependencies'],
 };
@@ -567,7 +569,7 @@ function dropRetired(phases) {
   for (const [phase, entry] of Object.entries(phases)) {
     if (!isObject(entry)) continue;
     for (const field of [...STAGING, ...(RETIRED_PHASE_FIELDS[phase] ?? [])]) delete entry[field];
-    const retired = [...STAGING, ...(RETIRED_ITEM_FIELDS[phase] ?? [])];
+    const retired = [...STAGING, ...RETIRED_ON_EVERY_ITEM, ...(RETIRED_ITEM_FIELDS[phase] ?? [])];
     for (const item of Object.values(isObject(entry.items) ? entry.items : {})) {
       if (!isObject(item)) continue;
       for (const field of retired) delete item[field];

@@ -4,14 +4,13 @@
 // Domain ring: a work unit's creation — discovery's durability boundary as
 // one transaction, in steps start this work composes with its own writes
 // (start-this-work.cjs) and `workunit create` runs alone: check everything,
-// write the unit (its manifest, imports, seeds — inbox items and roadmap
-// items' notes — and first discovery log), register it, index what landed, commit. The engine never authors
-// prose — `workunit create` installs the model-authored log verbatim.
+// write the unit (its manifest, seeds — inbox items and roadmap items'
+// notes — and first discovery log), register it, index what landed, commit.
+// The engine never authors prose — `workunit create` installs the
+// model-authored log verbatim.
 //
-// Validation is complete before any mutation: a missing import fails the
-// whole call with `missing_imports` riding on the error so the calling flow
-// can re-prompt and re-run, and a name already taken refuses outright —
-// nothing is on disk until every input is legal. A write that fails
+// Validation is complete before any mutation: a name already taken refuses
+// outright — nothing is on disk until every input is legal. A write that fails
 // part-way is undone: each seed back in the inbox, the unit's folder gone.
 // The manifest write is the source of truth; the knowledge base is a derived
 // index (warn-don't-block); the scoped commit comes last.
@@ -33,16 +32,7 @@ const {
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { parseInboxPaths, INBOX, SEED_SOURCES, ROADMAP_SEED } = require('./inbox.cjs');
-const {
-  normaliseBasename,
-  dedupe,
-  planImports,
-  copyImports,
-  importEntry,
-  isIndexableImport,
-  importArtifact,
-  assertLandableSources,
-} = require('./import-landing.cjs');
+const { normaliseBasename, dedupe } = require('./import-landing.cjs');
 const { todayStamp, isoNow } = require('./dates.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const {
@@ -67,9 +57,7 @@ function assertLegalWorkUnitName(workUnit) {
  * @typedef {object} WorkUnitCreateResult
  * @property {string} work_unit
  * @property {string} work_type
- * @property {{path: string}[]} imports  landed imports (absolute)
  * @property {{path: string, source: string}[]} seeds  landed seeds (absolute)
- * @property {string[]} skipped_imports  source paths rejected by filename normalisation
  * @property {string} session_log  the installed log (absolute)
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]  set when committed is null
@@ -90,9 +78,8 @@ function assertLegalWorkUnitName(workUnit) {
  */
 
 /**
- * What a unit's write landed: its imports as copied, its seeds, and the
- * imports filename normalisation skipped.
- * @typedef {{importMoves: {src: string, dest: string}[], seeds: SeedLanding[], skippedImports: string[]}} Landed
+ * What a unit's write landed: its seeds.
+ * @typedef {{seeds: SeedLanding[]}} Landed
  */
 
 /**
@@ -113,20 +100,18 @@ function workUnitTaken(cwd, workUnit) {
 
 /**
  * Refuse, before anything is written, a unit that cannot be created: an
- * illegal type or name, a name a unit has already, an import that cannot
- * land, and a seed that is no live inbox item. Answers the seeds as inbox
- * items.
+ * illegal type or name, a name a unit has already, and a seed that is no
+ * live inbox item. Answers the seeds as inbox items.
  * @param {string} cwd @param {string} workUnit @param {string} workType
- * @param {{imports?: string[], seeds?: string[]}} [landing]
+ * @param {{seeds?: string[]}} [landing]
  * @returns {import('./inbox.cjs').InboxItem[]}
  */
-function checkWorkUnit(cwd, workUnit, workType, { imports = [], seeds = [] } = {}) {
+function checkWorkUnit(cwd, workUnit, workType, { seeds = [] } = {}) {
   if (!VALID_WORK_TYPES.includes(workType)) {
     throw new Error(`Invalid work_type "${workType}". Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
   }
   assertLegalWorkUnitName(workUnit);
   if (workUnitTaken(cwd, workUnit)) throw new Error(`work unit "${workUnit}" already exists — pick a different name`);
-  assertLandableSources(cwd, imports);
   // Layout-validated live inbox paths; the folder carries the provenance tag.
   const seedItems = parseInboxPaths(cwd, seeds, { archived: false });
   // Read (and refuse corrupt JSON) before anything mutates; the registration
@@ -147,17 +132,16 @@ function unwriteWorkUnit(cwd, workUnit, seeds) {
 
 /**
  * Write a new unit, checked by `checkWorkUnit`, under its lock: its folder
- * and manifest, its imports copied into `imports/`, its inbox seeds moved
- * into `seeds/` and each roadmap item's note copied there, each recorded with
+ * and manifest, its inbox seeds moved into `seeds/` and each roadmap item's note copied there, each recorded with
  * its source, so a cancel can put it back, and its first discovery log
  * holding `firstLog`, an epic's marked open — the sole work type with a
  * resumable discovery session. No
  * registration and no commit. A write that fails part-way is undone.
  * @param {string} cwd @param {string} workUnit @param {string} workType
- * @param {{description: string, firstLog: string, imports?: string[], seedItems?: import('./inbox.cjs').InboxItem[], noteSeeds?: NoteSeed[]}} unit
+ * @param {{description: string, firstLog: string, seedItems?: import('./inbox.cjs').InboxItem[], noteSeeds?: NoteSeed[]}} unit
  * @returns {Landed}
  */
-function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports = [], seedItems = [], noteSeeds = [] }) {
+function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, seedItems = [], noteSeeds = [] }) {
   const wuDir = path.join(stateRoot(cwd), workUnit);
   /** @type {SeedLanding[]} */
   const seeds = [];
@@ -174,9 +158,7 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
         phases: {},
       };
 
-      // Destination names, deduped against each directory and within the batch.
-      const importsDir = path.join(wuDir, 'imports');
-      const { planned: importPlan, skipped } = planImports(imports, importsDir);
+      // Destination names, deduped against the directory and within the batch.
       const seedsDir = path.join(wuDir, 'seeds');
       const takenSeeds = new Set();
       const seedPlan = [
@@ -187,10 +169,6 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
         takenSeeds.add(dest);
         return { ...seed, dest };
       });
-
-      copyImports(cwd, importsDir, importPlan);
-      // A new unit's files come in through discovery — every file it lands says so.
-      for (const move of importPlan) pushEntry(manifest, 'imports', importEntry(move.dest, 'discovery'));
 
       if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
       for (const { from, moves, source, dest } of seedPlan) {
@@ -207,7 +185,7 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
       }
 
       saveWorkUnitManifest(cwd, workUnit, manifest);
-      return { importMoves: importPlan, seeds, skippedImports: skipped };
+      return { seeds };
     });
   } catch (err) {
     unwriteWorkUnit(cwd, workUnit, seeds);
@@ -221,14 +199,11 @@ function registerWorkUnit(project, workUnit, workType) {
 }
 
 /**
- * The unit's imports and seeds indexed into the knowledge base,
- * warn-don't-block.
+ * The unit's seeds indexed into the knowledge base, warn-don't-block.
  * @param {string} cwd @param {string} workUnit @param {Landed} landed @param {string[]} warnings
  */
-function indexLanded(cwd, workUnit, { importMoves, seeds }, warnings) {
+function indexLanded(cwd, workUnit, { seeds }, warnings) {
   syncKnowledge(cwd, [
-    ...importMoves.filter((m) => isIndexableImport(m.dest))
-      .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })),
     ...seeds.map(({ dest }) => ({ index: `${workUnit}/seeds/${dest}`, label: `knowledge index (seeds/${dest})` })),
   ], warnings);
 }
@@ -258,12 +233,11 @@ function landedSeeds(cwd, workUnit, { seeds }) {
  * @param {object} opts
  * @param {string} opts.description       one-line intent, recorded at creation
  * @param {string} opts.sessionLogFile    model-authored log content, installed verbatim
- * @param {string[]} [opts.imports]       source paths to copy in
  * @param {string[]} [opts.seeds]         live inbox paths to move in
  * @returns {WorkUnitCreateResult}
  */
-function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, imports = [], seeds = [] }) {
-  const seedItems = checkWorkUnit(cwd, workUnit, workType, { imports, seeds });
+function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, seeds = [] }) {
+  const seedItems = checkWorkUnit(cwd, workUnit, workType, { seeds });
   /** @type {string} */
   let firstLog;
   try {
@@ -272,7 +246,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     throw new Error(`session log file not found: ${sessionLogFile}`);
   }
 
-  const landed = writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports, seedItems });
+  const landed = writeWorkUnit(cwd, workUnit, workType, { description, firstLog, seedItems });
   try {
     withProjectLock(cwd, () => {
       const project = readProjectManifest(cwd);
@@ -293,9 +267,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   const result = {
     work_unit: workUnit,
     work_type: workType,
-    imports: landed.importMoves.map((move) => ({ path: statePath(cwd, workUnit, 'imports', move.dest) })),
     seeds: landedSeeds(cwd, workUnit, landed),
-    skipped_imports: landed.skippedImports,
     session_log: statePath(cwd, workUnit, FIRST_LOG),
     committed: outcome.committed,
     warnings,

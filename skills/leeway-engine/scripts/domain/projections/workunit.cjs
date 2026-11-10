@@ -53,16 +53,14 @@ function nextPhaseStarted(unit) {
   return unit.phase_label.endsWith('(in-progress)');
 }
 
-/** Pipeline rows: completed phases (an `· input moved` cue on flagged ones), the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped) — a `· mail waiting` cue on a phase whose mailbox holds messages. @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
+/** Pipeline rows: completed phases, the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped) — a `· mail waiting` cue on a phase whose mailbox holds messages. @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
 function pipelineNodes(cfg, unit) {
-  const flaggedPhases = new Set((unit.reconcile_phases || []).map((r) => r.phase));
   const mailPhases = new Set(unit.mail_phases || []);
   const mailTag = (/** @type {string} */ phase, /** @type {string} */ tag) => (mailPhases.has(phase) ? `${tag} · mail waiting` : tag);
   const nodes = [];
   for (const phase of cfg.pipeline) {
     if (unit.completed_phases.includes(phase)) {
-      const tag = flaggedPhases.has(phase) ? 'completed · input moved' : 'completed';
-      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase) }), tag });
+      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase) }), tag: 'completed' });
     } else if (phase === unit.next_phase) {
       // The label vocabulary marks a started next phase, but not every
       // started label says so — `experiment (awaiting evidence)` routes to a
@@ -81,9 +79,9 @@ function pipelineNodes(cfg, unit) {
 
 /**
  * Section A — the work-unit status display. One code-block string: the
- * MATERIAL block (types that surface seeds/imports), and the pipeline tree
- * where any phase of today's pipeline has a row — none for a quick-fix
- * today's scoping left, which waits on the cut — empty where neither is.
+ * MATERIAL block (types that surface seeds), and the pipeline tree
+ * where any phase of its pipeline has a row — none for a quick-fix the old
+ * scoping left, which waits on the cut — empty where neither is.
  * The view's heading is the adapter's TITLE section, never drawn here.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
@@ -92,27 +90,20 @@ function pipelineNodes(cfg, unit) {
 function workUnitStatus(type, unit) {
   const cfg = typeConfig(type);
   let out = '';
-  const material = materialBlock({ seeds: unit.seeds_count || 0, imports: unit.imports_count || 0 });
+  const material = materialBlock(unit.seeds_count || 0);
   if (material) out += material + '\n\n';
   const nodes = pipelineNodes(cfg, unit);
   if (nodes.length > 0) out += `PIPELINE (${cfg.workType})\n${renderTree(nodes, { width: TREE_WIDTH })}`;
-  for (const r of unit.reconcile_phases || []) {
-    out += typeof r.from === 'string'
-      ? `\n  ⚑ ${titlecase(r.phase)} input moved — ${r.from} revised since it completed.\n`
-      : `\n  ⚑ ${titlecase(r.phase)} input moved — reconcile at next entry.\n`;
-  }
-  if (unit.finalising) out += '\n  ⚑ All phases complete — ready to finalise.\n';
   return out.replace(/\n+$/, '\n');
 }
 
 /**
  * Section B — the proceed/revisit menu. `keys` carries the machine action keys
- * (skills route on these): the `continue` entry always (a `finalise` entry on
- * a finalising unit — the skill runs `workunit complete`, no route), plus
- * `revisit` and one `revisit_phase` entry per revisit candidate when any
- * exist, and `back` to the start menu wherever the menu renders. `rendered` is
- * the dotted-gate markdown block — empty when there is nothing to revisit and
- * nothing to finalise (the calling skill routes straight through, no stop).
+ * (skills route on these): the `continue` entry always, plus `revisit` and
+ * one `revisit_phase` entry per revisit candidate when any exist, and `back`
+ * to the start menu wherever the menu renders. `rendered` is the dotted-gate
+ * markdown block — empty when there is nothing to revisit (the calling skill
+ * routes straight through, no stop).
  * A unit waiting on the migration's cut has its line and `back` alone (P12).
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
@@ -124,19 +115,14 @@ function workUnitMenu(type, unit) {
     return { keys: [back], rendered: menu(unit.waiting, [cmdOption(back.key, back.word, back.label)], { question: 'What next?' }) };
   }
   const revisitable = unit.revisit;
-  const gated = unit.finalising || revisitable.length > 0;
+  const gated = revisitable.length > 0;
 
   /** @type {WorkUnitMenuKey[]} */
-  const options = [unit.finalising
-    ? {
-      key: 'y', word: 'yes', action: 'finalise', topic: unit.name, route: null,
-      label: 'Mark the work unit completed',
-    }
-    : {
-      key: 'y', word: 'yes', action: 'continue', topic: unit.next_topic ?? unit.name,
-      route: phaseRoute(type, unit.next_phase, unit.name, unit.next_topic),
-      label: `Proceed to ${unit.next_phase}`,
-    }];
+  const options = [{
+    key: 'y', word: 'yes', action: 'continue', topic: unit.next_topic ?? unit.name,
+    route: phaseRoute(type, unit.next_phase, unit.name, unit.next_topic),
+    label: `Proceed to ${unit.next_phase}`,
+  }];
   if (revisitable.length > 0) {
     options.push({ key: 'r', word: 'revisit', action: 'revisit', topic: unit.name, route: null, label: 'Revisit an earlier phase' });
   }
@@ -156,7 +142,7 @@ function workUnitMenu(type, unit) {
 
   const rendered = gated
     ? menu(
-      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*${(unit.mail_phases || []).length > 0 ? ' · mail waiting' : ''}.`,
+      `Continuing "${titlecase(unit.name)}" — *${unit.phase_label}*${(unit.mail_phases || []).length > 0 ? ' · mail waiting' : ''}.`,
       options.map((k) => cmdOption(k.key, k.word, k.label)),
       { question: 'Proceed?' },
     )
@@ -180,14 +166,11 @@ function workUnitData(type, unit, menu) {
   lines.push(`work_type: ${cfg.workType}`);
   lines.push(`next_phase: ${unit.next_phase}`);
   lines.push(`phase_label: ${unit.phase_label}`);
-  lines.push(`finalising: ${unit.finalising === true}`);
   lines.push(`completed_phases: ${unit.completed_phases.join(', ') || '(none)'}`);
-  lines.push(`reconcile_pending: ${(unit.reconcile_phases || []).map((r) => `${r.phase} (${r.from})`).join(', ') || '(none)'}`);
   lines.push(`mail_waiting: ${(unit.mail_phases || []).join(', ') || '(none)'}`);
   lines.push(`revisit_available: ${menu.keys.some((k) => k.action === 'revisit')}`);
   if (cfg.surfacesSeeds) {
     lines.push(`seeds_count: ${unit.seeds_count || 0}`);
-    lines.push(`imports_count: ${unit.imports_count || 0}`);
   }
   lines.push(...actionsTable(['action', 'topic', '→ route'], menu.keys, (k) => [k.action, k.topic, `→ ${k.route || '(internal)'}`]));
   return lines.join('\n');

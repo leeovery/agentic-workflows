@@ -139,7 +139,7 @@ describe('engine session repair', () => {
     // nothing. The link: dead-owner too, but the live compounded name still
     // chains through it (its head record's owner — a peer process — runs;
     // repair defers).
-    writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · planning', session_id: 'sess-gone' });
+    writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · review', session_id: 'sess-gone' });
     writeStash('link-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
     writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · experiment · beta', session_id: 'sess-2', ...peerIdentity() });
     setTmuxName('proj-abc · pay · discussion · alpha · pay · experiment · beta');
@@ -154,7 +154,7 @@ describe('engine session repair', () => {
 
   it('keeps a dead-owner record when the server cannot be listed', () => {
     optIn();
-    writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · planning', session_id: 'sess-gone' });
+    writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · review', session_id: 'sess-gone' });
     const res = engine(['session', 'repair'], { failLs: true });
     assert.deepStrictEqual(res, { ok: true, repaired: false });
     assert.ok(stashFile(), 'an unverifiable name proves nothing — nothing pruned');
@@ -210,9 +210,9 @@ describe('engine session resume', () => {
   it('over a live peer\'s label it is the last label — last label wins, as any label does', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha'], { sessionId: 'sess-peer', claudePid: process.ppid });
-    writePosition('sess-1', { name: 'pay', phase: 'planning', topic: 'pay' });
+    writePosition('sess-1', { name: 'pay', phase: 'review', topic: 'pay' });
     assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: true });
-    assert.strictEqual(tmuxName(), 'proj-abc · pay · planning');
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · review');
     assert.strictEqual(stashRecords().length, 1);
     assert.strictEqual(stashRecords()[0].session_id, 'sess-1');
   });

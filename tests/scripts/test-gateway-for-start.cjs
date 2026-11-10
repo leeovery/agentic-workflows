@@ -161,17 +161,17 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.quick_fixes.work_units[0].phase_label, 'implementation (in-progress)');
   });
 
-  it('P12: a quick-fix today\'s scoping made, every phase of it completed, waits on the cut, never finalising: its close is what completes a quick-fix', () => {
+  it('P12: a quick-fix its old scoping made, every phase of it completed, waits on the cut: its close is what completes a quick-fix', () => {
     createManifest(dir, 'done-qf', {
       work_type: 'quick-fix',
       phases: {
-        scoping: { items: { 'done-qf': { status: 'completed' } } },
+        planning: { items: { 'done-qf': { status: 'completed' } } },
         implementation: { items: { 'done-qf': { status: 'completed' } } },
         review: { items: { 'done-qf': { status: 'completed' } } },
       },
     });
     const [unit] = discover(dir).quick_fixes.work_units;
-    assert.deepStrictEqual([unit.finalising, unit.phase_label], [false, 'waiting on the migration\'s cut']);
+    assert.strictEqual(unit.phase_label, 'waiting on the migration\'s cut');
   });
 
   it('discovers inbox quickfixes', () => {
@@ -365,7 +365,7 @@ describe('leeway format', () => {
     });
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } } });
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
     createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { dropped: { status: 'completed' } } } } });
     createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');

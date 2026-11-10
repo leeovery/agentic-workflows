@@ -80,7 +80,7 @@ describe('an epic\'s session (8.1.4, 8.S40)', () => {
   it('close clears the marker and commits the unit\'s discovery with the caller\'s message, the log with it — never a peer\'s topic, and nothing indexed (8.14.7)', () => {
     keywordOnlyKnowledge(dir);
     writeState(dir, layout.session(EPIC, '002'), '# Session 002\n\nThree topics found.\n');
-    writeState(dir, layout.doc(EPIC, 'investigation', 'refunds'), '# A peer session mid-turn\n');
+    writeState(dir, layout.experiment(EPIC, 'refunds', 'E1-x', 'design.md'), '# A peer session mid-turn\n');
 
     const res = session(['close', EPIC, '-m', `discovery(${EPIC}): three topics`]);
 
@@ -90,7 +90,7 @@ describe('an epic\'s session (8.1.4, 8.S40)', () => {
     assert.deepStrictEqual(readManifest(dir, EPIC).phases.discovery, DISCOVERY);
     assert.strictEqual(lastMessage(dir), `discovery(${EPIC}): three topics`);
     assert.deepStrictEqual(committed(), [`M\t${layout.session(EPIC, '002')}`, `M\t${layout.manifest(EPIC)}`].sort());
-    assert.strictEqual(fs.existsSync(statePath(dir, layout.doc(EPIC, 'investigation', 'refunds'))), true);
+    assert.strictEqual(fs.existsSync(statePath(dir, layout.experiment(EPIC, 'refunds', 'E1-x', 'design.md'))), true);
     assert.strictEqual(hasStore(dir), false, 'the close indexed the log');
   });
 

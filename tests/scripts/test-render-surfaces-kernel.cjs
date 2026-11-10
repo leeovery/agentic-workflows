@@ -383,29 +383,20 @@ describe('CLI boundary — engine render through the argv entry', () => {
       work_type: 'feature',
       phases: { discussion: { items: { pay: { status: 'in-progress' } } } },
     });
-    writeManifest(dir, 'fix', {
-      work_type: 'quick-fix',
-      phases: { implementation: { items: { fix: { status: 'completed' } } } },
-    });
   });
   afterEach(() => teardown(dir));
 
   const run = (/** @type {string[]} */ args) => render(dir, args);
 
-  it('flags survive argv: --mail, --variant, --file, scalar flags, boolean flags', () => {
-    assert.ok(run(['resume-gate', 'pay.discussion.pay', '--mail', '2']).includes('2 message(s)'));
-    const formats = writePayload(dir, 'formats.json', { formats: [{ name: 'flat', label: 'Flat files' }] });
-    assert.ok(run(['plan-format-gate', '--variant', 'select', '--file', formats]).includes('Flat files'));
-    const gate = run(['next-phase-gate', 'fix', '--prev', 'implementation', '--next', 'review']);
-    assert.ok(gate.includes('Implementation completed for "Fix".') && gate.includes('Complete without review'), gate);
+  it('flags survive argv: --variant, --file, scalar flags, boolean flags', () => {
+    const names = writePayload(dir, 'names.json', { names: ['billing-core'] });
+    assert.ok(run(['summary-backfill-gate', 'pay', '--variant', 'unsourced', '--file', names]).includes('Billing Core'));
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
-    assert.ok(run(['walkthrough-offer', '--menu-only']).startsWith('=== MENU: '));
-    assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes(`  Spec: ${dir}/.leeway/pay/specification/pay/specification.md`),
-      '--paths must survive boolean-flag registration through argv');
+    assert.ok(run(['walkthrough-offer', '--menu-only']).startsWith('=== MENU: '), '--menu-only must survive boolean-flag registration through argv');
   });
 
   it('surface errors surface as failJson on stderr with exit 1', () => {
-    assert.match(harness.refuses(dir, ['render', 'plan-format-gate', '--variant', 'select', '--file', 'missing.json']).error,
+    assert.match(harness.refuses(dir, ['render', 'summary-backfill-gate', 'pay', '--variant', 'unsourced', '--file', 'missing.json']).error,
       /missing\.json/);
   });
 });
@@ -428,7 +419,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, mail-announce, mail-offer, mail-block, backlog-gate, candidate-gate, send-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, summary-backfill-gate, plan-format-gate, scoping-questions, complexity-gate, phase-completed, phase-note, format-version-check, next-phase-gate, cancel-gate, postpone-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, import-reprompt, pivot-continuation, absorb-target, absorb-confirm-gate, archived-actions, archived-delete-gate, inbox-content, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-harvest-gate, roadmap-parks-gate, query-failure-gate, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, repo-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build, build-headline, task-landed, task-account, step-gate, phase-merge-gate, build-stop, build-progress, review-report, review-calls, review-tree, finish, investigation-plan, investigation-check-in, conclude\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: mail-announce, mail-offer, mail-block, backlog-gate, candidate-gate, send-closed-target, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, summary-backfill-gate, phase-completed, phase-note, cancel-gate, postpone-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, import-reprompt, pivot-continuation, absorb-target, absorb-confirm-gate, archived-actions, archived-delete-gate, inbox-content, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-harvest-gate, roadmap-parks-gate, query-failure-gate, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, repo-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build, build-headline, task-landed, task-account, step-gate, phase-merge-gate, build-stop, build-progress, review-report, review-calls, review-tree, finish, investigation-plan, investigation-check-in, conclude\)/);
   });
 });
 
