@@ -127,6 +127,15 @@ function auditState(dir, label) {
   // A file the person shares is an asset: nothing records an import.
   assert.strictEqual(project?.roadmap?.imports, undefined, ctx('the roadmap records imports'));
 
+  // Every inbox closure recorded names an item in the archive, closed by a
+  // unit of the project or by none, at a time (18.6.4, P4): whatever brings
+  // an item back or deletes it takes its record with it.
+  for (const [key, closure] of Object.entries(project?.inbox_closed ?? {})) {
+    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.inbox', '.archived', key)), ctx(`inbox closure ${key} names no archived item`));
+    assert.ok(closure.unit === null || fs.existsSync(path.join(dir, '.leeway', closure.unit, 'manifest.json')), ctx(`inbox closure ${key} names ${closure.unit}, no unit of the project`));
+    assert.match(closure.at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, ctx(`inbox closure ${key} was closed at ${closure.at}`));
+  }
+
   // The ledger reads whole: it starts byte for byte with the one the state
   // branch last committed, and every line is an event of its version's shape.
   // Its projections show what is current in it.

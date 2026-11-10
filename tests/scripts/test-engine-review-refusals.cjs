@@ -48,7 +48,7 @@ describe('review round: what it refuses, writing nothing', () => {
       assert.strictEqual(usage(args), reviewUsage, args.join(' '));
     }
     for (const args of [['inbox', 'file', '--file', file], ['inbox', 'file', UNIT], ['inbox', 'file', UNIT, 'more', '--file', file], ['inbox', 'file', UNIT, '--file', file, '--kind', 'idea']]) {
-      assert.strictEqual(usage(args), 'Usage: engine inbox <archive|restore|delete> <path> [<path> …] | engine inbox file <work-unit> --file <item.json>', args.join(' '));
+      assert.strictEqual(usage(args), 'Usage: engine inbox <archive|restore|delete> <path> [<path> …] | engine inbox close <work-unit|none> <path> [<path> …] | engine inbox file <work-unit> --file <item.json> | engine inbox capture <idea|bug|quick-fix> [--project <folder>]', args.join(' '));
     }
   });
 

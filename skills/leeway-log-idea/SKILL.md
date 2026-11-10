@@ -1,35 +1,17 @@
 ---
 name: leeway-log-idea
-description: Capture an idea as a markdown file in the workflow inbox. Use when the user wants to log, note, or save an idea for later.
+description: Capture an idea in the inbox. Use when the user wants to log, note, or save an idea for later.
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture idea *)
 ---
 
-This skill captures an idea and writes it to the inbox.
+This skill captures an idea into the inbox, for later.
 
-If there's already conversation context about an idea, synthesise it straight into the file without asking questions. If this is a cold start, ask what's on their mind and have a natural back-and-forth to draw the idea out. Recognise when it has enough shape (typically 2-4 exchanges) and wrap up.
+If the conversation already holds the idea, write it up without asking. From a cold start, ask what is on their mind and draw the idea out in a short back-and-forth, typically two to four exchanges, then wrap up. Capture only: read no code, search neither the code nor the web, and never weigh its feasibility, challenge it or suggest how to build it.
 
-**Capture only — these are rules, not guidelines:**
-- Do not read code or explore the codebase
-- Do not search the web or fetch external resources
-- Do not validate feasibility or question viability
-- Do not suggest architecture or implementation approaches
-- Do not play devil's advocate or challenge the idea
-- Do not propose solutions or next steps
-
-When ready, generate a short kebab-case slug from the core concept (e.g., `smart-retry-logic`, `unified-search`) and write the file:
+Write it as an H1 title and a prose body of 200 to 500 words, with no forced headings: the idea, and any constraint, goal or file that came up. Where the idea is about another project than the one this session is in, find that project's folder and add `--project {folder}`. Run the line with the text on stdin, and emit its section verbatim per its marker:
 
 ```bash
-mkdir -p .leeway/.inbox/ideas
-```
-
-**File:** `.leeway/.inbox/ideas/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
-- H1 title, prose body, 200-500 words
-- No forced headings — let the content flow naturally
-- Mention relevant codebase files, constraints, or goals if they came up
-
-Confirm with a one-liner:
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Logged idea: {slug}
+node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture idea [--project {folder}] <<'ITEM'
+{text}
+ITEM
 ```

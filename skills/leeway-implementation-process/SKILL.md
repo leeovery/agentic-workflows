@@ -57,7 +57,7 @@ The build runs start to finish without the person, stopping only where the engin
 
 ### The Build Log
 
-Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes: what is in flight, what was tried and dropped, and at each phase's close what it left for the next. It is read after a compaction and when the build resumes, so write it for a reader who has only it and the ledger.
+Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes: what is in flight, what was tried and dropped, and at each phase's close what it left for the next. An inbox item the work resolved is claimed on a line of its own, `Resolved: {path}`, its inbox path. It is read after a compaction and when the build resumes, so write it for a reader who has only it and the ledger.
 
 ## Doors
 

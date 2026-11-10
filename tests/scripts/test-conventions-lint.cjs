@@ -700,6 +700,48 @@ function checkNoTemplatedRenders(files, root = REPO) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 13b — what earns the capture skills check 13's exemption: each
+// knows nothing of the engine beyond its one line (18.6.2). Its SKILL.md
+// names the engine — its script, its folder or the state — on one line
+// past its frontmatter alone, the capture line for its kind; its
+// `allowed-tools` grants that line and nothing else; and no other file of
+// the skill names the engine at all.
+// ---------------------------------------------------------------------------
+
+const ENGINE_WORDS = /engine\.cjs|leeway-engine|\.leeway\b/;
+const CAPTURE_LINE = /^node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs inbox capture (idea|bug|quick-fix)(?: |$)/;
+
+/** The line after a file's frontmatter, 0 where it has none. @param {string[]} lines */
+function pastFrontmatter(lines) {
+  if (lines[0] !== '---') return 0;
+  const close = lines.indexOf('---', 1);
+  return close === -1 ? 0 : close + 1;
+}
+
+/** A capture skill's file's faults. @param {string} file @returns {{file: string, line: number, message: string}[]} */
+function captureFaults(file) {
+  const lines = readLines(file);
+  const from = pastFrontmatter(lines);
+  const named = lines.map((text, at) => ({ text, at })).filter(({ text, at }) => at >= from && ENGINE_WORDS.test(text));
+  if (path.basename(file) !== 'SKILL.md') {
+    return named.map(({ at }) => ({ file, line: at + 1, message: 'a capture skill names the engine in its SKILL.md\'s one capture line alone — no other file of it names the engine' }));
+  }
+  const kind = named.length === 1 ? CAPTURE_LINE.exec(named[0].text)?.[1] : undefined;
+  if (kind === undefined) {
+    const at = named.find(({ text }) => !CAPTURE_LINE.test(text))?.at ?? named[1]?.at ?? from;
+    return [{ file, line: at + 1, message: 'a capture skill names the engine on one line alone, its capture line: node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture <kind> …' }];
+  }
+  const grant = `allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture ${kind} *)`;
+  const grants = lines.slice(0, from).map((text, at) => ({ text, at })).filter(({ text }) => text.startsWith('allowed-tools:'));
+  if (grants.length === 1 && grants[0].text === grant) return [];
+  return [{ file, line: (grants[0]?.at ?? 0) + 1, message: `a capture skill's allowed-tools grants its capture line alone — ${grant}` }];
+}
+
+function checkCaptureSkills(files, root = REPO) {
+  return files.filter((file) => isCaptureSkill(file, root)).flatMap(captureFaults);
+}
+
+// ---------------------------------------------------------------------------
 // Check 14 — No buried invocation imperatives. A skill invocation is an
 // imperative outside any fence (Loading, Invoking, and Handing Off); a line
 // inside a fence invoking `/leeway` or `/leeway-*` is payload text the model
@@ -1411,6 +1453,7 @@ const CHECKS = [
   ['11: load-directive footers (On return)', checkLoadFooters],
   ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
   ['13: nothing rendered from prose varies', checkNoTemplatedRenders],
+  ['13b: a capture skill knows the engine by its one capture line alone', checkCaptureSkills],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
@@ -1964,6 +2007,26 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
       '> *Output the next fenced block as a ` ```diff ` code block:*\n\n```diff\n {context}\n-{removed lines}\n+{new lines}\n```\n'
     );
     assert.deepStrictEqual(sites(diffForm), [1], 'any instruction form is inside the check');
+  });
+});
+
+test('check 13b (capture skills) — 18.S22: catches a second engine line, the state named in prose, a grant wider than the line or for another kind, and a reference naming the engine; permits the one capture line and a skill that is no capture skill', () => {
+  withTemp((dir) => {
+    const faults = (/** @type {string} */ rel, /** @type {string} */ text) => checkCaptureSkills([write(dir, rel, text)], dir).map(({ line, message }) => `${line} ${message.split(' — ')[0].split(':')[0]}`);
+    const line = 'node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture bug [--project {folder}] <<\'ITEM\'';
+    const grant = (kind = 'bug') => `allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture ${kind} *)`;
+    const skill = (/** @type {string} */ head, /** @type {string} */ body) => `---\nname: leeway-log-bug\n${head}\n---\n\nCaptures a bug.\n\n\`\`\`bash\n${line}\n{text}\nITEM\n\`\`\`\n${body}`;
+    const at = 'skills/leeway-log-bug/SKILL.md';
+
+    assert.deepStrictEqual(faults(at, skill(grant(), '')), [], 'the one capture line and its grant');
+    assert.deepStrictEqual(faults(at, skill(grant(), '\nThen run `node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'a second engine line');
+    assert.deepStrictEqual(faults(at, skill(grant(), '\nIt lands in `.leeway/.inbox/bugs/`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'the state named in prose');
+    assert.deepStrictEqual(faults(at, skill('allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)', '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'a grant of the whole engine');
+    assert.deepStrictEqual(faults(at, skill(`${grant()}, Read`, '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'another tool granted beside it');
+    assert.deepStrictEqual(faults(at, skill(grant('idea'), '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'a grant for another kind');
+    assert.deepStrictEqual(faults(at, skill('', '')), ["1 a capture skill's allowed-tools grants its capture line alone"], 'no grant');
+    assert.deepStrictEqual(faults('skills/leeway-log-bug/references/r.md', '# R\n\nRun engine.cjs.\n'), ["3 a capture skill names the engine in its SKILL.md's one capture line alone"], 'a reference naming the engine');
+    assert.deepStrictEqual(faults('skills/leeway-login/SKILL.md', '---\nname: x\n---\n\nRun engine.cjs twice: engine.cjs.\nengine.cjs\n'), [], 'a skill that is no capture skill');
   });
 });
 

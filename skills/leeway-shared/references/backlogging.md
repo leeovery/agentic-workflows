@@ -1,6 +1,6 @@
 # Backlogging
 
-*Shared reference. Loaded by the `## Backlogging` section on the investigation, specification, implementation, quick-fix and review processing skills, and by the build's `outside-the-plan.md`.*
+*Shared reference. Loaded by the `## Backlogging` section on the investigation, specification, implementation, quick-fix and review processing skills, by the build's `outside-the-plan.md`, and at **D. Capture** by discovery's Putting Something Aside.*
 
 ---
 
@@ -109,12 +109,14 @@ The comment names what to change — the name, the kind, the horizon, or the sum
 
 ## D. Capture
 
-It goes to the inbox as a note, unconfirmed as every capture is. Invoke the matching capture skill: `/leeway-log-bug` for something broken, `/leeway-log-quickfix` for a small mechanical change, `/leeway-log-idea` for anything else and whenever it is unclear. The capture skill writes the inbox file but does not commit it, so commit it now:
+It goes to the inbox as a note, unconfirmed as every capture is. Write it from the conversation as an H1 title over a short prose body; its kind is `bug` for something broken, `quick-fix` for a small mechanical change, and `idea` for anything else and whenever it is unclear. Capture it with the text on stdin, and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
+node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture {kind:[idea|bug|quick-fix]} <<'ITEM'
+{text}
+ITEM
 ```
 
-Tell the user in one line that it is in the inbox, then note it where the phase keeps a running record — the log an investigation session is writing; the other phases keep none.
+Then note it where the phase keeps a running record — the log an investigation or a discovery session is writing; the other phases keep none.
 
 → Return to caller.

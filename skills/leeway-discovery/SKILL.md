@@ -96,7 +96,8 @@ The DATA's `log` is the record everything here comes back to, and nothing talked
 - The map as it stands → `render discovery-map {home}`; changed at the person's word → `topic add|add-batch|edit|rename|remove|order|brief`, `topic postpone|reactivate`, `roadmap pull-forward`, `render cancel-gate`, `render topic-receipt`.
 - The map approved → `render approve-map {home} --file`, then `gate`; a park's horizon → `render horizon-pick --park {name}`.
 - A message to a topic → `topic send`, `render send-report`.
-- Something put on the roadmap → `roadmap add`; into the inbox → `/leeway-log-idea`, `/leeway-log-bug`, `/leeway-log-quickfix`, then `commit --inbox`.
+- Something put on the roadmap → `roadmap add`; into the inbox → `inbox capture {kind}`, its text on stdin.
+- An inbox item the person has had fixed outside any unit → `inbox close none {path}`.
 - A move to another level → `enter discovery {home} --move`.
 - The session ended → `discovery-session close {home}`; at the product's, the roadmap items first → `gateway.cjs proposal`, `render roadmap-harvest-gate`, `roadmap add-batch`.
 - Earlier work → `knowledge query "{term}" …`.
@@ -142,7 +143,9 @@ For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summar
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:{home} --source {log}
 ```
 
-A name already on the roadmap takes another. For the inbox, invoke the capture skill for its kind — `/leeway-log-idea`, `/leeway-log-bug` or `/leeway-log-quickfix` — then commit what it wrote, `commit --inbox -m "inbox: capture {slug}"`. Either way, say it in a line and carry on.
+A name already on the roadmap takes another; say it in a line and carry on.
+
+For the inbox, capture it per **[backlogging.md](../leeway-shared/references/backlogging.md)** at **D. Capture**, and carry on.
 
 ## Moving Levels
 

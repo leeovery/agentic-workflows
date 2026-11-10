@@ -1,36 +1,17 @@
 ---
 name: leeway-log-quickfix
-description: Capture a quick-fix as a markdown file in the workflow inbox. Use when the user wants to log a trivially scoped mechanical change for later.
+description: Capture a quick-fix in the inbox. Use when the user wants to log a trivially scoped mechanical change for later.
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture quick-fix *)
 ---
 
-This skill captures a quick-fix and writes it to the inbox.
+This skill captures a quick-fix, a small mechanical change, into the inbox, for later.
 
-If there's already conversation context about a mechanical change, synthesise it straight into the file without asking questions. If this is a cold start, ask what needs changing and have a natural back-and-forth to draw out the scope. Recognise when it has enough detail (typically 1-3 exchanges) and wrap up.
+If the conversation already holds the change, write it up without asking. From a cold start, ask what needs changing and draw out its scope in a short back-and-forth, typically one to three exchanges, then wrap up. Capture only: read no code, search neither the code nor the web, and never validate the change, judge its size or suggest how to make it.
 
-**Capture only — these are rules, not guidelines:**
-- Do not read code or explore the codebase
-- Do not search the web or fetch external resources
-- Do not attempt to validate the change
-- Do not suggest approaches or implementation details
-- Do not diagnose complexity or recommend work types
-- Do not propose next steps
-
-When ready, generate a short kebab-case slug from the core change (e.g., `replace-interface-with-any`, `update-deprecated-api`) and write the file:
+Write it as an H1 title and a prose body of 100 to 300 words, with no forced headings: what needs changing, where and why, and any file that came up. Where the change is to another project than the one this session is in, find that project's folder and add `--project {folder}`. Run the line with the text on stdin, and emit its section verbatim per its marker:
 
 ```bash
-mkdir -p .leeway/.inbox/quickfixes
-```
-
-**File:** `.leeway/.inbox/quickfixes/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
-- H1 title, prose body, 100-300 words
-- No forced headings — let the content flow naturally
-- Naturally cover what needs changing, where, and why
-- Mention relevant codebase files if they came up
-
-Confirm with a one-liner:
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Logged quick-fix: {slug}
+node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture quick-fix [--project {folder}] <<'ITEM'
+{text}
+ITEM
 ```

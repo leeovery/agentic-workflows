@@ -161,6 +161,15 @@ describe('inbox file: a finding out of scope filed to the inbox (14.3.5, 6.1.15)
     assert.deepStrictEqual([stateText(rel), lastStateCommit()], ['# Refund receipts\n\nA refund sends no receipt.\n', { subject: `workflow(inbox): file refund-receipts from ${UNIT}'s review`, files: [rel] }]);
   });
 
+  it('a name only the archive holds today takes the next free -{n}', () => {
+    enter();
+    const call = reviewCall('Filed: a card\'s expiry is checked nowhere.', 'It is a gap beside the change.');
+    writeState(dir, '.inbox/.archived/ideas/2026-01-01--card-expiry.md', '# Card expiry\n');
+    const item = { kind: 'idea', text: '# Card expiry', call };
+
+    assert.deepStrictEqual([filed(item).filed, filed(item).filed], [statePath(dir, '.inbox/ideas/2026-01-01--card-expiry-2.md'), statePath(dir, '.inbox/ideas/2026-01-01--card-expiry-3.md')]);
+  });
+
   it('refused, nothing written: a kind not the inbox\'s, a text with no title, a call not Claude\'s at the review, an item filed already, and a unit whose review phase cannot be entered', () => {
     const call = reviewCall('Filed.', 'Out of the change.');
     filed({ kind: 'idea', text: '# Card expiry', call });

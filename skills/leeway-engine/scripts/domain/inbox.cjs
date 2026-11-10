@@ -24,19 +24,34 @@
 // — the close's at `{unit}.implementation` — (14.3.7, review-phase.cjs), so
 // every filing is one engine call away.
 // It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, today's date
-// and its title's slug, and committed. It refuses, writing nothing, a unit
+// and its title's slug, a name only the archive holds taking the next free
+// `-{n}` (`freeItemPath`), and committed. It refuses, writing nothing, a unit
 // whose review phase cannot be entered (review-entry.cjs) but such a
 // quick-fix, a payload of another shape, a text with no title, a call that
 // is none of those, and an item already there.
+//
+// `inbox close <unit|none> <path> …` archives live items as `archive` does,
+// and records who closed each on the project manifest (18.6.4, 18.6.6),
+// `inbox_closed: {"{folder}/{file}": {unit, at}}` — the unit that resolved
+// it, or null for one the person had fixed straight away (P4) — the files
+// and the record one commit. `restore` and `delete` drop an item's record:
+// a restored item is live again, and a deleted one is gone. Finish reads
+// the record for the closures its screen lists (`closedBy`), and the
+// build's log for the items its `Resolved: {path}` lines claim the work
+// resolved, still live (`liveResolved`, 6.4.10).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { statePath, stateRelative, stateRoot } = require('../kernel/state-root.cjs');
+const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
+const { NO_ARGUMENT, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { filled, shaped, readPayload, refusing } = require('./staged-payload.cjs');
-const { todayStamp } = require('./dates.cjs');
+const { todayStamp, isoNow } = require('./dates.cjs');
 const { slugOf } = require('./landing-names.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
 
 const INBOX = '.inbox';
 const ARCHIVED = `${INBOX}/.archived`;
@@ -213,20 +228,29 @@ function attachStranded(err, stranded) {
 
 /**
  * Move every item to its destination (collision-checked first), then commit
- * the whole set scoped to the inbox.
+ * the whole set scoped to the inbox, with the paths `record` wrote beside
+ * the moves — every file put back where `record` fails.
  * @param {string} cwd @param {InboxItem[]} items
  * @param {(item: InboxItem) => string} destDir relative destination directory per item
- * @param {string} verb commit-message verb
+ * @param {string} message
+ * @param {() => string[]} [record] state-relative paths it wrote
  * @returns {{moved: string[], committed: string|null}}
  */
-function moveAndCommit(cwd, items, destDir, verb) {
+function moveAndCommit(cwd, items, destDir, message, record = () => []) {
   const moves = items.map((item) => ({ from: item.rel, to: `${destDir(item)}/${item.file}` }));
   refuseTakenDestinations(cwd, moves);
   moveFiles(cwd, moves);
+  /** @type {string[]} */
+  let recorded;
+  try {
+    recorded = record();
+  } catch (err) {
+    throw undoMoves(cwd, moves, err);
+  }
   const moved = moves.map((m) => statePath(cwd, m.to));
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, INBOX, commitMessage(verb, items), warnings);
+  const outcome = commitStateTail(cwd, [INBOX, ...recorded], message, warnings);
   return committedResult({ moved, committed: outcome.committed }, outcome, warnings);
 }
 
@@ -243,6 +267,40 @@ function committedResult(result, outcome, warnings) {
   return result;
 }
 
+/** The project manifest's record of who closed each archived item (the header's). */
+const CLOSED = 'inbox_closed';
+
+/** @typedef {{unit: string|null, at: string}} Closure */
+
+/** An item's key on the record. @param {InboxItem} item */
+const closedKey = ({ folder, file }) => `${folder}/${file}`;
+
+/**
+ * The record rewritten as `change` answers it, or left where it answers
+ * null; an emptied record goes from the manifest. Answers the paths a
+ * commit takes: the project manifest, or none where nothing changed.
+ * @param {string} cwd @param {(record: Record<string, Closure>) => Record<string, Closure>|null} change
+ * @returns {string[]}
+ */
+function rewriteRecord(cwd, change) {
+  return withProjectLock(cwd, () => {
+    const { [CLOSED]: held, ...rest } = readProjectManifest(cwd);
+    const changed = change(isObject(held) ? held : {});
+    if (changed === null) return [];
+    writeProjectManifestAtomic(cwd, Object.keys(changed).length === 0 ? rest : { ...rest, [CLOSED]: changed });
+    return [PROJECT_MANIFEST_SPEC];
+  });
+}
+
+/** Each item's record dropped, where it has one. @param {string} cwd @param {InboxItem[]} items @returns {string[]} */
+function dropClosures(cwd, items) {
+  const keys = new Set(items.map(closedKey));
+  return rewriteRecord(cwd, (record) => {
+    if (!Object.keys(record).some((key) => keys.has(key))) return null;
+    return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.has(key)));
+  });
+}
+
 /**
  * Archive live inbox items into `.archived/{folder}/`. One commit for the set.
  * @param {string} cwd project root
@@ -251,37 +309,121 @@ function committedResult(result, outcome, warnings) {
  */
 function archiveItems(cwd, paths) {
   const items = parseInboxPaths(cwd, paths, { archived: false });
-  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => archivedDir(i.folder), 'archive');
+  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => archivedDir(i.folder), commitMessage('archive', items));
   return { archived: moved, ...rest };
 }
 
 /**
- * Restore archived items back to their live folders. One commit for the set.
+ * The unit a close names, null for `none`: one the project holds, of any
+ * status.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function closerOf(cwd, unit) {
+  if (unit === NO_ARGUMENT) return null;
+  if (workUnitNameRefusal(unit) !== null || manifestOf(stateRoot(cwd), unit) === null) {
+    throw new Error(`inbox close: there is no work unit "${unit}" — name the unit whose work resolved the items, or none`);
+  }
+  return unit;
+}
+
+/**
+ * `inbox close`: live items archived, each recorded as closed by the unit,
+ * or by none (the header's). One commit for the set and its record.
+ * @param {string} cwd @param {string} unit a work unit, or `none`
+ * @param {string[]} paths live inbox paths
+ * @returns {{closed: string[], unit: string|null, committed: string|null}}
+ */
+function closeItems(cwd, unit, paths) {
+  const closer = closerOf(cwd, unit);
+  const items = parseInboxPaths(cwd, paths, { archived: false });
+  const closure = { unit: closer, at: isoNow() };
+  const record = () => rewriteRecord(cwd, (held) => ({ ...held, ...Object.fromEntries(items.map((item) => [closedKey(item), closure])) }));
+  const message = `${commitMessage('close', items)}${closer === null ? '' : `, resolved by ${closer}`}`;
+  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => archivedDir(i.folder), message, record);
+  return { closed: moved, unit: closer, ...rest };
+}
+
+/**
+ * Restore archived items back to their live folders, each one's record of
+ * its close dropped. One commit for the set.
  * @param {string} cwd project root
  * @param {string[]} paths archived inbox paths
  * @returns {{restored: string[], committed: string|null}}
  */
 function restoreItems(cwd, paths) {
   const items = parseInboxPaths(cwd, paths, { archived: true });
-  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, 'restore');
+  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, commitMessage('restore', items), () => dropClosures(cwd, items));
   return { restored: moved, ...rest };
 }
 
 /**
- * Permanently delete archived items. One commit for the set. Live-folder
- * paths are rejected — delete only operates on `.archived/`.
+ * Permanently delete archived items, each one's record of its close
+ * dropped first. One commit for the set. Live-folder paths are rejected —
+ * delete only operates on `.archived/`.
  * @param {string} cwd project root
  * @param {string[]} paths archived inbox paths
  * @returns {{deleted: string[], committed: string|null}}
  */
 function deleteItems(cwd, paths) {
   const items = parseInboxPaths(cwd, paths, { archived: true });
+  const recorded = dropClosures(cwd, items);
   const deleted = items.map((i) => statePath(cwd, i.rel));
   for (const file of deleted) fs.rmSync(file);
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, INBOX, commitMessage('delete', items), warnings);
+  const outcome = commitStateTail(cwd, [INBOX, ...recorded], commitMessage('delete', items), warnings);
   return committedResult({ deleted, committed: outcome.committed }, outcome, warnings);
+}
+
+/**
+ * The items the record says `unit` closed, in the order closed: each one's
+ * title — its file's name where it has none — and kind.
+ * @param {string} cwd @param {string} unit
+ * @returns {{title: string, kind: ItemKind}[]}
+ */
+function closedBy(cwd, unit) {
+  // Required here: the start's reads this module.
+  const { titleOf } = require('./start.cjs');
+  const record = readProjectManifest(cwd)[CLOSED];
+  if (!isObject(record)) return [];
+  return Object.entries(record).filter(([, closure]) => closure.unit === unit).map(([key]) => {
+    const item = parseInboxPath(cwd, statePath(cwd, ARCHIVED, key), { archived: true });
+    const file = statePath(cwd, item.rel);
+    return { title: (fs.existsSync(file) ? titleOf(fs.readFileSync(file, 'utf8')) : null) ?? item.slug, kind: FOLDER_KIND[item.folder] };
+  });
+}
+
+// A claim that the work resolved an item: a line of its own, `Resolved: {path}`.
+const RESOLVED_LINE = /^Resolved:(.*)$/gm;
+
+// A live item's path within the claim — absolute, from the project or from
+// the state — read from `.inbox/` on; an archived item's runs on
+// `.inbox/.archived/`, and never matches.
+const NAMED_ITEM = new RegExp(`(?<![\\w.-])\\.inbox/(${FOLDERS.join('|')})/([\\w.-]+\\.md)`, 'g');
+
+/**
+ * The items `text`'s `Resolved:` lines claim, still live: each once,
+ * absolute, in the order claimed.
+ * @param {string} cwd @param {string} text
+ * @returns {string[]}
+ */
+function liveResolved(cwd, text) {
+  const claimed = [...text.matchAll(RESOLVED_LINE)].flatMap(([, claim]) => [...claim.matchAll(NAMED_ITEM)]);
+  return [...new Set(claimed.map(([, folder, file]) => statePath(cwd, INBOX, folder, file)))].filter((file) => fs.existsSync(file));
+}
+
+/**
+ * Where a slug's item lands in its folder today: the next free `-{n}`
+ * where the inbox, its archive included, holds the name already.
+ * @param {string} cwd @param {string} folder @param {string} slug
+ * @returns {string} state-relative
+ */
+function freeItemPath(cwd, folder, slug) {
+  const named = (/** @type {string} */ name) => `${todayStamp()}--${name}.md`;
+  const taken = (/** @type {string} */ name) => [`${INBOX}/${folder}`, archivedDir(folder)].some((dir) => fs.existsSync(statePath(cwd, dir, named(name))));
+  let name = slug;
+  for (let n = 2; taken(name); n += 1) name = `${slug}-${n}`;
+  return `${INBOX}/${folder}/${named(name)}`;
 }
 
 /** Each kind of item by the folder it is filed in. */
@@ -320,8 +462,10 @@ function fileItem(cwd, unit, file) {
   const fault = filled(call) ? readShown(stateRoot(cwd), warnings, (shower) => reviewCallFault(shower, unit, call, atClose ? 'implementation' : 'review')) : 'its call names the ledger\'s file-or-drop call';
   if (fault !== null) faults.push(fault);
   if (faults.length > 0) throw new Error(`${said}: ${faults.join('; ')}`);
-  const rel = `${INBOX}/${KIND_FOLDER[/** @type {string} */ (kind)]}/${todayStamp()}--${slugOf(/** @type {string} */ (title))}.md`;
-  if (fs.existsSync(statePath(cwd, rel))) throw new Error(`${said}: ${statePath(cwd, rel)} is filed already — group this finding with it, or title it apart`);
+  const [folder, slug] = [KIND_FOLDER[/** @type {string} */ (kind)], slugOf(/** @type {string} */ (title))];
+  const live = statePath(cwd, INBOX, folder, `${todayStamp()}--${slug}.md`);
+  if (fs.existsSync(live)) throw new Error(`${said}: ${live} is filed already — group this finding with it, or title it apart`);
+  const rel = freeItemPath(cwd, folder, slug);
   fs.mkdirSync(path.dirname(statePath(cwd, rel)), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), `${String(text).replace(/\n*$/, '')}\n`);
   const outcome = commitStateTail(cwd, [rel], `workflow(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s ${atClose ? 'close' : 'review'}`, warnings);
@@ -331,8 +475,13 @@ function fileItem(cwd, unit, file) {
 module.exports = {
   fileItem,
   archiveItems,
+  closeItems,
   restoreItems,
   deleteItems,
+  closedBy,
+  liveResolved,
+  freeItemPath,
+  KIND_FOLDER,
   parseInboxPath,
   parseInboxPaths,
   refuseTakenDestinations,

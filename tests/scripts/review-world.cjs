@@ -385,10 +385,9 @@ function finishReady() {
   finishClosed();
 }
 
-/** Finish's checklist worked and closed, as Claude closes it before its screen: phase 1's design and the inbox skipped, the build's log closed. */
+/** Finish's checklist worked and closed, as Claude closes it before its screen: phase 1's design skipped, the build's log closed. */
 function finishClosed() {
   ok(dir, ['checklist', 'skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.'], { env: env() });
-  ok(dir, ['checklist', 'skip', 'finish', UNIT, 'inbox-closed', '--reason', 'No inbox item was resolved.'], { env: env() });
   ok(dir, ['checklist', 'done', 'finish', UNIT, 'build-log-closed'], { env: env() });
   ok(dir, ['checklist', 'close', 'finish', UNIT], { env: env() });
 }

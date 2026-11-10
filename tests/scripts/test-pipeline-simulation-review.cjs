@@ -164,7 +164,13 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
     const unclosed = board().view.waiting;
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
-    sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2. Nothing is in flight.\n');
+    // The inbox checked against what was built (18.6.4): of two items put
+    // aside on the way, the one the work resolved claimed on a Resolved:
+    // line of the build's log and closed for the unit, the other mentioned
+    // there and left waiting.
+    const [resolved, waits] = [['bug', '# A Tampered Entry Reads As Valid\n'], ['idea', '# Export The Ledger\n']].map(([kind, text]) => sim.run(['inbox', 'capture', kind], null, text).captured);
+    sim.write(`.leeway/${WU}/build/log.md`, `# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2. Exporting the ledger, ${waits}, waits for later. Nothing is in flight.\n\nResolved: ${resolved}\n`);
+    sim.run(['inbox', 'close', WU, resolved]);
     finishClosed(sim, WU);
     const passed = board();
     assert.deepStrictEqual(standingOn((args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args])), WU), {
