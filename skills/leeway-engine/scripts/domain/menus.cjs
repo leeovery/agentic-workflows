@@ -11,10 +11,14 @@
 //   All work — at the unit it is drawn for, the epic's menu, or at the
 //   roadmap; and the keys of its rows, `#` standing for every numbered row,
 //   each told by its help file beside its projection (23.2.4,
-//   projections/help.cjs) — none until its screen is drawn. Help is a gate
-//   of its own, `help`, drawn for a menu.
-// - The frame: a menu's render draws its TITLE, what it shows above its
-//   question as a text block, and its MENU, then leaves the conversation
+//   projections/help.cjs) — none until its screen is drawn; and its help:
+//   the label of its help row, and, where its help is not the plain one,
+//   its heading, its closing line and the rows of its own, each with its
+//   next (23.2.3). Help is a gate of its own, `help`, drawn for a menu.
+// - The frame: a menu's render draws its TITLE where it has one, what it
+//   shows above its question as a text block, and its MENU — the statement
+//   it makes under the rule, where it makes one, wrapped to the pane as its
+//   rows are, over its question — then leaves the conversation
 //   where the registry says — its position dropped and its tmux label put
 //   back as `session repair` does, or arrived at as `session label` arrives,
 //   with no writer lock either way: what it writes is the conversation's
@@ -25,10 +29,14 @@
 //   (18.9.4, 23.2.1); then the back row, where the menu has one; then its
 //   prompt row. It refuses a row with no next, a key the menu does not
 //   register, and `h` or `b` among the rows, which are the frame's own.
-// - A menu takes one argument at most, positional — the unit an epic's menu
-//   is for — so its help can draw it again.
+// - A menu is drawn with the unit it is for as its one positional
+//   argument, where it is a unit's, and anything else by name, `--{name}
+//   {value}` — the archived item's path, triage's pick — so its help draws
+//   it again as it was drawn, every argument carried.
 // ---------------------------------------------------------------------------
 
+const { wrap } = require('../kernel/render.cjs');
+const { displayWidth } = require('../kernel/terminal.cjs');
 const { titleSection, section, menuSection, menu, cmdOption, promptOption, emitAs, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { arriveAt, repairSessionLabels } = require('./session-label.cjs');
 
@@ -36,6 +44,15 @@ const { arriveAt, repairSessionLabels } = require('./session-label.cjs');
 /** @typedef {import('./projections/surfaces.cjs').OptionLabel} OptionLabel */
 
 /** Where drawing a menu leaves the conversation (the header's). @typedef {'none'|'unit'|'roadmap'} Arrival */
+
+/** A row of a menu: its key — a number, or a letter with its word — its label, and what answering it leads to. @typedef {{key: string|number, word?: string, label: OptionLabel, next: Next}} MenuRow */
+
+/**
+ * A menu's help as the registry holds it (the header's): its help row's
+ * label, and its screen's heading, closing line and rows of its own where
+ * they are not the plain help's.
+ * @typedef {{label: string, heading?: string, closing?: string, rows?: readonly MenuRow[]}} MenuHelp
+ */
 
 /**
  * A menu, as the registry holds it (the header's).
@@ -45,18 +62,20 @@ const { arriveAt, repairSessionLabels } = require('./session-label.cjs');
  * @property {string} named   how a sentence names it
  * @property {Arrival} arrival
  * @property {readonly string[]} keys  its rows' keys, `#` for every numbered row, `h` the frame's
- * @property {string} help    its help row's label
+ * @property {MenuHelp} help
  */
 
-/** A row of a menu: its key — a number, or a letter with its word — its label, and what answering it leads to. @typedef {{key: string|number, word?: string, label: OptionLabel, next: Next}} MenuRow */
+/** How a menu was drawn (the header's): the unit it is for, and its other arguments by name. @typedef {{arg?: string, flags?: Record<string, string|undefined>}} Drawn */
 
 /**
- * A menu's screen as its projection composes it: its heading, the lines it
- * shows above its question, the question, its rows in order, and its back
- * row and prompt row where it has them.
+ * A menu's screen as its projection composes it: its heading where it has
+ * one, the lines it shows above its question, the statement under the rule
+ * where it makes one, the question, its rows in order, and its back row and
+ * prompt row where it has them.
  * @typedef {object} MenuScreen
- * @property {string} title
+ * @property {string} [title]
  * @property {string[]} shows
+ * @property {string} [statement]
  * @property {string} [question]
  * @property {MenuRow[]} rows
  * @property {{label: OptionLabel, next: Next}} [back]
@@ -71,15 +90,16 @@ const QUESTION = 'What would you like to do?';
 const HELP_LABEL = 'What this menu is for, row by row';
 
 /**
- * A menu as the registry holds it, none of its rows drawn yet.
- * @param {string} id @param {string} gate @param {string} named @param {Arrival} arrival @param {string} [help]
+ * A menu as the registry holds it, none of its rows drawn yet, its help the
+ * plain one but where `help` says.
+ * @param {string} id @param {string} gate @param {string} named @param {Arrival} arrival @param {Partial<MenuHelp>} [help]
  * @returns {Menu}
  */
-const registered = (id, gate, named, arrival, help = HELP_LABEL) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze([]), help });
+const registered = (id, gate, named, arrival, help = {}) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze([]), help: Object.freeze({ label: HELP_LABEL, ...help }) });
 
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */
 const MENUS = Object.freeze({
-  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', 'How Leeway works'),
+  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', { label: 'How Leeway works' }),
   'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit'),
   triage: registered('triage', 'triage', 'triage', 'none'),
   archived: registered('archived', 'archived items', 'the archived items', 'none'),
@@ -106,14 +126,16 @@ function titleOf(m) {
 /** The key a row registers under: a number's `#`, any other its own. @param {string|number} key */
 const registeredKey = (key) => (/^\d+$/.test(String(key)) ? NUMBERED : String(key));
 
-/** The menu as drawn, by its render's argv after `render`. @param {Menu} m @param {string} [arg] */
-const menuArgv = (m, arg) => [m.id, ...(arg === undefined ? [] : [arg])];
+/** The menu as drawn, by its render's argv after `render` (the header's). @param {Menu} m @param {Drawn} drawn */
+const menuArgv = (m, { arg, flags = {} }) => [
+  m.id, ...(arg === undefined ? [] : [arg]), ...Object.entries(flags).flatMap(([name, value]) => (value === undefined ? [] : [`--${name}`, value])),
+];
 
-/** What the help row leads to: the menu's help, for the menu as drawn. @param {Menu} m @param {string} [arg] @returns {Next} */
-const helpNext = (m, arg) => ({ kind: 'engine', argv: ['render', 'help', ...menuArgv(m, arg)] });
+/** What the help row leads to: the menu's help, for the menu as drawn. @param {Menu} m @param {Drawn} drawn @returns {Next} */
+const helpNext = (m, drawn) => ({ kind: 'engine', argv: ['render', 'help', ...menuArgv(m, drawn)] });
 
-/** What a menu's help's back row leads to: the menu drawn again as it was. @param {Menu} m @param {string} [arg] @returns {Next} */
-const menuAgain = (m, arg) => ({ kind: 'engine', argv: ['render', ...menuArgv(m, arg)] });
+/** What a menu's help's back row leads to: the menu drawn again as it was. @param {Menu} m @param {Drawn} drawn @returns {Next} */
+const menuAgain = (m, drawn) => ({ kind: 'engine', argv: ['render', ...menuArgv(m, drawn)] });
 
 /**
  * Refuse a row the frame cannot draw (the header's).
@@ -126,21 +148,24 @@ function checkRow(m, { key, next }) {
   if (!m.keys.includes(registeredKey(key))) throw new Error(`${at} is not among the keys ${m.id} registers: ${m.keys.join(', ') || 'none'}`);
 }
 
+/** A row drawn as a menu's rows are, its next recorded. @param {MenuRow} row */
+const rowOf = ({ key, word, label, next }) => cmdOption(String(key), word, label, { next });
+
 /**
- * The menu's MENU section: its question over its rows, then help, the back
- * row and the prompt row.
- * @param {Menu} m @param {string|undefined} arg @param {MenuScreen} screen
+ * The menu's MENU section: its statement and its question over its rows,
+ * then help, the back row and the prompt row.
+ * @param {Menu} m @param {Drawn} drawn @param {MenuScreen} screen
  */
-function menuOf(m, arg, { question = QUESTION, rows, back, prompt }) {
+function menuOf(m, drawn, { statement, question = QUESTION, rows, back, prompt }) {
   for (const row of rows) checkRow(m, row);
   if (back !== undefined && !m.keys.includes(BACK)) throw new Error(`${m.id} registers no back row`);
   const lines = [
-    ...rows.map(({ key, word, label, next }) => cmdOption(String(key), word, label, { next })),
-    cmdOption(HELP, 'help', m.help, { next: helpNext(m, arg) }),
+    ...rows.map(rowOf),
+    cmdOption(HELP, 'help', m.help.label, { next: helpNext(m, drawn) }),
     ...(back === undefined ? [] : [cmdOption(BACK, 'back', back.label, { next: back.next })]),
     ...(prompt === undefined ? [] : [promptOption(prompt.label, prompt.description, { next: prompt.next })]),
   ];
-  return menuSection(m.gate, MENU_INSTRUCTION, menu('', lines, { question }));
+  return menuSection(m.gate, MENU_INSTRUCTION, menu(statement === undefined ? '' : wrap(statement, displayWidth()).join('\n'), lines, { question }));
 }
 
 /**
@@ -158,16 +183,17 @@ function arrive(cwd, m, arg) {
 }
 
 /**
- * A menu drawn in the frame (the header's): its sections, the conversation
- * left where the menu leaves it once they are composed.
- * @param {string} cwd @param {Menu} m @param {string|undefined} arg @param {MenuScreen} screen
+ * A menu drawn in the frame (the header's), as `drawn`: its sections, the
+ * conversation left where the menu leaves it once they are composed.
+ * @param {string} cwd @param {Menu} m @param {Drawn} drawn @param {MenuScreen} screen
  * @returns {string}
  */
-function drawMenu(cwd, m, arg, screen) {
+function drawMenu(cwd, m, drawn, screen) {
+  const title = screen.title === undefined ? '' : titleSection(screen.title);
   const shown = screen.shows.length === 0 ? '' : section(`DISPLAY: ${m.id}`, emitAs('text'), screen.shows.join('\n'));
-  const out = titleSection(screen.title) + shown + menuOf(m, arg, screen);
-  arrive(cwd, m, arg);
+  const out = title + shown + menuOf(m, drawn, screen);
+  arrive(cwd, m, drawn.arg);
   return out;
 }
 
-module.exports = { MENUS, NUMBERED, HELP_GATE, menuNamed, titleOf, menuAgain, drawMenu };
+module.exports = { MENUS, NUMBERED, HELP_GATE, QUESTION, menuNamed, titleOf, menuAgain, rowOf, drawMenu };

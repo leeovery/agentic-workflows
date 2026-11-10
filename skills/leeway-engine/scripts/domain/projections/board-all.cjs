@@ -11,13 +11,15 @@
 // - How far a unit has come, by the phase it is in: the gate ending it
 //   waiting on the person, by its name — finish, a quick-fix's close, or an
 //   investigation's conclude; an epic's discovery its topics on the map,
-//   its discussion its topics decided of all; a bug's investigation how far
-//   its hunt has come; the specification where it stands, as its banner
-//   says it; the build its tasks done of all, a quick-fix its fixes done of
-//   all, the review its round, as its banner says it — a quick-fix's too —
-//   each stopped where nothing can go on; nothing for a linear unit's
-//   discussion, nor a build or review not run by its cut — under the old
-//   plan, its tracker not the cut's until 29.17. A unit's tracker is read
+//   its discussion its topics decided of all, and a unit of a type the
+//   reshape retires waiting on the migration's cut, as its menu row says
+//   them (progress.cjs); a bug's investigation how far its hunt has come;
+//   the specification where it stands, as its banner says it; the build its
+//   tasks done of all, a quick-fix its fixes done of all, the review its
+//   round, as its banner says it — a quick-fix's too — each stopped where
+//   nothing can go on; nothing for a linear unit's discussion, nor a build
+//   or review not run by its cut — under the old plan, its tracker not the
+//   cut's until 29.17. A unit's tracker is read
 //   once its build runs by its cut, or a quick-fix's fixes have begun, one
 //   copy of its store a call.
 // - A session is in a unit where this one is, or another holds a presence
@@ -39,12 +41,10 @@ const { roadmapItems, itemJoin, itemPostponedFrom, topicTitle, buildByCut, quick
 const { buildView, buildWords } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { specDoing } = require('./board-spec.cjs');
-const { epicWords } = require('./board-unit.cjs');
 const { nowOf, waitingOn, standingOf } = require('./board-standing.cjs');
-const { mapCount } = require('./board-discovery.cjs');
 const { investigationHowFar } = require('./board-investigation.cjs');
 const { quickFixWords } = require('./board-quick-fix.cjs');
-const { counted } = require('./map.cjs');
+const { AT_THE_CUT, epicMeasure } = require('../progress.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').AllView} AllView */
@@ -61,8 +61,8 @@ const GATES = Object.freeze(['finish', 'conclude']);
 
 /** How far a unit has come, by the phase it is in (the header's). @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const HOW_FAR = Object.freeze({
-  discovery: (at) => (at.manifest.work_type === 'epic' ? `${counted(mapCount(at.cwd, at.manifest), 'topic')} on the map` : ''),
-  discussion: (at) => (at.manifest.work_type === 'epic' ? epicWords(at.manifest) : ''),
+  discovery: (at) => epicMeasure(at.cwd, at.manifest, 'discovery') ?? '',
+  discussion: (at) => epicMeasure(at.cwd, at.manifest, 'discussion') ?? '',
   investigation: investigationHowFar,
   specification: (at) => specDoing(at, waitingOn(at)),
   build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(buildView(at).view)}` : ''),
@@ -72,7 +72,7 @@ const HOW_FAR = Object.freeze({
     const { round, words } = roundWords(at);
     return `${stoppedWords(at)}${words ?? `round ${round} reading`}`;
   },
-  cut: () => 'waiting on the migration\'s cut',
+  cut: () => AT_THE_CUT,
 });
 
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */

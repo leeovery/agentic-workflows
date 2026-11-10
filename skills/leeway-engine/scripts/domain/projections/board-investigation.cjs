@@ -77,12 +77,12 @@ const { shortId } = require('../ledger-ids.cjs');
 const { rowStanding, answersOn } = require('../topic-map.cjs');
 const { agentRows, surfacedAs } = require('../agent-state.cjs');
 const { ROLES } = require('../brief-names.cjs');
-const { sealsAt, sealWaits, downChain } = require('../raise.cjs');
+const { sealsAt, sealWaits, downChain, investigationPlaces } = require('../raise.cjs');
 const { drawnRows } = require('./raise.cjs');
 const { huntOf, huntEntries, rootCauseNow } = require('../investigation-log.cjs');
 const { VALIDATIONS, validationSince, concludeDraws } = require('../investigation-conclude.cjs');
 const { gapsIn } = require('../spec-passes.cjs');
-const { itemOf, startedOn } = require('../derivations.cjs');
+const { investigationUnderWay, itemOf, startedOn } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -99,11 +99,8 @@ const { projectName } = require('../state-checks.cjs');
 
 const PHASE = 'investigation';
 
-/** The places the investigation's raises are sealed at: its topic, and its own level. @param {BoardAt} at */
-const placesOf = (at) => [at.unit, null].map((topic) => ({ unit: at.unit, phase: PHASE, topic }));
-
 /** Whether the unit's investigation is under way. @param {BoardAt} at */
-const investigating = ({ manifest, unit }) => manifest.work_type === 'bugfix' && itemOf(manifest, PHASE, unit)?.status === 'in-progress';
+const investigating = ({ manifest }) => investigationUnderWay(manifest);
 
 /** The unit's entries, from the one fold of the ledger a board call shares. @param {BoardAt} at @returns {Entries} */
 const entriesAt = (at) => at.shared('unit-entries', () => everyUnitEntries(at.cwd, at.warnings))(at.unit);
@@ -130,7 +127,7 @@ const ledgerAt = (at) => at.once('hunt-ledger', () => {
     rootCause: rootCauseNow(view, hunt),
     fix: 'fault' in fix ? null : fix,
     onFix: asked === undefined ? () => false : downChain(view.folded, asked),
-    seals: placesOf(at).flatMap((place) => sealsAt(at.session, place)).sort((a, b) => a.at.localeCompare(b.at)),
+    seals: investigationPlaces(at.unit).flatMap((place) => sealsAt(at.session, place)).sort((a, b) => a.at.localeCompare(b.at)),
   };
 });
 

@@ -56,7 +56,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, keptOf, assetsOf, foldedBeneath, mapOf, recordOf, productOf, discoveredOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, readOnce, holding, factsOf, isLive, mergeHolds, holdsOf, keptOf, assetsOf, foldedBeneath, mapOf, recordOf, productOf, discoveredOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
 const { answerSince, answerShown } = require('./ledger-since.cjs');
@@ -80,9 +80,9 @@ const { answerSince, answerShown } = require('./ledger-since.cjs');
 
 /**
  * The folded ledger as a read shows it: the fold read against liveness, an
- * entry's line shown, the files linked from an entry, and an id in its
- * short form.
- * @typedef {{folded: Folded, show: (id: string) => Shown, assets: (id: string) => AssetRow[], short: (id: string) => string}} Shower
+ * entry's line shown, the files linked from an entry, an id in its short
+ * form, and the line at a place read again.
+ * @typedef {{folded: Folded, show: (id: string) => Shown, assets: (id: string) => AssetRow[], short: (id: string) => string, entryAt: (place: import('./ledger.cjs').EntryPlace) => Record<string, unknown>}} Shower
  */
 
 /**
@@ -134,7 +134,7 @@ function showerOf(folded, entryAt) {
     status: status === null ? null : /** @type {string} */ (show(status).status),
     into: lift === null ? null : /** @type {string} */ (show(lift).into),
   }));
-  return { folded, show, assets, short };
+  return { folded, show, assets, short, entryAt };
 }
 
 /**
@@ -314,6 +314,26 @@ function readShown(root, warnings, answer) {
 }
 
 /**
+ * `readShown`'s answer for a call that writes nothing, its reads taken as
+ * one (ledger-fold.cjs, `readOnce`): every read of the folded ledger
+ * `answer` makes, however deep, meets this one.
+ * @template T
+ * @param {string} root @param {string[]} warnings @param {(shower: Shower) => T} answer
+ * @returns {T}
+ */
+function readShownOnce(root, warnings, answer) {
+  const live = liveness(root);
+  return readOnce(root, warnings, (facts, entryAt) => answer(showerOf({ facts, live }, entryAt)));
+}
+
+/**
+ * `fn` under a shower its caller read already, every read of the folded
+ * ledger it makes meeting that one (ledger-fold.cjs, `holding`).
+ * @template T @param {string} root @param {Shower} shower @param {() => T} fn @returns {T}
+ */
+const holdingShown = (root, shower, fn) => holding(root, shower.folded.facts, shower.entryAt, fn);
+
+/**
  * The files the unit's current entries link as canonical (9.10.5), each
  * once, as its record lists the entries linking them; what a landing the
  * read's check finished said pushed to `warnings`.
@@ -348,4 +368,4 @@ function readLedgerVerb(cwd, verb, args) {
   }
 }
 
-module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown, answerMap, canonicalAssets };
+module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown, readShownOnce, holdingShown, answerMap, canonicalAssets };

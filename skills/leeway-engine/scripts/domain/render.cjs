@@ -1537,7 +1537,7 @@ const SURFACES = {
   'investigation-plan': investigationPlanSurface,
   'investigation-check-in': investigationCheckInSurface,
   'conclude': concludeSurface,
-  'help': (_cwd, { dotpath, item }) => helpSurface(dotpath, item),
+  'help': (_cwd, { dotpath, item, ...flags }) => helpSurface(dotpath, { arg: item, flags }),
 };
 
 /**
