@@ -950,6 +950,11 @@ function refuseUnfinished(cwd, unit) {
 function landFinish(cwd, unit) {
   assertUnit(unit);
   refuseUnfinished(cwd, unit);
+  return finishLanding(cwd, unit);
+}
+
+/** `land finish` past its refusals, which finish's yes makes itself before it lands. @param {string} cwd @param {string} unit */
+function finishLanding(cwd, unit) {
   if (landsAsOne(cwd, unit)) return quickFixLand(cwd, unit);
   const project = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
@@ -1402,5 +1407,5 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
 }
 
 module.exports = {
-  LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal,
+  LAND_USAGE, landOpen, landChain, landPhase, landFinish, finishLanding, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal,
 };

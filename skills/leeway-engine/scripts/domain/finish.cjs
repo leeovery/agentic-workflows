@@ -70,7 +70,8 @@
 //   request whole (landing.cjs): one read, the screen's standing and no
 //   verdict still to ask, a quick-fix's checkout clean among it
 //   (`finishLandRefusal`, `refuseLanding`), so neither lands what the
-//   other would refuse.
+//   other would refuse. The yes reads it once and lands past it
+//   (`finishLanding`); `land finish` called on its own reads it itself.
 // ---------------------------------------------------------------------------
 
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -84,7 +85,7 @@ const {
 const { trackedBuild } = require('./task-verbs.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
-const { landFinish, quickFixLanding } = require('./landing.cjs');
+const { finishLanding, quickFixLanding } = require('./landing.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
@@ -304,8 +305,8 @@ function landStanding(cwd, unit, standing) {
   const { warnings, fixes } = standing;
   return carryingAll(warnings, () => {
     refuseLanding(cwd, unit, standing);
-    if (fixes === null) return landFinish(cwd, unit);
-    const landed = landFinish(cwd, unit);
+    const landed = finishLanding(cwd, unit);
+    if (fixes === null) return landed;
     const checkout = checkOutLanding(cwd, unit);
     return checkout === null ? landed : { ...landed, checkout };
   });
