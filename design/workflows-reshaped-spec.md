@@ -90,7 +90,7 @@ How to read it:
 
 1.3.3 What is not integral to the release comes as a fast follow straight after it, never as a partial product; the fast follows are listed under Out of the release. [plan 1.3; the person 2026-10-19]
 
-1.3.4 The ask rule is built last, but ships in the release. It is calibrated to ask what is asked today and loosens only as evidence supports (§16). [plan 1.3; record: Sequence step 5]
+1.3.4 The ask rule is switched on last, but ships in the release. It is calibrated to ask what is asked today and loosens only as evidence supports (§16). [plan 1.3; record: Sequence step 5; Claude's derivation, C53: 29.19's F8, its machinery built beside the tracking layer, as the person asked on 2026-11-10 that what can run side by side does (29.19.5)]
 
 1.3.5 Everyone starts with an empty trust log, the person included, so every question of taste or intent asks until its kind loosens, while a call with one defensible answer stays Claude's (§16). [plan 1.3; R25, ruled by the person 2026-10-18; 16.3.7, 16.4.10]
 
@@ -406,7 +406,7 @@ Investigation concluded [auto]. Moving to the specification.
 
 3.2.10 The gates that served the build's and review's loops — analysis cycles, planning's per-task approval (today's author gate), the fix gate, and their re-review — go with the loops. The stop after each task in step is the build's position (3.3.6), not one of them. [R40; Claude's derivation, O52; 13.4.7]
 
-3.2.11 Discussion's reviews stay, and their gates are learned like any other process gate (§9). [R40, R11]
+3.2.11 Discussion's reviews stay, and hold no gate of their own: the process gate around them is the one that asks whether to wait for the topic's running review agents (9.7.8), learned like any other (§9). [R40, R11; Claude's derivation, C53: 29.19's F2, as 9.8.12 says]
 
 ### 3.3 Positions: auto and step
 
@@ -475,7 +475,7 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 
 3.S10 Given a build, when it runs, then no analysis-cycle gate, planning's per-task approval gate, fix gate or re-review gate appears; in step, the stop after each task is the build's position. (3.2.10, 3.3.6)
 
-3.S11 Given a discussion's review, when its gate comes, then it is learned like any other process gate. (3.2.11)
+3.S11 Given a discussion's review running, when the gate that asks whether to wait for the topic's running review agents comes, then it is learned like any other process gate, and the review holds no gate of its own. (3.2.11, 9.7.8)
 
 3.S12 Given ready to build, when the person approves without changing the position, then the build runs in auto, and no bounded mode is offered. (3.3.1, 3.3.2, 3.3.5)
 
@@ -1076,7 +1076,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.6.11 A change flags the questions and findings that rely on it, as well as the decisions. [R23]
 
-5.6.12 Within a unit still under way, the topic owning an affected entry shows among what waits on the person until it answers, even when the topic was closed. [R23; Claude's derivation, O9]
+5.6.12 Within a unit still under way, the topic owning an affected entry shows among what waits on the person until it answers, even when the topic was closed. Its door is the phase the unit is in: the topic's own conversation while the unit is in its discussion or investigation; past it, the phase under way, whose entry names the affected entry, and where the change is settled (12.15.4). [R23; Claude's derivation, O9; Claude's derivation, C53: 12.15.4 is the person's ruling, so the door never takes the unit back to its discussion (16.4's review, N2)]
 
 5.6.13 An affected entry in a finished unit is flagged in the work that made the change, which confirms or replaces it; the flag never reopens the finished unit, whose reopening is the person's, through manage (18.3.6). [R23, plan 4.1; Claude's derivation, O9; 18.3.6]
 
@@ -1261,7 +1261,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 6.1.4 `ledger` (new): ask, find, decide, replace, hold, move, merge; and reads of the record, the map, the product record, "since you last looked", and what a replacement affects (§5). [plan 6.1; Claude's]
 
-6.1.5 `raise` (new): puts a call through the decision point and returns ask, proceed or ask blind; records the person's answer, "I don't follow" included (§16). A raise marked as a fact (16.3.8) carries no lean and may have no rows. [plan 6.1; Claude's; Claude's proposal]
+6.1.5 `raise` (new): puts a call through the decision point and returns ask, proceed or ask blind; records the person's answer, "I don't follow" included (§16). A raise marked as a fact (16.3.8) carries no lean and may have no rows. A raise marked `--always design-problem` or `--always live-server` always asks (19.4.22, 19.4.20): the mark can only make a question ask, never let one proceed. [plan 6.1; Claude's; Claude's proposal; the mark, Claude's proposal, C53: 29.19's P3]
 
 6.1.6 `verdict` (new): the queue, and giving a verdict (§16). [plan 6.1; Claude's]
 
@@ -1294,6 +1294,8 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 6.1.22 `sweep take` (new): records the sweep's report as taken, sends its messages once and commits the unit's `sweep-taken.json` (4.11.5, 8.10.9). [Claude's proposal, 29.13 as built]
 
 6.1.23 `review` (new): `round` records a review round from Claude's account of it; `reads` names a later round's reads; `notes` answers the builders' notes standing (14.3.10); `accept-tree` keeps a working tree changed under a round, and `restore-tree` puts it back (12.7.11). [Claude's proposal, 29.14 as built: 14.10's and 14.13's reviews]
+
+6.1.24 Each lifecycle change has one door: a verb no prose calls that reaches a state its phase's own verb guards goes, so no second way round skips that verb's refusals. An investigation closes only through its conclude, and a unit completes only through finish's yes. [Claude's derivation, C53: the one-door rule, 15.14's review: `topic complete` closed an investigation the conclude refused, with no root cause logged, and the `workunit complete` verb went round finish's refusals]
 
 ### 6.2 The layout hook
 
@@ -1396,11 +1398,11 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 6.4.10 Finish:
 - the review phase passed and its report is written, where the unit has a review phase (a quick-fix's only when the person asks: 19.5.14);
-- resolved inbox items closed;
+- each inbox item the build's log claims as resolved, on a line of its own, `Resolved: {path}`, closed;
 - the build log closed;
 - the records indexed.
 
-[plan 6.4; Claude's; 19.5.7, 19.5.14; Claude's derivation 2026-10-25: an item applies only where the unit has that step]
+[plan 6.4; Claude's; 19.5.7, 19.5.14; Claude's derivation 2026-10-25: an item applies only where the unit has that step; the claim, Claude's proposal, C53: a running log names items for other reasons, so only an explicit line claims one (16.1's review, N1)]
 
 6.4.11 A directive: its check (§21). [plan 6.4; Claude's; R38]
 
@@ -1536,6 +1538,8 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 6.S34 Given a project whose verify setup has not yet run end to end, when `verify setup` is called, then it refuses and records nothing; after an end-to-end run, then it records the verify setup on the project manifest. Given a phase's changed lines, when `verify mutants` runs, then it answers with its survivors and writes nothing. (6.1.12, 15.2.11, 15.6.3)
 
+6.S35 Given the build's log claiming one inbox item on a `Resolved: {path}` line and naming another only in its prose, when finish's checklist is shown, then its inbox item holds while the claimed item is live, never for the one only named; once the claimed item is closed, the item reads done; given the claimed item later brought back to the inbox, the item holds again until it is closed or its `Resolved:` line is taken out. (6.4.10, 18.6.4)
+
 ## 7. Tasks, landing and their drivers
 
 ### 7.1 Tasks go through the engine to a driver
@@ -1617,6 +1621,24 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 7.2.23 For every work type, the engine finishes a stack merged in part by hand: it retargets each pull request still open onto the landing branch; one GitHub shows merged whose change never reached the landing branch has its change landed through a new pull request from its branch; then it merges the rest bottom up, and never sends the person to merge the rest there by hand. [ruled by the person 2026-11-08; Claude's derivation, C52: GitHub keeps a merged pull request closed]
 
 7.2.24 Across nested repositories, a quick-fix has one `fix/{unit}` branch and one pull request in each repository it touches, landed children first, as a task's are (7.2.21). [Claude's derivation, C52]
+
+7.2.25 The landing 7.2.22 names is an event: a task has landed once a commit on the landing branch's first-parent line, made since the task's last commit, held its change, so that merging its last commit there would then have changed nothing; later work rewriting its lines never takes the landing back. That read by content serves a task no `Task:` line names (7.2.26). [Claude's derivation, C53: R25, 29.15a's fix, round 1: a task squashed by hand under the person's own message read landed until a later task rewrote one of its lines, then never, and the phase's merge looped]
+
+7.2.26 Only content decides a landing, and the commit door's stamp never names one (6.3.3): the one name landing reads is a `Task:` line the engine's own squash wrote (7.2.18, 19.5.21). Any other landing — a rebase's copies, git's default squash, a squash under the person's own message, a cherry-pick — is found by the change it holds, and copies land a task only where every commit of the task is copied. [Claude's derivation, C53: R28, 29.15a's fix, round 3: a cherry-pick of one commit read the whole task landed, since every commit of a task carries the stamp]
+
+7.2.27 Whether a task has landed is read one way wherever it is asked, by 7.2.22 as 7.2.25 and 7.2.26 read it, whatever commit stands for the task's last; no verb or driver decides it by asking whether today's tip holds that one commit's change. [Claude's derivation, C53: 29.15a's fix, round 4, Rule 1: read at today's tip, a changed task was refused as moved once later work rewrote one of its lines]
+
+7.2.28 A task has changed after its landing where it has landed and its branch's tip has not, whatever its branch gained since: its own commits, a restack's, or the person's. The engine decides this once, for every way of landing, and hands it to the landing driver, which only lands: the branch lands whole, on GitHub through a new pull request, as 7.2.23 lands a change that never reached the landing branch. A branch moved since it was opened is refused as moved only where its task never landed. [Claude's derivation, C53: R29, 29.15a's fix, round 5: the local driver decided it a second way and refused a restack or the person's own commit, so the change never reached the default branch, where GitHub landed the branch whole]
+
+7.2.29 For a task changed after its landing, every `land` verb answers alike on both landing drivers, whichever way the task landed, and no verb moves a phase's branch off its landing. The drivers' conformance suites hold it as a table of the ways of landing against the changes, each row's whole answer the same on both (7.3). [Claude's derivation, C53: 29.15a's fix, round 4, Rule 2, and round 5's table]
+
+7.2.30 A phase that has landed takes a new task — a settlement's fix (12.11.5), or a task the build adds outside the plan — opened onto the default branch and landed with the phase's next `land phase`, on both drivers, never refused because its phase has landed. No pull request is ever based on a merged pull request's branch, which the host may have deleted. [Claude's derivation, C53: R30, 29.15a's fix, round 5: a settlement's fix in a phase the person had merged by hand had no way on]
+
+7.2.31 A task whose branch holds another task's change that has not landed waits for that landing, on both drivers, and its refusal names the verb that lands it, `land phase {N}`, never one that would answer that the task has landed already. [Claude's derivation, C53: R31, 29.15a's fix, round 5: on the local driver the refusals sent the person round in a loop]
+
+7.2.32 Where a submodule's pull request and its holder's were both squashed by hand, the holder's first, so the project's default branch points the submodule at a commit the submodule's default branch lacks, the landing re-points the project at the commit on the submodule's landing target that holds that change — the one a `Task:` line names, else the oldest holding it — rather than refusing: on GitHub through a pull request of its own, on the local driver by that driver's own rule, and at a close with nothing else left to land as well. A submodule that a merge in the same step moves is not re-pointed: that merge's pointer is the move. 7.2.21's refusal stands where no such commit is found. [Claude's derivation, C53: 15.8's ruling (c), 7.2.21's refusal named a way on no pull could follow; the step's own merge, 15.8's round 1, S2; the close, its N4]
+
+7.2.33 A submodule pointer the engine sets itself on the default branch, re-pointing, only moves forward along the submodule's line: where the new pointer does not descend from the one the default branch holds, that one stays. A task's own pin, at a commit the submodule landed none of the task's work for, lands as the task wrote it, forward or back, as GitHub's squash would land it. [Claude's derivation, C53: 29.15a's fix, round 3, S2, then the ruling on its report, option 1: a pointer moved back lost later work, and holding a task's own pin forward dropped the change it meant without a word]
 
 ### 7.3 The drivers' conformance suites
 
@@ -1705,6 +1727,20 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 7.S22 Given a task both machines changed in different fields since they last agreed, when the state merge runs, then the tracker's store holds both changes; given a field of a task both set to different values, then the merge stops at the pick, each machine's value a row; given a task number minted on both machines, then the merge stops, keeping both stores, and its screen lists the task to make again. (7.5.5, 7.5.6, 7.5.7)
 
 7.S23 Given phase 2's stack of three pull requests whose bottom one the person merged on GitHub by hand, by squash, and whose middle one GitHub shows merged into the bottom one's branch after that squash, when the phase lands, then the bottom task reads landed by its change on the landing branch and the middle one does not, its change on no landing branch; the engine lands the middle task's change through a new pull request from its branch onto the landing branch, retargets the top one onto the landing branch, and merges them bottom up, never sending the person to merge the rest. (7.2.22, 7.2.23)
+
+7.S24 Given task 2.1 of two commits, squashed by hand on GitHub under the person's own message, and task 2.2 later rewriting a line 2.1 wrote, when the phase lands, then 2.1 still reads landed, its phase's merge and its stack agree, and the review's change keeps 2.1's landing. (7.2.22, 7.2.25)
+
+7.S25 Given task 3.1 of two commits, one of them cherry-picked onto the default branch by hand, when its landing is read, then 3.1 reads not landed, and it lands with its phase; a commit carrying 3.1's `Leeway-Task` stamp names no landing. (7.2.26, 6.3.3)
+
+7.S26 Given task 4.1 landed, its branch then restacked and given a commit of the person's own, when `land phase 4` runs, on the local driver and on GitHub, then each lands 4.1's branch whole, every `land` verb answers the same on both, and the phase's branch stays at its landing. (7.2.27, 7.2.28, 7.2.29)
+
+7.S27 Given phase 2 merged by hand, when its phase review's settlement writes a fix task into phase 2, then the task opens onto the default branch and lands with phase 2's next `land phase`, on both drivers, and no pull request is based on phase 2's merged branch. (7.2.30)
+
+7.S28 Given task 5.1 built on task 4.1's change that has not landed, when 5.1 is opened, then it is refused, naming `land phase 4`, on both drivers; once phase 4 lands, 5.1 opens. (7.2.31)
+
+7.S29 Given a task changing submodule ext and the project, whose two pull requests the person squashed by hand on GitHub, the project's first, when the next landing runs, then it re-points the project at ext's squash commit through a pull request of its own and goes on, and the local driver re-points the same case by its own rule; given no commit on ext's default branch holding the change, then 7.2.21's refusal stands. (7.2.32, 7.2.21)
+
+7.S30 Given a task that pins ext back to an older commit, ext holding none of the task's work, when the task lands, then its pin lands as written; given the engine re-pointing ext at a commit that does not descend from the pointer the default branch holds, then that pointer stays. (7.2.33)
 
 ## 8. Discovery
 
@@ -2150,8 +2186,7 @@ O24]
 8.8.7 Screen: the one-line report of a change made at the person's word (8.8.6):
 one line saying what was done. [R10]
 
-8.8.8 Cancelling keeps its confirm: it is picked by number from a menu, and a
-slip ends a topic. [R10, plan 3.3; ruled by the person 2026-10-13]
+8.8.8 Cancelling keeps its confirm, since a slip ends a topic. [R10, plan 3.3; ruled by the person 2026-10-13; Claude's derivation, C53: 29.16's F2, the epic menu has no cancel row, a cancel being asked through the discovery row in words (18.4.9, 18.4.10)]
 
 8.8.9 Screen: the cancel confirm stays (§18 for what
 cancelling moves). [R10]
@@ -2559,15 +2594,11 @@ summary, remove an unstarted topic, postpone a topic, add a new topic, pull
 one forward, reactivate one or reopen a decided one, then it is done and
 reported in one line, with no confirm. (8.8.6, 8.8.7)
 
-8.S20 Given the person picks cancel on a topic by number from the menu, then a
-confirm shows before the topic is cancelled. (8.8.8, 8.8.9)
+8.S20 Given the person asks through the discovery row to cancel a topic, then a confirm shows before the topic is cancelled. (8.8.8, 8.8.9)
 
 8.S21 Given discovery creates a work unit, then no name gate shows. (8.8.10)
 
-8.S22 Given a phase running in auto, where the person always answers
-discovery's import prompt the same way, when it next comes, then the prompt
-runs as a learned process gate (an automatic step with a one-line report), and
-no resume prompt is shown. (8.8.12)
+8.S22 Given the person always answers discovery's import prompt the same way, when it next comes, then the prompt runs as a learned process gate (an automatic step with a one-line report), and no resume prompt is shown. (8.8.12)
 
 8.S23 Given a product-level conversation in which the person says a principle,
 when it ends, then no product-wide entry exists for the principle; when the
@@ -3295,8 +3326,7 @@ the person 2026-10-14]
 9.8.11 A review finding goes on the stream as a question the review asked, so
 its answer is linked to it like any other. [R23]
 
-9.8.12 The gates inside the reviews are process gates, learned like any other
-(§3). [R11, R40]
+9.8.12 The reviews hold no gate of their own: the process gate around them is the one that asks whether to wait for the topic's running review agents (9.7.8), learned like any other (§3). [R11, R40; Claude's derivation, C53: 29.19's F2, the rebuilt discussion's reviews have no gate, and the wait is the gate around them]
 
 9.8.13 Discussion's perspective and review agents and the closing-pass reader
 are among the workflows' named agents, and receive only briefs the engine
@@ -3617,9 +3647,7 @@ with its back-off, its findings slotted in at a natural pause and never jumped
 to, and the reviewer's brief carries no "it is `ask`" tie-break. (9.8.1,
 9.8.2, 9.8.5)
 
-9.S47 Given a phase running in auto, where the person always answers a review's
-gate the same way, then that gate becomes an automatic step with a one-line
-report. (9.8.12)
+9.S47 Given the person always answers the same way the gate that asks whether to wait for a topic's running review agents, then that gate becomes an automatic step with a one-line report. (9.8.12, 9.7.8)
 
 9.S48 Given a dispatch of discussion's review agent without a brief the engine
 issued, then it is refused. (9.8.13)
@@ -4364,6 +4392,8 @@ used it, Claude's proposal]
 11.11.20 A tick brings the next visible line not yet ticked up, gliding, so its tick sits where the pointer was; a line already ticked is passed by. [ruled by the person 2026-11-04, tested on the spec-review skill's page]
 
 11.11.21 A line brought into view — by the next item, a line's link, or go there — lands near the top, under the page's header. [ruled by the person 2026-11-04, tested on the spec-review skill's page]
+
+11.11.22 A line resting on a decision whose question has no label yet — labelled after the line was drawn, or never, the call having failed — stays open for the person, as one marked hard to undo does (11.11.15), its reason saying the label is missing. [Claude's proposal, C53: the labeller's build (19.1): Claude's own call is labelled beside its check and may land unlabelled, and a missing label never reads as safe]
 
 ## 11-S. Scenarios for §11
 
@@ -6047,7 +6077,7 @@ captured screen · 41 lines                              ▸ open
 
 16.4.1 The engine asks when the pessimistic rate of real loss for the question's kind exceeds the person's threshold. [R24, plan 4.4]
 
-16.4.2 Real loss is what the product would have lost had Claude built its own answer, taken from the person's verdict on each departure (16.10). Only a real loss counts as a loss; agreements count as no loss. [R24]
+16.4.2 Real loss is what the product would have lost had Claude built its own answer, taken from the person's verdict on each departure (16.10). Only a real loss counts as a loss, save in the count of calls with one defensible answer, where an overrule counts as one whatever its verdict (16.4.10); agreements count as no loss. [R24; Claude's derivation, C53: 29.19's F5, 16.4.10 is the specific rule, and the matrix's "64 calls · 1 overruled · rate 7%" holds to it]
 
 16.4.3 A departure without a verdict yet, or one the person cannot call, counts as a real loss until the person gives its verdict. [R24, R23, plan 4.3]
 
@@ -6099,7 +6129,7 @@ h/help → What this screen is for, row by row
 b/back → Back to the matrix
 ```
 
-Screen, drawn by Claude: adding a care entry, asking which kind. [Claude's derivation, O94]
+Screen, drawn by Claude: adding a care entry, asking which kind. [Claude's derivation, O94; Claude's derivation, C53: 29.19's F3, look among the kinds, as the section's own care entries are, danger left out since it always asks (16.5.1, 16.5.2)]
 
 ```text
 · · · · · · · · · · · ·
@@ -6108,9 +6138,10 @@ Screen, drawn by Claude: adding a care entry, asking which kind. [Claude's deriv
 1      → contract — what other code or saved data relies on
 2      → scope — whether something is in the work at all
 3      → behaviour — what a user sees it do
-4      → words — what a user reads or types
-5      → process — how the session runs, not the product
-6      → internals — what no user sees
+4      → look — how it looks to a user
+5      → words — what a user reads or types
+6      → process — how the session runs, not the product
+7      → internals — what no user sees
 b/back → Back to the care entries
 ```
 
@@ -6204,7 +6235,7 @@ n/no  → Not yet — keep going point by point; I'll offer again
 
 16.8.6 A yes to the offer is stated intent, recorded in the trust log. [R24, R25]
 
-16.8.7 Left to the builder: counting the convergence run — what counts as an agreement in it — with the next run counted from the decline (16.8.4). [Claude's sort, B49]
+16.8.7 The convergence run counts a raise in the topic answered with the lean's row as an agreement; a departure breaks the run; "I don't follow" does neither; Claude's calls that proceed without asking do not count; and the run starts again from a decline (16.8.4). [Claude's sort, B49; Claude's proposal, C53: 29.19's P13, a tuning value, built as one named constant]
 
 ### 16.9 How a raise reaches the person
 
@@ -6351,6 +6382,8 @@ b/back    → Back to the start menu — the rest keep waiting
 16.11.8 The labeller is never the Claude that wants to proceed: it is a separate Claude call (16.19), since a self-labelled question can drift into a trusted kind. [R25, R28, plan 4.5]
 
 16.11.9 Gate answers are keyed by the gate's name, its key for good: a name is never reused for a different gate. [R25; Claude's derivation 2026-10-28: the trust log keeps a gate's answers for good, so its name must go on meaning one gate]
+
+16.11.10 The person's own decisions are labelled too, from the question each answers alone, never the person's answer, so the hard-to-undo mark (16.11.7) reads on a decision whoever made it. [Claude's proposal, C53: the labeller's build (19.1): a line resting on the person's decision stays open when its question was marked hard to undo (11.11.15)]
 
 ### 16.12 Evidence and its weight
 
@@ -6550,7 +6583,7 @@ Comment     → Ask about it, or tell me what I've missed
 
 16.17.3 The engine draws blind questions by a fixed share: one in ten of the calls Claude would make alone, to start, and more where a kind's range is wide (little history, a new model). Claude never chooses which calls are drawn. [R26, plan 4.6; ruled by the person 2026-10-18]
 
-16.17.4 Each call draws on its own: the engine turns the call's id into a number, so blind questions fall at random across projects at the same rate, with no tally kept per project or per person, and the same call always draws the same way. [R26, plan 4.6; ruled by the person 2026-10-18]
+16.17.4 Each question draws on its own: the engine turns the question's id into a number, so blind questions fall at random across projects at the same rate, with no tally kept per project or per person, and the same question always draws the same way, however often it is raised. [R26, plan 4.6; ruled by the person 2026-10-18; Claude's derivation, C53: 29.19's F4, a question raised again is a new call with a new id, which would draw afresh]
 
 16.17.5 Every draw is logged in the trust log. [R26, R25]
 
@@ -6568,7 +6601,7 @@ same as you 18 of the last 21 times.
 
 16.17.8 Reading the ledger as a whole, at the final review, still looks for calls that are fine alone and wrong in combination (§14). [R26]
 
-16.17.9 Left to the builder: how much more often blind questions draw where a kind's range is wide, and how "wide" is measured (16.17.3). [Claude's sort, B51]
+16.17.9 A kind's range is wide while it holds fewer than 20 answers of its own in this project at this model: blind questions draw one in five of its calls then, and one in ten from 20 on (16.17.3); the count of calls with one defensible answer (16.4.10) draws the same way. [Claude's sort, B51; Claude's proposal, C53: 29.19's P8, a tuning value, built as one named constant]
 
 ### 16.18 The record of the person
 
@@ -6968,6 +7001,8 @@ h/help     → How Leeway works
 
 18.2.17 Each phase skill's description says it is reached only through a Leeway handoff, never invoked directly: Claude never chooses a phase skill itself, and the person invokes none. [ruled by the person 2026-11-08]
 
+18.2.18 The start menu's v row, into completed and cancelled units, shows once a unit has closed, as the verdict row shows only while verdicts wait (18.2.11); its other rows show always, the triage row among them, the inbox's line reading "Inbox: empty" while nothing is in it. [Claude's proposal, C53: 29.16's P7, a row with nothing behind it hidden, the roadmap's kept since its n and p work on an empty roadmap; 18.2.10 stands as the person wrote it]
+
 ### 18.3 Manage
 
 18.3.1 A feature, bugfix or quick-fix has no menu of its own, so reopening a finished one's decision and bringing back a cancelled one go through manage on the start menu; before it finishes, a changed decision is settled where it is found (12.15.4). One door per kind of unit: an epic's map changes go through its discovery (18.4.9). [R17, R19, plan 3.11; ruled by the person 2026-10-15 and 2026-10-16; finished units only, ruled by the person 2026-10-25]
@@ -7025,17 +7060,51 @@ b/back       → Back to manage
 Ask          → Ask a question about this work unit
 ```
 
+Screen, drawn by Claude: manage, a feature picked in its discussion, before its spec, so pivot and absorb are offered beside cancel (18.3.5). [Claude's proposal, C53: 29.16's P5 and F5, the keys manage's rows take]
+
+```text
+· · · · · · · · · · · ·
+Saved Session Layouts (feature)
+
+◆ What would you like to do?
+
+p/pivot  → Make it an epic — before its spec
+o/absorb → Join an epic as one of its topics
+c/cancel → Mark as cancelled
+h/help   → What this menu is for, row by row
+b/back   → Back to manage
+Ask      → Ask a question about this work unit
+```
+
+Screen, drawn by Claude: manage, a completed feature picked, so reopen is offered, on the key a cancelled unit's reactivate takes, the two never showing together. [Claude's proposal, C53: 29.16's P5 and F5]
+
+```text
+· · · · · · · · · · · ·
+Enter Attaches From Preview (feature, complete)
+
+◆ What would you like to do?
+
+r/reopen → Bring it back — reopen its decision
+h/help   → What this menu is for, row by row
+b/back   → Back to manage
+Ask      → Ask a question about this work unit
+```
+
 18.3.5 Pivot and absorb are open only while the feature is before its spec, and absorb only into an epic before its spec. A pivoted epic adds topics through its discovery, as any epic's map is re-shaped (8.8.14). An absorbed feature's entries become the epic topic's by one carry line there, listing them by id (5.3.18); a name reused later brings nothing back. [R19; today's product for absorb; Claude's derivation, T13: a written spec is the unit's (4.11.2), and an epic's spec waits for every topic (11.2.1); Claude's proposal, 29.15 planning: P3]
 
 18.3.6 A completed feature, bugfix or quick-fix is brought back by reopening its decision through manage. A completed epic is not reopened: later change to it is new work, and a replacement affecting its entries is flagged where it is made (5.6.13). [R17, R19, R37, record 3755–3760; Claude's derivation, T22; ruled by the person 2026-10-25]
 
 18.3.7 Left to the builder: the summary and description a topic gets when it arrives by absorb or pivot, or from a migrated map row that has none, drawn from the topic's own record and log. Such a topic has started, so it gets no brief (8.7.6). [Claude's sort, T67]
 
+18.3.8 Reopening a completed feature, bugfix or quick-fix brings it back into its build, in progress: the person names the change there, `raise --replaces` records it, asking the person (16.5.7), the task writer appends a phase reworking what was built on the old answer (12.15.4), and the review and finish run again. A quick-fix comes back into its own session, the change a new fix, and closes again. [Claude's derivation, C53: 29.16's P1 and F6, the one answer the person's rulings leave: the unit never goes back to its discussion or investigation (12.15.4), and reopening brings the unit itself back (18.3.6)]
+
+18.3.9 Cancelling a work unit of any type closes every pull request open on its branches, in each repository it touched, and keeps the branches, as a quick-fix's move closes its pull request and keeps its branch (19.5.9). The kept branches keep their own names, never filed under `moved/` as a move's is, since a reactivate undoes a cancel where nothing undoes a move: a reactivate finds them under those names, their pull requests stay closed, and the next landing opens what it needs anew. A quick-fix's cancel also takes the checkout back off `fix/{unit}`, as its close and its move do, and its receipt names the kept branch and any kept work (19.5.29). [ruled by the person 2026-11-09; the names kept and the reactivate, Claude's derivation, C53: a cancel can be undone and a move cannot, which is why a move files its branch under `moved/`; the quick-fix's checkout, Claude's derivation, C53: 29.15b's phase review, a cancel left the checkout on the fix's branch with the holder's work in it]
+
 ### 18.4 The epic menu
 
 18.4.1 The phase heads the screen. The epic does not move out of its phase until everything in it is finished — in the person's words: "decision phase, everything gets done. We don't move out of that phase until everything's finished. There is no menu for spec, for example, until everything's done." [R17; ruled by the person 2026-10-15]
 
-18.4.2 What waits on the person comes first, each with its door: an authority gate waiting (start this work, approve the map, decided, ready to build, finish), a builder's question raised mid-phase (§12), a decided topic with an entry relying on a replaced answer — "Note Window: a decision it relies on changed" — whose door opens the topic to confirm "still holds" or replace (10.2.6), and verdicts waiting (§16). [R17; the person 2026-10-14 and 2026-10-19; 18.2.3]
+18.4.2 What waits on the person comes first, each with its door: an authority gate waiting (approve the map, decided, ready to build, finish), a builder's question raised mid-phase (§12), a decided topic with an entry relying on a replaced answer — "Note Window: a decision it relies on changed" — whose door is the phase the epic is in (10.2.6, 12.15.4): the topic, to confirm "still holds" or replace, while the epic is in its discussion, and past it the phase under way, where the change is settled; and verdicts waiting (§16). [R17; the person 2026-10-14 and 2026-10-19; 18.2.3; Claude's derivation, C53: 29.16's F4, start this work stands before the unit exists, its yes creating it, so it never waits on the unit's menu (18.S33); Claude's derivation, C53: the door is the phase the unit is in, 12.15.4 being the person's ruling (16.4's review, N2)]
 
 18.4.3 The topics show by what they need: in progress, decided, in session, mail waiting, experiments waiting. [R17]
 
@@ -7067,12 +7136,12 @@ Ask          → Ask a question about this work unit
 
 18.4.17 Screen: the epic menu. It shows, top to bottom:
 - the phase the epic is in, as the heading, with the epic's tally beneath it: its topics, then how many are decided, in progress, not started, cancelled and postponed, a count of none left out;
-- what waits on the person, each row with its door: an authority gate waiting (start this work, approve the map, decided, ready to build, finish), a builder's question raised mid-phase, a decided topic with an entry relying on a replaced answer ("Note Window: a decision it relies on changed"), its door opening the topic (10.2.6), verdicts waiting;
+- what waits on the person, each row with its door: an authority gate waiting (approve the map, decided, ready to build, finish), a builder's question raised mid-phase, a decided topic with an entry relying on a replaced answer ("Note Window: a decision it relies on changed"), its door the phase the epic is in (18.4.2), verdicts waiting;
 - the topics by what they need — in progress, decided (listed with no key), in session (struck through when in session elsewhere), mail waiting, experiments waiting — with no count of a topic's questions, and "Start" on a topic not yet started; then the topics set aside, cancelled and postponed (a postponed one with its horizon), listed with no key, as decided topics are;
 - once every topic is decided, cancelled or postponed: the spec row; during the build, the build's phase N of M; then the review;
 - before the spec, the discovery row, key d, saying what it is for (18.4.19);
 - h help (18.9); b back.
-The recommended row comes first, in the foundations-first order. Variants drawn in the spec: in discussion with topics still open; every topic decided (the spec row offered); during the build (phase N of M); in the review. Row wording, the discovery row's included, is drawn by Claude in the spec (18.10.8). [R17, plan 3.11; the person 2026-10-14, 2026-10-15 and 2026-10-19; key d agreed with the person 2026-10-14; Claude's derivation, O69, O94, T2; Claude's derivation, 29.13 planning]
+The recommended row comes first, in the foundations-first order. Variants drawn in the spec: in discussion with topics still open; every topic decided (the spec row offered); during the build (phase N of M); in the review; complete (18.4.23). Row wording, the discovery row's included, is drawn by Claude in the spec (18.10.8). [R17, plan 3.11; the person 2026-10-14, 2026-10-15 and 2026-10-19; key d agreed with the person 2026-10-14; Claude's derivation, O69, O94, T2; Claude's derivation, 29.13 planning; Claude's derivation, C53: 29.16's F4, start this work leaves the list; Claude's derivation, C53: the affected topic's door (16.4's review, N2); Claude's proposal, C53: the complete variant, 29.16's P6]
 
 Screen, drawn by Claude: the epic menu in discussion, with topics still open, a decided topic waiting because a decision it relies on changed, and topics set aside. [Claude's derivation, O94]
 
@@ -7206,6 +7275,30 @@ b/back → Back to the start menu
 
 18.4.22 Cancelling a topic ends each of its open experiments as abandoned, with the cancel recorded as the reason. Reactivating the topic leaves them abandoned. [today's product; Claude's sort, T45]
 
+18.4.23 A finished epic's menu is its complete variant: "■ Complete — {Epic}" as its heading, its tally beneath, its DECIDED topics, and the rows h help and b back alone; finish hands the epic to it (14.6.2). [Claude's proposal, C53: 29.16's P6 and F3, finish hands an epic to its menu, which 18.4.17 drew for no finished epic]
+
+Screen, drawn by Claude: the epic menu once the epic is complete. [Claude's proposal, C53: 29.16's P6]
+
+```text
+■ Complete — Agent First Portal
+7 topics · 7 decided
+
+DECIDED
+  ├─ Agent State
+  ├─ Agent State Surfacing
+  ├─ Session Control Overlay
+  ├─ Resume Hook Internalisation
+  ├─ Mobile Client
+  ├─ Transport
+  └─ Productisation
+
+· · · · · · · · · · · ·
+◆ What would you like to do?
+
+h/help → What this menu is for, row by row
+b/back → Back to the start menu
+```
+
 ### 18.5 A specification waits until every topic is decided
 
 18.5.1 A specification waits until every topic is decided, cancelled or postponed. Today the engine refuses new spec structure only while a discussion is in progress, so unstarted topics do not block it; the rule tightens. The reason: groups drawn from half the records come out differently once the rest are decided, and a topic decided after its spec can change the spec's nature. The specification's own gate is Specification's (§11). [R17, plan 3.5; ruled by the person 2026-10-12]
@@ -7241,11 +7334,11 @@ CLOSED IN THE INBOX (2)
     triage, or ask me to bring it back.
 ```
 
-18.6.8 A capture lands in the inbox of the project the item concerns, whichever project's session made it; Claude finds that project as it would anything else. [R17; Claude's derivation, O70; Claude finds the project, ruled by the person 2026-10-25]
+18.6.8 A capture lands in the inbox of the project the item concerns, whether that project's own session made it or a session in another Leeway project; Claude finds that project as it would anything else. [R17; Claude's derivation, O70; Claude finds the project, ruled by the person 2026-10-25; Claude's derivation, C53: the capture skills are installed per project, so only a Leeway project's session holds one (16.1's review, N4)]
 
 18.6.9 A wrong closure is reopened from the archived store's view (18.7.11), or when the person asks in their own words: the item is restored from the archive through its door verb. [R17; today's product; Claude's derivation, O6]
 
-18.6.10 Left to the builder: what the close verb records for an inbox item fixed with no unit. [Claude's sort, B59]
+18.6.10 A close with no unit, for an inbox item fixed straight away (18.6.6), records the item as closed with no unit and the date, and the archived view reads "closed {date}" for it (18.7.11). [Claude's sort, B59; Claude's proposal, C53: 29.16's P4 (a), an item fixed straight away is the person's call, not a unit's, even mid-unit]
 
 ### 18.7 Triage
 
@@ -7351,6 +7444,36 @@ the archive for good.
 y/yes → Delete it for good
 n/no  → Keep it in the archive
 ```
+
+18.7.12 Triage opens on the inbox numbered, nothing picked, and asks which items: the person names them by number at a prompt row, with v view while the archived store holds items, h help and b back. The rows that act on what is picked — w work, r roadmap, a archive, c change — show once something is picked, with the items Claude names as fitting with it (18.7.4, 18.7.10). [ruled by the person 2026-11-10: pick first]
+
+Screen, drawn by Claude: triage over Portal as it opens, nothing picked yet. [Claude's derivation, C53: the person's ruling of 2026-11-10, its rows as ruled, drawn in the existing design system]
+
+```text
+■ Triage · Portal
+
+IDEAS (3)
+  ├─ 1. Session Previews Show The Last Command        [3 days]
+  ├─ 2. Group Sessions By Project In The Picker      [12 days]
+  └─ 3. Rename A Session From The Picker             [5 weeks]
+
+BUGS (2)
+  ├─ 4. Preview Flickers When A Session Closes        [2 days]
+  └─ 5. Window Names Lost On Restore                  [9 days]
+
+QUICK-FIXES (1)
+  └─ 6. Preview Border Off By One At 80 Columns       [1 week]
+
+· · · · · · · · · · · ·
+◆ Which items?
+
+v/view → View the archived items, to restore or delete one
+h/help → What this menu is for, row by row
+b/back → Back to the start menu, nothing changed
+Pick   → Name the items by number
+```
+
+18.7.13 Triage's a archive and r roadmap, and the roadmap's a archive, act with no confirm, each reporting what it did in one line, as roadmapping does anywhere (18.8.1); r still asks for the horizon where the person has named none (18.7.7). [Claude's proposal, C53: 29.16's P3, an archive undone from the archived items or in words (18.7.11, 18.8.13)]
 
 ### 18.8 The roadmap
 
@@ -7459,6 +7582,8 @@ Keep shaping → Tell me what to change — an item or its horizon
 18.8.19 Renaming or rewording a roadmap item, and adding, renaming, reordering, merging, splitting or removing an empty horizon, are done when the person asks in words, and reported in one line with no confirm. The horizons' order is the person's, and the first is read as next. [today's product; Claude's sort, T52]
 
 18.8.20 Once work starts from roadmap items, they leave the roadmap and go with the work as its seeds, the way triaged items leave the inbox: from then on the work shows their progress, and the roadmap shows only what waits. Cancelling the work, cancelling the topic an item became, or removing that topic before it starts (8.8.16) puts the item back on the horizon it came from, as renamed or merged since; where that horizon has been removed, Claude asks which (18.8.2). A topic that takes a waiting item in (8.1.6) takes it off the roadmap the same way. [R17; ruled by the person 2026-10-21; Claude's derivation for a horizon changed since]
+
+18.8.21 An archived roadmap item's name stays taken: adding an item by that name is refused, naming the archived one, the way on being to bring it back (18.8.13) or to name the new one apart. [Claude's proposal, C53: 29.16's P9]
 
 ### 18.9 Menus explicit and keyed alike, with help
 
@@ -7578,7 +7703,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S25 Given an inbox item the person fixes straight away in conversation, when Claude closes it, then the same close verb archives it. (18.6.6)
 
-18.S26 Given an inbox of bugs and ideas and nothing archived, when the person opens triage, then the items show by kind, each with its age, and the menu reads w work, r roadmap, a archive, c change, h help, b back. (18.7.3, 18.7.10, 18.9.3)
+18.S26 Given an inbox of bugs and ideas and nothing archived, when the person opens triage, then the items show by kind, numbered, each with its age, and the menu asks which items, with the pick prompt, h help and b back; once the person picks, the menu reads w work, r roadmap, a archive, c change, h help, b back. (18.7.3, 18.7.10, 18.7.12, 18.9.3)
 
 18.S27 Given the person picks one bug in triage, when the pick lands, then Claude names other items that fit with it, and c change lets the person adjust the set, Claude asking which items. (18.7.4, 18.7.5, 18.7.10)
 
@@ -7620,7 +7745,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S46 Given an epic with a decided topic, a cancelled topic and a postponed topic, when the epic menu renders, then beneath the phase heading a tally counts its topics and how many are decided, cancelled and postponed, the decided topic is listed with no key, and the cancelled and postponed topics are listed after the live ones with no key, the postponed one with its horizon. (18.4.17, 18.4.18)
 
-18.S47 Given a session in one project, when the person logs a bug about another project, then the item lands in the other project's inbox. (18.6.8)
+18.S47 Given a session in one Leeway project, when the person logs a bug about another Leeway project, then the item lands in the other project's inbox. (18.6.8)
 
 18.S48 Given an inbox item a unit's finish closed though the work did not resolve it, and another archived in triage by mistake, when the person opens the archived store from triage's row and restores the first, and asks in words to bring the second back, then each is restored from the archive to the inbox through its door verb; when the person deletes an archived item from that view, then the delete confirms first and the item is gone from the archive. (18.6.5, 18.6.9, 18.7.10, 18.7.11, 6.1.15)
 
@@ -7674,7 +7799,23 @@ Ask    → Ask anything about triage or the inbox
 
 18.S73 Given the start skill and every phase skill, when their descriptions are read, then the start skill's opens with its trigger, and each phase skill's says it is reached only through a Leeway handoff. (18.2.16, 18.2.17)
 
-18.S74 Given a conversation in which boot has not run, when Claude calls an engine verb that touches work, then it refuses, naming `engine boot`, and writes nothing; once boot has run in the conversation, the verb goes on. (22.1.7)
+18.S74 Given a conversation in which boot has not run, when Claude calls an engine verb that touches work, then it refuses, naming `engine boot`, and writes nothing; once boot has run in the conversation, the verb goes on; given a capture made from a session in another Leeway project, where boot never ran, the capture line still lands the item. (22.1.7, 22.1.8, 18.6.8)
+
+18.S75 Given a feature with two tasks' pull requests open, and a quick-fix with its pull request open in the project and in a nested repository, when each is cancelled, then every one of those pull requests is closed and its branch kept under its own name, and the quick-fix's checkout is back off `fix/{unit}`, its receipt naming the kept branch; when the feature is reactivated, then its kept branches are found under their names, its pull requests stay closed, and its next landing opens what it needs anew. (18.3.9, 19.5.9)
+
+18.S76 Given a completed feature, when the person reopens its decision through manage, then it comes back into its build, in progress; the change the person names is recorded as a replacement, asked of them, a phase reworking what was built on the old answer is appended, and the review and finish run again; given a completed quick-fix, it comes back into its own session, the change a new fix. (18.3.8, 16.5.7, 12.15.4)
+
+18.S77 Given an epic whose finish the person has said yes to, when its menu shows, then it reads "■ Complete — {Epic}" with its tally and its decided topics, and offers h help and b back alone. (18.4.23, 14.6.2)
+
+18.S78 Given a feature in its build with a decided entry relying on an answer another unit replaced, when the person continues it, then the wait's door opens the build, whose entry names the affected entry, and the change is settled there, never back in its discussion; given an epic in its discussion with a decided topic in the same case, the door on its menu opens the topic. (5.6.12, 18.4.2, 12.15.4)
+
+18.S79 Given triage with two items picked, when the person presses a, then both are archived with no confirm and one line reports it; given two others picked, when the person presses r and names a horizon, then they go on it with no confirm and one line reports it; and the roadmap's a archives its item the same way. (18.7.13, 18.7.7, 18.8.1)
+
+18.S80 Given an inbox item fixed straight away and closed with no unit, when the person opens the archived items, then it reads "closed {date}", with no unit. (18.6.10, 18.6.6, 18.7.11)
+
+18.S81 Given a project where no unit has closed and the inbox is empty, when the start menu shows, then it offers no v row, the inbox's line reads "Inbox: empty" with its t row, and the roadmap, manage, product, start and help rows show; once a unit completes, the v row shows. (18.2.18, 18.2.11)
+
+18.S82 Given an archived roadmap item named Preferences UI, when the person asks to add a roadmap item by that name, then it is refused, naming the archived one, with bringing it back or naming the new one apart as the way on. (18.8.21, 18.8.13)
 
 ## 19. Work types
 
@@ -7684,7 +7825,7 @@ Ask    → Ask anything about triage or the inbox
 
 19.1.2 A feature, bugfix or quick-fix has no menu of its own; reopening its decision and bringing back a cancelled one go through manage (18.3). [R17, plan 3.11; Claude's derivation, O81]
 
-19.1.3 "Continue feature: X" goes straight to where the unit stands: into its current phase, or onto what waits on the person there, with no menu between. The same holds for "Continue bugfix" and "Continue quick-fix". Today's in-between menu ("Proceed to {phase}" or "Revisit an earlier phase") goes; revisiting moves to manage (18.3.2). [R19, plan 3.12; ruled by the person 2026-10-16]
+19.1.3 "Continue feature: X" goes straight to where the unit stands: into its current phase, or onto what waits on the person there, with no menu between. The same holds for "Continue bugfix" and "Continue quick-fix". Today's in-between menu ("Proceed to {phase}" or "Revisit an earlier phase") goes; revisiting moves to manage (18.3.2). While an experiment its discussion put off for later waits unrun, a feature's Continue goes to the laboratory (24.1.2). [R19, plan 3.12; ruled by the person 2026-10-16; the experiment waiting, Claude's derivation, C53: 29.16's P8 and F7, 24.1.2 and 24.S18 reach a waiting experiment from a feature's Continue]
 
 ### 19.2 Epic
 
@@ -7744,7 +7885,7 @@ Ask    → Ask anything about triage or the inbox
 
 19.4.19 Investigation's plan, check-in and conclude gates are learned process gates (§3); only the build has a position. Ready to build stays the authority gate before any code. [R20, R40, plan 3.12; ruled by the person 2026-10-16; the build alone has a position, ruled by the person 2026-10-25]
 
-19.4.20 Testing against a live server is danger (§16), which stops in both positions. The per-project verify setup (§15) holds how to run the product safely, given once. [R20, R24, R32; ruled by the person 2026-10-16]
+19.4.20 Testing against a live server is danger (§16), which stops in both positions. Claude marks such a question so as it raises it, since the labeller reads danger only from an option that could lose data or weaken security (16.5.1), and the mark can only make a question ask. The per-project verify setup (§15) holds how to run the product safely, given once. [R20, R24, R32; ruled by the person 2026-10-16; the mark, Claude's proposal, C53: 29.19's F6 and P3]
 
 19.4.21 Screen: the bugfix's fix-direction question, when the ask rule sends it to the person (19.4.22). It sets out the fix options, showing what Claude's step back found (19.4.13); where the cause sits in the design or the area keeps breaking, it carries one more option: rework the area as a feature. [R20; Claude's derivation, O75]
 
@@ -7792,7 +7933,7 @@ e/explain   → I don't follow — explain it again
 Comment     → Ask about it, or tell me what I've missed
 ```
 
-19.4.22 The fix-direction question goes through the ask rule like any product question (§16), except where the root cause is a design problem, which is raised to the person (19.4.5). A direction that reworks the area as a feature still meets start this work, whose yes re-types the unit in place as the feature, its entries carried (19.5.16). [R20, R40; Claude's derivation, O75; 19.4.5; Claude's proposal, 29.15 planning: P7]
+19.4.22 The fix-direction question goes through the ask rule like any product question (§16), except where the root cause is a design problem: Claude marks that raise so it always asks (6.1.5), since no labeller question finds a design problem, and it is raised to the person (19.4.5). A direction that reworks the area as a feature still meets start this work, whose yes re-types the unit in place as the feature, its entries carried (19.5.16). [R20, R40; Claude's derivation, O75; 19.4.5; Claude's proposal, 29.15 planning: P7; the mark, Claude's proposal, C53: 29.19's P3, a mark that can only make a question ask]
 
 19.4.23 The conclude gate shows a short recap of the hunt, with the root cause told against the symptoms the person reported, and the fix direction, at its heart; its rows are yes, keep going and Comment, and no closing pass runs before it. Today's separate findings sign-off folds into it. Where the gate runs as an automatic step, its one-line report stands in its place (3.2.9) and the recap stays on the board's investigation view (20.12). [R20; Claude's derivation, T15; Claude's proposal, 29.15 planning: P8]
 
@@ -7875,6 +8016,24 @@ Ask      → Ask about the change before it closes
 
 19.5.25 A question Claude raises in the quick-fix's conversation is drawn by `raise` and parks nothing; a question a fix's builder asks parks its task, as in the build (12.13). [Claude's derivation, C52]
 
+19.5.26 A quick-fix's notes for later, its builders' and its pairs', are answered at its close, as the review phase's are (14.3.10): before the close's screen draws, each is filed to the inbox or dropped, and the close waits while one stands. A review asked for at the close answers its own fix tasks' notes. [ruled by the person 2026-11-09; the review's share, Claude's derivation, C53: the fixes' notes are answered before the close's screen draws, so a review asked there has only its own fix tasks' (15.11's round 2)]
+
+19.5.27 A quick-fix's one checkout has one holder at a time: the fix in flight whose turn it is, never a parked one. A parked fix's start is refused, naming its question; the builders' briefs and the commit door serve the holder alone; a fix an answer frees builds again only once no other fix holds the checkout, `task ready` naming it then; and the pair, which reads commits, is never held back by it. [Claude's derivation, C53: R27, 15.11's round 3: a parked fix locked the rest, or two builders shared one checkout]
+
+19.5.28 A fix leaves the checkout clean as it stops holding it: a park sets its uncommitted work aside on a ref of the unit's own, in each repository it touched, never on the shared stash list, and its next start puts the work back, a conflict refused with its files named and the way on. Done and close are refused over uncommitted changes: done's way on is to commit them through the door, close's to remove them, since a close gives the fix's work up. So while a fix holds the checkout, any change in it is that fix's; a start that makes a fix the holder, or starts one an answer freed since it last started, refuses changes it finds there as the person's. [Claude's derivation, C53: R20 and R27, 15.11's rounds 1 to 4]
+
+19.5.29 Nothing a quick-fix sets aside is lost. Its move, its cancel and its close keep every fix's set-aside work, the move and the cancel first setting aside the holder's uncommitted work as a park does; each piece is named, with its fix, its repository and a way to see and recover it that works from where the person stands, on start this work's screen before the move's yes, at the new unit's first opening, on the cancel's receipt and on the close's screen; and a park's line names each path it sets aside. [Claude's derivation, C53: R26, 15.11's rounds 2 to 4 and 29.15b's phase review: a move dropped a parked fix's work unseen]
+
+19.5.30 The host's branch is the truth for what a quick-fix's pull request holds. Where the host has `fix/{unit}` and this checkout has none — a second clone, or the branch deleted here — the first start takes the host's branch, never cutting a new one. Nothing the host's branch holds that has not landed is ever pushed over: its head is brought in before any push, a conflict refused with the merge named. A commit on the branch the engine did not write — a review suggestion, "Update branch"'s merge, the person's own — is the person's, kept and landed with the squash. The close is refused while a done fix holds work that is neither landed nor in the pull request, naming the way on. [Claude's proposal, C53: R15, 15.7's round 6: the engine took its own branch as the truth and pushed over the host's, dropping a suggestion or a done fix; the close's refusal, Claude's derivation, C53: a close over a done fix's missing work would lose it unseen]
+
+19.5.31 In each repository a quick-fix touches (7.2.24), its `fix/{unit}` is cut from that repository's own landing branch at the first commit that touches it, and every fix's share there goes through the door; a fix's done, its landing and its record read every repository it touched, so a fix that changes only a nested repository holds work like any other; and the close lands each repository children first, with 7.2.21's submodule check. [Claude's derivation, C53: R16, 15.7's round 6: a nested clone's share was committed straight onto its own default branch, and a fix touching only it closed as holding no work; 7.2.24 and 7.2.21 leave one way]
+
+19.5.32 The repositories a quick-fix reads are the project's own, each its record names and each with work on `fix/{unit}` here, and no other. The door records a nested repository in the unit's state before it commits a fix's share there, so every clone reads the same set; no other repository's host is asked anything, so one the quick-fix never touched, whose host can't be read, never stops it. A nested repository whose branch is gone here, or a second clone, is readied from its host's copy and checked out on the branch. [Claude's proposal, C53: R17 and R18, 15.7's rounds 7 and 8: a child's share went unread from a second clone, then every nested host was asked, a call each, and one that could not be read refused every verb]
+
+19.5.33 A quick-fix's work is every commit past the landing tip committed since the day before the unit was made, the person's own among them, which land with the squash; the door refuses a commit dated before then, saying to set the machine's clock right. On a host, a pull request is the quick-fix's only where it was opened from the repository itself, not a fork, since then; a branch named `fix/{unit}` that holds none of that work and no commit of the unit's fixes is another's: the start refuses it, naming it and its repository, the way on being to delete or rename it there, and it is never taken, retitled or landed. [Claude's proposal, C53: R18 and R19, 15.7's round 8: a stranger's or a fork's `fix/{unit}` was taken as the quick-fix's, blocking its close or landing unrelated work, and the person's own commit, made after every fix had landed by hand, was left unlanded]
+
+19.5.34 A fix's change is the commits the door stamped with its own task (6.3.3): its pair reads those alone, never another fix's on the same branch, and whether it has landed is read from their change (7.2.26). [Claude's derivation, C53: R20 (a), 15.11's round 1: a parked fix's range took in the next fix's change]
+
 ### 19.6 Cross-cutting goes as a type
 
 19.6.1 Cross-cutting goes as a work type. Its point was a terminal spec later work reads; the product record (§8) now does that job, and a spec is the build's working document (§11), which a unit with no build never needs. [R22, plan 3.12; ruled by the person 2026-10-16]
@@ -7925,7 +8084,7 @@ Ask      → Ask about the change before it closes
 
 19.S16 Given a bugfix build whose first task wrote the reproducing test, when Claude tries to commit the fix before the engine has recorded the test failing on the unfixed code, then the commit door refuses; once the failing runs are recorded, it takes the commit, and after the fix the test passes in the build's gates. (19.4.16, 19.4.17, 19.4.18)
 
-19.S17 Given an investigation in auto whose plan gate the person always answers "proceed", when the plan gate comes, then it is a learned step; given step, it stops. In both, ready to build stops before any code. (19.4.19)
+19.S17 Given an investigation whose plan gate the person always answers "proceed", when the plan gate comes, then it is a learned step, and ready to build still stops before any code. (19.4.19)
 
 19.S18 Given an investigation whose testing would run against a live server, when the question arises, then it stops for the person in auto and in step. (19.4.20)
 
@@ -7968,6 +8127,18 @@ Ask      → Ask about the change before it closes
 19.S37 Given a quick-fix's opener, when it runs, then one knowledge-base query for earlier work on the area it touches runs before the work starts. (19.5.19)
 
 19.S38 Given a quick-fix of three fixes, when the work closes, then `summary.md` holds three short records, each under its own heading in the order the fixes were done, and a knowledge query for one fix finds its own record. (19.5.11, 19.5.17)
+
+19.S39 Given a quick-fix whose builders and pairs left notes for later, when its last fix is done, then each note is filed to the inbox or dropped before the close's screen draws, and the close is refused while one stands; given a review asked for at the close, its fix tasks' notes are answered before the close comes again. (19.5.26, 14.3.10)
+
+19.S40 Given a quick-fix with fix 1.1 parked on a question, its uncommitted work set aside, and fix 1.2 building, when 1.1's start is tried, then it is refused, naming its question; once the answer frees 1.1, it waits until 1.2 is done, then its start puts its work back; and 1.1's pair, briefed while 1.2 holds the checkout, reads 1.1's commits alone. (19.5.27, 19.5.28)
+
+19.S41 Given a parked fix whose work is set aside, when the quick-fix moves to a feature, is cancelled or closes, then the work is kept and named with its fix, its repository and its recover — on start this work's screen before the move's yes and at the feature's first opening, on the cancel's receipt, on the close's screen — and running the recover from where the person stands brings it back. (19.5.29)
+
+19.S42 Given a quick-fix whose done fix 1.1 holds work that is neither landed nor in its pull request, when the person asks to close it, then the close is refused, naming 1.1 and the way on; given a review suggestion committed on the pull request's page, when the next fix is pushed, then the suggestion is kept and lands with the squash. (19.5.30)
+
+19.S43 Given a quick-fix whose first fix changes the project and a nested repository lib, and whose second changes lib alone, when the fixes commit, then `fix/{unit}` is cut in each repository from its own landing branch and a pull request opens in each; the second fix holds work as the first does; and at the close lib lands first, then the project, its pointer to lib checked where lib is a submodule. (19.5.31, 7.2.24, 7.2.21)
+
+19.S44 Given a branch `fix/typo` on the project's host that someone else made before quick-fix typo began, holding no commit of its fixes, when the quick-fix's first fix starts, then the start is refused, naming the branch and its repository, with deleting or renaming it there as the way on, and nothing of it is taken, retitled or landed. (19.5.33)
 
 ## 20. The workflows board
 
@@ -8072,27 +8243,30 @@ then grey facts separated by " · ", then the banner's buttons at the right:
 - in the review phase: "◐ {unit} · {type} · review · round N reading", then
   "round N fails · fix tasks building" or "round N passes" once its verdict
   is in, and "⚑ {unit} · {type} · review · finish waits on you · ⚑ 1 waiting
-  on you" while finish waits;
+  on you" while finish waits, a quick-fix reading "close waits on you" (20.14.3);
 - in discovery: "◐ {unit} · {type} · discovery · N topics on the map", with
   "⚑" leading and "⚑ the map waits on you" while approve the map waits;
 - in an investigation: "◐ {unit} · bugfix · investigation · {where it
   stands}" (validating the root cause, fix direction, validating the fix,
   concluded · the specification next), with "⚑" leading and "⚑ 1 waiting on
-  you" while a question waits;
+  you" while a question waits, and "⚑ conclude waits on you", counted among
+  what waits, while the conclude's yes waits (20.12.5);
 - in an experiment: "◐ {unit} · {type} · experiment {id} · N of M runs",
   "✓" and "concluded" once the verdict is in;
 - in a quick-fix: "◐ {unit} · quick-fix · N of M done", then "⚑ N waiting on
   you" where non-zero, counting each question a fix's builder parked its task
   on, each question Claude raised in the quick-fix's conversation that still
-  waits, and close while it waits, with "▸ discuss" (one question) or
-  "▸ discuss all" (several), as in a build; "⚑" replaces "◐" only when
+  waits, and close while it waits, with "▸ discuss" (one parked question)
+  or "▸ discuss all" (several), as in a build, only a parked question being
+  queued to discuss; "⚑" replaces "◐" only when
   nothing can proceed, as while close waits, and "stopped" follows
   "quick-fix" when every fix left is parked on a question, never while close
   waits; "✓ {unit} · quick-fix · complete · at the start menu" once it
-  closes;
+  closes; once the person asks for its review at the close, the review
+  phase's banner (20.14.3);
 - at the start menu once finish is through: "✓ {unit} · {type} · complete ·
   at the start menu", as a quick-fix's close.
-[the locked spike; ruled by the person 2026-11-05: D20, D25, D31, D36 to D40, D42; Claude's derivation, 29.14 as built: each standing of a specification's review, a pass out and a question waiting among them (14.16), and the waits at an epic's menu (14.20); Claude's derivation, C52: the quick-fix's banner counting its fixes, as 20.14.2 draws them, and a parked fix's question (19.5.25), its marks and buttons as a build's, as board-build.cjs draws them; Claude's derivation, C52: "stopped" as a build's, from parked questions alone; Claude's derivation, C52: a question Claude raises counted, as board-standing.cjs counts one that parks nothing]
+[the locked spike; ruled by the person 2026-11-05: D20, D25, D31, D36 to D40, D42; Claude's derivation, 29.14 as built: each standing of a specification's review, a pass out and a question waiting among them (14.16), and the waits at an epic's menu (14.20); Claude's derivation, C52: the quick-fix's banner counting its fixes, as 20.14.2 draws them, and a parked fix's question (19.5.25), its marks and buttons as a build's, as board-build.cjs draws them; Claude's derivation, C52: "stopped" as a build's, from parked questions alone; Claude's derivation, C52: a question Claude raises counted, as board-standing.cjs counts one that parks nothing; Claude's derivation, C53: a quick-fix in review stands in review, its gate close (29.15c's R1); Claude's derivation, C53: the conclude's yes waiting drawn and counted (29.15c's R2); agreed by the person 2026-11-09: "▸ discuss" for a parked question alone; agreed by the person 2026-11-09: titles, not slugs, the spike's position 1]
 
 ```text
 ◐ Token-aware diff sizing · feature · build · 1 building · 1 in review · ⚑ 3 waiting on you   ▸ discuss all   ▸ show board
@@ -8102,9 +8276,9 @@ then grey facts separated by " · ", then the banner's buttons at the right:
 ⚑ Token-aware diff sizing · feature · specification · pass 5 waits on you · ⚑ 1 waiting on you   hide board
 ◐ Token-aware diff sizing · feature · review · round 1 reading   hide board
 ⚑ Fumi · epic · discovery · 12 topics on the map · ⚑ the map waits on you   hide board
-⚑ killing-all-sessions-wipes-restore-state · bugfix · investigation · validating the root cause · ⚑ 1 waiting on you   hide board
+⚑ Killing All Sessions Wipes Restore State · bugfix · investigation · validating the root cause · ⚑ 1 waiting on you   hide board
 ◐ Fumi · epic · experiment E1 · 26 of 40 runs   hide board
-◐ m-marks-highlighted-on-entry · quick-fix · 0 of 1 done   hide board
+◐ M Marks Highlighted On Entry · quick-fix · 0 of 1 done   hide board
 ```
 
 20.2.5 A banner too long for the band truncates from its right end, keeping
@@ -8654,6 +8828,8 @@ DECIDED ────────────────────────
 
 20.8.4 The epic's page shows WAITING ON YOU, as the unit's tab does (20.15.1, 20.15.2), whenever anything waits on the person in the epic; the drawing has none because nothing waits in it. [Claude's derivation, 29.14 as built: 14.20's review]
 
+20.8.5 The board's WAITING ON YOU, on the epic's page (20.8.4) and the unit's tab alike, reads the same list of what waits as the unit's menu (18.4.2, 19.1.3), so the two never differ: the decided gate, a decided topic waiting on a replaced answer (10.2.6) and verdicts show on both. [Claude's derivation, C53: 29.16's P10 (a), the board and the menus listing different waits]
+
 ### 20.9 In a specification
 
 20.9.1 This session in a specification shows: its header, the unit and type,
@@ -8779,6 +8955,8 @@ timeout = 0 means no deadline: the cap sizes every chunk and
 keeps every call under claude's stdin limit. An operator who
 wants a cap mint never reaches sets a large one.
 ```
+
+20.9.4 Once a unit's specification is next — its last topic decided, or its investigation concluded — and until the person's yes at ready to build, every type's views show it under way as "◐ Specification · being written", even while no session is in it; while a pass is out or waits on the person, they show that standing instead (20.2.4). [agreed by the person 2026-11-09: the spike's position 4, as 29.14 built it; a pass's standing in its place, Claude's derivation, C53: 20.2.4's banner and 20.15.3's tab draw it]
 
 ### 20.10 In the review phase
 
@@ -9067,8 +9245,10 @@ investigation"), the project, type and when it started; a facts line
 (hypotheses, how many confirmed, experiments, and where it stands —
 validating the root cause, the fix direction waiting on the person,
 validating the fix, or "concluded · the specification next"); WAITING ON
-YOU, a question a validation or the fix direction put to the person, "asked
-in the conversation", with what raised it and why it reached them; DECIDED,
+YOU, every question put to the person in the investigation, a validation's,
+the fix direction, Claude's own and the permission to test against a live
+server among them, "asked in the conversation", with what raised it and why
+it reached them; DECIDED,
 what the person decided, marked "yours"; SYMPTOMS; HYPOTHESES, each
 "confirmed", "ruled out" or, where the person's ruling made it so,
 "intended"; EXPERIMENTS, each with what it showed; ROOT CAUSE, its opening,
@@ -9078,7 +9258,7 @@ and that Claude acted on it; CLAUDE'S CALLS since the calls list was last
 drawn in the conversation (5.8.14); FIX DIRECTION, waiting on the root
 cause, then what stepping back found and the options, Claude's lean marked,
 and once picked the person's pick. [R15, R20; locked by the person
-2026-10-21, "all looks great"; looking, 5.8.14]
+2026-10-21, "all looks great"; looking, 5.8.14; Claude's derivation, C53: every question the investigation puts to the person waits there, its raises the investigation's own, as 15.15 built it]
 
 20.12.2 Each hypothesis, experiment, option and call, the root cause, and
 what stepping back found opens on its own page, "← back to the
@@ -9089,14 +9269,14 @@ shown on the board. [R20: "nothing is shown to the person and nothing is
 counted"]
 
 20.12.4 Once the investigation concludes, the unit's tab shows the
-specification next; the specification opens in a clean context (§24), and
-This session follows the session into it. [R15, R20; the locked spike]
+specification being written (20.9.4); the specification opens in a clean context (§24), and
+This session follows the session into it. [R15, R20; the locked spike; agreed by the person 2026-11-09: the specification being written once the investigation concludes, and titles, not slugs, the spike's positions 4 and 1]
 
 ```text
-⌂ This session   ≡ killing-all-sessions-wipes-re…   ≡ All work
+⌂ This session   ≡ Killing All Sessions Wipes Re…   ≡ All work
 ━━━━━━━━━━━━━━────────────────────────────────────────────────
 
-killing-all-sessions-wipes-restore-state · investigation
+Killing All Sessions Wipes Restore State · investigation
 Portal · bugfix · started 16 Aug
 6 hypotheses · 4 confirmed · 10 experiments · ◐ validating the
 root cause
@@ -9153,10 +9333,10 @@ FIX DIRECTION ──────────────────────
 ```
 
 ```text
-⌂ This session   ≡ killing-all-sessions-wipes-re…   ≡ All work
+⌂ This session   ≡ Killing All Sessions Wipes Re…   ≡ All work
 ━━━━━━━━━━━━━━────────────────────────────────────────────────
 
-killing-all-sessions-wipes-restore-state · investigation
+Killing All Sessions Wipes Restore State · investigation
 Portal · bugfix · started 16 Aug
 6 hypotheses · 3 confirmed · 10 experiments · ⚑ the fix
 direction waits on you
@@ -9225,7 +9405,7 @@ Claude's lean
 ```
 
 ```text
-⌂ This session   ≡ killing-all-sessions-wipes-re…   ≡ All work
+⌂ This session   ≡ Killing All Sessions Wipes Re…   ≡ All work
 ━━━━━━━━━━━━━━────────────────────────────────────────────────
 
 ← back to the investigation
@@ -9274,6 +9454,8 @@ overwrites that pane's .bin with zero bytes — a loss that
 involves no housekeeping pass and no change to the session
 list.
 ```
+
+20.12.5 While the conclude's yes waits, every view draws "⚑ conclude waits on you": the banner, This session's WAITING ON YOU, the unit's tab and All work, each counting it among what waits on the person. [Claude's derivation, C53: 29.15c's R2, the conclude's gate drawn as waiting on none of them]
 
 ### 20.13 In an experiment
 
@@ -9437,17 +9619,17 @@ LATELY ────────────────────────�
 
 ### 20.14 In a quick-fix
 
-20.14.1 This session in a quick-fix's one session shows: its header ("{unit} · quick-fix"), the project, where it came from, "one session" and when it started; a facts line (fixes done of all, and the fix under way, or "⚑ close waits on you", or "✓ complete"); WAITING ON YOU, with each question a fix's builder parked its task on, and each question Claude raised in the quick-fix's conversation that still waits, each with its "▸ discuss", as the build's shows its questions (20.5.3, 19.5.25), and while close waits, saying what was proven and whether a verdict is owed on a call the person changed; THE CHANGE, as the person's note pins it, "confirmed in one line; nothing shaped again"; THE FIXES, each fix as the build draws a task (20.5.2) — building, in review with its clock, done, failed or waiting on a question — with its pair's rounds beneath it, and once it is done the round its pair passed it in, a press opening its task page (20.5.4); CLAUDE'S CALLS; REPLACES, an earlier decision the change supersedes, with the unit it came from; THE RECORD once the fixes are done — what changed, why, what it leaves out. [R10, R21, R23; locked by the person 2026-10-21, "all looks great"; Claude's proposal, C52: ruled by the person 2026-11-08 (b); Claude's derivation, C52: a parked fix's question waits on the person; Claude's derivation, C52: so does a question Claude raises, parking nothing]
+20.14.1 This session in a quick-fix's one session shows: its header ("{unit} · quick-fix"), the project, where it came from, "one session" and when it started; a facts line (fixes done of all, and the fix under way, or "⚑ close waits on you", or "✓ complete"); WAITING ON YOU, with each question a fix's builder parked its task on, each with its "▸ discuss", as the build's shows its questions (20.5.3), and each question Claude raised in the quick-fix's conversation that still waits, with no "▸ discuss", since it is asked in the conversation and parks nothing (19.5.25), and while close waits, saying what was proven and whether a verdict is owed on a call the person changed; THE CHANGE, as the person's note pins it, "confirmed in one line; nothing shaped again"; THE FIXES, each fix as the build draws a task (20.5.2) — building, in review with its clock, done, failed or waiting on a question — with its pair's rounds beneath it, and once it is done the round its pair passed it in, a press opening its task page (20.5.4); CLAUDE'S CALLS; REPLACES, an earlier decision the change supersedes, with the unit it came from; THE RECORD once the fixes are done — what changed, why, what it leaves out. [R10, R21, R23; locked by the person 2026-10-21, "all looks great"; Claude's proposal, C52: ruled by the person 2026-11-08 (b); Claude's derivation, C52: a parked fix's question waits on the person; Claude's derivation, C52: so does a question Claude raises, parking nothing; agreed by the person 2026-11-09: no "▸ discuss" on Claude's own raise]
 
 20.14.2 Once the person closes it, the unit moves to COMPLETE and This
 session follows the session to All work at the start menu. [R15, R21; the
-locked spike; Claude's proposal, C52: ruled by the person 2026-11-08 (b): its drawings show each fix as the build draws a task; Claude's derivation, C52: its CALLS line wrapped under its mark, within the edge (20.4.5)]
+locked spike; Claude's proposal, C52: ruled by the person 2026-11-08 (b): its drawings show each fix as the build draws a task; Claude's derivation, C52: its CALLS line wrapped under its mark, within the edge (20.4.5); agreed by the person 2026-11-09: titles, not slugs, the spike's position 1]
 
 ```text
-⌂ This session   ≡ m-marks-highlighted-on-entry   ≡ All work
+⌂ This session   ≡ M Marks Highlighted On Entry   ≡ All work
 ━━━━━━━━━━━━━━────────────────────────────────────────────────
 
-m-marks-highlighted-on-entry · quick-fix
+M Marks Highlighted On Entry · quick-fix
 Portal · from your inbox note · one session · started 15 Jul
 0 of 1 done · ◐ 1.1 in review
 
@@ -9468,14 +9650,14 @@ CLAUDE'S CALLS ─────────────────────�
 
 REPLACES ────────────────────────────────── 1 · yours, earlier
 ↺ "m enters a real mode you can sit in with zero selected" ·
-restore-host-terminal-windows
+Restore Host Terminal Windows
 ```
 
 ```text
-⌂ This session   ≡ m-marks-highlighted-on-entry   ≡ All work
+⌂ This session   ≡ M Marks Highlighted On Entry   ≡ All work
 ━━━━━━━━━━━━━━────────────────────────────────────────────────
 
-m-marks-highlighted-on-entry · quick-fix
+M Marks Highlighted On Entry · quick-fix
 Portal · from your inbox note · one session · started 15 Jul
 1 of 1 done · ⚑ close waits on you
 
@@ -9500,7 +9682,7 @@ CLAUDE'S CALLS ─────────────────────�
 
 REPLACES ────────────────────────────────── 1 · yours, earlier
 ↺ "m enters a real mode you can sit in with zero selected" ·
-restore-host-terminal-windows
+Restore Host Terminal Windows
 
 THE RECORD ───────────── what changed, why, what it leaves out
 · What changed: entering multi-select marks the highlighted
@@ -9513,6 +9695,8 @@ THE RECORD ───────────── what changed, why, what it le
   banner copy change; WithInitialMultiSelect is unaffected; no
   new visual state, Paper frame, or visual gate
 ```
+
+20.14.3 A quick-fix whose review the person asked for at its close stands in review on every view, the banner, This session, its tab and All work, drawn as the review phase draws any unit (20.10), and its gate is named close wherever finish would be: "review · close waits on you". [Claude's derivation, C53: 29.15c's R1, a quick-fix in review drawn as implementation on some views, its gate named finish on some and close on others; 19.5.8]
 
 ### 20.15 The unit's tab
 
@@ -9528,11 +9712,12 @@ runs, before any topic exists, it shows the epic's phases instead —
 discovery under way, then discussion "once the map is approved", the
 specification "once every topic is decided", the build and review after it.
 A bugfix's phases are discovery, investigation, specification, build and
-review; a quick-fix's are discovery and implementation, its one session.
-[R15, R18, R20, R21; the locked spike]
+review; a quick-fix's are discovery and implementation, its one session,
+and review once the person asks for one at its close (20.14.3). [R15, R18,
+R20, R21; the locked spike; Claude's derivation, C53: a quick-fix's review is a phase of its own once asked for (29.15c's R1)]
 
 20.15.3 A linear unit's discovery opens in full on the note it began from.
-[R15; the locked spike; Claude's derivation, C52: its quick-fix drawing counts fixes, with no steps among LATELY's moments, and reads building, as a build's tab does]
+[R15; the locked spike; Claude's derivation, C52: its quick-fix drawing counts fixes, with no steps among LATELY's moments, and reads building, as a build's tab does; agreed by the person 2026-11-09: titles, not slugs, the spike's position 1]
 
 ```text
 ⌂ This session   ≡ Token-aware diff sizing   ≡ All work
@@ -9716,10 +9901,10 @@ LATELY ────────────────────────�
 ```
 
 ```text
-⌂ This session   ≡ killing-all-sessions-wipes-re…   ≡ All work
+⌂ This session   ≡ Killing All Sessions Wipes Re…   ≡ All work
 ─────────────────━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─────────────
 
-killing-all-sessions-wipes-restore-state · bugfix
+Killing All Sessions Wipes Restore State · bugfix
 Killing all tmux sessions wipes sessions.json and every
 scrollback file within one daemon tick
 started 16 Aug · investigating since 16 Aug
@@ -9747,10 +9932,10 @@ LATELY ────────────────────────�
 ```
 
 ```text
-⌂ This session   ≡ m-marks-highlighted-on-entry   ≡ All work
+⌂ This session   ≡ M Marks Highlighted On Entry   ≡ All work
 ─────────────────━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━───────────────
 
-m-marks-highlighted-on-entry · quick-fix
+M Marks Highlighted On Entry · quick-fix
 Pressing m on a highlighted session marks it as the first
 multi-select selection on entry, instead of entering
 multi-select mode with an empty set
@@ -9767,9 +9952,11 @@ LATELY ────────────────────────�
 
 20.15.4 A unit's "started" is its manifest's created day (20.15.1). [Claude's derivation, 29.14 as built: 14.16a]
 
+20.15.5 A bugfix's tab's LATELY holds the moments its investigation's log holds — the root cause written, a validation started, an experiment run — among its others, newest first (20.15.1). [agreed by the person 2026-11-09: the spike's position 5]
+
 ### 20.16 All work
 
-20.16.1 All work shows the project: a count of units in progress, waiting on the person and complete; IN PROGRESS, every unit under way with its type, phase and progress, what waits in it and where a session is; ROADMAP, the items waiting under their horizon; INBOX, its captures by kind, quick-fixes counted as their own, "· N quick-fixes" where any, ideas and quick-fixes marked ◇ and bugs ✗, each on one line; COMPLETE, folded with "▸ show". [R15; locked 2026-10-21; ruled by the person 2026-11-05: D32 to D35]
+20.16.1 All work shows the project: a count of units in progress, waiting on the person and complete; IN PROGRESS, every unit under way with its type, phase and progress, what waits in it and where a session is; ROADMAP, the items waiting under their horizon; INBOX, its captures by kind, quick-fixes counted as their own, "· N quick-fixes" where any, ideas and quick-fixes marked ◇ and bugs ✗, each on one line; COMPLETE, folded with "▸ show". [R15; locked 2026-10-21; ruled by the person 2026-11-05: D32 to D35; agreed by the person 2026-11-09: titles, not slugs, the spike's position 1]
 
 ```text
 ⌂ This session   ≡ Token-aware diff sizing   ≡ All work
@@ -9830,16 +10017,16 @@ INBOX ────────────────────────�
 ```
 
 ```text
-⌂ This session   ≡ m-marks-highlighted-on-entry   ≡ All work
+⌂ This session   ≡ M Marks Highlighted On Entry   ≡ All work
 ━━━━━━━━━━━━━━────────────────────────────────────────────────
 
 All work · Portal · at the start menu
 2 in progress · 58 complete
 
 IN PROGRESS ──────────────────────────────────────────────── 2
-○ agent-first-portal
+○ Agent First Portal
      epic · discussion
-○ tagging-and-filtering
+○ Tagging And Filtering
      epic · discussion
 
 ROADMAP ──────────────────────────────────────────── 3 waiting
@@ -9992,6 +10179,14 @@ board scrolls as one and READY TO DISCUSS comes after the list. (20.6.5,
 20.S27 Given every task in the build waiting on the person, when the board shows the build, then its progress line ends "⚑ stopped until you answer". (20.5.1)
 
 20.S28 Given Q1 and Q2 waiting, when both are set aside in one go, then `raise` records both and answers with one receipt naming each. (20.6.9, 12.13.16)
+
+20.S29 Given a quick-fix whose review the person asked for at its close, when its round is being read, then every view draws it in review: the banner reads "◐ {unit} · quick-fix · review · round 1 reading", This session shows the review, and its tab has review as its phase; once the round passes, the banner reads "⚑ {unit} · quick-fix · review · close waits on you · ⚑ 1 waiting on you". (20.14.3, 20.2.4, 20.15.2)
+
+20.S30 Given an investigation whose conclude's yes waits, when the board shows it, then the banner reads "⚑ conclude waits on you", This session's WAITING ON YOU names the conclude, and All work counts it among what waits in the unit. (20.12.5, 20.2.4)
+
+20.S31 Given a quick-fix with one question a fix's builder parked its task on and one Claude raised in the conversation, when the board shows it, then WAITING ON YOU shows both, the parked one with "▸ discuss" and Claude's with none, and the banner's "▸ discuss" queues the parked one alone. (20.14.1, 20.2.4)
+
+20.S32 Given an epic with a decided topic waiting because an answer it relied on was replaced, and a verdict waiting, when the board shows the epic's page at its menu, then WAITING ON YOU lists what the epic's menu lists, the decided topic and the verdict among them. (20.8.5, 20.8.4, 18.4.2)
 
 ## 21. Migration
 
@@ -10440,6 +10635,8 @@ sort, T39]
 22.1.6 Boot runs first on every entry, the person's command and Claude's alike, given the person's words, and stops only where it needs the person. [ruled by the person 2026-11-08]
 
 22.1.7 Boot stamps the conversation's folder as booted for this checkout and version, and every engine verb that touches work refuses until that stamp exists, naming `engine boot`. [ruled by the person 2026-11-08]
+
+22.1.8 The capture line (18.6.1) alone goes through without boot's stamp (22.1.7), since a capture made from a session in another Leeway project never boots there (18.6.8). [Claude's derivation, C53: 29.16's F1, a capture from another project's session could never meet the stamp]
 
 ### 22.2 Start's setup gates
 
@@ -11133,9 +11330,9 @@ the mod, the skill is invoked inline. [plan 9.6; Claude's]
 - finish, back to the menus;
 - a bugfix's investigation, once concluded, into the spec, as a feature's
   topic does; the conclude stays a process gate (19.4.19);
-- a topic cancelled or postponed from inside its own session (18.4.20): an
-  epic's onto the epic's menu; a feature's, bugfix's or quick-fix's onto the
-  start menu;
+- an epic's topic cancelled or postponed from inside its own session, onto
+  the epic's menu; a feature's, bugfix's or quick-fix's cancel from inside its
+  session, onto the start menu (18.4.20);
 - a quick-fix's opener into its work, in the same session, with no handoff
   (19.5.1);
 - a quick-fix moved to a feature or a bugfix, or a bugfix to a feature,
@@ -11148,7 +11345,7 @@ the mod, the skill is invoked inline. [plan 9.6; Claude's]
 
 [plan 9.6; Claude's; R11, R20, record 872–874, 1946; Claude's derivation,
 O22, O89, T14; the feature's spec and the in-session cancel, Claude's
-derivation 2026-10-25: 11.2.1, 18.4.20; Claude's derivation, 29.13 planning: 8.8.13; Claude's proposal, 29.15 planning: F4]
+derivation 2026-10-25: 11.2.1, 18.4.20; Claude's derivation, 29.13 planning: 8.8.13; Claude's proposal, 29.15 planning: F4; Claude's derivation, C53: 18.4.20 gives postpone to an epic's topics alone, so a feature, a bugfix or a quick-fix leaves its session for the start menu only by its cancel]
 
 24.1.3 Nothing hands off inside a build, a quick-fix or a topic (an
 experiment's spawn leaves the topic: 24.1.2). [plan 9.6; Claude's; Claude's
@@ -11740,7 +11937,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.1.6 The reshape branch merges into `main` once every condition of 1.4 holds, and the person releases (29.20). [plan 11.1; Claude's proposal]
 
-29.1.7 The build runs in four steps, its phases in the order numbered here: step 1, the foundations (29.2 to 29.8); step 2, the restructure with verification alongside (29.9 to 29.18); step 3, the ask rule (29.19); step 4, rehearsal and the release (29.20). What comes later is 29.21. [plan 11.2–11.6; Claude's proposal]
+29.1.7 The build runs in four steps, its phases in the order numbered here: step 1, the foundations (29.2 to 29.8); step 2, the restructure with verification alongside (29.9 to 29.18); step 3, the ask rule (29.19), whose machinery runs beside step 2's later phases and whose switch comes last (29.19.5); step 4, rehearsal and the release (29.20). What comes later is 29.21. [plan 11.2–11.6; Claude's proposal; Claude's derivation, C53: 29.19's F8, the person asking on 2026-11-10 that what can run side by side does]
 
 29.1.8 Each phase lists the sections it draws on, the earlier phases it relies on and the scenarios that prove it. Whoever writes a phase's tasks reads the sections it draws on in full, and reads further wherever they meet a seam. [R14; plan 3.5]
 
@@ -11962,11 +12159,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.15.2 Cross-cutting goes as a type (19.6). [plan 11.3; Claude's proposal]
 
-29.15.3 Draws on: §19, §1.5, §3.1, §3.2, §4.11, §6.1, §6.3, §8.5, §8.8, §9.7, §11.1, §11.8, §15.5, §16.10, §17.1, §17.3, §18.3, §20.12, §20.14, §22.6, §24.1, §26.4, §27.2, §5.8, §8.7, §7.2, §13.2, §13.4. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.8.18 hands it the absorb question; Claude's derivation, 29.12 planning: 8.S54, proven here, reads 8.7.7; ruled by the person 2026-11-08: the hand merge (7.2.22, 7.2.23); Claude's derivation, C52: a quick-fix's pair and its one gate (13.2.2, 13.4.7)]
+29.15.3 Draws on: §19, §1.5, §3.1, §3.2, §4.11, §6.1, §6.3, §8.5, §8.8, §9.7, §11.1, §11.8, §15.5, §16.10, §17.1, §17.3, §18.3, §20.12, §20.14, §22.6, §24.1, §26.4, §27.2, §5.8, §8.7, §7.2, §13.2, §13.4, §14.3, §20.2, §20.10, §20.15. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.8.18 hands it the absorb question; Claude's derivation, 29.12 planning: 8.S54, proven here, reads 8.7.7; ruled by the person 2026-11-08: the hand merge (7.2.22, 7.2.23); Claude's derivation, C52: a quick-fix's pair and its one gate (13.2.2, 13.4.7); Claude's derivation, C53: the quick-fix's notes at its close (14.3.10) and the board's rulings on it and the investigation (20.2.4, 20.10, 20.15.2)]
 
 29.15.4 Relies on: 29.2 to 29.8, 29.11 to 29.14. [R14; Claude's derivation]
 
-29.15.5 Proven by: 1.S9, 3.S1, 3.S5, 4.S23, 6.S10, 8.S9, 8.S18, 9.S23, 11.S14, 11.S19, 15.S8, 15.S20, 16.S36, 17.S4, 17.S6, 19.S1, 19.S5, 19.S6, 19.S7, 19.S8, 19.S9, 19.S10, 19.S11, 19.S12, 19.S13, 19.S14, 19.S15, 19.S16, 19.S18, 19.S20, 19.S21, 19.S22, 19.S23, 19.S24, 19.S26, 19.S28, 19.S29, 19.S30, 19.S31, 19.S32, 19.S33, 19.S34, 19.S35, 19.S36, 19.S37, 20.S18, 20.S19, 20.S20, 20.S23, 22.S21, 22.S22, 24.S8, 24.S17, 26.S10, 27.S8, 19.S38, 6.S14, 8.S54, 7.S23 (59). [R14; Claude's derivation; Claude's derivation 2026-10-30: 6.S14's quick-fix half reads the person asking a quick-fix for review (19.5.13), built here; Claude's derivation, 29.12 planning: 8.S54's bugfix half observes investigation's entry, rewritten here; ruled by the person 2026-11-08: 7.S23, the hand merge; Claude's derivation, C52: GitHub keeps a merged pull request closed (7.S23); Claude's proposal, 29.15 planning: F9, 19.S38's engine half proven here and its way in, triage's w, 29.16's (19.S25)]
+29.15.5 Proven by: 1.S9, 3.S1, 3.S5, 4.S23, 6.S10, 8.S9, 8.S18, 9.S23, 11.S14, 11.S19, 15.S8, 15.S20, 16.S36, 17.S4, 17.S6, 19.S1, 19.S5, 19.S6, 19.S7, 19.S8, 19.S9, 19.S10, 19.S11, 19.S12, 19.S13, 19.S14, 19.S15, 19.S16, 19.S18, 19.S20, 19.S21, 19.S22, 19.S23, 19.S24, 19.S26, 19.S28, 19.S29, 19.S30, 19.S31, 19.S32, 19.S33, 19.S34, 19.S35, 19.S36, 19.S37, 20.S18, 20.S19, 20.S20, 20.S23, 22.S21, 22.S22, 24.S8, 24.S17, 26.S10, 27.S8, 19.S38, 6.S14, 8.S54, 7.S23, 7.S24, 7.S25, 7.S26, 7.S27, 7.S28, 7.S29, 7.S30, 18.S75, 19.S39, 19.S40, 19.S41, 20.S29, 20.S30, 20.S31, 19.S42, 19.S43, 19.S44 (76). [R14; Claude's derivation; Claude's derivation 2026-10-30: 6.S14's quick-fix half reads the person asking a quick-fix for review (19.5.13), built here; Claude's derivation, 29.12 planning: 8.S54's bugfix half observes investigation's entry, rewritten here; ruled by the person 2026-11-08: 7.S23, the hand merge; Claude's derivation, C52: GitHub keeps a merged pull request closed (7.S23); Claude's proposal, 29.15 planning: F9, 19.S38's engine half proven here and its way in, triage's w, 29.16's (19.S25); Claude's derivation, C53: the landing's readings (7.S24 to 7.S30), the cancel (18.S75), the quick-fix's notes, checkout and kept work (19.S39 to 19.S41) and the board's rulings (20.S29 to 20.S31), built in 29.15 and its tail; Claude's derivation, C53: the quick-fix's landing as 15.7 built it (19.S42 to 19.S44)]
 
 29.15.6 The bug-proven run comes with it (6.1.12, 15.5). [Claude's derivation 2026-10-30, 29.8 slicing: 15.S8 observes it here]
 
@@ -11978,11 +12175,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.16.2 Help reaches every menu, each menu's help an engine content file beside the menu's projection (23.2). [plan 11.3, plan 9.3; Claude's proposal]
 
-29.16.3 Draws on: §18, §23.2, §1.4, §5.8, §7.4, §8.1, §8.5, §8.6, §8.8, §8.10, §8.12, §9.2, §9.5, §10.1, §10.4, §12.13, §12.15, §19.1, §19.3, §19.5, §19.6, §22.6, §24.1, §6.1, §14.6, §19.2, §20.3, §20.8, §20.11, §20.13, §20.14, §28.2, §9.7, §27.2, §10.2, §4.11. [R14; Claude's derivation; Claude's derivation 2026-10-28: the walks it drew on §25 for go to 29.20]
+29.16.3 Draws on: §18, §23.2, §1.4, §5.8, §7.4, §8.1, §8.5, §8.6, §8.8, §8.10, §8.12, §9.2, §9.5, §10.1, §10.4, §12.13, §12.15, §19.1, §19.3, §19.5, §19.6, §22.6, §24.1, §6.1, §14.6, §19.2, §20.3, §20.8, §20.11, §20.13, §20.14, §28.2, §9.7, §27.2, §10.2, §4.11, §6.4, §5.6, §16.5. [R14; Claude's derivation; Claude's derivation 2026-10-28: the walks it drew on §25 for go to 29.20; Claude's derivation, C53: finish's `Resolved:` lines (6.S35), the affected topic's door (5.6.12) and reopening (16.5.7)]
 
-29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15. [R14; Claude's derivation]
+29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15, and the verdict page of 29.19 (16.10.7), which the start menu's and the epic menu's verdict rows open. [R14; Claude's derivation; Claude's derivation, C53: 29.16's F8, as ruled again once 29.19 was planned: the page is built with the ask rule's machinery, before the menus (29.19.5)]
 
-29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 18.S70, 24.S18 (106). [R14; Claude's derivation; Claude's derivation, C43 assessment: 18.S57 keeps the menu's half, and `enter`'s question is 18.S71, under 29.11 (29.11.13)]
+29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 18.S70, 24.S18, 6.S35, 18.S76, 18.S77, 18.S78, 18.S79, 18.S80, 18.S81, 18.S82, 20.S32 (115). [R14; Claude's derivation; Claude's derivation, C43 assessment: 18.S57 keeps the menu's half, and `enter`'s question is 18.S71, under 29.11 (29.11.13); Claude's derivation, C53: finish's `Resolved:` lines (6.S35), built in 16.1, and the menus' rulings (18.S76 to 18.S78); Claude's derivation, C53: triage's, the inbox's, the start menu's and the roadmap's rulings and the board's waits (18.S79 to 18.S82, 20.S32), built in 29.16]
 
 29.16.6 `inbox` close comes with it (6.1.15), and with it finish's item for resolved inbox items closed, until then Claude's mark (6.4.10, 29.14.10). [Claude's derivation 2026-10-30, 29.8 slicing: 18.S24 and 18.S25 observe it here; Claude's proposal, 29.14 planning]
 
@@ -12026,9 +12223,9 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.19.3 The rule ships calibrated to ask what is asked today, and loosens only as evidence supports (1.3.4). [plan 1.3]
 
-29.19.4 Draws on: §16, §17.1 to §17.3, §1.3, §2.11, §3.2, §3.3, §4.11, §5.1, §6.6, §8.8, §9.6, §9.8, §11.7, §15.12, §18.4, §19.4, §26.3, §27.2, §5.3, §9.7, §18.10, §5.5, §12.9, §12.15, §11.11, §14.4. [R14; Claude's derivation; Claude's derivation, 29.13 planning: 11.S36, proven here, reads 11.11.15; Claude's derivation, 29.14 planning: 14.S16 and 14.S17, proven here, read 14.4.1 and 14.4.4]
+29.19.4 Draws on: §16, §17.1 to §17.3, §1.3, §2.11, §3.2, §3.3, §4.11, §5.1, §6.6, §8.8, §9.6, §9.8, §11.7, §15.12, §18.4, §19.4, §26.3, §27.2, §5.3, §9.7, §18.10, §5.5, §12.9, §12.15, §11.11, §14.4, §18.2, §18.3, §23.2, §12.13, §7.2, §24.1, §20. [R14; Claude's derivation; Claude's derivation, 29.13 planning: 11.S36, proven here, reads 11.11.15; Claude's derivation, 29.14 planning: 14.S16 and 14.S17, proven here, read 14.4.1 and 14.4.4; Claude's derivation, C53: 29.19's F7: the verdict row and manage's matrix row, help on the new menus, a blind question waiting mid-build, the merge gate in step (7.2.4), the spawn gate, and the board's reason for each call]
 
-29.19.5 Relies on: 29.3 to 29.5, 29.8, 29.11 to 29.18. [R14; Claude's derivation]
+29.19.5 Relies on, by part: the ask rule's machinery, the arithmetic, the labeller, the verdict page, blind questions, convergence, the matrix and its replay, and the record of the person, on 29.3 to 29.5, 29.8 and 29.11 to 29.15; its ways in on the menus, the verdict rows and manage's matrix row among them, on 29.16; and the switch to asking by the rule (29.19.2) on 29.16 to 29.18. [R14; Claude's derivation; Claude's derivation, C53: 29.19's F8, only the ways in and the switch need the later phases, and the person asked on 2026-11-10 that what can run side by side does]
 
 29.19.6 Proven by: 1.S2, 1.S3, 3.S4, 3.S7, 3.S8, 3.S9, 3.S11, 3.S13, 3.S14, 3.S15, 4.S27, 5.S27, 6.S19, 8.S22, 9.S21, 9.S24, 9.S45, 9.S47, 11.S10, 15.S19, 16.S1, 16.S2, 16.S3, 16.S5, 16.S11, 16.S12, 16.S13, 16.S14, 16.S15, 16.S16, 16.S17, 16.S18, 16.S19, 16.S20, 16.S21, 16.S22, 16.S23, 16.S24, 16.S25, 16.S26, 16.S27, 16.S28, 16.S29, 16.S37, 16.S38, 16.S39, 16.S40, 16.S42, 16.S43, 16.S45, 16.S46, 16.S47, 16.S48, 16.S49, 16.S50, 16.S51, 16.S52, 16.S53, 16.S54, 16.S55, 16.S56, 16.S57, 16.S58, 16.S59, 16.S60, 16.S62, 16.S63, 16.S64, 16.S65, 16.S66, 16.S67, 16.S68, 16.S70, 16.S71, 16.S72, 17.S1, 17.S8, 18.S17, 18.S41, 19.S17, 26.S9, 27.S2, 6.S24, 16.S69, 11.S36, 14.S16, 14.S17 (87). [R14; Claude's derivation; Claude's derivation 2026-10-30: 9.S21 is here for its count of Claude's calls by kind, which needs the labeller; its verdict block and product lines are 29.11's (16.S33, 16.S34, 8.S25); Claude's proposal: 16.S75 goes to 29.11 (29.11.14); Claude's derivation, 29.13 planning: 11.S36 needs the labeller's hard-to-undo mark (16.11.7); Claude's derivation, 29.14 planning: 14.S16 needs the labeller's kinds (16.11); Claude's derivation, 29.14 planning: 14.S17 needs the labeller's kinds (16.11)]
 
@@ -12054,9 +12251,9 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 ## 29-S. Scenarios for §29
 
-29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
+29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, save the ask rule's machinery, built beside the tracking layer, its ways in and its switch each after the phases they rely on; and no phase, or part of one, starts before the phases it relies on are built. (29.1.7, 29.1.8, 29.19.5)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 889 listed are the 889 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 915 listed are the 915 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
