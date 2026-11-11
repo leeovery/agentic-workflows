@@ -44,9 +44,8 @@
 // the read its repository's context carries (`landedOn`). Every verb keeps
 // its reads, as a quick-fix's verbs do, so a driver reads the host once in
 // each repository, and again only what a merge of its own moved; each task
-// a merge of the verb's landed is noted on the context, and one a record
-// names read from then on at its branch's tip, as the record its end
-// writes holds it (`merged`).
+// a merge of the verb's landed is noted on the context for the record its
+// end writes (`merged`).
 //
 // Each verb records its landings as it ends (landing-record.cjs,
 // `recording`), from the reads it made: by the engine, each task a merge
@@ -256,12 +255,10 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  * (`landedOn`, task-landed.cjs), the one read of whether a task has landed
  * and where it stands against its landing every driver asks, each commit
  * read once; the tasks, shown, a merge of the verb's landed, noted for the
- * record its end writes, those a record names read from then on at their
- * branches' tips as that record holds them (`merged`); the message a task
- * landing alone lands under (`message`); and the refusal of a task whose
- * branch, at a commit, holds another's work not landed on the default
- * branch at a commit, past it — or past the chain's tip given
- * (`refuseHeld`).
+ * record its end writes (`merged`); the message a task landing alone lands
+ * under (`message`); and the refusal of a task whose branch, at a commit,
+ * holds another's work not landed on the default branch at a commit, past
+ * it — or past the chain's tip given (`refuseHeld`).
  * @typedef {{
  *   root: string, repo: string, unit: string, into: string, remote: string|null, gitlinks: string[], submodules: {path: string, ctx: LandingContext}[],
  *   reads: Map<string, unknown>, landedOn: (tip: string) => RepoLanded, merged: (shown: string[]) => void, message: (ref: TaskRef) => string,
@@ -365,23 +362,13 @@ function inRepo(repo, act) {
 /**
  * The tasks of `shown` a merge of the verb's landed in the repository at
  * `root`, noted on the project for the record the verb's end writes
- * (`landingsLeft`); each a record names read from then on at its branch's
- * tip here as it stands — the tip that record holds — so a later read of
- * the verb finds nothing past it (R29).
- * @param {Project} project @param {string} root @param {Map<string, import('./landing-record.cjs').LandingRecord>} recorded @param {string[]} shown
+ * (`landingsLeft`).
+ * @param {Project} project @param {string} root @param {string[]} shown
  */
-function noteMerged(project, root, recorded, shown) {
-  const ids = shown.map((at) => taskId(parseShownTask(project.unit, at)));
+function noteMerged(project, root, shown) {
   const noted = project.merged.get(root) ?? new Set();
-  for (const id of ids) noted.add(id);
+  for (const at of shown) noted.add(taskId(parseShownTask(project.unit, at)));
   project.merged.set(root, noted);
-  const again = ids.filter((id) => recorded.has(id));
-  if (again.length === 0) return;
-  const tips = workIn(root, project.unit, project.since).tips();
-  for (const id of again) {
-    const tip = tips.get(id);
-    if (tip !== undefined) recorded.set(id, { .../** @type {import('./landing-record.cjs').LandingRecord} */ (recorded.get(id)), tip });
-  }
 }
 
 /**
@@ -427,7 +414,7 @@ function repoContext(project, repo, remote) {
       submodules: [],
       reads: new Map(),
       landedOn,
-      merged: (shown) => noteMerged(project, repo.path, recorded, shown),
+      merged: (shown) => noteMerged(project, repo.path, shown),
       message: (ref) => taskMessage(project, ref),
       refuseHeld: (task, head, into, from = { name: ctx.into, commit: into }) => refuseHeld(ctx, taken(), task, head, into, from),
     };

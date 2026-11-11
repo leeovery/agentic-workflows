@@ -10,7 +10,9 @@
 // read it is refused by `land open`, `land phase` and `land finish` alike,
 // before anything moves, naming the commit that landed and the way back to
 // it; put back, it is recorded by its read at that landing and that commit
-// (F1). A record not written after a merge leaves the verb's answer
+// (F1). One rewritten before it landed, then given a commit, was never
+// rewritten past its landing, and lands that commit. A
+// record not written after a merge leaves the verb's answer
 // standing, a warning beside it, and the next verb acting on the landing
 // records the task by its read. Conformance layer: the landing world
 // (landing-world.cjs), built once per driver and copied for each test.
@@ -28,11 +30,13 @@ const harness = require('./engine-harness.cjs');
 const { tip, git, fixtureFrom, cleanupFixture, readManifest, stateGit } = harness;
 const { UNIT, BASE, TASKS, openArgs, own, cutTask, commitFiles, buildLanding, finishReady } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
+const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
 const { card, rounding } = TASKS;
 
 for (const { name } of listDrivers('landing')) {
-  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void, byHand: Record<string, (dir: string, branch: string) => void>}} */
+  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void, holds: (dir: string) => string[], byHand: Record<string, (dir: string, branch: string) => void>}} */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const as = { env: side.env };
   const ok = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.ok(at, args, as);
@@ -92,6 +96,16 @@ for (const { name } of listDrivers('landing')) {
         Array(3).fill(`land: task 1.1's branch ${card.branch} was rewritten after its work landed on main (${landing.slice(0, 7)}): its commit ${landed.slice(0, 7)} landed, and the branch no longer holds it — put the branch back where it landed, git branch -f ${card.branch} ${landed.slice(0, 7)}, and run this again; work past that goes on top of it`),
         landing, true, ['read', landing, landed],
       ]);
+    });
+
+    it('a task rewritten before it landed by hand — its commit reworded — then given a commit: no rewrite past its landing, land phase lands that commit (F1)', () => {
+      const at = (dir = world());
+      commitFiles(at, card.branch, `${card.branch}^`, card.files, { message: workMessage('Add the card, reworded', parseShownTask(UNIT, '1.1')) });
+      ok(at, openArgs(card));
+      Object.values(side.byHand)[0](at, card.branch);
+      commitFiles(at, card.branch, card.branch, { 'card-more.txt': 'more\n' });
+
+      assert.deepStrictEqual([own(ok(at, ['land', 'phase', UNIT, '1'])).merged, side.holds(at).includes('card-more.txt')], [['1.1'], true]);
     });
 
     it('a record not written after a merge leaves the verb\'s answer standing, a warning beside it, and the next verb acting on the landing records the task by its read', (t) => {

@@ -10,7 +10,7 @@
 // repositories left as they are; the record kept through the unit's cancel
 // and reactivate. Read back (task-landed.cjs), a recorded fix's commit up to
 // its recorded tip has landed, a later fix having undone its change, which
-// its change alone, with no pull request read, does not say. Domain layer:
+// its change alone, with no pull request read, does not say. Git layer:
 // the write called in process on a project world built once and copied
 // for each test.
 // ---------------------------------------------------------------------------
