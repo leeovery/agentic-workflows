@@ -143,6 +143,15 @@ describe('the order the rule decides in (16.7.3, 16.5, 16.19.8, 16.3.1, 16.4.10)
     ].flatMap((reason) => [asked(reason), asked(reason)]));
   });
 
+  it('where several always-asks hold at once, the first in the rule\'s order gives the reason: discovery before the person\'s decision, the person\'s decision before Claude\'s mark, a danger question before a care entry on its kind (16.7.3, 16.5.7, 16.5.1, 16.5.2)', () => {
+    const care = [{ project: PROJECT_ID, kind: /** @type {const} */ ('process') }];
+    const yoursMarked = { replaced_by: /** @type {const} */ ('person'), always: /** @type {const} */ ('live-server') };
+
+    assert.deepStrictEqual([
+      ruling(QUIET, { place: DISCOVERY, ...yoursMarked }), ruling(QUIET, yoursMarked), ruling(QUIET, { label: labelled('process', { yes: ['danger'] }), care }),
+    ], [asked(IN_DISCOVERY), asked(YOURS), asked(DANGER)]);
+  });
+
   it('16.S17: a danger question asks however many clean answers its kind holds', () => {
     const h = history();
     h.agree(40, 'danger');
@@ -335,13 +344,15 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
     ]);
   });
 
-  it('shows a bound to as many places as tell it from the line it is read against, never as the line itself: 23.77% under the 23.8% a threshold of 19.04% asks again over, a loss landing on 16 clean answers gone quiet (23.766%); and that figure asking at 23.7661% over a threshold of 23.7658%', () => {
+  it('shows a bound to as many places as tell it from the line it is read against, never as the line itself: 23.77% under the 23.8% a threshold of 19.04% asks again over, a loss landing on 16 clean answers gone quiet (23.766%); and that figure asking at 23.7661% over a threshold of 23.7658%, and at 23.766092% over one of 23.76609%', () => {
     assert.deepStrictEqual([
       ruling(behaviourAfter(16, lossThen()), { settings: { ...DEFAULTS, threshold: 0.1904 } }),
       ruling(behaviourAfter(0, lossThen(16)), { settings: { ...DEFAULTS, threshold: 0.237658 } }),
+      ruling(behaviourAfter(0, lossThen(16)), { settings: { ...DEFAULTS, threshold: 0.2376609 } }),
     ], [
       { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under your 19.04% and haven\'t risen over 23.8% since: 23.77%.' },
       asked('It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 23.7661%, over your 23.7658%.'),
+      asked('It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 23.766092%, over your 23.76609%.'),
     ]);
   });
 
