@@ -477,11 +477,11 @@ describe('the verdict page (16.10.6, 16.10.7, 16.10.12, 18.4.2)', () => {
       gate: 'verdicts',
       question: 'What would my answer have cost the product?',
       options: [
-        { key: 'n', word: 'nothing', head: 'Nothing — mine would have served as well', recommended: false, next: give('nothing') },
-        { key: 'f', word: 'fix', head: 'A fix later', recommended: false, next: give('fix') },
-        { key: 'l', word: 'loss', head: 'A real loss', recommended: false, next: give('loss') },
-        { key: 'h', word: 'help', head: 'What this screen is for, row by row', recommended: false, next: { kind: 'engine', argv: ['render', 'help', 'verdicts'] } },
-        { key: 'b', word: 'back', head: 'Back to the start menu — the rest keep waiting', recommended: false, next: START_MENU },
+        { key: 'n', word: 'nothing', head: 'Nothing — mine would have served as well', tail: null, detail: null, recommended: false, next: give('nothing') },
+        { key: 'f', word: 'fix', head: 'A fix later', tail: null, detail: null, recommended: false, next: give('fix') },
+        { key: 'l', word: 'loss', head: 'A real loss', tail: null, detail: null, recommended: false, next: give('loss') },
+        { key: 'h', word: 'help', head: 'What this screen is for, row by row', tail: null, detail: null, recommended: false, next: { kind: 'engine', argv: ['render', 'help', 'verdicts'] } },
+        { key: 'b', word: 'back', head: 'Back to the start menu — the rest keep waiting', tail: null, detail: null, recommended: false, next: START_MENU },
       ],
       typed: [],
     });
