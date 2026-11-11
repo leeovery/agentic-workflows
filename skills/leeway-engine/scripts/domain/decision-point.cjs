@@ -9,8 +9,8 @@
 // for it.
 //
 // What it decides from (E1), as the raise gives it: the call; its label;
-// where it is made, and whether it blocks build work; who decided the entry
-// it would replace; Claude's mark that it always asks; whether it was sent
+// where it is made, and whether it blocks build work; whose the entry it
+// would replace is; Claude's mark that it always asks; whether it was sent
 // to check once already; the project; the model of the session making it;
 // and the time.
 //

@@ -104,8 +104,9 @@
 //   board-quick-fix.cjs, waits.cjs).
 // - The decision point decides from the call and, beside it (E1): its
 //   label; where it is made, and whether it blocks build work — made in the
-//   build, where a question asked parks; who decided the entry a
-//   replacement would replace, read from the entry (16.5.7); the mark
+//   build for a task, which a question asked parks; whose the entry a
+//   replacement would replace is — who decided it, read from the entry, or
+//   the person where a keep of theirs stands on it since (16.5.7); the mark
 //   Claude gives a question that always asks, `--always design-problem` or
 //   `--always live-server` (19.4.22, 19.4.20), which a fact, always asked,
 //   never takes; whether the conversation sent the question to check
@@ -264,8 +265,8 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
-const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind, decidedBy } = require('./ledger-events.cjs');
-const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf } = require('./ledger-fold.cjs');
+const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind } = require('./ledger-events.cjs');
+const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf, whoseDecision } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { topicTitles, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
@@ -978,7 +979,7 @@ function aboutOf({ answers, replaces }) {
 
 /**
  * A raise of Claude's call as drawn, beyond the call: the conversation, where
- * it is made and what it is about, who decided the entry it would replace,
+ * it is made and what it is about, whose the entry it would replace is,
  * and the mark it always asks by.
  * @typedef {{session: string, place: Place, target: Target, replacedBy: DecidedBy|null, always: Always|null}} Raising
  */
@@ -1009,9 +1010,9 @@ function markChecked(session, about) {
 
 /**
  * Claude's call, labelled `label`, put through the decision point with what
- * it decides from (E1), made in the build where `blocks`: its answer. Where
- * it sends Claude to check, the conversation keeps what the raise is about
- * as sent to check.
+ * it decides from (E1), blocking build work where `blocks` — made in the
+ * build for a task: its answer. Where it sends Claude to check, the
+ * conversation keeps what the raise is about as sent to check.
  * @param {string} cwd @param {Raising} raising @param {Call} call @param {Label|null} label @param {boolean} blocks
  * @returns {{decision: Decision, reason: string}}
  */
@@ -1033,7 +1034,8 @@ function decided(cwd, { session, place, target, replacedBy, always }, call, labe
  * replace`'s where it names `--replaces`, else `ledger decide`'s — in the
  * raise's words: a question it answers still open; a decision it replaces
  * a decision, its answer as it stands kept for the screen's own row, and
- * who decided it, read from it. Its usage is a fact's where `fact`.
+ * whose it is — who decided it, or the person where they kept it since. Its
+ * usage is a fact's where `fact`.
  * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact
  * @returns {{place: Place, target: Target, replacedBy: DecidedBy|null, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
  */
@@ -1053,7 +1055,7 @@ function placedRaise(cwd, args, warnings, fact) {
   const kind = entryKind(replacing);
   if (kind !== 'decision') throw new Error(`raise --replaces names ${short(entry)}, a ${kind} — a raise replaces a decision, the person picking its answer`);
   const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text)) };
-  return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: decidedBy(replacing), short, read };
+  return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: whoseDecision(read, entry), short, read };
 }
 
 /**
@@ -1176,7 +1178,7 @@ async function parkedRaise(cwd, raising, given, task, warnings) {
   if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW, label: null }, task), ONLY_YOU_KNOW, warnings);
   const { call } = given;
   const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
-  const { decision, reason } = decided(cwd, raising, call, label, true);
+  const { decision, reason } = decided(cwd, raising, call, label, task !== null);
   if (decision === 'check') return { decision, reason, warnings };
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, label, task, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing parked');

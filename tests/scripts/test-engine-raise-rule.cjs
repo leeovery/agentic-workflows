@@ -7,21 +7,23 @@
 // call (E1), every call still asking until the rule is switched on; and,
 // the decision point forced to the rule in process (`ruled`) as the switch
 // will make it, a question Claude could find out sent to check and asked
-// once raised again, a call with no label asked (16.S68), Claude's mark that
-// always asks (`--always`), a danger question in a build in auto parking its
-// task (3.S15), and a replacement mid-build asking where it would replace
-// the person's decision and proceeding where Claude's (16.S72).
+// once raised again, a replacement sent by the decision it would replace, a
+// call with no label asked (16.S68), Claude's mark that always asks
+// (`--always`), a danger question in a build in auto parking its task
+// (3.S15) — neither sent to check — a replacement mid-build asking where it
+// would replace the person's decision and proceeding where Claude's
+// (16.S72), and a decision of Claude's the person kept asking as theirs.
 //
 // Layer: verb. World: the ledger suites' epic in discussion, a question
-// asked at its topic; and an epic beside it in its build, in auto,
-// questions asked there and two decisions — the person's and Claude's —
-// built once and copied for each test; each test keeps its conversation and
-// the trust log in a config folder of its own, the log written with the
-// answers the rule counts, as of now — and there too the transcript naming
-// the session's model, where a test gives one. The world has no tracker, so
-// the check that the tracker holds the task a raise parks is passed over
-// here (test-engine-task-parks.cjs). The separate call is the stub binary,
-// labelling the call's question where a test arms it.
+// asked at its topic and two decisions of Claude's there; and an epic beside
+// it in its build, in auto, questions asked there and two decisions — the
+// person's and Claude's — built once and copied for each test; each test
+// keeps its conversation and the trust log in a config folder of its own,
+// the log written with the answers the rule counts, as of now — and there
+// too the transcript naming the session's model, where a test gives one. The
+// world has no tracker, so the check that the tracker holds the task a raise
+// parks is passed over here (test-engine-task-parks.cjs). The separate call
+// is the stub binary, labelling the call's question where a test arms it.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -77,7 +79,7 @@ const FRAMED = Object.freeze({
 });
 
 /** What the world holds, by name: each question's and decision's short id. */
-const made = { note: '', where: '', size: '', edge: '', yours: '', mine: '' };
+const made = { note: '', light: '', flat: '', where: '', size: '', edge: '', yours: '', mine: '' };
 
 const world = fixtureFrom('raise-rule-', (template) => {
   createManifest(template, UNIT, { work_type: 'epic', phases: PHASES });
@@ -86,6 +88,8 @@ const world = fixtureFrom('raise-rule-', (template) => {
   /** @param {string} at @param {string} text */
   const ask = (at, text) => write('ask', at, [], { ...MADE, text }).id;
   made.note = ask(NOTE, 'Where does a new note open?');
+  made.light = write('decide', NOTE, ['--answers', ask(NOTE, 'Does a note have an edge?')], { ...MADE, text: 'A frameless note.', why: 'Light reads calmer.' }).id;
+  made.flat = write('decide', NOTE, ['--answers', ask(NOTE, 'Does a note cast a shadow?')], { ...MADE, text: 'No shadow.', why: 'Flat looks calmer.' }).id;
   made.where = ask(BUILD, 'Where does a new note open on a second screen?');
   made.size = ask(BUILD, 'How big is a new note?');
   made.edge = ask(BUILD, 'Does a note have an edge?');
@@ -107,7 +111,7 @@ afterEach(() => {
 });
 
 const { ledgerText, full } = ledgerHelpers(() => dir);
-const { conversation, inFolder, seals, logText, project, lastEntry } = raiseHelpers(() => dir, config, CALL);
+const { conversation, inFolder, seals, logText, project, lastEntry, answer } = raiseHelpers(() => dir, config, CALL);
 
 /** The decision point forced to the rule, as switching it on makes it, for test `t`. @param {import('node:test').TestContext} t */
 const byTheRule = (t) => t.mock.method(decisionPoint, 'decide', decisionPoint.ruled);
@@ -139,7 +143,7 @@ const raised = (at, flags, call, env) => okSectionsAsync(dir, ['raise', at, ...f
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
 
 describe('what the decision point is given (E1)', () => {
-  it('beside the call: its label, where it is made and whether it blocks build work, who decided the entry it would replace, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — and the time; and every call still asks, as before the rule is switched on', async (t) => {
+  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — and the time; and every call still asks, as before the rule is switched on', async (t) => {
     const decide = t.mock.method(decisionPoint, 'decide');
     const claude = path.join(config(), 'claude');
     const transcript = path.join(claude, 'projects', '-Users-me-fumi', `${SESSION}.jsonl`);
@@ -149,17 +153,21 @@ describe('what the decision point is given (E1)', () => {
 
     const topic = await raised(NOTE, ['--answers', made.note], CALL, { ...labelledAs(CALL, 'look'), CLAUDE_CONFIG_DIR: claude });
     const build = await raised(BUILD, ['--replaces', made.yours, '--reason', 'was-wrong', '--parks', '2.3', '--always', 'live-server'], FRAMED, labelledAs(FRAMED, 'contract', { hardToUndo: true }));
+    const taskless = await raised(BUILD, ['--answers', made.size], CALL, labelledAs(CALL, 'look'));
 
     const after = Date.now();
     const given = decide.mock.calls.map((called) => called.arguments);
     const at = given.map(([, at]) => /** @type {import('../../skills/leeway-engine/scripts/domain/decision-point.cjs').At} */ (at));
     assert.ok(at.every(({ now }) => now >= before && now <= after), 'the time given is not the raise\'s');
     const common = { checked: false, project: { root: statePath(dir), name: projectName(dir) } };
+    const look = { labeller: LABELLER, answers: labelled('look').answers };
+    const inBuild = { unit: BUILT, phase: 'implementation', topic: null };
     assert.deepStrictEqual(given.map(([call, { now: _now, ...rest }]) => [call, rest]), [
-      [CALL, { ...common, label: { labeller: LABELLER, answers: labelled('look').answers }, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL }],
-      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: { unit: BUILT, phase: 'implementation', topic: null }, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null }],
+      [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL }],
+      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null }],
+      [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null }],
     ]);
-    assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.parked], ['ask', EVERY_CALL_ASKS, 'ask', 'Q1']);
+    assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.parked, taskless.res.parked, taskless.res.task], ['ask', EVERY_CALL_ASKS, 'ask', 'Q1', 'Q2', null]);
   });
 });
 
@@ -183,6 +191,17 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([parked.decision, parked.parked, lastEntry().why_asking], ['ask', 'Q1', checked]);
   });
 
+  it('a replacement Claude could find out is sent to check by the decision it would replace: two in one conversation are each sent their own (16.11.7)', async (t) => {
+    byTheRule(t);
+    quietOn('behaviour');
+    const checkable = labelledAs(FRAMED, 'behaviour', { yes: ['checkable'] });
+
+    const light = await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, checkable);
+    const flat = await raised(NOTE, ['--replaces', made.flat, '--reason', 'was-wrong'], FRAMED, checkable);
+
+    assert.deepStrictEqual([light.res.decision, flat.res.decision, Object.keys(sentToCheck() ?? {})], ['check', 'check', [full(made.light), full(made.flat)]]);
+  });
+
   it('16.S68, the label\'s half: with no label — the stub serving no login — a call asks however quiet its kind, saying so', async (t) => {
     byTheRule(t);
     quietOn('behaviour');
@@ -193,12 +212,13 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([res.decision, res.reason, seals()?.[res.raise].label], ['ask', unlabelled, null]);
   });
 
-  it('--always: Claude\'s mark asks however quiet the kind — a design problem at a topic, testing against a live server parking its task in the build (19.4.22, 19.4.20)', async (t) => {
+  it('--always: Claude\'s mark asks however quiet the kind, and though Claude could find the answer out — a design problem at a topic, testing against a live server parking its task in the build (19.4.22, 19.4.20)', async (t) => {
     byTheRule(t);
     quietOn('behaviour');
+    const checkable = labelledAs(CALL, 'behaviour', { yes: ['checkable'] });
 
-    const design = (await raised(NOTE, ['--answers', made.note, '--always', 'design-problem'], CALL, labelledAs(CALL, 'behaviour'))).res;
-    const server = (await raised(BUILD, ['--answers', made.where, '--parks', '2.3', '--always', 'live-server'], CALL, labelledAs(CALL, 'behaviour'))).res;
+    const design = (await raised(NOTE, ['--answers', made.note, '--always', 'design-problem'], CALL, checkable)).res;
+    const server = (await raised(BUILD, ['--answers', made.where, '--parks', '2.3', '--always', 'live-server'], CALL, checkable)).res;
 
     assert.deepStrictEqual([[design.decision, design.reason], [server.decision, server.parked, server.reason]], [
       ['ask', 'The root cause is a design problem, so it always comes to you.'],
@@ -226,13 +246,17 @@ describe('the rule\'s decisions as a raise meets them', () => {
     ]);
   });
 
-  it('3.S15: in a build in auto, a danger question parks its task for the person however quiet its kind — a question about the session whose option could lose data, composing process, among them (16.S62)', async (t) => {
+  it('3.S15: in a build in auto, a danger question parks its task for the person however quiet its kind, and though Claude could find the answer out — a question about the session whose option could lose data, composing process, among them (16.S62, 16.5.1)', async (t) => {
     byTheRule(t);
     quietOn('process');
+    const findable = { ...CALL, question: 'Does a new note reuse the window of one just closed?' };
 
-    const { res } = await raised(BUILD, ['--answers', made.where, '--parks', '2.3'], CALL, labelledAs(CALL, 'process', { yes: ['danger'] }));
+    const plain = (await raised(BUILD, ['--answers', made.where, '--parks', '2.3'], CALL, labelledAs(CALL, 'process', { yes: ['danger'] }))).res;
+    const checkable = (await raised(BUILD, ['--answers', made.size, '--parks', '2.4'], findable, labelledAs(findable, 'process', { yes: ['danger', 'checkable'] }))).res;
 
-    assert.deepStrictEqual([res.decision, res.parked, res.task, res.reason], ['ask', 'Q1', '2.3', 'An answer here could lose data or weaken security, so it always comes to you.']);
+    const danger = 'An answer here could lose data or weaken security, so it always comes to you.';
+    assert.deepStrictEqual([plain, checkable].map((res) => [res.decision, res.parked, res.task, res.reason]), [['ask', 'Q1', '2.3', danger], ['ask', 'Q2', '2.4', danger]]);
+    assert.strictEqual(sentToCheck(), null);
   });
 
   it('16.S72: mid-build, replacing the person\'s decision of a quiet kind asks, parking its task, whatever the counts; replacing Claude\'s call of the same kind follows the rule, and proceeds, landing Claude\'s replacement (16.5.7, 12.9.2)', async (t) => {
@@ -245,5 +269,17 @@ describe('the rule\'s decisions as a raise meets them', () => {
 
     assert.deepStrictEqual([yours.decision, yours.parked, yours.reason], ['ask', 'Q1', 'You decided this yourself, so changing it always comes to you.']);
     assert.deepStrictEqual([mine.decision, lastEntry().event, lastEntry().replaces, lastEntry().by, lastEntry().task], ['proceed', 'replaced', full(made.mine), 'claude', '2.5']);
+  });
+
+  it('a decision of Claude\'s the person kept against its replacement is theirs: raised for replacement again, it asks whatever the counts, as their own decision would (16.5.7, 5.3.14)', async (t) => {
+    quietOn('behaviour');
+    const labelledFrame = labelledAs(FRAMED, 'behaviour');
+    const first = (await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, labelledFrame)).res;
+    answer(first.raise, ['--pick', 'keep'], { why: 'They want a note light.' });
+    byTheRule(t);
+
+    const again = (await raised(NOTE, ['--replaces', made.light, '--reason', 'changed-mind'], FRAMED, labelledFrame)).res;
+
+    assert.deepStrictEqual([again.decision, again.reason, lastEntry().event], ['ask', 'You decided this yourself, so changing it always comes to you.', 'kept']);
   });
 });

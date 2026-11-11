@@ -11,20 +11,23 @@
 //
 // It decides, in this order:
 // - In discovery, ask: nothing is decided there alone (16.7.3).
+// - Always ask, whatever the counts (16.5), where no label is needed to
+//   tell: replacing an entry the person decided, or kept since (16.5.7); and
+//   a question Claude marks as a design problem (19.4.22) or testing against
+//   a live server (19.4.20), a mark that can only make it ask.
 // - With no label — the labeller's call failed, or no login serves it —
 //   ask (16.19.8).
+// - Always ask where the label tells: a danger question, read from the
+//   label's ninth answer whatever kind it composes (16.5.1); its kind under a
+//   care entry in this project (16.5.2).
 // - A question Claude could find the answer to (the label's second answer):
 //   check, drawing nothing; raised again once sent to check, ask (16.3.1,
-//   16.11.7).
-// - Always ask, whatever the counts (16.5): a danger question, read from the
-//   label's ninth answer whatever kind it composes (16.5.1); its kind under a
-//   care entry in this project (16.5.2); replacing an entry the person
-//   decided, read from the entry (16.5.7); and a question Claude marks as a
-//   design problem (19.4.22) or testing against a live server (19.4.20), a
-//   mark that can only make it ask.
+//   16.11.7). A check settles a fact, never the person's consent, so it
+//   comes after every ask above.
 // - A call Claude sorts as having one defensible answer, as the count of
 //   such calls stands (16.4.10, 16.3.7): it proceeds until overrules lift
-//   that count's bound past the threshold.
+//   that count's bound past the threshold — a whole overrule counted at
+//   least.
 // - Else as its kind's count stands (16.4.1, 16.6.1): asking until its bound
 //   falls below the threshold, then quiet, proceeding, until the bound rises
 //   a quarter above it.
@@ -57,8 +60,8 @@ const { HARD_TO_UNDO, ASK_AGAIN } = require('./trust-settings.cjs');
  * @typedef {object} Context
  * @property {Label|null} label the labeller's, null where it gave none
  * @property {{unit: string, phase: string, topic: string|null}} place where the call is made
- * @property {boolean} blocks_build made in the build, where a question asked parks
- * @property {DecidedBy|null} replaced_by who decided the entry the call would replace, null where it replaces none
+ * @property {boolean} blocks_build made in the build for a task, which a question asked parks
+ * @property {DecidedBy|null} replaced_by whose the entry the call would replace is — who decided it, or the person where they kept it since — null where it replaces none
  * @property {Always|null} always the mark it always asks by, null for none
  * @property {boolean} checked sent to check once already
  * @property {{id: string, name: string}} project the project the call is made in
@@ -90,19 +93,24 @@ const asks = (reason) => ({ decision: 'ask', reason });
 /** @param {string} reason @returns {{decision: Ruling, reason: string}} */
 const proceeds = (reason) => ({ decision: 'proceed', reason });
 
+// The most places a percent is shown to: past them a bound and a line read
+// alike only where the bound is the line, to the bisection's precision.
+const MOST_PLACES = 10;
+
 /** A rate in percent, to `places`. @param {number} rate @param {number} places */
 const shown = (rate, places) => Number((rate * 100).toFixed(places));
 
-/** A line, as a percent. @param {number} rate */
-const percent = (rate) => `${shown(rate, 2)}%`;
+/** A line, as a percent, to as many places as it holds. @param {number} rate */
+const percent = (rate) => `${shown(rate, MOST_PLACES)}%`;
 
 /**
- * A bound as a percent, to as few places as tell it from `line`'s — two at
- * most — so it never reads as the line itself.
+ * A bound as a percent, to as few places as tell it from `line`'s, so it
+ * never reads as the line itself.
  * @param {number} bound @param {number} line
  */
 function against(bound, line) {
-  const places = [0, 1].find((n) => shown(bound, n) !== shown(line, n)) ?? 2;
+  let places = 0;
+  while (places < MOST_PLACES && shown(bound, places) === shown(line, places)) places += 1;
   return `${shown(bound, places)}%`;
 }
 
@@ -122,28 +130,54 @@ function lineOf({ settings, blocks_build: blocks }, hard) {
 }
 
 /**
- * Why the question always asks, or null where nothing makes it.
- * @param {Context} context @param {Kind} kind
+ * Why the call asks before its label is read — in discovery, replacing an
+ * entry of the person's, under Claude's mark, or with no label — or null.
+ * @param {Context} context
  * @returns {string|null}
  */
-function alwaysAsks({ label, care, project, replaced_by: by, always }, kind) {
-  if (danger(label)) return DANGER;
-  if (care.some((entry) => entry.project === project.id && entry.kind === kind)) return `It's ${kind}, and you've asked that ${kind} always comes to you in ${project.name}.`;
+function asksUnread({ place, replaced_by: by, always, label }) {
+  if (place.phase === 'discovery') return IN_DISCOVERY;
   if (by === 'person') return YOURS;
-  return always === null ? null : ALWAYS[always];
+  if (always !== null) return ALWAYS[always];
+  return label === null ? UNLABELLED : null;
 }
 
 /**
- * As the count of Claude's one-answer calls stands at `line`.
+ * Why the label makes the question always ask — danger, or a care entry on
+ * its kind in this project — or null.
+ * @param {Context} context @param {Kind} kind
+ * @returns {string|null}
+ */
+function asksByLabel({ label, care, project }, kind) {
+  if (danger(/** @type {Label} */ (label))) return DANGER;
+  return care.some((entry) => entry.project === project.id && entry.kind === kind) ? `It's ${kind}, and you've asked that ${kind} always comes to you in ${project.name}.` : null;
+}
+
+/**
+ * How a count gone quiet under `line` stands, not yet a quarter over it
+ * (16.6.1): the bound against the line it would ask again over.
+ * @param {number} bound @param {Line} line
+ */
+function quietSince(bound, { limit, said }) {
+  const again = limit * ASK_AGAIN;
+  return `went under ${said} and haven't risen over ${percent(again)} since: ${against(bound, again)}.`;
+}
+
+/**
+ * As the count of Claude's one-answer calls stands at `line`: quiet over it
+ * where the overrules weigh less than one whole overrule, or where they went
+ * under it and have not risen a quarter over it since.
  * @param {Context} context @param {Line} line
  */
 function oneAnswer({ counts, project }, { limit, said }) {
   const { asks: asking, bound, losses } = stateOf(counts.one, limit);
-  const lead = `It has one sensible answer, ${asking ? 'but' : 'and'} you`;
-  if (asking) return asks(`${lead}'ve overruled my one-answer calls in ${project.name} more often than you allow: ${against(bound, limit)}, over ${said}.`);
-  if (losses === 0) return proceeds(`${lead} haven't overruled my one-answer calls in ${project.name}.`);
-  if (bound < limit) return proceeds(`${lead}'ve overruled my one-answer calls in ${project.name} less often than you allow: ${against(bound, limit)}, under ${said}.`);
-  return proceeds(`${lead} haven't overruled my one-answer calls in ${project.name} often enough to bring them to you: ${against(bound, limit)}.`);
+  const lead = `It has one sensible answer, ${asking ? 'but' : 'and'}`;
+  const calls = `my one-answer calls in ${project.name}`;
+  if (asking) return asks(`${lead} you've overruled ${calls} more often than you allow: ${against(bound, limit)}, over ${said}.`);
+  if (losses === 0) return proceeds(`${lead} you haven't overruled ${calls}.`);
+  if (bound < limit) return proceeds(`${lead} you've overruled ${calls} less often than you allow: ${against(bound, limit)}, under ${said}.`);
+  if (losses < 1) return proceeds(`${lead} your overrules of ${calls} weigh less than one whole overrule here, so they don't come to you yet: ${against(bound, limit)}, over ${said}.`);
+  return proceeds(`${lead} ${calls} ${quietSince(bound, { limit, said })}`);
 }
 
 /**
@@ -156,27 +190,26 @@ function byKind({ counts, project }, kind, { limit, said }) {
   if (asking && losses + clean === 0) return asks(`It's ${kind}, and you haven't answered any ${kind} questions in ${project.name} yet, so it comes to you.`);
   if (asking) return asks(`${on} still miss more often than you allow: ${against(bound, limit)}, over ${said}.`);
   if (bound < limit) return proceeds(`${on} miss less often than you allow: ${against(bound, limit)}, under ${said}.`);
-  const again = limit * ASK_AGAIN;
-  return proceeds(`${on} went under ${said} and haven't risen over ${percent(again)} since: ${against(bound, again)}.`);
+  return proceeds(`${on} ${quietSince(bound, { limit, said })}`);
 }
 
 /**
- * Whether the call goes to the person, and why: in discovery, or with no
- * label, ask; a question Claude could find out, check, and ask once sent to
- * check; danger, a care entry, replacing the person's decision or a mark,
- * ask; else as the count of one-answer calls stands for a call sorted
- * `one`, and as its kind's count stands for any other.
+ * Whether the call goes to the person, and why: in discovery, replacing an
+ * entry of the person's, under Claude's mark, or with no label, ask; danger
+ * or a care entry, ask; a question Claude could find out, check, and ask
+ * once sent to check; else as the count of one-answer calls stands for a
+ * call sorted `one`, and as its kind's count stands for any other.
  * @param {{sort: 'one'|'several'}} call @param {Context} context
  * @returns {{decision: Ruling, reason: string}}
  */
 function rule({ sort }, context) {
-  const { label, place, checked } = context;
-  if (place.phase === 'discovery') return asks(IN_DISCOVERY);
-  if (label === null) return asks(UNLABELLED);
-  if (checkable(label)) return checked ? asks(CHECKED) : { decision: 'check', reason: CHECK_IT };
+  const unread = asksUnread(context);
+  if (unread !== null) return asks(unread);
+  const label = /** @type {Label} */ (context.label);
   const kind = /** @type {Kind} */ (kindOf(label));
-  const always = alwaysAsks(context, kind);
+  const always = asksByLabel(context, kind);
   if (always !== null) return asks(always);
+  if (checkable(label)) return context.checked ? asks(CHECKED) : { decision: 'check', reason: CHECK_IT };
   const line = lineOf(context, /** @type {boolean} */ (hardToUndo(label)));
   return sort === 'one' ? oneAnswer(context, line) : byKind(context, kind, line);
 }

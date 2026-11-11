@@ -4,10 +4,12 @@
 // The ask rule (leeway-engine/scripts/domain/ask-rule.cjs), its settings
 // (domain/trust-settings.cjs), and the decision point's `ruled`
 // (domain/decision-point.cjs), what it decides once switched on: the order
-// it decides in — discovery, no label, a question Claude could find out,
-// what always asks, Claude's one-answer calls, the kind's count — the
-// threshold a question takes, the reason in the person's words, and §16's
-// worked scenarios held to their figures; the person's threshold and its
+// it decides in — discovery, what always asks with no label to tell it, no
+// label, what always asks by the label, a question Claude could find out,
+// Claude's one-answer calls, the kind's count — the threshold a question
+// takes, one-answer calls' among them, the reason in the person's words, a
+// bound shown to as many places as tell it from its line, and §16's worked
+// scenarios held to their figures; the person's threshold and its
 // raise mid-build read from the settings file; and the rule given the trust
 // log's counts for the project as of the time.
 //
@@ -33,13 +35,16 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { rule } = require(path.join(SCRIPTS, 'domain/ask-rule.cjs'));
 const { DEFAULTS, trustSettings } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));
 const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-const { countsFrom } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { MODEL_LINES, countsFrom } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const { kindOf } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
+const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/ask-rule.cjs').Context} Context */
 /** @typedef {ReturnType<typeof history>} History */
 
 const ELSEWHERE = idOf('Aircon');
+// The generation before the session's model, whose answers it reads at half.
+const PREDECESSOR = MODEL_LINES[0][MODEL_LINES[0].length - 2];
 const MINT = { id: PROJECT_ID, name: 'Mint' };
 const TOPIC = Object.freeze({ unit: 'mint', phase: 'discussion', topic: 'release-flow' });
 const BEHAVIOUR = labelled('behaviour');
@@ -85,31 +90,57 @@ const lossThen = (more = 0) => (h) => {
 };
 
 const QUIET = behaviourAfter(30);
+const DISCOVERY = Object.freeze({ ...TOPIC, phase: 'discovery' });
+const CHECKABLE = labelled('behaviour', { yes: ['checkable'] });
 
-describe('the order the rule decides in (16.7.3, 16.19.8, 16.3.1, 16.5, 16.4.10)', () => {
+const IN_DISCOVERY = 'Nothing is decided in discovery, so it comes to you.';
+const YOURS = 'You decided this yourself, so changing it always comes to you.';
+const LIVE = 'It means testing against a live server, so it always comes to you.';
+const DESIGN = 'The root cause is a design problem, so it always comes to you.';
+const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
+const DANGER = 'An answer here could lose data or weaken security, so it always comes to you.';
+
+/** The rule asking, for `reason`. @param {string} reason */
+const asked = (reason) => ({ decision: 'ask', reason });
+
+describe('the order the rule decides in (16.7.3, 16.5, 16.19.8, 16.3.1, 16.4.10)', () => {
   it('16.S24: in discovery, a call asks however quiet its kind, where nothing is decided alone; and where in the cone the work is enters nowhere — the same counts decide alike at a topic, at a unit\'s level and in the build', () => {
-    const places = [{ ...TOPIC, phase: 'discovery' }, TOPIC, { unit: 'pay', phase: 'specification', topic: null }, { unit: 'pay', phase: 'implementation', topic: null }];
+    const places = [DISCOVERY, TOPIC, { unit: 'pay', phase: 'specification', topic: null }, { unit: 'pay', phase: 'implementation', topic: null }];
 
     assert.deepStrictEqual(places.map((place) => ruling(QUIET, { place })), [
-      { decision: 'ask', reason: 'Nothing is decided in discovery, so it comes to you.' },
+      asked(IN_DISCOVERY),
       ...places.slice(1).map(() => ({ decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 9%, under your 20%.' })),
     ]);
   });
 
   it('16.S68, the label\'s half: with no label — the labeller\'s call failed, or no login served it — a call asks, however quiet its kind, a one-answer call among them (16.19.8)', () => {
-    const asked = { decision: 'ask', reason: 'I couldn\'t tell what kind of question this is, so it comes to you.' };
-
-    assert.deepStrictEqual([ruling(QUIET, { label: null }), ruling(QUIET, { label: null }, 'one')], [asked, asked]);
+    assert.deepStrictEqual([ruling(QUIET, { label: null }), ruling(QUIET, { label: null }, 'one')], [asked(UNLABELLED), asked(UNLABELLED)]);
   });
 
-  it('a question Claude could find the answer to is sent to check, before anything else would ask it — danger among them — and raised again once sent, asks; one Claude could not find out follows the rule though sent before (16.3.1, 16.11.7)', () => {
-    const checkable = labelled('behaviour', { yes: ['checkable'] });
-    const dangerous = labelled('process', { yes: ['checkable', 'danger'] });
-    const check = { decision: 'check', reason: 'You can find this out: check it — read the code or the record, or run something — and raise it again only if checking can\'t settle it.' };
+  it('what always asks with no label to tell it gives its own reason with none: in discovery, replacing an entry of the person\'s and Claude\'s mark each ask as such, and only a call none of them holds asks for want of a label', () => {
+    assert.deepStrictEqual([{ place: DISCOVERY }, { replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, {}].map((more) => ruling(QUIET, { label: null, ...more })), [
+      asked(IN_DISCOVERY), asked(YOURS), asked(LIVE), asked(UNLABELLED),
+    ]);
+  });
 
-    assert.deepStrictEqual([
-      ruling(QUIET, { label: checkable }), ruling(QUIET, { label: dangerous }), ruling(QUIET, { label: checkable, checked: true }), decision(QUIET, { checked: true }),
-    ], [check, check, { decision: 'ask', reason: 'Checking couldn\'t settle it, so it comes to you.' }, 'proceed']);
+  it('a question Claude could find the answer to is sent to check, and raised again once sent, asks; one Claude could not find out follows the rule though sent before (16.3.1, 16.11.7)', () => {
+    assert.deepStrictEqual([ruling(QUIET, { label: CHECKABLE }), ruling(QUIET, { label: CHECKABLE, checked: true }), decision(QUIET, { checked: true })], [
+      { decision: 'check', reason: 'You can find this out: check it — read the code or the record, or run something — and raise it again only if checking can\'t settle it.' },
+      asked('Checking couldn\'t settle it, so it comes to you.'),
+      'proceed',
+    ]);
+  });
+
+  it('what always asks comes before the check, which settles a fact and never the person\'s consent: a question Claude could find out asks with its own reason, sent to check before or not, in discovery, replacing an entry of the person\'s, under Claude\'s mark, as a danger question and under a care entry (16.5.1, 16.5.2, 16.5.7, 16.7.3, 19.4.20, 19.4.22)', () => {
+    const always = [
+      { place: DISCOVERY }, { replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, { always: /** @type {const} */ ('design-problem') },
+      { label: labelled('process', { yes: ['checkable', 'danger'] }) }, { care: [{ project: PROJECT_ID, kind: /** @type {const} */ ('behaviour') }] },
+    ];
+    const care = 'It\'s behaviour, and you\'ve asked that behaviour always comes to you in Mint.';
+
+    assert.deepStrictEqual(always.flatMap((more) => [false, true].map((checked) => ruling(QUIET, { label: CHECKABLE, ...more, checked }))), [
+      IN_DISCOVERY, YOURS, LIVE, DESIGN, DANGER, care,
+    ].flatMap((reason) => [asked(reason), asked(reason)]));
   });
 
   it('16.S17: a danger question asks however many clean answers its kind holds', () => {
@@ -127,24 +158,29 @@ describe('the order the rule decides in (16.7.3, 16.19.8, 16.3.1, 16.5, 16.4.10)
     assert.deepStrictEqual([kindOf(label), decision(h, { label }), decision(h, { label }, 'one'), decision(h, { label: labelled('process') })], ['process', 'ask', 'ask', 'proceed']);
   });
 
-  it('a care entry on this project and the question\'s kind always asks (16.5.2); one on another project, or on another kind, leaves the counts to decide (16.5.3)', () => {
+  it('a care entry on this project and the question\'s kind always asks, a one-answer call too, the always-asks outranking the sort (16.5.2, 16.3.7); one on another project, or on another kind, leaves the counts to decide (16.5.3)', () => {
     const h = history();
     h.agree(30, 'look');
     const look = labelled('look');
+    const care = [{ project: PROJECT_ID, kind: /** @type {const} */ ('look') }];
+    const cared = asked('It\'s look, and you\'ve asked that look always comes to you in Mint.');
 
     assert.deepStrictEqual([
-      ruling(h, { label: look, care: [{ project: PROJECT_ID, kind: 'look' }] }),
+      ruling(h, { label: look, care }), ruling(h, { label: look, care }, 'one'),
       decision(h, { label: look, care: [{ project: ELSEWHERE, kind: 'look' }, { project: PROJECT_ID, kind: 'words' }] }),
-    ], [{ decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Mint.' }, 'proceed']);
+    ], [cared, cared, 'proceed']);
   });
 
-  it('replacing an entry the person decided asks whatever the counts (16.5.7); replacing one Claude decided, one the person handed over or the builder\'s by "don\'t care", or one carried over, follows the counts', () => {
-    const yours = { decision: 'ask', reason: 'You decided this yourself, so changing it always comes to you.' };
+  it('replacing an entry the person decided asks whatever the counts, and whatever its kind (16.5.7); replacing one Claude decided, one the person handed over or the builder\'s by "don\'t care", or one carried over, follows the counts', () => {
+    const yours = asked(YOURS);
+    const quietKinds = history();
+    for (const kind of KINDS) quietKinds.agree(30, kind);
 
     assert.deepStrictEqual(
       [ruling(QUIET, { replaced_by: 'person' }), ruling(QUIET, { replaced_by: 'person' }, 'one'), ...['claude', 'your-call', 'dont-care', 'carried'].map((by) => decision(QUIET, { replaced_by: /** @type {any} */ (by) }))],
       [yours, yours, 'proceed', 'proceed', 'proceed', 'proceed'],
     );
+    assert.deepStrictEqual(KINDS.map((kind) => ruling(quietKinds, { label: labelled(kind), replaced_by: 'person' })), KINDS.map(() => yours));
   });
 
   it('a mark Claude gives a question asks, however quiet its kind: a design problem (19.4.22) or testing against a live server (19.4.20)', () => {
@@ -170,7 +206,7 @@ describe('the order the rule decides in (16.7.3, 16.19.8, 16.3.1, 16.5, 16.4.10)
     ]);
   });
 
-  it('a one-answer call whose count holds overrules and is quiet proceeds, saying how they stand: under the threshold (64 calls, 1 overruled: 6.99%), or quiet again, not yet a quarter above it (33 calls, 4 overruled: 22.49%)', () => {
+  it('a one-answer call whose count holds overrules and is quiet proceeds, saying how they stand against the line it is read by: under the threshold (64 calls, 1 overruled: 6.99%); quiet again, not yet a quarter over it (33 calls, 4 overruled: 22.49%); or over it from overrules weighing less than a whole one, on the next model\'s session (5 calls, 1 overruled, each at half: 70.4%)', () => {
     const under = history();
     for (let i = 0; i < 64; i += 1) under.call('one');
     under.reverse(under.call('one'));
@@ -178,10 +214,33 @@ describe('the order the rule decides in (16.7.3, 16.19.8, 16.3.1, 16.5, 16.4.10)
     for (let i = 0; i < 3; i += 1) between.reverse(between.call('one'));
     for (let i = 0; i < 33; i += 1) between.call('one');
     between.reverse(between.call('one'));
+    const inherited = history({ model: PREDECESSOR });
+    for (let i = 0; i < 4; i += 1) inherited.call('one');
+    inherited.reverse(inherited.call('one'));
 
-    assert.deepStrictEqual([ruling(under, {}, 'one'), ruling(between, {}, 'one')], [
+    assert.deepStrictEqual([ruling(under, {}, 'one'), ruling(between, {}, 'one'), ruling(inherited, {}, 'one')], [
       { decision: 'proceed', reason: 'It has one sensible answer, and you\'ve overruled my one-answer calls in Mint less often than you allow: 7%, under your 20%.' },
-      { decision: 'proceed', reason: 'It has one sensible answer, and you haven\'t overruled my one-answer calls in Mint often enough to bring them to you: 22%.' },
+      { decision: 'proceed', reason: 'It has one sensible answer, and my one-answer calls in Mint went under your 20% and haven\'t risen over 25% since: 22%.' },
+      { decision: 'proceed', reason: 'It has one sensible answer, and your overrules of my one-answer calls in Mint weigh less than one whole overrule here, so they don\'t come to you yet: 70%, over your 20%.' },
+    ]);
+  });
+
+  it('a one-answer call takes the threshold its question takes (16.4.10): hard to undo, half — 31 calls, 1 overruled (13.98%), ask over 10% and proceed under 20% (16.4.8); blocking build work, the raise picked — 14 calls, 1 overruled (27.94%), proceed under 30% mid-build and ask over 20% not blocking (16.4.7)', () => {
+    /** A one-answer count of `clean` calls and one overruled. @param {number} clean */
+    const overruledOnce = (clean) => {
+      const h = history();
+      for (let i = 0; i < clean; i += 1) h.call('one');
+      h.reverse(h.call('one'));
+      return h;
+    };
+    const raised = { ...DEFAULTS, build_threshold: 0.3 };
+
+    assert.deepStrictEqual([
+      ruling(overruledOnce(30), { label: HARD }, 'one'), decision(overruledOnce(30), {}, 'one'),
+      ruling(overruledOnce(13), { blocks_build: true, settings: raised }, 'one'), decision(overruledOnce(13), { settings: raised }, 'one'),
+    ], [
+      asked('It has one sensible answer, but you\'ve overruled my one-answer calls in Mint more often than you allow: 14%, over the 10% for what\'s hard to undo.'), 'proceed',
+      { decision: 'proceed', reason: 'It has one sensible answer, and you\'ve overruled my one-answer calls in Mint less often than you allow: 28%, under your 30% mid-build.' }, 'ask',
     ]);
   });
 
@@ -276,6 +335,16 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
     ]);
   });
 
+  it('shows a bound to as many places as tell it from the line it is read against, never as the line itself: 23.77% under the 23.8% a threshold of 19.04% asks again over, a loss landing on 16 clean answers gone quiet (23.766%); and that figure asking at 23.7661% over a threshold of 23.7658%', () => {
+    assert.deepStrictEqual([
+      ruling(behaviourAfter(16, lossThen()), { settings: { ...DEFAULTS, threshold: 0.1904 } }),
+      ruling(behaviourAfter(0, lossThen(16)), { settings: { ...DEFAULTS, threshold: 0.237658 } }),
+    ], [
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under your 19.04% and haven\'t risen over 23.8% since: 23.77%.' },
+      asked('It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 23.7661%, over your 23.7658%.'),
+    ]);
+  });
+
   it('16.S47: more than 10 clean answers in the person\'s other projects and no loss start a new project at 24% (23.84%), and it asks; after two clean answers there it still asks (20.58%), after three it is quiet (19.26%) and proceeds (16.14.4)', () => {
     /** @param {number} here */
     const after = (here) => {
@@ -324,7 +393,7 @@ describe('the person\'s settings (16.4.6, 16.4.7, 16.13.7)', () => {
   });
 
   it('refuses, naming the file, a settings file that does not read as a JSON object, a trust key that is none, and a setting holding what it cannot', () => {
-    const refusals = ['{"torn', '[]', '{"trust": 0.2}', '{"trust": {"threshold": 20}}', '{"trust": {"build_threshold": 0}}'].map((text) => {
+    const refusals = ['{"torn', '[]', '{"trust": 0.2}', '{"trust": null}', '{"trust": {"threshold": 20}}', '{"trust": {"threshold": 1}}', '{"trust": {"build_threshold": 0}}'].map((text) => {
       settingsHold(text);
       try {
         trustSettings();
@@ -338,7 +407,9 @@ describe('the person\'s settings (16.4.6, 16.4.7, 16.13.7)', () => {
       'the settings file {file} does not read — …: the ask rule\'s settings are under its trust key',
       'the settings file {file} holds no JSON object — the ask rule\'s settings are under its trust key',
       'the settings file {file}\'s trust key is not an object of the ask rule\'s settings',
+      'the settings file {file}\'s trust key is not an object of the ask rule\'s settings',
       'the settings file {file}\'s trust.threshold is not a fraction above 0 and below 1: 20',
+      'the settings file {file}\'s trust.threshold is not a fraction above 0 and below 1: 1',
       'the settings file {file}\'s trust.build_threshold is not null or a fraction above 0 and below 1: 0',
     ]);
   });
