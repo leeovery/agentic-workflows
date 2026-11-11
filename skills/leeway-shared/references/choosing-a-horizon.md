@@ -1,6 +1,6 @@
 # Choosing a Horizon
 
-*Shared reference. Loaded by [backlogging.md](backlogging.md), [postponing-the-topic.md](postponing-the-topic.md), and leeway's [inbox-working-set.md](../../leeway/references/inbox-working-set.md).*
+*Shared reference. Loaded by [backlogging.md](backlogging.md) and leeway's [inbox-working-set.md](../../leeway/references/inbox-working-set.md).*
 
 ---
 

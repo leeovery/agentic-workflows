@@ -30,14 +30,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
+const { ok, refuses, cleanupFixture, sectionOf, screenOf } = require('./engine-harness.cjs');
 const { setupFixture, createManifest, useTempFolder, withEnv } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { MENUS, HELP_GATE, drawMenu } = require(path.join(SCRIPTS, 'domain/menus.cjs'));
 const { renderSurface } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const { parseHelp, menuDrift, helpScreen, menusDrift } = require(path.join(SCRIPTS, 'domain/projections/help.cjs'));
-const { openGate, gateShown, section, menuSection, menu, cmdOption, MENU_INSTRUCTION, NBSP } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
+const { openGate, gateShown, section, menuSection, menu, cmdOption, MENU_INSTRUCTION } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { recordGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { SCHEMA } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 
@@ -122,8 +122,6 @@ const atTheEpic = () => ok(dir, ['session', 'label', EPIC], { env: conversation(
 /** The section markers of an output, in order. @param {string} out */
 const markers = (out) => out.split('\n').filter((line) => line.startsWith('=== ')).map((line) => line.replace(/ \(.*$/, ''));
 
-/** A section's lines as the screen reads them, its emphasis dropped and its hanging indents plain spaces: §18's and §23's text. @param {string} out @param {string} name */
-const read = (out, name) => sectionOf(out, name).replace(/\*\*|`/g, '').replaceAll(NBSP, ' ').split('\n').slice(0, -1);
 
 /** The registry's start menu, its rows' keys as §18 draws them. */
 const START = drawn('start-menu', ['#', 'p', 's', 't', 'r', 'e', 'v', 'm']);
@@ -215,7 +213,7 @@ describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', (
     }));
 
     assert.deepStrictEqual(markers(out), ['=== DISPLAY: start-menu', '=== MENU: start menu']);
-    assert.deepStrictEqual([read(out, 'DISPLAY: start-menu'), read(out, 'MENU: start menu')], [['Inbox: 3 ideas · 2 bugs · 1 quick-fix'], [
+    assert.deepStrictEqual([screenOf(out, 'DISPLAY: start-menu'), screenOf(out, 'MENU: start menu')], [['Inbox: 3 ideas · 2 bugs · 1 quick-fix'], [
       '· · · · · · · · · · · ·',
       '◆ What would you like to do?',
       '',
@@ -255,7 +253,7 @@ describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', (
     }));
 
     assert.deepStrictEqual(markers(out), ['=== MENU: manage']);
-    assert.deepStrictEqual(read(out, 'MENU: manage'), [
+    assert.deepStrictEqual(screenOf(out, 'MENU: manage'), [
       '· · · · · · · · · · · ·',
       '◆ What would you like to manage?',
       '',
@@ -283,7 +281,7 @@ describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', (
     }));
 
     assert.deepStrictEqual(markers(out), ['=== MENU: manage unit']);
-    assert.deepStrictEqual(read(out, 'MENU: manage unit'), [
+    assert.deepStrictEqual(screenOf(out, 'MENU: manage unit'), [
       '· · · · · · · · · · · ·',
       'Lazy Resume On Attach (feature)',
       '',
@@ -309,7 +307,7 @@ describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', (
     }));
 
     assert.deepStrictEqual(markers(out), ['=== MENU: archived item']);
-    assert.deepStrictEqual(read(out, 'MENU: archived item'), [
+    assert.deepStrictEqual(screenOf(out, 'MENU: archived item'), [
       '· · · · · · · · · · · ·',
       'Selected: Enter In The Preview Should Attach (idea, closed by',
       'Enter Attaches From Preview)',
@@ -403,7 +401,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     const out = inConversation(() => helpScreen(START_HELPED, {}, parseHelp(START_HELP, 'start-menu.help.md')));
 
     assert.deepStrictEqual(markers(out), ['=== TITLE', '=== DISPLAY: help', '=== MENU: help']);
-    assert.deepStrictEqual([sectionOf(out, 'TITLE'), read(out, 'DISPLAY: help'), read(out, 'MENU: help')], ['# **`■ Help`**\n', [
+    assert.deepStrictEqual([sectionOf(out, 'TITLE'), screenOf(out, 'DISPLAY: help'), screenOf(out, 'MENU: help')], ['# **`■ Help`**\n', [
       'The start menu is where every piece of work begins and resumes.',
       '  · A number continues that piece of work: a feature, bugfix or',
       '    quick-fix goes straight to where it stands, an epic opens its',

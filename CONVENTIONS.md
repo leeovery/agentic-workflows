@@ -266,7 +266,7 @@ An opening skill met later in a conversation — without the mod, a handoff invo
 ### References
 
 A skill splits a part into a reference when the part is needed only at a moment — a request at any point, an item's guidance at the close, a corridor's move — so the phase loads it then, and only then.
-- **Named** for what it covers, in kebab-case: `closing-pass.md`, `postponing-the-topic.md`.
+- **Named** for what it covers, in kebab-case: `closing-pass.md`, `sending-a-message.md`.
 - **Headed** with its title, an attribution line, and a rule (lint check 10):
 
   ```markdown

@@ -34,8 +34,6 @@ const { renderSurface } = require('./render-surfaces-world.cjs');
 const SKILLS = path.join(__dirname, '../../skills');
 const DOMAIN = path.join(SKILLS, 'leeway-engine/scripts/domain');
 const { raiseScreenOf } = require(path.join(DOMAIN, 'raise.cjs'));
-const { epicDashboard, epicMenu, epicMenuKeys, epicInSessionGate } = require(path.join(DOMAIN, 'projections/epic.cjs'));
-const epicGateway = require(path.join(SKILLS, 'leeway-continue-epic/scripts/gateway.cjs'));
 
 const UNIT = 'fumi';
 const KEY = 'note-window';
@@ -114,13 +112,6 @@ describe('a started topic renamed goes by its title on every screen that names i
   /** A surface of the catalogue, rendered in process. @param {string} surface @param {Record<string, string>} args */
   const shown = (surface, args) => renderSurface(dir, surface, args);
 
-  /** The epic's detail as its menu reads it, and the peer's hold on the topic. */
-  function epic() {
-    const detail = epicGateway.discover(dir, UNIT);
-    const presence = [{ phase: 'discussion', topic: KEY, age_seconds: 120, held: true, session_id: PEER.id }];
-    return { detail, presence };
-  }
-
   /** A raise drawn on the topic, as sealed. */
   const SEAL = Object.freeze({
     id: 'r1', menu: 'raise', fact: false, reason: 'It decides where a note opens.', replaces: null, parks: null,
@@ -136,14 +127,7 @@ describe('a started topic renamed goes by its title on every screen that names i
     ['the wait for agents', () => shown('wait-agents', { dotpath: `${UNIT}.${KEY}` }), `Still running on ${TITLE}: 1 deep dive.`],
     ['the experiment register', () => shown('experiment-register', { dotpath: `${UNIT}.experiment.${KEY}` }), `Experiments — ${TITLE} (1 experiment)`],
     ['the raise screen', () => raiseScreenOf(dir, /** @type {any} */ (SEAL)), `Fumi · ${TITLE}`],
-    ['the epic dashboard\'s map', () => epicDashboard(UNIT, epic().detail), `├─ ◐ ${TITLE}`],
-    ['the epic dashboard\'s specification', () => epicDashboard(UNIT, epic().detail), `├─ ${TITLE}    [stale]`],
-    ['the epic menu', () => epicMenu(UNIT, epic().detail, epic()).rendered, `Continue "${TITLE}"`],
-    ['the in-session gate', () => {
-      const { detail, presence } = epic();
-      const held = epicMenuKeys(UNIT, detail, { presence }).find((k) => k.topic === KEY && k.in_session);
-      return epicInSessionGate(UNIT, /** @type {any} */ (held), detail.titles);
-    }, `"${TITLE}" is open in another session`],
+    ['the epic menu', () => shown('epic-menu', { dotpath: UNIT }), `Close "${TITLE}" as decided`],
     ['enter\'s held question', () => output(dir, ['enter', 'discussion', UNIT, KEY], { env: SESSION }), `"${TITLE}" is open in another session`],
     ['the handoff line', () => output(dir, ['handoff', 'leeway-discussion-process', 'epic', UNIT, KEY]), `→ Discussion · ${NAME}`],
   ];
@@ -152,10 +136,6 @@ describe('a started topic renamed goes by its title on every screen that names i
     it(`${surface} names it "${phrase}", never by its key titlecased`, () => assertTitled(render(), phrase));
   }
 
-  it('the reader Claude matches a name against carries the title beside the key', () => {
-    const line = (dump) => dump.split('\n').find((l) => l.includes(` ${KEY} [`));
-    assert.match(line(epicGateway.formatScoped(UNIT, epicGateway.discover(dir, UNIT))), new RegExp(`^ {2}- \\S+ ${KEY} \\[discussing\\] goes_by=${NAME} `));
-  });
 });
 
 describe('a screen that writes as it shows, or over the unit changed, goes by the title too, on a copy of its own (8.8.17)', () => {
@@ -221,7 +201,7 @@ describe('every other verb, render and entry that names a topic takes its title,
   const CALLS = [
     ['topic edit', () => ok(dir, ['topic', 'edit', UNIT, NAME, '--summary', 'Notes, quickly']).name, KEY],
     ['topic rename', () => ok(dir, ['topic', 'rename', UNIT, NAME, 'note-pane']).renamed_from, KEY],
-    ['topic remove, refused for a started topic', () => refusedPristine(dir, ['topic', 'remove', UNIT, NAME]).error, `"${KEY}" can't be removed — discussion is in flight on it; cancel from the epic menu instead`],
+    ['topic remove, refused for a started topic', () => refusedPristine(dir, ['topic', 'remove', UNIT, NAME]).error, `"${KEY}" can't be removed — discussion is in flight on it; cancel it instead: topic cancel ${UNIT} discovery ${KEY}`],
     ['topic order', () => Object.keys(ok(dir, ['topic', 'order', UNIT, `${NAME}=3`]).ordered).join(), KEY],
     ['topic brief, refused for a started topic', () => {
       const draft = writeState(dir, layout.cache('scratch', 'brief.md'), 'What notes are for.\n');
@@ -321,13 +301,13 @@ describe('every screen names a topic through one helper', () => {
     'a work unit, or the project': [
       'board.cjs › unitAt › unit',
       'projections/board-quick-fix.cjs › ledgerAt › unit',
-      'leeway-continue-epic/scripts/gateway.cjs › view › workUnit',
       'mail.cjs › sendReportOf › unit',
       'mail.cjs › topicSender › unit',
       'projections/board-all.cjs › allView › name',
       'projections/board-all.cjs › roadmapLine › from.work_unit',
       'projections/discovery-gates.cjs › approveMapScreen › unit',
       'projections/discovery-gates.cjs › startDisplay › name',
+      'projections/epic-menu.cjs › epicMenuScreen › epic',
       'projections/mail.cjs › sendReport › unit',
       'projections/raise.cjs › header › unit',
       'projections/start-menu.cjs › unitRow › name',
@@ -353,7 +333,7 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a phase, or a work type': [
       'handoff.cjs › phaseTarget › phase',
-      'projections/epic.cjs › groupOf › row.phase',
+      'projections/epic-menu.cjs › epicMenuScreen › phase',
       'projections/workunit.cjs › revisitPhasesSection › phase',
       'render.cjs › phaseCompleted › phase',
       'render.cjs › resolveWorkUnit › String(manifest.work_type || \'\')',

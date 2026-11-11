@@ -16,13 +16,8 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
-const { epicMenu, epicCancelMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
-  Sim, mapTopics, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, askedOn, enterEntry, decideTopic,
+  Sim, mapTopics, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, epicSetAside, askedOn, enterEntry, decideTopic,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic-topics', () => {
@@ -41,15 +36,11 @@ describe('pipeline simulation: epic-topics', () => {
     ]);
     sim.run(['topic', 'order', wu, 'export=1', 'auth=2', 'billing=3', 'roles=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
-    const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
-    const pickable = () => epicCancelMenu(detail()).keys.filter((k) => k.action === 'cancel').map((k) => `${k.phase}/${k.topic}`);
-    const cancelledUnits = () => detail().cancelled.map((u) => `${u.stage}/${u.name}`);
-    const menuOptions = () => epicMenu(wu, detail()).keys.filter((k) => ['cancel_topic', 'reactivate_topic'].includes(k.action)).map((k) => k.key);
+    const setAside = () => epicSetAside(sim, wu);
 
-    // A never-started topic: listed, gated, marked on the map alone, refused
-    // by the map's remove while cancelled, and returned fresh.
-    assert.deepStrictEqual(pickable(), ['discovery/export', 'discovery/auth', 'discovery/billing', 'discovery/roles']);
-    assert.deepStrictEqual(menuOptions(), ['a']);
+    // A never-started topic: gated, marked on the map alone and set aside on
+    // the epic's menu, refused by the map's remove while cancelled, and
+    // returned fresh.
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.export`], { expect: 'content' }),
       /Cancelling \*\*Export\*\* takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later\./);
     const marked = sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
@@ -57,15 +48,14 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export,
       { source: 'discovery', summary: 'Data export', cancelled: true, previous_order: 1 });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Export"\./);
-    assert.deepStrictEqual(cancelledUnits(), ['discovery/export']);
-    assert.deepStrictEqual(menuOptions(), ['a', 'e']);
-    sim.refuses(['topic', 'remove', wu, 'export'], /^"export" can't be removed — it is cancelled and stays on the map as record; reactivate it from the epic menu first$/);
+    assert.deepStrictEqual(setAside(), ['└─ Export — cancelled']);
+    sim.refuses(['topic', 'remove', wu, 'export'], /^"export" can't be removed — it is cancelled and stays on the map as record; reactivate it first: topic reactivate cuts discovery export$/);
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'export'], /"export" is already cancelled/);
     const returned = sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
     assert.deepStrictEqual(returned.restored, []);
     assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export, { source: 'discovery', summary: 'Data export', order: 1 });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'reactivate'], { expect: 'content' }), /Reactivated "Export"\.\n/);
-    assert.deepStrictEqual(cancelledUnits(), []);
+    assert.deepStrictEqual(setAside(), []);
 
     // A started topic: a discussion in flight with a spawned experiment and
     // a message waiting in its mailbox. The cancel takes all of it in one
@@ -95,8 +85,7 @@ describe('pipeline simulation: epic-topics', () => {
     assert.strictEqual(m.phases.experiment.items.auth.status, 'completed', 'the series settles over its abandoned record');
     assert.strictEqual(m.phases.experiment.items.auth.experiments.E1.reason, 'topic cancelled');
     assert.strictEqual(m.phases.discovery.items.auth.cancelled, true);
-    assert.ok(!epicMenu(wu, detail()).keys.some((k) => k.action === 'continue_experiment'), 'no live record, no laboratory row');
-    assert.deepStrictEqual(cancelledUnits(), ['discovery/auth']);
+    assert.deepStrictEqual(setAside(), ['└─ Auth — cancelled'], 'set aside, no row of its own leading into the laboratory');
     // The conversation's entry refuses the cancelled topic, naming the reactivate.
     sim.refuses(['enter', 'discussion', wu, 'auth'], /^the topic "auth" is cancelled — reactivating it goes through the epic menu/);
 
@@ -121,7 +110,6 @@ describe('pipeline simulation: epic-topics', () => {
 
     // A stash-less cancelled item returns to never-attempted.
     sim.run(['manifest', 'set', `${wu}.discussion.stale`, 'status', 'cancelled']);
-    assert.deepStrictEqual(cancelledUnits(), ['discovery/stale']);
     const revived = sim.run(['topic', 'reactivate', wu, 'discovery', 'stale']);
     assert.deepStrictEqual(revived.restored, [{ phase: 'discussion', status: null }]);
     assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.stale, {});
@@ -162,8 +150,8 @@ describe('pipeline simulation: epic-topics', () => {
     assert.strictEqual(peerRow.held, true, 'the peer is still in its topic — a cancel never evicts another session');
     assert.strictEqual(peerRow.session_id, peer.id);
     // The session that cancelled its topic hands off to the epic menu, which
-    // shows no banner: the receipt was the session's.
-    assert.strictEqual(arriveAtEpicMenu(sim, wu, 'discussion', 'cancelled'), '');
+    // sets it aside.
+    assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'cancelled'), /^SET ASIDE\n {2}└─ Alpha — cancelled$/m);
   });
 
   it('a postpone releases its own hold and never a peer\'s, whose next commit over it clears rather than beats', () => {
@@ -176,7 +164,7 @@ describe('pipeline simulation: epic-topics', () => {
     const taken = sim.run(['topic', 'postpone', wu, 'alpha', '--horizon', 'next']);
     assert.deepStrictEqual(taken.postponed, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'discussion', 'alpha'), undefined, 'the caller\'s own hold leaves with the topic');
-    assert.strictEqual(arriveAtEpicMenu(sim, wu, 'discussion', 'postponed'), '');
+    assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'postponed'), /^SET ASIDE\n {2}└─ Alpha — postponed · roadmap next$/m);
 
     // Back at the menu, the session postpones the topic a peer sits in.
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);

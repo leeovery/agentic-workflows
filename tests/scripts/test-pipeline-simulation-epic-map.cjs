@@ -23,15 +23,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
-const {
-  epicMenu, epicDashboard,
-} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { git, stateGit, GUARD_GROUPS } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, send, carryOn, arrive, handoff, arriveAtEpicMenu, epicPick, backToStart, startNew, enterEntry, decideTopic, discussed,
+  Sim, sessionLog, send, carryOn, handoff, epicMenuAt, arriveAtEpicMenu, epicRow, epicKey, epicPick, startMenu, startNew, enterEntry, decideTopic, discussed,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic map', () => {
@@ -82,21 +76,21 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['commit', wu, '--discovery', '-m', `discovery(${wu}): shape the map`]);
     // A session interrupted here resumes from the epic menu, whose discovery
     // row hands the epic back to discovery.
-    assert.strictEqual(epicPick(sim, wu, 'continue_discovery').line, `→ Discovery · ${wu}`);
+    assert.strictEqual(epicPick(sim, wu, 'd').line, `→ Discovery · ${wu}`);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
-    // The session's end hands off to the epic menu, no banner, which labels
-    // the work unit alone on arrival.
+    // The session's end hands off to the epic menu, which leaves the
+    // conversation at the work unit alone.
     handoff(sim, `/leeway-continue-epic ${wu}`);
-    arrive(sim, wu);
+    epicMenuAt(sim, wu);
 
     // Alpha: its menu row hands off to its discussion, decided at the
     // decided screen, back on the epic menu.
-    assert.strictEqual(epicPick(sim, wu, 'start_discussion', 'alpha').args, `epic ${wu} alpha`);
+    assert.strictEqual(epicPick(sim, wu, 'alpha').args, `epic ${wu} alpha`);
     discussed(sim, wu, 'alpha');
-    assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /Discussion completed for "Overhaul"\./);
+    assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /^DECIDED\n {2}└─ Alpha$/m);
     // The menu's way back: the start menu, the epic still its row.
-    assert.ok(backToStart(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys)
-      .some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`));
+    assert.deepStrictEqual(epicKey(sim, wu, 'b').next, { kind: 'engine', argv: ['render', 'start-menu'] });
+    assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`));
 
     // Beta discussed to its decided screen, a background review's back-off
     // walked on the way; gamma-prime cancelled mid-flight and reactivated
@@ -107,7 +101,7 @@ describe('pipeline simulation: epic map', () => {
     /** @param {string} topic @param {string} question @param {string} text */
     const decide = (topic, question, text) => sim.run(['ledger', 'decide', `${wu}.discussion.${topic}`, '--answers', question], null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text, why: 'The record settles it.' }));
-    epicPick(sim, wu, 'start_discussion', 'beta');
+    epicPick(sim, wu, 'beta');
     enterEntry(sim, wu, 'discussion', 'beta');
     // Started, beta's brief stays as it was written: what bears on it now
     // goes as a message.
@@ -162,11 +156,8 @@ describe('pipeline simulation: epic map', () => {
     // The cue follows the mailbox, not the status: the reopened item is
     // in-progress with no stub to read, yet its rows say what waits — and
     // the answer retires the cue.
-    const betaRow = () => drawLabel(epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
-      .find((k) => k.topic === 'beta' && k.action === 'continue_discussion').label);
-    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion* · mail waiting');
-    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)).replace(/\n[ │]+/g, ' '),
-      /Discussing · mail waiting/);
+    const betaRow = () => epicRow(sim, wu, 'Beta');
+    assert.strictEqual(betaRow(), '1 → Continue "Beta" — in progress · mail waiting (recommended)');
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked/);
     const movesSeen = () => sim.run(['agent', 'scan', wu, 'discussion', 'beta']).review_arming.moves_seen;
@@ -174,7 +165,7 @@ describe('pipeline simulation: epic map', () => {
     const escalation = ask('beta', 'Who gets paged?');
     const answered = sim.run(['topic', 'answered', wu, 'beta', '001-escalation-path', '--entry', escalation]);
     assert.deepStrictEqual([answered.remaining, Boolean(answered.committed)], [0, true]);
-    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the answered mailbox retires the cue');
+    assert.strictEqual(betaRow(), '1 → Continue "Beta" — in progress (recommended)', 'the answered mailbox retires the cue');
     assert.strictEqual(movesSeen(), before + 1, 'the question the message raised is a move');
     decide('beta', escalation, 'The on-call engineer.');
     decideTopic(sim, wu, 'beta');
@@ -365,7 +356,7 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['topic', 'reactivate', wu, 'discovery', 'delta']);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
     // The ledger names delta now, so it leaves the map only by its cancel.
-    sim.refuses(['topic', 'remove', wu, 'delta'], /^"delta" can't be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead$/);
+    sim.refuses(['topic', 'remove', wu, 'delta'], /^"delta" can't be removed — the ledger holds entries on it, which name it for good; cancel it instead: topic cancel overhaul discovery delta$/);
 
     // Epsilon: a topic a message names that the map lacks, landed with a
     // brief drawn from the message, then removed before anyone starts it —

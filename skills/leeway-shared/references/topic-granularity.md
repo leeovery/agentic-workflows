@@ -1,6 +1,6 @@
 # Topic Granularity
 
-*Shared reference. Loaded by `leeway-discovery/references/approving-the-map.md` and `leeway-shared/references/discovery-gap-analysis.md`.*
+*Shared reference. Loaded by `leeway-discovery/references/approving-the-map.md`.*
 
 ---
 

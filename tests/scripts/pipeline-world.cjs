@@ -28,23 +28,23 @@ const ROOT = path.join(__dirname, '../..');
 const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
 const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
-const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
 const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
-const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
 const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
-const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv } = require('./engine-harness.cjs');
+const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
+const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf } = require('./engine-harness.cjs');
 const { briefPath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/brief-names.cjs'));
 const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
 const { worldOfTheRun } = require('./run-worlds.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
+
+/** @typedef {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').Next} Next */
 
 // The project every scenario starts from, made once per process.
 // The topic family's map verbs, which answer their one-line report after
@@ -417,32 +417,49 @@ function carryOn(sim, identity = null) {
 }
 
 // Every place labels itself on arrival: a navigation skill, the bridge and
-// the roadmap label the place alone (`arrive`), and every
-// phase skill's Step 0 records its place before anything else
-// (`handoffEntry`). The sim strips the tmux identity and pins an empty config
-// dir, so the tmux rename is the disabled or no-tmux no-op; what the sim pins
-// is the call sequence, that every name and phase literal the prose passes
-// validates, and the conversation's position each arrival records.
+// the roadmap label the place alone (`arrive`), the epic's menu by drawing
+// itself (`epicMenuAt`), and every phase skill's Step 0 records its place
+// before anything else (`handoffEntry`). The sim strips the tmux identity and
+// pins an empty config dir, so the tmux rename is the disabled or no-tmux
+// no-op; what the sim pins is the call sequence, that every name and phase
+// literal the prose passes validates, and the conversation's position each
+// arrival records.
 function arrive(sim, name) {
   const res = sim.run(['session', 'label', name]);
   assert.strictEqual(res.labelled, false, `the sim labels no tmux session (${name})`);
+  arrived(sim, name);
+}
+
+// The conversation at a place alone: a project place and an epic's menu
+// carry on in their own skill after a compaction, any other unit's place
+// nothing.
+/** @param {Sim} sim @param {string} name */
+function arrived(sim, name) {
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name }, `the arrival records the place alone (${name})`);
-  if (schema.PROJECT_IDENTITIES.includes(name)) {
-    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', `leeway-${name}`, 'SKILL.md'), `the ${name} carries on in its own skill`);
-  } else {
-    assert.strictEqual(here.skill, null, 'a work unit\'s menu carries nothing on');
+  const skill = schema.PROJECT_IDENTITIES.includes(name) ? `leeway-${name}` : skillAt(name, undefined, sim.manifest(name).work_type);
+  if (skill === null) {
+    assert.strictEqual(here.skill, null, 'a linear unit\'s menu carries nothing on');
     assert.match(here.text, /outside any phase, so there is nothing to carry on from\.$/);
+  } else {
+    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', skill, 'SKILL.md'), `the ${name} carries on in its own skill`);
   }
 }
 
-// The start menu, then an epic's menu, as a conversation reaches them: the
-// start menu drawn (it is no position), then the epic's own label.
+// An epic continued from the start menu: its row picked, which hands off to
+// its menu's skill (19.1.3).
 /** @param {Sim} sim @param {string} wu */
-function menuEntry(sim, wu) {
+function continueEpic(sim, wu) {
   assert.strictEqual(sim.manifest(wu).work_type, 'epic', 'only an epic has a menu of its own — any other unit is continued where it stands');
-  startMenu(sim);
-  arrive(sim, wu);
+  assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/leeway-continue-epic ${wu}\`.`, 'an epic\'s Continue opens its menu');
+}
+
+// The start menu, then an epic's menu, as a conversation reaches them: the
+// epic's Continue, and its menu drawn by its skill. Answers the menu drawn.
+/** @param {Sim} sim @param {string} wu @returns {string} */
+function menuEntry(sim, wu) {
+  continueEpic(sim, wu);
+  return epicMenuAt(sim, wu);
 }
 
 // A move into a phase hands off — a menu's pick and a conclusion through the
@@ -539,15 +556,21 @@ function bridgeTo(sim, wu, phase) {
   handoff(sim, /** @type {string} */ (dump.match(/^next_route: (.*)$/m)?.[1]));
 }
 
-// An epic phase's conclusion or in-session exit hands off to the epic menu,
-// which labels the work unit and leads with the banner for what just
-// concluded — none after a cancel or a postpone, whose receipt was the
-// session's. Answers the banner rendered, empty when none is.
+// The epic's menu as its skill draws it (leeway-continue-epic): the render
+// alone, which leaves the conversation at the epic. Answers the menu drawn.
+/** @param {Sim} sim @param {string} wu @returns {string} */
+function epicMenuAt(sim, wu) {
+  const drawn = sim.render(['epic-menu', wu], { expect: 'content' });
+  arrived(sim, wu);
+  return drawn;
+}
+
+// An epic phase's conclusion or in-session exit hands off to the epic's
+// menu. Answers the menu drawn.
 /** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [outcome] @returns {string} */
 function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
   handoff(sim, `/leeway-continue-epic ${wu} ${phase} ${outcome}`);
-  arrive(sim, wu);
-  return outcome === 'completed' ? sim.render(['phase-completed', wu, '--phase', phase], { expect: 'content' }) : '';
+  return epicMenuAt(sim, wu);
 }
 
 // A discussion leaving its topic — a pause, a postpone, a cancel or a
@@ -569,30 +592,74 @@ function pickRoute(sim, keys, action, topic) {
   return handoff(sim, key.route);
 }
 
-/** The epic menu's pick into work. @param {Sim} sim @param {string} wu @param {string} action @param {string} [topic] */
-function epicPick(sim, wu, action, topic) {
-  return pickRoute(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys, action, topic);
+// What a row of the epic's menu opens, by which a scenario names the row it
+// picks: the topic its door names, else the skill it hands off into.
+/** @param {Next|null} next @returns {string|undefined} */
+function opens(next) {
+  if (next?.kind === 'engine') return next.argv[0] === 'handoff' ? next.argv[3] : undefined;
+  return next?.kind === 'handoff' ? next.args[2] ?? next.skill : undefined;
 }
 
-// The epic menu's build row picked as epic-display-and-menu.md picks it
-// (18.4.6): the menu reached and its row recommended, and the row's route
-// handed off into the build or its review phase, whose skill starts in a fresh conversation. Answers the row.
-/** @param {Sim} sim @param {string} wu @param {'enter_implementation'|'enter_review'} action */
-function epicBuildPick(sim, wu, action) {
-  menuEntry(sim, wu);
-  const { keys } = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu));
-  const row = keys.find((k) => k.action === action);
-  assert.ok(row?.recommended, `the menu recommends ${action}`);
-  pickRoute(sim, keys, action, wu);
-  sim.handOver();
+// The epic's menu as a conversation of its own draws it — looked at without
+// moving the scenario's conversation.
+/** @param {Sim} sim @param {string} wu @returns {string} */
+const epicMenuLooked = (sim, wu) => sim.session('menu-look').render(['epic-menu', wu], { expect: 'content' });
+
+// A row of the epic's menu as it is looked at, its lines joined. Answers the
+// row naming `title`.
+/** @param {Sim} sim @param {string} wu @param {string} title @returns {string|undefined} */
+function epicRow(sim, wu, title) {
+  return screenOf(epicMenuLooked(sim, wu), 'MENU: epic menu').join('\n').split(/\n(?=\S)/).find((row) => row.includes(`"${title}"`))?.replace(/\s+/g, ' ');
+}
+
+// What the epic's menu sets aside as it is looked at, a line a topic.
+/** @param {Sim} sim @param {string} wu @returns {string[]} */
+function epicSetAside(sim, wu) {
+  const shown = screenOf(epicMenuLooked(sim, wu), 'DISPLAY: epic-menu');
+  return shown.includes('SET ASIDE') ? shown.slice(shown.indexOf('SET ASIDE') + 1).map((line) => line.trim()) : [];
+}
+
+// The epic's menu drawn, and its row by its key, the topic it opens or the
+// skill it hands off into, as the gate was shown it.
+/** @param {Sim} sim @param {string} wu @param {string} pick @returns {{key: string, head: string, recommended: boolean, next: Next}} */
+function epicKey(sim, wu, pick) {
+  epicMenuAt(sim, wu);
+  const { options } = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, SHOWN), 'utf8'));
+  const row = options.find((/** @type {{key: string, next: Next}} */ o) => o.key === pick || opens(o.next) === pick);
+  assert.ok(row, `the epic menu offers ${pick}`);
   return row;
 }
 
-/** The epic menu's entry for a command option. @param {Sim} sim @param {string} wu @param {string} action */
-function epicKey(sim, wu, action) {
-  const key = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys.find((k) => k.action === action);
-  assert.ok(key, `the epic menu offers ${action}`);
-  return key;
+// A menu row's next followed into work as the menu's skill follows it: a
+// handoff carried as it stands, and `handoff topic` along the route it
+// names. Answers the handoff's payload.
+/** @param {Sim} sim @param {Next} next */
+function follow(sim, next) {
+  if (next.kind === 'handoff') return handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  assert.ok(next.kind === 'engine' && next.argv[0] === 'handoff', `${JSON.stringify(next)} moves into no work`);
+  return handoffBy(sim, next.argv).payload;
+}
+
+// The epic menu's pick into work: the row answered at its gate, and its
+// next followed. Answers the handoff's payload.
+/** @param {Sim} sim @param {string} wu @param {string} pick */
+function epicPick(sim, wu, pick) {
+  const { key } = epicKey(sim, wu, pick);
+  return follow(sim, answerGate(sim, 'epic menu', '--pick', key).next);
+}
+
+// The epic menu's build or review row picked as the menu offers it
+// (18.4.17): the menu reached by the epic's Continue, its row recommended, and its
+// next handed off into the phase, whose skill starts in a fresh
+// conversation. Answers the row as the gate was shown it.
+/** @param {Sim} sim @param {string} wu @param {'implementation'|'review'} phase */
+function epicBuildPick(sim, wu, phase) {
+  continueEpic(sim, wu);
+  const row = epicKey(sim, wu, /** @type {string} */ (skillAt(wu, phase, 'epic')));
+  assert.ok(row.recommended, `the menu recommends the ${phase}`);
+  follow(sim, answerGate(sim, 'epic menu', '--pick', row.key).next);
+  sim.handOver();
+  return row;
 }
 
 // The person's answer at the gate shown, through `gate` as the prose gives
@@ -1627,6 +1694,6 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
-  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

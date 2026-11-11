@@ -85,6 +85,7 @@ const PLACE_SEPARATOR = ' › ';
 const MAP_PHASES = [...UNIT_PHASES.discovery, 'experiment'];
 
 const ROADMAP = 'roadmap';
+const EPIC_MENU_SKILL = 'leeway-continue-epic';
 
 /** @typedef {import('./conversation.cjs').Position} Position */
 /** @typedef {import('./conversation.cjs').InFlight} InFlight */
@@ -416,11 +417,12 @@ function dropPosition(sessionId) {
 
 // ---------------------------------------------------------------------------
 // What a conversation re-reads to carry on from its position: the skill that
-// runs the work there, then the topic's documents. A work unit's menu carries
-// nothing on, so it names neither; nor does a place this project no longer
-// has open — the work unit gone or closed, the item closed, a topic on the
-// map cancelled or postponed, a spec concluded — nor one whose skill this
-// project lacks. A phase whose skill carries no recovery section of its own
+// runs the work there, then the topic's documents. A linear unit's place
+// with no phase carries nothing on, so it names neither; nor does a place
+// this project no longer has open — the work unit gone or closed, the item
+// closed, a topic on the map cancelled or postponed, a spec concluded — nor
+// one whose skill this project lacks. An epic's menu has the note name its
+// skill alone. A phase whose skill carries no recovery section of its own
 // has the note carry it whole (24.2.6), naming the engine calls it re-reads
 // beside its documents and the log its conversation keeps, where it keeps
 // one, which is caught up from the conversation's transcript (8.14.9):
@@ -447,15 +449,15 @@ function dropPosition(sessionId) {
 /**
  * The skill that runs the work at a place — a phase's own for the unit's
  * work type, a quick-fix's implementation its own skill; discovery's, which
- * the product's conversation is too; or a project place's — null at a work
- * unit's menu, and at a phase no conversation works in: a phase no type's
- * pipeline holds.
+ * the product's conversation is too; a project place's; or, at an epic with
+ * no phase, its menu's — null at any other unit's, and at a phase no
+ * conversation works in: a phase no type's pipeline holds.
  * @param {string} name @param {string} [phase] @param {string} [type] the unit's work type
  * @returns {string|null}
  */
 function skillAt(name, phase, type) {
   if (phase === undefined) {
-    if (!PROJECT_IDENTITIES.includes(name)) return null;
+    if (!PROJECT_IDENTITIES.includes(name)) return type === 'epic' ? EPIC_MENU_SKILL : null;
     return name === PRODUCT ? 'leeway-discovery' : `leeway-${name}`;
   }
   if (phase === 'discovery') return 'leeway-discovery';
@@ -575,7 +577,8 @@ function workAt(cwd, position, manifest, sessionId) {
   if (skill === null) return { skill: null, documents: [] };
   if (phase === undefined) {
     if (name === PRODUCT) return discoveryWork(skill, [], sessionLog(statePath(cwd, PRODUCT_SESSIONS), productActive(cwd)));
-    return { skill, documents: name === ROADMAP ? productSessionLog(cwd) : [] };
+    if (name === ROADMAP) return { skill, documents: productSessionLog(cwd) };
+    return { skill, documents: [], whole: { calls: [], log: null } };
   }
   if (manifest === null) return { skill: null, documents: [] };
   const wu = statePath(cwd, name);

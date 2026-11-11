@@ -21,8 +21,6 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { WORK_TYPE_PIPELINES, VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { TOPIC_PHASES } = require('../../skills/leeway-engine/scripts/domain/ledger-units.cjs');
 const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
-const EPIC_GATEWAY = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
-const { epicDashboard } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 
 const ROOT = path.join(__dirname, '../..');
 const EPIC = 'orbit';
@@ -82,12 +80,11 @@ describe('neither map draws a subtopic state', () => {
     assert.doesNotMatch(map, SUBTOPIC_TAG);
   });
 
-  it('the epic\'s dashboard draws the topic discussing, with nothing nested beneath it', () => {
-    const board = epicDashboard(EPIC, EPIC_GATEWAY.discover(dir, EPIC));
-    assert.match(board, /Alpha/);
-    assert.match(board, /Discussing/);
-    assert.doesNotMatch(board, SUBTOPIC_TAG);
-    assert.doesNotMatch(board, /What does alpha settle\?/, 'the questions are the topic\'s own map, never the epic\'s rows');
+  it('the epic\'s menu draws the topic in progress, with nothing nested beneath it', () => {
+    const menu = output(dir, ['render', 'epic-menu', EPIC]);
+    assert.match(menu, /Continue "Alpha" — \*in progress\*/);
+    assert.doesNotMatch(menu, SUBTOPIC_TAG);
+    assert.doesNotMatch(menu, /What does alpha settle\?/, 'the questions are the topic\'s own map, never the epic\'s rows');
   });
 });
 

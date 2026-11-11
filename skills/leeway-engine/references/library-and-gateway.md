@@ -72,7 +72,6 @@ engine.presence.ownsRow(row)                      // → does the calling sessio
 engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / `12m` / `3h` / `2d`
 
 // domain: detail builders + projections
-engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
 engine.detail.startDetail(cwd)                    // → StartDetail (the units in progress by type, the closed ones, the inbox)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: the work-type pre-seed, addable items)
@@ -80,15 +79,6 @@ engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle
 engine.detail.phaseTargets(cwd, manifest, nextPhase) // → { next, revisit } — where each single-topic route enters: next, the {phase, topic} of the next phase, topic naming the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise; revisit, the phases of the revisit candidates (completed phases before nextPhase, pipeline-filtered, never the experiment, a decided discussion or the spec, nor a phase entered at a topic once the unit is past its spec), each entered by the unit alone
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` table's lines — each key's `key` and `word` (`—` for none), then `cells(key)` under `columns`
-engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
-engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
-engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
-engine.project.epicMenuKeys(wu, detail)           // → the same keys, the menu never drawn (a gate over one entry)
-engine.project.epicCompletedMenu(wu, detail)      // → { keys, title, display, rendered } — Completed Topics resume sub-view
-engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancellable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
-engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns; a held unit carries its in-session age; both unit menus open on a statement over b/back alone when every row is locked
-engine.project.epicPostponeMenu(detail, { presence }) // → { keys, title, display, rendered } — Postponable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
-engine.project.epicPullForwardMenu(detail)        // → { keys, title, display, rendered } — Postponed Topics pick menu over the topics this epic postponed that still wait, each row naming its horizon; the key carries the roadmap item's own name
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
 engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies; { data, display } when the inbox is empty
 engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
@@ -123,4 +113,4 @@ engine.gateway.runGateway({
 });
 ```
 
-The .md's prescribed call names the verb (`gateway.cjs view {work_unit}`) — the adapter never infers what a call is for. A MENU in a response is a live gate at that call, so a verb returns one only where the prose shows that gate at that call: the head insert runs before any step shows anything and carries none, and a gate a later step shows is that step's own verb (the epic menu's sub-views).
+The .md's prescribed call names the verb (`gateway.cjs view {work_unit}`) — the adapter never infers what a call is for. A MENU in a response is a live gate at that call, so a verb returns one only where the prose shows that gate at that call: the head insert runs before any step shows anything and carries none, and a gate a later step shows is that step's own verb.

@@ -1,158 +1,29 @@
 ---
 name: leeway-continue-epic
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-continue-epic/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(mkdir -p .leeway/*/.state)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
+An epic's menu: what waits on the person in it, its topics, and the way on.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
+
+## Arguments
+
+- `$0` — **work_unit**: the epic.
 
 ## Instructions
 
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
----
+## The Menu
 
-## Step 0: Initialisation
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-# **`■ Continue Epic`**
-```
-
-→ Proceed to **Step 1**.
-
----
-
-## Step 1: Discovery State
-
-This skill receives positional arguments — one not given is unset, whatever an earlier skill in this conversation held under the same name:
-- `$0` — **work_unit**: the epic to continue. Held downstream as `{work_unit}`.
-- `$1` — **completed_phase** (optional): the phase that just concluded, or whose topic left, where the epic arrives from one. Held downstream as `{completed_phase}`.
-- `$2` — **outcome**: given with `$1` — `completed`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
-
-Run the scoped discovery for the epic and hold its output as **the most recent discovery output** — Steps 2–4 read `discovery_map`, `analysis_caches` and `needs_sequencing` from it; display and routing come from the `view` snapshot at Step 5:
+Fetch the menu and emit its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-continue-epic/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs render epic-menu {work_unit}
 ```
 
-**IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
+A refusal names the way on: say it in a line.
 
-#### If the output reports an `error`
-
-Fetch the terminal display — the `view` snapshot for a name with no active epic behind it carries it:
-
-```bash
-node .claude/skills/leeway-continue-epic/scripts/gateway.cjs view {work_unit}
-```
-
-Emit its `DISPLAY: not found` section verbatim per its marker.
-
-**STOP.** Do not proceed — terminal condition.
-
-#### Otherwise
-
-→ Proceed to **Step 2**.
-
----
-
-## Step 2: Backfill
-
-Record where this session is working — the call also labels the tmux session where the user opted in:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit}
-```
-
-Read `discovery_map` from the most recent discovery output and filter for rows where `summary=absent` or `description=absent`. Store the filtered list as `items_to_recover`.
-
-#### If `items_to_recover` is empty
-
-→ Proceed to **Step 3**.
-
-#### Otherwise
-
-Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`, completed_phase = `{completed_phase}`, outcome = `{outcome}`.
-
-backfill-checks is terminal when recovery work landed — it commits and hands the epic menu off to start afresh, carrying the arguments it arrived with. It returns only when nothing was written (the batch declined); the skipped items re-offer on the next entry.
-
-→ On return, proceed to **Step 3**.
-
----
-
-## Step 3: Topic Discovery
-
-Read `analysis_caches` from the most recent discovery output. Load **[topic-discovery-dispatch.md](../leeway-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
-
-On return, `new_arrivals` is populated for Step 5 to render the callout.
-
-→ On return, proceed to **Step 4**.
-
----
-
-## Step 4: Sequence Map
-
-Read `needs_sequencing` from the most recent discovery output.
-
-#### If `needs_sequencing` is true
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Sequence Map`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Assigning a suggested execution order to the map's topics.
-```
-
-Load **[sequence-discovery-map.md](../leeway-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
-
-On return, re-run discovery so the display sees the new order:
-
-```bash
-node .claude/skills/leeway-continue-epic/scripts/gateway.cjs {work_unit}
-```
-
-Hold the refreshed output as the most recent discovery output.
-
-→ On return, proceed to **Step 5**.
-
-#### Otherwise
-
-→ Proceed to **Step 5**.
-
----
-
-## Step 5: Display State and Menu
-
-Load **[phase-banner.md](references/phase-banner.md)** and follow its instructions as written, then show the epic.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Epic State`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Showing the full phase-by-phase breakdown and available actions.
-```
-
-Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}`.
-
-→ On return, proceed to **Step 6**.
-
----
-
-## Step 6: Route Selection
-
-The user's selection carries the `route` epic-display-and-menu.md stored for it, e.g. `/leeway-discussion-process epic {work_unit} {topic}`. Selections whose flows resolve inside that reference never reach this step.
-
-Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `{route}`.
+The answer goes to `gate`; follow its `next`.

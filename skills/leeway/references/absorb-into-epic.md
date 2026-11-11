@@ -83,7 +83,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-confirm-gate 
 
 ## D. Absorb
 
-One engine transaction moves the discussion (and any experiment series and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/leeway-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
+One engine transaction moves the discussion (and any experiment series and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map, syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}

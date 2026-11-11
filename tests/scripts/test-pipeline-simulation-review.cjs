@@ -39,7 +39,7 @@ const { treeSnapshot, sectionOf } = require('./engine-harness.cjs');
 const { standingOn } = require('./board-world.cjs');
 const LIB = require('../../skills/leeway-engine/scripts/lib.cjs');
 const {
-  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, epicBuildPick, menuEntry, firstPhaseBuilt, carryOn, handoff,
+  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, epicBuildPick, epicMenuAt, firstPhaseBuilt, carryOn, handoff,
   writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finishClosed, finished,
 } = require('./pipeline-world.cjs');
 
@@ -69,7 +69,7 @@ const reviewWorld = worldFrom('pipeline-review-', (sim) => {
   cutTheSpec(sim, WU, [{ name: 'The ledger', goal: 'Entries kept and exported.', scenarios: ['1.S1'], sections: ['1', '2'], relies_on: [] }]);
   readyToBuild(sim, WU);
   intoTheBuild(sim, WU, sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv));
-  assert.deepStrictEqual(epicBuildPick(sim, WU, 'enter_implementation').label, { head: 'Build', tail: 'phase 1 of 1' });
+  assert.strictEqual(epicBuildPick(sim, WU, 'implementation').head, 'Continue the build');
   firstPhaseBuilt(sim, WU, 'The ledger', 'Keep the ledger', 'src/ledger.js');
 });
 
@@ -96,11 +96,11 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
   });
 
   it('from the epic\'s manage, the build\'s phases and tasks viewed; from its menu, its review row once the cut has closed, through the soft gate into the review phase (12.12.11, 18.4.6, 14.6.1)', () => {
-    menuEntry(sim, WU);
+    epicMenuAt(sim, WU);
     const manage = LIB.project.manageUnitView(LIB.detail.manageDetail(sim.dir, WU));
     assert.match(manage.data, /^ {2}v +view-build +view_build$/m, 'manage offers the build\'s phases and tasks');
     assert.match(sectionOf(sim.render(['build-progress', WU], { expect: 'content' }), 'DISPLAY: build progress'), /Phase 1 of 1 · The ledger +\[merged\]/);
-    epicBuildPick(sim, WU, 'enter_review');
+    epicBuildPick(sim, WU, 'review');
     const { move } = reviewNext(sim, WU);
     const here = carryOn(sim);
     assert.deepStrictEqual([move, here.position, here.skill], ['round', { name: WU, phase: 'review', topic: WU }, path.join(sim.dir, '.claude/skills/leeway-review-process/SKILL.md')],

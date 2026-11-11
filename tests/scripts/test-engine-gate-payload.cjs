@@ -73,6 +73,9 @@ function seedCancel(dir) {
 /** The cancel gate over that topic. */
 const CANCEL = ['render', 'cancel-gate', 'pay.discovery.data-export'];
 
+/** The epic menu over the held epic. */
+const EPIC_MENU = ['render', 'epic-menu', 'v1'];
+
 /** A bugfix's investigation in progress. @param {string} dir */
 function seedInvestigation(dir) {
   createManifest(dir, 'auth', { work_type: 'bugfix', phases: { investigation: { items: { auth: { status: 'in-progress' } } } } });
@@ -121,8 +124,8 @@ describe('gate payload — the announce switch', () => {
 
   it('a gateway view says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
     seedHeldEpic(dir);
-    const plain = runGateway(dir, 'leeway-continue-epic', ['view', 'v1']);
-    const announced = runGateway(dir, 'leeway-continue-epic', ['view', 'v1'], ANNOUNCED);
+    const plain = runGateway(dir, 'leeway', ['manage']);
+    const announced = runGateway(dir, 'leeway', ['manage'], ANNOUNCED);
 
     assert.ok(!plain.includes('=== GATE'), plain);
     assert.strictEqual(withoutGate(announced), plain);
@@ -292,34 +295,24 @@ describe('gate payload — a gateway menu', () => {
 
   it('a held row states its holder apart from its tail, a recommended row its flag, and neither marker survives into the text', () => {
     seedHeldEpic(dir);
-    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['view', 'v1'], ANNOUNCED));
+    const gate = gateOf(output(dir, EPIC_MENU, { env: ANNOUNCED }));
 
     assert.strictEqual(gate.gate, 'epic menu');
     assert.deepStrictEqual(gate.options[0],
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: null, holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false });
+      { key: '1', word: null, head: 'Start "Billing"', tail: 'not started', cue: null, holder: null, detail: null, struck: false, recommended: true });
     assert.deepStrictEqual(gate.options[1],
-      { key: '2', word: null, head: 'Start discussion for "Billing"', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: true });
+      { key: '2', word: null, head: 'Continue "Auth"', tail: 'in progress', cue: null, holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false });
     const texts = gate.options.map((/** @type {{head: string, tail: string|null, holder: string|null}} */ o) => `${o.head}${o.tail}${o.holder}`);
     assert.ok(texts.every((t) => !t.includes('recommended') && !t.includes('~~')), JSON.stringify(gate.options));
   });
 
   it('the GATE sits directly above the MENU and after every other section', () => {
     seedHeldEpic(dir);
-    const seen = markers(runGateway(dir, 'leeway-continue-epic', ['view', 'v1'], ANNOUNCED));
+    const seen = markers(output(dir, EPIC_MENU, { env: ANNOUNCED }));
 
-    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU: epic menu (emit verbatim as markdown (not a code block)) ===']);
+    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU: epic menu (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===']);
     assert.ok(seen.slice(0, -2).every((m) => !m.startsWith('=== GATE') && !m.startsWith('=== MENU')), seen.join('\n'));
   });
-
-  it('the in-session gate is its own gate — the epic menu it reads its entry from stays out', () => {
-    seedHeldEpic(dir);
-    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['in-session-gate', 'v1', '1'], ANNOUNCED));
-
-    assert.strictEqual(gate.question, 'Proceed anyway?');
-    assert.match(gate.statement, /^"Auth" is open in another session — last active 4m ago\. /);
-    assert.deepStrictEqual(gate.options.map((/** @type {{key: string}} */ o) => o.key), ['b', 'y']);
-  });
-
 });
 
 describe('gate payload — every gateway verb', () => {
@@ -351,17 +344,6 @@ describe('gate payload — every gateway verb', () => {
       manage: [gated('manage'), gated('manage', 'checkout')],
       completed: [gated('completed')],
     },
-    'leeway-continue-epic': {
-      index: [refused()],
-      view: [gated('view', 'v1'), ungated('view', 'nowhere')],
-      'completed-menu': [gated('completed-menu', 'v1')],
-      'cancel-menu': [gated('cancel-menu', 'v1')],
-      'reactivate-menu': [gated('reactivate-menu', 'v1')],
-      'postpone-menu': [gated('postpone-menu', 'v1')],
-      'pull-forward-menu': [gated('pull-forward-menu', 'v1')],
-      'in-session-gate': [gated('in-session-gate', 'v1', '1')],
-      fallback: [ungated('v1')],
-    },
     'leeway-bridge': { index: [refused()], fallback: [ungated('checkout')] },
     'leeway-roadmap': {
       view: [gated('view')],
@@ -386,8 +368,9 @@ describe('gate payload — every gateway verb', () => {
   /**
    * One project holding every state the gateway menus draw from: an inbox
    * and an archive, a roadmap with items waiting, an epic whose discussion a
-   * peer holds while a message waits in its mailbox —
-   * beside a completed topic whose input moved, a cancelled topic, a topic
+   * peer holds while a message waits in its mailbox, and one not started
+   * with a message waiting — beside a completed topic whose input moved, a
+   * cancelled topic, a topic
    * postponed to the roadmap and a blocked plan — a unit of each
    * linear type ready for its next phase, a feature with a message waiting,
    * and closed units.
@@ -395,6 +378,7 @@ describe('gate payload — every gateway verb', () => {
    */
   function seedEveryRowShape(dir) {
     createFile(dir, '.leeway/manifest.json', JSON.stringify({
+      ...JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8')),
       roadmap: {
         horizons: ['now_ish *core*', 'later [v2]'],
         items: {
@@ -434,6 +418,7 @@ describe('gate payload — every gateway verb', () => {
       },
     });
     createFile(dir, '.leeway/v1/topics/auth/mail/001.md', '# A message\n');
+    createFile(dir, '.leeway/v1/topics/tax/mail/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
 
     /** A linear unit whose one phase concluded — its view asks whether to proceed where that phase is revisitable, and hands straight on behind a decided discussion. @param {string} name @param {string} workType @param {string} phase @param {string} next */
@@ -470,6 +455,8 @@ describe('gate payload — every gateway verb', () => {
   let tables;
   /** @type {Map<GatewayCall, {code: number, stdout: string, stderr: string}>} */
   let responses;
+  /** The epic's menu over the same world, which the engine draws. @type {string} */
+  let epicMenu;
 
   before(async () => {
     dir = setupFixture();
@@ -489,6 +476,7 @@ describe('gate payload — every gateway verb', () => {
       .filter(([, out]) => out !== '')
       .map(([g, out]) => [g, JSON.parse(out).sort()]));
     responses = new Map(calls.map(({ call }, i) => [call, answers[i]]));
+    epicMenu = output(dir, EPIC_MENU, { env: ANNOUNCED });
   });
   after(() => { cleanupFixture(dir); });
 
@@ -507,15 +495,10 @@ describe('gate payload — every gateway verb', () => {
     });
   }
 
-  it('the sweep reaches the display only a missing unit draws', () => {
-    const drawn = [...responses.values()].map(({ stdout }) => stdout).join('\n');
-    assert.ok(drawn.includes('=== DISPLAY: not found ('), 'no gateway call drew === DISPLAY: not found (');
-  });
-
-  it('the world reaches every row shape the menu builders draw', () => {
-    const gates = [...responses.values()].map(({ stdout }) => auditGate(stdout, 'shape')).filter((g) => g !== null);
+  it('the world reaches every row shape the menu builders draw, the epic\'s menu among the gateways\'', () => {
+    const gates = [...[...responses.values()].map(({ stdout }) => stdout), epicMenu].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
     for (const [shape, drawn] of Object.entries(SHAPES)) {
-      assert.ok(gates.some(drawn), `no gateway verb drew ${shape}`);
+      assert.ok(gates.some(drawn), `no menu drew ${shape}`);
     }
   });
 });

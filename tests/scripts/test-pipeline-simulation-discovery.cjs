@@ -210,7 +210,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
   it('the epic menu\'s d hands into its discovery, where the map changes at the person\'s word: a new topic, a cancel confirmed and reactivated, a park pulled forward, a finding, a spike, the log\'s fixed lists, and a message to a started topic (18.4.9, 8.8.6, 8.7.6, 20.11.1)', () => {
     mappedEpic(sim, EPIC, ['licensing', 'pricing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
-    assert.strictEqual(epicPick(sim, EPIC, 'new_topic').text, `Invoke \`/leeway-discovery none ${EPIC}\`.`);
+    assert.strictEqual(epicPick(sim, EPIC, 'd').text, `Invoke \`/leeway-discovery none ${EPIC}\`.`);
     sim.handOver();
     sim.run(['enter', 'discovery', EPIC]);
     const log = path.relative(path.join(sim.dir, '.leeway'), named(sim, 'log')[0]);

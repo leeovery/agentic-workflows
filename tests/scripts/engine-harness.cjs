@@ -62,6 +62,7 @@ const { atLeast } = require('../../skills/leeway-engine/scripts/kernel/version.c
 const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
 const { followingLiveness } = require('../../skills/leeway-engine/scripts/domain/ledger-copies.cjs');
 const { startTopic } = require('../../skills/leeway-engine/scripts/domain/transitions.cjs');
+const { NBSP } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
@@ -168,6 +169,15 @@ function sectionOf(out, name) {
   const body = out.slice(out.indexOf('\n', at) + 1);
   const end = body.search(/^=== /m);
   return end === -1 ? body : body.slice(0, end);
+}
+
+/**
+ * A section's lines as the screen reads them — its emphasis dropped and its
+ * hanging indents plain spaces — refused where the render has none.
+ * @param {string} out @param {string} name @returns {string[]}
+ */
+function screenOf(out, name) {
+  return sectionOf(out, name).replace(/\*\*|\*|`/g, '').replaceAll(NBSP, ' ').split('\n').slice(0, -1);
 }
 
 /** An answer that must be a refusal: its `{ok:false}` parsed. @param {Answer} res @param {string[]} args */
@@ -977,7 +987,7 @@ function startItem(dir, workUnit, phase, topic) {
 
 module.exports = {
   ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
-  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, holdLock, lockAttempts, contend, killedAt,
+  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, screenOf, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,

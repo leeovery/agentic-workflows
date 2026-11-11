@@ -418,7 +418,7 @@ describe('conversation position', () => {
     return files.length > 0 ? [`${follow}, then re-read these in full:`, ...files.map((f) => `- ${abs(f)}`)].join('\n') : `${follow}.`;
   }
 
-  it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
+  it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s, an epic\'s menu\'s; none at a linear unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
     const quickFix = skillAt('fix', 'implementation', 'quick-fix');
     const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), quickFix, ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
     assert.strictEqual(skills.length, 10);
@@ -438,7 +438,8 @@ describe('conversation position', () => {
       assert.match(recovery, /\nDo not guess at progress or continue from memory\./, `${skill}'s recovery reads state from disk`);
     }
     assert.strictEqual(quickFix, 'leeway-quick-fix-process', 'a quick-fix\'s implementation runs in its own skill');
-    assert.deepStrictEqual([skillAt('pay'), skillAt('pay', 'scoping'), skillAt('pay', 'planning')], [null, null, null], 'a unit\'s menu, and scoping and planning, which no pipeline holds');
+    assert.deepStrictEqual([skillAt('pay', undefined, 'feature'), skillAt('pay', 'scoping'), skillAt('pay', 'planning')], [null, null, null], 'a linear unit\'s menu, and scoping and planning, which no pipeline holds');
+    assert.strictEqual(skillAt('pay', undefined, 'epic'), 'leeway-continue-epic', 'an epic\'s menu carries on in its own skill');
   });
 
   it('a conversation with no position has nothing to carry on from', () => {
@@ -452,16 +453,34 @@ describe('conversation position', () => {
     });
   });
 
-  it('a work unit\'s menu carries nothing on: nothing to carry on from, the position named', () => {
+  it('an epic\'s menu carries on in its skill, which draws the menu again', () => {
     install('leeway-continue-epic');
     ok(['session', 'label', 'pay']);
     assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
       position: { name: 'pay' },
       place: 'pay',
+      skill: abs('.claude/skills/leeway-continue-epic/SKILL.md'),
+      files: [],
+      text: [
+        'The conversation was just compacted. This conversation is working in the epic "pay". Before anything else, re-read these in full, running each engine call:',
+        `- ${abs('.claude/skills/leeway-continue-epic/SKILL.md')} and its framework`,
+        'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+      ].join('\n'),
+    });
+  });
+
+  it('a linear unit\'s menu carries nothing on: nothing to carry on from, the position named', () => {
+    install('leeway-continue-linear');
+    workUnit('ledger', 'feature');
+    ok(['session', 'label', 'ledger']);
+    assert.deepStrictEqual(reads(), {
+      session_id: 'sess-1',
+      position: { name: 'ledger' },
+      place: 'ledger',
       skill: null,
       files: [],
-      text: 'This conversation is at the epic "pay", outside any phase, so there is nothing to carry on from.',
+      text: 'This conversation is at the feature "ledger", outside any phase, so there is nothing to carry on from.',
     });
   });
 

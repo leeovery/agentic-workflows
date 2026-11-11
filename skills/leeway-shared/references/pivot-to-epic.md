@@ -4,7 +4,7 @@
 
 ---
 
-One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map — `summary`/`description` left unset for `summary-backfill.md` to fill on the next `/leeway-continue-epic` entry — re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
+One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map, re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
 
 ## Parameters
 

@@ -108,7 +108,7 @@ const START_HELP = Object.freeze({
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */
 const MENUS = Object.freeze({
   'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', START_HELP, [NUMBERED, 'p', 's', 't', 'r', 'e', 'v', 'm']),
-  'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit'),
+  'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit', {}, [NUMBERED, 'e', 's', 'd', BACK]),
   triage: registered('triage', 'triage', 'triage', 'none'),
   archived: registered('archived', 'archived items', 'the archived items', 'none'),
   'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none'),

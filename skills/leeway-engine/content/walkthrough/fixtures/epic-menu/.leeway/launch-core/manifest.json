@@ -10,19 +10,23 @@
         "sign-in": {
           "source": "discovery",
           "summary": "Accounts, sessions and the sign-in surface.",
-          "description": "Accounts, sessions and the sign-in surface."
+          "description": "Accounts, sessions and the sign-in surface.",
+          "order": 1
         },
         "billing": {
           "source": "discovery",
           "summary": "Plans, invoices and the payment provider.",
-          "description": "Plans, invoices and the payment provider."
+          "description": "Plans, invoices and the payment provider.",
+          "order": 2
         },
         "usage-limits": {
           "source": "discovery",
           "summary": "What a plan allows, and what happens at the edge.",
-          "description": "What a plan allows, and what happens at the edge."
+          "description": "What a plan allows, and what happens at the edge.",
+          "order": 3
         }
-      }
+      },
+      "approved_at": "2026-01-01T09:00:00.000Z"
     },
     "discussion": {
       "items": {
@@ -30,26 +34,6 @@
           "status": "completed"
         },
         "billing": {
-          "status": "in-progress"
-        }
-      }
-    },
-    "specification": {
-      "items": {
-        "sign-in": {
-          "status": "completed",
-          "sources": {
-            "sign-in": {
-              "status": "incorporated"
-            }
-          },
-          "order": 1
-        }
-      }
-    },
-    "implementation": {
-      "items": {
-        "sign-in": {
           "status": "in-progress"
         }
       }

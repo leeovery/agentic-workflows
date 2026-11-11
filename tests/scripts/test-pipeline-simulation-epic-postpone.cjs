@@ -20,11 +20,7 @@ const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const derivations = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
-const {
-  epicMenu, epicPostponeMenu, epicPullForwardMenu,
-} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { Sim, mapTopics, sessionLog, answerGate, enterEntry, discussed } = require('./pipeline-world.cjs');
+const { Sim, mapTopics, sessionLog, answerGate, enterEntry, discussed, epicSetAside } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic postpone', () => {
   let sim;
@@ -42,16 +38,11 @@ describe('pipeline simulation: epic postpone', () => {
     ]);
     sim.run(['topic', 'order', wu, 'fresh-one=1', 'talking=2', 'decided=3', 'stays=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
-    const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
-    const postponable = () => epicPostponeMenu(detail()).keys.filter((k) => k.action === 'postpone').map((k) => k.topic);
-    const pullable = () => epicPullForwardMenu(detail()).keys.filter((k) => k.action === 'pull-forward').map((k) => [k.topic, k.item]);
-    const menuActions = () => epicMenu(wu, detail()).keys.map((k) => k.action);
+    const discoveryMap = () => derivations.buildDiscoveryMap(sim.manifest(wu), path.join(sim.dir, '.leeway'));
+    const setAside = () => epicSetAside(sim, wu);
 
     for (const topic of ['decided', 'stays']) discussed(sim, wu, topic);
     enterEntry(sim, wu, 'discussion', 'talking');
-
-    // Every Discovery unit is offered.
-    assert.deepStrictEqual(postponable(), ['decided', 'stays', 'talking', 'fresh-one']);
 
     // The map is born at the first postpone; the second takes a new horizon.
     assert.strictEqual(sim.run(['roadmap', 'state']).exists, false);
@@ -70,22 +61,16 @@ describe('pipeline simulation: epic postpone', () => {
     assert.deepStrictEqual(second.postponed, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     sim.run(['topic', 'postpone', wu, 'decided', '--horizon', 'later']);
 
-    // The lifecycle, the aggregation, the sequencing flag, and the epic's
-    // own completion all walk past a topic that has left.
-    const d = detail();
-    assert.deepStrictEqual(d.postponed, [
-      { name: 'decided', horizon: 'later', item: 'decided', waiting: true },
-      { name: 'fresh-one', horizon: 'next', item: 'fresh-one', waiting: true },
-      { name: 'talking', horizon: 'later', item: 'talking', waiting: true },
-    ]);
-    assert.strictEqual(d.discovery_map.find((r) => r.name === 'talking').lifecycle, 'postponed');
+    // The lifecycle, the sequencing flag, and the epic's own completion all
+    // walk past a topic that has left; the menu sets each aside under the
+    // horizon it waits on.
+    const d = discoveryMap();
+    assert.deepStrictEqual(setAside(), ['├─ Decided — postponed · roadmap later', '├─ Fresh One — postponed · roadmap next', '└─ Talking — postponed · roadmap later']);
+    assert.strictEqual(d.map.find((r) => r.name === 'talking').lifecycle, 'postponed');
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.talking`, 'status']), 'postponed');
     sim.refuses(['enter', 'discussion', wu, 'talking'], /^the topic "talking" is postponed to the roadmap — pulling it forward goes through the epic menu/);
     assert.strictEqual(derivations.phaseStatus(sim.manifest(wu), 'discussion'), 'completed', 'the postponed conversation under way no longer holds the phase in progress');
     assert.strictEqual(d.needs_sequencing, false, 'a postponed row carries no order and asks for none');
-    assert.strictEqual(d.convergence_state, 'settled', 'a topic that has left holds convergence open no more than a cancelled one');
-    assert.deepStrictEqual(d.postponable.map((u) => u.name), ['stays'], 'a postponed unit leaves the postpone list');
-    assert.ok(!d.cancellable.some((u) => u.name === 'fresh-one'), 'a postponed unit leaves the cancel list too');
     // The gap analysis reads the decided discussions' records: the postponed
     // one drops out of its input set.
     assert.deepStrictEqual(derivations.collectAnalysisInputs(sim.manifest(wu), path.join(sim.dir, '.leeway'), 'gap-analysis')
@@ -107,10 +92,9 @@ describe('pipeline simulation: epic postpone', () => {
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].cancelled, true);
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].postponed, undefined);
 
-    // The menu's return row and its sub-view carry what still waits — the
-    // archived item is gone from both, the cancelled row with it.
-    assert.ok(menuActions().includes('pull_forward_topic'));
-    assert.deepStrictEqual(pullable(), [['decided', 'decided'], ['talking', 'talking']]);
+    // The menu sets the archived item's row aside as cancelled, the rest
+    // under the horizons they wait on.
+    assert.deepStrictEqual(setAside(), ['├─ Fresh One — cancelled', '├─ Decided — postponed · roadmap later', '└─ Talking — postponed · roadmap later']);
 
     // The pull is the return: the same epic restores the unit it postponed.
     const back = sim.run(['roadmap', 'pull-forward', 'talking', '--into', wu]);
@@ -133,10 +117,8 @@ describe('pipeline simulation: epic postpone', () => {
     assert.deepStrictEqual(sim.manifest(next).phases.discovery.items.decided.prior, { work_unit: wu, topic: 'decided' });
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.decided.postponed, true, 'the prior epic keeps its record');
     // Taken by another epic, the item no longer waits: the prior epic's row
-    // stays postponed with no way back, and its return row withdraws.
-    assert.deepStrictEqual(detail().postponed.filter((t) => t.waiting), []);
-    assert.deepStrictEqual(pullable(), []);
-    assert.ok(!menuActions().includes('pull_forward_topic'));
+    // stays postponed with no way back, under no horizon.
+    assert.deepStrictEqual(setAside(), ['├─ Fresh One — cancelled', '└─ Decided — postponed']);
     sim.refuses(['enter', 'discussion', wu, 'decided'], /^the topic "decided" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back$/);
 
     // A pulled-from-roadmap topic postponed again re-waits its own item.
