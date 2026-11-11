@@ -356,7 +356,7 @@ describe('gate (6.6, 6.S18)', () => {
     assert.deepStrictEqual(ownFields(events()[0]), { gate: 'migration gate', recommended: null, picked: 'ask', via: 'typed', with_text: false, reading: null });
   });
 
-  it('18.S51, 16.S68: free text naming no row, which the separate call cannot read — no login serves it — sets the gate aside, logged as free text with no row read, leading nowhere', () => {
+  it('18.S38, 18.S51, 16.S68: free text naming no row, which the separate call cannot read — no login serves it — sets the gate aside, logged as free text with no row read, leading nowhere', () => {
     showCodeGate(ANNOUNCED);
 
     assert.deepStrictEqual(answer(['code gate', '--typed'], ANNOUNCED, WORDS), {
