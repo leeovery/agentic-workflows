@@ -42,7 +42,8 @@ const closeReached = fixtureFrom('quick-fix-review-', (dir) => {
 
 /**
  * The review's steps as the conversation `as` gives takes them, in the
- * project `dir` names: a payload file beside the project; the review phase
+ * project `dir` names: a payload file in the project's own cache, never a
+ * name the temp folder shares with a suite running beside it; the review phase
  * entered, its DATA lines; a round's reports; round 1 recorded failing on
  * the docs, its fix task 2.1 written in the review's first fix phase —
  * asked for and entered first (`firstRoundFailed`), or once entered
@@ -58,11 +59,7 @@ function reviewSteps(dir, as) {
   const run = (args) => ok(dir(), args, as());
 
   /** @param {string} name @param {unknown} content */
-  function payload(name, content) {
-    const file = path.join(path.dirname(dir()), name);
-    fs.writeFileSync(file, JSON.stringify(content));
-    return file;
-  }
+  const payload = (name, content) => writeState(dir(), layout.cache(name), JSON.stringify(content));
 
   const entered = () => sectionOf(okSections(dir(), ['enter', 'review', UNIT], as()).sections, 'DATA').split('\n').filter(Boolean);
 
