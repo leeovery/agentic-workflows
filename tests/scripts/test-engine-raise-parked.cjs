@@ -16,9 +16,10 @@
 // its raise alone; `raise draw`, the question raised in full from its park
 // in any conversation, as it is worded now (12.S33's code half, 12.S34); the
 // person's answer carrying the task, its trust log event blocking the build,
-// and the receipt of what it freed (12.S35, 20.S6); `raise aside`, several
-// set aside with one receipt (12.13.17); a question waiting no longer
-// refused (20.S7); `--task` on the ledger's writes in the build (12.12.5);
+// and the receipt of what it freed (12.S35, 20.S6), each as the question
+// parks tasks when it is answered, not when it was drawn (16.4.7); `raise
+// aside`, several set aside with one receipt (12.13.17); a question waiting
+// no longer refused (20.S7); `--task` on the ledger's writes in the build (12.12.5);
 // and no questions page (27.S6). A parked task against the tracker is
 // test-engine-task-parks.cjs's.
 //
@@ -200,20 +201,21 @@ function parkedLine(own = {}) {
   return {
     v: 1, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question: full(made.where), replaces: null, reason: null, cause: null, relies_on: [], task: '2.3', number: 1,
-    call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, ...own,
+    call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null, ...own,
   };
 }
 
 /**
- * A question parked as `Q{number}` with `task`, appended in process — as a
- * clone's merge lays it, or where the park is not the subject: its full id.
- * `own` over the question where a new note opens and Claude's call on it.
- * @param {number} number @param {string} task @param {Record<string, unknown>} [own]
+ * A question parked as `Q{number}` with `task`, or none, appended in process
+ * — as a clone's merge lays it, or where the park is not the subject: its
+ * full id. `own` over the question where a new note opens and Claude's call
+ * on it.
+ * @param {number} number @param {string|null} task @param {Record<string, unknown>} [own]
  */
 function parked(number, task, own = {}) {
   const { id } = appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
-    question: full(made.where), replaces: null, reason: null, cause: null, relies_on: [], task, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, ...own,
+    question: full(made.where), replaces: null, reason: null, cause: null, relies_on: [], task, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null, ...own,
   }, []);
   return /** @type {string} */ (id);
 }
@@ -534,7 +536,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     const { at, ...sealed } = seals()?.[res.raise];
     assert.deepStrictEqual(sealed, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'implementation', topic: null },
-      answers: full(made.where), relies_on: [full(made.frameless)], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, reason: EVERY_CALL_ASKS,
+      answers: full(made.where), relies_on: [full(made.frameless)], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, reason: EVERY_CALL_ASKS,
       answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'] },
     });
 
@@ -704,6 +706,34 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.strictEqual(res.receipt, 'Q1 answered · no task waited on it · nothing waiting on you');
     assert.deepStrictEqual([lastEntry().event, lastEntry().task], ['decided', null]);
     assert.deepStrictEqual(logged(), [raiseEvent(full(res.id), { blocked_build: false })]);
+  });
+
+  it('16.4.7: the tasks a question parks are read as its answer lands, not as it was drawn — a task closed off it since the draw: the drawn screen\'s answer lands for no task, frees none, marks none, and its raise event blocks no build work', () => {
+    const park = parked(1, '2.3');
+    beingRead(['2.3']);
+    const { raise } = draw('Q1').res;
+    appendEntry(statePath(dir), { event: 'unparked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION, task: '2.3', parks: [park] }, []);
+
+    const res = answer(raise, ['--pick', MAIN.key]);
+
+    assert.deepStrictEqual([lastEntry().task, res.receipt, marked('2.3')], [null, 'Q1 answered · no task waited on it · nothing waiting on you', null]);
+    assert.deepStrictEqual(logged(), [raiseEvent(full(res.id), { answer: MAIN.key, blocked_build: false })]);
+  });
+
+  it('16.4.7: a task joining a question parking none after it was drawn: "I don\'t follow" on the drawn screen blocks build work, and its answer lands for the task, frees it, marks it and blocks build work', () => {
+    parked(1, null);
+    beingRead(['2.4']);
+    const { raise } = draw('Q1').res;
+    parked(1, '2.4');
+
+    answer(raise, ['--didnt-follow'], null);
+    const res = answer(raise, ['--pick', MAIN.key]);
+
+    assert.deepStrictEqual([lastEntry().task, res.receipt, marked('2.4')], ['2.4', 'Q1 answered · task 2.4 builds again once its pair has read round 1 · nothing waiting on you', { round: 1, n: 1 }]);
+    assert.deepStrictEqual(logged(), [
+      raiseEvent(null, { answer: null, didnt_follow: true, blocked_build: true }),
+      raiseEvent(full(res.id), { answer: MAIN.key, blocked_build: true }),
+    ]);
   });
 
   it('an answer whose task another question still parks: the task waits on it', () => {

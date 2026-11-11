@@ -262,7 +262,8 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
 /**
  * What a raise sets of its line from the ledger as it stands under the lock,
  * folded and read again at any place through the lock's own read: a parked
- * question's number and its call as sealed (questions.cjs).
+ * question's number and its call as sealed (questions.cjs); the task the
+ * person's answer to one is made for, the first it parks (raise.cjs).
  * @typedef {(read: Folded, entryAt: EntryAt) => Record<string, unknown>} Mints
  */
 
@@ -275,8 +276,9 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
 /**
  * The trust log's event a write logs, built from the entry it is about to
  * append, its id minted, and the label of a decision's question: the
- * event's type and its own fields.
- * @typedef {(entry: Record<string, unknown>, label: Label|null) => {type: string, fields: Record<string, unknown>}} Logs
+ * event's type and its own fields, and, for an event about a call a raise
+ * decided, the model it was decided under (trust-log.cjs).
+ * @typedef {(entry: Record<string, unknown>, label: Label|null) => {type: string, fields: Record<string, unknown>, model?: string|null}} Logs
  */
 
 /**
@@ -1016,12 +1018,14 @@ function contentFields(said, write, given, replaced) {
 
 /**
  * Claude's call logged (16.3.7), naming the entry, its kind and the label
- * it was composed from, and its sort — null where no raise sorted it.
- * @param {'one'|'several'|null} sort
+ * it was composed from, and its sort — null where no raise sorted it — under
+ * `model`, where a raise decided it, the model it was decided under; with
+ * none, the call is the write's own, under its caller's.
+ * @param {'one'|'several'|null} sort @param {string|null} [model]
  * @returns {Logs}
  */
-function callLogged(sort) {
-  return ({ id, kind }, label) => ({ type: 'call', fields: { entry: id, kind, label, sort } });
+function callLogged(sort, model) {
+  return ({ id, kind }, label) => ({ type: 'call', fields: { entry: id, kind, label, sort }, model });
 }
 
 /** The person's reversal logged (16.12.1), naming the entry and the entry it reverses. @type {Logs} */
@@ -1399,8 +1403,8 @@ function land(cwd, request, warnings) {
     return { id: short, outcome: commitEntry(cwd, request, id, warnings), line: null, held };
   }
   if (logs !== null) {
-    const { type, fields: own } = logs({ ...fields, id }, request.label);
-    keepEvent(newEvent(type, own, cwd), at.root, id);
+    const { type, fields: own, model } = logs({ ...fields, id }, request.label);
+    keepEvent(newEvent(type, own, cwd, { model }), at.root, id);
   }
   const voided = voidOnQuestion(cwd, at, write, fields);
   const line = appendEntry(at.root, fields, warnings, id);

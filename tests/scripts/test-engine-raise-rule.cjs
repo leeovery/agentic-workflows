@@ -4,15 +4,19 @@
 // A raise decided by the ask rule (leeway-engine/scripts/domain/raise.cjs,
 // over the decision point domain/decision-point.cjs and the rule
 // domain/ask-rule.cjs): what the raise gives the decision point beside the
-// call (E1), every call still asking until the rule is switched on; and,
-// the decision point forced to the rule in process (`ruled`) as the switch
-// will make it, a question Claude could find out sent to check and asked
-// once raised again, a replacement sent by the decision it would replace, a
-// call with no label asked (16.S68), Claude's mark that always asks
-// (`--always`), a danger question in a build in auto parking its task
-// (3.S15) — neither sent to check — a replacement mid-build asking where it
-// would replace the person's decision and proceeding where Claude's
-// (16.S72), and a decision of Claude's the person kept asking as theirs.
+// call (E1), every call still asking until the rule is switched on; the
+// model the call is decided under sealed with it, every event about it
+// logged under that model, a builder's answered in the conversation among
+// them (16.4.4); and, the decision point forced to the rule in process
+// (`ruled`) as the switch will make it, a question Claude could find out
+// sent to check and asked once the same raise is made again — another
+// task's raise of it, and another proposal for a decision, sent to check
+// as any first is — a call with no label asked (16.S68), Claude's mark that
+// always asks (`--always`), a danger question in a build in auto parking
+// its task (3.S15) — neither sent to check — a replacement mid-build asking
+// where it would replace the person's decision and proceeding where
+// Claude's (16.S72), and a decision of Claude's the person kept asking as
+// theirs.
 //
 // Layer: verb. World: the ledger suites' epic in discussion, a question
 // asked at its topic and two decisions of Claude's there; and an epic beside
@@ -20,10 +24,11 @@
 // person's and Claude's — built once and copied for each test; each test
 // keeps its conversation and the trust log in a config folder of its own,
 // the log written with the answers the rule counts, as of now — and there
-// too the transcript naming the session's model, where a test gives one. The
-// world has no tracker, so the check that the tracker holds the task a raise
-// parks is passed over here (test-engine-task-parks.cjs). The separate call
-// is the stub binary, labelling the call's question where a test arms it.
+// too the transcript naming the session's model, and a builder's, where a
+// test gives one. The world has no tracker, so the check that the tracker
+// holds the task a raise parks is passed over here
+// (test-engine-task-parks.cjs). The separate call is the stub binary,
+// labelling the call's question where a test arms it.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,7 +38,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { okSectionsAsync, refusesAsync, treeSnapshot, head, statePath, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { okSections, okSectionsAsync, refusesAsync, treeSnapshot, head, statePath, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
@@ -44,6 +49,8 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
+const { MODEL_LINES, countsFrom, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { fingerprint } = require(path.join(SCRIPTS, 'kernel/fingerprint.cjs'));
 
 mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
 
@@ -56,6 +63,8 @@ const BUILT = 'mint';
 const BUILD = `${BUILT}.implementation`;
 // The stub's labeller, as the label names it.
 const LABELLER = 'claude-sonnet-stub';
+// The model before the newest on its line: one that never reads the newest's answers.
+const PREDECESSOR = MODEL_LINES[0][MODEL_LINES[0].length - 2];
 
 const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
 const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
@@ -76,6 +85,12 @@ const FRAMED = Object.freeze({
   ...CALL,
   question: 'Should a note have a thin frame after all?',
   rows: [{ key: '1', name: 'Thin', text: 'A thin frame', notice: 'notes stand out from the desk' }, { key: '2', name: 'Shadow', text: 'A shadow alone', notice: 'notes float with no edge' }],
+});
+
+/** Another proposal in place of the same decision: a glow at the note's edge. */
+const GLOWING = Object.freeze({
+  ...FRAMED,
+  rows: [{ key: '1', name: 'Glow', text: 'A soft glow', notice: 'notes light up at the edge' }, { key: '2', name: 'Line', text: 'A hairline', notice: 'notes keep a faint edge' }],
 });
 
 /** What the world holds, by name: each question's and decision's short id. */
@@ -110,7 +125,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { ledgerText, full } = ledgerHelpers(() => dir);
+const { ledgerText, full, entries } = ledgerHelpers(() => dir);
 const { conversation, inFolder, seals, logText, project, lastEntry, answer } = raiseHelpers(() => dir, config, CALL);
 
 /** The decision point forced to the rule, as switching it on makes it, for test `t`. @param {import('node:test').TestContext} t */
@@ -142,6 +157,43 @@ const raised = (at, flags, call, env) => okSectionsAsync(dir, ['raise', at, ...f
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
 
+/** A replacement of `entry` proposing `call`'s rows, as the record keeps it sent to check. @param {string} entry @param {{rows: {text: string}[]}} call */
+const proposing = (entry, { rows }) => `${full(entry)} proposing ${fingerprint(JSON.stringify(rows.map(({ text }) => text).sort()))}`;
+
+/**
+ * The Claude Code folder of a session whose transcript last names `model`:
+ * its path, given as CLAUDE_CONFIG_DIR.
+ * @param {string} model
+ */
+function sessionOn(model) {
+  const claude = path.join(config(), 'claude');
+  const transcript = path.join(claude, 'projects', '-Users-me-fumi', `${SESSION}.jsonl`);
+  fs.mkdirSync(path.dirname(transcript), { recursive: true });
+  fs.appendFileSync(transcript, `${JSON.stringify({ type: 'assistant', message: { model } })}\n`);
+  return claude;
+}
+
+/**
+ * A builder subagent of the session at `claude`, at work in its worktree,
+ * a folder of the project, on `model`: the worktree.
+ * @param {string} claude @param {string} model
+ */
+function builderOn(claude, model) {
+  const worktree = path.join(dir, 'worktree-2-3');
+  fs.mkdirSync(worktree);
+  const agent = path.join(claude, 'projects', '-Users-me-fumi', SESSION, 'subagents', 'agent-b23.jsonl');
+  fs.mkdirSync(path.dirname(agent), { recursive: true });
+  fs.writeFileSync(agent, `${JSON.stringify({ type: 'assistant', message: { model } })}\n`);
+  fs.writeFileSync(agent.replace(/\.jsonl$/, '.meta.json'), JSON.stringify({ agentType: 'leeway-builder', worktreePath: fs.realpathSync(worktree) }));
+  return worktree;
+}
+
+/** The trust log's events, as written. @returns {Record<string, any>[]} */
+const logEvents = () => logText().split('\n').slice(0, -1).map((line) => JSON.parse(line));
+
+/** The clean answers `kind` holds in the project for `model`'s calls, its line's older models' at half. @param {Kind} kind @param {string} model */
+const cleanFor = (kind, model) => stateOf(countsFrom(logEvents(), { project: project(), model, now: Date.now() }).kinds[kind], 0.2).clean;
+
 describe('what the decision point is given (E1)', () => {
   it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — and the time; and every call still asks, as before the rule is switched on', async (t) => {
     const decide = t.mock.method(decisionPoint, 'decide');
@@ -171,18 +223,49 @@ describe('what the decision point is given (E1)', () => {
   });
 });
 
+describe('the model the call is decided under (16.4.4)', () => {
+  it('a builder\'s call is its model\'s: decided under the builder\'s model, sealed on its park and copied to a task joining it from the conversation on another model, its question drawn, not followed and answered from that conversation logs each event under the builder\'s — so its kind\'s count gains the answer, and the conversation\'s model\'s holds nothing of it', async (t) => {
+    const decide = t.mock.method(decisionPoint, 'decide');
+    const claude = sessionOn(PREDECESSOR);
+    const worktree = builderOn(claude, MODEL);
+
+    await okSectionsAsync(worktree, ['raise', BUILD, '--answers', made.size, '--parks', '2.3'], { env: { ...labelledAs(CALL, 'look'), CLAUDE_CONFIG_DIR: claude }, stdin: JSON.stringify(CALL) });
+    await raised(BUILD, ['--answers', made.size, '--parks', '2.4'], CALL, conversation({ CLAUDE_CONFIG_DIR: claude }));
+    const { raise } = okSections(dir, ['raise', 'draw', BUILT, 'Q1'], { env: conversation({ CLAUDE_CONFIG_DIR: claude }) }).res;
+    answer(raise, ['--didnt-follow'], null, { CLAUDE_CONFIG_DIR: claude });
+    answer(raise, ['--pick', CURSOR.key], undefined, { CLAUDE_CONFIG_DIR: claude });
+
+    assert.deepStrictEqual([decide.mock.calls.map(({ arguments: [, at] }) => at.model), entries().filter(({ event }) => event === 'parked').map(({ model }) => model)], [[MODEL], [MODEL, MODEL]]);
+    assert.deepStrictEqual(logEvents().map(({ didnt_follow: didntFollow, model }) => [didntFollow, model]), [[true, MODEL], [false, MODEL]]);
+    assert.deepStrictEqual([cleanFor('look', MODEL), cleanFor('look', PREDECESSOR)], [1, 0]);
+  });
+
+  it('a raise drawn in the conversation is answered under the model it was decided under, the conversation\'s model changed since', async () => {
+    const claude = sessionOn(MODEL);
+    const { res } = await raised(NOTE, ['--answers', made.note], CALL, { ...labelledAs(CALL, 'look'), CLAUDE_CONFIG_DIR: claude });
+    sessionOn(PREDECESSOR);
+
+    answer(res.raise, ['--pick', CURSOR.key], undefined, { CLAUDE_CONFIG_DIR: claude });
+
+    assert.deepStrictEqual([seals()?.[res.raise].model, logEvents().map(({ model }) => model)], [MODEL, [MODEL]]);
+  });
+});
+
 describe('the rule\'s decisions as a raise meets them', () => {
-  it('a question Claude could find out is sent to check — drawing, sealing, parking, landing and logging nothing, the conversation keeping it as sent — and raised again, asks: at a topic, and in the build (16.3.1, 16.11.7)', async (t) => {
+  it('a question Claude could find out is sent to check — drawing, sealing, parking, landing and logging nothing, the conversation keeping the raise as sent, by the question and the task raising it — and the same raise made again asks: at a topic, and in the build, where another task\'s raise of it, whose own check has not come back, is sent to check too (16.3.1, 16.11.7)', async (t) => {
     byTheRule(t);
     const log = quietOn('behaviour');
     const checkable = labelledAs(CALL, 'behaviour', { yes: ['checkable'] });
     const ledger = ledgerText();
     const check = { ok: true, decision: 'check', reason: 'You can find this out: check it — read the code or the record, or run something — and raise it again only if checking can\'t settle it.' };
 
-    const sent = [await raised(NOTE, ['--answers', made.note], CALL, checkable), await raised(BUILD, ['--answers', made.size, '--parks', '2.3'], CALL, checkable)];
+    const sent = [
+      await raised(NOTE, ['--answers', made.note], CALL, checkable), await raised(BUILD, ['--answers', made.size, '--parks', '2.3'], CALL, checkable),
+      await raised(BUILD, ['--answers', made.size, '--parks', '2.4'], CALL, checkable),
+    ];
 
-    assert.deepStrictEqual(sent.map(({ res, sections }) => [res, sections]), [[check, ''], [check, '']]);
-    assert.deepStrictEqual([ledgerText(), logText(), seals(), Object.keys(sentToCheck() ?? {})], [ledger, log, null, [full(made.note), full(made.size)]]);
+    assert.deepStrictEqual(sent.map(({ res, sections }) => [res, sections]), [[check, ''], [check, ''], [check, '']]);
+    assert.deepStrictEqual([ledgerText(), logText(), seals(), Object.keys(sentToCheck() ?? {})], [ledger, log, null, [`${full(made.note)} for no task`, `${full(made.size)} for 2.3`, `${full(made.size)} for 2.4`]]);
     const checked = 'Checking couldn\'t settle it, so it comes to you.';
     const again = await raised(NOTE, ['--answers', made.note], CALL, checkable);
     assert.deepStrictEqual([again.res.decision, again.res.reason, seals()?.[again.res.raise].reason], ['ask', checked, checked]);
@@ -191,15 +274,20 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([parked.decision, parked.parked, lastEntry().why_asking], ['ask', 'Q1', checked]);
   });
 
-  it('a replacement Claude could find out is sent to check by the decision it would replace: two in one conversation are each sent their own (16.11.7)', async (t) => {
+  it('a replacement Claude could find out is sent to check by the decision it would replace and its proposal: two decisions in one conversation are each sent their own, another proposal for the first is sent too, and the first proposal made again asks (16.11.7)', async (t) => {
     byTheRule(t);
     quietOn('behaviour');
     const checkable = labelledAs(FRAMED, 'behaviour', { yes: ['checkable'] });
 
     const light = await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, checkable);
     const flat = await raised(NOTE, ['--replaces', made.flat, '--reason', 'was-wrong'], FRAMED, checkable);
+    const glow = await raised(NOTE, ['--replaces', made.light, '--reason', 'changed-mind'], GLOWING, checkable);
+    const again = await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, checkable);
 
-    assert.deepStrictEqual([light.res.decision, flat.res.decision, Object.keys(sentToCheck() ?? {})], ['check', 'check', [full(made.light), full(made.flat)]]);
+    assert.deepStrictEqual([light.res.decision, flat.res.decision, glow.res.decision, Object.keys(sentToCheck() ?? {})], [
+      'check', 'check', 'check', [proposing(made.light, FRAMED), proposing(made.flat, FRAMED), proposing(made.light, GLOWING)],
+    ]);
+    assert.deepStrictEqual([again.res.decision, again.res.reason], ['ask', 'Checking couldn\'t settle it, so it comes to you.']);
   });
 
   it('16.S68, the label\'s half: with no label — the stub serving no login — a call asks however quiet its kind, saying so', async (t) => {

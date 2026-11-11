@@ -33,9 +33,13 @@
 //   `project_id` setup writes on the project manifest when it creates the
 //   state, never changed, its name beside it. A project manifest without one
 //   is refused, never filled in. An event before the project has state
-//   carries none. The model is the one the caller's transcript last names
-//   (conversation.cjs), by its id: null where none can be read, or what is
-//   read is no model's id. The session is the id Claude Code handed the
+//   carries none. An event about a call of Claude's logs the model the
+//   call was made under, as its caller gives it (raise.cjs seals it with
+//   the call), never the model of whoever runs the command logging it: an
+//   answer drawn in the conversation to a builder's raise is the builder's
+//   model's (16.4.4). Any other event's model is the one the caller's
+//   transcript last names (conversation.cjs), by its id: null where none
+//   can be read, or what is read is no model's id. The session is the id Claude Code handed the
 //   command, null where it handed none, or what it handed is no session's
 //   id. An event's time is to the millisecond. Its id is drawn afresh, or
 //   given by a caller whose rerun logs the same event again, so the read
@@ -415,14 +419,15 @@ function modelOf(cwd) {
  * Event `type` as the trust log records it, built and checked, nothing
  * written: its own `fields` under the fields the engine sets — its id,
  * `id` or one drawn afresh, the time, the project `cwd` is in, and the
- * model's and the session's ids. Refuses an event its schema does not hold,
- * and a project whose manifest holds no project_id.
- * @param {string} type @param {Record<string, unknown>} fields @param {string} cwd @param {string} [id]
+ * model's and the session's ids, the model `model` where given — that of
+ * the call the event is about — else the caller's. Refuses an event its
+ * schema does not hold, and a project whose manifest holds no project_id.
+ * @param {string} type @param {Record<string, unknown>} fields @param {string} cwd @param {{id?: string, model?: string|null}} [given]
  * @returns {Record<string, unknown>}
  */
-function newEvent(type, fields, cwd, id = newId()) {
+function newEvent(type, fields, cwd, { id = newId(), model = modelOf(cwd) } = {}) {
   const session = handedSession();
-  const ids = { model: modelOf(cwd), session: SESSION.test(session) ? session : null };
+  const ids = { model, session: SESSION.test(session) ? session : null };
   return trustEvent(type, { id, at: new Date().toISOString(), ...projectOf(cwd), ...ids }, fields);
 }
 
@@ -500,14 +505,15 @@ function landKept(cwd, warnings) {
  * recording nothing, what it cannot build, then appended as one line after
  * any the conversation could not append before. An append that fails is a
  * warning in `warnings`, the event kept for the conversation's next record.
- * An `id` given is the event's, so a rerun that records it again is read once.
+ * An `id` given is the event's, so a rerun that records it again is read once;
+ * a `model` given, that of the call the event is about.
  * While the migration runs in the project, the event is built and neither
  * appended nor kept.
- * @param {string} type @param {Record<string, unknown>} fields @param {{cwd: string, warnings: string[], id?: string}} ctx
+ * @param {string} type @param {Record<string, unknown>} fields @param {{cwd: string, warnings: string[], id?: string, model?: string|null}} ctx
  * @returns {Record<string, unknown>} the event recorded
  */
-function record(type, fields, { cwd, warnings, id }) {
-  const event = newEvent(type, fields, cwd, id);
+function record(type, fields, { cwd, warnings, id, model }) {
+  const event = newEvent(type, fields, cwd, { id, model });
   if (migrationRunsAt(cwd)) return event;
   const line = `${JSON.stringify(event)}\n`;
   const pending = pendingFile(handedSession());

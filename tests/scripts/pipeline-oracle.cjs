@@ -793,8 +793,9 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // every such answer landed through its raise, a fact's, which logs no raise,
 // by the seal the conversation answered it from (12.13.16, 16.4.7); one
 // raise not followed for each "I don't follow" the conversations' seals
-// count, but a fact's, blocking the build exactly where its seal's
-// question waited in it;
+// count, but a fact's, the one a command just pressed blocking the build
+// exactly where a task was parked, by the ledger, on the question its seal
+// was drawn from as it was pressed, which lands no line;
 // none of them for anything else; and nothing left waiting in a
 // conversation, as no append fails. A raise answered and the line it
 // landed agree on whether the answer took Claude's lean — its row, or the
@@ -867,12 +868,23 @@ function auditTrust(sim, label, ran = []) {
   const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
   /** @type {Record<string, any>[]} */
   const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
+  /** The parks of the question whose first park is `first`: it and each holding its number about the same thing. @type {(first: Record<string, any>) => Record<string, any>[]} */
+  const questionParks = (first) => entries.filter((p) => p.event === 'parked' && p.unit === first.unit && p.number === first.number
+    && (first.question === null ? p.replaces === first.replaces : p.question !== null && firstWording(p.question) === firstWording(first.question)));
+  /** Blocking build work where a park of the question a seal was drawn from holds its task as the ledger stands — no close taking it off — not where none does; null for a seal drawn from none. @type {(parks: {park: string}|null) => boolean|null} */
+  const parkingNow = (parks) => (parks === null ? null : questionParks(byId.get(parks.park)).some((p) => p.task !== null
+    && !entries.some((u) => u.event === 'unparked' && u.parks.includes(p.id))));
   const raised = new Set([...answers.map((e) => e.entry), ...sealed.filter((s) => s.fact && s.answered !== null).map((s) => s.id)]);
   assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
     ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
-  assert.deepStrictEqual(ofType('raise').filter((e) => e.didnt_follow).map((e) => e.blocked_build).sort(),
-    sealed.filter((s) => !s.fact).flatMap((s) => Array(s.didnt_follow).fill(s.parks === null ? null : s.parks.tasks.length > 0)).sort(),
-    ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count, blocking build work exactly where its question parked a task in the build'));
+  const notFollowed = ofType('raise').filter((e) => e.didnt_follow);
+  assert.strictEqual(notFollowed.length, sealed.filter((s) => !s.fact).reduce((sum, s) => sum + s.didnt_follow, 0),
+    ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count'));
+  const pressed = ran[0] === 'raise' && ran[1] === 'answer' && ran.includes('--didnt-follow') ? sealed.find((s) => s.id.startsWith(ran[2])) : undefined;
+  if (pressed !== undefined && !pressed.fact && pressed.answered === null) {
+    assert.strictEqual(notFollowed.at(-1)?.blocked_build, parkingNow(pressed.parks),
+      ctx('the raise not followed does not block build work exactly where a task parks on its question as it was pressed'));
+  }
   const waiting = folders.filter((name) => fs.existsSync(path.join(conversations, name, PENDING)));
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));
   /** Whether a raise's answer took the lean: its row, or the row read from the person's own words. @type {(e: Record<string, any>) => boolean} */

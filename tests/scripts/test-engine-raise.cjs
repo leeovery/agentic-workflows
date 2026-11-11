@@ -276,6 +276,7 @@ describe('the seal (P1, P6)', () => {
       fact: false,
       rows_judged: [],
       label: null,
+      model: null,
       reason: EVERY_CALL_ASKS,
       at: sealed.at,
       answered: null,

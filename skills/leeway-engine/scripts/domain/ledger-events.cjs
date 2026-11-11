@@ -80,10 +80,12 @@
 //   raised as it was put whenever the person is ready, in whatever
 //   conversation: Claude's call as the raise took it, the rows the
 //   one-decision check judged one rule, why it asks, the decision point's
-//   reason, and the labeller's label of the call (16.11.5), null where it
-//   gave none. A fact only the person holds (16.3.8) parks in the same shape,
-//   as the ledger holds a fact's answer, with no lean: its call's lean, why
-//   and sort null, its rows any number, and never labelled. It names no
+//   reason, the labeller's label of the call (16.11.5), null where it gave
+//   none, and the model the call was decided under, by its id, null where
+//   it was unread (16.4.4). A fact only the person holds (16.3.8) parks in
+//   the same shape, as the ledger holds a fact's answer, with no lean: its
+//   call's lean, why and sort null, its rows any number, never labelled and
+//   decided under no model. It names no
 //   maker, is no entry and is never replaced: it waits while what it is
 //   about stands open (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
@@ -127,7 +129,7 @@
 
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, LABEL, oneOf, nullable, listOf, shaped, field, event, readFields } = require('./event-fields.cjs');
+const { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, readFields } = require('./event-fields.cjs');
 const { isShownTask } = require('./task-id.cjs');
 
 const LEDGER = '.ledger.jsonl';
@@ -323,6 +325,7 @@ const SCHEMA = {
       field('rows_judged', listOf(KEY)),
       field('why_asking', LINE),
       field('label', nullable(LABEL)),
+      field('model', nullable(MODEL)),
     ], 1, parkHolds),
     unparked: event([field('task', TASK), field('parks', listOf(ID))], 1, unparkHolds),
     rehomed: event([field('lines', listOf(ID)), field('files', listOf(MOVED_FILE))], 1, rehomeHolds),
