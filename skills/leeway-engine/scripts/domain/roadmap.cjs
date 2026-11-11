@@ -7,11 +7,13 @@
 // semantics) and an `items` record — ideas at capability grain, a bug or a
 // quick-fix one fix each — every one
 // `{horizon, summary, kind, origin[, sources][, pulled_to][, postponed_from]}`,
-// never a status field: item lifecycle is computed at render time by joining
-// `pulled_to` against the named work unit, the same trick the discovery map
-// uses one level down. "Waiting" is the absence of a join and of the archive
-// mark, and `postponed_from` names the epic a waiting item left, so the
-// archive and the return can each find the row that waits for it.
+// never a status field, and with no `horizon` where it waits on none, put
+// back after its horizon was removed (18.8.20). Item lifecycle is computed
+// at render time by joining `pulled_to` against the named work unit, the
+// same trick the discovery map uses one level down. "Waiting" is the
+// absence of a join and of the archive mark, and `postponed_from` names the
+// epic a waiting item left, so the archive and the return can each find the
+// row that waits for it.
 //
 // An archived item (18.8.13) stays on the manifest, its name taken
 // (18.8.21), marked `archived: {at, horizon[, postponed_from]}` — when, the
@@ -337,7 +339,7 @@ function joinState(cwd, item) {
 /**
  * @typedef {object} RoadmapItemRow
  * @property {string} name
- * @property {string} horizon
+ * @property {string|null} horizon  null where it waits on none (18.8.20)
  * @property {string} summary
  * @property {RoadmapKind} kind
  * @property {string} origin
@@ -378,7 +380,7 @@ function joinState(cwd, item) {
  * @property {string} [renamed_from]
  * @property {string[]} [preserved_fields]
  * @property {string|null} [moved_from]  move: the horizon it left — none where it stood on none
- * @property {{at: string, horizon: string|null}} [from_archive]  move: the archive mark it came back from
+ * @property {{at: string, horizon: string|null, postponed_from?: unknown}} [from_archive]  move: the archive mark it came back from
  * @property {number} [items_updated]
  * @property {string} [merged]
  * @property {string} [into]
@@ -454,7 +456,7 @@ function roadmapState(cwd) {
     }
     const derived = joinState(cwd, item);
     /** @type {RoadmapItemRow} */
-    const row = { ...described, horizon: typeof item.horizon === 'string' ? item.horizon : '', state: derived.state };
+    const row = { ...described, horizon: typeof item.horizon === 'string' ? item.horizon : null, state: derived.state };
     if (derived.work_unit !== undefined) row.work_unit = derived.work_unit;
     if (derived.topic !== undefined) row.topic = derived.topic;
     if (derived.work_type !== undefined) row.work_type = derived.work_type;

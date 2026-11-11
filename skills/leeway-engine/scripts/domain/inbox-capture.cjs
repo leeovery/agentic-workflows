@@ -7,8 +7,8 @@
 //
 // The item's text comes on stdin, markdown opening on its title, its first
 // `# Title`. It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, the
-// slug its title's, a name the inbox holds already today, its archive
-// included, or the product's notes, taking the next free `-{n}` (inbox.cjs,
+// slug its title's, a name an item of any kind holds already today, live or
+// archived, or the product's notes, taking the next free `-{n}` (inbox.cjs,
 // `freeItemPath`); and
 // committed and pushed, a push that fails a warning, a commit that fails the
 // retry noted, from the named project's folder where it is another's. Its

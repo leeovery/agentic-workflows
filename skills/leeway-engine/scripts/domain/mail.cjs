@@ -216,11 +216,6 @@ function nextNumber(cwd, unit, topic) {
  * @property {Record<string, unknown>} fields  the response's own fields
  */
 
-/** Where an idea of `slug` lands in the inbox today, state-relative. @param {string} slug */
-function ideaPath(slug) {
-  return `${INBOX_IDEAS}/${todayStamp()}--${slug}.md`;
-}
-
 /** Write a message, its sender line under its title, as an idea at `rel`: its title an H1 over the rest. @param {string} cwd @param {string} rel @param {string} message */
 function writeIdea(cwd, rel, message) {
   fs.mkdirSync(statePath(cwd, INBOX_IDEAS), { recursive: true });
@@ -239,13 +234,14 @@ function removedTopic(manifest, topic) {
 /**
  * A message to a cancelled topic, a removed one, or a cancelled unit's,
  * landed in the inbox as an idea (10.1.6, 8.8.16), its title an H1 over the
- * rest, the line saying who sent it first; `why` saying what went.
+ * rest, the line saying who sent it first; `why` saying what went. Named
+ * for the slug, a name taken taking the next free `-{n}` (inbox.cjs,
+ * `freeItemPath`).
  * @param {string} cwd @param {string} unit @param {string} why @param {string} message the message with its sender line
  * @param {string} slug @returns {Landed}
  */
 function toInbox(cwd, unit, why, message, slug) {
-  const rel = ideaPath(slug);
-  if (fs.existsSync(statePath(cwd, rel))) throw new Error(`the inbox already holds ${statePath(cwd, rel)} — send it under another slug`);
+  const rel = freeItemPath(cwd, 'ideas', slug);
   writeIdea(cwd, rel, message);
   return { rel, paths: [rel], message: `mail(${unit}): ${slug} to the inbox — ${why}`, retry: '--inbox', fields: { inbox_path: statePath(cwd, rel) } };
 }
@@ -253,8 +249,7 @@ function toInbox(cwd, unit, why, message, slug) {
 /**
  * Every message waiting for a topic moved to the inbox as an idea, as a send
  * to a cancelled topic lands one (10.1.6, 8.8.16): named for the message's
- * slug, a name the inbox holds already today taking the next free `-{n}`
- * (inbox.cjs, `freeItemPath`).
+ * slug as `toInbox` names one.
  * Runs under the caller's lock and commits nothing. Answers, state-relative,
  * each message removed and the idea it became, in the order they landed.
  * @param {string} cwd @param {string} unit @param {string} topic

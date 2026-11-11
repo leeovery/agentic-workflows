@@ -569,7 +569,7 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
     assert.deepStrictEqual(res.items.map((i) => i.name), ['ordering', 'menus', 'loyalty', 'ghost-work', 'dead-work']);
   });
 
-  it('reads corrupt shapes honestly: scalar node, array items, non-object item, stray horizon, malformed join', () => {
+  it('reads corrupt shapes honestly: scalar node, array items, non-object item, stray horizon, malformed join; an item waiting on no horizon as null (18.8.20)', () => {
     const write = (m) => fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(m, null, 2));
 
     write({ roadmap: 'scalar' });
@@ -585,11 +585,12 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
           bad: 'scalar',
           stray: { horizon: 'never-listed', summary: 's', origin: 'harvest' },
           crooked: { horizon: 'v1', summary: 's', origin: 'harvest', pulled_to: 'not-an-object' },
+          homeless: { summary: 's', origin: 'harvest' },
         },
       },
     });
     const res = runOk(dir, ['state']);
-    assert.deepStrictEqual(res.items.map((i) => i.name), ['good', 'crooked', 'stray'], 'non-object skipped; stray horizon trails last');
+    assert.deepStrictEqual(res.items.map((i) => [i.name, i.horizon]), [['good', 'v1'], ['crooked', 'v1'], ['stray', 'never-listed'], ['homeless', null]], 'non-object skipped; stray horizon and none trail last');
     assert.strictEqual(res.items.find((i) => i.name === 'crooked').state, 'waiting', 'a malformed join reads as no join');
   });
 

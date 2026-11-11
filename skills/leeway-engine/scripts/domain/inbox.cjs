@@ -24,8 +24,9 @@
 // — the close's at `{unit}.implementation` — (14.3.7, review-phase.cjs), so
 // every filing is one engine call away.
 // It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, today's date
-// and its title's slug, a name only the archive holds taking the next free
-// `-{n}` (`freeItemPath`), and committed. It refuses, writing nothing, a unit
+// and its title's slug, a name any kind's item holds, live or archived, or
+// the product's notes, taking the next free `-{n}` (`freeItemPath`), and
+// committed. It refuses, writing nothing, a unit
 // whose review phase cannot be entered (review-entry.cjs) but such a
 // quick-fix, a payload of another shape, a text with no title, a call that
 // is none of those, and an item already there.
@@ -413,17 +414,21 @@ function liveResolved(cwd, text) {
   return [...new Set(claimed.map(([, folder, file]) => statePath(cwd, INBOX, folder, file)))].filter((file) => fs.existsSync(file));
 }
 
+// Every folder an item's name is taken in: the inbox is one namespace across
+// its kinds, since an item put on the roadmap keeps its name in the
+// product's one folder of notes, of whichever kind (4.11.16).
+const NAME_HOMES = [...FOLDERS.flatMap((folder) => [`${INBOX}/${folder}`, archivedDir(folder)]), PRODUCT_NOTES];
+
 /**
  * Where a slug's item lands in its folder today: the next free `-{n}`
- * where the inbox, its archive included, holds the name already, or the
- * product's notes do — an item put on the roadmap keeps its name there, of
- * whichever kind (4.11.16).
+ * where an item of any kind holds the name already, live or archived, or
+ * the product's notes do (`NAME_HOMES`) — the one place a name is decided.
  * @param {string} cwd @param {string} folder @param {string} slug
  * @returns {string} state-relative
  */
 function freeItemPath(cwd, folder, slug) {
   const named = (/** @type {string} */ name) => `${todayStamp()}--${name}.md`;
-  const taken = (/** @type {string} */ name) => [`${INBOX}/${folder}`, archivedDir(folder), PRODUCT_NOTES].some((dir) => fs.existsSync(statePath(cwd, dir, named(name))));
+  const taken = (/** @type {string} */ name) => NAME_HOMES.some((dir) => fs.existsSync(statePath(cwd, dir, named(name))));
   let name = slug;
   for (let n = 2; taken(name); n += 1) name = `${slug}-${n}`;
   return `${INBOX}/${folder}/${named(name)}`;

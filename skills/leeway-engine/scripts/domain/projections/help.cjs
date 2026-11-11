@@ -68,7 +68,7 @@ function parseHelp(text, file) {
 /** A menu's help, read from its file; refused where the menu has none yet. @param {Menu} m @returns {Help} */
 function readHelp(m) {
   const file = helpFile(m);
-  if (!fs.existsSync(file)) throw new Error(`${m.named} has no help yet — its help is ${path.basename(file)}, beside its projection`);
+  if (!fs.existsSync(file)) throw new Error(`there is no help for ${m.named} yet — its help is ${path.basename(file)}, beside its projection`);
   return parseHelp(fs.readFileSync(file, 'utf8'), file);
 }
 

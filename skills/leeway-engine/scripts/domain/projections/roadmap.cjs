@@ -59,18 +59,21 @@ function roadmapNodes(rows) {
   }));
 }
 
+/** The label rows on no horizon of the list go under, in a display and a DATA line alike. */
+const NO_HORIZON = '(no horizon)';
+
 /**
  * Group rows by horizon in list order; rows on no horizon of the list — one
  * put back after its horizon was removed (18.8.20) — trail under their own
  * label, so every view that lists the roadmap shows them.
- * @template {{horizon?: string}} R
+ * @template {{horizon?: string|null}} R
  * @param {string[]} horizons @param {R[]} rows
  * @returns {{horizon: string, rows: R[]}[]}
  */
 function groupByHorizon(horizons, rows) {
   const groups = horizons.map((h) => ({ horizon: h, rows: rows.filter((r) => r.horizon === h) }));
-  const strays = rows.filter((r) => r.horizon === undefined || !horizons.includes(r.horizon));
-  if (strays.length > 0) groups.push({ horizon: '(no horizon)', rows: strays });
+  const strays = rows.filter((r) => typeof r.horizon !== 'string' || !horizons.includes(r.horizon));
+  if (strays.length > 0) groups.push({ horizon: NO_HORIZON, rows: strays });
   return groups.filter((g) => g.rows.length > 0);
 }
 
@@ -184,7 +187,7 @@ function roadmapPullSetView(state) {
   const byHorizon = groupByHorizon(state.horizons, waiting);
   const groups = byHorizon.map((g) => {
     const nodes = g.rows.map((row) => {
-      rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon, kind: row.kind });
+      rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon ?? NO_HORIZON, kind: row.kind });
       const number = `${rows.length}. `;
       const kind = markedKind(row.kind);
       return { title: `${number}${titlecase(row.name)}${kind ? ` [${kind}]` : ''} — ${row.summary}`, hang: number.length };

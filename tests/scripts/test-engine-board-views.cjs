@@ -7,7 +7,8 @@
 // since the person last looked — read without looking (5.8.14) — its
 // review rounds, what is decided and everything it sent; a message's and a
 // review report's pages; an experiment, its design and its report. The
-// epic's page and other units' are test-engine-board-units.cjs.
+// epic's page is test-engine-board-epic.cjs's, other units'
+// test-engine-board-units.cjs's.
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs) — the epic
 // `fumi`, its note window's map written, its two topics under discussion —

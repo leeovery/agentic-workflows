@@ -51,15 +51,11 @@ function isRetryable(err) {
  * @typedef {object} RetryPolicy
  * @property {number} [maxAttempts]
  * @property {number[]} [backoff]  the wait before each retry, the last repeating
+ * @property {(ms: number) => Promise<void>} [sleep]  how it waits
  */
 
 /** @type {Required<RetryPolicy>} what a policy leaves out */
-const RETRY = { maxAttempts: 3, backoff: [1000, 2000, 4000] };
-
-/** @param {number} ms */
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const RETRY = { maxAttempts: 3, backoff: [1000, 2000, 4000], sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) };
 
 /**
  * Retry an async operation with backoff while its failure is retryable.
@@ -68,7 +64,7 @@ function sleep(ms) {
  * @returns {Promise<T>}
  */
 async function withRetry(fn, policy = {}) {
-  const { maxAttempts, backoff } = { ...RETRY, ...policy };
+  const { maxAttempts, backoff, sleep } = { ...RETRY, ...policy };
   let lastErr;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {

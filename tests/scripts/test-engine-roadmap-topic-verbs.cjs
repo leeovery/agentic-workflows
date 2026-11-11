@@ -446,7 +446,7 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.strictEqual('horizon' in item, false);
     assert.strictEqual('pulled_to' in item, false);
     const row = runOk(dir, ['state']).items.find((i) => i.name === 'ordering');
-    assert.deepStrictEqual([row.horizon, row.state], ['', 'waiting'], 'waiting on none');
+    assert.deepStrictEqual([row.horizon, row.state], [null, 'waiting'], 'waiting on none');
     // The person's answer is a move, and the item stands on the horizon named.
     const moved = runOk(dir, ['move', 'ordering', '--horizon', 'v1']);
     assert.strictEqual(moved.moved_from, null);
