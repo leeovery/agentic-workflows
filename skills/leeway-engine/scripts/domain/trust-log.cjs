@@ -401,6 +401,17 @@ function keep(line, pending, err) {
 }
 
 /**
+ * The model the command calling from `cwd` runs on, by its id: null where
+ * none can be read, or what is read is no model's id.
+ * @param {string} cwd @returns {string|null}
+ */
+function modelOf(cwd) {
+  const session = handedSession();
+  const model = session === null ? null : callerModel(session, cwd);
+  return MODEL.test(model) ? model : null;
+}
+
+/**
  * Event `type` as the trust log records it, built and checked, nothing
  * written: its own `fields` under the fields the engine sets — its id,
  * `id` or one drawn afresh, the time, the project `cwd` is in, and the
@@ -411,8 +422,7 @@ function keep(line, pending, err) {
  */
 function newEvent(type, fields, cwd, id = newId()) {
   const session = handedSession();
-  const model = session === null ? null : callerModel(session, cwd);
-  const ids = { model: MODEL.test(model) ? model : null, session: SESSION.test(session) ? session : null };
+  const ids = { model: modelOf(cwd), session: SESSION.test(session) ? session : null };
   return trustEvent(type, { id, at: new Date().toISOString(), ...projectOf(cwd), ...ids }, fields);
 }
 
@@ -610,4 +620,4 @@ function readProjectEvents(root, visit) {
   });
 }
 
-module.exports = { TRUST_LOG, PENDING, trustLogPath, projectId, projectOf, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readPersonEvents, readProjectEvents };
+module.exports = { TRUST_LOG, PENDING, trustLogPath, projectId, projectOf, modelOf, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readPersonEvents, readProjectEvents };

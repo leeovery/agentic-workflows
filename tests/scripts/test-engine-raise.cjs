@@ -497,7 +497,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
 
   it('argv ledger decide would not take, in the raise\'s own words', async () => {
     assert.strictEqual(await refusedDraw([NOTE], JSON.stringify(CALL)),
-      'raise needs --answers <id> — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …] [--parks <phase>.<n>]   (the call as JSON on stdin)');
+      'raise needs --answers <id> — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …] [--parks <phase>.<n>] [--always design-problem|live-server]   (the call as JSON on stdin)');
   });
 
   it('a place ledger decide would refuse', async () => {

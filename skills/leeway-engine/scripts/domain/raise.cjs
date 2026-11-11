@@ -8,7 +8,8 @@
 // trust log (16.13.3).
 //
 // - The draw: `raise <unit>.<phase>[.<topic>] --answers <question>
-//   [--relies-on <id> …]`, Claude's call on stdin as one JSON object: the
+//   [--relies-on <id> …] [--always <mark>]`, Claude's call on stdin as one
+//   JSON object: the
 //   question as the person reads it; its rows, each `{key, name, text,
 //   notice}` — the key, a short name for what the person would notice, the
 //   answer's text and what they would notice; the lean, a row's key; why
@@ -24,7 +25,8 @@
 //   one line but the mechanism, drawn as written; nothing else is taken.
 // - A raise on a replacement (16.5.7, 29.5.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
-//   …]`, the same call on stdin, its rows Claude's proposed answers in place
+//   …] [--always <mark>]`, the same call on stdin, its rows Claude's
+//   proposed answers in place
 //   of the decision's, the lean one of them. The screen adds a row of its
 //   own, `keep`, keeping the decision as it stands, its answer as the draw
 //   found it, which the seal holds.
@@ -35,7 +37,8 @@
 //   answer, or moved to the roadmap as later — after a `/clear` or a
 //   compaction Claude can raise one again — whether or not the conversation
 //   holds its seal; an entry replaced that is no decision, whose answer the
-//   rows give; a call of another shape;
+//   rows give; `--always` given twice, naming no mark, or with `--fact`; a
+//   call of another shape;
 //   fewer than two rows — on a replacement, no proposal; a key the trust log
 //   cannot key, one two rows share, or one that is the screen's own word in
 //   any case (`t`, `e`, `technical`, `explain`, `comment`, and `keep` on
@@ -99,6 +102,15 @@
 //   way, at its build and its review, are where a raise of no parked
 //   question waits (`raisePlaces`; board-investigation.cjs,
 //   board-quick-fix.cjs, waits.cjs).
+// - The decision point decides from the call and, beside it (E1): its
+//   label; where it is made, and whether it blocks build work — made in the
+//   build, where a question asked parks; who decided the entry a
+//   replacement would replace, read from the entry (16.5.7); the mark
+//   Claude gives a question that always asks, `--always design-problem` or
+//   `--always live-server` (19.4.22, 19.4.20), which a fact, always asked,
+//   never takes; whether the conversation sent the question to check
+//   already; the project, by its state root and its name; the model of the
+//   session making the call; and the time.
 // - The decision point's answer is the response's, with its reason. An ask
 //   draws the screen. A proceed lands Claude's call, drawing nothing and
 //   sealing nothing: Claude's decision answering the question — the lean
@@ -107,7 +119,13 @@
 //   it; on a replacement, Claude's replacement of the decision, through the
 //   write `ledger replace` takes, dropping the decision's answer as it
 //   stood; either logged as a call carrying the sort, and the label and
-//   kind its decision takes. A blind ask is refused until it is built.
+//   kind its decision takes. A check draws, seals, parks, lands and logs
+//   nothing, and its reason tells Claude to find the answer out (16.3.1):
+//   the conversation keeps what the raise is about — the question it
+//   answers, or the decision it would replace, by its id — as sent to check
+//   (`raise-checked.json` in its folder, under a lock of its own), so a
+//   raise of it again is decided as one sent to check already, and asks
+//   (16.11.7). A blind ask is refused until it is built.
 // - A raise is no gate (gate.cjs): drawing it clears the gate shown.
 // - In the build (12.13) — and at a quick-fix's places for a question its
 //   task's builder asks, `--parks` naming the task; one Claude raises in the
@@ -119,7 +137,7 @@
 //   it takes no `--task`, the flag `ledger` takes there. A call made outside
 //   any task — the task writer's, the consolidation agent's, the phase
 //   review's — names none (12.5.5, 12.12.12). A proceed lands Claude's call for its task, or
-//   for none. One that asks, and a fact (16.3.8), which always asks and
+//   for none; a check parks nothing. One that asks, and a fact (16.3.8), which always asks and
 //   never meets the decision point, draw nothing and seal nothing in the
 //   conversation: each parks its task (12.13.2, 12.13.9), or, with none,
 //   waits in the build's queue parking none (12.8.4) — one `parked` line in
@@ -246,7 +264,7 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
-const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind } = require('./ledger-events.cjs');
+const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind, decidedBy } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { topicTitles, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
@@ -261,7 +279,9 @@ const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
 const { clearStop } = require('./position.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { record } = require('./trust-log.cjs');
+const { record, modelOf } = require('./trust-log.cjs');
+const { projectName } = require('./state-checks.cjs');
+const { ALWAYS_MARKS } = require('./ask-rule.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
 const { drawnRows, raiseScreen } = require('./projections/raise.cjs');
 const decisionPoint = require('./decision-point.cjs');
@@ -270,6 +290,9 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
 
 /** @typedef {import('./event-fields.cjs').Type} Type */
 /** @typedef {import('./decision-point.cjs').Decision} Decision */
+/** @typedef {import('./decision-point.cjs').At} At */
+/** @typedef {import('./ask-rule.cjs').Always} Always */
+/** @typedef {import('./ledger-events.cjs').DecidedBy} DecidedBy */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-write.cjs').Landed} Landed */
 /** @typedef {import('./labeller.cjs').Label} Label */
@@ -323,10 +346,11 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
 /** A raise as sealed in the conversation's folder. @typedef {CallSeal|FactSeal} Seal */
 /**
  * What a draw did: the raise sealed and drawn, or the conversation's open
- * seal of the question, or of the replacement, drawn again; or Claude's
- * call landed, the decision point letting it proceed.
- * @typedef {{decision: 'ask', reason: string, seal: Seal, redrawn: boolean, warnings: string[]} | {decision: 'proceed', reason: string, landed: Landed}} Drawn
+ * seal of the question, or of the replacement, drawn again; Claude's call
+ * landed, the decision point letting it proceed; or Claude sent to check.
+ * @typedef {{decision: 'ask', reason: string, seal: Seal, redrawn: boolean, warnings: string[]} | {decision: 'proceed', reason: string, landed: Landed} | Checking} Drawn
  */
+/** Claude sent to find the answer out, nothing drawn. @typedef {{decision: 'check', reason: string, warnings: string[]}} Checking */
 /**
  * What a raise in the build did that asks: its task parked, or its question
  * waiting parking none — the question's number, the task or null, the
@@ -364,8 +388,10 @@ const DRAW_SAID = 'raise draw';
 const NO_TASK = ['task'];
 const PARKS = '--parks';
 const PARKS_USAGE = `[${PARKS} <phase>.<n>]`;
-const QUESTION_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${PARKS_USAGE}   (the call as JSON on stdin)`;
-const REPLACE_USAGE = `${verbUsage('replace', SAID, NO_TASK)} ${PARKS_USAGE}   (the call as JSON on stdin)`;
+const ALWAYS = '--always';
+const ALWAYS_USAGE = `[${ALWAYS} ${ALWAYS_MARKS.join('|')}]`;
+const QUESTION_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${PARKS_USAGE} ${ALWAYS_USAGE}   (the call as JSON on stdin)`;
+const REPLACE_USAGE = `${verbUsage('replace', SAID, NO_TASK)} ${PARKS_USAGE} ${ALWAYS_USAGE}   (the call as JSON on stdin)`;
 const FACT = '--fact';
 const FACT_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${FACT}   (the fact's question as JSON on stdin)`;
 const SHOW_USAGE = 'raise show <id> [--technical]';
@@ -383,6 +409,9 @@ const KEEP = 'keep';
 // means a keep.
 const SCREEN_KEYS = ['t', 'e', 'technical', 'explain', 'comment', KEEP];
 const SEALS_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on the conversation\'s raises' };
+// What the conversation sent to check, each by the id of what its raise was about.
+const RAISE_CHECKED = 'raise-checked.json';
+const CHECKED_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on what the conversation sent to check' };
 // The word the screen's "I don't follow" row is sent as (projections/raise.cjs).
 const EXPLAIN = 'explain';
 
@@ -520,6 +549,23 @@ function parksFlag(args) {
 }
 
 /**
+ * The draw's argv without `--always` and its mark, and the mark, or null
+ * where it is not given. Refuses it given twice, with no mark or one of
+ * none, and on a fact, which always asks.
+ * @param {string[]} args @param {boolean} fact
+ * @returns {{always: Always|null, rest: string[]}}
+ */
+function alwaysFlag(args, fact) {
+  const at = args.indexOf(ALWAYS);
+  if (at === -1) return { always: null, rest: args };
+  if (fact) throw new Error(`raise ${FACT} takes no ${ALWAYS}: a fact always asks — Usage: engine ${FACT_USAGE}`);
+  if (args.indexOf(ALWAYS, at + 1) !== -1) throw new Error(`raise takes ${ALWAYS} once — Usage: engine ${QUESTION_USAGE}`);
+  const mark = /** @type {Always} */ (args[at + 1]);
+  if (!ALWAYS_MARKS.includes(mark)) throw new Error(`raise: ${ALWAYS} takes ${ALWAYS_MARKS.join(' or ')} — not ${mark === undefined ? 'nothing' : `"${mark}"`}`);
+  return { always: mark, rest: [...args.slice(0, at), ...args.slice(at + 2)] };
+}
+
+/**
  * Why a raise at the place parks nothing, drawn in the conversation as
  * anywhere else, or null where it is made in the build, which parks: a
  * place outside the build.
@@ -627,22 +673,44 @@ function sealFile(session) {
 }
 
 /**
+ * What a file of the conversation's raises keeps by id, as written; none
+ * where there is no file. Refuses one that does not read, or holds nothing
+ * by id, `what` saying what it holds.
+ * @param {string} file @param {string} what
+ * @returns {Record<string, unknown>}
+ */
+function readById(file, what) {
+  if (!fs.existsSync(file)) return {};
+  let held;
+  try {
+    held = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    throw new Error(`raise: ${what}, ${file}, cannot be read — ${messageOf(err)}`);
+  }
+  if (!isObject(held)) throw new Error(`raise: ${what}, ${file}, hold no raise by its id`);
+  return held;
+}
+
+/**
+ * `change` run holding the lock `lock` names beside the conversation's
+ * `file`, its folder made where it is not: its answer.
+ * @template T
+ * @param {string} file @param {{timeoutMs: number, name: string}} lock @param {() => T} change
+ * @returns {T}
+ */
+function lockedIn(file, lock, change) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  return withStateLockFile(`${file}.lock`, change, lock);
+}
+
+/**
  * Every raise sealed in the conversation, by id, each as written — a seal
  * another release wrote among them.
  * @param {string} session
  * @returns {Record<string, unknown>}
  */
 function readSeals(session) {
-  const file = sealFile(session);
-  if (!fs.existsSync(file)) return {};
-  let seals;
-  try {
-    seals = JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (err) {
-    throw new Error(`raise: the conversation's raises, ${file}, cannot be read — ${messageOf(err)}`);
-  }
-  if (!isObject(seals)) throw new Error(`raise: the conversation's raises, ${file}, hold no raise by its id`);
-  return seals;
+  return readById(sealFile(session), 'the conversation\'s raises');
 }
 
 /** @param {unknown} value @returns {value is Seal} */
@@ -748,11 +816,10 @@ function openSeal(seals, place, { answers, replaces }, park) {
  */
 function changeSeals(session, change) {
   const file = sealFile(session);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  return withStateLockFile(`${file}.lock`, () => {
+  return lockedIn(file, SEALS_LOCK, () => {
     const seals = readSeals(session);
     return change(seals, (seal) => writeJsonAtomic(file, { ...seals, [seal.id]: seal }));
-  }, SEALS_LOCK);
+  });
 }
 
 /**
@@ -904,15 +971,71 @@ function subjectOf({ answers, replaces }) {
   return { answers, replaces: replaces?.entry ?? null };
 }
 
+/** The id of what a raise is about: the question it answers, or the decision it would replace. @param {Target} target */
+function aboutOf({ answers, replaces }) {
+  return /** @type {string} */ (answers ?? replaces?.entry);
+}
+
+/**
+ * A raise of Claude's call as drawn, beyond the call: the conversation, where
+ * it is made and what it is about, who decided the entry it would replace,
+ * and the mark it always asks by.
+ * @typedef {{session: string, place: Place, target: Target, replacedBy: DecidedBy|null, always: Always|null}} Raising
+ */
+
+/** The file of what the conversation sent to check. @param {string} session */
+function checkedFile(session) {
+  return path.join(conversationDir(session), RAISE_CHECKED);
+}
+
+/**
+ * What the conversation sent to check: when, by the id of what each raise
+ * was about.
+ * @param {string} session @returns {Record<string, unknown>}
+ */
+function readChecked(session) {
+  return readById(checkedFile(session), 'the conversation\'s raises sent to check');
+}
+
+/**
+ * What a raise is about marked as sent to check in the conversation, under
+ * the lock on what it sent, read again under it.
+ * @param {string} session @param {string} about
+ */
+function markChecked(session, about) {
+  const file = checkedFile(session);
+  lockedIn(file, CHECKED_LOCK, () => writeJsonAtomic(file, { ...readChecked(session), [about]: new Date().toISOString() }));
+}
+
+/**
+ * Claude's call, labelled `label`, put through the decision point with what
+ * it decides from (E1), made in the build where `blocks`: its answer. Where
+ * it sends Claude to check, the conversation keeps what the raise is about
+ * as sent to check.
+ * @param {string} cwd @param {Raising} raising @param {Call} call @param {Label|null} label @param {boolean} blocks
+ * @returns {{decision: Decision, reason: string}}
+ */
+function decided(cwd, { session, place, target, replacedBy, always }, call, label, blocks) {
+  const about = aboutOf(target);
+  /** @type {At} */
+  const at = {
+    label, place, blocks_build: blocks, replaced_by: replacedBy, always, checked: Object.hasOwn(readChecked(session), about),
+    project: { root: /** @type {string} */ (findStateRoot(cwd)), name: projectName(cwd) }, model: modelOf(cwd), now: Date.now(),
+  };
+  const answer = decisionPoint.decide(call, at);
+  if (answer.decision === 'check') markChecked(session, about);
+  return answer;
+}
+
 /**
  * Where a raise is drawn and what it is about, its argv read and checked as
  * the write its answer lands as checks it before the lock — `ledger
  * replace`'s where it names `--replaces`, else `ledger decide`'s — in the
  * raise's words: a question it answers still open; a decision it replaces
- * a decision, its answer as it stands kept for the screen's own row. Its
- * usage is a fact's where `fact`.
+ * a decision, its answer as it stands kept for the screen's own row, and
+ * who decided it, read from it. Its usage is a fact's where `fact`.
  * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact
- * @returns {{place: Place, target: Target, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
+ * @returns {{place: Place, target: Target, replacedBy: DecidedBy|null, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
  */
 function placedRaise(cwd, args, warnings, fact) {
   const verb = args.includes('--replaces') ? 'replace' : 'decide';
@@ -924,13 +1047,13 @@ function placedRaise(cwd, args, warnings, fact) {
   if (replacing === null) {
     const answers = /** @type {string} */ (linked.answers);
     checkOpen(answers, read);
-    return { place, target: { answers, relies_on: reliesOn, replaces: null }, short, read };
+    return { place, target: { answers, relies_on: reliesOn, replaces: null }, replacedBy: null, short, read };
   }
   const entry = /** @type {string} */ (linked.replaces);
   const kind = entryKind(replacing);
   if (kind !== 'decision') throw new Error(`raise --replaces names ${short(entry)}, a ${kind} — a raise replaces a decision, the person picking its answer`);
   const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text)) };
-  return { place, target: { answers: null, relies_on: reliesOn, replaces }, short, read };
+  return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: decidedBy(replacing), short, read };
 }
 
 /**
@@ -1035,13 +1158,15 @@ function setAsideFor(cwd, unit, task) {
  * stands, parking nothing; else `task` joins it, parked under its number
  * with its first park's call as sealed. Else a fact parks with it as asked;
  * a call's rows are judged and the call put through the decision point —
- * landed as Claude's for `task` where it proceeds, else parked with it.
- * @param {string} cwd @param {Place} place @param {Target} target
+ * landed as Claude's for `task` where it proceeds, Claude sent to check
+ * where it checks, else parked with it.
+ * @param {string} cwd @param {Raising} raising
  * @param {{call: Call, fact: false} | {call: Fact, fact: true}} given what is raised, and whether it is a fact
  * @param {string|null} task @param {string[]} warnings
  * @returns {Promise<Parked|Drawn>}
  */
-async function parkedRaise(cwd, place, target, given, task, warnings) {
+async function parkedRaise(cwd, raising, given, task, warnings) {
+  const { place, target } = raising;
   const waiting = questions.waitingOn(cwd, place.unit, subjectOf(target), warnings);
   if (waiting !== null) {
     const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking, label } } = waiting;
@@ -1051,7 +1176,8 @@ async function parkedRaise(cwd, place, target, given, task, warnings) {
   if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW, label: null }, task), ONLY_YOU_KNOW, warnings);
   const { call } = given;
   const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
-  const { decision, reason } = decisionPoint.decide(call);
+  const { decision, reason } = decided(cwd, raising, call, label, true);
+  if (decision === 'check') return { decision, reason, warnings };
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, label, task, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing parked');
   return parkLanded(cwd, parking(place, target, { call, rows_judged: judged, why_asking: reason, label }, task), reason, warnings);
@@ -1059,12 +1185,13 @@ async function parkedRaise(cwd, place, target, given, task, warnings) {
 
 /**
  * `raise <place> (--answers <question> | --replaces <entry> --reason
- * <reason> [--cause <id>]) [--relies-on <id> …] [--parks <phase>.<n>]`: the
- * call on stdin put through the decision point and, where it asks, sealed
- * in the conversation and drawn — or the conversation's open seal of the
- * question or the replacement drawn again, said redrawn; in the build,
- * parked with its task; where it proceeds, landed as Claude's. With
- * `--fact`, the fact on stdin is asked, the decision point never reached.
+ * <reason> [--cause <id>]) [--relies-on <id> …] [--parks <phase>.<n>]
+ * [--always <mark>]`: the call on stdin put through the decision point and,
+ * where it asks, sealed in the conversation and drawn — or the
+ * conversation's open seal of the question or the replacement drawn again,
+ * said redrawn; in the build, parked with its task; where it proceeds,
+ * landed as Claude's; where it checks, nothing drawn. With `--fact`, the
+ * fact on stdin is asked, the decision point never reached.
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  * @returns {Promise<Drawn|Parked>}
  */
@@ -1074,15 +1201,17 @@ async function drawRaise(cwd, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   const { fact, rest: unfact } = factFlag(args);
-  const { parks, rest } = parksFlag(unfact);
-  const { place, target, short, read } = placedRaise(cwd, rest, warnings, fact);
+  const { parks, rest: unparked } = parksFlag(unfact);
+  const { always, rest } = alwaysFlag(unparked, fact);
+  const { place, target, replacedBy, short, read } = placedRaise(cwd, rest, warnings, fact);
+  const raising = { session, place, target, replacedBy, always };
   const inBuild = checkBuildPlace(cwd, place, parks);
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
   const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
   if (inBuild && 'stepped_back' in given) throw new Error('raise: a raise in the build takes no stepped_back — its call parks in the ledger, which keeps the call\'s own fields alone');
   if (place.phase === 'investigation' && 'stepped_back' in given) assertRootCauseAt(cwd, place.unit, SAID, warnings);
   if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
-  if (inBuild) return parkedRaise(cwd, place, target, fact ? { call: /** @type {Fact} */ (given), fact: true } : { call: /** @type {Call} */ (given), fact: false }, parks, warnings);
+  if (inBuild) return parkedRaise(cwd, raising, fact ? { call: /** @type {Fact} */ (given), fact: true } : { call: /** @type {Call} */ (given), fact: false }, parks, warnings);
   const open = openSeal(readSeals(session), place, target, null);
   if (open !== null) {
     clearGateShown(session);
@@ -1091,7 +1220,8 @@ async function drawRaise(cwd, args, stdin) {
   if (fact) return askedRaise(session, place, target, { call: /** @type {Fact} */ (given), fact: true }, [], null, ONLY_YOU_KNOW, warnings);
   const call = /** @type {Call} */ (given);
   const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
-  const { decision, reason } = decisionPoint.decide(call);
+  const { decision, reason } = decided(cwd, raising, call, label, false);
+  if (decision === 'check') return { decision, reason, warnings };
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, label, null, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing drawn');
   return askedRaise(session, place, target, { call, fact: false }, judged, label, reason, warnings);
