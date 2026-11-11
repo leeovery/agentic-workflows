@@ -32,10 +32,10 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, worlds, testsRead, reviewNext, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, finished, PASSED_REPORT,
+  Sim, worldFrom, worlds, CUT_CLOSED_UNIT, testsRead, reviewNext, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, finished, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 
 // The drive passes only where the checkout holds the ignored `.env` and the
 // linked `node_modules`, as the project's own checkout does.
@@ -56,7 +56,7 @@ const scratchWorld = worldFrom('pipeline-review-scratch-', (sim) => {
   fs.writeFileSync(path.join(sim.dir, 'verify/drive.sh'), DRIVE, { mode: 0o755 });
   git(sim.dir, ['add', 'verify/drive.sh']);
   git(sim.dir, ['commit', '-q', '-m', 'chore: the drive reads the environment']);
-}, worlds.cutClosed(WU));
+}, worlds.cutClosed);
 
 describe('pipeline simulation: an area read in its reader\'s scratch worktree', () => {
   let sim;

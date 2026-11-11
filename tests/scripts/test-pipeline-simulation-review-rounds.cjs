@@ -29,10 +29,10 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worlds, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finished,
+  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finished,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 const UNCHECKED = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
 const UNSALTED = '## Findings\n\n- nit: the ledger never salts its hash\n  Scenario: an entry hashed\n\nVerdict: pass\n';
 
@@ -64,7 +64,7 @@ function fixedRound(sim, phase, {
 describe('pipeline simulation: the review\'s rounds', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(worlds.cutClosed(WU));
+    sim = new Sim(worlds.cutClosed);
   });
   afterEach(() => {
     sim.destroy();

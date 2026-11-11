@@ -26,16 +26,16 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worlds, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff, gatesAnswered,
+  Sim, worlds, CUT_CLOSED_UNIT, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff, gatesAnswered,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 
 describe('pipeline simulation: a question asked in a review round', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(worlds.cutClosed(WU));
+    sim = new Sim(worlds.cutClosed);
   });
   afterEach(() => {
     sim.destroy();

@@ -27,8 +27,9 @@ const MANUAL = ['tests/scripts/knowledge-openai-smoke.cjs'];
 const HOOKS = ['before', 'after', 'beforeEach', 'afterEach', 'mock'];
 
 // The worlds folder (run-worlds.cjs), made before the `node --test` and
-// removed as the script exits.
-const WORLDS ='export LEEWAY_TEST_WORLDS=$(mktemp -d); trap \'rm -rf "$LEEWAY_TEST_WORLDS"\' EXIT; ';
+// removed as the script exits, a Ctrl-C among the ways out: /bin/sh runs no
+// EXIT trap on an INT it has no trap for.
+const WORLDS = 'export LEEWAY_TEST_WORLDS=$(mktemp -d); trap \'rm -rf "$LEEWAY_TEST_WORLDS"\' EXIT; trap \'exit 130\' INT; ';
 
 /** The `npm test` script. */
 const script = () => JSON.parse(fs.readFileSync(PACKAGE, 'utf8')).scripts.test;
@@ -81,7 +82,7 @@ function suites(dir, root) {
 }
 
 describe('the npm test script', () => {
-  it('runs in a worlds folder of the run\'s own, made at its start and removed at its end', () => {
+  it('runs in a worlds folder of the run\'s own, made at its start and removed at its end, a Ctrl-C\'s too', () => {
     assert.ok(script().startsWith(WORLDS), script().slice(0, 200));
   });
 

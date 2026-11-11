@@ -25,16 +25,16 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worlds, writePhaseTasks, writeTasks, builtAside, areaRead, testsRead, reviewNext, finished,
+  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, writeTasks, builtAside, areaRead, testsRead, reviewNext, finished,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 const UNSALTED = '## Findings\n\n- nit: the hash is never salted\n  Scenario: an entry hashed\n\nVerdict: pass\n';
 
 describe('pipeline simulation: finish held over a task beyond the review\'s findings', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(worlds.cutClosed(WU));
+    sim = new Sim(worlds.cutClosed);
   });
   afterEach(() => {
     sim.destroy();

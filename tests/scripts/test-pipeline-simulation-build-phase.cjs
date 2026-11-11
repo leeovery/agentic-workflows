@@ -43,13 +43,13 @@ const os = require('os');
 const path = require('path');
 const { stateGit, git, sectionOf } = require('./engine-harness.cjs');
 const {
-  Sim, worlds, buildEntry, startPhase, writePhaseTasks, carryOn, answerGate, briefOf, deadReader, laidBeside, placeIn, landed,
+  Sim, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writePhaseTasks, carryOn, answerGate, briefOf, deadReader, laidBeside, placeIn, landed,
 } = require('./pipeline-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
 const { consolidationFaults } = require(path.join(DOMAIN, 'notes.cjs'));
 
-const WU = 'ledgerly';
+const WU = SPEC_TO_BUILD_UNIT;
 
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
 const OFF_PHASE = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
@@ -58,7 +58,7 @@ describe('pipeline simulation: a phase of the cut', () => {
   let sim;
   /** @type {string} */ let builders;
   beforeEach(() => {
-    sim = new Sim(worlds.specToBuild(WU, 'a'));
+    sim = new Sim(worlds.specToBuild);
     builders = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-builders-')));
   });
   afterEach(() => {

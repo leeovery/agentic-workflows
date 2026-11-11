@@ -25,11 +25,11 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { traced, git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, worlds, buildEntry, startPhase, writeTasks, landed, placeIn, buildLoop, builders, VERIFY_FILES, PASSED_REPORT,
+  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, landed, placeIn, buildLoop, builders, VERIFY_FILES, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
 
-const WU = 'ledgerly';
+const WU = SPEC_TO_BUILD_UNIT;
 const TASKS = 4;
 
 /** A feature in auto, its one phase of four tasks written and started, the first proving 1.S1. */
@@ -39,7 +39,7 @@ const fourWorld = worldFrom('pipeline-build-scale-', (sim) => {
   sim.run(['brief', 'task-writer', WU, '1']);
   writeTasks(sim, WU, 1, Array.from({ length: TASKS }, (_, at) => ({ title: `Write part ${at + 1}`, scenarios: at === 0 ? ['1.S1'] : undefined })));
   startPhase(sim, WU, 1);
-}, worlds.specToBuild(WU, 'a'));
+}, worlds.specToBuild);
 
 describe('pipeline simulation: a task\'s cost by where it sits in its phase', () => {
   let sim;

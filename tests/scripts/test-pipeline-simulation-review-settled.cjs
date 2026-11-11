@@ -28,16 +28,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worlds, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, strayRound,
+  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, strayRound,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 const UNCHECKED = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
 
 describe('pipeline simulation: a stuck round settled', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(worlds.cutClosed(WU));
+    sim = new Sim(worlds.cutClosed);
   });
   afterEach(() => {
     sim.destroy();

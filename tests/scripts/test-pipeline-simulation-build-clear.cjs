@@ -32,10 +32,10 @@ const assert = require('node:assert');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, worlds, buildEntry, startPhase, writeTasks, briefOf, landed, placeIn, buildLoop, VERIFY_FILES,
+  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, briefOf, landed, placeIn, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledgerly';
+const WU = SPEC_TO_BUILD_UNIT;
 const BUG = '## Findings\n\n- bug: an empty ledger writes no header\n  Scenario: a first entry settled\n\nVerdict: fail\n';
 const NIT = '## Findings\n\n- nit: a comment names the phase\n  Scenario: a reader of the code\n\nVerdict: pass\n';
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
@@ -47,7 +47,7 @@ const writingWorld = worldFrom('pipeline-build-clear-', (sim) => {
   sim.run(['brief', 'task-writer', WU, '1']);
   writeTasks(sim, WU, 1, [{ title: 'Write the ledger', scenarios: ['1.S1'] }]);
   startPhase(sim, WU, 1);
-}, worlds.specToBuild(WU, 'a'));
+}, worlds.specToBuild);
 
 describe('pipeline simulation: the build across /clears', () => {
   let sim;

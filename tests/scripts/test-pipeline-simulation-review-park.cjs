@@ -25,18 +25,18 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  Sim, worlds, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, buildLoop, carryOn,
+  Sim, worlds, CUT_CLOSED_UNIT, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, buildLoop, carryOn,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 const ASKS = 'Should a read check its hash?';
 
 describe('pipeline simulation: a fix task parked on the person in the review phase', () => {
   let sim;
   /** @type {ReturnType<typeof buildLoop>} */ let loop;
   beforeEach(() => {
-    sim = new Sim(worlds.cutClosed(WU));
+    sim = new Sim(worlds.cutClosed);
     loop = buildLoop(sim, WU);
   });
   afterEach(() => {

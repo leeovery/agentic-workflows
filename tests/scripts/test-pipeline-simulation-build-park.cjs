@@ -41,13 +41,13 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, worlds, buildEntry, startPhase, writeTasks, briefOf, landed, placeIn, buildLoop, VERIFY_FILES,
+  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, briefOf, landed, placeIn, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
 const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
 
-const WU = 'ledgerly';
+const WU = SPEC_TO_BUILD_UNIT;
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
 
 /** A feature in auto, its one phase written and started. */
@@ -57,7 +57,7 @@ const showingWorld = worldFrom('pipeline-build-park-', (sim) => {
   sim.run(['brief', 'task-writer', WU, '1']);
   writeTasks(sim, WU, 1, [{ title: 'Show an entry', scenarios: ['1.S1'] }, { title: 'Check the hash on show' }]);
   startPhase(sim, WU, 1);
-}, worlds.specToBuild(WU, 'a'));
+}, worlds.specToBuild);
 
 describe('pipeline simulation: the build with two tasks side by side', () => {
   let sim;

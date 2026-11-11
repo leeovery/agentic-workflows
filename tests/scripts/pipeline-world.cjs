@@ -2,13 +2,14 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's world (tests/README.md §11): the project every
-// scenario starts from, made once per process and copied for each, and a
-// scenario file's own world built through the verbs once (`worldFrom`); `Sim`,
-// which drives the engine through its in-process entry rather than a
-// process per call — the same argv, the same answers (stdout, stderr and an
-// exit code), a thousandth of the start-up — and has the oracle
-// (pipeline-oracle.cjs) audit the whole state after every mutation; and the
-// steps the skill prose takes, which the scenarios replay.
+// scenario starts from, made once per process and copied for each; the
+// named worlds several scenario files start from, each built once per run
+// (`worlds`); a scenario file's own world built through the verbs once, on
+// either (`worldFrom`); `Sim`, which drives the engine through its
+// in-process entry rather than a process per call — the same argv, the same
+// answers (stdout, stderr and an exit code), a thousandth of the start-up —
+// and has the oracle (pipeline-oracle.cjs) audit the whole state after every
+// mutation; and the steps the skill prose takes, which the scenarios replay.
 //
 // A scenario is an ordered list of `sim.run()` calls, in the scenario file
 // of its work type or its subject (`test-pipeline-simulation-*.cjs`).
@@ -368,12 +369,12 @@ function worldFrom(prefix, build, base = simWorld) {
   };
 }
 
-// A world several scenario files start from, named for what builds it and
-// its arguments: built once per run by the first process to ask
-// (run-worlds.cjs), then copied for each sim made from it.
-/** @param {string} name @param {string[]} args @param {(sim: Sim) => void} build @returns {() => string} */
-function namedWorld(name, args, build) {
-  return () => copyWorld(worldOfTheRun(`${name}(${args.join(',')})`, (dir) => { builtAt(build, dir, simWorld); }).dir,
+// A world several scenario files start from, named for what builds it:
+// built once per run by the first process to ask (run-worlds.cjs), then
+// copied for each sim made from it.
+/** @param {string} name @param {(sim: Sim) => void} build @returns {() => string} */
+function namedWorld(name, build) {
+  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, simWorld); }).dir,
     fs.mkdtempSync(path.join(os.tmpdir(), `pipeline-${name}-`)));
 }
 
@@ -1364,23 +1365,20 @@ function cutClosed(sim, wu) {
   continueInto(sim, wu, 'review');
 }
 
-// The named worlds (tests/README.md §3), each built once per run.
+// The named worlds (tests/README.md §3), each built once per run, and the
+// unit each builds, which a scenario starting from it names its own.
+const SPEC_TO_BUILD_UNIT = 'ledgerly';
+const CUT_CLOSED_UNIT = 'ledger';
 const worlds = Object.freeze({
-  /**
-   * A feature through its spec to ready to build's pick in `position`, handed off into its build.
-   * @param {string} wu @param {'s'|'a'} position
-   */
-  specToBuild: (wu, position) => namedWorld('specToBuild', [wu, position], (sim) => {
-    startUnit(sim, 'feature', wu, 'A ledger');
-    discussed(sim, wu, wu);
-    specToBuild(sim, wu, [wu], position);
+  /** A feature, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, handed off into its build. */
+  specToBuild: namedWorld('specToBuild', (sim) => {
+    startUnit(sim, 'feature', SPEC_TO_BUILD_UNIT, 'A ledger');
+    discussed(sim, SPEC_TO_BUILD_UNIT, SPEC_TO_BUILD_UNIT);
+    specToBuild(sim, SPEC_TO_BUILD_UNIT, [SPEC_TO_BUILD_UNIT], 'a');
   }),
-  /**
-   * The build the review phase reviews (`cutClosed`), in auto, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu.
-   * @param {string} wu
-   */
-  cutClosed: (wu) => namedWorld('cutClosed', [wu], (sim) => {
-    cutClosed(sim, wu);
+  /** The build the review phase reviews (`cutClosed`), CUT_CLOSED_UNIT's, in auto, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu. */
+  cutClosed: namedWorld('cutClosed', (sim) => {
+    cutClosed(sim, CUT_CLOSED_UNIT);
     assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build', 'start menu', 'start menu'],
       '19.S6: between the one screen and the review, no gate stops the person — they pick the unit on the start menu alone, continuing it into its build and its review');
   }),
@@ -1628,7 +1626,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, worlds, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

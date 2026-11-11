@@ -14,9 +14,11 @@
 // that built it. Its builder holds a claim beside it while it builds (the
 // engine's own, manifest-io.cjs, whose holder that dies is taken over by the
 // next to ask), builds it in a folder of its own and renames that into
-// place, so no process ever meets a world half built. The others wait on
-// the claim; one still waiting after WAIT_LIMIT_MS, its builder alive but
-// stuck, builds its own.
+// place, so no process ever meets a world half built; a build that fails
+// leaves its error there instead, and every later asker fails with it at
+// once rather than building it again. The others wait on the claim; one
+// still waiting after WAIT_LIMIT_MS, its builder alive but stuck, builds its
+// own.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -78,17 +80,35 @@ function builtAlone(name, build) {
   return dir;
 }
 
-/** `build` run in a folder beside `dir`, renamed into place whole. @param {string} dir @param {(dir: string) => void} build */
-function published(dir, build) {
+/**
+ * `build` run in a folder beside `dir`, renamed into place whole; a build
+ * that fails leaves its error at `failed` in place of the world.
+ * @param {string} dir @param {string} failed @param {(dir: string) => void} build
+ */
+function published(dir, failed, build) {
   const building = fs.mkdtempSync(`${dir}.building-`);
   try {
     build(building);
   } catch (err) {
     fs.rmSync(building, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.writeFileSync(`${failed}.${process.pid}`, err instanceof Error && err.stack ? err.stack : String(err));
+    fs.renameSync(`${failed}.${process.pid}`, failed);
     throw err;
   }
   fs.renameSync(building, dir);
   return dir;
+}
+
+/**
+ * The world at `dir` where its builder placed it, null while it is not
+ * there; where its build failed, that failure thrown again.
+ * @param {string} dir @param {string} failed @param {string} name @param {boolean} waited
+ * @returns {RunWorld|null}
+ */
+function placed(dir, failed, name, waited) {
+  if (fs.existsSync(dir)) return { dir, how: waited ? 'waited' : 'found' };
+  if (fs.existsSync(failed)) throw new Error(`the world ${name} failed to build earlier in this run, and is not built again:\n${fs.readFileSync(failed, 'utf8')}`);
+  return null;
 }
 
 /**
@@ -100,15 +120,16 @@ function published(dir, build) {
  */
 function fromTheRun(folder, name, build, limitMs, pollMs) {
   const dir = path.join(folder, worldKey(name));
+  const failed = `${dir}.failed`;
   const deadline = Date.now() + limitMs;
   for (let waited = false; ; waited = true) {
-    if (fs.existsSync(dir)) return { dir, how: waited ? 'waited' : 'found' };
+    const there = placed(dir, failed, name, waited);
+    if (there !== null) return there;
     const release = tryClaimFile(`${dir}.claim`);
     if (release !== null) {
       try {
-        // Its builder may have placed it and let go between the look and the claim.
-        if (fs.existsSync(dir)) return { dir, how: waited ? 'waited' : 'found' };
-        return { dir: published(dir, build), how: 'built' };
+        // Its builder may have placed it, or failed, and let go between the look and the claim.
+        return placed(dir, failed, name, waited) ?? { dir: published(dir, failed, build), how: 'built' };
       } finally {
         release();
       }
@@ -125,7 +146,7 @@ const fetched = new Map();
  * The world `name`, which `build` builds into the empty folder it is given:
  * the folder holding it, kept for the run, and how this process came by it.
  * No one writes in it again; a test works in a copy. Asked again, the same.
- * @param {string} name what builds the world, its arguments among it
+ * @param {string} name the world's own, one name to one build
  * @param {(dir: string) => void} build
  * @param {{limitMs?: number, pollMs?: number}} [wait] how long a builder is waited on, and how often its claim is looked at
  * @returns {RunWorld}

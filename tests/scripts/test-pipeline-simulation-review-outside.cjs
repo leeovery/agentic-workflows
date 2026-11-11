@@ -24,15 +24,15 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worlds, writeTasks, builtAside, failedHashRound, reviewNext,
+  Sim, worlds, CUT_CLOSED_UNIT, writeTasks, builtAside, failedHashRound, reviewNext,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 
 describe('pipeline simulation: a task beyond the review\'s findings', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(worlds.cutClosed(WU));
+    sim = new Sim(worlds.cutClosed);
   });
   afterEach(() => {
     sim.destroy();
