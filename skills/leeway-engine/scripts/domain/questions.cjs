@@ -124,7 +124,12 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  * asks now.
  * @typedef {{name: string, id: string, tasks: string[], line: Record<string, any>, asks: string}} WaitingOn
  */
-/** A park's call as sealed: Claude's call, the rows judged, why it asks, its label (labeller.cjs) and the model it was decided under. @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null}} Sealed */
+/**
+ * A park's call as sealed: Claude's call, the rows judged, why it asks, its
+ * label (labeller.cjs), the model it was decided under, and what the
+ * decision point decided it from beyond the label (raise.cjs).
+ * @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null} & import('./raise.cjs').DecidedFrom} Sealed
+ */
 /** A question asked in a quick-fix's conversation still open: its short id, the place it is at, and what it asks. @typedef {{id: string, place: string, asks: string}} AskedOpen */
 /** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
 
@@ -381,6 +386,15 @@ function waitingOn(cwd, unit, subject, warnings) {
 }
 
 /**
+ * The call a park's line holds as sealed (`Sealed`).
+ * @param {Record<string, any>} line
+ * @returns {Sealed}
+ */
+function sealedOf({ call, rows_judged: judged, why_asking: whyAsking, label, model, blocks_build: blocks, replaced_by: replacedBy, always }) {
+  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blocks_build: blocks, replaced_by: replacedBy, always };
+}
+
+/**
  * What a park about `subject` in `unit` holds of its own, set under the
  * writer lock from the ledger as the write read it there, `read` and
  * `entryAt`: where a question waits on it, which the park's task joins,
@@ -393,8 +407,7 @@ function parkedUnder(read, entryAt, unit, subject, sealed) {
   const joined = waitingParks(read, unit).find((id) => isAbout(read, id, subject));
   if (joined === undefined) return { number: nextNumber(read, unit), ...sealed };
   const { number, place } = factsOf(read, joined);
-  const { call, rows_judged: judged, why_asking: whyAsking, label, model } = entryAt(place);
-  return { number: /** @type {number} */ (number), call, rows_judged: judged, why_asking: whyAsking, label, model };
+  return { number: /** @type {number} */ (number), ...sealedOf(entryAt(place)) };
 }
 
 /**
@@ -632,15 +645,11 @@ function checkAnswerable(read, parks, subject, said) {
 
 /**
  * `checkAnswerable`, read now: for "I don't follow", which lands nothing in
- * the ledger. Answers the tasks the question parks as read (`parkedOn`).
+ * the ledger.
  * @param {string} cwd @param {Parks|null} parks @param {Subject} subject @param {string} said @param {string[]} warnings
- * @returns {string[]}
  */
 function answerable(cwd, parks, subject, said, warnings) {
-  return readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read) => {
-    checkAnswerable(read, parks, subject, said);
-    return parkedOn(read, parks);
-  });
+  readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read) => checkAnswerable(read, parks, subject, said));
 }
 
 /**
@@ -733,6 +742,6 @@ function parkingTask(root, unit, task, warnings) {
 }
 
 module.exports = {
-  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, parkedOn, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
+  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, sealedOf, parkedUnder, parkedQuestion, parkedOn, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
   explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen,
 };

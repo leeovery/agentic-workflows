@@ -5,8 +5,10 @@
 // over the departure rule and the queue's projection in
 // domain/ledger-verdicts.cjs, and the evidence this machine logged in
 // domain/trust-evidence.cjs): `engine verdict queue`, every departure this
-// machine's trust log holds made in a live place that the trust log holds
-// no verdict on — a raise the person answered against Claude's lean, or
+// machine's trust log holds, wherever it was made — a topic or a unit set
+// aside or cancelled since among them, the counts holding it a loss until it
+// is judged — that the trust log holds no verdict on — a raise the person
+// answered against Claude's lean, or
 // their reversal of an answer that held it, the ledger agreeing it stood
 // over the lean, the lean beside it from the nearest entry down its chain
 // that held it — and who moved whom as the write verbs hold it: never over
@@ -34,7 +36,8 @@
 // library, the work unit's manifest written there; each test keeps the
 // trust log in a config folder of its own. The person's answers to Claude's
 // lean are raises drawn and answered, each on a question of its own the
-// world asked, built once and copied.
+// world asked, and the note window's decisions answer another it asked,
+// built once and copied.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -48,8 +51,9 @@ const {
   NO_SPACE, ok, refuses, refusedPristine, output, sectionOf, statePath, holdLock, lockAttempts, failingTrustAppends, cleanupFixture, withFrozenClock,
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
-const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, answeredRaise } = require('./ledger-world.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, leaningCall, answeredRaise } = require('./ledger-world.cjs');
 const { trustLogHelpers } = require('./trust-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { TRUST_LOG, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -60,6 +64,8 @@ const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { dayMonth } = require(path.join(SCRIPTS, 'domain/dates.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
+const { countsOf, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { THRESHOLD } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));
 
 /** The person's answer, and who moved whom on it. @param {string} moved */
 function persons(moved) {
@@ -74,16 +80,17 @@ const ELSEWHERE = 'a departure\'s verdict is given on the machine where it was m
 
 const config = useTempFolder('verdict-config-');
 
-// The world's questions, one for each answer of the person's to Claude's
-// lean a test makes, three at most.
-const { world, asked: raisable } = askedWorld('verdict-', {
+// The world's questions: the one the note window's decisions answer, and
+// one for each answer of the person's to Claude's lean a test makes, three
+// at most.
+const { world, asked: questions } = askedWorld('verdict-', {
   discovery: { items: { 'note-window': row(1, 'The note window'), [UNIT]: { ...row(2, 'The theme'), title: 'theme-switching' } } },
   discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' }, [UNIT]: { status: 'in-progress' } } },
-}, { panel: 'Is a note a panel?', float: 'Does a note float?', focus: 'Does a note take focus?' });
+}, { note: 'What is a note?', panel: 'Is a note a panel?', float: 'Does a note float?', focus: 'Does a note take focus?' });
 
 /** @type {string} */
 let dir;
-/** The question each place's decisions answer, asked once a test. @type {Map<string, string>} */
+/** The question each place's decisions answer: the world's at the note window, any other asked once a test. @type {Map<string, string>} */
 let asked;
 /** The world's questions no raise has answered yet this test. @type {string[]} */
 let open;
@@ -92,7 +99,8 @@ let pinned;
 
 beforeEach(() => {
   dir = world();
-  asked = new Map();
+  const { note, ...raisable } = questions;
+  asked = new Map([[NOTE, note]]);
   open = Object.values(raisable);
   pinned = process.env.LEEWAY_CONFIG_DIR;
   process.env.LEEWAY_CONFIG_DIR = config();
@@ -127,15 +135,17 @@ function decide(text, made, address = NOTE) {
 }
 
 /**
- * The person's answer to Claude's lean, `lean`, on one of the world's
- * questions no raise has answered yet, through a raise: `text`, standing
- * over the lean, or the lean itself, who moved whom on stdin where `moved`
- * gives it. Its short id.
- * @param {string} text @param {{lean?: string, moved?: string}} [opts]
+ * The person's answer to Claude's lean, `lean`, through a raise: on one of
+ * the world's questions no raise has answered yet, or at `at`, on a
+ * question asked there first; `text`, standing over the lean, or the lean
+ * itself, who moved whom on stdin where `moved` gives it; in the
+ * conversation `env` names. Its short id.
+ * @param {string} text @param {{lean?: string, moved?: string, at?: string, env?: Record<string, string>}} [opts]
  */
-function answered(text, { lean = LEAN, moved } = {}) {
+function answered(text, { lean = LEAN, moved, at = NOTE, env = SESSION } = {}) {
   const agrees = text === lean;
-  return answeredRaise(dir, NOTE, /** @type {string} */ (open.shift()), { lean, other: agrees ? 'Something else.' : text, key: agrees ? '1' : '2', moved, env: SESSION });
+  const question = at === NOTE ? /** @type {string} */ (open.shift()) : write('ask', at, [], { ...MADE, text: 'Where does a note open?' });
+  return answeredRaise(dir, at, question, { lean, other: agrees ? 'Something else.' : text, key: agrees ? '1' : '2', moved, env });
 }
 
 /** `old` replaced on the note window for `reason`, made and moved as `made` says. @param {string} old @param {string} reason @param {Record<string, unknown>} made @param {string[]} [flags] */
@@ -270,19 +280,22 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
   });
 
   it('refuses an entry Claude made standing over its own lean', () => {
-    const question = write('ask', NOTE, [], { ...MADE, text: 'Is a note a window?' });
-    assert.strictEqual(refused('decide', NOTE, ['--answers', question], { by: 'claude', who_moved_whom: 'person-moved-claude', text: 'A panel.', why: 'It floats.' }),
+    assert.strictEqual(refused('decide', NOTE, ['--answers', questions.note], { by: 'claude', who_moved_whom: 'person-moved-claude', text: 'A panel.', why: 'It floats.' }),
       'ledger decide: who_moved_whom is person-moved-claude — an entry Claude made never stands over its own lean: none or claude-moved-person');
   });
 
-  it('leaves out a departure made where it is set aside, until it comes back, and a verdict on it is refused while it is out, logging nothing', async () => {
-    const departed = await answered('A sheet.');
+  it('holds a departure wherever it was made — its topic cancelled or postponed since — and takes its verdict, the count of its kind holding it a loss until then (16.10.12, 16.10.8)', async () => {
+    const env = { ...SESSION, ...labelling(leaningCall(LEAN, '').question, 'behaviour') };
+    const cancelled = await answered('A sheet.', { env });
+    const postponed = await answered('A sheet.', { at: SPACE, env });
+    const losses = () => stateOf(countsOf(statePath(dir), { model: null, now: Date.now() }).kinds.behaviour, THRESHOLD).losses;
 
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
-    assert.deepStrictEqual(waiting(), []);
-    assert.strictEqual(refusedGive(departed, 'loss', '--at', 'queue'), `verdict give: ${departed} is owed no verdict — its topic, note-window, is cancelled, so the departure is no longer live`);
-    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
-    assert.deepStrictEqual(waiting(), [[departed, 'A panel.']]);
+    ok(dir, ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'later']);
+    assert.deepStrictEqual([waiting(), losses()], [[[cancelled, LEAN], [postponed, LEAN]], 2]);
+
+    give(cancelled, 'nothing', 'queue');
+    assert.deepStrictEqual([waiting(), losses()], [[[postponed, LEAN]], 1]);
   });
 
   it('refuses a read naming a place', () => {
@@ -535,6 +548,19 @@ describe('the verdict page (16.10.6, 16.10.7, 16.10.12, 18.4.2)', () => {
 
     assert.deepStrictEqual(picked('n'), { ok: true, entry: ours, verdict: 'nothing', point: 'queue', next: EPIC_MENU });
     assert.deepStrictEqual([page(UNIT), waiting().map(([id]) => id)], ['', [theirs]]);
+  });
+
+  it('drawn for a unit cancelled since, it shows its departure as any other, which takes its verdict for the unit (16.10.12, 18.4.2)', async () => {
+    const departed = await answered('A sheet.');
+
+    ok(dir, ['workunit', 'cancel', UNIT]);
+
+    assert.deepStrictEqual(read(page(UNIT)), [
+      '# ■ Verdicts · 1 of 1 waiting\n',
+      `${projectName(dir)} · Note Window · changed ${madeOn(departed)}\n  └─ Is a note a panel?\n        My answer: A panel.\n        Yours: A sheet.\n`,
+    ]);
+    assert.deepStrictEqual(picked('l'), { ok: true, entry: departed, verdict: 'loss', point: 'queue', next: { kind: 'engine', argv: ['render', 'epic-menu', UNIT] } });
+    assert.deepStrictEqual(verdicts(), [[full(departed), 'loss', 'queue']]);
   });
 
   it('draws only this machine\'s departures in this project: a second machine draws nothing of the first\'s, nor an event under another project\'s id, until its own log holds the departure', async () => {

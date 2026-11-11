@@ -55,7 +55,7 @@ const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cj
 const { linesToAdd, entryId } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
+const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 const OVER = 'person-moved-claude';
 
 // Claude's decision as it stands, which the raise proposes to replace.
@@ -106,7 +106,10 @@ afterEach(() => {
 
 const { ledgerText, entries, full } = ledgerHelpers(() => dir);
 const { copy } = copiesHelpers(() => dir);
-const { conversation, inFolder, seals, logged, project, answer, lastEntry, raiseEvent } = raiseHelpers(() => dir, config, CALL);
+const { conversation, inFolder, seals, logged, project, answer, lastEntry, raiseEvent: anyRaise } = raiseHelpers(() => dir, config, CALL);
+
+/** A raise event on the replacement of Claude's decision, `own` over the pick of the lean. @param {string|null} entry @param {Record<string, unknown>} [own] */
+const raiseEvent = (entry, own = {}) => anyRaise(entry, { replaced_by: 'claude', ...own });
 
 /** The argv naming Claude's decision as the one replaced, for `reason`. @param {string} [reason] @param {string[]} [more] */
 const replacing = (reason = 'changed-mind', more = []) => [NOTE, '--replaces', made.opens, '--reason', reason, ...more];
@@ -188,7 +191,8 @@ describe('the draw (16.5.7, 29.5.2)', () => {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
       answers: null, relies_on: [full(made.screens)],
       replaces: { entry: full(made.opens), reason: 'new-fact', cause: full(made.screens), keep: KEEP },
-      call: CALL, fact: false, rows_judged: [], label: null, model: null, reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0, parks: null,
+      call: CALL, fact: false, rows_judged: [], label: null, model: null, blocks_build: false, replaced_by: 'claude', always: null,
+      reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0, parks: null,
     });
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise --replaces'));
     assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.head, o.recommended]).slice(0, 3),

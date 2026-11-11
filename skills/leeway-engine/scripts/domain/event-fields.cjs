@@ -7,9 +7,10 @@
 // for a refusal, and the test of it; a field a release after a stream's
 // first added names that version and the default a line written before it
 // takes. An event's line is read against the fields its version holds, in
-// their order, and nothing else. The kinds of question (16.11.3), a row's
-// key, a model's id and the labeller's label (16.11.5) are named here too,
-// since both streams carry them.
+// their order, and nothing else. The kinds of question (16.11.3), the marks
+// a question always asks by (19.4.20, 19.4.22), a row's key, a model's id
+// and the labeller's label (16.11.5) are named here too, since both streams
+// carry them.
 // ---------------------------------------------------------------------------
 
 const { isObject } = require('../kernel/manifest-io.cjs');
@@ -102,6 +103,15 @@ const KINDS = Object.freeze(['process', 'danger', 'contract', 'scope', 'look', '
 
 /** A kind of question (16.11.3). @typedef {'process'|'danger'|'contract'|'scope'|'look'|'words'|'behaviour'|'internals'} Kind */
 
+// The marks Claude gives a question that always asks, as `raise --always`
+// takes them: a design problem (19.4.22), or testing against a live server
+// (19.4.20).
+const ALWAYS_MARKS = Object.freeze(['design-problem', 'live-server']);
+
+/** A mark that only makes a question ask. @typedef {'design-problem'|'live-server'} Always */
+
+const ALWAYS_MARK = oneOf(...ALWAYS_MARKS);
+
 // A Claude model's id, as the API names it — never an alias, never words.
 const MODEL = type('a model id', (v) => typeof v === 'string' && v.length <= 64 && /^claude-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v));
 
@@ -148,4 +158,4 @@ function readFields(value, fields, v, name) {
   return { event };
 }
 
-module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };
+module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, ALWAYS_MARKS, ALWAYS_MARK, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };

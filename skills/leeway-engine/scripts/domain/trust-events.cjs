@@ -25,11 +25,18 @@
 //   composed from, Claude's sort of it as a call with one defensible answer
 //   or several (16.3.7), and the row of Claude's sealed answer; then the
 //   answer, and whether the person didn't follow, which leaves no answer,
-//   no reading and no entry (16.9.3, 16.12.3); and, in a build, whether its
-//   question blocked build work — a task parked on it as it was answered —
-//   null outside one (16.4.7). A raise
-//   followed has its entry: the command that writes the entry records the
-//   event (16.13.3).
+//   no reading and no entry (16.9.3, 16.12.3); and what the decision point
+//   decided the call from that its label does not hold, as the raise sealed
+//   it, so a replay of the rule over the log decides as it did: whether it
+//   blocked build work, a task parking on it as it was raised (16.4.7);
+//   whose the decision it would replace was — who decided it, or the person
+//   where they kept it since — null for a question's answer (16.5.7); and
+//   Claude's mark that it always asks, null for none (19.4.20, 19.4.22).
+//   Whether it was sent to check first is not logged: a call whose label
+//   says Claude could find it out never proceeds — the rule sends it to
+//   check, or asks — so a replay never counts it as one it would skip, and
+//   the label holds it already (16.3.1). A raise followed has its entry: the
+//   command that writes the entry records the event (16.13.3).
 // - call: a call Claude made (16.3.7), by its ledger entry, with its kind,
 //   its label and its sort.
 // - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
@@ -85,8 +92,9 @@
 // ---------------------------------------------------------------------------
 
 const {
-  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, MODEL, LABEL: A_LABEL, oneOf, nullable, field, event, addedIn, readFields,
+  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, ALWAYS_MARK, MODEL, LABEL: A_LABEL, oneOf, nullable, field, event, addedIn, readFields,
 } = require('./event-fields.cjs');
+const { DECIDED_BY } = require('./ledger-events.cjs');
 const { KEBAB_SLUG_PATTERN, BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 
@@ -149,7 +157,9 @@ const SCHEMA = {
       field('answer', nullable(KEY)),
       ...HOW_ANSWERED,
       field('didnt_follow', FLAG),
-      field('blocked_build', nullable(FLAG)),
+      field('blocks_build', FLAG),
+      field('replaced_by', nullable(oneOf(...DECIDED_BY))),
+      field('always', nullable(ALWAYS_MARK)),
     ]),
     call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT)]),
     verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),

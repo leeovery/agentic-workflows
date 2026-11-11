@@ -4,13 +4,13 @@
 // The ask rule (leeway-engine/scripts/domain/ask-rule.cjs), its settings
 // (domain/trust-settings.cjs), and the decision point's `ruled`
 // (domain/decision-point.cjs), what it decides once switched on: the order
-// it decides in — discovery, what always asks with no label to tell it, no
-// label, what always asks by the label, a question Claude could find out,
+// it decides in — what always asks with no label to tell it, no label,
+// what always asks by the label, a question Claude could find out,
 // Claude's one-answer calls, the kind's count — the threshold a question
 // takes, one-answer calls' among them, the reason in the person's words, a
 // bound shown to as many places as tell it from its line, and §16's worked
-// scenarios held to their figures; the person's threshold and its
-// raise mid-build read from the settings file; and the rule given the trust
+// scenarios held to their figures; the person's threshold and its raise
+// mid-build read from the settings file; and the rule given the trust
 // log's counts for the project as of the time.
 //
 // Layer: unit. World: the counts are the rule's input, from events built in
@@ -90,10 +90,8 @@ const lossThen = (more = 0) => (h) => {
 };
 
 const QUIET = behaviourAfter(30);
-const DISCOVERY = Object.freeze({ ...TOPIC, phase: 'discovery' });
 const CHECKABLE = labelled('behaviour', { yes: ['checkable'] });
 
-const IN_DISCOVERY = 'Nothing is decided in discovery, so it comes to you.';
 const YOURS = 'You decided this yourself, so changing it always comes to you.';
 const LIVE = 'It means testing against a live server, so it always comes to you.';
 const DESIGN = 'The root cause is a design problem, so it always comes to you.';
@@ -103,23 +101,22 @@ const DANGER = 'An answer here could lose data or weaken security, so it always 
 /** The rule asking, for `reason`. @param {string} reason */
 const asked = (reason) => ({ decision: 'ask', reason });
 
-describe('the order the rule decides in (16.7.3, 16.5, 16.19.8, 16.3.1, 16.4.10)', () => {
-  it('16.S24: in discovery, a call asks however quiet its kind, where nothing is decided alone; and where in the cone the work is enters nowhere — the same counts decide alike at a topic, at a unit\'s level and in the build', () => {
-    const places = [DISCOVERY, TOPIC, { unit: 'pay', phase: 'specification', topic: null }, { unit: 'pay', phase: 'implementation', topic: null }];
+describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () => {
+  it('16.S24, the counts\' half: where in the cone the work is enters nowhere, the counts keyed by project and kind alone — the same counts decide alike at a topic, at a unit\'s level and in the build (16.7.2, 16.13.5)', () => {
+    const places = [TOPIC, { unit: 'pay', phase: 'specification', topic: null }, { unit: 'pay', phase: 'implementation', topic: null }];
 
-    assert.deepStrictEqual(places.map((place) => ruling(QUIET, { place })), [
-      asked(IN_DISCOVERY),
-      ...places.slice(1).map(() => ({ decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 9%, under your 20%.' })),
-    ]);
+    assert.deepStrictEqual(places.map((place) => ruling(QUIET, { place })), places.map(() => ({
+      decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 9%, under your 20%.',
+    })));
   });
 
   it('16.S68, the label\'s half: with no label — the labeller\'s call failed, or no login served it — a call asks, however quiet its kind, a one-answer call among them (16.19.8)', () => {
     assert.deepStrictEqual([ruling(QUIET, { label: null }), ruling(QUIET, { label: null }, 'one')], [asked(UNLABELLED), asked(UNLABELLED)]);
   });
 
-  it('what always asks with no label to tell it gives its own reason with none: in discovery, replacing an entry of the person\'s and Claude\'s mark each ask as such, and only a call none of them holds asks for want of a label', () => {
-    assert.deepStrictEqual([{ place: DISCOVERY }, { replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, {}].map((more) => ruling(QUIET, { label: null, ...more })), [
-      asked(IN_DISCOVERY), asked(YOURS), asked(LIVE), asked(UNLABELLED),
+  it('what always asks with no label to tell it gives its own reason with none: replacing an entry of the person\'s and Claude\'s mark each ask as such, and only a call neither holds asks for want of a label', () => {
+    assert.deepStrictEqual([{ replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, {}].map((more) => ruling(QUIET, { label: null, ...more })), [
+      asked(YOURS), asked(LIVE), asked(UNLABELLED),
     ]);
   });
 
@@ -131,25 +128,23 @@ describe('the order the rule decides in (16.7.3, 16.5, 16.19.8, 16.3.1, 16.4.10)
     ]);
   });
 
-  it('what always asks comes before the check, which settles a fact and never the person\'s consent: a question Claude could find out asks with its own reason, sent to check before or not, in discovery, replacing an entry of the person\'s, under Claude\'s mark, as a danger question and under a care entry (16.5.1, 16.5.2, 16.5.7, 16.7.3, 19.4.20, 19.4.22)', () => {
+  it('what always asks comes before the check, which settles a fact and never the person\'s consent: a question Claude could find out asks with its own reason, sent to check before or not, replacing an entry of the person\'s, under Claude\'s mark, as a danger question and under a care entry (16.5.1, 16.5.2, 16.5.7, 19.4.20, 19.4.22)', () => {
     const always = [
-      { place: DISCOVERY }, { replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, { always: /** @type {const} */ ('design-problem') },
+      { replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, { always: /** @type {const} */ ('design-problem') },
       { label: labelled('process', { yes: ['checkable', 'danger'] }) }, { care: [{ project: PROJECT_ID, kind: /** @type {const} */ ('behaviour') }] },
     ];
     const care = 'It\'s behaviour, and you\'ve asked that behaviour always comes to you in Mint.';
 
     assert.deepStrictEqual(always.flatMap((more) => [false, true].map((checked) => ruling(QUIET, { label: CHECKABLE, ...more, checked }))), [
-      IN_DISCOVERY, YOURS, LIVE, DESIGN, DANGER, care,
+      YOURS, LIVE, DESIGN, DANGER, care,
     ].flatMap((reason) => [asked(reason), asked(reason)]));
   });
 
-  it('where several always-asks hold at once, the first in the rule\'s order gives the reason: discovery before the person\'s decision, the person\'s decision before Claude\'s mark, a danger question before a care entry on its kind (16.7.3, 16.5.7, 16.5.1, 16.5.2)', () => {
+  it('where several always-asks hold at once, the first in the rule\'s order gives the reason: the person\'s decision before Claude\'s mark, a danger question before a care entry on its kind (16.5.7, 16.5.1, 16.5.2)', () => {
     const care = [{ project: PROJECT_ID, kind: /** @type {const} */ ('process') }];
     const yoursMarked = { replaced_by: /** @type {const} */ ('person'), always: /** @type {const} */ ('live-server') };
 
-    assert.deepStrictEqual([
-      ruling(QUIET, { place: DISCOVERY, ...yoursMarked }), ruling(QUIET, yoursMarked), ruling(QUIET, { label: labelled('process', { yes: ['danger'] }), care }),
-    ], [asked(IN_DISCOVERY), asked(YOURS), asked(DANGER)]);
+    assert.deepStrictEqual([ruling(QUIET, yoursMarked), ruling(QUIET, { label: labelled('process', { yes: ['danger'] }), care })], [asked(YOURS), asked(DANGER)]);
   });
 
   it('16.S17: a danger question asks however many clean answers its kind holds', () => {

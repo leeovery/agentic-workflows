@@ -81,17 +81,18 @@
 //   whether it is a fact; the id, minted at the draw, which is the id its line
 //   lands as; the menu it is declared as, `raise — <id>`; the rows whose
 //   answer and what it rules out the check judged one rule; the label, null
-//   for a fact; the model the call was decided under, null for a fact; the
-//   decision point's reason; when it was shown; its answer once given —
-//   when, and the row's key, null for the person's own words — null until
-//   then; and how many times the person did not follow it. It is written
-//   before the command answers, and one that cannot be written refuses the
-//   raise. Every write to
-//   the seals holds a lock of their own beside them, reads them again under it
-//   and changes its own raise alone, so raises drawn, answered and not
-//   followed at once in one conversation — Claude makes its calls in parallel
-//   — keep each other's. A raise of a question, or of a replacement of a
-//   decision, the conversation holds an open seal for — the same place, and
+//   for a fact; the model the call was decided under, null for a fact; what
+//   the decision point decided it from that the label does not hold
+//   (`DecidedFrom`); the decision point's reason; when it was shown; its
+//   answer once given — when, and the row's key, null for the person's own
+//   words — null until then; and how many times the person did not follow
+//   it. It is written before the command answers, and one that cannot be
+//   written refuses the raise. Every write to the seals holds a lock of
+//   their own beside them, reads them again under it and changes its own
+//   raise alone, so raises drawn, answered and not followed at once in one
+//   conversation — Claude makes its calls in parallel — keep each other's.
+//   A raise of a question, or of a replacement of a decision, the
+//   conversation holds an open seal for — the same place, and
 //   the same question or the same decision — draws that seal, the call it is
 //   given set aside, and says it drew it again: the pick is measured against
 //   the first lean — and so does a draw whose seal another, drawn at once,
@@ -118,7 +119,12 @@
 //   joining it — so every event about the call is logged under it, never
 //   under the model of whoever runs the command logging it: a proceed's
 //   call, and the person's answer, a keep and "I don't follow", drawn in
-//   the conversation though a builder made the call.
+//   the conversation though a builder made the call. So is what the
+//   decision point decided it from that its label does not hold — whether
+//   it blocks build work, whose the decision it would replace is, and
+//   Claude's mark — sealed beside it and logged on its raise event, so a
+//   replay of the rule over the trust log decides as it did: a task joining
+//   a park logs the first park's.
 // - The decision point's answer is the response's, with its reason. An ask
 //   draws the screen. A proceed lands Claude's call, drawing nothing and
 //   sealing nothing: Claude's decision answering the question — the lean
@@ -154,18 +160,19 @@
 //   the ledger holding the question's subject and links, the task or null,
 //   its number minted under the writer lock (questions.cjs), and the call
 //   sealed with the rows the check judged, the decision point's reason, the
-//   label and the model (12.13.4, 16.1.2) — and answers the one line Claude
-//   says (12.13.3). The task stays in progress, held; what depends on it is
-//   what the tracker's links hold back. A task parked is raised to the person, so
-//   a stop its builder made comes off it (position.cjs). Raised while a
+//   label, the model and what it was decided from (12.13.4, 16.1.2) — and
+//   answers the one line Claude says (12.13.3). The task stays in progress,
+//   held; what depends on it is what the tracker's links hold back. A task
+//   parked is raised to the person, so a stop its builder made comes off it
+//   (position.cjs). Raised while a
 //   question already waits on its subject, it judges no row and asks nothing:
 //   where that question parks its task, or it names none — a rerun after a
 //   kill among them — it parks nothing and answers that question; else its
 //   task joins the question, parked under its number with its first park's
-//   call as sealed, its label and its model, copied under the writer lock.
-//   Its line, and the one an `already` answers, say the question as it is
-//   worded now, and,
-//   where it names no task, the tasks the question parks. While a question
+//   call as sealed — its label, its model and what it was decided from
+//   among it — copied under the writer lock. Its line, and the one an
+//   `already` answers, say the question as it is worded now, and, where it
+//   names no task, the tasks the question parks. While a question
 //   waits, any raise on its subject outside the build — one asking as one
 //   proceeding — is refused, naming its raise: before a row is judged, under
 //   the lock as a proceed or an answer lands, and at "I don't follow", for a
@@ -183,10 +190,11 @@
 //   trust log. The tasks it parks are read as its answer lands, under the
 //   writer lock, and as "I don't follow" is checked — a task that joined it
 //   since the draw among them, one a close took off it since not: its answer
-//   carries the first of them, none where it parks none; a call's trust log
-//   event, its "I don't follow"'s too, says it blocked the build where any
-//   is parked on it, and not where none is (16.4.7); and the answer, or "I
-//   don't follow", answers the receipt (questions.cjs). A call's answer
+//   carries the first of them, none where it parks none, and frees them;
+//   and the answer, or "I don't follow", answers the receipt (questions.cjs).
+//   A call's trust log event, its "I don't follow"'s too, says whether it
+//   blocked build work as the decision point decided it at the first park,
+//   never as the parks stand at the answer (16.4.7). A call's answer
 //   other than its lean marks each of them changed after the last round of
 //   that task's review reported, so its pair reads it again before its
 //   account (round-report.cjs, 12.1.4). A question waiting no
@@ -239,12 +247,14 @@
 //   the lean's key and the answer's — null for the person's own words, free
 //   text, typed, with the row the separate call read from them, null for
 //   none (16.19.1, 16.19.8) — how it came, whether the person didn't
-//   follow, the sealed label and its kind, and no blocked build outside one
-//   (16.4.7), under the sealed model; never a word of the question, the
-//   rows, the why or the person's words. An answer was pressed where the
-//   gate mod announced itself and its last press sent that row from this
-//   raise's menu after the raise was drawn (gate.cjs); anything else was
-//   typed.
+//   follow, the sealed label and its kind, and what the call was decided
+//   from beyond its label, as sealed — whether it blocked build work
+//   (16.4.7), whose the decision it would replace was (16.5.7), Claude's
+//   mark (19.4.20, 19.4.22) — under the sealed model; never a word of the
+//   question, the rows, the why or the person's words. An answer was
+//   pressed where the gate mod announced itself and its last press sent
+//   that row from this raise's menu after the raise was drawn (gate.cjs);
+//   anything else was typed.
 // - Once (E3): under the writer lock, a ledger holding the minted id means
 //   the raise is answered: a rerun, after a kill past the append or once
 //   the answer landed, writes no second line and logs no second event, and
@@ -289,7 +299,7 @@ const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdi
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { labelledBeside, questionText, kindOf } = require('./labeller.cjs');
 const { readOnRaise } = require('./answer-reader.cjs');
-const { type, TEXT, KEY, LINE, listOf } = require('./event-fields.cjs');
+const { type, TEXT, KEY, LINE, ALWAYS_MARKS, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
@@ -297,7 +307,6 @@ const { clearStop } = require('./position.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { record, modelOf } = require('./trust-log.cjs');
 const { projectName } = require('./state-checks.cjs');
-const { ALWAYS_MARKS } = require('./ask-rule.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
 const { drawnRows, raiseScreen } = require('./projections/raise.cjs');
 const decisionPoint = require('./decision-point.cjs');
@@ -307,7 +316,7 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
 /** @typedef {import('./event-fields.cjs').Type} Type */
 /** @typedef {import('./decision-point.cjs').Decision} Decision */
 /** @typedef {import('./decision-point.cjs').At} At */
-/** @typedef {import('./ask-rule.cjs').Always} Always */
+/** @typedef {import('./event-fields.cjs').Always} Always */
 /** @typedef {import('./ledger-events.cjs').DecidedBy} DecidedBy */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-write.cjs').Landed} Landed */
@@ -352,6 +361,9 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
  * @property {string[]} rows_judged the rows whose answer and what it rules out the one-decision check judged one rule
  * @property {Label|null} label the labeller's, null where it gave none — a fact's always
  * @property {string|null} model the model the call was decided under, by its id: null where it was unread, and a fact's always
+ * @property {boolean} blocks_build whether it blocks build work, as the decision point decided it (`DecidedFrom`)
+ * @property {DecidedBy|null} replaced_by whose the decision it would replace is, null on a question
+ * @property {Always|null} always Claude's mark that it always asks, null for none
  * @property {string} reason
  * @property {string} at when it was shown
  * @property {Answered|null} answered
@@ -1010,6 +1022,20 @@ function subjectOf({ answers, replaces }) {
  * of each for a fact — and the decision point's reason.
  * @typedef {{rows_judged: string[], label: Label|null, model: string|null, reason: string}} Asking
  */
+/**
+ * What the decision point decides a call from that its label does not hold
+ * (E1), sealed with the call — in the conversation, or on its park — and
+ * logged on its raise event, so a replay of the rule over the trust log
+ * decides as it did: whether it blocks build work, made in the build for a
+ * task (16.4.7); whose the decision it would replace is (16.5.7); and
+ * Claude's mark that it always asks (19.4.20, 19.4.22).
+ * @typedef {{blocks_build: boolean, replaced_by: DecidedBy|null, always: Always|null}} DecidedFrom
+ */
+
+/** What `raising`'s call is decided from beyond its label (`DecidedFrom`). @param {Raising} raising @returns {DecidedFrom} */
+function decidedFrom({ task, replacedBy, always }) {
+  return { blocks_build: questions.blocksBuild(task === null ? [] : [task]), replaced_by: replacedBy, always };
+}
 
 /** The file of what the conversation sent to check. @param {string} session */
 function checkedFile(session) {
@@ -1055,11 +1081,12 @@ function checkedAs({ answers, replaces }, task) {
  * @param {string} cwd @param {Raising} raising @param {Call} call @param {Label|null} label
  * @returns {{decision: Decision, reason: string}}
  */
-function decided(cwd, { session, place, target, replacedBy, always, task, model }, call, label) {
+function decided(cwd, raising, call, label) {
+  const { session, place, target, task, model } = raising;
   const checked = checkedAs(target, task);
   /** @type {At} */
   const at = {
-    label, place, blocks_build: questions.blocksBuild(task === null ? [] : [task]), replaced_by: replacedBy, always,
+    label, place, ...decidedFrom(raising),
     checked: Object.hasOwn(readChecked(session), checked),
     project: { root: /** @type {string} */ (findStateRoot(cwd)), name: projectName(cwd) }, model, now: Date.now(),
   };
@@ -1099,19 +1126,21 @@ function placedRaise(cwd, args, warnings, fact) {
 }
 
 /**
- * A raise asked: sealed and drawn — or the conversation's open seal of its
- * question or replacement, sealed while the draw waited, drawn again.
+ * A raise asked: sealed, with what it was decided from, and drawn — or the
+ * conversation's open seal of its question or replacement, sealed while the
+ * draw waited, drawn again.
  * @param {Raising} raising
  * @param {{call: Call, fact: false} | {call: Fact, fact: true}} what what is asked, and whether it is a fact
  * @param {Asking} asking @param {string[]} warnings
  * @returns {Drawn}
  */
-function askedRaise({ session, place, target }, what, asking, warnings) {
+function askedRaise(raising, what, asking, warnings) {
+  const { session, place, target } = raising;
   const id = newId();
   /** @type {Seal} */
   const seal = {
     v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
-    ...what, ...asking, at: new Date().toISOString(), answered: null, didnt_follow: 0, parks: null,
+    ...what, ...asking, ...decidedFrom(raising), at: new Date().toISOString(), answered: null, didnt_follow: 0, parks: null,
   };
   const drawn = sealDrawn(session, place, target, seal);
   clearGateShown(session);
@@ -1211,18 +1240,19 @@ async function parkedRaise(cwd, raising, given, warnings) {
   const { place, target, task } = raising;
   const waiting = questions.waitingOn(cwd, place.unit, subjectOf(target), warnings);
   if (waiting !== null) {
-    const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking, label, model } } = waiting;
-    if (task === null || tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks, tasks, place.phase, []), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
-    return parkLanded(cwd, parking(place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking, label, model }, task), whyAsking, warnings);
+    const { name, id, tasks, asks } = waiting;
+    const sealed = questions.sealedOf(waiting.line);
+    if (task === null || tasks.includes(task)) return { decision: 'ask', reason: sealed.why_asking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks, tasks, place.phase, []), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
+    return parkLanded(cwd, parking(place, target, sealed, task), sealed.why_asking, warnings);
   }
-  if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW, label: null, model: null }, task), ONLY_YOU_KNOW, warnings);
+  if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW, label: null, model: null, ...decidedFrom(raising) }, task), ONLY_YOU_KNOW, warnings);
   const { call } = given;
   const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
   const { decision, reason } = decided(cwd, raising, call, label);
   if (decision === 'check') return { decision, reason, warnings };
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, raising, call, label, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing parked');
-  return parkLanded(cwd, parking(place, target, { call, rows_judged: judged, why_asking: reason, label, model: raising.model }, task), reason, warnings);
+  return parkLanded(cwd, parking(place, target, { call, rows_judged: judged, why_asking: reason, label, model: raising.model, ...decidedFrom(raising) }, task), reason, warnings);
 }
 
 /**
@@ -1298,7 +1328,8 @@ function drawParked(cwd, args) {
   const seal = {
     v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
     ...(lean === null ? { call: { ...fact, question: asks }, fact: true } : { call: { ...line.call, question: asks }, fact: false }),
-    rows_judged: line.rows_judged, label: line.label, model: line.model, reason: line.why_asking, at: new Date().toISOString(), answered: null, didnt_follow: 0,
+    rows_judged: line.rows_judged, label: line.label, model: line.model, blocks_build: line.blocks_build, replaced_by: line.replaced_by, always: line.always,
+    reason: line.why_asking, at: new Date().toISOString(), answered: null, didnt_follow: 0,
     parks: { park: question.park, number: question.number, tasks: question.tasks },
   };
   const drawn = sealDrawn(session, place, target, seal);
@@ -1481,18 +1512,17 @@ function ownWordsOn({ call }, stdin, toLand) {
  * under the model the call was decided under (16.4.4): its entry, or null
  * where the person didn't follow; the kind of its sealed label, and the
  * label; its sort; the lean's key and the answer's; how it came, and the
- * row read from free text; and, where its question waited in the build,
- * whether it blocked build work — a task parked on it as the answer lands,
- * `parked` the tasks it parks then (16.4.7) — else null.
- * @param {CallSeal} seal @param {Logged & {entry: unknown, didnt_follow: boolean}} answer @param {string[]} parked
+ * row read from free text; and what the call was decided from beyond its
+ * label, as sealed (`DecidedFrom`).
+ * @param {CallSeal} seal @param {Logged & {entry: unknown, didnt_follow: boolean}} answer
  * @returns {{type: string, fields: Record<string, unknown>, model: string|null}}
  */
-function raiseEvent({ call, parks, label, model }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow }, parked) {
+function raiseEvent({ call, label, model, blocks_build: blocks, replaced_by: replacedBy, always }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow }) {
   return {
     type: 'raise',
     fields: {
       entry, kind: kindOf(label), label, sort: call.sort, sealed: call.lean, answer,
-      via, with_text: withText, reading, didnt_follow: didntFollow, blocked_build: parks === null ? null : questions.blocksBuild(parked),
+      via, with_text: withText, reading, didnt_follow: didntFollow, blocks_build: blocks, replaced_by: replacedBy, always,
     },
     model,
   };
@@ -1625,11 +1655,12 @@ function turnNow(cwd, unit) {
  * question waited in the build, still waiting, the unit's parks waiting
  * noted, and the tasks it parks then — a task that joined it since the
  * draw among them, one a close took off it since not — read for its line,
- * which a decision or a replacement lands for the first of them, and its
- * event; and the response adds the receipt of what the answer freed. Where
- * the ledger held the line already, the seal is marked with the answer it
- * holds, and the response says the raise was answered already, and with
- * which row.
+ * which a decision or a replacement lands for the first of them, and for
+ * the tasks an answer against the lean marks changed; its event logs what
+ * the call was decided from, as sealed. The response adds the receipt of
+ * what the answer freed. Where the ledger held the line already, the seal
+ * is marked with the answer it holds, and the response says the raise was
+ * answered already, and with which row.
  * @param {string} cwd @param {string} session @param {Seal} seal @param {Answering} answering
  * @returns {Landed & {raise: string, already?: true, answer?: string|null, receipt?: string}}
  */
@@ -1649,7 +1680,7 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
     content,
     label: seal.label,
     id: seal.id,
-    logs: logged === null ? null : ({ id }) => raiseEvent(/** @type {CallSeal} */ (seal), { ...logged, entry: id, didnt_follow: false }, parked),
+    logs: logged === null ? null : ({ id }) => raiseEvent(/** @type {CallSeal} */ (seal), { ...logged, entry: id, didnt_follow: false }),
     checkRead: (read) => {
       waitedBefore = questions.checkAnswerable(read, parks, subjectOf(seal), ANSWER_SAID);
       parked = questions.parkedOn(read, parks);
@@ -1667,10 +1698,9 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
 
 /**
  * "I don't follow": a raise event in the trust log alone — none for a
- * fact — blocking build work as the tasks its question parks are read with
- * the check that it is answerable, and the count on the seal; the raise
- * stays open, and where its question waited in the build, the receipt says
- * so. On a raise the ledger holds the answer to — an old screen's press —
+ * fact — logging what the call was decided from, as sealed, and the count
+ * on the seal; the raise stays open, and where its question waited in the
+ * build, the receipt says so. On a raise the ledger holds the answer to — an old screen's press —
  * nothing is logged or counted, and the raise is said answered already,
  * with the row the line holds. It is refused as an answer is where it is
  * not answerable (questions.cjs).
@@ -1683,9 +1713,9 @@ function didntFollow(cwd, session, seal) {
   const said = (/** @type {object} */ answer) => ({ raise: seal.id, ...answer, ...(warnings.length > 0 ? { warnings } : {}) });
   const held = heldLine(cwd, seal.id, warnings);
   if (held !== null) return said(answeredAlready(session, seal, held));
-  const parked = questions.answerable(cwd, seal.parks, subjectOf(seal), ANSWER_SAID, warnings);
+  questions.answerable(cwd, seal.parks, subjectOf(seal), ANSWER_SAID, warnings);
   if (!seal.fact) {
-    const { type, fields, model } = raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, reading: null, didnt_follow: true }, parked);
+    const { type, fields, model } = raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, reading: null, didnt_follow: true });
     record(type, fields, { cwd, warnings, model });
   }
   changeSeals(session, (seals, put) => {
