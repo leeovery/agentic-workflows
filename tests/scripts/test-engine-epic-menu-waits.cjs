@@ -9,9 +9,11 @@
 // row, e/verdicts, after the numbered waits and before the topics, the
 // verdict page its door; a wait about a topic another conversation holds
 // struck and never recommended; the spec's and the build's rows never
-// recommended while a wait stands; a topic with experiments waiting leading
-// into the laboratory, struck by a hold there alone; and the review's row
-// standing aside for finish. The screen itself: test-engine-epic-menu.cjs.
+// recommended while a wait stands; every topic decided, the spec not
+// entered, the epic in its specification, an affected topic's door the
+// spec; a topic with experiments waiting leading into the laboratory,
+// struck by a hold there alone; and the review's row standing aside for
+// finish. The screen itself: test-engine-epic-menu.cjs.
 //
 // Layer: verb — the render through the engine in process, and the screen
 // composed in process over the waits given. World: the decided suites'
@@ -24,7 +26,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { ok, output, screenOf, readManifest } = require('./engine-harness.cjs');
+const { ok, output, screenOf, sectionOf, readManifest } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT: FUMI, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
 const { NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers, decidedBoardHelpers } = require('./decided-world.cjs');
@@ -116,11 +118,16 @@ describe('what waits, drawn first (18.4.2)', () => {
     ]);
   });
 
-  it('18.S78, 10.2.6: a decided topic an entry of which relies on an answer replaced since waits first, recommended, its door the topic — off DECIDED, still counted decided', () => {
+  /** Note Window's decision relying on Space Homing's answer, replaced since: Note Window affected. */
+  function affected() {
     const homing = answeredIn(dir(), SPACE, 'Does a space remember its notes?', { ...MADE, text: 'It does.' });
     const asked = writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'Where does a note open?' });
     writeIn(dir(), 'decide', NOTE, ['--answers', asked, '--relies-on', homing.answer], { ...MADE, text: 'In the space that made it.', why: 'Spaces remember.' });
     writeIn(dir(), 'replace', SPACE, ['--replaces', homing.answer, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text: 'It does not.', why: 'The person wants it so.' });
+  }
+
+  it('18.S78, 10.2.6: a decided topic an entry of which relies on an answer replaced since waits first, recommended, its door the topic — off DECIDED, still counted decided', () => {
+    affected();
     const manifest = readManifest(dir(), FUMI);
     manifest.phases.discussion.items['note-window'].status = 'completed';
     createManifest(dir(), FUMI, manifest);
@@ -132,6 +139,19 @@ describe('what waits, drawn first (18.4.2)', () => {
       'e/verdicts  → Give the verdict waiting on a call you changed',
       '2           → Continue "Space Homing" — in progress',
     ], topicDoor(FUMI, 'note-window')]);
+  });
+
+  it('20.15.2, 10.2.6: every topic decided and the spec not entered, the epic is in its specification — s/spec offered, an affected topic\'s door the spec', () => {
+    affected();
+    settled();
+    const out = menu();
+    const rows = rowsOf(out);
+
+    assert.deepStrictEqual([sectionOf(out, 'TITLE'), rows.filter((row) => /^(1|s\/spec) /.test(row)), answer('epic menu', '1')], [
+      '# **`■ Specification — Fumi`**\n',
+      ['1           → "Note Window": a decision it relies on changed —', 's/spec      → Start the specification — every topic is decided'],
+      door('leeway-specification-process', 'epic', FUMI),
+    ]);
   });
 
   it('a topic with an experiment waiting leads into the laboratory, in its place in the map\'s order', () => {
