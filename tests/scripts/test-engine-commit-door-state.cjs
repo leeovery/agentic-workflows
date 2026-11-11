@@ -194,7 +194,7 @@ const productWorld = fixtureFrom('engine-commit-product-', (dir) => {
   writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n\n`);
   writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
   writeState(dir, layout.inbox('ideas', '2026-10-30--dark-mode.md'), '# Dark mode\n');
-  writeState(dir, '.roadmap/notes/ideas/2026-10-30--loyalty.md', '# Loyalty\n');
+  writeState(dir, layout.note('2026-10-30--loyalty.md'), '# Loyalty\n');
   writeState(dir, '.product/assets/market.md', '# Market\n');
 });
 
@@ -204,7 +204,7 @@ describe('engine commit --product: the product\'s conversation\'s scope', () => 
     try {
       assert.match(refuses(dir, ['commit', 'payments', '--product', '-m', 'x']).error, /Usage/);
       assert.match(refuses(dir, ['commit', '--product', '--inbox', '-m', 'x']).error, /Usage/);
-      const untracked = [` M ${layout.brief('payments', 'topic-a')}`, '?? .inbox/', '?? .product/assets/', '?? .roadmap/'];
+      const untracked = [` M ${layout.brief('payments', 'topic-a')}`, '?? .inbox/', '?? .product/assets/', '?? .product/notes/'];
 
       ok(dir, ['commit', '--product', '-m', 'product: session 001']);
       assert.deepStrictEqual([headFiles(dir).sort(), statusLines(dir).sort()], [[layout.productSession('001'), layout.projectManifest].sort(), untracked]);

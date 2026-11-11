@@ -177,7 +177,7 @@ const { appendEntry, carrying, commitLedger } = require('./ledger.cjs');
 const { HEADER, REASONS, ROADMAP, PRODUCT, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
-const { TOPIC_PHASES, hasItem, hasTopic, hasRoadmapItem, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
+const { TOPIC_PHASES, hasItem, hasTopic, roadmapItemNamed, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
@@ -187,7 +187,7 @@ const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs')
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 const { checkUnparked } = require('./questions.cjs');
-const { voidDecidedClose, itemOf } = require('./derivations.cjs');
+const { voidDecidedClose, itemOf, itemArchived, bringBack } = require('./derivations.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 
@@ -696,7 +696,8 @@ function checkCauseGiven(said, _at, given) {
 /**
  * Refuse a move to the topic it is made from, to a topic the unit does not
  * have (5.3.3), or to a topic that is not live (5.8.17); and one to the
- * roadmap naming an item it does not hold (9.5.4). A move is never made at
+ * roadmap naming an item it does not hold (9.5.4), or holds archived
+ * (18.8.13). A move is never made at
  * the product's place, which takes findings alone, so a unit's manifest is
  * there.
  * @param {string} said @param {Address} at @param {Map<string, string[]>} given
@@ -705,7 +706,9 @@ function checkDestination(said, at, given) {
   const [to] = /** @type {string[]} */ (given.get('to'));
   const item = roadmapItemOf(to);
   if (item !== null) {
-    if (!hasRoadmapItem(at.root, item)) throw new Error(`${said}: --to names ${to}, and the roadmap has no item "${item}" — put it on the roadmap first`);
+    const held = roadmapItemNamed(at.root, item);
+    if (held === null) throw new Error(`${said}: --to names ${to}, and the roadmap has no item "${item}" — put it on the roadmap first`);
+    if (itemArchived(held) !== null) throw new Error(`${said}: --to names ${to}, and the roadmap's "${item}" is archived — ${bringBack(item)} first`);
     return;
   }
   if (to === at.topic) throw new Error(`${said}: --to names ${to}, the topic it moves from — a question moves to another topic`);

@@ -52,6 +52,7 @@ const { filled, shaped, readPayload, refusing } = require('./staged-payload.cjs'
 const { todayStamp, isoNow } = require('./dates.cjs');
 const { slugOf } = require('./landing-names.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
+const { PRODUCT_NOTES } = require('./layout.cjs');
 
 const INBOX = '.inbox';
 const ARCHIVED = `${INBOX}/.archived`;
@@ -414,13 +415,15 @@ function liveResolved(cwd, text) {
 
 /**
  * Where a slug's item lands in its folder today: the next free `-{n}`
- * where the inbox, its archive included, holds the name already.
+ * where the inbox, its archive included, holds the name already, or the
+ * product's notes do — an item put on the roadmap keeps its name there, of
+ * whichever kind (4.11.16).
  * @param {string} cwd @param {string} folder @param {string} slug
  * @returns {string} state-relative
  */
 function freeItemPath(cwd, folder, slug) {
   const named = (/** @type {string} */ name) => `${todayStamp()}--${name}.md`;
-  const taken = (/** @type {string} */ name) => [`${INBOX}/${folder}`, archivedDir(folder)].some((dir) => fs.existsSync(statePath(cwd, dir, named(name))));
+  const taken = (/** @type {string} */ name) => [`${INBOX}/${folder}`, archivedDir(folder), PRODUCT_NOTES].some((dir) => fs.existsSync(statePath(cwd, dir, named(name))));
   let name = slug;
   for (let n = 2; taken(name); n += 1) name = `${slug}-${n}`;
   return `${INBOX}/${folder}/${named(name)}`;
@@ -486,8 +489,6 @@ module.exports = {
   parseInboxPaths,
   refuseTakenDestinations,
   moveFiles,
-  undoMoves,
-  archivedDir,
   INBOX,
   ARCHIVED,
   FOLDER_KIND,

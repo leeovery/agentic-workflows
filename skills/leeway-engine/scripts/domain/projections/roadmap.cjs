@@ -60,14 +60,16 @@ function roadmapNodes(rows) {
 }
 
 /**
- * Group rows by horizon in list order; rows naming an unknown horizon trail
- * under their own label so a hand-edited manifest still renders.
- * @param {string[]} horizons @param {RoadmapItemRow[]} rows
- * @returns {{horizon: string, rows: RoadmapItemRow[]}[]}
+ * Group rows by horizon in list order; rows on no horizon of the list — one
+ * put back after its horizon was removed (18.8.20) — trail under their own
+ * label, so every view that lists the roadmap shows them.
+ * @template {{horizon?: string}} R
+ * @param {string[]} horizons @param {R[]} rows
+ * @returns {{horizon: string, rows: R[]}[]}
  */
 function groupByHorizon(horizons, rows) {
   const groups = horizons.map((h) => ({ horizon: h, rows: rows.filter((r) => r.horizon === h) }));
-  const strays = rows.filter((r) => !horizons.includes(r.horizon));
+  const strays = rows.filter((r) => r.horizon === undefined || !horizons.includes(r.horizon));
   if (strays.length > 0) groups.push({ horizon: '(no horizon)', rows: strays });
   return groups.filter((g) => g.rows.length > 0);
 }
@@ -301,6 +303,7 @@ function roadmapParksGate() {
 function roadmapTitle() { return 'Roadmap'; }
 
 module.exports = {
+  groupByHorizon,
   roadmapTitle,
   roadmapMapView,
   roadmapProposalView,

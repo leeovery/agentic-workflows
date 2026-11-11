@@ -58,6 +58,7 @@ function assertLegalStatus(status) {
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
  * @property {string[]} [roadmap_reverted] cancel: roadmap items handed back to waiting by the cancel-revert hop
+ * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone] cancel: those of them whose horizon was removed meanwhile, now on none
  * @property {string[]} [inbox] cancel: each waiting message's idea in the inbox, absolute
  */
 
@@ -142,7 +143,7 @@ function cancelWorkUnit(cwd, workUnit) {
   // The cancel-revert hop, whole-unit form: every roadmap item joined to
   // the unit returns to waiting (the delivery attempt is over; the record
   // stays). The project manifest rides this commit when a revert landed.
-  const reverted = revertJoins(cwd, workUnit);
+  const { reverted, horizon_gone: gone } = revertJoins(cwd, workUnit);
 
   purgeWorkUnitCache(cwd, workUnit);
   const specs = [workUnit, ...mail.map(({ idea }) => idea)];
@@ -151,6 +152,7 @@ function cancelWorkUnit(cwd, workUnit) {
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', inbox: mail.map(({ idea }) => statePath(cwd, idea)), committed: outcome.committed, warnings };
   if (reverted.length > 0) result.roadmap_reverted = reverted;
+  if (gone.length > 0) result.roadmap_horizon_gone = gone;
   noteCommitOutcome(result, outcome);
   return result;
 }

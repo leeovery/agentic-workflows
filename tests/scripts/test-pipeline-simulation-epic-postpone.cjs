@@ -57,7 +57,7 @@ describe('pipeline simulation: epic postpone', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).exists, false);
     sim.render(['postpone-gate', `${wu}.discovery.fresh-one`, '--horizon', 'next'], { expect: 'content' });
     const first = sim.run(['topic', 'postpone', wu, 'fresh-one', '--horizon', 'next']);
-    assert.deepStrictEqual(first.roadmap, { name: 'fresh-one', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false });
+    assert.deepStrictEqual(first.roadmap, { name: 'fresh-one', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false, from_archive: false });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.fresh-one`, '--verb', 'postpone'], { expect: 'content' }),
       /Postponed "Fresh One" → next\./);
     // From the epic's discovery, the person names no horizon: the pick offers
@@ -65,7 +65,7 @@ describe('pipeline simulation: epic postpone', () => {
     assert.match(sim.render(['horizon-pick', '--park', 'talking'], { expect: 'content' }), /Putting "Talking" on the roadmap\.[\s\S]*→ next — \*1 waiting\*/);
     assert.deepStrictEqual(answerGate(sim, 'horizon pick', '--pick', 'n').next, { kind: 'continue' });
     const second = sim.run(['topic', 'postpone', wu, 'talking', '--horizon', 'later']);
-    assert.deepStrictEqual(second.roadmap, { name: 'talking', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false });
+    assert.deepStrictEqual(second.roadmap, { name: 'talking', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false, from_archive: false });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.talking`, '--verb', 'postpone'], { expect: 'content' }), /Postponed "Talking" → later\./);
     assert.deepStrictEqual(second.postponed, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     sim.run(['topic', 'postpone', wu, 'decided', '--horizon', 'later']);
@@ -101,14 +101,14 @@ describe('pipeline simulation: epic postpone', () => {
       'a message for a topic that waits is mail that waits with it');
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), held, 'the send leaves the hold alone');
 
-    // `roadmap remove` is the door to "actually never".
-    const removed = sim.run(['roadmap', 'remove', 'fresh-one']);
-    assert.deepStrictEqual(removed.epic_row_cancelled, { work_unit: wu, topic: 'fresh-one' });
+    // `roadmap archive` is the door to "actually never".
+    const archived = sim.run(['roadmap', 'archive', 'fresh-one']);
+    assert.deepStrictEqual(archived.epic_row_cancelled, { work_unit: wu, topic: 'fresh-one' });
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].cancelled, true);
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].postponed, undefined);
 
     // The menu's return row and its sub-view carry what still waits — the
-    // removed item is gone from both, the cancelled row with it.
+    // archived item is gone from both, the cancelled row with it.
     assert.ok(menuActions().includes('pull_forward_topic'));
     assert.deepStrictEqual(pullable(), [['decided', 'decided'], ['talking', 'talking']]);
 
@@ -142,7 +142,7 @@ describe('pipeline simulation: epic postpone', () => {
     // A pulled-from-roadmap topic postponed again re-waits its own item.
     sim.run(['topic', 'postpone', next, 'decided', '--horizon', 'someday']);
     const rewaited = sim.run(['topic', 'postpone', wu, 'talking', '--horizon', 'someday']);
-    assert.deepStrictEqual(rewaited.roadmap, { name: 'talking', horizon: 'someday', born_map: false, born_horizon: false, reverted_join: true });
+    assert.deepStrictEqual(rewaited.roadmap, { name: 'talking', horizon: 'someday', born_map: false, born_horizon: false, reverted_join: true, from_archive: false });
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'talking').state, 'waiting');
   });
 });

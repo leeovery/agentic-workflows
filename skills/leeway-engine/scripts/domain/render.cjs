@@ -39,7 +39,7 @@ const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
-const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
+const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, addNameRefusal, DEFAULT_KIND } = require('./roadmap.cjs');
 const {
   roadmapMapView,
   roadmapAddGate,
@@ -53,7 +53,7 @@ const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
   computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments,
+  postponePlan, postponeTarget, postponedItem, openExperiments, roadmapItems,
   topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
@@ -584,7 +584,7 @@ function discoveryCancelStatement(manifest, topic) {
     throw new Error(`render cancel-gate: "${topic}" is already cancelled — the menu never offers it`);
   }
   if (lifecycle === 'postponed') {
-    throw new Error(`render cancel-gate: "${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
+    throw new Error(`render cancel-gate: "${topic}" is postponed — the roadmap owns it; archive its item there to cancel it, or pull it forward first`);
   }
   const name = topicTitle(manifest, topic);
   const plan = cancelPlan(manifest, topic);
@@ -679,8 +679,8 @@ function postponeStatement(workUnit, topic, plan, horizon, project, name, goesAs
   const horizons = roadmap && Array.isArray(roadmap.horizons) ? roadmap.horizons : [];
   const target = postponeTarget(project, workUnit, topic, goesAs);
   const flag = roadmap && !horizons.includes(horizon) ? ' (new)' : '';
-  const lands = target.joined
-    ? `Its own item **${titlecase(target.name)}** re-waits under "${horizon}"${flag}.`
+  const lands = target.joined || target.archived
+    ? `Its own item **${titlecase(target.name)}** ${target.joined ? 're-waits' : 'comes back from the archive'} under "${horizon}"${flag}.`
     : `It waits on the roadmap under "${horizon}"${flag}, until it is pulled into work.`;
   return [goes, lands, ...(roadmap ? [] : ['The roadmap is created with it.'])]
     .filter(Boolean).join(' ');
@@ -1230,10 +1230,9 @@ function parkGate(cwd, args) {
   } catch (err) {
     throw new Error(`render park-gate: ${err instanceof Error ? err.message : String(err)}`);
   }
+  const taken = addNameRefusal(roadmapItems(loadProjectManifest(cwd)), name);
+  if (taken !== null) throw new Error(`render park-gate: ${taken}`);
   const state = roadmapState(cwd);
-  if (state.items.some((r) => r.name === name)) {
-    throw new Error(`render park-gate: "${name}" is already on the roadmap — edit it, or pick a different name`);
-  }
   const marked = markedKind(/** @type {import('./roadmap.cjs').RoadmapKind} */ (kind));
   const what = marked ? `the ${marked} ` : '';
   const statement = [

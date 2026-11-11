@@ -127,6 +127,26 @@ describe('an epic\'s page (20.8)', () => {
     assert.deepStrictEqual(item, { title: 'Website', from: 'Fumi' });
   });
 
+  it('18.8.13: All work\'s roadmap leaves an archived item out, its horizon showing what still waits', () => {
+    at([UNIT]);
+    ok(dir(), ['roadmap', 'add', 'loyalty', '--horizon', 'later', '--summary', 'Points for regulars']);
+    ok(dir(), ['roadmap', 'add', 'gift-cards', '--horizon', 'later', '--summary', 'Cards to give']);
+    ok(dir(), ['roadmap', 'archive', 'loyalty']);
+
+    assert.deepStrictEqual(board(['--tab', 'all']).view.roadmap, [{ horizon: 'later', items: [{ title: 'Cards to give', from: null }] }]);
+  });
+
+  it('18.8.20: All work\'s roadmap shows an item put back on no horizon, its own removed while it was in flight, under (no horizon) as the roadmap\'s view does', () => {
+    at([UNIT]);
+    ok(dir(), ['roadmap', 'add', 'loyalty', '--horizon', 'later', '--summary', 'Points for regulars']);
+    const brief = writeState(dir(), layout.cache('scratch', 'points.md'), '# Points\n');
+    ok(dir(), ['topic', 'add', UNIT, 'points-scheme', '--summary', 'Points', '--brief', brief, '--from-roadmap', 'loyalty'], { env: SESSION });
+    ok(dir(), ['roadmap', 'horizon', 'remove', 'later']);
+    ok(dir(), ['topic', 'remove', UNIT, 'points-scheme'], { env: SESSION });
+
+    assert.deepStrictEqual(board(['--tab', 'all']).view.roadmap, [{ horizon: '(no horizon)', items: [{ title: 'Points for regulars', from: null }] }]);
+  });
+
   it('N5, D29: a topic decided, and one cancelled once its discussion started, open on the discussion\'s page; one cancelled before it started — though a message waited for it — and one postponed, on its brief', () => {
     at([UNIT]);
     close();

@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's roadmap scenarios: the inbox onto the roadmap;
-// just-in-time birth, harvest, horizons and lifecycle by join; something put
+// The pipeline simulation's roadmap scenarios: the inbox onto the roadmap,
+// an item archived and brought back; just-in-time birth, harvest, horizons and lifecycle by join; something put
 // aside in the product's conversation; backlogging from a live
 // implementation item; a unit's cancel or absorb re-aiming its joins; an
 // epic pulled with an idea and a bug; and quick-fixes pulled alone. Every
@@ -46,7 +46,7 @@ describe('pipeline simulation: roadmap', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('inbox onto the roadmap: the notes travel with their items, a bug pulled alone pre-seeds a bugfix, an idea and a bug start with no hint and become a feature, a removed item\'s note is declined', () => {
+  it('inbox onto the roadmap: the notes travel with their items, a bug pulled alone pre-seeds a bugfix, an idea and a bug start with no hint and become a feature, an archived item keeps its note and its name and comes back with both', () => {
     const inbox = {
       idea: sim.write('.leeway/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
       timeout: sim.write('.leeway/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
@@ -79,7 +79,7 @@ describe('pipeline simulation: roadmap', () => {
       assert.strictEqual(fs.existsSync(path.join(sim.dir, note)), false, `${note} left the inbox`);
     }
     let state = sim.run(['roadmap', 'state']);
-    assert.deepStrictEqual(state.items.find((i) => i.name === 'export-timeout').sources, ['.roadmap/notes/bugs/2026-02-02--export-timeout.md']);
+    assert.deepStrictEqual(state.items.find((i) => i.name === 'export-timeout').sources, ['.product/notes/2026-02-02--export-timeout.md']);
     assert.strictEqual(state.items.find((i) => i.name === 'export-timeout').origin, 'inbox:2026-02-02--export-timeout');
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Export Timeout\n.*large exports time out\n.*↳ Bug · waiting/);
     // The gate refuses where the move would: the same file again names notes
@@ -100,7 +100,7 @@ describe('pipeline simulation: roadmap', () => {
     });
     assert.deepStrictEqual(bugfix.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', 'export-timeout'] });
     assert.strictEqual(sim.manifest('export-timeout').work_type, 'bugfix');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.roadmap/notes/bugs/2026-02-02--export-timeout.md')));
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.product/notes/2026-02-02--export-timeout.md')));
 
     // An idea and a bug start with no hint — the shape is discovery's to
     // find — and become a feature, the bug riding along.
@@ -113,16 +113,20 @@ describe('pipeline simulation: roadmap', () => {
     state = sim.run(['roadmap', 'state']);
     assert.deepStrictEqual(state.items.filter((i) => i.state === 'in-flight').map((i) => [i.name, i.work_unit]),
       [['saved-views', 'saved-views'], ['export-timeout', 'export-timeout'], ['blank-chart', 'saved-views']]);
-    sim.refuses(['roadmap', 'remove', 'blank-chart'], /joined to work unit "saved-views"/);
+    sim.refuses(['roadmap', 'archive', 'blank-chart'], /joined to work unit "saved-views"/);
 
-    // Removing a waiting item declines it: its note goes to the inbox archive,
-    // restorable from there.
-    const removed = sim.run(['roadmap', 'remove', 'footer-typo']);
-    const archived = path.join(sim.dir, '.leeway/.inbox/.archived/quickfixes/2026-02-04--footer-typo.md');
-    assert.deepStrictEqual(removed.notes_moved, [{ from: path.join(sim.dir, '.leeway/.roadmap/notes/quickfixes/2026-02-04--footer-typo.md'), to: archived }]);
-    const restored = sim.run(['inbox', 'restore', archived]);
-    assert.ok(fs.existsSync(path.join(sim.dir, inbox.typo)), 'the declined note is back in the inbox');
-    assert.match(sim.render(['inbox-restore-receipt', '--path', restored.restored[0]], { expect: 'content' }), /^Restored ".+" to the inbox\.$/m);
+    // Archiving a waiting item takes it off its horizon and the roadmap's
+    // home, its note kept and its name taken; asked for back, it returns
+    // with both (18.S67, 18.S82).
+    const note = '.leeway/.product/notes/2026-02-04--footer-typo.md';
+    assert.strictEqual(sim.run(['roadmap', 'archive', 'footer-typo']).state, 'archived');
+    assert.ok(fs.existsSync(path.join(sim.dir, note)), 'the note stays in the product\'s notes');
+    assert.doesNotMatch(sim.render(['roadmap-view'], { expect: 'content' }), /Footer Typo/);
+    assert.deepStrictEqual(sim.run(['roadmap', 'state']).archived.map((i) => [i.name, i.archived.horizon]), [['footer-typo', 'next']]);
+    sim.refuses(['roadmap', 'add', 'footer-typo', '--horizon', 'next', '--summary', 'again'], /"footer-typo" is archived on the roadmap, and its name stays taken/);
+    assert.deepStrictEqual(sim.run(['roadmap', 'move', 'footer-typo', '--horizon', 'next']).from_archive.horizon, 'next');
+    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Footer Typo/);
+    assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'footer-typo').sources, [note.slice('.leeway/'.length)]);
   });
 
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
@@ -151,13 +155,14 @@ describe('pipeline simulation: roadmap', () => {
     assert.deepStrictEqual(state.horizons, ['v1', 'mvp', 'someday']);
     assert.strictEqual(state.totals.waiting, 4);
 
-    // The map is loose left of the pull: reorder, re-bucket, split, remove.
+    // The map is loose left of the pull: reorder, re-bucket, split, archive;
+    // an archived item holds no horizon.
     sim.run(['roadmap', 'horizon', 'reorder', 'mvp', 'v1', 'someday']);
     sim.run(['roadmap', 'move', 'white-label', '--horizon', 'v2']);
     sim.run(['roadmap', 'horizon', 'split', 'mvp', '--new', 'mvp-2', '--items', 'menu-management']);
     sim.run(['roadmap', 'horizon', 'merge', 'mvp-2', '--into', 'mvp']);
     sim.refuses(['roadmap', 'horizon', 'remove', 'v2'], /holds 1 item/);
-    sim.run(['roadmap', 'remove', 'white-label']);
+    sim.run(['roadmap', 'archive', 'white-label']);
     sim.run(['roadmap', 'horizon', 'remove', 'v2']);
     // A positional insert lands the horizon where the release order says.
     sim.run(['roadmap', 'horizon', 'add', 'next', '--position', '2']);
@@ -179,10 +184,10 @@ describe('pipeline simulation: roadmap', () => {
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'ordering').state, 'in-flight');
 
-    // Right of the pull the work unit is authoritative: re-bucket and remove
+    // Right of the pull the work unit is authoritative: re-bucket and archive
     // refuse; cosmetic edits and renames stay open, the join carried across.
     sim.refuses(['roadmap', 'move', 'ordering', '--horizon', 'v1'], /delivery decision/);
-    sim.refuses(['roadmap', 'remove', 'ordering'], /joined to work unit "mvp"/);
+    sim.refuses(['roadmap', 'archive', 'ordering'], /joined to work unit "mvp"/);
     sim.run(['roadmap', 'edit', 'ordering', '--summary', 'guests order from a menu']);
     sim.run(['roadmap', 'rename', 'ordering', 'guest-ordering']);
     // Horizon restructuring is presentational for joins — rename cascades.
@@ -410,7 +415,7 @@ describe('pipeline simulation: roadmap', () => {
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'loyalty').state, 'waiting');
     assert.strictEqual(state.items.find((i) => i.name === 'points-lost').state, 'in-flight');
-    sim.refuses(['roadmap', 'remove', 'points-lost'],
+    sim.refuses(['roadmap', 'archive', 'points-lost'],
       /it rides with "platform", and it goes back to waiting only if that work is cancelled/);
   });
 
@@ -445,7 +450,7 @@ describe('pipeline simulation: roadmap', () => {
     // The bug stays with the epic: the topic's cancel returns the idea alone,
     // and only the whole epic's cancel returns the bug.
     assert.deepStrictEqual(sim.run(['topic', 'cancel', 'launch', 'discovery', 'guest-checkout']).roadmap_reverted, ['guest-checkout']);
-    sim.refuses(['roadmap', 'remove', 'cart-drops-items'],
+    sim.refuses(['roadmap', 'archive', 'cart-drops-items'],
       /it rides with "launch", and it goes back to waiting only if that work is cancelled/);
     assert.deepStrictEqual(sim.run(['workunit', 'cancel', 'launch']).roadmap_reverted, ['cart-drops-items']);
     state = sim.run(['roadmap', 'state']);
@@ -470,7 +475,7 @@ describe('pipeline simulation: roadmap', () => {
     const state = sim.run(['roadmap', 'state']);
     assert.deepStrictEqual(state.items.filter((i) => i.state === 'in-flight').map((i) => [i.name, i.kind, i.work_unit]),
       [['footer-typo', 'quick-fix', 'footer-fixes'], ['stale-copyright', 'quick-fix', 'footer-fixes']]);
-    sim.refuses(['roadmap', 'remove', 'footer-typo'],
+    sim.refuses(['roadmap', 'archive', 'footer-typo'],
       /it is part of "footer-fixes", and it goes back to waiting only if that work is cancelled/);
   });
 });

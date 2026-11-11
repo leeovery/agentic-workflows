@@ -328,7 +328,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   roadmap edit <name> --summary <text>
   roadmap rename <old> <new>
   roadmap move <name> --horizon <h>
-  roadmap remove <name>
+  roadmap archive <name>
   roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
   roadmap horizon rename <old> <new>
@@ -1628,9 +1628,9 @@ function runRoadmap(call, argv) {
     } else if (command === 'move') {
       if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h>');
       respond(call, roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
-    } else if (command === 'remove') {
-      if (positional.length !== 1) throw new Error('Usage: engine roadmap remove <name>');
-      respond(call, roadmap.removeRoadmapItem(cwd, positional[0]));
+    } else if (command === 'archive') {
+      if (positional.length !== 1) throw new Error('Usage: engine roadmap archive <name>');
+      respond(call, roadmap.archiveRoadmapItem(cwd, positional[0]));
     } else if (command === 'pull-forward') {
       if (positional.length !== 1 || !opts.into) {
         throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> [--force-dismissed]');
@@ -1640,7 +1640,7 @@ function runRoadmap(call, argv) {
         forceDismissed: flags.has('force-dismissed'),
       }));
     } else {
-      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|pull-forward|horizon> …');
+      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|archive|pull-forward|horizon> …');
     }
   } catch (err) {
     failJson(call, err);

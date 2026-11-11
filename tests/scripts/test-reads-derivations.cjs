@@ -975,13 +975,13 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponePlan({ ...m, build: { position: 'auto' } }, 'timing', null).locks.map((l) => l.reason),
         ['postponing "timing" is refused — pay\'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit\'s cancel, through manage on the start menu']);
       assert.deepStrictEqual(reasons('busy'), ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic']);
-      assert.deepStrictEqual(reasons('auth', project), ['a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first']);
+      assert.deepStrictEqual(reasons('auth', project), ['postponing "auth" is refused — a roadmap item named "auth" (horizon "next") is not this topic\'s: rename it on the roadmap, or rename the topic, first']);
       // The horizon is read here, before the epic moves — a name the roadmap
       // could not take would otherwise refuse at the landing.
       assert.deepStrictEqual(reasons('auth', null, 'v2.1'), ['"v2.1" is not a legal horizon name — dots and slashes break manifest addressing']);
       assert.deepStrictEqual(reasons('auth', project, 'v2.1'), [
         '"v2.1" is not a legal horizon name — dots and slashes break manifest addressing',
-        'a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first',
+        'postponing "auth" is refused — a roadmap item named "auth" (horizon "next") is not this topic\'s: rename it on the roadmap, or rename the topic, first',
       ]);
       assert.deepStrictEqual(reasons('auth', null, 'v2'), [], 'a legal horizon locks nothing, and the menu asks with none');
     });
@@ -990,17 +990,34 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponePlan(manifest(), 'busy', project).locks.map((l) => l.reason),
         ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic'],
         'the joined item named "ordering" holds no clash against "busy"');
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true });
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, joined: false });
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'pacing'), { name: 'pacing', item: undefined, joined: false }, 'a birth takes the name the topic goes by');
-      assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, joined: false });
+      const born = { joined: false, archived: false, clash: false };
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true, archived: false, clash: false });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, ...born });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'pacing'), { name: 'pacing', item: undefined, ...born }, 'a birth takes the name the topic goes by');
+      assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, ...born });
     });
 
-    it('the clash phrase names the horizon it has, and stands without one', () => {
-      assert.strictEqual(postponeClashPhrase('auth', { horizon: 'next' }),
-        'a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first');
-      assert.strictEqual(postponeClashPhrase('auth', {}),
-        'a roadmap item named "auth" is not this topic\'s — rename or remove it on the roadmap first');
+    it('the topic\'s own archived item is brought back — its archive mark naming the topic, whatever its name or origin, or, with no hold on its mark, a postpone of the epic\'s making under the topic\'s name; another\'s is the clash (18.8.17, 18.8.21)', () => {
+      const archived = { at: '2026-11-10T09:00:00Z', horizon: 'next' };
+      const own = { summary: 's', origin: 'postpone:pay', archived };
+      const others = { summary: 's', origin: 'harvest', archived };
+      const marked = { summary: 's', origin: 'harvest', archived: { ...archived, postponed_from: { work_unit: 'pay', topic: 'checkout' } } };
+      const markedElsewhere = { summary: 's', origin: 'postpone:pay', archived: { ...archived, postponed_from: { work_unit: 'pay', topic: 'refunds' } } };
+      const held = { roadmap: { horizons: ['next'], items: { timing: own, pacing: others, 'guest-checkout': marked, returns: markedElsewhere } } };
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'timing', 'timing'), { name: 'timing', item: own, joined: false, archived: true, clash: false });
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'pacing', 'pacing'), { name: 'pacing', item: others, joined: false, archived: false, clash: true });
+      assert.deepStrictEqual(postponeTarget(held, 'cart', 'timing', 'timing'), { name: 'timing', item: own, joined: false, archived: false, clash: true }, 'another epic\'s postpone is not this one\'s');
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'checkout', 'checkout'), { name: 'guest-checkout', item: marked, joined: false, archived: true, clash: false }, 'found by its mark, under its own name');
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'returns', 'returns'), { name: 'returns', item: markedElsewhere, joined: false, archived: false, clash: true }, 'a mark naming another topic is another\'s, whatever its origin');
+    });
+
+    it('the clash phrase names the topic and the item, the horizon the item has or its archive, and stands without either (18.8.17, 18.8.21)', () => {
+      assert.strictEqual(postponeClashPhrase('auth', 'auth', { horizon: 'next' }),
+        'postponing "auth" is refused — a roadmap item named "auth" (horizon "next") is not this topic\'s: rename it on the roadmap, or rename the topic, first');
+      assert.strictEqual(postponeClashPhrase('auth', 'sign-in', { archived: { at: '2026-11-10T09:00:00Z', horizon: 'next' } }),
+        'postponing "auth" is refused — a roadmap item named "sign-in" (archived) is not this topic\'s: rename it on the roadmap, or rename the topic, first');
+      assert.strictEqual(postponeClashPhrase('auth', 'auth', {}),
+        'postponing "auth" is refused — a roadmap item named "auth" is not this topic\'s: rename it on the roadmap, or rename the topic, first');
     });
 
     it('postponedItem joins the roadmap by postponed_from, null when nothing does', () => {

@@ -180,8 +180,8 @@ const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 const BUILD_POSITIONS = /** @type {const} */ (['auto', 'step']);
 
 // Phase-item statuses that end a topic's life in its phase — excluded from
-// aggregation, never flagged, never reverted. One vocabulary for every
-// consumer (transitions, derivations, the roadmap's cross-join flag).
+// aggregation. One vocabulary for every consumer (derivations, the position,
+// the engine's topic reads).
 const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
 
 // The product as a whole: its conversation, the project-level discovery

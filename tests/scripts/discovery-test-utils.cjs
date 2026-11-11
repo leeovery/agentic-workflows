@@ -260,6 +260,8 @@ const layout = Object.freeze({
   session: (unit, number) => `${unit}/discovery/session-${number}.md`,
   /** The product's conversation's session log. @param {string} number zero-padded */
   productSession: (number) => `.product/sessions/session-${number}.md`,
+  /** A roadmap item's note, an inbox item brought onto the roadmap under its name. @param {string} name */
+  note: (name) => `.product/notes/${name}`,
   /** A spike's folder, the product's or a unit's, or a path in it. @param {string} owner `.product`, or a unit @param {string} spike `NNN-{slug}` @param {...string} segments */
   spike: (owner, spike, ...segments) => [owner, 'spikes', spike, ...segments].join('/'),
   /** A topic's brief. @param {string} unit @param {string} topic */

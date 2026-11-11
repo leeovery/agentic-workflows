@@ -256,13 +256,26 @@ const MAP_LINES = {
   remove: (c) => [
     `Removed "${c.title}" from the map.`,
     ...inboxLine(c.inbox?.length ?? 0),
-    ...(c.roadmap_returned ?? []).map(({ name, horizon }) => `"${titlecase(name)}" is back on the roadmap under ${horizon}.`),
+    ...(c.roadmap_returned ?? []).map(({ name, horizon }) => backOnTheRoadmap(name, horizon, c.roadmap_horizon_gone ?? [])),
   ].join(' '),
   /** @param {SequenceResult} c */
   order: (c) => `Ordered the map: ${Object.entries(c.ordered).sort(([, a], [, b]) => a - b).map(([topic, n]) => `${n} "${c.titles[topic]}"`).join(', ')}.`,
   /** @param {MapChange} c */
   brief: (c) => `Rewrote "${c.title}"'s brief.`,
 };
+
+/**
+ * Where a roadmap item a removal put back now waits: under its horizon, or —
+ * that horizon removed meanwhile — on none, for the person to name one
+ * (18.8.20).
+ * @param {string} name @param {string|null} horizon @param {import('../roadmap.cjs').HorizonGone[]} gone
+ * @returns {string}
+ */
+function backOnTheRoadmap(name, horizon, gone) {
+  if (horizon !== null) return `"${titlecase(name)}" is back on the roadmap under ${horizon}.`;
+  const left = gone.find((item) => item.name === name)?.horizon;
+  return `"${titlecase(name)}" is back on the roadmap with no horizon${left ? ` — ${left} was removed` : ''}.`;
+}
 
 /**
  * A map verb's one-line report (8.8.7): what changed, by the titles screens

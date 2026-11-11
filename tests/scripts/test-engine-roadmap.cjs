@@ -7,6 +7,7 @@
 // inbox's notes onto the roadmap and back are test-engine-roadmap-inbox.cjs's;
 // the postpone, and a cancel's revert of a join, are
 // test-engine-roadmap-topic-verbs.cjs's; a removal's, test-engine-topic-map.cjs's.
+// The archive's ground — kept, its name taken — is here.
 //
 // Layer: verb. World: the roadmap's (roadmap-world.cjs).
 
@@ -18,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { git, stateGit, commitAll, cleanupFixture: cleanup, ok } = require('./engine-harness.cjs');
+const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, withFrozenClock } = require('./engine-harness.cjs');
 const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource, joinItem, joinedTo } = require('./roadmap-world.cjs');
 
 /** A temp-dir git repo with an empty project manifest committed. */
@@ -251,22 +252,22 @@ describe('engine CLI: roadmap item ops and the joined-item guards', () => {
     assert.match(runFail(dir, ['move', 'loyalty', '--horizon', 'v2']).error, /already in "v2"/);
   });
 
-  it('refuses re-bucketing and removing an item riding with an epic — no topic there — naming the whole work\'s cancel as its one way back', () => {
+  it('refuses re-bucketing and archiving an item riding with an epic — no topic there — naming the whole work\'s cancel as its one way back', () => {
     const before = projectManifestText(dir);
     assert.strictEqual(runFail(dir, ['move', 'ordering', '--horizon', 'v1']).error,
       '"ordering" is joined to work unit "mvp" — re-bucketing a pulled item is a delivery decision; it rides with "mvp", and it goes back to waiting only if that work is cancelled');
-    assert.strictEqual(runFail(dir, ['remove', 'ordering']).error,
-      '"ordering" is joined to work unit "mvp" — removing a pulled item is a delivery decision; it rides with "mvp", and it goes back to waiting only if that work is cancelled');
+    assert.strictEqual(runFail(dir, ['archive', 'ordering']).error,
+      '"ordering" is joined to work unit "mvp" — archiving a pulled item is a delivery decision; it rides with "mvp", and it goes back to waiting only if that work is cancelled');
     assert.strictEqual(projectManifestText(dir), before);
 
     ok(dir, ['workunit', 'cancel', 'mvp']);
-    assert.strictEqual(runOk(dir, ['remove', 'ordering']).op, 'remove', 'back to waiting, it removes');
+    assert.strictEqual(runOk(dir, ['archive', 'ordering']).op, 'archive', 'back to waiting, it archives');
   });
 
   it('a join to an epic topic names the topic\'s cancel or postpone as its way back', () => {
     joinItem(dir, 'ordering', 'mvp', 'ordering');
-    assert.strictEqual(runFail(dir, ['remove', 'ordering']).error,
-      '"ordering" is joined to work unit "mvp" — removing a pulled item is a delivery decision; cancel or postpone its topic "ordering" in "mvp" and it goes back to waiting');
+    assert.strictEqual(runFail(dir, ['archive', 'ordering']).error,
+      '"ordering" is joined to work unit "mvp" — archiving a pulled item is a delivery decision; cancel or postpone its topic "ordering" in "mvp" and it goes back to waiting');
   });
 
   it('a join into a unit of another type is part of that work, back to waiting only if it is cancelled', () => {
@@ -278,20 +279,98 @@ describe('engine CLI: roadmap item ops and the joined-item guards', () => {
 
   it('a shipped item stays as its release\'s record, and an orphaned join says so — neither promises a way back', () => {
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'completed' });
-    assert.strictEqual(runFail(dir, ['remove', 'ordering']).error,
+    assert.strictEqual(runFail(dir, ['archive', 'ordering']).error,
       '"ordering" shipped with work unit "mvp" — it stays on the roadmap as the record of what its release was');
     joinItem(dir, 'loyalty', 'ghost');
     assert.strictEqual(runFail(dir, ['move', 'loyalty', '--horizon', 'mvp']).error,
       '"loyalty" is joined to work unit "ghost", which is missing or cancelled — the join is orphaned');
   });
 
-  it('remove deletes a waiting item outright — no dismissed list', () => {
-    const res = runOk(dir, ['remove', 'loyalty']);
-    assert.strictEqual(res.item_total, 1);
-    const roadmap = readProject(dir).roadmap;
-    assert.strictEqual('loyalty' in roadmap.items, false);
-    assert.strictEqual('dismissed' in roadmap, false);
-    assert.match(runFail(dir, ['remove', 'ghost']).error, /no roadmap item "ghost"/);
+  it('archive keeps a waiting item on the manifest, off its horizon, marked with when and the horizon it left (18.8.13)', () => {
+    const res = withFrozenClock(() => runOk(dir, ['archive', 'loyalty']));
+    assert.deepStrictEqual(res, { ok: true, op: 'archive', name: 'loyalty', horizon: 'v1', state: 'archived', committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: archive loyalty');
+    assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty,
+      { summary: 'rewards', kind: 'idea', origin: 'harvest', archived: { at: '2026-01-01T00:00:00Z', horizon: 'v1' } });
+  });
+
+  it('archive refuses an item archived already and one not on the roadmap, nothing written', () => {
+    runOk(dir, ['archive', 'loyalty']);
+    const before = projectManifestText(dir);
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    assert.strictEqual(runFail(dir, ['archive', 'loyalty']).error, '"loyalty" is archived already');
+    assert.match(runFail(dir, ['archive', 'ghost']).error, /no roadmap item "ghost"/);
+    assert.strictEqual(projectManifestText(dir), before);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('move brings an archived item back onto a horizon the person names, the mark gone and the rest as it was (18.8.13)', () => {
+    const kept = readProject(dir).roadmap.items.loyalty;
+    withFrozenClock(() => runOk(dir, ['archive', 'loyalty']));
+    const res = runOk(dir, ['move', 'loyalty', '--horizon', 'v2']);
+    assert.deepStrictEqual(
+      { moved_from: res.moved_from, from_archive: res.from_archive, state: res.state, horizon_created: res.horizon_created, horizons: res.horizons },
+      { moved_from: null, from_archive: { at: '2026-01-01T00:00:00Z', horizon: 'v1' }, state: 'waiting', horizon_created: true, horizons: ['mvp', 'v1', 'v2'] });
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: move loyalty to v2, back from the archive');
+    assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty, { ...kept, horizon: 'v2' });
+    assert.strictEqual(runOk(dir, ['state']).items.find((i) => i.name === 'loyalty').state, 'waiting');
+  });
+});
+
+describe('engine CLI: an archived item\'s name stays taken (18.8.21)', () => {
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'preferences-ui', '--horizon', 'v1', '--summary', 'settings screens']);
+    runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
+    runOk(at, ['archive', 'preferences-ui']);
+  });
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { cleanup(dir); });
+
+  const TAKEN = '"preferences-ui" is archived on the roadmap, and its name stays taken — bring it back onto a horizon (engine roadmap move preferences-ui --horizon <h>), or name the new one apart';
+
+  it('add, add-batch and rename refuse the name, naming the archived one and the way on — nothing written (18.S82)', () => {
+    const before = projectManifestText(dir);
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    assert.strictEqual(runFail(dir, ['add', 'preferences-ui', '--horizon', 'v2', '--summary', 'a new settings page']).error, TAKEN);
+    fs.writeFileSync(path.join(dir, 'items.json'), JSON.stringify([
+      { name: 'fresh', horizon: 'v2', summary: 's' },
+      { name: 'preferences-ui', horizon: 'v2', summary: 's' },
+    ]));
+    assert.strictEqual(runFail(dir, ['add-batch', '--file', 'items.json']).error, `add-batch: ${TAKEN}`);
+    assert.strictEqual(runFail(dir, ['rename', 'loyalty', 'preferences-ui']).error, TAKEN);
+    assert.strictEqual(projectManifestText(dir), before);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('the way on it names lands: brought back, the name is the live item\'s, refused as any live name is', () => {
+    runOk(dir, ['move', 'preferences-ui', '--horizon', 'v1']);
+    assert.strictEqual(runFail(dir, ['add', 'preferences-ui', '--horizon', 'v2', '--summary', 's']).error,
+      '"preferences-ui" is already on the roadmap — edit it, or pick a different name');
+  });
+
+  it('pull-forward refuses an archived item, naming the way back — the epic\'s map never moves', () => {
+    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    commitAll(dir, 'epic');
+    const epicBefore = fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
+    assert.strictEqual(runFail(dir, ['pull-forward', 'preferences-ui', '--into', 'mvp']).error,
+      '"preferences-ui" is archived — pull-forward takes a waiting item; bring it back onto a horizon (engine roadmap move preferences-ui --horizon <h>) first');
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
+  });
+
+  it('split refuses an archived item as one outside the source horizon', () => {
+    assert.strictEqual(runFail(dir, ['horizon', 'split', 'v1', '--new', 'v1b', '--items', 'preferences-ui']).error,
+      'split: "preferences-ui" is archived, not in "v1" — a split moves members of the source horizon only');
+  });
+
+  it('state lists an archived item apart, outside the items and the totals', () => {
+    const res = runOk(dir, ['state']);
+    assert.deepStrictEqual(res.items.map((i) => i.name), ['loyalty']);
+    assert.deepStrictEqual(res.totals, { items: 1, waiting: 1, in_flight: 0, shipped: 0, orphaned: 0 });
+    assert.deepStrictEqual(res.archived, [{
+      name: 'preferences-ui', summary: 'settings screens', kind: 'idea', origin: 'harvest', sources: [],
+      archived: readProject(dir).roadmap.items['preferences-ui'].archived,
+    }]);
   });
 });
 
@@ -354,7 +433,7 @@ describe('engine CLI: roadmap horizon ops', () => {
     assert.strictEqual(res.items_moved, 1);
     assert.strictEqual(readProject(dir).roadmap.items.menus.horizon, 'mvp-2');
 
-    assert.match(runFail(dir, ['horizon', 'split', 'mvp', '--new', 'mvp-3', '--items', 'loyalty']).error, /is in "v1", not "mvp"/);
+    assert.match(runFail(dir, ['horizon', 'split', 'mvp', '--new', 'mvp-3', '--items', 'loyalty']).error, /is in "v1", not in "mvp"/);
     assert.match(runFail(dir, ['horizon', 'split', 'mvp', '--new', 'v1', '--items', 'ordering']).error, /already exists/);
     assert.match(runFail(dir, ['horizon', 'split', 'mvp', '--new', 'mvp-3', '--items', 'ordering,ordering']).error, /more than once/);
   });
@@ -365,6 +444,15 @@ describe('engine CLI: roadmap horizon ops', () => {
     runOk(dir, ['horizon', 'add', 'empty-h']);
     const res = runOk(dir, ['horizon', 'remove', 'empty-h']);
     assert.deepStrictEqual(res.horizons, ['mvp', 'v1']);
+  });
+
+  it('remove counts the waiting members alone — one in flight has left the roadmap, one archived is off it (18.8.20, 18.8.13)', () => {
+    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
+    joinedTo(dir, 'mvp', 'ordering');
+    assert.strictEqual(runFail(dir, ['horizon', 'remove', 'mvp']).error,
+      'horizon "mvp" holds 1 item (menus) — merge it or move them first');
+    runOk(dir, ['archive', 'menus']);
+    assert.deepStrictEqual(runOk(dir, ['horizon', 'remove', 'mvp']).horizons, ['v1']);
   });
 });
 
@@ -444,6 +532,7 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
       exists: false,
       horizons: [],
       items: [],
+      archived: [],
       totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 },
       session_logs: [],
     });
@@ -513,7 +602,7 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
     const logs = ['session-001.md', 'session-003.md'].map((name) => path.join(dir, '.leeway', '.product', 'sessions', name));
     for (const log of logs) writeSource(dir, path.relative(path.join(dir, '.leeway'), log));
     fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({}, null, 2));
-    const sessions = ({ horizons, totals, items, ...rest }) => ({ ...rest, items: items.map((i) => i.name) });
+    const sessions = ({ horizons, totals, items, archived, ...rest }) => ({ ...rest, items: items.map((i) => i.name) });
     const expected = { ok: true, exists: true, session_logs: [{ number: 1, path: logs[0] }, { number: 3, path: logs[1] }] };
     assert.deepStrictEqual(sessions(runOk(dir, ['state'])), { ...expected, items: [] });
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);

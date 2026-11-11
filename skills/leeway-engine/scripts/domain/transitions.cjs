@@ -90,6 +90,7 @@ function postponedRefusal(phase, topic) {
  * @property {string[]} abandoned  the open records closed as abandoned, reason recorded on each row
  * @property {WaitRelease[]} released_waits  the evidence waits the topic's conversations held
  * @property {string[]} roadmap_reverted  roadmap items handed back to waiting by the cancel-revert hop
+ * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone]  those of them whose horizon was removed meanwhile, now on none
  * @property {string[]} inbox  each waiting message's idea in the inbox, absolute
  * @property {string[]} closed_agents  the agents still running on the items taken, closed
  * @property {string|null} committed  short commit sha, or null when nothing was staged
@@ -454,7 +455,7 @@ function cancelDiscoveryUnit(manifest, topic) {
     throw new Error(`"${topic}" is already cancelled`);
   }
   if (lifecycle === 'postponed') {
-    throw new Error(`"${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
+    throw new Error(`"${topic}" is postponed — the roadmap owns it; archive its item there to cancel it, or pull it forward first`);
   }
   const plan = cancelPlan(manifest, topic);
   const mapItem = itemOf(manifest, 'discovery', topic);
@@ -477,6 +478,31 @@ function cancelDiscoveryUnit(manifest, topic) {
 }
 
 /**
+ * @typedef {{message: string, idea: string}} MailMoved  a message that waited
+ *   for the topic, and the idea it became in the inbox, state-relative
+ */
+
+/**
+ * The one door a topic's cancel goes through, whichever hold it ends: under
+ * the work unit's lock, `cancel` flips the loaded manifest and names the
+ * topic, the manifest is saved, and every message waiting for the topic
+ * moves to the inbox as an idea (10.1.6). Commits nothing.
+ * @template {{topic: string}} T
+ * @param {string} cwd @param {string} workUnit
+ * @param {(manifest: Record<string, any>) => T} cancel
+ * @returns {T & {mail: MailMoved[]}}
+ */
+function cancelUnderLock(cwd, workUnit, cancel) {
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const outcome = cancel(manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    const { moveWaitingToInbox } = require('./mail.cjs');
+    return { ...outcome, mail: moveWaitingToInbox(cwd, workUnit, outcome.topic) };
+  });
+}
+
+/**
  * Cancel a topic — the Discovery unit under the name — in one locked write,
  * its waiting mail moved to the inbox as ideas under the same lock (10.1.6),
  * then release the calling session's own heartbeat on each
@@ -490,14 +516,10 @@ function cancelDiscoveryUnit(manifest, topic) {
  */
 function cancelTopic(cwd, workUnit, phase, said) {
   assertUnitStage('cancel', phase);
-  const { mail, topic, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
+  const { mail, topic, ...taken } = cancelUnderLock(cwd, workUnit, (manifest) => {
     assertBeforeSpec(cwd, manifest, 'cancel');
     const topic = topicKey(manifest, said);
-    const outcome = cancelDiscoveryUnit(manifest, topic);
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    const { moveWaitingToInbox } = require('./mail.cjs');
-    return { ...outcome, topic, mail: moveWaitingToInbox(cwd, workUnit, topic) };
+    return { ...cancelDiscoveryUnit(manifest, topic), topic };
   });
 
   /** @type {string[]} */
@@ -510,9 +532,9 @@ function cancelTopic(cwd, workUnit, phase, said) {
   // lifecycle cancelled hands any roadmap item joined to it back to
   // waiting (sources/origin intact) — the un-pull path. The project
   // manifest rides this transaction's commit when a revert landed.
-  const reverted = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle === 'cancelled'
+  const { reverted, horizon_gone: gone } = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle === 'cancelled'
     ? revertJoins(cwd, workUnit, { topic })
-    : [];
+    : { reverted: [], horizon_gone: [] };
 
   // A cancel writes the work-unit manifest, the topic's waiting mail moved
   // to the inbox, and the project manifest when a roadmap join reverted, and
@@ -529,6 +551,7 @@ function cancelTopic(cwd, workUnit, phase, said) {
     topic, phase: 'discovery', status: 'cancelled', ...taken, roadmap_reverted: reverted, inbox: mail.map(({ idea }) => statePath(cwd, idea)),
     closed_agents: closedAgents, committed: outcome.committed, warnings,
   };
+  if (gone.length > 0) result.roadmap_horizon_gone = gone;
   // The manifest alone is narrower than any state scope, so the retry stays
   // generic — the commit door's own rule.
   noteCommitOutcome(result, outcome);
@@ -726,23 +749,24 @@ function restorePostponedUnit(cwd, workUnit, topic) {
 }
 
 /**
- * Turn a postponed Discovery unit's hold into a cancel — `roadmap remove`
+ * Turn a postponed Discovery unit's hold into a cancel — `roadmap archive`
  * over the item the postpone put there, so "actually never" has one door.
  * The marker and every stashed item read `cancelled`, each stash and the
  * stashed map order kept for a later reactivate; the chunks left at the
- * postpone. One locked write and no commit — the remove's own transaction
- * stages both manifests together. A unit holding no postpone refuses: the
- * item's join is stale, and the remove must not report a cancel it never made.
+ * postpone; the mail that waited for the topic's return moved to the inbox,
+ * through the cancel's own door (cancelUnderLock). No commit — the archive's
+ * own transaction stages both manifests and the mail together. A unit
+ * holding no postpone refuses: the item's join is stale, and the archive
+ * must not report a cancel it never made.
  * @param {string} cwd @param {string} workUnit @param {string} topic
- * @param {string} item  the roadmap item being removed, for the orphan refusal
- * @returns {CancelledItem[]}
+ * @param {string} item  the roadmap item being archived, for the orphan refusal
+ * @returns {{topic: string, cancelled: CancelledItem[], mail: MailMoved[]}}
  */
 function cancelPostponedUnit(cwd, workUnit, topic, item) {
   if (!fs.existsSync(statePath(cwd, workUnit, 'manifest.json'))) {
     throw new Error(`"${item}" was postponed from work unit "${workUnit}", which no longer exists — the join is orphaned`);
   }
-  return withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
+  return cancelUnderLock(cwd, workUnit, (manifest) => {
     const row = itemOf(manifest, 'discovery', topic);
     const held = unitItems(manifest, 'discovery', topic).filter(({ item: it }) => it.status === 'postponed');
     if ((!row || row.postponed !== true) && held.length === 0) {
@@ -756,8 +780,7 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
       it.status = 'cancelled';
       return { phase, previous_status: it.previous_status };
     });
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    return cancelled;
+    return { topic, cancelled };
   });
 }
 

@@ -255,7 +255,7 @@ describe('every other verb, render and entry that names a topic takes its title,
       without(dir, 'specification', 'experiment');
       ok(dir, ['roadmap', 'add', NAME, '--horizon', 'later', '--summary', 'Not this topic']);
       return refusedPristine(dir, ['render', 'postpone-gate', `${UNIT}.discovery.${NAME}`, '--horizon', 'later']).error;
-    }, `render postpone-gate: a roadmap item named "${NAME}" (horizon "later") is not this topic's — rename or remove it on the roadmap first`],
+    }, `render postpone-gate: postponing "${KEY}" is refused — a roadmap item named "${NAME}" (horizon "later") is not this topic's: rename it on the roadmap, or rename the topic, first`],
     ['render approve-map, its yes', () => {
       const staged = writeState(dir, layout.cache('scratch', 'approve-map.json'), JSON.stringify({ topics: [{ name: NAME }, { name: 'space-homing' }, { name: 'sync' }] }));
       return ok(dir, answered(['approve-map', UNIT, '--file', staged], 'approve the map', 'y')).topics.join();
@@ -370,12 +370,12 @@ describe('every screen names a topic through one helper', () => {
       'projections/decided.cjs › strikePick › name',
       'projections/discovery-map.cjs › struckBlock › name',
       'projections/transactions.cjs › absorbReceipt › topic',
-      'projections/transactions.cjs › MAP_LINES › name',
       'render.cjs › candidateGate › p.name',
     ],
     'a roadmap item or an inbox item': [
       'projections/roadmap.cjs › roadmapNodes › row.name',
       'projections/roadmap.cjs › roadmapPullSetView › row.name',
+      'projections/transactions.cjs › backOnTheRoadmap › name',
       'projections/transactions.cjs › MAP_LINES › c.from_roadmap',
       'render.cjs › horizonPick › park',
       'render.cjs › inboxRoadmapGate › item.name',

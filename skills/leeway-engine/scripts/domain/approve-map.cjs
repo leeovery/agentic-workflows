@@ -77,7 +77,7 @@ const {
 const { topicsSettled } = require('./spec-standing.cjs');
 const { readTaken } = require('./sweep.cjs');
 const {
-  DEFAULT_KIND, becomesTopic, validateKind, joinToTopic, ensureRoadmap, ensureHorizon, validateSummary, validateSources, requireSourcesOnDisk,
+  DEFAULT_KIND, becomesTopic, validateKind, joinToTopic, ensureRoadmap, ensureHorizon, validateSummary, validateSources, requireSourcesOnDisk, nameTakenRefusal,
 } = require('./roadmap.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
@@ -228,7 +228,8 @@ function stagedPark(cwd, project, given, at) {
     validateSources(sources);
     if (/** @type {string[]} */ (sources).length === 0) throw new Error('sources names the logs that shaped it — at least one');
     requireSourcesOnDisk(cwd, /** @type {string[]} */ (sources));
-    if (roadmapItems(project)[/** @type {string} */ (name)] !== undefined) throw new Error('the roadmap has an item of its name already');
+    const taken = nameTakenRefusal(roadmapItems(project), /** @type {string} */ (name), 'the roadmap has an item of its name already');
+    if (taken !== null) throw new Error(taken);
   } catch (err) {
     throw new Error(`${what}: ${err instanceof Error ? err.message : String(err)}`);
   }
