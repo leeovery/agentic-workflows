@@ -73,7 +73,7 @@ engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / 
 
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
-engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
+engine.detail.startDetail(cwd)                    // → StartDetail (the units in progress by type, the closed ones, the inbox)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: the work-type pre-seed, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null

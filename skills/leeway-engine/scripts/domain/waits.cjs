@@ -60,7 +60,10 @@ const {
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./raise.cjs').Seal} Seal */
 
-/** @typedef {'map'|'decided'|'ready'|'finish'|'question'|'affected'|'verdict'} WaitKind */
+/** Every kind of wait (the header's). */
+const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish', 'question', 'affected', 'verdict']));
+
+/** @typedef {typeof WAIT_KINDS[number]} WaitKind */
 /**
  * A wait (the header's): its kind; its id — a question's number or short
  * id, a topic's name, a gate's own; its words; the topic it is about, where
@@ -231,4 +234,4 @@ function waitsOf(cwd, manifests, { verdicts = false, session = null, shower = nu
   return { waits, warnings };
 }
 
-module.exports = { waitsOf };
+module.exports = { WAIT_KINDS, waitsOf };

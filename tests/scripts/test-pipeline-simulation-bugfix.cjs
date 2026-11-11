@@ -121,11 +121,11 @@ describe('pipeline simulation: bugfix', () => {
 
     // A gap routed back before the spec lands in the topic's mailbox, waiting
     // for its investigation: the delivery reopens the item, and the start
-    // menu's row has the bugfix back in its investigation.
+    // menu's row has the bugfix back in its investigation, mail waiting.
     sim.write('.leeway/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
     const gapLand = sim.run(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
     assert.strictEqual(gapLand.reopened, true);
-    assert.strictEqual(startRow(sim, wu), 'Continue bugfix: Crash Fix — *investigation*');
+    assert.strictEqual(startRow(sim, wu), 'Continue bugfix: Crash Fix — *investigation* · mail waiting');
 
     // The investigation entered again raises the message first, and makes
     // its resume's reads; the message's question goes on the map and the

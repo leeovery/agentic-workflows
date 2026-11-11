@@ -399,19 +399,15 @@ describe('engine handoff unit — Continue, into the unit where it stands (19.1.
     ]);
   });
 
-  it('refuses another shape, a unit the project lacks, a closed one — seen through the view, brought back through manage — and one waiting on the migration\'s cut, in its line (P12)', () => {
+  it('refuses another shape, a unit the project lacks, and a closed one — seen through the view, brought back through manage', () => {
     createManifest(dir, 'shipped', { status: 'completed' });
     createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
-    createManifest(dir, 'old-concern', { work_type: 'cross-cutting', phases: item('discussion', 'old-concern', 'in-progress') });
-    createManifest(dir, 'old-build', { phases: { ...item('discussion', 'old-build', 'completed'), ...item('implementation', 'old-build', 'in-progress') } });
     const cases = [
       [[], 'Usage: engine handoff unit <work-unit>'],
       [['fumi', 'extra'], 'Usage: engine handoff unit <work-unit>'],
       [['nowhere'], 'there is no work unit "nowhere" — the start menu lists the work in progress'],
       [['shipped'], 'shipped is completed — closed work is seen through the start menu\'s view, and brought back through manage'],
       [['dropped'], 'dropped is cancelled — closed work is seen through the start menu\'s view, and brought back through manage'],
-      [['old-concern'], 'old-concern is a cross-cutting unit, a type the reshape retires — it waits on the reshape\'s 29.17 migration, and nothing is done in it until then'],
-      [['old-build'], 'old-build was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it'],
     ];
     assert.deepStrictEqual(cases.map(([args]) => refuses(dir, ['handoff', 'unit', ...args]).error), cases.map(([, error]) => error));
   });

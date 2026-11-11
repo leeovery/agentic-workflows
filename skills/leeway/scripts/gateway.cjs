@@ -35,7 +35,7 @@ function discover(cwd) {
 // says so and no menu.
 function inboxView() {
   const detail = discover(process.cwd());
-  const v = engine.project.inboxPickupView(engine.detail.combinedInbox(detail.inbox), detail.state.has_archived);
+  const v = engine.project.inboxPickupView(engine.detail.combinedInbox(detail.inbox), detail.inbox.archived.total_count > 0);
   return [
     engine.gateway.dataBlock(v.data),
     engine.gateway.titleBlock('Inbox'),
@@ -143,9 +143,8 @@ function completedView() {
 if (require.main === module) {
   engine.gateway.runGateway({
     index: () => {
-      process.stderr.write('Error: a verb is required\nUsage: gateway.cjs <inbox|archived|working-set|manage|completed> [args…]\n');
-      process.exit(1);
-      return ''; // unreachable; keeps the handler's return type uniform
+      process.stderr.write('Error: a verb is required\nUsage: gateway.cjs <inbox|archived|working-set|working-set-add-gate|working-set-drop-gate|manage|completed> [args…]\n');
+      return process.exit(1);
     },
     inbox: inboxView,
     archived: archivedView,

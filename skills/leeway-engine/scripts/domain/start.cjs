@@ -1,67 +1,28 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the leeway detail — the one structured object the
-// start overview, menu, and reasoning surfaces derive from.
-//
-// Collates every active work unit by type (with next-phase state), the inbox
-// (live and archived), and the completed/cancelled sets. Pure over the
-// project's state: same files, same answer. Shared manifest
-// semantics come from domain/reads and domain/derivations — never duplicated
-// here.
+// Domain ring: the leeway detail — what the start skill's sub-views read
+// (projections/start.cjs): the units in progress by type, for manage's list;
+// the completed and the cancelled ones, for the view; and the inbox, live
+// and archived, for triage. Pure over the project's state: same files, same
+// answer. The start menu reads the project itself (start-menu.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, loadAllManifests, loadProjectManifest } = require('./reads.cjs');
-const { roadmapState } = require('./roadmap.cjs');
-const { productConversation } = require('./discovery-session.cjs');
-const { researchOwed } = require('./brownfield.cjs');
+const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { INBOX, ARCHIVED } = require('./inbox.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-const { pastItsSpec } = require('./spec-standing.cjs');
-const {
-  phaseItems,
-  computeUnitPhaseState,
-  lastCompletedPhase,
-  mailPhases,
-} = require('./derivations.cjs');
-const { WORK_TYPE_PIPELINES, VALID_PHASES, LEGACY_PHASES } = require('../kernel/manifest-schema.cjs');
-
-// The epic pipeline — discussion → review, the completion / next-phase pipeline
-// and the start dashboard's active-phase row.
-const EPIC_PIPELINE_PHASES = WORK_TYPE_PIPELINES.epic;
+const { statePath } = require('../kernel/state-root.cjs');
+const { lastCompletedPhase } = require('./derivations.cjs');
+const { VALID_PHASES, LEGACY_PHASES } = require('../kernel/manifest-schema.cjs');
 
 // Every pipeline phase across all work types, the old plan's planning after
 // the spec — the closed-unit last-phase scan.
 const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery').flatMap((p) => (p === 'specification' ? [p, ...LEGACY_PHASES] : [p]));
 
-/**
- * The type's pipeline phases, from the schema's one home for pipeline order.
- * An unknown type — a retired one among them — falls back to every phase.
- * @param {string} workType
- * @returns {string[]}
- */
-function pipelineOf(workType) {
-  return WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || ALL_PHASES;
-}
+/** @typedef {{name: string, work_type: string}} WorkUnitEntry */
 
-/**
- * @typedef {object} WorkUnitEntry
- * @property {string} name
- * @property {string} work_type
- * @property {string} next_phase
- * @property {string} phase_label
- * @property {string[]} [active_phases]  epics only — phases that have items
- * @property {string[]} [mail_phases]  single-topic types — phases whose mailbox holds
- *                                       messages for the unit's topic (the row's `mail waiting` cue)
- */
-
-/**
- * @typedef {object} TypeGroup
- * @property {WorkUnitEntry[]} work_units
- * @property {number} count
- */
+/** @typedef {{work_units: WorkUnitEntry[]}} TypeGroup */
 
 /**
  * @typedef {object} ClosedEntry
@@ -94,33 +55,14 @@ function pipelineOf(workType) {
 /** @typedef {InboxScan & {archived: InboxScan}} InboxDetail */
 
 /**
- * @typedef {object} StartState
- * @property {boolean} has_any_work
- * @property {number} epic_count
- * @property {number} feature_count
- * @property {number} bugfix_count
- * @property {number} quickfix_count
- * @property {boolean} has_inbox
- * @property {number} inbox_count
- * @property {boolean} has_archived
- * @property {number} archived_count
- */
-
-/**
  * @typedef {object} StartDetail
  * @property {TypeGroup} epics
- * @property {TypeGroup} features
+ * @property {TypeGroup} features  a retired type's units among them
  * @property {TypeGroup} bugfixes
  * @property {TypeGroup} quick_fixes
  * @property {ClosedEntry[]} completed
  * @property {ClosedEntry[]} cancelled
- * @property {number} completed_count
- * @property {number} cancelled_count
  * @property {InboxDetail} inbox
- * @property {ReturnType<import('./roadmap.cjs').roadmapState>} roadmap
- * @property {ReturnType<import('./discovery-session.cjs').productConversation>} product
- * @property {boolean} research_owed  the brownfield offer accepted, its research not yet landed (8.12.13)
- * @property {StartState} state
  */
 
 /** An inbox item's title: its content's first markdown H1, or null. @param {string} content @returns {string|null} */
@@ -199,108 +141,27 @@ function discoverInbox(cwd) {
   return { ...inbox, archived: scanInboxDir(statePath(cwd, ARCHIVED)) };
 }
 
+/** The group each type of unit in progress is listed in; a type not here, retired by the reshape, with the features. @type {Readonly<Record<string, 'epics'|'bugfixes'|'quick_fixes'>>} */
+const GROUP_OF = Object.freeze({ epic: 'epics', bugfix: 'bugfixes', 'quick-fix': 'quick_fixes' });
+
+/** A closed unit as the view lists it. @param {Record<string, any>} m @returns {ClosedEntry} */
+const closedEntry = (m) => ({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
+
 /**
- * Build the full leeway detail for one project.
+ * The leeway detail for one project (the header's).
  * @param {string} cwd
  * @returns {StartDetail}
  */
 function startDetail(cwd) {
-  const manifests = loadActiveManifests(cwd);
-  /** @type {WorkUnitEntry[]} */
-  const epics = [];
-  /** @type {WorkUnitEntry[]} */
-  const features = [];
-  /** @type {WorkUnitEntry[]} */
-  const bugfixes = [];
-  /** @type {WorkUnitEntry[]} */
-  const quick_fixes = [];
-
-  for (const m of manifests) {
-    const state = computeUnitPhaseState(m, pipelineOf(m.work_type), pastItsSpec(cwd, m));
-    /** @type {WorkUnitEntry} */
-    const unit = {
-      name: m.name,
-      work_type: m.work_type,
-      next_phase: state.next_phase,
-      phase_label: state.phase_label,
-    };
-    // Single-topic types cue messages waiting on the unit's own topics; an
-    // epic's row carries no phase state — its dashboard cues per topic.
-    if (m.work_type !== 'epic') {
-      const waiting = mailPhases(stateRoot(cwd), m);
-      if (waiting.length > 0) unit.mail_phases = waiting;
-    }
-
-    if (m.work_type === 'epic') {
-      // For epics, include list of phases that have items
-      const activePhases = [];
-      for (const phase of EPIC_PIPELINE_PHASES) {
-        const items = phaseItems(m, phase);
-        if (items.length > 0) {
-          activePhases.push(phase);
-        }
-      }
-      unit.active_phases = activePhases;
-      // An epic with no phase items AND no discovery map is still in
-      // discovery — the pipeline walk (which excludes discovery) would
-      // otherwise report it as ready for its first empty phase.
-      if (activePhases.length === 0 && phaseItems(m, 'discovery').length === 0) {
-        unit.next_phase = 'discovery';
-        unit.phase_label = 'in discovery';
-      }
-      epics.push(unit);
-    } else if (m.work_type === 'bugfix') {
-      bugfixes.push(unit);
-    } else if (m.work_type === 'quick-fix') {
-      quick_fixes.push(unit);
-    } else {
-      // A feature, or a migrated unit of a type the reshape retires, waiting
-      // on the migration's cut.
-      features.push(unit);
-    }
-  }
-
-  // Load completed/cancelled work units across all types
-  const allManifests = loadAllManifests(cwd);
-  /** @type {ClosedEntry[]} */
-  const completed = [];
-  /** @type {ClosedEntry[]} */
-  const cancelled = [];
-
-  for (const m of allManifests) {
-    if (m.status === 'completed') {
-      completed.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
-    } else if (m.status === 'cancelled') {
-      cancelled.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
-    }
-  }
-
-  const inbox = discoverInbox(cwd);
-
+  /** @type {Record<'epics'|'features'|'bugfixes'|'quick_fixes', TypeGroup>} */
+  const groups = { epics: { work_units: [] }, features: { work_units: [] }, bugfixes: { work_units: [] }, quick_fixes: { work_units: [] } };
+  for (const m of loadActiveManifests(cwd)) groups[GROUP_OF[m.work_type] ?? 'features'].work_units.push({ name: m.name, work_type: m.work_type });
+  const all = loadAllManifests(cwd);
   return {
-    epics: { work_units: epics, count: epics.length },
-    features: { work_units: features, count: features.length },
-    bugfixes: { work_units: bugfixes, count: bugfixes.length },
-    quick_fixes: { work_units: quick_fixes, count: quick_fixes.length },
-    completed,
-    cancelled,
-    completed_count: completed.length,
-    cancelled_count: cancelled.length,
-    inbox,
-    roadmap: roadmapState(cwd),
-    product: productConversation(cwd),
-    research_owed: researchOwed(loadProjectManifest(cwd)),
-    state: {
-      has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length) > 0,
-      epic_count: epics.length,
-      feature_count: features.length,
-      bugfix_count: bugfixes.length,
-      quickfix_count: quick_fixes.length,
-      has_inbox: inbox.total_count > 0,
-      inbox_count: inbox.total_count,
-      has_archived: inbox.archived.total_count > 0,
-      archived_count: inbox.archived.total_count,
-    },
+    ...groups,
+    completed: all.filter((m) => m.status === 'completed').map(closedEntry),
+    cancelled: all.filter((m) => m.status === 'cancelled').map(closedEntry),
+    inbox: discoverInbox(cwd),
   };
 }
 

@@ -64,12 +64,6 @@ const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scr
 const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 const { kindOf, hardToUndo } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/labeller.cjs'));
 
-// The same per-type pipeline the start dashboard derives from (start.cjs
-// pipelineOf): the schema's one home for pipeline order.
-function pipelineOf(workType) {
-  return schema.WORK_TYPE_PIPELINES[workType] || schema.VALID_PHASES.filter((p) => p !== 'discovery');
-}
-
 // The words a shell makes of a route written into a command: split at spaces,
 // a double-quoted span one word without its quotes.
 /** @param {string} route @returns {string[]} */
@@ -241,7 +235,6 @@ function auditState(dir, label) {
 
     // Unit-level derivations never throw on legal state.
     derivations.computeNextPhase(manifest);
-    derivations.computeUnitPhaseState(manifest, pipelineOf(manifest.work_type));
 
     // Every agent-state store (one per topic, colocated) is schema-valid.
     const cacheRoot = path.join(dir, '.leeway', '.cache', wu);
@@ -968,13 +961,14 @@ const VIEW_MENUS = {
 // The start menu over the project as it stands, its MENU composed as `render
 // start-menu` composes it — leaving the conversation where it is — and each
 // row's next going where it says: a handoff the table takes as it stands, a
-// unit's Continue its unit takes, or refuses with the line of a unit that
-// waits on the cut.
+// unit's Continue its unit takes — an epic onto its menu, whatever it waits
+// on — or refuses with the line of a unit that waits on the cut. Drawn with
+// the waits left out: what each row counts is the start menu suite's.
 /** @param {string} dir @param {string} label */
 function auditStartMenu(dir, label) {
   const at = `${label} — the start menu`;
   const m = MENUS['start-menu'];
-  auditGate(announcedRender(() => LIB.gateway.menuBlock(m.gate, menuBody(m, {}, startMenuScreen(startMenuRead(dir))))), at);
+  auditGate(announcedRender(() => LIB.gateway.menuBlock(m.gate, menuBody(m, {}, startMenuScreen(startMenuRead(dir, { waits: false }))))), at);
   for (const { key, next } of /** @type {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
     if (next?.kind === 'handoff') auditRoutes(dir, [{ route: [`/${next.skill}`, ...next.args].join(' ') }], `${at} — ${key}`);
     if (next?.kind === 'engine' && next.argv[0] === 'handoff') auditContinue(dir, next.argv, `${at} — ${key}`);
@@ -985,7 +979,7 @@ function auditStartMenu(dir, label) {
 function auditContinue(dir, argv, label) {
   assert.strictEqual(argv[1], 'unit', `[${label}] the start menu's one handoff is a unit's Continue`);
   const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', argv[2], 'manifest.json'), 'utf8'));
-  if (awaitsCut(manifest)) {
+  if (manifest.work_type !== 'epic' && awaitsCut(manifest)) {
     assert.throws(() => unitHandoff(dir, argv.slice(2)), { message: buildRefusal(manifest) }, `[${label}] Continue on a unit that waits on the cut gives its line`);
     return;
   }

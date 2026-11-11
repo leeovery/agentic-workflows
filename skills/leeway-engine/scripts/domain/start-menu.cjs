@@ -5,7 +5,9 @@
 // how far it has come (progress.cjs) and what waits on the person in it
 // (waits.cjs), counted by what it is: the authority gates, the questions and
 // the decided topics an answer they relied on, replaced since, holds
-// (18.2.3) — never the verdicts, which wait on the project's own row; the
+// (18.2.3) — never the verdicts, which wait on the project's own row; and
+// whether mail waits for its topic, shown beside the count and never in it
+// (10.4.3), an epic's left to its own menu, which shows it by topic; the
 // inbox's live items by kind; the product's conversation, and whether the
 // brownfield research is owed (8.12.13); the verdicts waiting, the queue
 // across every unit (16.10); and whether any unit has closed.
@@ -13,7 +15,7 @@
 // The ledger is read once for the waits and the queue (ledger-read.cjs,
 // `readShownOnce`), a raise this conversation sealed counting in it as it
 // does wherever the waits are read in a conversation. A read with the waits
-// left out reads neither the ledger nor the trust log, and finds nothing
+// left out reads neither the ledger nor the trust log, and counts nothing
 // waiting: a sample drawn from a fixture, which has no state branch and no
 // project of its own on this machine.
 // ---------------------------------------------------------------------------
@@ -29,12 +31,13 @@ const { progressOf, progressWords } = require('./progress.cjs');
 const { productConversation } = require('./discovery-session.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { discoverInbox } = require('./start.cjs');
+const { mailPhases } = require('./derivations.cjs');
 
 /** @typedef {import('./waits.cjs').Wait} Wait */
 
 /** What waits on the person in a unit, counted by what it is (the header's). @typedef {{gates: number, questions: number, topics: number}} Waiting */
 
-/** A unit in progress as the start menu reads it. @typedef {{name: string, type: string, progress: string, waiting: Waiting}} UnitRow */
+/** A unit in progress as the start menu reads it. @typedef {{name: string, type: string, progress: string, waiting: Waiting, mail: boolean}} UnitRow */
 
 /**
  * The start menu's read (the header's).
@@ -96,6 +99,7 @@ function startMenuRead(cwd, { waits: reading = true } = {}) {
       type: manifest.work_type,
       progress: progressWords(progressOf(cwd, manifest)),
       waiting: counts(waits.get(manifest.name) ?? []),
+      mail: manifest.work_type !== 'epic' && mailPhases(stateRoot(cwd), manifest).length > 0,
     })),
     inbox: { ideas: inbox.idea_count, bugs: inbox.bug_count, quickfixes: inbox.quickfix_count },
     product: productConversation(cwd),
@@ -106,4 +110,4 @@ function startMenuRead(cwd, { waits: reading = true } = {}) {
   };
 }
 
-module.exports = { startMenuRead };
+module.exports = { counts, startMenuRead };

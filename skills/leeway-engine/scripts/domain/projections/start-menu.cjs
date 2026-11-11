@@ -9,10 +9,11 @@
 //   kind (18.2.8), "Inbox: empty" while nothing is in it (18.2.18).
 // - A row per unit in progress, type first ("Continue epic: …"), its phase
 //   and progress, and where something waits on the person in it, the count
-//   (18.2.2, 18.2.3, 18.2.6): no topic on any row, the units with something
-//   waiting first, else by type — features, bugfixes, quick-fixes, epics — a
-//   migrated unit of a type the reshape retires with the features. Its next
-//   is Continue, `handoff unit` (19.1.3).
+//   (18.2.2, 18.2.3, 18.2.6), mail waiting for its topic beside it (10.4.3):
+//   no topic on any row, the units with something waiting first, else by
+//   type — features, bugfixes, quick-fixes, epics — a migrated unit of a
+//   type the reshape retires with the features. Its next is Continue,
+//   `handoff unit` (19.1.3).
 // - Then p/product, always, with its sessions' count and last date once it
 //   has sessions, and the brownfield research while it is owed (18.2.13,
 //   8.12.13); s/start, into discovery, which finds the type (18.2.7);
@@ -26,7 +27,7 @@
 const { titlecase } = require('../conventions.cjs');
 const { dayMonth } = require('../dates.cjs');
 const { counted } = require('./map.cjs');
-const { dataSection } = require('./surfaces.cjs');
+const { dataSection, NOTE_SEPARATOR } = require('./surfaces.cjs');
 const { MENUS, drawMenu } = require('../menus.cjs');
 const { startMenuRead } = require('../start-menu.cjs');
 
@@ -43,6 +44,9 @@ const RESEARCH_OWED = 'research owed';
 
 /** The order units are listed in, by type, within those waiting and those not; a type not here, with the features. */
 const TYPE_ORDER = Object.freeze(['feature', 'bugfix', 'quick-fix', 'epic']);
+
+/** A unit's row's note while mail waits for its topic. */
+const MAIL_WAITING = 'mail waiting';
 
 /** A row leading into the conversation. @type {Next} */
 const CARRY_ON = Object.freeze({ kind: 'continue' });
@@ -74,6 +78,12 @@ function waitingWords({ gates, questions, topics }) {
   return `${listed} waiting for you`;
 }
 
+/** A unit's row's note: what waits counted, then mail waiting; none where neither. @param {Waiting} waiting @param {boolean} mail @returns {string|undefined} */
+function noteOf(waiting, mail) {
+  const notes = [waitingWords(waiting), mail ? MAIL_WAITING : null].filter((note) => note !== null);
+  return notes.length === 0 ? undefined : notes.join(NOTE_SEPARATOR);
+}
+
 /**
  * The units in the order the menu lists them (the header's).
  * @param {UnitRow[]} units @returns {UnitRow[]}
@@ -85,9 +95,9 @@ const listed = (units) => units
   .map(({ unit }) => unit);
 
 /** A unit's row: Continue, type first. @param {UnitRow} unit @param {number} at @returns {MenuRow} */
-const unitRow = ({ name, type, progress, waiting }, at) => ({
+const unitRow = ({ name, type, progress, waiting, mail }, at) => ({
   key: at + 1,
-  label: { head: `Continue ${type}: ${titlecase(name)}`, tail: progress, cue: waitingWords(waiting) ?? undefined },
+  label: { head: `Continue ${type}: ${titlecase(name)}`, tail: progress, cue: noteOf(waiting, mail) },
   next: { kind: 'engine', argv: ['handoff', 'unit', name] },
 });
 

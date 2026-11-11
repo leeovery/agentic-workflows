@@ -9,7 +9,7 @@ Hand the working set's items to discovery at no work unit, the product's convers
 Parameters the caller provides via context before loading:
 
 - `work_type` — `epic` / `feature` / `bugfix` / `quick-fix`, or `none`.
-- `inbox_seeds` — comma-joined path(s) of the chosen inbox file(s), one or more, or `none`.
+- `inbox_seeds` — comma-joined path(s) of the chosen inbox file(s), one or more.
 
 `{way_in}` is `work_type`, or `start` where it is `none`.
 

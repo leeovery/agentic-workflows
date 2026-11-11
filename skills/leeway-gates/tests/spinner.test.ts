@@ -232,7 +232,7 @@ describe('the spinner', () => {
     expect([counts.reads, counts.invalidations]).toEqual([2, 1])
   })
 
-  for (const command of ['boot', 'session repair']) {
+  for (const command of ['boot', 'session repair', 'render start-menu']) {
     test(`arriving at the start menu through \`${command}\` gives the word back to Claude Code`, async ($, on) => {
       const { counts, drops } = world(on, { positions: { s0: { name: 'pay', phase: 'discussion', topic: 'ledger' } } })
 

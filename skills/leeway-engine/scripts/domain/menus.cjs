@@ -97,12 +97,12 @@ const HELP_LABEL = 'What this menu is for, row by row';
  */
 const registered = (id, gate, named, arrival, help = {}, keys = []) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze(keys), help: Object.freeze({ label: HELP_LABEL, ...help }) });
 
-/** The start menu's help: "■ Help", reaching the walkthrough (23.2.3). @type {Partial<MenuHelp>} */
+/** The start menu's help: "■ Help", the walk through Leeway reached from it, which the start skill carries on into (23.2.3). @type {Partial<MenuHelp>} */
 const START_HELP = Object.freeze({
   label: 'How Leeway works',
   heading: 'Help',
   closing: 'Ask about anything else, or walk through the whole thing.',
-  rows: Object.freeze([{ key: 'w', word: 'walk', label: 'Walk through how Leeway works', next: Object.freeze({ kind: 'invoke', skill: 'leeway-help', args: [] }) }]),
+  rows: Object.freeze([{ key: 'w', word: 'walk', label: 'Walk through how Leeway works', next: Object.freeze({ kind: 'continue' }) }]),
 });
 
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */

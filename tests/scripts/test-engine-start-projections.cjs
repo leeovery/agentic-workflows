@@ -90,7 +90,7 @@ describe('start projections: inbox pickup', () => {
 
   function pickup(d) {
     const detail = startDetail(d);
-    return inboxPickupView(combinedInbox(detail.inbox), detail.state.has_archived);
+    return inboxPickupView(combinedInbox(detail.inbox), detail.inbox.archived.total_count > 0);
   }
 
   it('renders the combined, date-ordered list with the multi-select menu and archived option', () => {
