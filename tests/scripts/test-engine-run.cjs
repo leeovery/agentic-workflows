@@ -23,6 +23,8 @@
 //
 // The last tests pin the two doors together: whatever the in-process entry
 // answers, the spawned CLI answers byte for byte.
+//
+// Layer: verb.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

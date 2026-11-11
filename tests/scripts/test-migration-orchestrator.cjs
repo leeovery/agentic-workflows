@@ -17,6 +17,8 @@
 //     reading the migrations folder once (21.10.4; the engine's side is
 //     test-migration-directives.cjs's).
 //
+// Layer: process.
+//
 
 require('./hermetic-env.cjs');
 

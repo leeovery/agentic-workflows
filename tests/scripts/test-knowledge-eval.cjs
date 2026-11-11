@@ -6,6 +6,8 @@
 // re-pinned by `node tests/scripts/knowledge-eval.cjs --pin`. The hybrid
 // mode runs by hand, and its embedding cache is held here: a text it has
 // cached never reaches the provider again.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

@@ -15,6 +15,8 @@
 // not: a race that never happened proves nothing. A call that waits on a
 // lock runs in process, and the test lets the lock go at the call's own
 // attempts (`lockAttempts`), never on a timer.
+//
+// Layer: process.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

@@ -4,6 +4,8 @@
 // sidecars, and what the golden gate rebuilds and what it skips. All of it is
 // load-bearing and silent when wrong — a skip that fires over a moved world
 // hides drift the gate exists to catch.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 

@@ -3,6 +3,8 @@
 // Unit tests for the progress clock: the pure
 // buildProgressClock() — the watermark that advances on completed work, not
 // wall-clock time — and compact's prune test built on it.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

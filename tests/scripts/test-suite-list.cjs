@@ -1,11 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The `npm test` script's own guard (package.json): it names every node
-// suite under tests/ once, and nothing that is not one, so a suite split or
-// added is never left out of the run. A suite is any file that takes a test
-// from `node:test`, whatever its name, extension or folder; a support module
-// that takes only hooks, or names the module only as a type, is not one.
+// The `npm test` script's own guard (package.json): its one `node --test`
+// names every node suite under tests/ once, and nothing that is not one, so
+// a suite split or added is never left out of the run. A suite is any file
+// that takes a test from `node:test`, whatever its name, extension or
+// folder; a support module that takes only hooks, or names the module only
+// as a type, is not one.
 //
 // Layer: unit. World: the script and the folder as they stand, and a temp
 // folder for the scan's own cases.
@@ -25,11 +26,12 @@ const REPO = path.join(__dirname, '../..');
 const MANUAL = ['tests/scripts/knowledge-openai-smoke.cjs'];
 const HOOKS = ['before', 'after', 'beforeEach', 'afterEach', 'mock'];
 
-/** The files the `npm test` script runs, in its order. */
+/** The files the `npm test` script's one `node --test` runs, in its order. */
 function listed() {
   const script = JSON.parse(fs.readFileSync(PACKAGE, 'utf8')).scripts.test;
-  assert.match(script, /^node --test /);
-  return script.replace(/^node --test /, '').split(/\s+/);
+  const runs = [...script.matchAll(/(?:^|[\s;&|])node --test ([^;&|]+)/g)];
+  assert.strictEqual(runs.length, 1, 'the script runs node --test once');
+  return runs[0][1].trim().split(/\s+/);
 }
 
 /** Whether a source takes a test from `node:test`: the module whole, or any name of it but a hook. @param {string} source */

@@ -23,6 +23,8 @@
 // against: every task in flight with its builder's and its pair's agent ids,
 // what does not read as its field left out.
 //
+// Layer: verb.
+//
 
 require('./hermetic-env.cjs');
 

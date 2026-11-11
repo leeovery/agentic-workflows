@@ -5,6 +5,8 @@
 // overlay, a bug or a quick-fix row marked with its kind and an idea row
 // unmarked. The map view and gates are covered through their render surfaces
 // (test-engine-render-surfaces.cjs).
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

@@ -31,6 +31,8 @@
 // naming each task in flight with its builder and its pair (24.S12), and a
 // build not to be entered carries nothing on (P12).
 //
+// Layer: verb.
+//
 
 require('./hermetic-env.cjs');
 

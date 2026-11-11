@@ -31,7 +31,7 @@ is to run them before every commit rather than at the end of a branch.
 
 | Command | What it covers | Layers |
 | --- | --- | --- |
-| `npm test` | Node suites: engine, gateways, knowledge, migrations, pipeline simulation, prose-test perimeter | unit, verb, git, process, simulation, migration (047 on), prose |
+| `npm test` | Node suites: engine, gateways, knowledge, migrations, pipeline simulation, prose-test perimeter; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, simulation, migration (047 on), prose |
 | `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) | — |

@@ -12,6 +12,8 @@
 // answers, which the note then names.
 // Each literal is read off the mod's source — a mod cannot import the engine
 // — and held against a real answer.
+//
+// Layer: verb.
 
 require('./hermetic-env.cjs');
 

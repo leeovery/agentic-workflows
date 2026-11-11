@@ -24,6 +24,11 @@
 // The shell tiers pin their own subset in their npm scripts; `test:mod`
 // stands outside the pin altogether — `claude plugin test` runs the mod
 // suites against its own stand-in environment and files.
+//
+// The CPU meter comes first: armed, it runs the suite again under time(1)
+// before anything here is pinned.
+
+require('./cpu-meter.cjs');
 
 const fs = require('fs');
 const os = require('os');

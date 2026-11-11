@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: verb.
+
 require('./hermetic-env.cjs');
 
 // The GATE payload: each gate stated as data beside the MENU that displays

@@ -10,6 +10,8 @@
 // and projection, so a golden here moves when that surface moves, which is
 // the whole point of rendering it rather than drawing it. The screens are
 // pinned whole, prose included, and driven at the same three widths.
+//
+// Layer: unit.
 
 const HERMETIC = require('./hermetic-env.cjs');
 

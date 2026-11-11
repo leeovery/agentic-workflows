@@ -7,6 +7,8 @@
 // view of the manifests and the store refreshed under the lock before each
 // save. A single-file index writes the keyword side alone, the vectors left to
 // the fill it launches.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

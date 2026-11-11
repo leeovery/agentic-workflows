@@ -6,6 +6,8 @@
 // world by finding its path in the payload. Nothing failed; the record
 // was simply short. These tests pin the resolution paths so that class of
 // silence cannot return.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 

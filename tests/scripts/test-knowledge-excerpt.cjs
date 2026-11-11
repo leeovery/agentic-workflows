@@ -4,6 +4,8 @@
 // words, rarer words weighing more, widened while the budget holds — never a
 // heading line, the opening lines where nothing matches, and an over-long
 // line cut around its matching stretch.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

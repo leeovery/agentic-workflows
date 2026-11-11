@@ -3,6 +3,8 @@
 // What a query prints of each result: the excerpt the framing it kept picks,
 // and — read from its file as it stands, under the project root — the
 // headings enclosing that excerpt and the chunk's lines.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

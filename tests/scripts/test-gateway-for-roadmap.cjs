@@ -2,6 +2,8 @@
 
 // The leeway-roadmap adapter: the home snapshot, the pull working set, and
 // the harvest proposal overlay — sections, flags, and refusals.
+//
+// Layer: verb.
 
 require('./hermetic-env.cjs');
 

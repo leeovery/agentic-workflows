@@ -24,6 +24,8 @@
 // Real repositories in temp folders, each with its state worktree made
 // through the machinery. A `git` first on PATH, or a stand-in for a call the
 // suite cannot reach, plays a commit landing between two reads or a kill.
+//
+// Layer: verb.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

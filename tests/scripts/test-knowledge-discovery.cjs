@@ -8,6 +8,8 @@
 // a seed, an asset, an inbox item or the product record's rendered file
 // (22.6.12) — a quick-fix's short record among them, at its unit's own
 // identity, retired only by its file gone or its unit cancelled (22.6.9).
+//
+// Layer: verb.
 
 require('./hermetic-env.cjs');
 

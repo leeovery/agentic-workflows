@@ -8,6 +8,8 @@
 // world, keyword-only. Every verb's answer is its verb suite's
 // (test-engine-knowledge-*.cjs, in process); that the two doors answer alike
 // is test-engine-run.cjs's.
+//
+// Layer: process.
 
 require('./hermetic-env.cjs');
 

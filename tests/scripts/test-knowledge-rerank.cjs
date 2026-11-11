@@ -1,6 +1,8 @@
 'use strict';
 
 // Unit tests for progress-driven soft down-rank (idea #33, PR3).
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

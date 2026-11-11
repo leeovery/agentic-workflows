@@ -3,6 +3,8 @@
 // A file's outline, as a query places a chunk in it: the chunk's lines in
 // the file as it stands, frontmatter counted, and the headings enclosing a
 // line — fenced headings and frontmatter never among them.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

@@ -33,6 +33,8 @@
 // passes silently: the rest of the system config directory and of Claude
 // Code's project folders, their memory among it, the code tree, and any
 // project with no state. Whether the filesystem ignores case is asked once.
+//
+// Layer: process.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

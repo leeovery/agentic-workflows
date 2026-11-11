@@ -5,6 +5,8 @@
 // project are repos of their own, which repo owns a path, the order a code
 // commit takes through them, and the dirt and history read across them.
 //
+// Layer: git.
+//
 
 require('./hermetic-env.cjs');
 

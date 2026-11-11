@@ -6,6 +6,8 @@
 // ever the developer's own. A future suite that forgets the module fails
 // here rather than silently reading the developer's config, billing their
 // key, writing their settings, or acting on GitHub as them.
+//
+// Layer: verb.
 
 const hermeticEnv = require('./hermetic-env.cjs');
 

@@ -11,6 +11,8 @@
 // recipes, shared mainlines, and engine sources are all unchanged since the
 // world last rebuilt clean here — so a second run costs nothing, and any
 // engine change invalidates every cached hash and rebuilds the lot.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 
