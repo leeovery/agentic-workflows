@@ -79,11 +79,10 @@
 // keeps it from launching is a warning.
 // ---------------------------------------------------------------------------
 
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('../kernel/spawn.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { dropReads } = require('../kernel/git-reads.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
 const { commitStateScoped } = require('./commit.cjs');
@@ -357,7 +356,6 @@ function commitLedgerTail(root, warnings) {
  * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{directive: string}}
  */
 function runMigrations(cwd, warnings) {
-  dropReads();
   const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD), '--journals', statePath(cwd, MIGRATION_JOURNALS)], { cwd: codeRoot(cwd), encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error

@@ -11,7 +11,7 @@
 // here alone (`handedSession`).
 // ---------------------------------------------------------------------------
 
-const { execFileSync } = require('child_process');
+const { execFileSync } = require('./spawn.cjs');
 const { dropReads } = require('./git-reads.cjs');
 
 /**
@@ -34,7 +34,6 @@ const PS_TIMEOUT_MS = 10000;
  * @param {number} pid @returns {string|null}
  */
 function processStartTime(pid) {
-  dropReads();
   try {
     // `lstart` is printed in the caller's timezone and locale; the recorded
     // string is compared verbatim by whichever session reads it later, so

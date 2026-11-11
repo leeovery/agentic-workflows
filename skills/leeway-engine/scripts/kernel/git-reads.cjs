@@ -21,9 +21,8 @@
 // Everything kept goes at once:
 // - at a git call that may write, in any repository, and so at the hooks it
 //   runs;
-// - at any other process the engine starts — a driver's tool, the Claude
-//   call or its stand-in, a project's own command — as it starts, and, for
-//   one that runs on beside the verb, as it is seen to end (`dropReads`);
+// - at any other process the engine starts, as it starts (kernel/spawn,
+//   the one place it starts one);
 // - at every wait: a sleep (kernel/process), and an await, since nothing is
 //   kept past the verb's synchronous run;
 // - at a lock taken, whose last holder may have written since
@@ -31,9 +30,10 @@
 // - where the engine writes git's own files itself (state-worktree's
 //   relink).
 //
-// Outside a verb nothing is kept. A value worked out from git's reads alone —
-// the project's repositories, walked (kernel/repos) — is kept and dropped as
-// they are (`keptRead`).
+// Outside a verb nothing is kept. A value the engine works out from git and
+// the working tree together — the project's repositories, walked
+// (kernel/repos) — is kept and dropped as git's reads are (`keptRead`), so a
+// change the verb makes to the tree without git shows at the next drop.
 // ---------------------------------------------------------------------------
 
 const { AsyncLocalStorage } = require('async_hooks');
@@ -107,11 +107,6 @@ function kindOf(argv, input) {
   return Object.hasOwn(FORMS, command) ? FORMS[command](rest) : 'write';
 }
 
-/** Whether a git call may write. @param {string[]} argv */
-function mayWrite(argv) {
-  return kindOf(argv) === 'write';
-}
-
 /** What a verb has kept. @typedef {{kept: Map<string, unknown>}} VerbReads */
 
 /** @type {AsyncLocalStorage<VerbReads>} */
@@ -154,8 +149,8 @@ function held(key, read, keeps) {
 }
 
 /**
- * What `read`, worked out from git's reads alone, answers for `name` at
- * `cwd`: kept for the verb as a read of git is.
+ * What `read`, worked out from git and the working tree beside it, answers
+ * for `name` at `cwd`: kept for the verb as a read of git is.
  * @template T @param {string} name @param {string} cwd @param {() => T} read
  * @returns {T}
  */
@@ -191,4 +186,4 @@ function asked(cwd, argv, { env, input, toFile = false }, run) {
   return held(JSON.stringify(['git', cwd, argv, input ?? null, gitVariables(env)]), run, (res) => res.error === undefined);
 }
 
-module.exports = { keepingReads, asked, keptRead, dropReads, mayWrite };
+module.exports = { keepingReads, asked, keptRead, dropReads, kindOf };

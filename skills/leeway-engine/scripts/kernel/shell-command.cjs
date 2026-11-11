@@ -15,9 +15,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('./spawn.cjs');
 const { fileLinesBackward } = require('./file-stream.cjs');
-const { dropReads } = require('./git-reads.cjs');
 
 /** How many of a failed command's last lines come back. */
 const TAIL_LINES = 40;
@@ -82,7 +81,6 @@ function runShellCommand(root, command, env = {}, { output } = {}) {
     const fd = fs.openSync(file, 'w');
     let result;
     try {
-      dropReads();
       result = spawnSync('sh', ['-c', command], { cwd: root, stdio: ['ignore', fd, fd], env: { ...process.env, ...env } });
     } finally {
       fs.closeSync(fd);

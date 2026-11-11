@@ -2,8 +2,8 @@
 
 //
 // Tests for the project's repos (kernel/repos.cjs): which folders inside a
-// project are repos of their own, the walk that finds them kept for a verb,
-// which repo owns a path, the order a code commit takes through them, and
+// project are repos of their own, the walk that finds them kept for a verb
+// by the folder it walks from, which repo owns a path, the order a code commit takes through them, and
 // the dirt and history read across them.
 //
 // Layer: git.
@@ -74,6 +74,15 @@ describe('projectRepos: the repos a project holds', () => {
 
     assert.deepStrictEqual(result.map((repos) => repos.map((repo) => [repo.dir, repo.heldOut])), [[['', []], ['api', []]], [['', ['tools']], ['api', []], ['tools', []]]]);
     assert.strictEqual(commands.filter((command) => command.startsWith('ls-files --stage')).length, 5, 'a walk lists each repo\'s index once');
+  });
+
+  it('walks each folder a verb walks from on its own — a task\'s worktree, then the main checkout', () => {
+    const tree = path.join(dir, 'trees/task');
+    git(dir, ['worktree', 'add', '-q', '-b', 'task', tree]);
+
+    const roots = withVerbReads(() => [projectRepos(tree), projectRepos(dir)].map((repos) => repos[0].path));
+
+    assert.deepStrictEqual(roots, [tree, dir]);
   });
 
   it('never looks inside an ignored folder that is not a repo, and takes no submodule with nothing checked out', () => {

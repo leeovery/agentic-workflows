@@ -88,14 +88,15 @@ const NAMED = 'a shell command naming it is refused, and the Read and Grep tools
 const SHELL_GUARD_LOADS = [
   'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/shell-guard.cjs', 'domain/user-files.cjs', 'engine.cjs', 'guards.cjs',
   'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs',
-  'kernel/process.cjs', 'kernel/shell-reader.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
+  'kernel/process.cjs', 'kernel/shell-reader.cjs', 'kernel/spawn.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
 ];
 
 /** The engine's modules the layout guard loads for a write into the state, every shipped task driver's aside. */
 const LAYOUT_GUARD_LOADS = [
   'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/drivers.cjs', 'domain/layout-hook.cjs', 'domain/layout.cjs', 'domain/task-id.cjs',
   'domain/user-files.cjs', 'engine.cjs', 'guards.cjs', 'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs',
-  'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs', 'kernel/manifest.cjs', 'kernel/process.cjs', 'kernel/reviewers.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
+  'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs', 'kernel/manifest.cjs', 'kernel/process.cjs', 'kernel/reviewers.cjs', 'kernel/spawn.cjs', 'kernel/state-root.cjs',
+  'kernel/system-config.cjs',
 ];
 
 /** Each file in the state only the engine writes, by its path from the state, with the layout hook's reason for refusing a write to it. */

@@ -15,9 +15,8 @@
 // missing (landing.cjs). No refusal names an install command.
 // ---------------------------------------------------------------------------
 
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('../../../kernel/spawn.cjs');
 const { plain } = require('../../../domain/landing-git.cjs');
-const { dropReads } = require('../../../kernel/git-reads.cjs');
 
 const GH = 'gh';
 const HOST = 'github.com';
@@ -38,7 +37,6 @@ const NO_STACK = /unknown command "stack"/;
  * @returns {Ran}
  */
 function spawnGh(args, { cwd, repo, input } = {}) {
-  dropReads();
   return spawnSync(GH, args, {
     cwd, input, encoding: 'utf8', timeout: TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024,
     env: { ...process.env, ...QUIET, ...(repo === undefined ? {} : { GH_REPO: repo }) },

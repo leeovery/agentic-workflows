@@ -4,14 +4,16 @@
 // A verb's reads of git, each asked once (kernel/git-reads.cjs), through
 // both of the engine's runners (kernel/git, kernel/isolated-git): a read
 // kept for the verb by its folder, its arguments, its stdin and its `GIT_`
-// variables; which calls read and which may write; the working tree's and
-// the index's reads never kept; everything kept dropped at each kind of
-// write — through either runner, in any repository, and the engine's own
-// write of git's files — at each kind of process the engine starts — a
-// driver's tool, the Claude call's stand-in, a hook, a project's own command,
-// and every module that starts one — at every lock taken, and at every
-// wait, a sleep and an await; and nothing kept past the verb. The walk kept with them is
-// test-engine-repos.cjs's; the state commit's reads,
+// variables; each form of git the engine runs taken for a read kept, a read
+// never kept or a write; the working tree's and the index's reads never
+// kept, nor a read git gave no answer to; everything kept dropped at each
+// kind of write — through either runner, in any repository, and the
+// engine's own write of git's files — at each kind of process the engine
+// starts — a driver's tool, the Claude call's stand-in, a hook, a project's
+// own command, each way the one place that starts them starts one, and no
+// process started anywhere else — at every lock taken, and at every wait,
+// a sleep and an await; and nothing kept past the verb. The walk kept with
+// them is test-engine-repos.cjs's; the state commit's reads,
 // test-engine-state-commit.cjs's; a config read leaving the hooks' names,
 // test-engine-state-worktree.cjs's.
 //
@@ -29,8 +31,9 @@ const { git: unseen, traced, withEnv, codeProject, createFile, STATE_DIR_NAME } 
 const { useTempFolder, filesUnder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { mayWrite, keptRead } = require(path.join(SCRIPTS, 'kernel/git-reads.cjs'));
-const { git } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
+const { kindOf, keptRead } = require(path.join(SCRIPTS, 'kernel/git-reads.cjs'));
+const { git, gitRun } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
+const { spawnSync, spawn, execFileSync } = require(path.join(SCRIPTS, 'kernel/spawn.cjs'));
 const { isolatedGit, withVerbReads } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 const { sleepSync } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 const { askClaude } = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
@@ -44,6 +47,128 @@ const world = useTempFolder('git-reads-');
 
 /** The project's branches as the engine reads them. @param {string} dir */
 const branches = (dir) => git(dir, ['for-each-ref', '--format=%(refname:short)', 'refs/heads/']).split('\n').filter(Boolean);
+
+/** The settings the isolated runner puts ahead of a command. */
+const ISOLATED = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.autocrlf=false'];
+
+/**
+ * Every form of git the engine runs, as the spawn logs of its whole flow
+ * found them, by its kind: a read kept, a read never kept, or a call that
+ * may write; a form whose stdin counts is given with it.
+ * @type {Record<'kept'|'read'|'write', Array<string[]|{argv: string[], input: string}>>}
+ */
+const FORMS_RUN = {
+  kept: [
+    [...ISOLATED, 'for-each-ref', '--format=%(refname)%00%(objectname)', 'refs/heads/'],
+    ['for-each-ref'],
+    ['for-each-ref', '--format=%(refname)', '--contains', 'HEAD', 'refs/heads/', 'refs/remotes/'],
+    ['for-each-ref', '--merged=main', '--format=%(refname)', 'refs/heads/'],
+    ['cat-file', '--batch-check=%(objectname) %(objecttype) %(objectsize)'],
+    { argv: ['cat-file', '--batch=%(objectname)'], input: 'refs/heads/leeway-state:.ledger.jsonl\n' },
+    ['cat-file', '-e', 'HEAD'],
+    ['cat-file', 'blob', 'HEAD:README.md'],
+    ['cherry', 'main', 'fix', 'fix^'],
+    ['config', '--bool', '--get', 'core.bare'],
+    ['config', '--get', 'init.defaultBranch'],
+    ['config', 'get', 'user.name'],
+    ['config', '--type=bool', '--default=false', '--get', 'commit.gpgSign'],
+    ['config', '-z', '--name-only', '--get-regexp', '^hook\\..+\\.command$'],
+    ['config', '-z', '--name-only', '--list'],
+    ['log', '-z', '--format=%B', '--fixed-strings', '--grep=Task: unit-', '--since=1', 'main', '--'],
+    ['log', '-z', '--format=%B', '--all', '--reflog', '--fixed-strings', '--grep=Task: unit-', '--'],
+    ['log', '--first-parent', '-1', '--format=%H', 'main', '--', 'src'],
+    ['log', '-z', '--reverse', '--topo-order', '--no-merges', '--format=%H', 'fix', '--not', 'main', '--'],
+    ['log', '--reverse', '--relative', '--no-renames', '--no-show-signature', '--fixed-strings', '--grep=Task:', '--format=%H', '--name-only', '-z'],
+    ['ls-tree', '-r', '-z', '--full-tree', 'HEAD'],
+    ['ls-tree', '-z', 'HEAD', '--', 'src'],
+    ['merge-base', '--independent', 'a', 'b', 'c'],
+    ['merge-base', '--is-ancestor', 'a', 'b'],
+    ['merge-base', 'a', 'b'],
+    ['merge-tree', '--write-tree', '-z', '--name-only', '--no-messages', '--merge-base=a', 'b', 'c'],
+    ['remote'],
+    ['remote', 'get-url', 'origin'],
+    ['rev-list', '--ignore-missing', '--reverse', '--topo-order', '--parents', 'fix', '--not', 'main'],
+    ['rev-list', '--max-parents=0', 'HEAD'],
+    ['rev-list', '--count', 'HEAD'],
+    ['rev-list', '-1', 'fix', '--not', 'main'],
+    ['rev-parse', '--git-common-dir', '--absolute-git-dir'],
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    ['rev-parse', '--git-path', 'MERGE_HEAD', '--git-path', 'CHERRY_PICK_HEAD'],
+    ['rev-parse', '--show-toplevel', '--show-prefix'],
+    ['rev-parse', '-q', '--verify', 'HEAD'],
+    ['rev-parse', '--short', 'HEAD'],
+    ['rev-parse', 'HEAD', 'HEAD^{tree}', '--show-toplevel', '--git-common-dir', '--git-path', 'leeway-commit.index', '--absolute-git-dir'],
+    ['show', '--no-color', '--relative', '--stat=200', '--stat-graph-width=20', '--format=', 'HEAD', '--'],
+    ['show', 'HEAD:manifest.json'],
+    ['show-ref', '--verify', '--quiet', 'refs/heads/main'],
+    ['symbolic-ref', '-q', '--short', 'HEAD'],
+    ['symbolic-ref', '--quiet', 'HEAD'],
+  ],
+  read: [
+    [...ISOLATED, '--version'],
+    ['add', '--all', '--dry-run', '--', 'src/app.js'],
+    ['check-ignore', '-q', 'src/app.js'],
+    ['config', '--file', '.gitmodules', '-z', '--get-regexp', '^submodule\\..*\\.path$'],
+    ['diff', '--cached', '--raw', '--relative', '--no-renames', '--ignore-submodules=none', '-z', 'HEAD'],
+    ['diff', '--name-only', '-z', '--no-renames', '--no-relative', 'main...fix', '--', '.leeway'],
+    ['diff', '--no-color', '--no-ext-diff', '-U0', '--no-renames', 'a', 'b', '--', 'src'],
+    ['diff', '--numstat', '-z', '--find-renames', 'a', '--', 'src'],
+    ['hash-object', '--stdin'],
+    ['ls-files', '--others', '--exclude-standard', '-z'],
+    ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'],
+    ['ls-files', '--stage', '--full-name', '-z', '--', 'src/app.js'],
+    ['ls-remote', 'origin', 'refs/heads/leeway-state'],
+    ['status', '--porcelain', '-z', '--untracked-files=all', '--no-renames'],
+    ['var', '-l'],
+    ['var', 'GIT_COMMITTER_IDENT'],
+    ['worktree', 'list', '--porcelain'],
+    ['show', ':src/app.js'],
+    ['rev-parse', ':src/app.js'],
+    { argv: ['cat-file', '--batch-check'], input: 'HEAD\n:staged.md\n' },
+  ],
+  write: [
+    [...ISOLATED, 'commit-tree', 'tree', '-p', 'parent', '-F', '-'],
+    ['add', '--', 'src/app.js'],
+    ['add', '--all', '--', 'manifest.json'],
+    ['add', '--ignore-removal', '--pathspec-from-file=-', '--pathspec-file-nul'],
+    ['add', '--', '--dry-run'],
+    ['branch', '--no-track', 'fix', 'main'],
+    ['branch', '-D', 'fix'],
+    ['branch', '-m', 'fix', 'kept'],
+    ['checkout-index', '-f', '-z', '--stdin', '--prefix=/tmp/tree/'],
+    ['commit', '-m', 'the task', '--', 'src/app.js'],
+    ['commit-tree', '-S', 'tree', '-p', 'parent', '-F', '-'],
+    ['config', 'user.name', 'someone'],
+    ['config', '--unset', 'user.name'],
+    ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', 'refs/heads/main'],
+    ['gc'],
+    ['hash-object', '-w', '--stdin'],
+    ['merge', '-q', '--ff-only', 'fix'],
+    ['merge-file', '--union', 'ours', 'base', 'theirs'],
+    ['mktree'],
+    ['push', '--quiet', '--force-with-lease=main:abc', 'origin', 'main'],
+    ['read-tree', '--empty'],
+    ['read-tree', '-m', '-u', 'a', 'b'],
+    ['read-tree', 'HEAD'],
+    ['remote', 'add', 'other', '/elsewhere'],
+    ['reset', '--quiet', '--pathspec-from-file=-', '--pathspec-file-nul', 'HEAD'],
+    ['restore', '--source=HEAD', '--staged', '--worktree', '--', 'src/app.js'],
+    ['rm', '--cached', '-r', '-q', '--ignore-unmatch', '--', 'src/app.js'],
+    ['switch', '-q', '--no-track', '-c', 'fix', 'main'],
+    ['symbolic-ref', 'HEAD', 'refs/heads/fix'],
+    ['symbolic-ref', '-d', 'HEAD'],
+    ['update-index', '--add', '--cacheinfo', '100644,abc,src/app.js'],
+    ['update-index', '-q', '--refresh'],
+    ['update-ref', '--stdin'],
+    ['update-ref', '-d', 'refs/heads/fix'],
+    ['update-ref', '-m', 'land: main', 'refs/heads/main', 'new', 'old'],
+    ['worktree', 'add', '-q', '--detach', 'tree', 'HEAD'],
+    ['worktree', 'remove', '--force', '--force', 'tree'],
+    ['worktree', 'lock', '--reason', 'held', 'tree'],
+    ['worktree', 'prune'],
+    ['write-tree'],
+  ],
+};
 
 /** A script at `file` that runs `command`. @param {string} file @param {string} command */
 function standIn(file, command) {
@@ -109,23 +234,13 @@ describe('a verb\'s reads of git', () => {
     assert.deepStrictEqual(seen, [['main'], ['first', 'main'], ['first', 'main'], ['first', 'main', 'second']]);
   });
 
-  it('takes a call for a read only where its command is listed, in the forms that read — every other call may write', () => {
-    const reads = [
-      ['rev-parse', 'HEAD'], ['-c', 'log.showSignature=false', '--literal-pathspecs', 'log', '-1'], ['cat-file', '-e', 'HEAD'],
-      ['merge-tree', '--write-tree', 'main', 'side'], ['status', '--porcelain'], ['ls-files', '-z'], ['diff', '--cached'],
-      ['var', 'GIT_COMMITTER_IDENT'], ['--version'], ['config', '--get', 'user.name'], ['config', '-z', '--name-only', '--list'],
-      ['config', 'get', 'user.name'], ['config', '--file', '.gitmodules', '--get-regexp', 'path'], ['symbolic-ref', '-q', 'HEAD'],
-      ['remote'], ['remote', 'get-url', 'origin'], ['worktree', 'list', '--porcelain'], ['hash-object', '--stdin'],
-      ['add', '--all', '--dry-run', '--', 'src/app.js'],
-    ];
-    const writes = [
-      ['update-ref', 'refs/heads/side', 'HEAD'], ['commit', '-m', 'x'], ['-c', 'log.showSignature=false', 'push', 'origin', 'main'],
-      ['fetch', 'origin'], ['config', 'user.name', 'x'], ['config', '--unset', 'user.name'], ['symbolic-ref', 'HEAD', 'refs/heads/side'],
-      ['symbolic-ref', '-d', 'HEAD'], ['remote', 'add', 'other', '/elsewhere'], ['worktree', 'add', 'tree'], ['hash-object', '-w', '--stdin'],
-      ['add', '--', '--dry-run'], ['gc'],
-    ];
+  it('takes each form of git the engine runs for what it is — a read kept, a read never kept, or a call that may write — and any command it does not list for a write', () => {
+    const wrong = Object.entries(FORMS_RUN).flatMap(([kind, forms]) => forms
+      .map((form) => (Array.isArray(form) ? { argv: form, input: undefined } : form))
+      .filter(({ argv, input }) => kindOf(argv, input) !== kind)
+      .map(({ argv }) => `${argv.join(' ')}: not ${kind}`));
 
-    assert.deepStrictEqual([reads.filter((argv) => mayWrite(argv)), writes.filter((argv) => !mayWrite(argv))], [[], []]);
+    assert.deepStrictEqual(wrong, []);
   });
 
   it('never keeps a read of the working tree or the index: status, ls-files, diff and an index entry named are asked again', () => {
@@ -149,7 +264,21 @@ describe('a verb\'s reads of git', () => {
     assert.deepStrictEqual(after.map((answer, i) => answer !== before[i]), [true, true, true, true]);
   });
 
-  it('keeps a value worked out from git\'s reads as it keeps them, never one a write was made across', () => {
+  it('never keeps a read git gave no answer to — one that could not start, or ran out of time — but asks it again', () => {
+    const { main } = codeProject(world());
+    const [none, slow] = [path.join(world(), 'none'), path.join(world(), 'slow')];
+    fs.mkdirSync(none);
+    fs.mkdirSync(slow);
+    standIn(path.join(slow, 'git'), 'exec sleep 5');
+    const head = () => gitRun(main, ['rev-parse', 'HEAD'], undefined, undefined, 200);
+
+    const answers = withVerbReads(() => [withEnv({ PATH: none }, head), withEnv({ PATH: `${slow}${path.delimiter}${process.env.PATH}` }, head), head()]);
+
+    assert.deepStrictEqual(answers.map((res) => /** @type {NodeJS.ErrnoException|undefined} */ (res.error)?.code ?? res.stdout.trim()),
+      ['ENOENT', 'ETIMEDOUT', unseen(main, ['rev-parse', 'HEAD']).trim()]);
+  });
+
+  it('keeps a value worked out from git and the working tree as it keeps git\'s reads, never one a write was made across', () => {
     const { main } = codeProject(world());
     let worked = 0;
     const value = (/** @type {boolean} */ writes) => keptRead('probe', main, () => {
@@ -257,13 +386,23 @@ describe('everything kept dropped at every process the engine starts', () => {
     assert.deepStrictEqual(seen, [['main'], ['checked', 'main']]);
   });
 
-  it('in every module of the engine that starts one, git\'s runners aside', () => {
-    const runners = ['kernel/git.cjs', 'kernel/isolated-git.cjs'];
-    const starting = filesUnder(SCRIPTS).filter((file) => file.endsWith('.cjs') && fs.readFileSync(file, 'utf8').includes('require(\'child_process\')'))
-      .map((file) => path.relative(SCRIPTS, file));
+  it('at every start through the one place the engine starts a process, each of its three ways', () => {
+    const { main } = codeProject(world());
+    const starts = [() => spawnSync('true'), () => spawn('true', [], { stdio: 'ignore' }), () => execFileSync('true')];
 
-    assert.deepStrictEqual(runners.filter((runner) => !starting.includes(runner)), [], 'the search found git\'s own runners');
-    assert.deepStrictEqual(starting.filter((file) => !runners.includes(file) && !fs.readFileSync(path.join(SCRIPTS, file), 'utf8').includes('dropReads()')), []);
+    const grown = starts.map((start, n) => readAcross(main, () => {
+      unseen(main, ['branch', `started-${n}`]);
+      start();
+    }).map((seen) => seen.length));
+
+    assert.deepStrictEqual(grown, [[1, 2], [2, 3], [3, 4]]);
+  });
+
+  it('starting a process nowhere else: no module of the engine but that place and git\'s two runners reaches child_process', () => {
+    const reaches = filesUnder(SCRIPTS).filter((file) => file.endsWith('.cjs') && /require\(\s*['"](node:)?child_process['"]\s*\)/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SCRIPTS, file)).sort();
+
+    assert.deepStrictEqual(reaches, ['kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/spawn.cjs']);
   });
 });
 

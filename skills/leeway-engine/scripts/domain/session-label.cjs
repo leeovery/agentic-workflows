@@ -65,12 +65,11 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync } = require('../kernel/spawn.cjs');
 const { handedSession, processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { operationInProgress } = require('../kernel/git.cjs');
-const { dropReads } = require('../kernel/git-reads.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
@@ -336,7 +335,6 @@ function labelConfigStatus(cwd) {
  */
 function tmux(args, socket) {
   const full = socket ? ['-S', socket, ...args] : args;
-  dropReads();
   return execFileSync('tmux', full, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).replace(/\n$/, '');
 }
 

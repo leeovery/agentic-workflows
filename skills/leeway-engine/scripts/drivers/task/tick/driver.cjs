@@ -54,9 +54,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('../../../kernel/spawn.cjs');
 const { workUnitNameRefusal } = require('../../../kernel/manifest-schema.cjs');
-const { dropReads } = require('../../../kernel/git-reads.cjs');
 const {
   taskId, stepOfId, shownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
 } = require('../../../domain/task-id.cjs');
@@ -204,22 +203,13 @@ function inEngineWords(root, message) {
 }
 
 /**
- * Tick run with `args`, in `cwd` where one is named.
- * @param {string[]} args @param {string} [cwd]
- */
-function spawnTick(args, cwd) {
-  dropReads();
-  return spawnSync(TOOL, args, { cwd, encoding: 'utf8', timeout: TIMEOUT_MS });
-}
-
-/**
  * Tick's JSON answer to `args`, run in the state root. A refusal is Tick's,
  * in its words but for its ids.
  * @param {string} root @param {string[]} args
  * @returns {any}
  */
 function tick(root, args) {
-  const ran = spawnTick(['--json', ...args], root);
+  const ran = spawnSync(TOOL, ['--json', ...args], { cwd: root, encoding: 'utf8', timeout: TIMEOUT_MS });
   if (ran.error) throw ran.error;
   if (ran.status !== 0) throw new Error(`${TOOL} ${args[0]}: ${inEngineWords(root, ran.stderr.trim().replace(/^Error: /, '')) || `exited ${ran.status}`}`);
   return ran.stdout.trim() === '' ? null : JSON.parse(ran.stdout);
@@ -227,7 +217,7 @@ function tick(root, args) {
 
 /** The installed version, or null where Tick is not installed; Tick's own error where it runs and fails. @returns {string|null} */
 function found() {
-  const ran = spawnTick(['version']);
+  const ran = spawnSync(TOOL, ['version'], { encoding: 'utf8', timeout: TIMEOUT_MS });
   if (ran.error && /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ENOENT') return null;
   if (ran.error) throw ran.error;
   const version = ran.status === 0 ? /^tick version (\S+)/.exec(ran.stdout)?.[1] : undefined;

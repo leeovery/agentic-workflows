@@ -304,10 +304,12 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     return stateGit(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort();
   }
 
-  const codeHead = () => git(dir, ['rev-parse', '--short', 'HEAD']).trim();
-  const stateHead = () => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
+  /** Each side's commit as an answer shows it: its first seven characters. */
+  const codeHead = () => git(dir, ['rev-parse', 'HEAD']).trim().slice(0, 7);
+  const stateHead = () => stateGit(dir, ['rev-parse', 'HEAD']).trim().slice(0, 7);
 
-  it('commits the whole state on its branch and every owned code path on the code branch — one commit each, nothing else (6.S25)', () => {
+  it('commits the whole state on its branch and every owned code path on the code branch — one commit each, nothing else, each shown seven characters long whatever git would abbreviate it to (6.S25)', () => {
+    git(dir, ['config', 'core.abbrev', '12']);
     createFile(dir, '.claude/settings.json', '{"permissions":{}}\n');
     fs.unlinkSync(path.join(dir, '.worktreeinclude'));
     createFile(dir, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');

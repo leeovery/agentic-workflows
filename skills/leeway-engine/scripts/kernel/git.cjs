@@ -286,6 +286,21 @@ function stagingOf(cwd, specs, nested) {
   return { files, pointers, held: heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files), addable: stageableSpecs(cwd, files) };
 }
 
+/**
+ * A commit as a commit's answer shows it, the code tree's and the state's
+ * alike: its first seven characters, whatever length git would abbreviate
+ * it to.
+ * @param {string} sha @returns {string}
+ */
+function shortSha(sha) {
+  return sha.slice(0, 7);
+}
+
+/** The commit HEAD names at `cwd`, as a commit's answer shows it. @param {string} cwd @returns {string} */
+function shortHead(cwd) {
+  return shortSha(git(cwd, ['rev-parse', 'HEAD']).trim());
+}
+
 /** The files `stagingOf` planned staged, each nested folder held out. @param {string} cwd @param {ReturnType<typeof stagingOf>} staging */
 function stageFiles(cwd, { addable, held }) {
   if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
@@ -326,7 +341,7 @@ function commitPathspec(cwd, pathspec, message, nested = []) {
     const scope = [...literally(known), ...held];
     if (!hasChangesInPaths(cwd, scope)) return null;
     gitIndexed(cwd, ['commit', '-m', message, '--', ...scope]);
-    return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+    return shortHead(cwd);
   });
 }
 
@@ -457,7 +472,7 @@ function commitMerge(cwd, specs, message, nested = []) {
   const pointers = staging.pointers.filter((folder) => indexEntries(cwd, [folder]).length > 0);
   if (pointers.length > 0) gitIndexed(cwd, ['add', '--', ...literally(pointers)]);
   gitIndexed(cwd, ['commit', '-q', '-m', message]);
-  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+  return shortHead(cwd);
 }
 
 /**
@@ -537,7 +552,7 @@ function commitIndexEntries(cwd, specs, message) {
   } finally {
     fs.rmSync(env.GIT_INDEX_FILE, { force: true });
   }
-  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+  return shortHead(cwd);
 }
 
 /**
@@ -689,7 +704,7 @@ function diffWithUntracked(cwd, base, args, exclude) {
 }
 
 module.exports = {
-  READ_BUDGET_BYTES, git, tryGit, gitRun, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
+  READ_BUDGET_BYTES, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, mergeInProgress, unmergedPast, commitMerge,
 };

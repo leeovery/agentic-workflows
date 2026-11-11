@@ -49,7 +49,7 @@ function snapshot() {
 // The most git commands an entry runs with nothing in flight, waiting on a
 // fix task: its own reads, eight of them; reading the build's standing too
 // would more than double them.
-const IDLE_ENTRY = 12;
+const IDLE_ENTRY = 8;
 
 describe('enter review: what cannot be entered is refused, naming the way on, and nothing is written', () => {
   it('a build whose cut has a phase not closed, naming it or each of them, a quick-fix, whose review the person has not asked for, what the build\'s entry refuses — a unit built under the old plan, a build not begun — and a topic named (14.6.1, 19.5.14)', () => {
@@ -137,6 +137,6 @@ describe('the questions waiting on the person (12.13.22)', () => {
       'waiting: Q1 — Should a receipt be sent by email? — parks task 3.1',
       'waiting: Q2 — Should a refund send a receipt too? — parks no task',
     ]);
-    assert.ok(commands.length <= IDLE_ENTRY,`an idle entry ran ${commands.length} git commands:\n${commands.join('\n')}`);
+    assert.ok(commands.length <= IDLE_ENTRY, `an idle entry ran ${commands.length} git commands:\n${commands.join('\n')}`);
   });
 });

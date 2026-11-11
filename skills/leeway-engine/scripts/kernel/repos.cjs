@@ -15,12 +15,16 @@
 // the parent's own repository holds `.git` too, but is that repository
 // checked out again, never a repo of its own: its folder stays the parent's.
 //
-// Found afresh by every verb and kept for it until what it read may have
-// changed, as the verb's reads of git are (kernel/git-reads); never recorded
-// past it. Paths in and out are the project's, `/`-separated, translated to
-// and from each nested repo's own; a root inside a larger repository reads
-// only the project's folder of it. A parent's git
-// holds out by pathspec each untracked repo and submodule directly inside it
+// The walk reads each repo's index, its untracked and its ignored folders,
+// each folder's `.git` and the `.gitmodules` at its top. It is walked afresh
+// by every verb and kept for it, dropped as the verb's reads of git are
+// (kernel/git-reads): a repo the verb makes or takes away without git shows
+// at the next drop. Never recorded past the verb.
+//
+// Paths in and out are the project's, `/`-separated, translated to and from
+// each nested repo's own; a root inside a larger repository reads only the
+// project's folder of it. A parent's git holds out by pathspec each
+// untracked repo and submodule directly inside it
 // — an ignored one it never reads — so a nested repo's folder or a
 // submodule's moved pointer is never the parent's dirt and never rides its
 // commit, but for one rule: a code commit that reaches into a submodule
