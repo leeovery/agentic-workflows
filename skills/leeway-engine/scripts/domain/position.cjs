@@ -73,7 +73,8 @@ const { stepOfId, shownTask } = require('./task-id.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { topicLog, recordCall, mapCall, owedHeader, namedConversations } = require('./topic-log.cjs');
+const { topicLog, ledgerView, recordCall, mapCall, owedHeader, namedConversations } = require('./topic-log.cjs');
+const { staysDecided } = require('./topic-standing.cjs');
 
 const COMPACTED = 'The conversation was just compacted.';
 
@@ -540,6 +541,21 @@ function discoveryWork(skill, calls, log) {
 }
 
 /**
+ * A decided topic's note, entered for its affected entries alone
+ * (topic-standing.cjs): a topic's, with the call reading those entries, and
+ * where the conversation goes once each is answered.
+ * @param {{calls: string[], log: string}} whole the topic's note @param {string} unit @param {string} topic
+ * @returns {{calls: string[], log: string, lines: string[]}}
+ */
+function staysDecidedWhole(whole, unit, topic) {
+  return {
+    ...whole,
+    calls: [...whole.calls, ledgerView('affected', unit, topic)],
+    lines: ['The topic stays decided, entered for its affected entries alone: once each is confirmed or replaced, the conversation hands back to the epic\'s menu.'],
+  };
+}
+
+/**
  * A build's note, carried whole, as its entry reads it (build-entry.cjs):
  * the ledger's calls, the build's log, and where the build stands, with
  * the tasks in flight of the conversation the note is for.
@@ -589,7 +605,9 @@ function workAt(cwd, position, manifest, sessionId) {
     case 'discussion':
     case 'investigation': {
       const log = statePath(cwd, topicLog(name, topic));
-      return { skill, documents: [log], whole: { calls: [recordCall(name, topic)], log } };
+      const whole = { calls: [recordCall(name, topic)], log };
+      const stays = phase === 'discussion' && staysDecided({ cwd, phase, unit: name, topic, manifest });
+      return { skill, documents: [log], whole: stays ? staysDecidedWhole(whole, name, topic) : whole };
     }
     case 'specification': {
       // Required here, as the ledger read it makes requires this module; a

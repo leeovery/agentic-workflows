@@ -6,8 +6,9 @@
 // back into the conversation by the unit's Continue, decided over a concluded
 // experiment and on to its specification; the question on the map an
 // experiment measures, and its report reaching the topic as a message once
-// that question closed, the topic held from its spec until it is read; and the single-topic backs re-rendering the start
-// menu. An epic's are test-pipeline-simulation-experiments.cjs's.
+// that question closed, the topic held from its spec until it is read; and
+// the laboratory left for the menu landing on the start menu, never the
+// laboratory again. An epic's are test-pipeline-simulation-experiments.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -57,7 +58,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
-  it('a single-topic back: the laboratory picker re-renders the start menu', () => {
+  it('a single-topic leave: the laboratory picker\'s back, and the next experiment\'s gate\'s menu row, land on the start menu, never the laboratory again', () => {
     const wu = 'frame-rate';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Frame pacing', '--session-log-file', sessionLog(sim, wu)]);
     continueUnit(sim, wu);
@@ -78,9 +79,18 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // Two live records put the pick to the user; a back out of it, on a unit
     // whose Continue would hand straight back on, lands on the start menu —
     // no position, the state re-read, the unit still there.
-    assert.match(sim.render(['experiment-pick', `${wu}.experiment.${wu}`], { expect: 'content' }), /b\/back/);
+    sim.render(['experiment-pick', `${wu}.experiment.${wu}`], { expect: 'content' });
+    assert.strictEqual(follow(sim, answerGate(sim, 'experiment pick', '--pick', 'b').next).line, '→ Start');
     assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`),
       'the start menu lists the unit the laboratory was entered from');
+
+    // One record ended and the other still live, the gate offering the next
+    // experiment leads its menu row to the same start menu.
+    continueUnit(sim, wu);
+    sim.handOver();
+    sim.run(['experiment', 'abandon', wu, wu, 'E1', '--reason', 'covered by jank-budget']);
+    sim.render(['experiment-next-gate', `${wu}.experiment.${wu}`], { expect: 'content' });
+    assert.deepStrictEqual(answerGate(sim, 'experiment next gate', '--pick', 'm').next, { kind: 'handoff', skill: 'leeway', args: [] });
   });
 
   it('feature experiments: the waiting conversation routes to the laboratory and back, and decided over them goes on to its specification', () => {

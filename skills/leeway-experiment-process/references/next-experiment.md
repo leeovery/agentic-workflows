@@ -56,9 +56,7 @@ Derive `{dir}` = `.leeway/{work_unit}/topics/{topic}/experiments/{id}-{slug}`.
 
 **If the resolve returned no record** (`b/back` from the picker):
 
-Nothing was picked — put the gate back.
-
-→ Return to **B. Offer the Next Experiment**.
+Nothing was picked: follow the back's `next`, and take the answer of the gate it draws as this section does.
 
 #### If `menu`
 
@@ -68,4 +66,4 @@ Nothing was picked — put the gate back.
 > The spawning conversation picks the evidence up at its next entry.
 ```
 
-Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `unit {work_unit}`.
+Follow the answer's `next`.

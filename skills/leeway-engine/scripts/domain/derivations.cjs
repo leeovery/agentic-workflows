@@ -761,8 +761,9 @@ function waitingItems(manifest, phase) {
  * Where a build by its cut goes next, its standing read from its own
  * records (`buildPlaceStatus`): into the build until every phase of its cut
  * has closed; then into the review phase, its fix phases built there; and
- * once finish has completed the unit, where finish sends it — an epic to
- * its menu, its review completed; any other unit nowhere, done (24.1.2).
+ * once finish has completed the unit, an epic's its review, completed —
+ * finish hands it to its menu by the epic alone, the menu's complete
+ * variant (14.6.2) — and any other unit's nowhere, done (24.1.2).
  * @param {Record<string, any>} manifest @returns {{next_phase: string, phase_label: string}}
  */
 function buildNext(manifest) {

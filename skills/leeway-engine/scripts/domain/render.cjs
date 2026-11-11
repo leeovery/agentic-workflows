@@ -48,6 +48,9 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { lastShown } = require('./gate.cjs');
+const { labLeaveNext } = require('./topic-leave.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
@@ -81,6 +84,8 @@ const { helpSurface } = require('./projections/help.cjs');
 const { verdictsSurface } = require('./verdict.cjs');
 const { startMenuSurface } = require('./projections/start-menu.cjs');
 const { epicMenuSurface } = require('./projections/epic-menu.cjs');
+
+/** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -286,9 +291,10 @@ function sendClosedTarget(cwd, { dotpath }) {
 /**
  * Resolve an experiment address to its series rows in id order — parents by
  * number, each parent's sub-experiments beneath it. A loud error when the
- * phase is wrong or the topic holds no series.
+ * phase is wrong or the topic holds no series — and where its laboratory
+ * left for the menu leads (topic-leave.cjs).
  * @param {string} cwd @param {string} dotpath @param {string} surface
- * @returns {{workUnit: string, topic: string, title: string, rows: import('./projections/experiment.cjs').SeriesRow[]}}
+ * @returns {{workUnit: string, topic: string, title: string, rows: import('./projections/experiment.cjs').SeriesRow[], leave: Next}}
  */
 function resolveExperiment(cwd, dotpath, surface) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
@@ -303,7 +309,7 @@ function resolveExperiment(cwd, dotpath, surface) {
   const rows = Object.entries(experiments)
     .map(([id, r]) => ({ id, ...(r && typeof r === 'object' ? r : {}) }))
     .sort((a, b) => compareExperimentIds(a.id, b.id));
-  return { workUnit, topic, title: topicTitle(manifest, topic), rows };
+  return { workUnit, topic, title: topicTitle(manifest, topic), rows, leave: labLeaveNext(workUnit, manifest.work_type) };
 }
 
 /** The series' live top-level records, id order. @param {import('./projections/experiment.cjs').SeriesRow[]} rows */
@@ -346,12 +352,25 @@ function experimentApprovalGateSurface(cwd, { dotpath, id }) {
  * @returns {string}
  */
 function experimentPickSurface(cwd, { dotpath }) {
-  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-pick');
+  const { topic, rows, leave } = resolveExperiment(cwd, dotpath, 'experiment-pick');
   const live = liveExperiments(rows);
   if (live.length === 0) {
     throw new Error(`render experiment-pick: "${topic}"'s series holds no live experiments — there is nothing to pick`);
   }
-  return experimentPick(live);
+  return experimentPick(live, pickerBack(dotpath, leave));
+}
+
+/**
+ * Where the record picker's back leads: the surface before it — the next
+ * experiment's gate where the conversation came from it, the picker drawn
+ * again keeping its back — else the laboratory left for the menu.
+ * @param {string} dotpath @param {Next} leave @returns {Next}
+ */
+function pickerBack(dotpath, leave) {
+  const session = handedSession();
+  const before = session === null ? null : lastShown(session);
+  if (before?.gate === 'experiment pick') return before.options.find((o) => o.key === 'b')?.next ?? leave;
+  return before?.gate === 'experiment next gate' ? { kind: 'engine', argv: ['render', 'experiment-next-gate', dotpath] } : leave;
 }
 
 /**
@@ -364,12 +383,12 @@ function experimentPickSurface(cwd, { dotpath }) {
  * @returns {string}
  */
 function experimentNextGateSurface(cwd, { dotpath }) {
-  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-next-gate');
+  const { topic, rows, leave } = resolveExperiment(cwd, dotpath, 'experiment-next-gate');
   const live = liveExperiments(rows);
   if (live.length === 0) {
     throw new Error(`render experiment-next-gate: "${topic}"'s series holds no live experiments — the laboratory's leave follows a finished series`);
   }
-  return experimentNextGate(live);
+  return experimentNextGate(live, leave);
 }
 
 /**
@@ -608,8 +627,8 @@ function discoveryCancelStatement(manifest, topic) {
 
 /**
  * The cancel confirm over one unit — `<wu>.discovery.<topic>` of an epic, or
- * a single-topic unit by its bare name — fetched by the epic menu and by a
- * session cancelling its own topic.
+ * a unit by its bare name — fetched by the epic menu and by a session
+ * cancelling its own topic or its unit.
  * The statement names exactly what the cancel takes and stays context; the
  * short question takes the glyph. Yes runs the cancel, `topic cancel` or
  * `workunit cancel`; no carries on. A locked or already-cancelled unit
@@ -644,16 +663,14 @@ function epicUnitCancel(cwd, dotpath) {
 }
 
 /**
- * A single-topic unit under the cancel gate: the unit is its one topic, so
- * the whole unit is called off.
+ * A unit by its bare name under the cancel gate: the whole unit called off —
+ * a single-topic unit's its one topic, an epic's asked for in a session of
+ * the unit, its spec, build or review (18.4.20).
  * @param {string} cwd @param {string} dotpath
  * @returns {{statement: string, cancel: string[]}}
  */
 function workUnitCancel(cwd, dotpath) {
   const { workUnit, manifest, typeLabel } = resolveWorkUnit(cwd, dotpath, 'cancel-gate');
-  if (manifest.work_type === 'epic') {
-    throw new Error(`render cancel-gate: "${workUnit}" is an epic — address the topic to cancel, <work_unit>.discovery.<topic>`);
-  }
   if (manifest.status !== 'in-progress') {
     throw new Error(`render cancel-gate: "${workUnit}" is ${manifest.status} — only work in progress is cancelled`);
   }

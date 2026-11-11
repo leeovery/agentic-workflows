@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, mapTopics, sessionLog, handoffEntry, enterEntry, handoff, handoffBy, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicPick,
+  Sim, mapTopics, sessionLog, handoffEntry, enterEntry, handoff, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicPick,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -164,13 +164,19 @@ describe('pipeline simulation: experiments, in an epic', () => {
     // Entered over two live records, the laboratory puts the pick to the
     // user, and a back out of it hands the work to the epic menu with no
     // banner — nothing ended.
-    assert.match(sim.render(['experiment-pick', `${wu}.experiment.timing`], { expect: 'content' }), /b\/back/);
-    handoff(sim, `/leeway-continue-epic ${wu}`);
+    sim.render(['experiment-pick', `${wu}.experiment.timing`], { expect: 'content' });
+    const back = answerGate(sim, 'experiment pick', '--pick', 'b').next;
+    assert.deepStrictEqual(back, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
+    follow(sim, back);
     // Reached from the return leg's gate instead, the same pick's back puts
-    // that gate back — the person came to the picker through it.
+    // that gate back — the person came to the picker through it — and keeps
+    // it there, the pick drawn again as after a question at it.
     const offer = sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' });
-    assert.match(sim.render(['experiment-pick', `${wu}.experiment.timing`], { expect: 'content' }), /b\/back/);
-    assert.strictEqual(sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' }), offer,
+    answerGate(sim, 'experiment next gate', '--pick', 'y');
+    for (let drawn = 0; drawn < 2; drawn += 1) sim.render(['experiment-pick', `${wu}.experiment.timing`], { expect: 'content' });
+    const gateAgain = answerGate(sim, 'experiment pick', '--pick', 'b').next;
+    assert.deepStrictEqual(gateAgain, { kind: 'engine', argv: ['render', 'experiment-next-gate', `${wu}.experiment.timing`] });
+    assert.strictEqual(sim.render(gateAgain.argv.slice(1), { expect: 'content' }), offer,
       'the gate the picker was reached through is put back as it stood');
     const dropped = sim.run(['experiment', 'abandon', wu, 'timing', 'E2', '--reason', 'settled by E1 after all']);
     assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: ['E3'] }]);
@@ -185,6 +191,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
       /Experiments — Timing \(4 experiments\)[\s\S]*E2 multi-monitor\n.*↳ Abandoned — settled by E1 after all/);
     assert.match(sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' }),
       /The series still holds E3 stacking-order\./);
+    assert.deepStrictEqual(answerGate(sim, 'experiment next gate', '--pick', 'm').next, back, 'its menu row lands where the picker\'s back does');
     const last = sim.run(['experiment', 'abandon', wu, 'timing', 'E3', '--reason', 'settled by E1 after all']);
     assert.deepStrictEqual(last.released_waits, [{ phase: 'discussion', released: ['E3'], remaining: [] }]);
     assert.strictEqual(last.item_status, 'completed', 'every record terminal closes the item');

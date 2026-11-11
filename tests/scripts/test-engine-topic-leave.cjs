@@ -7,18 +7,22 @@
 // domain/workunit-lifecycle.cjs). Each gate row's `next`, answered through
 // `gate`: the postpone gate's yes running the postpone, the horizon pick
 // addressed to a topic leading to its postpone gate, the cancel gate's yes
-// running the cancel — an epic's unit through `topic cancel`, a single-topic
-// unit through `workunit cancel` — and every other row carrying on. Each
-// verb's `next` (18.4.20): the conversation sitting in the topic that left
-// goes onto its epic's menu, and one sitting in a single-topic unit it
-// cancelled onto the start menu; from anywhere else the flow carries on. The
+// running the cancel — an epic's topic through `topic cancel`, a unit by its
+// bare name, an epic among them, through `workunit cancel` — and every other
+// row carrying on. Each
+// verb's `next` (18.4.20): the conversation sitting in the discussion of the
+// topic that left goes onto its epic's menu — sitting in its experiment, it
+// carries on; and one sitting in any phase of a unit it cancelled — any of
+// its topics, its spec, its build, a bugfix's investigation, a quick-fix's
+// session — onto the start menu; from anywhere else the flow carries on. The
 // verbs close the topic's agents still running, and their commit takes the
 // topic's log.
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its discussions
 // of `licence` and `onboarding` under way, and a roadmap with two horizons;
-// and a feature, `solo`. Each test's
-// conversation has its own system config.
+// a feature, `solo`; a bugfix, `crash`; and a quick-fix, `typo`. Each test's
+// conversation has its own system config; it sits where `enter` puts it, or
+// `session label` inside a phase its unit has not come to.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,6 +37,8 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 
 const EPIC = 'fumi';
 const SOLO = 'solo';
+const BUG = 'crash';
+const QUICK_FIX = 'typo';
 const LOG = `${EPIC}/topics/licence/log.md`;
 
 /** A map row. @param {number} order */
@@ -47,6 +53,8 @@ const world = fixtureFrom('topic-leave-', (dir) => {
     },
   });
   createManifest(dir, SOLO, { phases: { discussion: { items: { [SOLO]: { status: 'in-progress' } } } } });
+  createManifest(dir, BUG, { work_type: 'bugfix', description: 'Saving drops the last edit' });
+  createManifest(dir, QUICK_FIX, { work_type: 'quick-fix', description: 'The --color flag is spelt --colour' });
   const project = JSON.parse(readState(dir, layout.projectManifest));
   project.roadmap = { horizons: ['next', 'later'], items: {} };
   writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
@@ -80,8 +88,12 @@ function answered(render, name, answer) {
 /** This conversation sitting in `topic`'s discussion. @param {string} topic */
 const sitIn = (topic) => run(['enter', 'discussion', EPIC, topic]);
 
+/** This conversation sitting in `unit`'s `phase`, at `topic`, without entering it. @param {string} unit @param {string} phase @param {string} topic */
+const labelled = (unit, phase, topic) => run(['session', 'label', unit, phase, topic]);
+
 const CONTINUE = { kind: 'continue' };
 const ONTO_MENU = { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC] };
+const ONTO_START = { kind: 'handoff', skill: 'leeway', args: [] };
 
 describe('the gates lead to the verbs', () => {
   it('the postpone gate\'s yes runs the postpone; no and a Comment carry on', () => {
@@ -105,12 +117,13 @@ describe('the gates lead to the verbs', () => {
     assert.deepStrictEqual(answered(['cancel-gate', `${EPIC}.discovery.licence`], 'cancel gate', ['--pick', 'n']), CONTINUE);
   });
 
-  it('a single-topic unit\'s cancel gate confirms the whole unit, its yes the unit\'s cancel; an epic is addressed by its topic', () => {
+  it('18.4.20: a unit\'s cancel gate by its bare name confirms the whole unit, an epic\'s as a feature\'s, its yes the unit\'s cancel', () => {
     const gate = output(dir, ['render', 'cancel-gate', SOLO], { env: ENV() });
     assert.match(gate, /Cancelling \*\*Solo\*\* calls off the whole feature — it stops where it stands, and can be reactivated later\./);
     assert.deepStrictEqual(run(['gate', 'cancel gate', '--pick', 'y']).next, { kind: 'engine', argv: ['workunit', 'cancel', SOLO] });
     assert.deepStrictEqual(answered(['cancel-gate', SOLO], 'cancel gate', ['--pick', 'n']), CONTINUE);
-    assert.match(refusedPristine(dir, ['render', 'cancel-gate', EPIC]).error, /"fumi" is an epic — address the topic to cancel, <work_unit>\.discovery\.<topic>$/);
+    assert.match(output(dir, ['render', 'cancel-gate', EPIC], { env: ENV() }), /Cancelling \*\*Fumi\*\* calls off the whole epic — it stops where it stands, and can be reactivated later\./);
+    assert.deepStrictEqual(run(['gate', 'cancel gate', '--pick', 'y']).next, { kind: 'engine', argv: ['workunit', 'cancel', EPIC] });
   });
 });
 
@@ -131,9 +144,35 @@ describe('the verbs say what follows', () => {
     assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'licence']).next, CONTINUE);
   });
 
+  it('a topic postponed or cancelled while the conversation sits in its experiment carries on there', () => {
+    labelled(EPIC, 'experiment', 'licence');
+    assert.deepStrictEqual(run(['topic', 'postpone', EPIC, 'licence', '--horizon', 'next']).next, CONTINUE);
+    labelled(EPIC, 'experiment', 'onboarding');
+    assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'onboarding']).next, CONTINUE);
+  });
+
   it('18.S56: a feature cancelled from inside its own session goes onto the start menu', () => {
     run(['enter', 'discussion', SOLO, SOLO]);
-    assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, { kind: 'handoff', skill: 'leeway', args: [] });
+    assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, ONTO_START);
+  });
+
+  it('18.4.20: a unit cancelled from inside any phase of it goes onto the start menu — an epic from one of its topics, a feature from its spec or its build, a bugfix from its investigation, a quick-fix from its session', () => {
+    /** Each unit's cancel's `next`, the conversation sitting where `sit` puts it. @type {Array<[string, () => unknown]>} */
+    const sittings = [
+      [EPIC, () => sitIn('licence')],
+      [SOLO, () => labelled(SOLO, 'specification', SOLO)],
+      [SOLO, () => labelled(SOLO, 'implementation', SOLO)],
+      [BUG, () => run(['enter', 'investigation', BUG])],
+      [QUICK_FIX, () => labelled(QUICK_FIX, 'implementation', QUICK_FIX)],
+    ];
+    const nexts = sittings.map(([unit, sit]) => {
+      sit();
+      const { next } = run(['workunit', 'cancel', unit]);
+      run(['workunit', 'reactivate', unit]);
+      return next;
+    });
+
+    assert.deepStrictEqual(nexts, sittings.map(() => ONTO_START));
   });
 
   it('a feature cancelled from anywhere else — another unit\'s session, or none — carries on', () => {

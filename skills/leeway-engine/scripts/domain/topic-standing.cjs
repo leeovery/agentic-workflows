@@ -16,8 +16,9 @@
 // - What the topic is now: postponed or cancelled on the map, promoted out
 //   of the unit, decided, or for a bugfix its investigation concluded, the
 //   unit's menu leading past it. A decided topic is entered all the same
-//   while an entry of it relies on an answer replaced since, to confirm
-//   each still holds or replace it, staying decided (10.2.6,
+//   while an entry of it relies on an answer replaced since and the unit is
+//   in its discussion, where such an entry is answered (unit-handoff.cjs),
+//   to confirm each still holds or replace it, staying decided (10.2.6,
 //   ledger-affected.cjs). A message waits in a postponed topic's mailbox,
 //   reopens a decided or concluded one and goes to the inbox for a
 //   cancelled one (10.1.6, 10.1.8, 10.2.7), so only a promoted topic
@@ -174,22 +175,35 @@ function topicClosure(at) {
 }
 
 /**
- * Whether an entry of the topic relies on an answer replaced since (the
- * header's); what the ledger's read said is left to the entry's own reads.
- * @param {string} cwd @param {string} unit @param {string} topic
+ * Whether the decided topic is entered to answer an entry of it relying on
+ * an answer replaced since: one waits, and is answered in the topic itself
+ * (the header's); what the ledger's read said is left to the entry's own
+ * reads.
+ * @param {Standing} at @returns {boolean}
  */
-function reliesOnChanged(cwd, unit, topic) {
-  // Required here: the ledger's read reaches this module through the position.
+function affectedHere({ cwd, unit, topic = '', manifest }) {
+  // Required here: Continue requires this module, and the ledger's read reaches it through the position.
+  const { affectedAnsweredIn } = require('./unit-handoff.cjs');
   const { readShownOnce } = require('./ledger-read.cjs');
   const { waitsOnTopic } = require('./ledger-affected.cjs');
+  if (affectedAnsweredIn(cwd, manifest) !== null) return false;
   const root = stateRoot(cwd);
   return readShownOnce(root, [], ({ folded }) => waitsOnTopic(folded, root, unit, topic));
 }
 
 /**
+ * Whether the topic is a decided one entered for its affected entries alone,
+ * staying decided (the header's).
+ * @param {Standing} at @returns {boolean}
+ */
+function staysDecided(at) {
+  return itemOf(at.manifest, 'discussion', at.topic ?? '')?.status === 'completed' && affectedHere(at);
+}
+
+/**
  * Why a discussion's topic cannot be entered: set aside on the map, closed,
- * or decided but for an entry relying on a changed answer; null where it
- * can.
+ * or decided but for an entry relying on a changed answer answered in it;
+ * null where it can.
  * @param {Standing} at @returns {string|null}
  */
 function discussionStanding(at) {
@@ -200,7 +214,7 @@ function discussionStanding(at) {
   if (lifecycle === 'cancelled') return SET_ASIDE.cancelled(topic, through);
   const closed = closedStanding(at);
   if (closed !== null) return closed;
-  return itemOf(manifest, 'discussion', topic)?.status === 'completed' && !reliesOnChanged(cwd, unit, topic)
+  return itemOf(manifest, 'discussion', topic)?.status === 'completed' && !affectedHere(at)
     ? `the topic "${topic}" is decided — it reopens through a message sent to it, or through ${through}`
     : null;
 }
@@ -259,4 +273,4 @@ function assertEnterable(cwd, phase, manifest, topic) {
   if (refusal !== null) throw new Error(refusal);
 }
 
-module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, phaseHeldRefusal, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable };
+module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, phaseHeldRefusal, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable, staysDecided };

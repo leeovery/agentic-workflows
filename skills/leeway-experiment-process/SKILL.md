@@ -72,7 +72,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.ex
 
 Load **[select-record.md](references/select-record.md)** and follow its instructions as written.
 
-**If the resolve returned no record and `work_type` is `epic`** (`b/back` from the picker):
+**If the resolve returned no record** (`b/back` from the picker):
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -80,19 +80,7 @@ Load **[select-record.md](references/select-record.md)** and follow its instruct
 > Nothing entered — the series stands as it is.
 ```
 
-Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-continue-epic {work_unit}`.
-
-**If the resolve returned no record and `work_type` is not `epic`:**
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Nothing entered — the series stands as it is.
-```
-
-Load **[start-menu.md](../leeway/references/start-menu.md)** and follow its instructions as written.
-
-→ On return, proceed as the reference directed.
+Follow the back's `next`.
 
 **Otherwise:**
 

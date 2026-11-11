@@ -4,7 +4,7 @@
 
 ---
 
-Resolve which experiment this session works — the session is per-topic, and the record resolves here. Loaded by the backbone's session setup and by the return leg's next pick ([next-experiment.md](next-experiment.md)). On return, `{id}`, `{slug}`, and `{record_status}` name a live record — or a `b/back` from the picker resolves no record, and the caller routes the back-out.
+Resolve which experiment this session works — the session is per-topic, and the record resolves here. Loaded by the backbone's session setup and by the return leg's next pick ([next-experiment.md](next-experiment.md)). On return, `{id}`, `{slug}`, and `{record_status}` name a live record — or a `b/back` from the picker resolves no record, and the caller follows the back's `next`.
 
 The caller holds the series — the `experiments` subtree. Count its **live top-level records**: ids without a dot whose status is neither `concluded` nor `abandoned`.
 

@@ -8,6 +8,9 @@
 // sitting in any phase of it to the start menu. From anywhere else — another
 // topic of the epic, its menu, manage on the start menu — the calling flow
 // carries on. Where the conversation sits is its position (position.cjs).
+// A unit's laboratory left for the menu — its record picker's back, its
+// next experiment's gate's menu row — goes onto the epic's menu for an epic,
+// and the start menu for any other unit (render.cjs).
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
@@ -17,6 +20,10 @@ const { UNIT_PHASES } = require('./derivations.cjs');
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
 const CONTINUE = Object.freeze({ kind: 'continue' });
+const ONTO_START = Object.freeze({ kind: 'handoff', skill: 'leeway', args: [] });
+
+/** The way onto the epic's menu. @param {string} workUnit @returns {Next} */
+const ontoEpic = (workUnit) => ({ kind: 'handoff', skill: 'leeway-continue-epic', args: [workUnit] });
 
 /** Where the calling conversation sits, or null where it sits nowhere. */
 function sittingAt() {
@@ -33,7 +40,7 @@ function leaveNext(workUnit, topic) {
   const at = sittingAt();
   const sitting = at !== null && at.name === workUnit && at.topic === topic
     && typeof at.phase === 'string' && UNIT_PHASES.discovery.includes(at.phase);
-  return sitting ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [workUnit] } : CONTINUE;
+  return sitting ? ontoEpic(workUnit) : CONTINUE;
 }
 
 /**
@@ -44,7 +51,16 @@ function leaveNext(workUnit, topic) {
 function unitLeaveNext(workUnit) {
   const at = sittingAt();
   const sitting = at !== null && at.name === workUnit && typeof at.phase === 'string';
-  return sitting ? { kind: 'handoff', skill: 'leeway', args: [] } : CONTINUE;
+  return sitting ? ONTO_START : CONTINUE;
 }
 
-module.exports = { leaveNext, unitLeaveNext };
+/**
+ * The `next` of a unit's laboratory left for the menu (the header's).
+ * @param {string} workUnit @param {string} workType
+ * @returns {Next}
+ */
+function labLeaveNext(workUnit, workType) {
+  return workType === 'epic' ? ontoEpic(workUnit) : ONTO_START;
+}
+
+module.exports = { leaveNext, unitLeaveNext, labLeaveNext };

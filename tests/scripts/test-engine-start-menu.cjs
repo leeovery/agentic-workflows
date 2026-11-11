@@ -10,8 +10,7 @@
 // conversation that drew it; mail waiting for a unit's topic beside the
 // count, never in it (10.4.3); the count leaving the verdicts out, which
 // have the project's own row while they wait (18.2.11), a feature's among
-// them, its Continue going where it stands; an epic picked opening on its
-// menu with what waits there first (18.S3, 5.S23); the inbox as one
+// them, its Continue going where it stands; the inbox as one
 // line (18.2.8); one Start row, the product's row with its sessions and the
 // research owed (18.2.13, 8.12.13), triage, the roadmap, the view once a
 // unit has closed (18.2.18), manage and help, its walk carried on in the
@@ -34,7 +33,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, okSectionsAsync, output, sectionOf, screenOf, writeState, layout, commitAll } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, output, sectionOf, writeState, layout, commitAll } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT: FUMI, MADE, leaningCall } = require('./ledger-world.cjs');
 const { SOLO, SOLO_AT, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
@@ -329,28 +328,20 @@ describe('the start menu (18.2.12)', () => {
   });
 });
 
-describe('a builder\'s question parked in the ledger (12.S31, 18.S2, 5.S23)', () => {
+describe('a builder\'s question parked in the ledger (12.S31, 18.S2)', () => {
   /** @type {string} */
   let dir;
   review.useWorld((copied) => {
     dir = copied;
   });
 
-  it('12.S31, 18.S2, 5.S23: a fix task\'s builder parks on a question, and the unit is listed first with it counted, read from the ledger in a new session; no other row counts anything, and no waiting section stands apart — and in an epic, picked there, the epic opens on its menu with the question first and recommended (18.S3, 18.2.4)', async () => {
+  it('12.S31, 18.S2: a fix task\'s builder parks on a question, and the unit is listed first with it counted, read from the ledger in a new session; no other row counts anything, and no waiting section stands apart', async () => {
     review.firstRoundFailed();
     review.enter();
     await review.fixParked();
-    const env = review.env(NEW_SESSION);
-    const { menu } = drawnIn(dir, env);
-    createManifest(dir, review.UNIT, { ...review.readManifest(dir, review.UNIT), work_type: 'epic' });
-    drawnIn(dir, env);
-    const { next } = ok(dir, ['gate', 'start menu', '--pick', '1'], { env });
-    const opened = output(dir, next.argv, { env });
-    const first = screenOf(output(dir, ['render', 'epic-menu', review.UNIT], { env }), 'MENU: epic menu').slice(3, 5).join(' ').replace(/\s+/g, ' ');
+    const { menu } = drawnIn(dir, review.env(NEW_SESSION));
 
     assert.strictEqual(menu[0], '1 → Continue feature: Pay — review · 1 question waiting for you');
     assert.deepStrictEqual(menu.filter((row) => row.includes('waiting for you')), [menu[0]]);
-    assert.match(opened, /^skill: leeway-continue-epic\nargs: pay$/m);
-    assert.strictEqual(first, '1 → Is the receipt mailed or printed? — a question waiting for you (recommended)');
   });
 });

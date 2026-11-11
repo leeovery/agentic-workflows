@@ -13,8 +13,10 @@
 // pass on the re-land and the checklist closed again — the marks read back
 // and stored before the screen is drawn, then the pick taking them read
 // back fresh, the build begun and handed off into, and its position
-// switched. The sweep before
-// the spec is test-pipeline-simulation-epic-sweep.cjs's.
+// switched; then a builder's question parking its task, counted on the
+// epic's start menu row in a new session, read from the ledger, and the
+// epic's Continue opening on its menu with the question first. The sweep
+// before the spec is test-pipeline-simulation-epic-sweep.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; it replays the engine calls
@@ -30,14 +32,16 @@ const fs = require('fs');
 const path = require('path');
 const {
   Sim, discussed, mappedEpic, specEntry, handoff, answerGate, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
+  buildEntry, writePhaseTasks, startPhase, startRow, continueUnit, epicKey,
 } = require('./pipeline-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
 
 describe('pipeline simulation: epic, the spec', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, it is cut into phases and ready to build is closed, whose review row builds the page, its marks read back, the wording agreed re-landed onto the open page — voiding the close and reopening the review until a pass and a close again — and the pick over the open page begins the build, handing off into it, its position switched after (24.S3, 24.S4, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, it is cut into phases and ready to build is closed, whose review row builds the page, its marks read back, the wording agreed re-landed onto the open page — voiding the close and reopening the review until a pass and a close again — and the pick over the open page begins the build, handing off into it, its position switched after (24.S3, 24.S4, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14); a builder\'s question waiting there shows in a new session on the start menu and first on the epic\'s menu (5.S23, 18.S3, 18.2.4)', async () => {
     const wu = 'ledgerly';
     mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
@@ -110,5 +114,22 @@ describe('pipeline simulation: epic, the spec', () => {
     assert.deepStrictEqual(picked.next.argv.slice(-2), ['--marks', readBack]);
     assert.strictEqual(intoTheBuild(sim, wu, sim.run(picked.next.argv)).record, `${wu}/spec-review.json`);
     sim.run(['workunit', 'position', wu, 'step']);
+
+    // A builder's question parks its task; in a new session the start menu
+    // counts it on the epic's row, read from the ledger, and the epic's
+    // Continue opens on its menu with the question first.
+    buildEntry(sim, wu);
+    writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Keep the ledger', scenarios: ['1.S1'] }]);
+    startPhase(sim, wu, 1);
+    sim.run(['task', 'start', wu, '1.1']);
+    const asks = 'Is the ledger signed?';
+    const question = sim.run(['ledger', 'ask', `${wu}.implementation`, '--task', '1.1'], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: asks })).id;
+    await sim.runAsync(['raise', `${wu}.implementation`, '--answers', question, '--parks', '1.1'], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: asks }));
+    sim.handOver();
+    assert.match(startRow(sim, wu), /1 question waiting for you$/);
+    assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/leeway-continue-epic ${wu}\`.`);
+    sim.handOver();
+    const first = epicKey(sim, wu, '1');
+    assert.deepStrictEqual([first.head, first.recommended], [asks, true]);
   });
 });
