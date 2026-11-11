@@ -4,7 +4,8 @@
 // The pipeline simulation's trust-log scenario: Claude's calls, the
 // person's answers to them through the ledger verbs, the verdicts and the
 // raises, each landing a line of the trust log where it is a departure, each
-// question labelled by the stub armed for the labeller (labels.cjs).
+// question labelled by the stub armed for the labeller (labels.cjs), and the
+// person's own words read by it as the reader.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -27,12 +28,13 @@ describe('pipeline simulation: the trust log', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
     const wu = 'fumi';
     sim.env = {
       ...sim.env,
       CLAUDE_STUB_ANSWERS: JSON.stringify({
         'The answer: ': 'no-login',
+        'The reply: ': { row: '1' },
         'Is a note a window?': labelAnswers('look', { hardToUndo: true }),
         'What is a note?': labelAnswers('behaviour'),
         'Does a note have a title?': labelAnswers('words'),
@@ -63,6 +65,13 @@ describe('pipeline simulation: the trust log', () => {
     await raised('Does a note float?', '1');
     await raised('Does a note take focus?', '2');
 
+    // The person's own words, which the separate call reads as the lean's
+    // row: an agreement, owed no verdict.
+    const stacking = ledger(['ask', note], { ...made, text: 'Does a note stay above other windows?' });
+    const stacked = (await sim.runAsync(['raise', note, '--answers', stacking], null, JSON.stringify(leaningCall('It floats.', 'It stays put.')))).raise;
+    sim.run(['raise', 'answer', stacked, '--own'], null, JSON.stringify({ text: 'Keep it floating over the rest.', why: 'The person said why.' }));
+    assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => stacked.startsWith(d.id)), 'own words read as the lean wait on a verdict');
+
     // Claude proposing to change an earlier call of its own, and the person
     // keeping it as it stands: a keep at the raise's id, its raise event
     // naming it.
@@ -87,6 +96,6 @@ describe('pipeline simulation: the trust log', () => {
     const retitled = ledger(['replace', note, '--replaces', untitled, '--reason', 'changed-mind'], { by: 'person', drops: ['no title'], text: 'A note has a title.', why: 'Titles help search.' });
     assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => d.id === retitled), 'the person\'s own decision, changed, waits on a verdict');
     const kinds = trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'call' || type === 'raise').map(({ type, kind }) => `${type} ${kind}`);
-    assert.deepStrictEqual(kinds, ['call look', 'call look', 'raise behaviour', 'raise behaviour', 'call null', 'raise behaviour'], 'the calls and raises carry no labels for the oracle to hold');
+    assert.deepStrictEqual(kinds, ['call look', 'call look', 'raise behaviour', 'raise behaviour', 'raise behaviour', 'call null', 'raise behaviour'], 'the calls and raises carry no labels for the oracle to hold');
   });
 });

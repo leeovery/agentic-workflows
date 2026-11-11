@@ -588,15 +588,21 @@ function linearMenu(sim, wu) {
 }
 
 // The person's answer at the gate shown, through `gate` as the prose gives
-// it: one line of the trust log apiece, the oracle holds. Answers what
-// `gate` answered.
-/** @param {Sim} sim @param {string} name @param {...string} answer */
-function answerGate(sim, name, ...answer) {
+// it — free text with their words on stdin: one line of the trust log
+// apiece, the oracle holds. Answers what `gate` answered.
+/** @param {Sim} sim @param {string[]} args @param {string} words */
+function gateAnswered(sim, args, words) {
   const before = trustLines(sim);
-  const answered = sim.run(['gate', name, ...answer]);
-  auditGateAnswer(sim, answered, before, `gate ${name} ${answer.join(' ')}`);
+  const answered = sim.run(['gate', ...args], null, words);
+  auditGateAnswer(sim, answered, before, `gate ${args.join(' ')}`);
   return answered;
 }
+
+/** A row picked or a typed row, by its key. @param {Sim} sim @param {string} name @param {...string} answer */
+const answerGate = (sim, name, ...answer) => gateAnswered(sim, [name, ...answer], '');
+
+/** Free text naming no row, the person's `words`. @param {Sim} sim @param {string} name @param {string} words */
+const typeAtGate = (sim, name, words) => gateAnswered(sim, [name, '--typed'], words);
 
 /** The gates the person answered, in order, as the trust log has them. @param {Sim} sim @returns {string[]} */
 const gatesAnswered = (sim) => trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'gate').map(({ gate }) => gate);
@@ -1557,7 +1563,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

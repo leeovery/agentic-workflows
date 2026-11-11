@@ -48,7 +48,13 @@ node .claude/skills/leeway-engine/scripts/engine.cjs gate "{name}" --typed {key}
 
 A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
 
-Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, under the prompt row's key, such as `comment`, or with no key for free text. The gate is then set aside.
+Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, under the prompt row's key, such as `comment`, or with no key for free text, the person's words on stdin as they wrote them. The gate is then set aside.
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs gate "{name}" --typed <<'WORDS'
+{words}
+WORDS
+```
 
 A reply that changes what happens next — a pick with a condition on it ("yes, but do it this way"), a Comment that redirects the work — is confirmed with the person before anything acts on it. A pick with a condition goes to `gate` once they have confirmed it, so a correction finds the gate still open.
 

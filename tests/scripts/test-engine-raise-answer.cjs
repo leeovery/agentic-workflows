@@ -10,15 +10,18 @@
 // who moved whom the engine's alone; pressed or typed (6.6.4); "I don't
 // follow" logged in the trust log alone, the raise left open (F1); every
 // refusal writing nothing; an answer given again, after a kill at a step
-// the raise adds or once it landed, landing nothing twice (E3); and a call
-// the decision point lets proceed landed as Claude's (E7).
+// the raise adds or once it landed, landing nothing twice (E3); the
+// person's own words read by the separate call before they land, read as
+// the lean an agreement owed no verdict (16.19.1); and a call the decision
+// point lets proceed landed as Claude's (E7).
 //
 // Layer: verb, and beside it process — the answer killed in a child at a
 // file call on its way. World: the ledger suites' unit with two
 // questions asked on the note window, built once and copied for each test;
 // each test keeps its conversation and the trust log in a config folder of
 // its own. The separate call is the stub binary, unarmed: no login, so
-// every row is drawn unjudged.
+// every row is drawn unjudged and no words are read, but where a test arms
+// it.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -176,7 +179,7 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
     assert.deepStrictEqual(answered, { answer: '1' });
   });
 
-  it('the person\'s own words land with their text and why, and what they rule out where Claude gives it, none else; standing over the lean, logged as free text, typed, naming no row, its reading null', async () => {
+  it('the person\'s own words land with their text and why, and what they rule out where Claude gives it, none else; the separate call unable to read them — no login serves it — standing over the lean, logged as free text, typed, naming no row, with no row read (16.19.8)', async () => {
     const plain = await draw(asked.where);
     const ruling = await draw(asked.size);
 
@@ -205,6 +208,36 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
     assert.match(output(dir, ['raise', 'show', id], { env: conversation() }), new RegExp(`^\\{"ok":true,"raise":"${id}"\\}\\n=== MENU: raise — ${id} `));
     answer(id, ['--pick', '2']);
     assert.deepStrictEqual(logged().map((event) => [event.entry, event.didnt_follow]), [[null, true], [id, false]]);
+  });
+});
+
+describe('the person\'s own words, read (16.19.1, 16.19.6)', () => {
+  const AGREES = 'Wherever I am looking when I make it';
+  const DEPARTS = 'Always on the main screen';
+
+  it('read against Claude\'s rows by the call on Opus before the entry lands: read as the lean\'s row, an agreement — the entry moving no one, its event the row read — owed no verdict; read as another, standing over the lean, a departure waiting in the queue; the words kept in the entry alone', async () => {
+    const agreeing = await draw(asked.where);
+    const departing = await draw(asked.size);
+    const log = path.join(config(), 'reader-calls.jsonl');
+    const env = { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ [AGREES]: { row: '1' }, [DEPARTS]: { row: '2' } }) };
+
+    answer(agreeing, ['--own'], { text: AGREES, why: WHY }, env);
+    const agreed = lastEntry();
+    answer(departing, ['--own'], { text: DEPARTS, why: WHY }, env);
+
+    assert.deepStrictEqual([agreed, lastEntry()], [
+      entryOf(agreeing, asked.where, { text: AGREES, rules_out: [] }),
+      entryOf(departing, asked.size, { who_moved_whom: 'person-moved-claude', text: DEPARTS, rules_out: [] }),
+    ]);
+    const own = { answer: null, with_text: true };
+    assert.deepStrictEqual(logged(), [raiseEvent(agreeing, { ...own, reading: '1' }), raiseEvent(departing, { ...own, reading: '2' })]);
+    const queued = ok(dir, ['verdict', 'queue'], { env: conversation() }).departures.map((/** @type {{id: string}} */ d) => full(d.id));
+    assert.deepStrictEqual(queued, [departing]);
+    const options = CALL.rows.map((row) => `- ${row.key}: ${row.text}`).join('\n');
+    const made = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepStrictEqual(made.map(({ argv, input }) => [argv[argv.indexOf('--model') + 1], input]), [AGREES, DEPARTS].map((words) => ['opus', `The question: ${CALL.question}\n\nThe options:\n${options}\n\nThe reply: ${words}`]));
+    const kept = [logText(), fs.readFileSync(inFolder(RAISE_SHOWN), 'utf8')];
+    assert.deepStrictEqual([AGREES, DEPARTS].filter((words) => kept.some((text) => text.includes(words))), [], 'the trust log or the seal holds the person\'s words');
   });
 });
 

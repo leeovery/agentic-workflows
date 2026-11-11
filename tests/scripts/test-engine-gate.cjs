@@ -9,7 +9,8 @@
 // illustration, a raise's menu, or a command without a session — and
 // `engine gate`, which logs the answer to the trust log by the gate's name
 // (3.2.6, 16.11.9): the row the engine recommended and the row picked, a
-// typed row, or free text; pressed only where the mod's record of its last
+// typed row, or free text, its words read by the separate call for the row
+// they pick and dropped (16.S40, 16.S68); pressed only where the mod's record of its last
 // press names this gate and row after it was shown — whatever the rows mod
 // did with the send's own record — typed otherwise and always with the mod
 // off (6.6.3, 6.6.4); what the row leads to returned and never performed
@@ -23,7 +24,8 @@
 // which puts the code gate's recommended row on screen — shared by every
 // test; a plain repository without state for the gate before the project
 // has any. Each test keeps its conversation and its trust log in a config
-// folder of its own.
+// folder of its own. The separate call is the stub binary, unarmed — no
+// login, so no words are read — but where a test arms it.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -89,11 +91,20 @@ const projectId = () => JSON.parse(fs.readFileSync(statePath(dir, layout.project
 /** Render a surface for the conversation. @param {string[]} args @param {Record<string, string|undefined>} [env] */
 const render = (args, env) => output(dir, ['render', ...args], { env: conversation(env) });
 
-/** Answer the gate shown. @param {string[]} args @param {Record<string, string|undefined>} [env] */
-const answer = (args, env) => ok(dir, ['gate', ...args], { env: conversation(env) });
+/** Answer the gate shown, `stdin` the person's words. @param {string[]} args @param {Record<string, string|undefined>} [env] @param {string} [stdin] */
+const answer = (args, env, stdin) => ok(dir, ['gate', ...args], { env: conversation(env), stdin });
 
-/** An answer the engine refuses: its error. @param {string[]} args @param {Record<string, string|undefined>} [env] */
-const refused = (args, env) => refuses(dir, ['gate', ...args], { env: conversation(env) }).error;
+/** An answer the engine refuses: its error. @param {string[]} args @param {Record<string, string|undefined>} [env] @param {string} [stdin] */
+const refused = (args, env, stdin) => refuses(dir, ['gate', ...args], { env: conversation(env), stdin }).error;
+
+/** What the person typed in place of a row. */
+const WORDS = 'not yet — I want to sort the repository settings out myself first';
+
+/** The separate calls the stub logged to `log`. @param {string} log @returns {{argv: string[], input: string}[]} */
+const calls = (log) => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
+
+/** Every file under `folder`, by its path. @param {string} folder @returns {string[]} */
+const filesUnder = (folder) => fs.readdirSync(folder, { recursive: true, encoding: 'utf8' }).map((rel) => path.join(folder, rel)).filter((file) => fs.statSync(file).isFile());
 
 /**
  * The mod's record of its last press: the code gate's `yes` unless `over`
@@ -348,13 +359,30 @@ describe('gate (6.6, 6.S18)', () => {
     assert.deepStrictEqual(ownFields(events()[0]), { gate: 'migration gate', recommended: null, picked: 'ask', via: 'typed', with_text: false, reading: null });
   });
 
-  it('18.S51: free text naming no row sets the gate aside — logged as free text, its reading left to the separate call, leading nowhere', () => {
+  it('18.S51, 16.S68: free text naming no row, which the separate call cannot read — no login serves it — sets the gate aside, logged as free text with no row read, leading nowhere', () => {
     showCodeGate(ANNOUNCED);
 
-    assert.deepStrictEqual(answer(['code gate', '--typed'], ANNOUNCED), {
+    assert.deepStrictEqual(answer(['code gate', '--typed'], ANNOUNCED, WORDS), {
       ok: true, gate: 'code gate', picked: null, recommended: 'b', via: 'typed', next: null,
     });
     assert.deepStrictEqual(ownFields(events()[0]), { gate: 'code gate', recommended: 'b', picked: null, via: 'typed', with_text: true, reading: null });
+  });
+
+  it('16.S40: free text is read by the separate call against the gate\'s question and its rows, and the trust log holds the gate\'s name, the row recommended and the row read; the words land nowhere but the call, and the gate is set aside whatever they read, leading nowhere (16.13.3, 6.6.2)', () => {
+    render(['github-rule-gate']);
+    const log = path.join(config(), 'calls.jsonl');
+    const { question, options } = shown();
+
+    const res = answer(['github rule gate', '--typed'], { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'n' } }) }, WORDS);
+
+    assert.deepStrictEqual(res, { ok: true, gate: 'github rule gate', picked: null, recommended: null, via: 'typed', next: null });
+    assert.deepStrictEqual(ownFields(events()[0]), { gate: 'github rule gate', recommended: null, picked: null, via: 'typed', with_text: true, reading: 'n' });
+    const [call, ...more] = calls(log);
+    assert.deepStrictEqual(more, []);
+    const rows = options.map((/** @type {{key: string, word: string, head: string}} */ o) => `- ${o.key}: ${o.word} — ${o.head}`).join('\n');
+    assert.strictEqual(call.input, `The question: ${question}\n\nThe options:\n${rows}\n\nThe reply: ${WORDS}`);
+    const holding = [...filesUnder(config()), ...filesUnder(statePath(dir))].filter((file) => file !== log && fs.readFileSync(file, 'utf8').includes(WORDS));
+    assert.deepStrictEqual(holding, [], 'the person\'s words were kept');
   });
 
   it('the answer is marked on the gate shown, and a gate answered takes no second answer until it is shown again', () => {
@@ -450,6 +478,17 @@ describe('gate — refusals, logging nothing', () => {
     assert.deepStrictEqual([events(), shown()], [[], record]);
   });
 
+  it('free text with no words on stdin, before any call is made', () => {
+    showCodeGate();
+    const record = shown();
+    const log = path.join(config(), 'calls.jsonl');
+
+    for (const words of ['', ' \n']) {
+      assert.strictEqual(refused(['code gate', '--typed'], { CLAUDE_STUB_LOG: log }, words), 'gate: free text at "code gate" comes with the person\'s words on stdin, read for the row they pick and dropped');
+    }
+    assert.deepStrictEqual([events(), shown(), calls(log)], [[], record, []]);
+  });
+
   it('a raise, by its menu or its name: a raise is no gate, and is answered by raise answer', () => {
     render(['migration-gate']);
     const record = shown();
@@ -462,7 +501,7 @@ describe('gate — refusals, logging nothing', () => {
 
   it('a call naming no gate, or neither answer, or both, is a usage error — and the name is whole, quoted or as bare words', () => {
     render(['github-rule-gate']);
-    const usage = 'Usage: engine gate <name> (--pick <key> | --typed [<key>])';
+    const usage = 'Usage: engine gate <name> (--pick <key> | --typed [<key>])   (free text\'s words on stdin)';
     for (const args of [['--pick', 'y'], ['github rule gate'], ['github rule gate', '--pick', 'y', '--typed'], ['github rule gate', '--pick']]) {
       assert.strictEqual(refused(args), usage, args.join(' '));
     }

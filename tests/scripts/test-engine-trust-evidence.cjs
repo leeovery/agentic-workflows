@@ -4,7 +4,8 @@
 // The evidence this machine logged on a project (leeway-engine/scripts/
 // domain/trust-evidence.cjs, over trust-log.cjs's read): each answer the
 // trust log holds and where it stands — a raise answered with Claude's
-// sealed answer an agreement, with another row or the person's own words a
+// sealed answer, or in the person's own words read as it, an agreement, with
+// another row or the person's own words read as another or as none a
 // departure, one not followed no weight, a call Claude's call, a reversal a
 // departure cancelling the answer whose entry it reverses, that answer's
 // event as written — each answer's question, its kind and Claude's sort, a
@@ -41,11 +42,14 @@ const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 const { logPath, logText, project } = useTrustWorld('trust-evidence-');
 
 // A raise's fields, Claude's sealed answer row 1: answered with it, with
-// another row, in the person's own words, or not followed.
+// another row, in the person's own words — read as no row, as row 1 or as
+// row 2 — or not followed.
 const RAISE = Object.freeze({ kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocked_build: null });
 const AGREES = Object.freeze({ ...RAISE, answer: '1' });
 const DEPARTS = Object.freeze({ ...RAISE, answer: '2' });
 const OWN_WORDS = Object.freeze({ ...RAISE, answer: null, via: 'typed', with_text: true });
+const OWN_WORDS_AGREEING = Object.freeze({ ...OWN_WORDS, reading: '1' });
+const OWN_WORDS_DEPARTING = Object.freeze({ ...OWN_WORDS, reading: '2' });
 const NOT_FOLLOWED = Object.freeze({ ...RAISE, entry: null, answer: null, didnt_follow: true });
 
 /** The ledger of the project at `dir` holding `entries`, a line each. @param {string} dir @param {...string} entries */
@@ -68,11 +72,11 @@ const raised = (dir, entry, fields) => record('raise', { ...fields, entry }, fro
 const reversal = (dir, entry, reverses) => record('reversal', { entry, reverses }, from(dir));
 
 describe('where each answer stands (16.12.1, 16.10.1)', () => {
-  it('stands a raise answered with Claude\'s sealed answer as an agreement, with another row or in the person\'s own words as a departure, one not followed as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict and a blind draw no answer', () => {
+  it('stands a raise answered with Claude\'s sealed answer, or in the person\'s own words read as it, as an agreement, with another row or in the person\'s own words read as another or as none as a departure, one not followed as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict and a blind draw no answer', () => {
     const dir = project('fumi');
-    const [agreed, departed, own, called] = ['Agreed', 'Departed', 'Own', 'Called'].map(idOf);
+    const [agreed, departed, own, ownAgreed, ownDeparted, called] = ['Agreed', 'Departed', 'Own', 'OwnAgreed', 'OwnDeparted', 'Called'].map(idOf);
     const answers = [
-      raised(dir, agreed, AGREES), raised(dir, departed, DEPARTS), raised(dir, own, OWN_WORDS),
+      raised(dir, agreed, AGREES), raised(dir, departed, DEPARTS), raised(dir, own, OWN_WORDS), raised(dir, ownAgreed, OWN_WORDS_AGREEING), raised(dir, ownDeparted, OWN_WORDS_DEPARTING),
       record('raise', NOT_FOLLOWED, from(dir)), record('call', { entry: called, kind: null, label: null, sort: 'one' }, from(dir)),
     ];
     record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null }, from(dir));
@@ -82,9 +86,9 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     const read = evidence(dir);
 
     assert.deepStrictEqual(read.answers, answers.map((event, i) => ({
-      event, standing: ['agreement', 'departure', 'departure', 'no-weight', 'call'][i], cancelled_by: null, kind: null, sort: ['several', 'several', 'several', 'several', 'one'][i], model: null,
+      event, standing: ['agreement', 'departure', 'departure', 'agreement', 'departure', 'no-weight', 'call'][i], cancelled_by: null, kind: null, sort: i === 6 ? 'one' : 'several', model: null,
     })));
-    assert.deepStrictEqual(read.departures, new Set([departed, own]));
+    assert.deepStrictEqual(read.departures, new Set([departed, own, ownDeparted]));
   });
 
   it('gives each answer its question\'s kind and Claude\'s sort as its event holds them, a reversal those of the answer it reverses wherever each was read, and the kind as the person last corrected that of either entry (16.15.4)', (t) => {

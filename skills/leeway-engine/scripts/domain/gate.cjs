@@ -28,10 +28,13 @@
 //   (trust-events.cjs). A typed row's key is its label's words, lowercase,
 //   joined by hyphens: `comment`, `tell-me-what-to-change`, a span `1-4`.
 // - An answer is a row picked by its key; a typed row, by its key; or free
-//   text, naming no row. No text reaches the engine (16.13.3): what the
-//   person typed stays in the conversation, and the event says only that
-//   the answer was free text, its reading null until the separate call
-//   reads it (16.19.1).
+//   text, naming no row, the person's words given with it. The separate
+//   call reads the words against the gate's rows (answer-reader.cjs) for
+//   the one they pick, and they are dropped: the event says only that the
+//   answer was free text, and its reading, the row read from it, null where
+//   they pick none or the call cannot read them (16.13.3, 16.19.1,
+//   16.19.8). A reading leads nowhere: free text sets the gate aside
+//   whatever it reads (6.6.2).
 // - An answer was pressed where the gate mod announced itself to the
 //   command and its record of the last press, `pressed.json`, names this
 //   gate and this row, sent after the gate was shown — so a press that
@@ -45,12 +48,12 @@
 //   gate shown, and `gate` refuses it, naming `raise answer`. Drawing one
 //   clears the gate shown, so only one shows at a time (6.6.10).
 // - `gate` refuses, logging nothing, with no session, no gate shown,
-//   another gate's name, a key the gate lacks, and a gate already
-//   answered. It writes no state: the trust log under the trust log's lock
-//   (trust-log.cjs), and the record, marked answered. The event's id is
-//   drawn from the conversation, the gate and when it was shown, so a
-//   rerun after a kill between the two logs the same event again, read
-//   once (16.13.3).
+//   another gate's name, a key the gate lacks, free text with no words, and
+//   a gate already answered; each before the words are read. It writes no
+//   state: the trust log under the trust log's lock (trust-log.cjs), and
+//   the record, marked answered. The event's id is drawn from the
+//   conversation, the gate and when it was shown, so a rerun after a kill
+//   between the two logs the same event again, read once (16.13.3).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -58,6 +61,7 @@ const path = require('path');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { conversationDir } = require('./conversation.cjs');
+const { readAnswer } = require('./answer-reader.cjs');
 const { idFrom } = require('./ledger-ids.cjs');
 const { gateShown, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { record } = require('./trust-log.cjs');
@@ -76,7 +80,7 @@ const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
  * @property {string} at when it was shown
  * @property {Answered|null} answered
  */
-/** @typedef {{pick: string} | {typed: string|null}} Answer */
+/** A row picked, a typed row by its key, or free text: the person's words. @typedef {{pick: string} | {typed: string} | {words: string}} Answer */
 
 const ENTRY_SEPARATOR = ' — ';
 const RAISE = 'raise';
@@ -146,7 +150,7 @@ function readJson(file) {
 
 /**
  * The row `answer` names on the gate `shown` — null for free text — or a
- * refusal naming the rows it has.
+ * refusal naming the rows it has, or free text with no words.
  * @param {ShownRecord} shown @param {Answer} answer
  * @returns {ShownOption|ShownTypedRow|null}
  */
@@ -157,7 +161,10 @@ function rowAnswered(shown, answer) {
     const typed = shown.typed.some((t) => t.key === answer.pick) ? ` — ${answer.pick} is typed: --typed ${answer.pick}` : '';
     throw new Error(`gate: "${shown.gate}" has no row ${answer.pick} to pick — its rows: ${shown.options.map((o) => o.key).join(', ')}${typed}`);
   }
-  if (answer.typed === null) return null;
+  if ('words' in answer) {
+    if (answer.words.trim() === '') throw new Error(`gate: free text at "${shown.gate}" comes with the person's words on stdin, read for the row they pick and dropped`);
+    return null;
+  }
   const row = shown.typed.find((t) => t.key === answer.typed);
   if (row) return row;
   throw new Error(`gate: "${shown.gate}" has no typed row ${answer.typed} — its typed rows: ${shown.typed.map((t) => t.key).join(', ') || 'none'}`);
@@ -187,10 +194,20 @@ function pressedOnGate(session, shown, row) {
 }
 
 /**
+ * The row the person's words pick among the gate's, as the separate call
+ * reads them; null where they pick none, or the call cannot read them.
+ * @param {ShownRecord} shown @param {string} words
+ */
+function readingOf({ question, options }, words) {
+  return readAnswer({ question, rows: options.map(({ key, word, head }) => ({ key, text: word === null ? head : `${word} — ${head}` })), words });
+}
+
+/**
  * The person's answer at the gate `named` — by its name, or by the entry its
  * marker declares — logged to the trust log: the gate, the row picked or null
- * for free text, the row the engine recommended, how it came, and what the
- * row leads to; warnings where the log could not be appended to.
+ * for free text and the row read from it, the row the engine recommended,
+ * how it came, and what the row leads to; warnings where the log could not
+ * be appended to.
  * @param {string} cwd @param {string} named @param {Answer} answer
  */
 function answerGate(cwd, named, answer) {
@@ -208,10 +225,11 @@ function answerGate(cwd, named, answer) {
   const via = 'pick' in answer && pressedOnGate(session, shown, /** @type {ShownOption} */ (row)) ? 'pressed' : 'typed';
   const recommended = shown.options.find((o) => o.recommended)?.key ?? null;
   const picked = row?.key ?? null;
+  const reading = 'words' in answer ? readingOf(shown, answer.words) : null;
   /** @type {string[]} */
   const warnings = [];
   const id = idFrom(session, name, shown.at);
-  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading: null }, { cwd, warnings, id });
+  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading }, { cwd, warnings, id });
   writeJsonAtomic(file, { ...shown, answered: { at: new Date().toISOString(), picked, via } });
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }

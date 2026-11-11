@@ -218,13 +218,14 @@ describe('the redraw rule across a fact and a call (P6)', () => {
 });
 
 describe('the answer (16.S75, 16.3.2)', () => {
-  it('16.S75: a pick and the person\'s own words each land as the person\'s decision at the raise\'s id — sealing no lean, moving no one, given as their own, unchecked — and the seal is marked; neither writes to the trust log', async () => {
+  it('16.S75: a pick and the person\'s own words each land as the person\'s decision at the raise\'s id — sealing no lean, moving no one, given as their own, unchecked, the words never read — and the seal is marked; neither writes to the trust log', async () => {
     const rowed = (await raiseFact()).res.raise;
     const bare = (await raiseFact(BARE, { answers: asked.team })).res.raise;
+    const log = path.join(config(), 'calls.jsonl');
 
     const res = answer(rowed, ['--pick', '1']);
     const [picked, tip] = [lastEntry(), stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim()];
-    answer(bare, ['--own'], { text: 'Team ABCDE12345', why: WHY });
+    answer(bare, ['--own'], { text: 'Team ABCDE12345', why: WHY }, { CLAUDE_STUB_LOG: log });
 
     assert.deepStrictEqual(res, { ok: true, raise: rowed, id: res.id, committed: tip });
     assert.deepStrictEqual([picked, lastEntry()], [
@@ -233,6 +234,7 @@ describe('the answer (16.S75, 16.3.2)', () => {
     ]);
     assert.deepStrictEqual([seals()[rowed].answered.answer, seals()[bare].answered.answer], ['1', null]);
     assert.strictEqual(logText(), '');
+    assert.ok(!fs.existsSync(log), 'the person\'s words on a fact were read');
   });
 
   it('no answer to a fact reads as Claude\'s call or waits on a verdict: ledger since shows none, and the verdict queue holds only the departure a call\'s answer in the person\'s own words made', async () => {
