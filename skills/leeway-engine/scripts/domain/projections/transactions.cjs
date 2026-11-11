@@ -49,9 +49,9 @@ function inboxLine(n) {
 }
 
 /**
- * workunit cancel / reactivate / pivot receipts. `pivot` is
- * advisory-only — its user-facing continuation is the pivot-continuation
- * menu, owned by the caller's menu step.
+ * workunit cancel / reactivate / pivot receipts, each confirming the unit
+ * by name: the pivot saying it is an epic now, its discussion the first
+ * topic on its map.
  * @param {'cancel'|'reactivate'|'pivot'} verb
  * @param {string} workUnit
  * @param {{warn?: boolean, inbox?: number, kept?: string[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside
@@ -71,9 +71,10 @@ function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [] } 
       confirmation(`"${name}" reactivated.`),
     ]);
   }
-  return warn
-    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. The next start retries the indexing.', CONTINUE_INSTRUCTION)
-    : '';
+  return joined([
+    warn ? warningBlock('Knowledge indexing warning', 'The pivot is complete. The next start retries the indexing.') : null,
+    confirmation(`"${name}" is an epic now, its discussion the first topic on its map.`),
+  ]);
 }
 
 /**

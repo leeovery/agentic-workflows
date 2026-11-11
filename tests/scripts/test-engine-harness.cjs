@@ -259,7 +259,7 @@ describe('engine harness — a world made once and copied', () => {
 describe('engine harness — a keyword-only checkout', () => {
   let dir;
   beforeEach(() => { dir = setupGitFixture('harness-kb-'); recordedFeature(dir); });
-  const pivot = () => ok(dir, ['workunit', 'pivot', 'card']);
+  const pivot = () => ok(dir, ['workunit', 'pivot', 'card', '--summary', 'A card']);
   afterEach(() => cleanupFixture(dir));
 
   it('is one a transaction indexes into: the store is real, and says what it holds', () => {

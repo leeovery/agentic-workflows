@@ -455,9 +455,9 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
 
   it('`render help` refuses a menu the registry does not name, and one with no help yet', () => {
     assert.strictEqual(refuses(dir, ['render', 'help', 'inbox']).error, 'there is no menu "inbox" — the menus: start-menu, epic-menu, triage, archived, archived-item, roadmap, manage, manage-unit, closed, verdicts');
-    assert.deepStrictEqual([refuses(dir, ['render', 'help', 'triage', '--pick', '1']).error, refuses(dir, ['render', 'help', 'closed']).error], [
+    assert.deepStrictEqual([refuses(dir, ['render', 'help', 'triage', '--pick', '1']).error, refuses(dir, ['render', 'help', 'archived']).error], [
       'there is no help for triage yet — its help is triage.help.md, beside its projection',
-      'there is no help for the closed units yet — its help is closed.help.md, beside its projection',
+      'there is no help for the archived items yet — its help is archived.help.md, beside its projection',
     ]);
   });
 

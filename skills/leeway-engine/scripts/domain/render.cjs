@@ -25,8 +25,8 @@ const { displayWidth } = require('../kernel/terminal.cjs');
 const { titlecase, tag } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, absorbConfirmGate, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
+const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
@@ -55,7 +55,7 @@ const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_T
 const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
   computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
-  UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
+  UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan, unitOpenRecords,
   postponePlan, postponeTarget, postponedItem, openExperiments, roadmapItems,
   topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
 } = require('./derivations.cjs');
@@ -72,8 +72,6 @@ const { reviewReportSurface, reviewCallsSurface } = require('./review-round.cjs'
 const { reviewTreeSurface } = require('./review-tree.cjs');
 const { finishSurface } = require('./finish.cjs');
 const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
-const { manageDetail } = require('./workunit-manage.cjs');
-const { absorbedMaterial } = require('./workunit-absorb.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
@@ -84,6 +82,7 @@ const { helpSurface } = require('./projections/help.cjs');
 const { verdictsSurface } = require('./verdict.cjs');
 const { startMenuSurface } = require('./projections/start-menu.cjs');
 const { epicMenuSurface } = require('./projections/epic-menu.cjs');
+const { manageSurface, manageUnitSurface, closedSurface, absorbTargetSurface, absorbConfirmSurface } = require('./projections/manage.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -627,8 +626,8 @@ function discoveryCancelStatement(manifest, topic) {
 
 /**
  * The cancel confirm over one unit — `<wu>.discovery.<topic>` of an epic, or
- * a unit by its bare name — fetched by the epic menu and by a session
- * cancelling its own topic or its unit.
+ * a unit by its bare name — fetched by the epic menu, by a session
+ * cancelling its own topic or its unit, and by manage.
  * The statement names exactly what the cancel takes and stays context; the
  * short question takes the glyph. Yes runs the cancel, `topic cancel` or
  * `workunit cancel`; no carries on. A locked or already-cancelled unit
@@ -663,9 +662,11 @@ function epicUnitCancel(cwd, dotpath) {
 }
 
 /**
- * A unit by its bare name under the cancel gate: the whole unit called off —
- * a single-topic unit's its one topic, an epic's asked for in a session of
- * the unit, its spec, build or review (18.4.20).
+ * A unit by its bare name under the cancel gate: the whole unit called off
+ * where it stands — a single-topic unit's its one topic, an epic's asked for
+ * in a session of the unit, its spec, build or review (18.4.20), or through
+ * manage (18.3.4) — each open experiment record of its ending abandoned
+ * (18.4.22).
  * @param {string} cwd @param {string} dotpath
  * @returns {{statement: string, cancel: string[]}}
  */
@@ -674,10 +675,14 @@ function workUnitCancel(cwd, dotpath) {
   if (manifest.status !== 'in-progress') {
     throw new Error(`render cancel-gate: "${workUnit}" is ${manifest.status} — only work in progress is cancelled`);
   }
-  return {
-    statement: `Cancelling **${titlecase(workUnit)}** calls off the whole ${typeLabel.toLowerCase()} — it stops where it stands, and can be reactivated later.`,
-    cancel: ['workunit', 'cancel', workUnit],
-  };
+  const parts = [`Cancelling **${titlecase(workUnit)}** calls off the whole ${typeLabel.toLowerCase()} — it stops where it stands, and can be reactivated later.`];
+  const open = unitOpenRecords(manifest);
+  if (open.length > 0) {
+    const records = open.flatMap(({ ids }) => ids);
+    const one = records.length === 1;
+    parts.push(`${records.length} open experiment record${one ? '' : 's'} (${open.map(({ topic, ids }) => `${topic}: ${ids.join(', ')}`).join('; ')}) end${one ? 's' : ''} abandoned on the register.`);
+  }
+  return { statement: parts.join(' '), cancel: ['workunit', 'cancel', workUnit] };
 }
 
 /**
@@ -872,35 +877,6 @@ function topicReceiptSurface(cwd, args) {
   return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
 }
 
-/**
- * The pre-confirm absorb summary — every fact is the feature's own manifest
- * state, read here so the display can never disagree with what the
- * transaction will move. Experiments count top-level records only.
- * @param {string} cwd @param {{dotpath: string, into?: string, topic?: string}} args @returns {string}
- */
-function absorbSummarySurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-summary');
-  if (manifest.work_type !== 'feature') {
-    throw new Error(`render absorb-summary: "${workUnit}" is not a feature — only features absorb into epics`);
-  }
-  if (!isFilled(args.into)) throw new Error('render absorb-summary: --into is required — the target epic');
-  if (!isFilled(args.topic)) throw new Error('render absorb-summary: --topic is required — the landing topic name');
-  const discussion = itemOf(manifest, 'discussion', workUnit);
-  if (!discussion || typeof discussion !== 'object' || typeof discussion.status !== 'string') {
-    throw new Error(`render absorb-summary: feature "${workUnit}" has no discussion — nothing to absorb`);
-  }
-  const series = itemOf(manifest, 'experiment', workUnit);
-  const experiments = series && typeof series === 'object'
-    ? Object.keys(series.experiments || {}).filter((id) => isParentExperimentId(id)).length
-    : 0;
-  return absorbSummary(workUnit, /** @type {string} */ (args.into), /** @type {string} */ (args.topic), {
-    discussion: discussion.status,
-    experiments,
-    seeds: Array.isArray(manifest.seeds) ? manifest.seeds.length : 0,
-    ...absorbedMaterial(cwd, workUnit),
-  });
-}
-
 /** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, renamed?: string, warn?: string}} args @returns {string} */
 function absorbReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
@@ -973,33 +949,6 @@ function pivotContinuation(cwd, args) {
     throw new Error(`render pivot-continuation: "${workUnit}" is not an epic — the pivot has not run`);
   }
   return pivotContinuationMenu(workUnit);
-}
-
-// ---------------------------------------------------------------------------
-// Manage-flow gates — scoped selections the manage sub-flows fetch at their
-// own gate, computed fresh from the same detail the manage snapshot reads.
-// ---------------------------------------------------------------------------
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function absorbTarget(cwd, args) {
-  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-target');
-  const md = manageDetail(cwd, workUnit);
-  if (!md) throw new Error(`render absorb-target: work unit "${workUnit}" not found`);
-  if (!md.absorb_available) {
-    throw new Error(`render absorb-target: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
-  }
-  return absorbTargetMenu(md);
-}
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function absorbConfirmGateSurface(cwd, args) {
-  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-confirm-gate');
-  const md = manageDetail(cwd, workUnit);
-  if (!md) throw new Error(`render absorb-confirm-gate: work unit "${workUnit}" not found`);
-  if (!md.absorb_available) {
-    throw new Error(`render absorb-confirm-gate: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
-  }
-  return absorbConfirmGate();
 }
 
 // ---------------------------------------------------------------------------
@@ -1491,13 +1440,12 @@ const SURFACES = {
   'postpone-gate': postponeGate,
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
-  'absorb-summary': absorbSummarySurface,
   'absorb-receipt': absorbReceiptSurface,
   'absorb-continuation': absorbContinuationSurface,
   'import-reprompt': importRepromptSurface,
   'pivot-continuation': pivotContinuation,
-  'absorb-target': absorbTarget,
-  'absorb-confirm-gate': absorbConfirmGateSurface,
+  'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
+  'absorb-confirm-gate': absorbConfirmSurface,
   'archived-actions': archivedActionsSurface,
   'archived-delete-gate': archivedDeleteGateSurface,
   'inbox-content': inboxContentSurface,
@@ -1560,6 +1508,9 @@ const SURFACES = {
   'verdicts': (cwd, { unit }) => verdictsSurface(cwd, unit ?? null),
   'start-menu': (cwd) => startMenuSurface(cwd),
   'epic-menu': (cwd, { dotpath }) => epicMenuSurface(cwd, dotpath),
+  manage: (cwd) => manageSurface(cwd),
+  'manage-unit': (cwd, { dotpath }) => manageUnitSurface(cwd, dotpath),
+  closed: (cwd) => closedSurface(cwd),
 };
 
 /**

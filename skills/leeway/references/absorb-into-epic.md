@@ -1,142 +1,19 @@
-# Absorb Feature into Epic
+# Absorb into an Epic
 
-*Reference for **[manage-work-unit](manage-work-unit.md)***
-
----
-
-Merge a feature's discussion into an existing epic as a new topic, then remove the feature entirely. This reference owns the judgment — which epic, the topic name, the user's confirmation; the engine transaction (`workunit absorb`) owns the mechanical tail.
-
-## A. Select Target Epic
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> This will move the feature's discussion, experiments, seed, assets and spikes into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
-```
-
-Fetch and emit the `MENU: absorb target` section verbatim per its marker (its numbering follows the DATA `available_epics` order):
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-target {selected.name}
-```
-
-**STOP.** Wait for user response.
-
-#### If user chose `b/back`
-
-→ Return to caller.
-
-#### If user chose a number
-
-Resolve the number against `available_epics` and store the selected epic as `target_epic`. The topic takes the feature's own name: set `topic` = `{selected.name}`.
-
-→ Proceed to **B. Collision Check**.
+*Reference for **[manage-work-unit.md](manage-work-unit.md)***
 
 ---
 
-## B. Collision Check
-
-Check whether the name is taken in the target epic — as a discussion topic or an experiment series:
+The feature becomes a topic of the epic, under the feature's own name, `{topic}` = `{work_unit}`. Draft what the topic's map row says of it, from its record, `ledger record {work_unit} {work_unit}`, and its log, `.leeway/{work_unit}/topics/{work_unit}/log.md`: its `{summary}`, one line in the product's terms, and its `{description}`. Then fetch the confirm and emit its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.discussion.{topic}
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.experiment.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-confirm-gate {work_unit} --into {epic} --topic {topic} --summary "{summary}" --description "{description}"
 ```
 
-#### If any is `true`
+A refusal ending `— pick a different name` means the epic holds the name already: derive another kebab-case name from the feature's, set `{topic}` to it, and fetch the confirm again. Any other refusal: say it in a line.
 
-Derive a different kebab-case name from the feature's name and its discussion's subject, set `topic` to it, and re-check:
-
-→ Return to **B. Collision Check**.
-
-#### If all are `false`
-
-→ Proceed to **C. Confirm**.
-
----
-
-## C. Confirm
-
-Fetch the summary — every fact is the feature's own manifest state, read by the surface — and emit its DISPLAY section verbatim per its marker:
+The answer goes to `gate`; follow its `next`. Once the absorb has run, fetch its receipt and emit its sections verbatim per their markers. `--moved` lists whichever of `seeds`, `assets` and `spikes` the response reported non-empty, comma-joined; `--experiments` is the count of top-level ids, those with no dot, in its `experiment.experiments` where a series moved; `--renamed` is its `renamed_assets` and `renamed_spikes` as comma-joined `{from}:{to}` pairs; and `--warn` rides where its `warnings` is non-empty. Each is left out where it has nothing:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-summary {selected.name} --into {target_epic} --topic {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-receipt {epic} --topic {topic} [--moved {moved}] [--experiments {n}] [--renamed {renamed}] [--warn]
 ```
-
-Fetch the gate and emit its MENU section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-confirm-gate {selected.name}
-```
-
-**STOP.** Wait for user response.
-
-#### If user chose `n/no`
-
-→ Return to caller.
-
-#### If user chose `y/yes`
-
-→ Proceed to **D. Absorb**.
-
----
-
-## D. Absorb
-
-One engine transaction moves the discussion (and any experiment series and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map, syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
-```
-
-The JSON response reports what moved (`discussion`, `experiment`, `seeds`, `assets`, `spikes`), `renamed_assets` and `renamed_spikes` (what a name collision renamed, each empty when nothing was), `committed`, and `warnings`.
-
-#### If the command failed
-
-The refusal names the blocking condition; nothing was touched.
-
-**If the error ends "— pick a different name"** (a name collision, item- or file-form):
-
-Derive a different kebab-case name from the feature's name and its discussion's subject, set `topic` to it, and re-check it:
-
-→ Return to **B. Collision Check**.
-
-**Otherwise:**
-
-Relay the error.
-
-→ Return to caller.
-
-#### Otherwise
-
-The command succeeded.
-
-→ Proceed to **E. Post-Absorption**.
-
----
-
-## E. Post-Absorption
-
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--moved` lists whichever of `seeds`, `assets`, `spikes` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_assets` and `renamed_spikes` joined as comma-separated `{from}:{to}` pairs — what a name collision renamed, whose links the absorb rewrote in the topic it moved (omit the flag when both are empty) — and `--warn` rides when the response's `warnings` is non-empty:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--renamed {renamed}] [--warn]
-```
-
-Fetch the continuation and emit its MENU section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-continuation {target_epic} --feature {selected.name}
-```
-
-**STOP.** Wait for user response.
-
-#### If user chose `c/continue`
-
-Invoke `/leeway-continue-epic {target_epic}`.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
-
-#### If user chose `b/back`
-
-→ Return to caller.

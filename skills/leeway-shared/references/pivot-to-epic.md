@@ -1,27 +1,17 @@
 # Pivot to Epic
 
-*Shared reference. Loaded by `leeway` (manage menu) and `leeway-discussion-process` (a point needing decisions of its own) to convert a single-topic feature into an epic.*
+*Shared reference. Loaded by `leeway`'s managing of a unit and by `leeway-discussion-process` (a point needing decisions of its own) to make a feature an epic.*
 
 ---
 
-One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map, re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
-
-## Parameters
-
-The caller provides this via context before loading:
-
-- `work_unit` — the feature being converted. Its single topic shares the work unit's name.
-
-## A. Run the Pivot
+The feature becomes an epic, its one topic, under the feature's own name, the first on the epic's map. Draft what the topic's map row says of it, from its record and its log, reading whichever is not already in context: its `{summary}`, one line in the product's terms, and its `{description}`. The record is `ledger record {work_unit} {work_unit}`, the log `.leeway/{work_unit}/topics/{work_unit}/log.md`. Then pivot:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs workunit pivot {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit pivot {work_unit} --summary "{summary}" --description "{description}"
 ```
 
-When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
+A refusal names what holds the feature: say it in a line. Otherwise fetch its receipt and emit its sections verbatim per their markers, `--warn` where the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot --warn
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot [--warn]
 ```
-
-→ Return to caller.

@@ -1,6 +1,14 @@
 'use strict';
 
-// Layer: verb.
+// ---------------------------------------------------------------------------
+// `workunit pivot` (leeway-engine/scripts/domain/workunit-lifecycle.cjs): a
+// feature in progress before its spec made an epic in one transaction, its
+// one topic first on the map with the summary and description Claude
+// drafted (18.3.5, 18.3.7), and its receipt; the guards refusing with
+// nothing touched.
+//
+// Layer: verb. World: a project carrying the feature, its own per test.
+// ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
@@ -65,6 +73,9 @@ engine.lastSections = '';
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
 
+/** The pivot as manage and a discussion run it, the topic's words drafted. */
+const PIVOT = Object.freeze(['workunit', 'pivot', 'auth-flow', '--summary', 'Signing in', '--description', 'How a person signs in, and stays signed in.']);
+
 /** The feature's artifacts the knowledge base holds, state-relative. */
 const UNIT_FILES = ['.knowledge/records/auth-flow/auth-flow.md'];
 
@@ -105,12 +116,12 @@ describe('engine workunit pivot — happy path', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('flips work_type in BOTH manifests, the map approved at the pivot, registers the backfill map item first in its order, re-indexes, commits', () => {
+  it('18.3.7: flips work_type in BOTH manifests, the map approved at the pivot, registers the topic first in its order with its summary and description, re-indexes, commits', () => {
     fix = setupFixture();
     indexUnit(fix);
     assert.deepStrictEqual(chunkWorkTypes(fix), ['feature']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
-    const res = withFrozenClock(() => engine(fix, ['workunit', 'pivot', 'auth-flow']));
+    const res = withFrozenClock(() => engine(fix, PIVOT));
 
     assert.deepStrictEqual(res, {
       ok: true,
@@ -119,24 +130,21 @@ describe('engine workunit pivot — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    // The transaction is pure JSON; the continuation menu and the kb
-    // advisory are receipt surfaces fetched only by flows with a use for them.
+    // The transaction is pure JSON; its receipt, the kb advisory ahead of it
+    // with --warn, is a surface of its own.
     assert.strictEqual(engine.lastSections, '', 'pivot answers with pure JSON');
-    const menu = output(fix.project, ['render', 'pivot-continuation', 'auth-flow']);
-    assert.ok(menu.includes("=== MENU: pivot continuation (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="), menu);
-    assert.ok(menu.includes('**Auth Flow** converted from feature to epic.'), menu);
+    const receipt = output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']);
+    assert.match(receipt, /^=== DISPLAY: confirmation [^\n]*===\n"Auth Flow" is an epic now, its discussion the first topic on its map\.\n$/);
     const advisory = output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. The next start retries the indexing\./);
-    assert.strictEqual(
-      output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']),
-      '', 'no --warn, no advisory — an empty receipt');
+    assert.match(advisory, /=== DISPLAY: kb warning [^\n]*===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. The next start retries the indexing\.\n/);
+    assert.ok(advisory.endsWith(receipt), 'the advisory leads the receipt');
 
     const m = readManifest(fix, 'auth-flow');
     assert.strictEqual(m.work_type, 'epic');
-    // Backfill map item: its source and first in the map's order — no
-    // summary/description (summary-backfill drafts them), never a status field.
+    // The topic's map row: its source, the words drafted, first in the
+    // map's order — never a status field.
     assert.deepStrictEqual(m.phases.discovery.items, {
-      'auth-flow': { source: 'discovery', order: 1 },
+      'auth-flow': { source: 'discovery', summary: 'Signing in', description: 'How a person signs in, and stays signed in.', order: 1 },
     });
     assert.strictEqual(m.phases.discovery.approved_at, FROZEN_AT, 'the map it lands approved at the pivot (18.3.5)');
     // The project-manifest registration flips too; siblings untouched.
@@ -166,14 +174,14 @@ describe('engine workunit pivot — happy path', () => {
     writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } } }, null, 2) + '\n');
     commitAll(fix.project, 'drop registration');
 
-    engine(fix, ['workunit', 'pivot', 'auth-flow']);
+    engine(fix, PIVOT);
     assert.deepStrictEqual(readProjectManifest(fix).work_units['auth-flow'], { work_type: 'epic' });
   });
 
   it('KB failures are warnings, never blocks — the pivot still lands', () => {
     fix = setupFixture();
     unreadableKnowledge(fix.project);
-    const res = engine(fix, ['workunit', 'pivot', 'auth-flow']);
+    const res = engine(fix, PIVOT);
 
     assert.strictEqual(res.work_type, 'epic');
     assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
@@ -191,7 +199,7 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
   it('refuses a non-feature work unit', () => {
     fix = setupFixture(featureManifest({ work_type: 'epic' }));
     const before = snapshot(fix);
-    const err = engineFails(fix, ['workunit', 'pivot', 'auth-flow']);
+    const err = engineFails(fix, PIVOT);
     assert.match(err.error, /not a feature \(work_type: epic\) — only features pivot to epics/);
     assert.deepStrictEqual(snapshot(fix), before);
   });
@@ -199,7 +207,7 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
   it('refuses a completed or cancelled feature', () => {
     fix = setupFixture(featureManifest({ status: 'completed' }));
     const before = snapshot(fix);
-    assert.match(engineFails(fix, ['workunit', 'pivot', 'auth-flow']).error, /not in-progress \(status: completed\) — reactivate it first/);
+    assert.match(engineFails(fix, PIVOT).error, /not in-progress \(status: completed\) — reactivate it first/);
     assert.deepStrictEqual(snapshot(fix), before);
   });
 
@@ -208,7 +216,7 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
     m.phases.discovery = { items: { 'auth-flow': { source: 'discovery' } } };
     fix = setupFixture(m);
     const before = snapshot(fix);
-    assert.match(engineFails(fix, ['workunit', 'pivot', 'auth-flow']).error, /already on the discovery map/);
+    assert.match(engineFails(fix, PIVOT).error, /already on the discovery map/);
     assert.deepStrictEqual(snapshot(fix), before);
   });
 
@@ -218,17 +226,24 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
     const storeFile = path.join(fix.project, '.leeway/.knowledge/store.bin');
     const before = fs.readFileSync(storeFile);
     writeFile(fix.project, '.leeway/manifest.json', '{ corrupt\n');
-    const err = engineFails(fix, ['workunit', 'pivot', 'auth-flow']);
+    const err = engineFails(fix, PIVOT);
     assert.match(err.error, /not valid JSON/);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'feature');
     assert.deepStrictEqual(fs.readFileSync(storeFile), before, 'the store is as it stood — no chunk cleared or restamped');
     assert.deepStrictEqual(indexedFiles(fix.project), UNIT_FILES);
   });
 
-  it('rejects unknown and missing work units, and extra args', () => {
+  it('rejects unknown and missing work units, extra args, and a topic with no summary', () => {
     fix = setupFixture();
-    assert.match(engineFails(fix, ['workunit', 'pivot', 'ghost']).error, /manifest not found/);
-    assert.match(engineFails(fix, ['workunit', 'pivot']).error, /Usage: engine workunit pivot/);
-    assert.match(engineFails(fix, ['workunit', 'pivot', 'auth-flow', 'extra']).error, /Usage: engine workunit pivot/);
+    const before = snapshot(fix);
+    assert.match(engineFails(fix, ['workunit', 'pivot', 'ghost', '--summary', 'S']).error, /manifest not found/);
+    assert.match(engineFails(fix, ['workunit', 'pivot', '--summary', 'S']).error, /Usage: engine workunit pivot/);
+    assert.match(engineFails(fix, ['workunit', 'pivot', 'auth-flow', 'extra', '--summary', 'S']).error, /Usage: engine workunit pivot/);
+    assert.match(engineFails(fix, ['workunit', 'pivot', 'auth-flow']).error, /Usage: engine workunit pivot <work-unit> --summary <text>/);
+    assert.deepStrictEqual([engineFails(fix, ['workunit', 'pivot', 'auth-flow', '--summary', ' ']).error, engineFails(fix, ['workunit', 'pivot', 'auth-flow', '--summary', 'S', '--description', '']).error], [
+      'workunit pivot: the topic needs its summary — --summary, its one line drafted from its record and its log',
+      'workunit pivot: --description is empty — give the topic\'s description, or leave the flag out',
+    ]);
+    assert.deepStrictEqual(snapshot(fix), before);
   });
 });

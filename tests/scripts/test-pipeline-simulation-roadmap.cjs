@@ -387,7 +387,7 @@ describe('pipeline simulation: roadmap', () => {
     const elog = sessionLog(sim, 'platform');
     sim.run(['workunit', 'create', 'platform', 'epic', '--description', 'Platform', '--session-log-file', elog]);
 
-    const res = sim.run(['workunit', 'absorb', 'loyalty-feat', '--into', 'platform', '--topic', 'loyalty']);
+    const res = sim.run(['workunit', 'absorb', 'loyalty-feat', '--into', 'platform', '--topic', 'loyalty', '--summary', 'Repeat-customer rewards']);
     assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty', 'points-lost']);
     assert.deepStrictEqual(res.roadmap_sources_rewritten, [
       { item: 'gift-cards', from: 'loyalty-feat/topics/loyalty-feat/log.md', to: 'platform/topics/loyalty/log.md' },

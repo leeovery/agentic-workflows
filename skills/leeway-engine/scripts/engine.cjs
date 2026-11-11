@@ -237,8 +237,8 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
                   [--seed <path> …]
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
-  workunit pivot <work-unit>
-  workunit absorb <feature> --into <epic> --topic <name>
+  workunit pivot <work-unit> --summary <text> [--description <text>]
+  workunit absorb <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
   workunit move <work-unit> --to feature|bugfix --file <payload.json>
   ${POSITION_USAGE}
   discovery-session close <work-unit|product> -m <message>
@@ -365,18 +365,17 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render phase-completed   <wu> --phase <phase>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
-  render cancel-gate       <wu.discovery.name>
+  render cancel-gate       <wu.discovery.name> | <wu>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
   render workunit-receipt  <wu> --verb cancel|reactivate|pivot [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
-  render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved seeds,assets,spikes] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render pivot-continuation <wu>
   render absorb-target     <feature>
-  render absorb-confirm-gate <feature>
+  render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
   render inbox-content     --path <inbox path>[,<inbox path>…]
@@ -439,6 +438,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render verdicts [--unit <unit>]
   render start-menu
   render epic-menu <epic>
+  render manage
+  render manage-unit <work-unit>
+  render closed
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -554,10 +556,12 @@ function runVerdict(call, argv) {
 // knowledge-base sync (warn-don't-block), scoped git commit, with an
 // engine-owned message; a unit completes at finish's yes. A cancel answers
 // its `next` from where the calling conversation sits (topic-leave.cjs).
-// pivot flips a feature to an epic — both manifests, the map registration,
-// the re-index — as one transaction with an engine-owned message. absorb merges
-// a feature into an epic as a new topic and deletes the feature — validated
-// completely before anything moves, one multi-pathspec commit at the end.
+// pivot flips a feature to an epic — both manifests, the map registration
+// with the topic's summary and description, the re-index — as one
+// transaction with an engine-owned message. absorb merges a feature into an
+// epic as a new topic, its summary and description carried, and deletes the
+// feature — validated completely before anything moves, one multi-pathspec
+// commit at the end.
 // move stages a quick-fix's or a bugfix's move to another type and draws
 // start this work's screen from it, its yes start this work's.
 // ---------------------------------------------------------------------------
@@ -577,7 +581,7 @@ function runWorkunit(call, argv) {
         sessionLogFile: opts['session-log-file'],
         seeds: lists.seed || [],
       }));
-    } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
+    } else if (command === 'cancel' || command === 'reactivate') {
       const [workUnit, ...extra] = rest;
       if (!workUnit || extra.length > 0) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
@@ -586,14 +590,20 @@ function runWorkunit(call, argv) {
         respond(call, { ...cancelWorkUnit(call.cwd, workUnit), next: unitLeaveNext(workUnit) });
         return;
       }
-      respond(call, (command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit)(call.cwd, workUnit));
+      respond(call, reactivateWorkUnit(call.cwd, workUnit));
+    } else if (command === 'pivot') {
+      const { opts, positional } = parseArgs(rest);
+      if (positional.length !== 1 || opts.summary === undefined) {
+        throw new Error('Usage: engine workunit pivot <work-unit> --summary <text> [--description <text>]');
+      }
+      respond(call, pivotWorkUnit(call.cwd, positional[0], { summary: opts.summary, description: opts.description }));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
-      if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
-        throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
+      if (!feature || positional.length !== 1 || !opts.into || !opts.topic || opts.summary === undefined) {
+        throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name> --summary <text> [--description <text>]');
       }
-      respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic }));
+      respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic, summary: opts.summary, description: opts.description }));
     } else if (command === 'move') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit] = positional;

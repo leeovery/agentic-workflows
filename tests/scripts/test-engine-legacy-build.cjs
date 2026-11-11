@@ -27,16 +27,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
-const { manageUnitView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
+const { manageScreen, manageUnitScreen } = require('../../skills/leeway-engine/scripts/domain/projections/manage.cjs');
 const { call } = require('./engine-harness.cjs');
 const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
-const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
+const { loadManifest, loadAllManifests } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { epicMenuScreen } = require('../../skills/leeway-engine/scripts/domain/projections/epic-menu.cjs');
 const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
-const { startDetail } = require('../../skills/leeway-engine/scripts/domain/start.cjs');
-const { manageListView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
 const { startMenuRead } = require('../../skills/leeway-engine/scripts/domain/start-menu.cjs');
 const { startMenuScreen } = require('../../skills/leeway-engine/scripts/domain/projections/start-menu.cjs');
 const { unitHandoff } = require('../../skills/leeway-engine/scripts/domain/unit-handoff.cjs');
@@ -69,6 +66,11 @@ const NAMES = Object.keys(UNITS);
 const RETIRED_UNITS = ['done-concern', 'lab-concern', 'old-concern'];
 const LIVE = ['plan-feature', 'built-feature', 'reviewing-feature', 'reviewed-feature', 'old-bugfix', 'old-quick-fix', ...RETIRED_UNITS];
 const SESSION = { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } };
+/** What manage offers each, its spec unwritten where it has no build. */
+const KEYS_IN_MANAGE = Object.freeze({
+  'plan-feature': ['p', 'c'], 'built-feature': ['c'], 'reviewing-feature': ['p', 'c'], 'reviewed-feature': ['p', 'c'],
+  'old-bugfix': ['c'], 'old-quick-fix': ['c'], 'done-concern': ['c'], 'lab-concern': ['c'], 'old-concern': ['c'],
+});
 const retired = (name) => `${name} is a cross-cutting unit, a type the reshape retires — it waits on the reshape's 29.17 migration, and nothing is done in it until then`;
 const RETIRED = retired('old-concern');
 const waiting = (name) => (RETIRED_UNITS.includes(name) ? retired(name) : `${name} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`);
@@ -125,10 +127,10 @@ describe('a unit built under the old plan reads its items and waits on the migra
   });
 
   it('a retired type\'s unit: listed with the features by its own type, on the start menu and manage\'s list, read by every verb, no phase or topic of it entered nor sent to, the type refused only where a unit is made', () => {
-    const detail = startDetail(dir);
     const row = startMenuScreen(startMenuRead(dir)).rows.find((r) => r.label.head === 'Continue cross-cutting: Old Concern');
     assert.deepStrictEqual([row.label.tail, row.next], [AT_THE_CUT, { kind: 'engine', argv: ['handoff', 'unit', 'old-concern'] }]);
-    assert.deepStrictEqual(manageListView(detail).rows.filter((r) => RETIRED_UNITS.includes(r.work_unit)).map((r) => r.work_type), ['cross-cutting', 'cross-cutting', 'cross-cutting']);
+    const managed = manageScreen(loadAllManifests(dir)).rows.filter(({ next }) => next.kind === 'engine' && RETIRED_UNITS.includes(next.argv[2]));
+    assert.deepStrictEqual(managed.map(({ label }) => typeof label === 'string' ? label : label.tail), ['cross-cutting', 'cross-cutting', 'cross-cutting']);
     assert.strictEqual(call(dir, ['manifest', 'get', 'old-concern', 'work_type']).stdout.trim(), 'cross-cutting');
     const message = path.join(dir, '.leeway', '.cache', 'message.md');
     fs.mkdirSync(path.dirname(message), { recursive: true });
@@ -153,8 +155,8 @@ describe('a unit built under the old plan reads its items and waits on the migra
     ]);
   });
 
-  it('manage offers it no done, and the revisit list refuses it', () => {
-    assert.deepStrictEqual(LIVE.filter((name) => manageUnitView(manageDetail(dir, name)).menu.includes('d/done')), []);
+  it('manage offers it no done — cancel alone, a feature not past its spec its pivot — and the revisit list refuses it', () => {
+    assert.deepStrictEqual(Object.fromEntries(LIVE.map((name) => [name, manageUnitScreen(dir, loadManifest(dir, name)).rows.map(({ key }) => key)])), KEYS_IN_MANAGE);
     assert.strictEqual(JSON.parse(call(dir, ['render', 'revisit-phases', 'built-feature']).stderr).error,
       'render revisit-phases: "built-feature" has no completed earlier phase to revisit');
   });

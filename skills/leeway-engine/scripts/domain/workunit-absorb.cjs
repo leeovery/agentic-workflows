@@ -18,8 +18,8 @@
 //   the epic's, each under the landing's dedupe; its spikes into
 //   the epic's, a slug the epic's spikes hold already suffixed `-2`, `-3`,
 //   so no two spikes share one, each spike's twin in the cache with it; each
-//   phase item whole; and a map row with no summary, in the same save as
-//   the items. A dot-named asset is tooling state, never material. The
+//   phase item whole; and a map row with the summary and description
+//   Claude drafted, in the same save as the items. A dot-named asset is tooling state, never material. The
 //   feature's discovery logs go with it.
 // - The link rewrite: the engine rewrites only a path its own rename broke,
 //   in a document its own move relocated — a seed's, an asset's or a
@@ -73,7 +73,7 @@ const { appendEntry, commitLedger } = require('./ledger.cjs');
 const { foldLedger } = require('./ledger-fold.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { dedupe, homeLinkPattern } = require('./import-landing.cjs');
-const { addBatchTo, discoveryItems, topicNameRefusal } = require('./discovery-map.cjs');
+const { addBatchTo, arrivingEntry, topicNameRefusal } = require('./discovery-map.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { reaimAbsorbed, landingOf } = require('./roadmap.cjs');
 const { topicDir, mailboxDir, mailboxDepth, briefFile } = require('./derivations.cjs');
@@ -260,11 +260,10 @@ function movedFiles(files, relocations) {
 /**
  * Refuse a topic the epic cannot take, before anything moves: a name that
  * is no topic's (the map's own rule), one on the map, struck from it, or
- * another topic goes by — the row added to the epic's manifest in memory,
- * for its save — and an item or a folder at it.
+ * another topic goes by, and an item or a folder at it.
  * @param {string} cwd @param {Record<string, any>} epicManifest @param {string} into @param {string} topic @param {boolean} series whether an experiment series moves
  */
-function placeTopic(cwd, epicManifest, into, topic, series) {
+function refuseTopic(cwd, epicManifest, into, topic, series) {
   const misnamed = topicNameRefusal(topic);
   if (misnamed !== null) throw new Error(misnamed);
   const epicDiscovery = epicManifest.phases && typeof epicManifest.phases === 'object' && epicManifest.phases.discovery && typeof epicManifest.phases.discovery === 'object'
@@ -285,8 +284,83 @@ function placeTopic(cwd, epicManifest, into, topic, series) {
   }
   const folder = statePath(cwd, topicDir(into, topic));
   if (fs.existsSync(folder)) throw new Error(`${folder} already exists — pick a different name`);
-  addBatchTo(epicManifest, [{ name: topic, summary: '' }], null);
-  delete discoveryItems(epicManifest)[topic].summary;
+}
+
+/** Only a feature absorbs. @param {string} feature @param {Record<string, any>} featureManifest */
+function assertFeature(feature, featureManifest) {
+  if (featureManifest.work_type !== 'feature') {
+    throw new Error(`work unit "${feature}" is not a feature (work_type: ${featureManifest.work_type ?? 'none'}) — only features absorb into epics`);
+  }
+}
+
+/**
+ * Refuse a feature that cannot be absorbed, whatever the epic: one of
+ * another type, one with no discussion — its item and its log — and one
+ * past its spec, whose topic is gone and the spec its record (4.11.2).
+ * Answers its discussion's item.
+ * @param {string} cwd @param {string} feature @param {Record<string, any>} featureManifest
+ * @returns {Record<string, any>}
+ */
+function absorbableFeature(cwd, feature, featureManifest) {
+  assertFeature(feature, featureManifest);
+  const discussionItem = phaseItems(featureManifest, 'discussion')[feature];
+  if (!discussionItem || typeof discussionItem !== 'object' || typeof discussionItem.status !== 'string') {
+    throw new Error(`feature "${feature}" has no discussion — absorb moves the discussion in as the epic topic`);
+  }
+  const discussionSrc = statePath(cwd, topicLog(feature, feature));
+  if (!fs.existsSync(discussionSrc)) {
+    throw new Error(`discussion log missing on disk: ${discussionSrc}`);
+  }
+  assertBeforeSpec(cwd, featureManifest, 'ownWork');
+  return discussionItem;
+}
+
+/**
+ * Refuse an absorb of `feature` into `into` as `topic` that cannot run,
+ * before anything moves (the header's): the feature as `absorbableFeature`
+ * refuses it, the epic not an epic in progress before its spec, a phase
+ * item of the feature's not named after it, and a topic the epic cannot
+ * take. Answers the feature's discussion and experiment items.
+ * @param {string} cwd @param {string} feature @param {Record<string, any>} featureManifest
+ * @param {string} into @param {Record<string, any>} epicManifest @param {string} topic
+ * @returns {{discussionItem: Record<string, any>, experimentItem: Record<string, any>|undefined}}
+ */
+function refuseAbsorb(cwd, feature, featureManifest, into, epicManifest, topic) {
+  if (feature === into) {
+    throw new Error(`cannot absorb "${feature}" into itself`);
+  }
+  assertFeature(feature, featureManifest);
+  if (epicManifest.work_type !== 'epic') {
+    throw new Error(`work unit "${into}" is not an epic (work_type: ${epicManifest.work_type ?? 'none'})`);
+  }
+  if (epicManifest.status !== 'in-progress') {
+    throw new Error(`epic "${into}" is not in-progress (status: ${epicManifest.status ?? 'none'})`);
+  }
+  assertBeforeSpec(cwd, epicManifest, 'absorbInto');
+  const discussionItem = absorbableFeature(cwd, feature, featureManifest);
+  // A feature's phase items are single and self-named — discussion and
+  // experiment alike. A foreign-named item refuses rather than skips: the
+  // feature directory is deleted afterwards, so silently skipped material
+  // would be lost.
+  for (const phase of ['discussion', 'experiment']) {
+    for (const name of Object.keys(phaseItems(featureManifest, phase))) {
+      if (name !== feature) {
+        throw new Error(`feature "${feature}" has a ${phase} item "${name}" not named after it — a feature's ${phase} is single and self-named; fix the manifest before absorbing`);
+      }
+    }
+  }
+  const experimentItem = phaseItems(featureManifest, 'experiment')[feature];
+  refuseTopic(cwd, epicManifest, into, topic, Boolean(experimentItem));
+  return { discussionItem, experimentItem };
+}
+
+/**
+ * Whether the absorb would run as given, read off both units' manifests
+ * and writing nothing — refused as the absorb refuses (`refuseAbsorb`).
+ * @param {string} cwd @param {string} feature @param {{into: string, topic: string}} opts
+ */
+function absorbStands(cwd, feature, { into, topic }) {
+  refuseAbsorb(cwd, feature, loadWorkUnitManifest(cwd, feature), into, loadWorkUnitManifest(cwd, into), topic);
 }
 
 /**
@@ -298,59 +372,24 @@ function placeTopic(cwd, epicManifest, into, topic, series) {
  * its map row, carry the feature's ledger lines to the epic topic, remove
  * the feature's knowledge-base chunks (warn-don't-block), delete the feature (directory
  * and project-manifest registration), and commit it all at once. Git
- * history serves as provenance.
+ * history serves as provenance. The topic's map row carries the summary
+ * and description Claude drafted from its record and its log (18.3.7).
  * @param {string} cwd project root
  * @param {string} feature
- * @param {{into: string, topic: string}} opts
+ * @param {{into: string, topic: string, summary?: string, description?: string}} opts
  * @returns {WorkUnitAbsorbResult}
  */
-function absorbWorkUnit(cwd, feature, { into, topic }) {
+function absorbWorkUnit(cwd, feature, { into, topic, summary, description }) {
+  const entry = arrivingEntry(topic, { summary, description }, 'workunit absorb');
   const root = stateRoot(cwd);
   return withStateLock(root, () => {
-    if (feature === into) {
-      throw new Error(`cannot absorb "${feature}" into itself`);
-    }
     const featureManifest = loadWorkUnitManifest(cwd, feature);
-    if (featureManifest.work_type !== 'feature') {
-      throw new Error(`work unit "${feature}" is not a feature (work_type: ${featureManifest.work_type ?? 'none'}) — only features absorb into epics`);
-    }
     /** @type {string[]} */
     const warnings = [];
     const moved = withWorkUnitLock(cwd, into, () => {
       const epicManifest = loadWorkUnitManifest(cwd, into);
-      if (epicManifest.work_type !== 'epic') {
-        throw new Error(`work unit "${into}" is not an epic (work_type: ${epicManifest.work_type ?? 'none'})`);
-      }
-      if (epicManifest.status !== 'in-progress') {
-        throw new Error(`epic "${into}" is not in-progress (status: ${epicManifest.status ?? 'none'})`);
-      }
-      assertBeforeSpec(cwd, epicManifest, 'absorbInto');
-
-      // The feature must have a discussion (item + log) and be before its
-      // spec, past which its topic is gone and the spec its record (4.11.2).
-      const discussionItem = phaseItems(featureManifest, 'discussion')[feature];
-      if (!discussionItem || typeof discussionItem !== 'object' || typeof discussionItem.status !== 'string') {
-        throw new Error(`feature "${feature}" has no discussion — absorb moves the discussion in as the epic topic`);
-      }
-      const discussionSrc = statePath(cwd, topicLog(feature, feature));
-      if (!fs.existsSync(discussionSrc)) {
-        throw new Error(`discussion log missing on disk: ${discussionSrc}`);
-      }
-      assertBeforeSpec(cwd, featureManifest, 'ownWork');
-
-      // A feature's phase items are single and self-named — discussion and
-      // experiment alike. A foreign-named item refuses rather than skips: the
-      // feature directory is deleted afterwards, so silently skipped material
-      // would be lost.
-      for (const phase of ['discussion', 'experiment']) {
-        for (const name of Object.keys(phaseItems(featureManifest, phase))) {
-          if (name !== feature) {
-            throw new Error(`feature "${feature}" has a ${phase} item "${name}" not named after it — a feature's ${phase} is single and self-named; fix the manifest before absorbing`);
-          }
-        }
-      }
-      const experimentItem = phaseItems(featureManifest, 'experiment')[feature];
-      placeTopic(cwd, epicManifest, into, topic, Boolean(experimentItem));
+      const { discussionItem, experimentItem } = refuseAbsorb(cwd, feature, featureManifest, into, epicManifest, topic);
+      addBatchTo(epicManifest, [entry], null);
 
       const seedPlan = planSeeds(cwd, feature, into, Array.isArray(featureManifest.seeds) ? featureManifest.seeds : []);
       const assetPlan = planAssets(cwd, feature, into);
@@ -500,4 +539,4 @@ function absorbedMaterial(cwd, feature) {
   };
 }
 
-module.exports = { absorbWorkUnit, absorbedMaterial, linesOf, movedFiles };
+module.exports = { absorbWorkUnit, absorbStands, absorbableFeature, absorbedMaterial, linesOf, movedFiles };

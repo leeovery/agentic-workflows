@@ -404,6 +404,16 @@ function openRecords(manifest, topic) {
 }
 
 /**
+ * Each of the unit's topics holding open experiment records, with them in
+ * register order — what a cancel of the whole unit ends (18.4.22).
+ * @param {object} manifest
+ * @returns {{topic: string, ids: string[]}[]}
+ */
+function unitOpenRecords(manifest) {
+  return phaseItems(manifest, 'experiment').map(({ name }) => ({ topic: name, ids: openRecords(manifest, name) })).filter(({ ids }) => ids.length > 0);
+}
+
+/**
  * The open records as the experiments a unit gate counts — a split is worked
  * inside its parent, so `E2` with `E2.1` open is one experiment, named with
  * its children (`E2, with E2.1` alone; `E1, E2 with E2.1` among others). A
@@ -1457,6 +1467,7 @@ module.exports = {
   postponePlan,
   openExperiments,
   openRecords,
+  unitOpenRecords,
   roadmapItems,
   itemJoin,
   itemArchived,

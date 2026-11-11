@@ -281,17 +281,8 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     createFile(dir, '.leeway/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
   }
 
-  /** @param {string} unit @param {string} type @param {string} earlier @param {string} next */
-  function linearUnit(dir, unit, type, earlier, next) {
-    createManifest(dir, unit, {
-      work_type: type,
-      phases: { [earlier]: { items: { [unit]: { status: 'completed' } } }, [next]: { items: { [unit]: { status: 'in-progress' } } } },
-    });
-  }
-
-  // A linear unit to manage; the epic holds a cancelled topic, a topic
-  // postponed to the roadmap and a plan blocked on a dependency, so each of
-  // its sub-views offers rows.
+  // The epic holds a cancelled topic, a topic postponed to the roadmap and a
+  // plan blocked on a dependency, so each of its sub-views offers rows.
   const WORLDS = {
     live: (/** @type {string} */ dir) => {
       projectManifest(dir);
@@ -313,13 +304,11 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
           planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
         },
       });
-      linearUnit(dir, 'live-feature', 'feature', 'planning', 'implementation');
     },
   };
 
   /** @type {[string, string[], keyof typeof WORLDS][]} */
   const CALLS = [
-    ['leeway', ['manage', 'live-feature'], 'live'],
     ['leeway-roadmap', ['view'], 'live'],
   ];
 

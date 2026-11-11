@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: leeway projections — the start skill's state-derived
 // sub-views over one StartDetail (see ../start.cjs): the inbox pickup and
-// archived lists, the working set, the manage flow, and the completed &
-// cancelled view. Sub-view projections return `{data, display, menu}` bodies
+// archived lists, the working set, and a closed unit's actions. Sub-view
+// projections return `{data, display, menu}` bodies
 // — a pick view carries its menu, or its display when there is nothing to
 // pick (the adapter wraps them in section markers). The start menu itself is
 // start-menu.cjs's.
@@ -15,30 +15,13 @@
 
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
-const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, menu, cmdOption, promptOption, rangeOption, section: labelled, MENU_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../inbox-set.cjs').PickupItem} PickupItem */
 /** @typedef {import('../inbox-set.cjs').WorkingSetDetail} WorkingSetDetail */
-/** @typedef {import('../workunit-manage.cjs').ManageDetail} ManageDetail */
 /** @typedef {import('./surfaces.cjs').LabelParts} LabelParts */
-
-/**
- * @typedef {object} TypeSection
- * @property {string} label
- * @property {'features'|'bugfixes'|'quick_fixes'|'epics'} group
- * @property {'feature'|'bugfix'|'quick-fix'|'epic'} type
- */
-
-// Display and numbering order of the type sections.
-/** @type {TypeSection[]} */
-const SECTIONS = [
-  { label: 'Features:', group: 'features', type: 'feature' },
-  { label: 'Bugfixes:', group: 'bugfixes', type: 'bugfix' },
-  { label: 'Quick Fixes:', group: 'quick_fixes', type: 'quick-fix' },
-  { label: 'Epics:', group: 'epics', type: 'epic' },
-];
 
 // ---------------------------------------------------------------------------
 // Inbox pickup + archived store
@@ -286,160 +269,6 @@ function workingSetDropGate(ws) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Manage
-// ---------------------------------------------------------------------------
-
-/**
- * @typedef {object} ManageRow
- * @property {number} n
- * @property {string} work_type
- * @property {string} work_unit
- */
-
-/**
- * The manage selection snapshot: every active work unit as a numbered pick
- * row, numbering continuous across the type sections — the same order and
- * numbers as the overview.
- * @param {StartDetail} detail
- * @returns {{data: string, menu: string, rows: ManageRow[]}}
- */
-function manageListView(detail) {
-  /** @type {ManageRow[]} */
-  const rows = SECTIONS.flatMap((s) => detail[s.group].work_units.map((u) => ({ work_type: u.work_type, work_unit: u.name })))
-    .map((r, i) => ({ n: i + 1, ...r }));
-
-  const data = [
-    `unit_count: ${rows.length}`,
-    'UNITS (n  work_type  work_unit):',
-    ...rows.map((r) => `  ${r.n}  ${r.work_type}  ${r.work_unit}`),
-  ].join('\n');
-
-  return {
-    data,
-    menu: menu('Which work unit?', [
-      ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: r.work_type })),
-      cmdOption('b', 'back', 'Return'),
-    ]),
-    rows,
-  };
-}
-
-/**
- * One work unit's manage snapshot: the action menu offering exactly the
- * actions its state allows. The absorb-target gate is served by its own
- * render surface, fetched at the gate.
- * @param {ManageDetail} md
- * @returns {{data: string, menu: string}}
- */
-function manageUnitView(md) {
-  /** @type {{key: string, word: string, action: string, label: string}[]} */
-  const keys = [];
-  if (md.work_type === 'feature') keys.push({ key: 'p', word: 'pivot', action: 'pivot', label: 'Convert to epic (enables multiple topics)' });
-  if (md.absorb_available) keys.push({ key: 'a', word: 'absorb', action: 'absorb', label: 'Merge into an existing epic' });
-  if (md.has_build) keys.push({ key: 'v', word: 'view-build', action: 'view_build', label: 'View the build\'s phases and tasks' });
-  keys.push(
-    { key: 'c', word: 'cancel', action: 'cancel', label: 'Mark as cancelled' },
-    { key: 'b', word: 'back', action: 'back', label: 'Return' },
-  );
-  const options = [
-    ...keys.map((k) => cmdOption(k.key, k.word, k.label)),
-    promptOption('Ask', 'Ask a question about this work unit'),
-  ];
-
-  const data = [
-    `work_unit: ${md.work_unit}`,
-    `work_type: ${md.work_type}`,
-    `status: ${md.status}`,
-    `has_build: ${md.has_build}`,
-    `has_spec: ${md.has_spec}`,
-    `has_discussion: ${md.has_discussion}`,
-    `absorb_available: ${md.absorb_available}`,
-    `available_epics: ${md.available_epics.join(', ') || '(none)'}`,
-    ...actionsTable(['action'], keys, (k) => [k.action]),
-  ].join('\n');
-
-  return { data, menu: menu(`**${titlecase(md.work_unit)}** (${md.work_type})`, options, { question: 'What would you like to do?' }) };
-}
-
-/**
- * The absorb-target selection menu, served by `render absorb-target` at the
- * gate that displays it. Numbering follows `available_epics` order.
- * @param {ManageDetail} md
- * @returns {string}
- */
-function absorbTargetMenu(md) {
-  return labelled(
-    'MENU: absorb target',
-    MENU_INSTRUCTION,
-    dotMenu([
-      'Which epic should absorb it?',
-      '',
-      ...md.available_epics.map((name, i) => cmdOption(String(i + 1), null, titlecase(name))),
-      '',
-      cmdOption('b', 'back', 'Return'),
-    ]),
-  );
-}
-
-/**
- * The absorb proceed gate, served by `render absorb-confirm-gate` beneath
- * the summary the calling prose renders — the transaction's consent.
- * @returns {string}
- */
-function absorbConfirmGate() {
-  return labelled(
-    'MENU: absorb confirm gate',
-    MENU_INSTRUCTION,
-    menu('', [bareOption('y', 'yes'), bareOption('n', 'no')], { question: 'Proceed?' }),
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Completed & cancelled
-// ---------------------------------------------------------------------------
-
-/**
- * @typedef {object} ClosedRow
- * @property {number} n
- * @property {string} status
- * @property {string} work_type
- * @property {string} work_unit
- * @property {string} last_phase
- */
-
-// A closed row's tail: how it closed, and in which phase.
-/** @type {Record<string, string>} */
-const CLOSED_TAIL = { completed: 'completed after', cancelled: 'cancelled during' };
-
-/**
- * The completed & cancelled snapshot: completed then cancelled as one
- * numbered pick menu, numbers resolving through the DATA `UNITS` table — or,
- * with nothing closed, the empty display and no menu.
- * @param {StartDetail} detail
- * @returns {{data: string, display?: string, menu?: string, rows: ClosedRow[]}}
- */
-function completedView(detail) {
-  /** @type {ClosedRow[]} */
-  const rows = [...detail.completed, ...detail.cancelled]
-    .map((e, i) => ({ n: i + 1, status: e.status, work_type: e.work_type, work_unit: e.name, last_phase: e.last_phase || 'none' }));
-
-  const data = [
-    `completed_count: ${rows.filter((r) => r.status === 'completed').length}`,
-    `cancelled_count: ${rows.filter((r) => r.status === 'cancelled').length}`,
-    'UNITS (n  status  work_type  work_unit  last_phase):',
-    ...rows.map((r) => `  ${r.n}  ${r.status}  ${r.work_type}  ${r.work_unit}  ${r.last_phase}`),
-  ].join('\n');
-
-  if (rows.length === 0) return { data, display: 'No completed or cancelled work units found.\n', rows };
-
-  const options = [
-    ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: `${CLOSED_TAIL[r.status]} ${r.last_phase}` })),
-    cmdOption('b', 'back', 'Return'),
-  ];
-  return { data, menu: menu('Which work unit?', options), rows };
-}
-
 /**
  * The selected unit's action menu, served by `render completed-actions` once
  * the list's number resolves to a row: reactivate, back, ask.
@@ -468,10 +297,5 @@ module.exports = {
   workingSetView,
   workingSetAddGate,
   workingSetDropGate,
-  manageListView,
-  manageUnitView,
-  absorbTargetMenu,
-  absorbConfirmGate,
-  completedView,
   completedActions,
 };

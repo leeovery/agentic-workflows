@@ -2,35 +2,16 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the leeway detail — what the start skill's sub-views read
-// (projections/start.cjs): the units in progress by type, for manage's list;
-// the completed and the cancelled ones, for the view; and the inbox, live
-// and archived, for triage. Pure over the project's state: same files, same
-// answer. The start menu reads the project itself (start-menu.cjs).
+// (projections/start.cjs): the inbox, live and archived, for triage. Pure
+// over the project's state: same files, same answer. The start menu reads
+// the project itself (start-menu.cjs), and manage and the closed units
+// theirs (projections/manage.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { INBOX, ARCHIVED } = require('./inbox.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { lastCompletedPhase } = require('./derivations.cjs');
-const { VALID_PHASES, LEGACY_PHASES } = require('../kernel/manifest-schema.cjs');
-
-// Every pipeline phase across all work types, the old plan's planning after
-// the spec — the closed-unit last-phase scan.
-const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery').flatMap((p) => (p === 'specification' ? [p, ...LEGACY_PHASES] : [p]));
-
-/** @typedef {{name: string, work_type: string}} WorkUnitEntry */
-
-/** @typedef {{work_units: WorkUnitEntry[]}} TypeGroup */
-
-/**
- * @typedef {object} ClosedEntry
- * @property {string} name
- * @property {string} work_type
- * @property {string} status
- * @property {string|null} last_phase
- */
 
 /**
  * @typedef {object} InboxItem
@@ -54,16 +35,7 @@ const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery').flatMap((p) => 
 
 /** @typedef {InboxScan & {archived: InboxScan}} InboxDetail */
 
-/**
- * @typedef {object} StartDetail
- * @property {TypeGroup} epics
- * @property {TypeGroup} features  a retired type's units among them
- * @property {TypeGroup} bugfixes
- * @property {TypeGroup} quick_fixes
- * @property {ClosedEntry[]} completed
- * @property {ClosedEntry[]} cancelled
- * @property {InboxDetail} inbox
- */
+/** @typedef {{inbox: InboxDetail}} StartDetail */
 
 /** An inbox item's title: its content's first markdown H1, or null. @param {string} content @returns {string|null} */
 function titleOf(content) {
@@ -141,28 +113,13 @@ function discoverInbox(cwd) {
   return { ...inbox, archived: scanInboxDir(statePath(cwd, ARCHIVED)) };
 }
 
-/** The group each type of unit in progress is listed in; a type not here, retired by the reshape, with the features. @type {Readonly<Record<string, 'epics'|'bugfixes'|'quick_fixes'>>} */
-const GROUP_OF = Object.freeze({ epic: 'epics', bugfix: 'bugfixes', 'quick-fix': 'quick_fixes' });
-
-/** A closed unit as the view lists it. @param {Record<string, any>} m @returns {ClosedEntry} */
-const closedEntry = (m) => ({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
-
 /**
  * The leeway detail for one project (the header's).
  * @param {string} cwd
  * @returns {StartDetail}
  */
 function startDetail(cwd) {
-  /** @type {Record<'epics'|'features'|'bugfixes'|'quick_fixes', TypeGroup>} */
-  const groups = { epics: { work_units: [] }, features: { work_units: [] }, bugfixes: { work_units: [] }, quick_fixes: { work_units: [] } };
-  for (const m of loadActiveManifests(cwd)) groups[GROUP_OF[m.work_type] ?? 'features'].work_units.push({ name: m.name, work_type: m.work_type });
-  const all = loadAllManifests(cwd);
-  return {
-    ...groups,
-    completed: all.filter((m) => m.status === 'completed').map(closedEntry),
-    cancelled: all.filter((m) => m.status === 'cancelled').map(closedEntry),
-    inbox: discoverInbox(cwd),
-  };
+  return { inbox: discoverInbox(cwd) };
 }
 
 module.exports = { startDetail, discoverInbox, titleOf };
