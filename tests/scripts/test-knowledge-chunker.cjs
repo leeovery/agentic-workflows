@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: unit.
+
 require('./hermetic-env.cjs');
 
 const fs = require('fs');

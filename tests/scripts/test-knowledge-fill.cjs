@@ -7,6 +7,8 @@
 // whose text it embeds, again over whatever came to await one while it
 // worked; and it records why it fell short where the next search reads it,
 // clearing that once a fill lands everything.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

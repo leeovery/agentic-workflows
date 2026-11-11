@@ -5,6 +5,8 @@
 // hand-back was spent on a placeholder. A stale verdict read as this run's,
 // a missing one read as anything but missing, or half a verdict read whole
 // would each report a result no walk produced.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 

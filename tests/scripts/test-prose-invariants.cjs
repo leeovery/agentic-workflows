@@ -7,6 +7,8 @@
 // walker that ignored the prose and wrote the expected files directly
 // produces the right world, and only the order of what it did gives it
 // away.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 

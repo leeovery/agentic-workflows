@@ -18,6 +18,8 @@
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // units' manifests written there.
+//
+// Layer: verb.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

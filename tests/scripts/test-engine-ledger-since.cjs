@@ -17,6 +17,8 @@
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there; a bare remote and a second clone stand for
 // another machine.
+//
+// Layer: verb.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

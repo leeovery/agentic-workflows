@@ -5,6 +5,8 @@
 // held-process identity check (the one verdict — idle time is shown, never
 // judged), and the engine-rendered deferral section.
 //
+// Layer: verb.
+//
 
 require('./hermetic-env.cjs');
 

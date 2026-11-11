@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: verb.
+
 require('./hermetic-env.cjs');
 
 // `engine handoff` — every move into work named by one engine call. The

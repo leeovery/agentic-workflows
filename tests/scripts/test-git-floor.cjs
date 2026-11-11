@@ -3,6 +3,8 @@
 // The oldest git the engine runs on is one value wherever it is written:
 // the engine's, which boot's check and its stop both read, and the
 // requirements the README and the docs state.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

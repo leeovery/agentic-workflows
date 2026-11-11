@@ -5,6 +5,8 @@
 // with, and the --key-only flow and the interactive wizard against injected
 // prompt deps. Behaviour of the full forms through `engine knowledge setup`
 // is covered end to end in test-engine-knowledge-setup.cjs.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

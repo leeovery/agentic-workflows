@@ -10,6 +10,8 @@
 // copied whole and apart, a keyword-only checkout is one a transaction's
 // index builds a real store in, a call's attempts at a lock are seen as it
 // makes them, and the `ps` that fails does.
+//
+// Layer: verb.
 
 require('./hermetic-env.cjs');
 

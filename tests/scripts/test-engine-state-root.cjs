@@ -10,6 +10,8 @@
 // read from its text and its links followed — with what lies
 // outside the state, a sibling whose name only begins with the state's,
 // answered as outside.
+//
+// Layer: unit.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

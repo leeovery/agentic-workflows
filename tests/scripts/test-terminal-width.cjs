@@ -6,6 +6,8 @@
 // so every case here drives the parts that ARE deterministic: the override,
 // the clamps, the fallback, the memo, and the device reader's behaviour on
 // devices that do and do not exist.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

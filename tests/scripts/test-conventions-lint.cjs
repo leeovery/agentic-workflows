@@ -9,6 +9,8 @@
 // `{ file, line, message }`. The same function backs both the corpus test
 // (must find zero violations) and a negative test (must catch deliberately
 // broken temp fixtures). No repo files are mutated.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

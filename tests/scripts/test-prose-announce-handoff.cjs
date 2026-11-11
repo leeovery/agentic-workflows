@@ -7,6 +7,8 @@
 // walker's world command left unannounced, and an announcement reaching a
 // command that is not a walker's in a world — the orchestrator's, or one
 // run anywhere else.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 

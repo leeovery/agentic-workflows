@@ -19,6 +19,8 @@
 //
 // Driven through the suite's stub binary (claude-stub.cjs), which records
 // what each call handed it.
+//
+// Layer: unit.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

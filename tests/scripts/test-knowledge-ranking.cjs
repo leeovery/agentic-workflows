@@ -3,6 +3,8 @@
 // A query's ranking: each framing's searches blended, each chunk keeping its
 // best framing's score, each topic's records put in its order — and the
 // explanation `query --explain` prints beneath a result.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 

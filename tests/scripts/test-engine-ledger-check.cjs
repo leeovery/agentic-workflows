@@ -19,6 +19,8 @@
 // unit's manifest written there; the separate call is the suite's stub
 // binary (claude-stub.cjs), armed per test with its answers, every call it
 // takes recorded.
+//
+// Layer: verb.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

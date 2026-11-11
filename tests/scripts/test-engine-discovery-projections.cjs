@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: verb.
+
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');

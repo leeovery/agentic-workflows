@@ -11,6 +11,8 @@
 // `.leeway/.cache/{wu}/state.json` — cache-resident, purged at close. The
 // background review's back-off arms on the topic's moves on the ledger since
 // the last review's mark (9.8.14), over the ledger suites' world.
+//
+// Layer: verb.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

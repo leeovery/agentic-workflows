@@ -10,7 +10,7 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 
 | Gate | What it runs |
 |---|---|
-| `npm test` | every node suite (`tests/scripts/test-*.cjs`), listed one by one in `package.json`; its budget is 1.5 min on an idle machine |
+| `npm test` | every node suite (`tests/scripts/test-*.cjs`), listed one by one in `package.json`, then the budget report (§12); its guide is 6 min on an idle machine |
 | `npm run test:cli` | the shell contract suite of the manifest field surface |
 | `npm run test:migrations` | the frozen `test-migration-*.sh` fleet |
 | `npm run typecheck` | the JSDoc type contracts (`tsc`) |
@@ -22,16 +22,18 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 
 Every test belongs to one layer, and every file sits in one. The layer decides how the test runs and what it may cost.
 
-| Layer | What belongs there | How it runs | Budget per file | Example |
+| Layer | What belongs there | How it runs | Budget per file, in CPU | Example |
 |---|---|---|---|---|
-| **unit** | A kernel or projection module called with values: render, terminal, state-root path forms, ledger events, ids and folds, the knowledge kernel, the Claude call | In process, no git. A projection takes its state as a value, or as a plain temp folder with `pinStateRoot`, never a copied repository. | under 1 s | `test-render.cjs`, `test-engine-state-root.cjs`, `test-knowledge-store.cjs` |
-| **verb** | The engine's argv contract: the response, the state written, the state commit, and a refusal leaving nothing behind | `engine-harness.cjs` in process, over a world copied from a template (§3) | ≤ 15 s, ≤ ~100 tests | `test-engine-ledger-write.cjs`, `test-engine-workunit-create.cjs` |
-| **git** | What only real git shows: the state worktree, the merge between clones, push and catch-up, the commit door across repos, lost-state recovery | Real repositories from the git world templates (§3): a project, a project with a bare remote, two machines | ≤ 30 s | `test-engine-state-merge-catch-up.cjs`, `test-engine-state-worktree.cjs` |
-| **process** | What only a process shows: the real CLI's exit codes and streams, hooks fed stdin JSON, races between processes, detached launches, killed writers | Spawned; each race proves its contention happened (§6) | a handful of tests, beside the verb they concern | the hook tests in `test-engine-layout-hook.cjs`; the races in `test-engine-manifest-io.cjs` |
-| **conformance** | One contract run against each driver (§10) | One suite per kind of driver, parametrised over the drivers | — | `test-engine-task-conformance.cjs`, `test-engine-landing-conformance.cjs` |
-| **simulation** | End-to-end replays of the engine call sequences the prose makes, with the state oracle after every mutation (§11) | In process | ≤ 30 s per scenario file | `test-pipeline-simulation-feature.cjs` |
-| **migration** | One suite per migration, against a plain temp project of the shape it migrates from (§9) | `run()` called in process | — | `test-migration-070.cjs` |
-| **prose** | The prose harness's own units and its corpus perimeter (§13) | `tests/prose/` | — | `test-prose-invariants.cjs` |
+| **unit** | A kernel or projection module called with values: render, terminal, state-root path forms, ledger events, ids and folds, the knowledge kernel, the Claude call | In process, no git. A projection takes its state as a value, or as a plain temp folder with `pinStateRoot`, never a copied repository. | 1 s | `test-render.cjs`, `test-engine-state-root.cjs`, `test-knowledge-store.cjs` |
+| **verb** | The engine's argv contract: the response, the state written, the state commit, and a refusal leaving nothing behind | `engine-harness.cjs` in process, over a world copied from a template (§3) | 15 s, ≤ ~100 tests | `test-engine-ledger-write.cjs`, `test-engine-workunit-create.cjs` |
+| **git** | What only real git shows: the state worktree, the merge between clones, push and catch-up, the commit door across repos, lost-state recovery | Real repositories from the git world templates (§3): a project, a project with a bare remote, two machines | 30 s | `test-engine-state-merge-catch-up.cjs`, `test-engine-state-worktree.cjs` |
+| **process** | What only a process shows: the real CLI's exit codes and streams, hooks fed stdin JSON, races between processes, detached launches, killed writers | Spawned; each race proves its contention happened (§6) | 15 s; a handful of tests, beside the verb they concern | the hook tests in `test-engine-layout-hook.cjs`; the races in `test-engine-manifest-io.cjs` |
+| **conformance** | One contract run against each driver (§10) | One suite per kind of driver, parametrised over the drivers | 30 s | `test-engine-task-conformance.cjs`, `test-engine-landing-conformance.cjs` |
+| **simulation** | End-to-end replays of the engine call sequences the prose makes, with the state oracle after every mutation (§11) | In process | 30 s | `test-pipeline-simulation-feature.cjs` |
+| **migration** | One suite per migration, against a plain temp project of the shape it migrates from (§9) | `run()` called in process | 5 s | `test-migration-070.cjs` |
+| **prose** | The prose harness's own units and its corpus perimeter (§13) | `tests/prose/` | 5 s | `test-prose-invariants.cjs` |
+
+A budget is CPU seconds, user and sys, of the suite's process and every child it waits for: git, sh, the stand-ins. Load stretches wall time but not CPU, and a suite runs one call at a time, so its CPU is about its wall time on an idle machine. The whole run's guide is 6 minutes on an idle machine, measured as the run's CPU over the 8.5 cores' worth the run keeps busy: 3,060 s. The per-suite budgets and the report's growth line (§12) are what hold the run there.
 
 The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The `test:cli` suite becomes verb-layer node suites, or is deleted with its behaviour. Nothing new is written in bash.
 
@@ -72,7 +74,7 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 ## 4. Writing a suite
 
 - **One file per contract, named for it:** `test-engine-<family>[-<aspect>].cjs` for a verb family, `test-<kernel-module>.cjs` for a kernel module.
-- **The header** is a comment block that names the contract the file pins (the module and its verbs), its layer, and its world. `test-engine-ledger-write.cjs` and `test-engine-layout-hook.cjs` are the model.
+- **The header** is a comment block that names the contract the file pins (the module and its verbs), its layer, and its world. `test-engine-ledger-write.cjs` and `test-engine-layout-hook.cjs` are the model. The layer is named `Layer: <layer>.`, or `<Layer> layer:`, by §2's names; the budget report reads it there, and lists a suite whose header names none. A suite that stays over its layer's budget for a reason says so in the header, `Budget: <n> s — <why>.`, and is held to that number instead (§12).
 - **The first line of code** is `require('./hermetic-env.cjs')`.
 - **A unit file touches no git. A verb file defines no world of its own;** it takes one from the library.
 - **Split a file when it passes any of these:** ~1,000 lines, ~100 tests, its layer's time budget, or a second subject. Split by aspect, as the ledger suites are (`-write`, `-read`, `-check`, `-affected`, `-since`).
@@ -137,14 +139,25 @@ A suite names no driver and no tool: it runs against every shipped driver of its
 
 ## 12. Measuring
 
-Every change reports the serial time of each suite it touched, before and after:
+Every change reports the CPU of each suite it touched, before and after: `user` and `sys` added, which count every child the suite waits for and hold under any load.
 
 ```bash
-uptime
-time node --test tests/scripts/test-engine-ledger-write.cjs
+/usr/bin/time -p node --test tests/scripts/test-engine-ledger-write.cjs
 ```
 
-Run the suites one at a time, and note the load average beside the times: a time compares only with one taken under like load. A suite that passes its layer's budget (§2) is split or made cheaper in the same change: build its world once and copy it, call the engine in process, and run fewer git processes per assertion.
+**The budget report.** `npm test` meters every suite and ends with the report; `npm run test:budget` prints it again for the checkout's last run. The meter (`cpu-meter.cjs`, required first by `hermetic-env.cjs`) runs each suite under time(1) and logs its CPU to `tests/.cache/cpu.jsonl`; the run before it is kept as `cpu.prev.jsonl`. The report (`budget-report.cjs`) never fails the run; it is there to force a look. It reads:
+
+- **the run**: its suites' CPU summed, and what that comes to on an idle machine (the sum over 8.5 cores' worth, or the longest suite where that is more) against the 6-minute guide;
+- **over their budget**: each suite over its layer's budget (§2), or the one its header names, worst first, with its CPU, its budget and its layer; then the suites over their layer's budget but within a budget of their own, each with its reason;
+- **no layer named**: the suites whose header names no layer, so no budget, heaviest first;
+- **since the previous run**: the run's CPU then and now, and every suite new since then or grown by more than a fifth and 2 s, so the change that moved the run is named in the run that moved it.
+
+A builder answers each suite the report names, in the same change, in one of two ways:
+
+- **Make it cheaper**: split it, build its world once and copy it, call the engine in process, run fewer git processes per assertion.
+- **Say why not**, in its header: `Budget: <n> s — <why>.` (§4). The report then holds it to that number and shows the reason beside it, so the next reader sees a decision, not a regression.
+
+A suite with no layer is answered by naming one. A run grown since the last is answered in the PR's description.
 
 ## 13. Prose tests
 

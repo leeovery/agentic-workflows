@@ -4,6 +4,8 @@
 // P3). Every case directory is well-formed, every scoped file and anchor
 // resolves, every stub is named and triggered, every recipe loads. The
 // token-costing walks run on command via /prose-test — never here.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 

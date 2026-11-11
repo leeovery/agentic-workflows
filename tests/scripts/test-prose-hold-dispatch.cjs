@@ -8,6 +8,8 @@
 // blocked (which would stop every run before it began) — so both are
 // pinned here, along with how the hold finds a world the payload never
 // names.
+//
+// Layer: prose.
 
 require('./hermetic-env.cjs');
 
