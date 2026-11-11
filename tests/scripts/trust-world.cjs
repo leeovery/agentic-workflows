@@ -159,7 +159,7 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
    * @param {Kind|null} kind @param {string} answer @param {{sort?: string}} [opts] @param {Where} [where]
    */
   const raise = (kind, answer, { sort = 'several' } = {}, where = {}) => /** @type {string} */ (log('raise', {
-    entry: newId(), kind, label: label(kind), sort, sealed: '1', answer, via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocked_build: null,
+    entry: newId(), kind, label: label(kind), sort, sealed: '1', answer, via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocks_build: false, replaced_by: null, always: null,
   }, where).entry);
   const h = {
     events,
@@ -181,7 +181,7 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
     /** A raise on behaviour Claude sorted `sort`, which the person didn't follow. @param {string} sort */
     unfollowed: (sort) => {
-      log('raise', { entry: null, kind: 'behaviour', label: label('behaviour'), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, blocked_build: null });
+      log('raise', { entry: null, kind: 'behaviour', label: label('behaviour'), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, blocks_build: false, replaced_by: null, always: null });
     },
     /** @param {string} entry @param {string} verdict @param {Where} [where] */
     verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),

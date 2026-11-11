@@ -20,7 +20,8 @@
 // Driven through the suite's stub binary (claude-stub.cjs), which records
 // what each call handed it.
 //
-// Layer: unit.
+// Layer: process. Every call spawns the stub binary, and the started form's
+// tests kill its process group and its caller.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

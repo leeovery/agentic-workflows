@@ -18,9 +18,8 @@
 //   ledger holds as no departure (16.10.1); a departure this machine logged
 //   none for: one made on another machine, whose verdict is given there
 //   (16.13.1), or the person's replacement of their own departure, still
-//   against the lean, which is owed none; a departure made in a place no
-//   longer live, which the queue leaves out (ledger-verdicts.cjs); and a
-//   departure whose latest verdict is no skip: a skip waits in the queue
+//   against the lean, which is owed none; and a departure whose latest
+//   verdict is no skip: a skip waits in the queue
 //   for the verdict that follows it, and a verdict given is corrected as a
 //   correction (16.15.4), never given again — a verdict waiting in any
 //   conversation for the trust log among them, which the queue leaves out
@@ -51,7 +50,7 @@ const { topicTitle } = require('./derivations.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { carrying } = require('./ledger.cjs');
 const { resolveId, shortId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, whyDead, standingOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, standingOf } = require('./ledger-fold.cjs');
 const { liveness } = require('./ledger-units.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { isDeparture, queueOf, inUnit, departureOf, answerQueue } = require('./ledger-verdicts.cjs');
@@ -155,8 +154,6 @@ function giveVerdict(cwd, args) {
     if (unit !== null && inUnit(folded, [id], unit).length === 0) throw new Error(`verdict give: ${entry} stands in ${standingOf(folded, id).unit}, not ${unit} — the page drawn for a unit gives its own departures' verdicts`);
     const { departures, judged } = evidenceOf(root);
     if (!departures.has(id)) throw new Error(`verdict give: ${entry} is no departure this machine logged — a departure's verdict is given on the machine where it was made, and the person's replacement of their own departure is owed none`);
-    const dead = whyDead(folded, id);
-    if (dead !== null) throw new Error(`verdict give: ${entry} is owed no verdict — ${dead}, so the departure is no longer live`);
     if (judged.has(id)) throw new Error(`verdict give: ${entry} has its verdict — only a skip waits for one, and a verdict given is corrected, never given again`);
     record('verdict', { entry: id, verdict, point }, { cwd, warnings });
     if (point !== 'queue') return { entry, verdict, point };

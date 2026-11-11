@@ -63,7 +63,7 @@ const ANSWERS = Object.freeze([true, false, true, true, false, false, false, fal
 /** A well-formed event of every type, its own fields. */
 const SAMPLES = Object.freeze({
   gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null },
-  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocked_build: null },
+  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocks_build: false, replaced_by: null, always: null },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one' },
   verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
   'blind-draw': { entry: ENTRY, kind: 'look' },
@@ -105,14 +105,16 @@ describe('record (16.13.4)', () => {
     assert.strictEqual(new Set(recorded.map((event) => event.id)).size, recorded.length, 'each its own id');
   });
 
-  it('refuses a bad event, saying why, and writes nothing — a type the log does not hold, a field missing, one of the wrong type, a label not the labeller\'s twelve answers (16.11.5), one the type does not hold (no typed text: 16.13.3), and a field the engine sets', () => {
+  it('refuses a bad event, saying why, and writes nothing — a type the log does not hold, a field missing, one of the wrong type — a raise\'s build flag that is none, a decider or a mark of no one\'s among them — a label not the labeller\'s twelve answers (16.11.5), one the type does not hold (no typed text: 16.13.3), and a field the engine sets', () => {
     const dir = project('fumi');
     /** @type {[string, Record<string, unknown>, string][]} */
     const refusals = [
       ['departure', { entry: ENTRY }, 'the trust log holds no departure event: gate, raise, call, verdict, blind-draw, reversal, position-switch, convergence, correction'],
       ['call', { entry: ENTRY, kind: null, label: null }, 'a call event cannot be recorded: the call event needs sort'],
       ['verdict', { ...SAMPLES.verdict, verdict: 'maybe' }, 'a verdict event cannot be recorded: its verdict is not one of nothing, fix, loss, skip'],
-      ['raise', { ...SAMPLES.raise, blocked_build: 'yes' }, 'a raise event cannot be recorded: its blocked_build is not true or false, or null'],
+      ['raise', { ...SAMPLES.raise, blocks_build: null }, 'a raise event cannot be recorded: its blocks_build is not true or false'],
+      ['raise', { ...SAMPLES.raise, replaced_by: 'builder' }, 'a raise event cannot be recorded: its replaced_by is not one of person, claude, your-call, dont-care, carried, or null'],
+      ['raise', { ...SAMPLES.raise, always: 'urgent' }, 'a raise event cannot be recorded: its always is not one of design-problem, live-server, or null'],
       ...[
         { labeller: 'claude-sonnet-5', answers: ANSWERS.slice(1) },
         { labeller: 'claude-sonnet-5', answers: [...ANSWERS.slice(1), 'yes'] },

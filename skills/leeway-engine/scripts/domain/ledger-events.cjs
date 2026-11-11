@@ -81,11 +81,17 @@
 //   conversation: Claude's call as the raise took it, the rows the
 //   one-decision check judged one rule, why it asks, the decision point's
 //   reason, the labeller's label of the call (16.11.5), null where it gave
-//   none, and the model the call was decided under, by its id, null where
-//   it was unread (16.4.4). A fact only the person holds (16.3.8) parks in
-//   the same shape, as the ledger holds a fact's answer, with no lean: its
-//   call's lean, why and sort null, its rows any number, never labelled and
-//   decided under no model. It names no
+//   none, the model the call was decided under, by its id, null where it
+//   was unread (16.4.4), and what the decision point decided it from that
+//   the label does not hold: whether it blocks build work, a task parking
+//   on it as it was raised (16.4.7); whose the decision a replacement would
+//   replace is, null for a question's answer (16.5.7); and Claude's mark
+//   that it always asks, null for none (19.4.20, 19.4.22) — a task joining
+//   it parks under all of it as the question's first park holds it. A fact
+//   only the person holds (16.3.8) parks in the same shape, as the ledger
+//   holds a fact's answer, with no lean: its call's lean, why and sort null,
+//   its rows any number, never labelled, decided under no model and marked
+//   with none. It names no
 //   maker, is no entry and is never replaced: it waits while what it is
 //   about stands open (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
@@ -129,7 +135,7 @@
 
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, readFields } = require('./event-fields.cjs');
+const { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, ALWAYS_MARK, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, readFields } = require('./event-fields.cjs');
 const { isShownTask } = require('./task-id.cjs');
 
 const LEDGER = '.ledger.jsonl';
@@ -142,6 +148,9 @@ const PEOPLE = ['person', 'claude'];
 const MOVED = ['none', 'claude-moved-person', 'person-moved-claude'];
 const REASONS = ['new-fact', 'other-topic', 'changed-mind', 'was-wrong'];
 const GIVEN = ['own', 'your-call', 'dont-care', 'carried'];
+// Who decided an answer, as `decidedBy` reads it from its line: its maker
+// where it was their own, else how it was given.
+const DECIDED_BY = Object.freeze([...PEOPLE, ...GIVEN.filter((given) => given !== 'own')]);
 const KNOWN = ['measured', 'exploratory', 'documented', 'spike', 'read'];
 const ASSET_STATUSES = ['canonical', 'reference'];
 
@@ -326,6 +335,9 @@ const SCHEMA = {
       field('why_asking', LINE),
       field('label', nullable(LABEL)),
       field('model', nullable(MODEL)),
+      field('blocks_build', FLAG),
+      field('replaced_by', nullable(oneOf(...DECIDED_BY))),
+      field('always', nullable(ALWAYS_MARK)),
     ], 1, parkHolds),
     unparked: event([field('task', TASK), field('parks', listOf(ID))], 1, unparkHolds),
     rehomed: event([field('lines', listOf(ID)), field('files', listOf(MOVED_FILE))], 1, rehomeHolds),
@@ -480,5 +492,5 @@ function parseEntry(line, number, schema = SCHEMA) {
 }
 
 module.exports = {
-  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, ROADMAP, PRODUCT, ASSET_STATUSES, ROW_FIELDS, CALL_FIELDS, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
+  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, DECIDED_BY, ROADMAP, PRODUCT, ASSET_STATUSES, ROW_FIELDS, CALL_FIELDS, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
 };

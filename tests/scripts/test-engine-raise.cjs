@@ -45,7 +45,7 @@ const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cj
 const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
 const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
+const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 const NO_GATE = 'gate: no gate has been shown in this conversation — render the gate, then answer it';
 // The way on from a raise the conversation never drew.
 const ELSEWHERE = 'a raise is answered in the conversation that drew it, so after a /clear, or a resume under a new session, raise the question again';
@@ -277,6 +277,9 @@ describe('the seal (P1, P6)', () => {
       rows_judged: [],
       label: null,
       model: null,
+      blocks_build: false,
+      replaced_by: null,
+      always: null,
       reason: EVERY_CALL_ASKS,
       at: sealed.at,
       answered: null,

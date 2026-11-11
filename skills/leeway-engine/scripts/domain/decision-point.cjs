@@ -32,7 +32,7 @@ const { trustSettings } = require('./trust-settings.cjs');
  * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number}} At
  */
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
+const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 
 /**
  * Whether the call goes to the person, and why.

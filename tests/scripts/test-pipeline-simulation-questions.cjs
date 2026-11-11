@@ -84,9 +84,9 @@ describe('pipeline simulation: the build\'s questions', () => {
       'Q2 answered · their tasks build again · nothing waiting on you');
     assert.deepStrictEqual(waiting(), [], 'a question answered waits no longer');
 
-    // Task 1.4's builder finds its call wrong: the replacement it proposes parks it, kept through its raise alone.
+    // Task 1.4's builder finds its call wrong, a design problem it marks as one: the replacement it proposes parks it, kept through its raise alone.
     const replacing = { ...leaningCall('The index holds the live entries.', 'The index holds the entries a read asks for.'), question: 'Should the index drop dead entries?' };
-    const proposed = await sim.runAsync(['raise', build, '--replaces', indexed, '--reason', 'was-wrong', '--parks', '1.4'], null, JSON.stringify(replacing));
+    const proposed = await sim.runAsync(['raise', build, '--replaces', indexed, '--reason', 'was-wrong', '--parks', '1.4', '--always', 'design-problem'], null, JSON.stringify(replacing));
     assert.deepStrictEqual([proposed.parked, proposed.task], ['Q3', '1.4'], 'a replacement proposed parks its task');
     await sim.refusesAsync(['raise', `${wu}.specification`, '--replaces', indexed, '--reason', 'was-wrong'], /the person answers it through the raise alone: raise draw ledger Q3$/, null, JSON.stringify(replacing));
     const kept = sim.run(['raise', 'draw', wu, 'Q3']);
@@ -97,7 +97,7 @@ describe('pipeline simulation: the build\'s questions', () => {
     const versioning = sim.run(['ledger', 'ask', build], null, JSON.stringify({ ...made, text: 'Does every line carry its version?' })).id;
     const gap = await sim.runAsync(['raise', build, '--answers', versioning], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does every line carry its version?' }));
     assert.deepStrictEqual([gap.parked, gap.task], ['Q4', null], 'a call made in no task waits parking none');
-    // The person draws it; task 1.4's builder then meets it and joins it, so not following the screen drawn blocks 1.4's build work.
+    // The person draws it; task 1.4's builder then meets it and joins it, yet not following the screen drawn blocks no build work: the call was decided parking none.
     const versioned = sim.run(['raise', 'draw', wu, 'Q4']);
     await raised(versioning, 'Does every line carry its version?', '1.4');
     assert.strictEqual(sim.run(['raise', 'answer', versioned.raise, '--didnt-follow']).receipt, 'Q4 still open, explained again · still waiting · 1 waiting on you');

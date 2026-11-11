@@ -786,17 +786,22 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // naming the line, for each of the person's
 // answers to the lean a raise sealed — an entry, or a keep of the decision
 // Claude proposed to replace — beside the raises the person did not follow;
-// each answered blocking the build exactly where its answer is to what a
-// question waiting in the build waited on — the question it answers, by
-// any wording, parked before it, or the decision it replaces or keeps,
-// parked since its last keep — and saying nothing of it elsewhere, and
-// every such answer landed through its raise, a fact's, which logs no raise,
-// by the seal the conversation answered it from (12.13.16, 16.4.7); one
-// raise not followed for each "I don't follow" the conversations' seals
-// count, but a fact's, the one a command just pressed blocking the build
-// exactly where a task was parked, by the ledger, on the question its seal
-// was drawn from as it was pressed, which lands no line;
-// none of them for anything else; and nothing left waiting in a
+// every answer to what a question waiting in the build waited on — the
+// question it answers, by any wording, parked before it, or the decision
+// it replaces or keeps, parked since its last keep — landed through its
+// raise, a fact's, which logs no raise, by the seal the conversation
+// answered it from (12.13.16); one raise not followed for each "I don't
+// follow" the conversations' seals count, but a fact's; none of them for
+// anything else. Each raise logs what its call was decided from beyond its
+// label, as the ledger holds what that rests on (16.4.7, 16.5.7, 19.4.20):
+// where its question waited in the build, as its first park was decided —
+// blocking build work where that park held a task, never as the parks stood
+// at the answer, the decision it would replace whose it was as it parked,
+// the person's where a keep of theirs stood on it, and the park's mark —
+// and every park of a question holds its first park's; elsewhere blocking
+// no build work, the decision it would replace whose it was as the answer
+// landed, and the one a command just pressed, which lands no line, read off
+// the seal it was pressed on; and nothing left waiting in a
 // conversation, as no append fails. A raise answered and the line it
 // landed agree on whether the answer took Claude's lean — its row, or the
 // row the separate call read from the person's own words — the line
@@ -856,24 +861,41 @@ function auditTrust(sim, label, ran = []) {
   };
   /** @type {(e: Record<string, any>) => boolean} */
   const waitedOn = (e) => parksWaited(e).length > 0;
-  /** Blocking build work where a park still held its task as the line landed — no close taking it off — not where none did; null outside a park. @type {(parks: Record<string, any>[], e: Record<string, any>) => boolean|null} */
-  const blocking = (parks, e) => (parks.length === 0 ? null : parks.some((p) => p.task !== null
-    && !entries.slice(entries.indexOf(p), entries.indexOf(e)).some((u) => u.event === 'unparked' && u.parks.includes(p.id))));
+  /** Whose the decision `id` was as the ledger stood before line `at` (16.5.7): the person's where a keep of theirs stood on it, else its maker's where it was their own, else how it was given. @type {(id: string, at: number) => string} */
+  const whose = (id, at) => {
+    const decision = byId.get(id);
+    if (entries.slice(0, at).some((k) => isKeep(k) && k.entry === id)) return 'person';
+    return decision.given === 'own' ? decision.by : decision.given;
+  };
+  /** Whether two parks are about the same thing: the question, by any wording, or the decision. @type {(a: Record<string, any>, b: Record<string, any>) => boolean} */
+  const aboutTheSame = (a, b) => (a.question === null ? b.replaces === a.replaces : b.question !== null && firstWording(b.question) === firstWording(a.question));
+  /** The first park of the question a park is one of: the earliest of its unit under its number, about the same thing. @type {(p: Record<string, any>) => Record<string, any>} */
+  const firstParkOf = (p) => entries.find((q) => q.event === 'parked' && q.unit === p.unit && q.number === p.number && aboutTheSame(q, p));
+  /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked. @type {(first: Record<string, any>) => Record<string, unknown>} */
+  const parkDecidedFrom = (first) => ({ blocks_build: first.task !== null, replaced_by: first.replaces === null ? null : whose(first.replaces, entries.indexOf(first)), always: first.always });
+  /** What a raise event says its call was decided from, of `fields`. @type {(event: Record<string, any>, fields: string[]) => Record<string, unknown>} */
+  const decidedFrom = (event, fields) => Object.fromEntries(fields.map((f) => [f, event[f]]));
+  for (const park of entries.filter((p) => p.event === 'parked')) {
+    assert.deepStrictEqual(decidedFrom(park, ['blocks_build', 'replaced_by', 'always']), parkDecidedFrom(firstParkOf(park)),
+      ctx(`the park ${park.id} does not hold what its question's first park was decided from`));
+  }
+  /** What an answer's raise was decided from, by the ledger: its question's first park's where it waited in the build, else no build work blocked and the decision it replaces or keeps whose it was. @type {(e: Record<string, any>) => Record<string, unknown>} */
+  const answerDecidedFrom = (e) => {
+    const [first] = parksWaited(e);
+    if (first !== undefined) return parkDecidedFrom(first);
+    const decision = answered(e)?.decision ?? null;
+    return { blocks_build: false, replaced_by: decision === null ? null : whose(decision, entries.indexOf(e)) };
+  };
   const answers = ofType('raise').filter((e) => !e.didnt_follow);
   for (const raise of answers) {
-    assert.strictEqual(raise.blocked_build, blocking(parksWaited(byId.get(raise.entry)), byId.get(raise.entry)),
-      ctx(`the raise ${raise.id} does not block build work exactly where its answer is to what a question parking a task in the build waited on`));
+    const expected = answerDecidedFrom(byId.get(raise.entry));
+    assert.deepStrictEqual(decidedFrom(raise, Object.keys(expected)), expected,
+      ctx(`the raise ${raise.id} does not log what its call was decided from, as the ledger holds it`));
   }
   const conversations = path.join(sim.configDir, 'conversations');
   const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
   /** @type {Record<string, any>[]} */
   const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
-  /** The parks of the question whose first park is `first`: it and each holding its number about the same thing. @type {(first: Record<string, any>) => Record<string, any>[]} */
-  const questionParks = (first) => entries.filter((p) => p.event === 'parked' && p.unit === first.unit && p.number === first.number
-    && (first.question === null ? p.replaces === first.replaces : p.question !== null && firstWording(p.question) === firstWording(first.question)));
-  /** Blocking build work where a park of the question a seal was drawn from holds its task as the ledger stands — no close taking it off — not where none does; null for a seal drawn from none. @type {(parks: {park: string}|null) => boolean|null} */
-  const parkingNow = (parks) => (parks === null ? null : questionParks(byId.get(parks.park)).some((p) => p.task !== null
-    && !entries.some((u) => u.event === 'unparked' && u.parks.includes(p.id))));
   const raised = new Set([...answers.map((e) => e.entry), ...sealed.filter((s) => s.fact && s.answered !== null).map((s) => s.id)]);
   assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
     ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
@@ -882,8 +904,11 @@ function auditTrust(sim, label, ran = []) {
     ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count'));
   const pressed = ran[0] === 'raise' && ran[1] === 'answer' && ran.includes('--didnt-follow') ? sealed.find((s) => s.id.startsWith(ran[2])) : undefined;
   if (pressed !== undefined && !pressed.fact && pressed.answered === null) {
-    assert.strictEqual(notFollowed.at(-1)?.blocked_build, parkingNow(pressed.parks),
-      ctx('the raise not followed does not block build work exactly where a task parks on its question as it was pressed'));
+    const expected = pressed.parks === null
+      ? { blocks_build: false, replaced_by: pressed.replaces === null ? null : whose(pressed.replaces.entry, entries.length) }
+      : parkDecidedFrom(byId.get(pressed.parks.park));
+    assert.deepStrictEqual(decidedFrom(notFollowed.at(-1) ?? {}, Object.keys(expected)), expected,
+      ctx('the raise not followed does not log what its call was decided from, as the ledger holds it'));
   }
   const waiting = folders.filter((name) => fs.existsSync(path.join(conversations, name, PENDING)));
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));

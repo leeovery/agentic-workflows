@@ -10,7 +10,6 @@
 // Claude's stated confidence, its why, is never read (16.1.4).
 //
 // It decides, in this order:
-// - In discovery, ask: nothing is decided there alone (16.7.3).
 // - Always ask, whatever the counts (16.5), where no label is needed to
 //   tell: replacing an entry the person decided, or kept since (16.5.7); and
 //   a question Claude marks as a design problem (19.4.22) or testing against
@@ -52,8 +51,8 @@ const { HARD_TO_UNDO, ASK_AGAIN } = require('./trust-settings.cjs');
 /** @typedef {import('./trust-counts.cjs').State} State */
 /** @typedef {import('./trust-settings.cjs').Settings} Settings */
 /** @typedef {import('./ledger-events.cjs').DecidedBy} DecidedBy */
+/** @typedef {import('./event-fields.cjs').Always} Always */
 /** What the rule answers: ask the person, Claude's call proceeding, or Claude sent to check. @typedef {'ask'|'proceed'|'check'} Ruling */
-/** A mark that only makes a question ask: a design problem (19.4.22), or testing against a live server (19.4.20). @typedef {'design-problem'|'live-server'} Always */
 /** A care entry (16.5.2): a kind that always asks in one project, known by the project's id. @typedef {{project: string, kind: Kind}} CareEntry */
 /**
  * What the rule decides a call from beside its sort.
@@ -77,10 +76,6 @@ const ALWAYS = Object.freeze({
   'live-server': 'It means testing against a live server, so it always comes to you.',
 });
 
-/** The marks, as `raise --always` takes them. */
-const ALWAYS_MARKS = Object.freeze(/** @type {Always[]} */ (Object.keys(ALWAYS)));
-
-const IN_DISCOVERY = 'Nothing is decided in discovery, so it comes to you.';
 const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
 const CHECK_IT = 'You can find this out: check it — read the code or the record, or run something — and raise it again only if checking can\'t settle it.';
 const CHECKED = 'Checking couldn\'t settle it, so it comes to you.';
@@ -130,13 +125,12 @@ function lineOf({ settings, blocks_build: blocks }, hard) {
 }
 
 /**
- * Why the call asks before its label is read — in discovery, replacing an
- * entry of the person's, under Claude's mark, or with no label — or null.
+ * Why the call asks before its label is read — replacing an entry of the
+ * person's, under Claude's mark, or with no label — or null.
  * @param {Context} context
  * @returns {string|null}
  */
-function asksUnread({ place, replaced_by: by, always, label }) {
-  if (place.phase === 'discovery') return IN_DISCOVERY;
+function asksUnread({ replaced_by: by, always, label }) {
   if (by === 'person') return YOURS;
   if (always !== null) return ALWAYS[always];
   return label === null ? UNLABELLED : null;
@@ -194,8 +188,8 @@ function byKind({ counts, project }, kind, { limit, said }) {
 }
 
 /**
- * Whether the call goes to the person, and why: in discovery, replacing an
- * entry of the person's, under Claude's mark, or with no label, ask; danger
+ * Whether the call goes to the person, and why: replacing an entry of the
+ * person's, under Claude's mark, or with no label, ask; danger
  * or a care entry, ask; a question Claude could find out, check, and ask
  * once sent to check; else as the count of one-answer calls stands for a
  * call sorted `one`, and as its kind's count stands for any other.
@@ -214,4 +208,4 @@ function rule({ sort }, context) {
   return sort === 'one' ? oneAnswer(context, line) : byKind(context, kind, line);
 }
 
-module.exports = { ALWAYS_MARKS, rule };
+module.exports = { rule };

@@ -42,10 +42,13 @@
 //   standing over a lean the entry it replaces held, wherever that entry
 //   stands: the write logs it in the trust log, naming the entry it
 //   reverses (ledger-write.cjs).
-// - The queue: every departure this machine logged (16.13.1, 16.13.6) made
-//   in a live place, current or replaced since — it happened, and its
-//   verdict is owed — less those given a verdict, in the trust log or
-//   waiting in any conversation for it (16.10.9), in the ledger's order.
+// - The queue: every departure this machine logged (16.13.1, 16.13.6,
+//   16.10.12), current or replaced since, wherever it was made — a topic or
+//   a unit set aside or cancelled since among them: it happened, the counts
+//   hold it as a loss until it is judged (16.10.8), and what the product
+//   would have lost had Claude's answer been built is still the person's to
+//   say — less those given a verdict, in the trust log or waiting in any
+//   conversation for it (16.10.9), in the ledger's order.
 //   The departures and the verdicts are the trust log's, read in one pass
 //   (trust-evidence.cjs): a raise answered against the lean — a keep among
 //   them, its raise event naming the keep — and a reversal. A departure
@@ -67,7 +70,7 @@
 //   them.
 // ---------------------------------------------------------------------------
 
-const { factsOf, standingOf, isLive } = require('./ledger-fold.cjs');
+const { factsOf, standingOf } = require('./ledger-fold.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -183,13 +186,13 @@ function isDeparture(folded, id) {
 }
 
 /**
- * The verdict queue: every departure `evidence` logged, made in a live
- * place, that it holds no verdict on, in the ledger's order.
+ * The verdict queue: every departure `evidence` logged, wherever it was
+ * made, that it holds no verdict on, in the ledger's order.
  * @param {Folded} folded @param {Pick<Evidence, 'departures'|'judged'>} evidence
  * @returns {string[]}
  */
 function queueOf(folded, evidence) {
-  return [...folded.facts.keys()].filter((id) => evidence.departures.has(id) && isLive(folded, id) && !evidence.judged.has(id));
+  return [...folded.facts.keys()].filter((id) => evidence.departures.has(id) && !evidence.judged.has(id));
 }
 
 /**

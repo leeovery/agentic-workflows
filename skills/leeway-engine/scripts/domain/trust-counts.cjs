@@ -427,4 +427,4 @@ function stateOf({ rule, changes }, threshold) {
   return { asks, bound: upperBound(split), ...split };
 }
 
-module.exports = { MODEL_LINES, betaCdf, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf };
+module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf };
