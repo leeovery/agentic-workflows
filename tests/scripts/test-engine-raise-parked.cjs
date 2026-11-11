@@ -696,11 +696,14 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.deepStrictEqual([logged(), seals()?.[raise].didnt_follow], [[], 1]);
   });
 
-  it('an answer to a question parking no task frees nothing, its receipt saying so, and lands for none', async () => {
+  it('an answer to a question parking no task frees nothing, its receipt saying so, lands for none, and its raise event blocks no build work — the build carried on (16.4.7)', async () => {
     await outsideTask(made.where);
 
-    assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · no task waited on it · nothing waiting on you');
+    const res = drawnAndPicked('Q1');
+
+    assert.strictEqual(res.receipt, 'Q1 answered · no task waited on it · nothing waiting on you');
     assert.deepStrictEqual([lastEntry().event, lastEntry().task], ['decided', null]);
+    assert.deepStrictEqual(logged(), [raiseEvent(full(res.id), { blocked_build: false })]);
   });
 
   it('an answer whose task another question still parks: the task waits on it', () => {

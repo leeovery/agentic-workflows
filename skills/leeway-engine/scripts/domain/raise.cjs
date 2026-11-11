@@ -1178,7 +1178,7 @@ async function parkedRaise(cwd, raising, given, task, warnings) {
   if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW, label: null }, task), ONLY_YOU_KNOW, warnings);
   const { call } = given;
   const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
-  const { decision, reason } = decided(cwd, raising, call, label, task !== null);
+  const { decision, reason } = decided(cwd, raising, call, label, questions.blocksBuild(task === null ? [] : [task]));
   if (decision === 'check') return { decision, reason, warnings };
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, label, task, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing parked');
@@ -1440,14 +1440,15 @@ function ownWordsOn({ call }, stdin, toLand) {
  * The raise's event in the trust log: its entry, or null where the person
  * didn't follow; the kind of its sealed label, and the label; its sort; the
  * lean's key and the answer's; how it came, and the row read from free
- * text; and blocking the build where its question waited in one, else null
- * (16.4.7).
+ * text; and, where its question waited in the build, whether it blocked
+ * build work — a task parked on it — as the ask rule was told (16.4.7),
+ * else null.
  * @param {CallSeal} seal @param {{entry: unknown, answer: string|null, via: Via, with_text: boolean, reading: string|null, didnt_follow: boolean}} answer
  */
 function raiseEvent({ call, parks, label }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow }) {
   return {
     entry, kind: kindOf(label), label, sort: call.sort, sealed: call.lean, answer,
-    via, with_text: withText, reading, didnt_follow: didntFollow, blocked_build: parks === null ? null : true,
+    via, with_text: withText, reading, didnt_follow: didntFollow, blocked_build: parks === null ? null : questions.blocksBuild(parks.tasks),
   };
 }
 

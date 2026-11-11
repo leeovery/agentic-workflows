@@ -128,6 +128,16 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
 /** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
 
 const DISCUSSING = 'discussing.json';
+
+/**
+ * Whether a question in the build blocks build work, as the ask rule and the
+ * trust log read it (16.4.7): a task parks on it. One parking none leaves
+ * the build carrying on.
+ * @param {readonly string[]} tasks the tasks it parks
+ */
+function blocksBuild(tasks) {
+  return tasks.length > 0;
+}
 const NUMBERED = /^Q([1-9][0-9]*)$/;
 const WAITING_USAGE = 'raise waiting <work-unit>';
 const ASIDE_USAGE = 'raise aside <work-unit> <question> …   (each by its number, Q{n}, or its park\'s id)';
@@ -706,6 +716,6 @@ function parkingTask(root, unit, task, warnings) {
 }
 
 module.exports = {
-  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
+  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
   explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen,
 };
