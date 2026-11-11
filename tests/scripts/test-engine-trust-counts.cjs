@@ -247,6 +247,14 @@ describe('weights (16.12.4)', () => {
     assert.deepStrictEqual([third, second].map((model) => behaviour(h, { model }).clean), [2 + 4 + 2 + 1, 4 + 8 + 1]);
   });
 
+  it('holds the line the person ruled: Claude Fable 5.1 follows Claude Opus 5.5, its newest — so a Fable session starts from Opus 5.5\'s answers at half and earns the rest, an Opus 5.5 session never reads Fable\'s, and a model no line holds reads Fable\'s at half and Opus 5.5\'s at a quarter (E4)', () => {
+    const h = history();
+    h.agree(8, 'behaviour', { model: 'claude-opus-5-5' });
+    h.agree(2, 'behaviour', { model: 'claude-fable-5-1' });
+
+    assert.deepStrictEqual(['claude-fable-5-1', 'claude-opus-5-5', UNLISTED].map((model) => behaviour(h, { model }).clean), [2 + 4, 8, 1 + 2]);
+  });
+
   it('reads a model no line holds as the newest generation\'s successor, that generation at half and each before it halving again, and a session whose model is unread as that generation itself: so a log of the current model\'s answers holding overrules makes the one-answer count ask for either (16.12.4)', () => {
     const h = history();
     h.agree(4, 'behaviour', { model: BEFORE });

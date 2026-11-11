@@ -72,7 +72,7 @@ const { ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_
 // The main session's models, each line oldest first (E4): a release on a
 // new model adds it last to its line, or a line of its own for a model that
 // inherits none of them.
-const MODEL_LINES = Object.freeze([Object.freeze(['claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5'])]);
+const MODEL_LINES = Object.freeze([Object.freeze(['claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5', 'claude-fable-5-1'])]);
 
 const CLEAN = 'clean';
 const LOSS = 'loss';
