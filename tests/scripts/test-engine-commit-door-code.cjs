@@ -5,8 +5,9 @@
 // committed in the code tree under the commit lock, and across the repos
 // nested in the project — each path in the repo that owns it, a submodule's
 // pointer recorded in its parent, refused before any repo commits where one
-// cannot. Each is made under the task in flight, whose own refusals and
-// trailer are test-engine-commit-task.cjs's.
+// cannot; and the most git commands a commit runs. Each is made under the
+// task in flight, whose own refusals and trailer are
+// test-engine-commit-task.cjs's.
 //
 // Layer: git. World: the project world and its code projects, built once and
 // copied (engine-harness.cjs), the commit door's epic over them and its task
@@ -21,10 +22,16 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
-const { ok, refuses, git, commitAll, cleanupFixture, fixtureFrom, statePath, layout, createFile, writeState } = harness;
+const { ok, refuses, git, commitAll, cleanupFixture, fixtureFrom, statePath, layout, createFile, writeState, traced } = harness;
 const { codeHeadFiles, codeStatusLines, epicManifest, implementing, building, FOR_TASK, TASK_BRANCH, startBuilding } = require('./commit-door-world.cjs');
 
 before(startBuilding);
+
+// The most git commands a code commit runs, each read asked once in its
+// verb but for what it checks again once it holds the commit lock: in a
+// project of one repository, and across a repository nested in it.
+const ONE_REPO_COMMIT = 22;
+const NESTED_COMMIT = 42;
 
 describe('engine commit --paths: the code commit', () => {
   const setup = fixtureFrom('engine-commit-', (at) => implementing(at, { 'src/other.js': 'const y = 1;\n', 'src/gone.js': 'const z = 1;\n' }));
@@ -39,10 +46,11 @@ describe('engine commit --paths: the code commit', () => {
     createFile(dir, 'src/other.js', 'const y = 2;\n');
     writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\na doc session\'s dirt\n');
 
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', 'src/new.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
+    const { result: res, commands } = traced(() => ok(dir, ['commit', '--paths', 'src/app.js', 'src/new.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building));
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(dir, ['rev-parse', '--short', 'HEAD']).trim() }],
       'a project of one repo commits once, in the root');
+    assert.ok(commands.length <= ONE_REPO_COMMIT, `the commit ran ${commands.length} git commands:\n${commands.join('\n')}`);
     const files = codeHeadFiles(dir);
     assert.deepStrictEqual(files.sort(), ['src/app.js', 'src/new.js'], 'exactly the named paths — untracked included');
     assert.deepStrictEqual(res.left_dirty, ['src/other.js'],
@@ -229,10 +237,11 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(api, 'src/handler.js', 'const h = 2;\n');
     createFile(api, 'src/new.js', 'const n = 1;\n');
 
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', 'api/src/new.js',
-      '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
+    const { result: res, commands } = traced(() => ok(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', 'api/src/new.js',
+      '-m', 'feat(topic-a): the task', ...FOR_TASK], building));
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: '.', sha: head(dir) }]);
+    assert.ok(commands.length <= NESTED_COMMIT, `the commit ran ${commands.length} git commands:\n${commands.join('\n')}`);
     assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
     assert.deepStrictEqual(codeHeadFiles(api).sort(), ['src/handler.js', 'src/new.js']);
     assert.deepStrictEqual([subject(dir), subject(api)], ['feat(topic-a): the task', 'feat(topic-a): the task']);

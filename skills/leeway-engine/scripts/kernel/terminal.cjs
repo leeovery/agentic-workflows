@@ -21,6 +21,7 @@
 const fs = require('fs');
 const tty = require('tty');
 const { spawnSync } = require('child_process');
+const { dropReads } = require('./git-reads.cjs');
 
 // The width that shipped before detection existed — every no-answer path
 // lands here, so an undetectable environment renders exactly as it used to.
@@ -75,6 +76,7 @@ function columnsOfDevice(dev) {
 // with no controlling tty reports `??` (macOS) or `?` (Linux).
 /** @param {number} pid @returns {{tty: string|null, ppid: number|null}} */
 function psInfo(pid) {
+  dropReads();
   const res = spawnSync('ps', ['-o', 'ppid=,tty=', '-p', String(pid)], { encoding: 'utf8' });
   if (res.status !== 0 || !res.stdout) return { tty: null, ppid: null };
   const parts = res.stdout.trim().split(/\s+/);
@@ -120,6 +122,7 @@ function fromProcessTree(maxHops = 8) {
 /** @returns {number|null} */
 function fromTmux() {
   if (!process.env.TMUX || !process.env.TMUX_PANE) return null;
+  dropReads();
   const res = spawnSync('tmux', ['display', '-pt', process.env.TMUX_PANE, '#{pane_width}'], {
     encoding: 'utf8',
   });

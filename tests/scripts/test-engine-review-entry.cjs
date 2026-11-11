@@ -47,7 +47,7 @@ function snapshot() {
 }
 
 // The most git commands an entry runs with nothing in flight, waiting on a
-// fix task: its own reads, nine of them; reading the build's standing too
+// fix task: its own reads, eight of them; reading the build's standing too
 // would more than double them.
 const IDLE_ENTRY = 12;
 
@@ -137,6 +137,6 @@ describe('the questions waiting on the person (12.13.22)', () => {
       'waiting: Q1 — Should a receipt be sent by email? — parks task 3.1',
       'waiting: Q2 — Should a refund send a receipt too? — parks no task',
     ]);
-    assert.ok(commands.length <= IDLE_ENTRY, `an idle entry ran ${commands.length} git commands:\n${commands.join('\n')}`);
+    assert.ok(commands.length <= IDLE_ENTRY,`an idle entry ran ${commands.length} git commands:\n${commands.join('\n')}`);
   });
 });

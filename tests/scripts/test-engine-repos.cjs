@@ -2,8 +2,9 @@
 
 //
 // Tests for the project's repos (kernel/repos.cjs): which folders inside a
-// project are repos of their own, which repo owns a path, the order a code
-// commit takes through them, and the dirt and history read across them.
+// project are repos of their own, the walk that finds them kept for a verb,
+// which repo owns a path, the order a code commit takes through them, and
+// the dirt and history read across them.
 //
 // Layer: git.
 //
@@ -15,7 +16,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { git, commitCode, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, layout } = require('./engine-harness.cjs');
+const { git, commitCode, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, layout, traced } = require('./engine-harness.cjs');
+const { git: engineGit } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
+const { withVerbReads } = require('../../skills/leeway-engine/scripts/kernel/isolated-git.cjs');
 const {
   projectRepos, repoOf, commitGroups, projectDirtyEntries, placeOf, topPath, folderPath, checkoutTop, folderUnder,
 } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
@@ -55,6 +58,22 @@ describe('projectRepos: the repos a project holds', () => {
     assert.deepStrictEqual(repos.map((repo) => repo.heldOut), [['packages/tools/cli', 'vendor/sdk'], ['lib'], [], [], []],
       'each git holds out the untracked repos and submodules directly inside it — never one it ignores, never one further down');
     assert.deepStrictEqual(repos.map((repo) => repo.submodules), [['vendor/sdk'], [], [], [], []]);
+  });
+
+  it('walks once in a verb, each call given its own copy, and again once git has written', () => {
+    nestedRepo(dir, 'api');
+
+    const { result, commands } = traced(() => withVerbReads(() => {
+      const first = projectRepos(dir);
+      first[0].heldOut.push('changed');
+      const kept = projectRepos(dir);
+      nestedRepo(dir, 'tools');
+      engineGit(dir, ['update-ref', 'refs/heads/written', 'HEAD']);
+      return [kept, projectRepos(dir)];
+    }));
+
+    assert.deepStrictEqual(result.map((repos) => repos.map((repo) => [repo.dir, repo.heldOut])), [[['', []], ['api', []]], [['', ['tools']], ['api', []], ['tools', []]]]);
+    assert.strictEqual(commands.filter((command) => command.startsWith('ls-files --stage')).length, 5, 'a walk lists each repo\'s index once');
   });
 
   it('never looks inside an ignored folder that is not a repo, and takes no submodule with nothing checked out', () => {

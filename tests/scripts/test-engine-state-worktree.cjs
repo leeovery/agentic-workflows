@@ -6,12 +6,13 @@
 // `leeway-state` checked out at `.leeway/` in the main checkout and locked,
 // found from any worktree through the common git directory; every call made
 // with the caller's repository environment cleared, and within a time limit;
-// the config's hooks read afresh by each verb and after a `config` call, and
-// for no command that fires none; creating the state, inspecting it, each
-// repair on its own, the remote asked, and a branch holding code history. The
-// locks are test-engine-state-lock.cjs's; the commit, its push and its hooks
-// off, test-engine-state-commit.cjs's; one read of the hooks per call and
-// folder, test-engine-run.cjs's.
+// the config's hooks read afresh by each verb and after a `config` call that
+// may write them, never one that reads, and for no command that fires none;
+// creating the state, inspecting it, each repair on its own, the remote
+// asked, its remotes read from the config, and a branch holding code
+// history. The locks are test-engine-state-lock.cjs's; the commit, its push
+// and its hooks off, test-engine-state-commit.cjs's; one read of the hooks
+// per call and folder, test-engine-run.cjs's.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote (state-worktree-world.cjs).
@@ -37,7 +38,7 @@ const { isId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.c
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
   inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
-  askStateRemote, fetchStateTip, codeBranchSharing, stateRemoteUrl, withStateLock, commitState,
+  askStateRemote, fetchStateTip, codeBranchSharing, stateRemote, stateRemoteUrl, withStateLock, commitState,
 } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 
 const world = useWorld();
@@ -213,6 +214,20 @@ describe('the isolated runner', () => {
     });
 
     assert.deepStrictEqual(disabled, ['hook.guard.enabled=false']);
+  });
+
+  it('keeps the verb\'s read of the hooks across a config call that only reads — the state\'s remotes read among them', () => {
+    const { main } = codeProject(world());
+
+    const { commands } = traced(() => withVerbReads(() => {
+      const runner = isolatedGit(main);
+      disabledHooks(runner);
+      runner.tryRun(['config', '--get', 'leeway.probe']);
+      stateRemote(runner);
+      disabledHooks(runner);
+    }));
+
+    assert.strictEqual(commands.filter(readsHooks).length, 1);
   });
 
   it('keeps the state\'s commit and push off whatever the environment points git at', () => {
@@ -587,6 +602,18 @@ describe('the repairs, each on its own', () => {
 });
 
 describe('the remote, asked', () => {
+  it('names the remotes git lists, read from the config: one with no URL, one with a dot in its name, never the remote a push defaults to', () => {
+    const { main } = codeProject(world());
+    git(main, ['config', 'remote.zeta.url', path.join(world(), 'zeta.git')]);
+    git(main, ['config', 'remote.alpha.fetch', '+refs/heads/*:refs/remotes/alpha/*']);
+    git(main, ['config', 'remote.my.fork.pushurl', path.join(world(), 'fork.git')]);
+    git(main, ['config', 'remote.pushDefault', 'zeta']);
+
+    const { remotes } = stateRemote(isolatedGit(main));
+
+    assert.deepStrictEqual([remotes, git(main, ['remote']).split('\n').filter(Boolean)], [['alpha', 'my.fork', 'zeta'], ['alpha', 'my.fork', 'zeta']]);
+  });
+
   it('answers no remote where the project has none, never asking', () => {
     const { root } = codeProject(world(), { state: true });
 

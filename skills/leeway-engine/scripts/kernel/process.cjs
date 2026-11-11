@@ -12,13 +12,16 @@
 // ---------------------------------------------------------------------------
 
 const { execFileSync } = require('child_process');
+const { dropReads } = require('./git-reads.cjs');
 
 /**
  * Block the thread for `ms` without burning CPU: Atomics.wait on a throwaway
- * buffer is never notified, so it sleeps the full timeout.
+ * buffer is never notified, so it sleeps the full timeout. A wait, so what
+ * the verb has read of git goes (kernel/git-reads).
  * @param {number} ms
  */
 function sleepSync(ms) {
+  dropReads();
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
@@ -31,6 +34,7 @@ const PS_TIMEOUT_MS = 10000;
  * @param {number} pid @returns {string|null}
  */
 function processStartTime(pid) {
+  dropReads();
   try {
     // `lstart` is printed in the caller's timezone and locale; the recorded
     // string is compared verbatim by whichever session reads it later, so

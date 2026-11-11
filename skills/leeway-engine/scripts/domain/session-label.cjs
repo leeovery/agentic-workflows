@@ -70,6 +70,7 @@ const { handedSession, processStartTime, ownerAlive, ownsRow } = require('../ker
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { operationInProgress } = require('../kernel/git.cjs');
+const { dropReads } = require('../kernel/git-reads.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
@@ -335,6 +336,7 @@ function labelConfigStatus(cwd) {
  */
 function tmux(args, socket) {
   const full = socket ? ['-S', socket, ...args] : args;
+  dropReads();
   return execFileSync('tmux', full, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).replace(/\n$/, '');
 }
 

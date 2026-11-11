@@ -56,6 +56,8 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { isObject } = require('./manifest-io.cjs');
 const { messageOf } = require('./call.cjs');
+const { sleepSync } = require('./process.cjs');
+const { dropReads } = require('./git-reads.cjs');
 
 /** The variable naming the binary, where it is not `claude` on PATH. */
 const BINARY_VAR = 'LEEWAY_CLAUDE';
@@ -368,11 +370,6 @@ function startedAs(answer) {
   return { wait: () => answer, answered: async () => answer, cancel: () => {} };
 }
 
-/** Block for `ms`, holding the event loop. @param {number} ms */
-function pause(ms) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
-
 /** Wait `ms` without holding the event loop. @param {number} ms @returns {Promise<void>} */
 function later(ms) {
   return new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -411,6 +408,7 @@ function running(group, { io, folder }, deadline, ask) {
   let answer = null;
   const ended = (/** @type {Answer} */ given) => {
     if (answer !== null) return answer;
+    dropReads();
     try {
       process.kill(-group, 'SIGKILL');
     } catch { /* a group gone already has nothing left to kill */ }
@@ -427,7 +425,7 @@ function running(group, { io, folder }, deadline, ask) {
   };
   return {
     wait() {
-      while (!settled()) pause(POLL_MS);
+      while (!settled()) sleepSync(POLL_MS);
       return /** @type {Answer} */ (answer);
     },
     async answered() {
@@ -460,6 +458,7 @@ function startClaude(ask) {
     removeFolder(folder);
     return startedAs(cannot('failed', `no folder to keep the call's answer in: ${messageOf(err)}`));
   }
+  dropReads();
   const child = spawn('/bin/sh', ['-c', STARTED, 'sh', io, folder, String(ask.timeoutMs / 1000), String(process.pid), binary(), ...argsOf(ask)], {
     cwd: folder, env: envOf(), stdio: 'ignore', detached: true,
   });

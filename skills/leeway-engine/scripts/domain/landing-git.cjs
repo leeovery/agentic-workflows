@@ -73,8 +73,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries, GitError, READ_BUDGET_BYTES } = require('../kernel/git.cjs');
+const { git: personGit, tryGit: personTryGit, gitRun, operationInProgress, dirtyEntries, GitError } = require('../kernel/git.cjs');
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
@@ -685,7 +684,7 @@ class Conflict extends Error {}
  */
 function mergeTree(root, base, ours, theirs) {
   const args = [...PINNED, 'merge-tree', '--write-tree', '-z', '--name-only', '--no-messages', `--merge-base=${base}`, ours, theirs];
-  const res = spawnSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: READ_BUDGET_BYTES });
+  const res = gitRun(root, args);
   if (res.status === 1) return { conflicts: res.stdout.split('\0').slice(1).filter(Boolean) };
   if (res.error || res.status !== 0) throw new GitError(`git merge-tree failed: ${(res.error?.message ?? res.stderr).trim()}`);
   return { tree: res.stdout.split('\0')[0] };

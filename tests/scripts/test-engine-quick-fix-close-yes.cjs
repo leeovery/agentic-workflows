@@ -60,7 +60,7 @@ function reading(t, args) {
 }
 
 describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
-  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23) — reading its questions and notes once, as its checklist alone does, the ledger besides for the verdict asked and the completion', (t) => {
+  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23) — reading its questions and notes once, as its checklist alone does, the ledger once more, after the landing has written', (t) => {
     dir = world();
     closeable();
     fs.writeFileSync(path.join(dir, 'src', 'stray.js'), 'stray\n');
@@ -72,7 +72,7 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
 
     const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`;
     assert.deepStrictEqual(dirty, [`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main]);
-    assert.deepStrictEqual([checked.notes > 0, notes, ledger - checked.ledger], [true, checked.notes, 2]);
+    assert.deepStrictEqual([checked.notes > 0, notes, ledger - checked.ledger], [true, checked.notes, 1]);
     assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
       ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
       committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },
