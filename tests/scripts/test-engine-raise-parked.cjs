@@ -235,7 +235,7 @@ function parkedLine(own = {}) {
   return {
     v: 1, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question: made.where, replaces: null, reason: null, cause: null, relies_on: [], task, number: 1,
-    call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, ...own,
+    call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, blind: false, ...own,
   };
 }
 
@@ -250,7 +250,7 @@ function parked(number, task, own = {}) {
   const { id } = appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question: made.where, replaces: null, reason: null, cause: null, relies_on: [], task, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null,
-    blocks_build: task !== null, replaced_by: null, always: null, ...own,
+    blocks_build: task !== null, replaced_by: null, always: null, blind: false, ...own,
   }, []);
   return /** @type {string} */ (id);
 }
@@ -592,7 +592,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     const { at, ...sealed } = seals()?.[res.raise];
     assert.deepStrictEqual(sealed, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'implementation', topic: null },
-      answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, reason: EVERY_CALL_ASKS,
+      answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, reason: EVERY_CALL_ASKS, blind: false,
       answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'] },
     });
 

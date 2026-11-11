@@ -59,7 +59,10 @@
 //   and changes nothing current — no replacement, so nothing relying on the
 //   entry is affected (5.6.10), and against its cause it confirms the entry
 //   still holds (ledger-affected.cjs) — and a departure owed a verdict
-//   (16.10.1).
+//   (16.10.1). But the person's answer to a blind question drawn on
+//   Claude's own call, which went ahead while it waited (16.17.6), keeps
+//   that call where it is Claude's answer, sealed in it: moving no one, an
+//   agreement owed none.
 // - asset: a file linked from an entry (9.10.5–9.10.7, 9.10.16):
 //   the entry and the file's path from the state root; the status the link
 //   gives it, canonical or reference; and the lift, the path in the project
@@ -85,15 +88,17 @@
 //   was unread (16.4.4), and what the decision point decided it from that
 //   the label does not hold: whether it blocks build work, a task parking
 //   on it as it was raised (16.4.7); whose the decision a replacement would
-//   replace is, null for a question's answer (16.5.7); and Claude's mark
-//   that it always asks, null for none (19.4.20, 19.4.22) — a task joining
-//   it parks under all of it as the question's first park holds it. A fact
-//   only the person holds (16.3.8) parks in the same shape, as the ledger
-//   holds a fact's answer, with no lean: its call's lean, why and sort null,
-//   its rows any number, never labelled, decided under no model and marked
-//   with none. It names no
-//   maker, is no entry and is never replaced: it waits while what it is
-//   about stands open (questions.cjs).
+//   replace is, null for a question's answer (16.5.7); Claude's mark that
+//   it always asks, null for none (19.4.20, 19.4.22); and whether it is
+//   asked blind, Claude's answer held back until the person's is given —
+//   a call the decision point would have let Claude make alone, drawn
+//   (16.17.2, raise.cjs) — a task joining it parks under all of it as the
+//   question's first park holds it. A fact only the person holds (16.3.8)
+//   parks in the same shape, as the ledger holds a fact's answer, with no
+//   lean: its call's lean, why and sort null, its rows any number, never
+//   labelled, decided under no model, marked with none and never blind. It
+//   names no maker, is no entry and is never replaced: it waits while what
+//   it is about stands open (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
 //   unit that parked it (task-parks.cjs, questions.cjs): the task, as
 //   screens show it, and the parks naming it that it is taken off, by id —
@@ -310,7 +315,7 @@ const SCHEMA = {
     merged: event([...made(PEOPLE), field('question', ID), field('into', ID), field('duplicate', nullable(ID))]),
     checked: event([field('entry', ID), field('rules', oneOf('one', 'several'))]),
     kept: event([
-      ...made(['person'], ['person-moved-claude']),
+      ...made(['person'], ['person-moved-claude', 'none']),
       field('entry', ID),
       field('reason', oneOf(...REASONS)),
       field('cause', nullable(ID)),
@@ -338,6 +343,7 @@ const SCHEMA = {
       field('blocks_build', FLAG),
       field('replaced_by', nullable(oneOf(...DECIDED_BY))),
       field('always', nullable(ALWAYS_MARK)),
+      field('blind', FLAG),
     ], 1, parkHolds),
     unparked: event([field('task', TASK), field('parks', listOf(ID))], 1, unparkHolds),
     rehomed: event([field('lines', listOf(ID)), field('files', listOf(MOVED_FILE))], 1, rehomeHolds),

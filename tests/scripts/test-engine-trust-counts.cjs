@@ -11,7 +11,8 @@
 // worked values, and the state walked in time order at the threshold a
 // question takes, each moment's changes together;
 // derived from the log each time, as of the clock passed in, never stored;
-// and what the release ships of them.
+// what the release ships of them; and a blind question's reveal's count
+// of a kind's last answers that took Claude's lean.
 //
 // Layer: unit. World: the events are built in memory, each a second after
 // the last, a day before the frozen clock (trust-world.cjs, `history`); the
@@ -34,8 +35,9 @@ const { readTrustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs')
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 const {
-  MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf,
+  MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn,
 } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { evidenceIn } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/trust-counts.cjs').Count} Count */
 
@@ -530,5 +532,24 @@ describe('what the release ships (16.16.1, 16.16.2)', () => {
       [...KINDS.map((kind) => standing(empty.kinds[kind]).asks), standing(empty.one).asks, standing(gateCount(empty, 'plan gate')).asks, round(upperBound({ losses: 0, clean: 0 }))],
       [...KINDS.map(() => true), false, true, 0.95],
     );
+  });
+});
+
+describe('the reveal\'s count (16.17.7, P9)', () => {
+  it('of a kind\'s last 25 answers by time, not as read — a reversal among them, never the answer it cancels, one not followed, Claude\'s own call or another kind\'s answer — counts those that took Claude\'s lean; all of them where fewer; none for no kind', () => {
+    const many = history();
+    many.agree(25);
+    many.depart(null, 'behaviour', { at: FROZEN_MS - 2 * DAY });
+    const few = history();
+    few.agree(3);
+    const reversed = few.agree(1)[0];
+    few.depart();
+    few.reverse(reversed);
+    few.unfollowed('several');
+    few.call('several');
+    few.agree(2, 'look');
+    const answers = evidenceIn(many.events).answers;
+
+    assert.deepStrictEqual([alikeOn(answers, 'behaviour'), alikeOn(evidenceIn(few.events).answers, 'behaviour'), alikeOn(answers, null)], [{ alike: 25, of: 25 }, { alike: 3, of: 5 }, { alike: 0, of: 0 }]);
   });
 });

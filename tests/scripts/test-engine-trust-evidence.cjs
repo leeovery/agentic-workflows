@@ -6,7 +6,8 @@
 // trust log holds and where it stands — a raise answered with Claude's
 // sealed answer, or in the person's own words read as it, an agreement, with
 // another row or the person's own words read as another or as none a
-// departure, one not followed no weight, a call Claude's call, a reversal a
+// departure, one not followed no weight, a call Claude's call — but one a
+// blind draw names no weight — a reversal a
 // departure cancelling the answer whose entry it reverses, that answer's
 // event as written — each answer's question, its kind and Claude's sort, a
 // reversal's those of the answer it reverses, the kind as last corrected;
@@ -82,7 +83,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     ];
     record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null }, from(dir));
     record('verdict', { entry: departed, verdict: 'skip', point: 'decided' }, from(dir));
-    record('blind-draw', { entry: called, kind: null }, from(dir));
+    record('blind-draw', { entry: idOf('Asked'), kind: null }, from(dir));
 
     const read = evidence(dir);
 
@@ -90,6 +91,17 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
       event, standing: ['agreement', 'departure', 'departure', 'agreement', 'departure', 'no-weight', 'call', 'agreement'][i], cancelled_by: null, kind: null, sort: i === 6 ? 'one' : 'several', model: null,
     })));
     assert.deepStrictEqual(read.departures, new Set([departed, own, ownDeparted]));
+  });
+
+  it('16.17.6: stands a call a blind draw names as no weight — Claude\'s call gone ahead while its blind question waits, the person\'s answer to that question its evidence — wherever the draw was read, and a call no draw names as Claude\'s call', (t) => {
+    const dir = project('fumi');
+    const [ahead, alone] = ['Ahead', 'Alone'].map(idOf);
+    const calls = [ahead, alone].map((entry) => record('call', { entry, kind: 'behaviour', label: null, sort: 'several' }, from(dir)));
+    const failing = failingTrustAppends(t);
+    inConversation(dir, () => record('blind-draw', { entry: ahead, kind: 'behaviour' }, from(dir)));
+    failing.mock.restore();
+
+    assert.deepStrictEqual(standings(dir), [[calls[0].id, 'no-weight', null], [calls[1].id, 'call', null]]);
   });
 
   it('gives each answer its question\'s kind and Claude\'s sort as its event holds them, a reversal those of the answer it reverses wherever each was read, and the kind as the person last corrected that of either entry (16.15.4)', (t) => {

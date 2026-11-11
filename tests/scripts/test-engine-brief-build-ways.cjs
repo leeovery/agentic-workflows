@@ -107,7 +107,7 @@ describe('the way on from a round (12.1.4, 12.14, 24.2.4)', () => {
     const rows = [{ key: '1', name: 'Shown', text: 'The receipt shows the tax', notice: 'a line for tax' }, { key: '2', name: 'Folded', text: 'The total holds the tax', notice: 'no tax line' }];
     appendEntry(statePath(dir), {
       event: 'parked', ...tags, question, replaces: null, reason: null, cause: null, relies_on: [], task: '1.2', number: 1,
-      call: { question: 'Should a receipt show the tax?', rows, lean: '1', why: 'Customers ask.', sort: 'one', mechanism: 'A line.', product_wide: false }, rows_judged: [], why_asking: 'Every call asks.', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
+      call: { question: 'Should a receipt show the tax?', rows, lean: '1', why: 'Customers ask.', sort: 'one', mechanism: 'A line.', product_wide: false }, rows_judged: [], why_asking: 'Every call asks.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: false,
     }, []);
 
     const { brief } = issued(['builder', UNIT, '1.2']);

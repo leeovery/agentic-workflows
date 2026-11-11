@@ -46,8 +46,12 @@
 //   its label and its sort.
 // - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
 //   a fix later, a real loss, or a skip — and the point it was given at.
-// - blind-draw: a call drawn as a blind question (16.17.5), by its entry,
-//   with its kind.
+// - blind-draw: a call drawn as a blind question (16.17.5), with its kind,
+//   by the ledger line that holds Claude's call: the line the person's
+//   answer lands at, which seals it; in the build, the park the question
+//   waits on; or, where Claude's call went ahead while the question waits
+//   (16.17.6), the call's own entry, whose call event it makes no evidence
+//   (trust-evidence.cjs). It is logged once, at the draw (raise.cjs).
 // - reversal: the person's later reversal (16.12.1), by its entry, pointing
 //   back at the entry it reverses.
 // - position-switch: a build's position switched (3.3.7), by its unit, to

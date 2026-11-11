@@ -17,9 +17,13 @@
 //   that park, an `unparked` line naming it: a park made outside any task —
 //   the task writer's, the consolidation agent's or the phase review's
 //   (12.5.5) — names none, and a question parking nothing waits as any other,
-//   nothing waiting on it. What it asks is Claude's call's question as
-//   sealed, or, where its question has been reworded since, its wording as it
-//   stands.
+//   nothing waiting on it: a blind question among them, whose call went
+//   ahead while it waits (16.17.6), blocking no task, so every count of
+//   the questions waiting on the person holds it. Whether a question is
+//   asked blind is its first park's, sealed with its call, so a task
+//   joining it parks on it blind as well. What it asks is Claude's call's
+//   question as sealed, or, where its question has been reworded since, its
+//   wording as it stands.
 // - Its number: `Q{n}`, per unit, the next after the highest the unit's
 //   parks hold, live or not, so none is ever reused and a queued "Q2" never
 //   shifts when Q1 is answered; a task joining a question waiting takes its
@@ -128,7 +132,7 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  * A park's call as sealed: Claude's call, the rows judged, why it asks, its
  * label (labeller.cjs), the model it was decided under, and what the
  * decision point decided it from beyond the label (raise.cjs).
- * @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null} & import('./raise.cjs').DecidedFrom} Sealed
+ * @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null, blind: boolean} & import('./raise.cjs').DecidedFrom} Sealed
  */
 /** A question asked in a quick-fix's conversation still open: its short id, the place it is at, and what it asks. @typedef {{id: string, place: string, asks: string}} AskedOpen */
 /** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
@@ -390,8 +394,8 @@ function waitingOn(cwd, unit, subject, warnings) {
  * @param {Record<string, any>} line
  * @returns {Sealed}
  */
-function sealedOf({ call, rows_judged: judged, why_asking: whyAsking, label, model, blocks_build: blocks, replaced_by: replacedBy, always }) {
-  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blocks_build: blocks, replaced_by: replacedBy, always };
+function sealedOf({ call, rows_judged: judged, why_asking: whyAsking, label, model, blind, blocks_build: blocks, replaced_by: replacedBy, always }) {
+  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blind, blocks_build: blocks, replaced_by: replacedBy, always };
 }
 
 /**

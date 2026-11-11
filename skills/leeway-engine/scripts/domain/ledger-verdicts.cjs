@@ -35,9 +35,12 @@
 //   another topic's decision it is new information, never a departure. The
 //   person keeping a decision as it stands, where Claude proposed to
 //   replace it, stands over the proposal: a departure, though it is no
-//   entry (ledger-events.cjs). The write verbs, and a raise's keep, hold
-//   every line to this as it is written (ledger-write.cjs, raise.cjs), so
-//   the ledger's line says it.
+//   entry (ledger-events.cjs) — but for a blind question drawn on Claude's
+//   own call, which went ahead while it waited (16.17.6), the person's
+//   answer keeping that call is Claude's sealed answer, moving no one, and
+//   their answer replacing it stands over it. The write verbs, and a
+//   raise's keep, hold every line to this as it is written
+//   (ledger-write.cjs, raise.cjs), so the ledger's line says it.
 // - A reversal (16.12.1) is the person's replacement this rule holds
 //   standing over a lean the entry it replaces held, wherever that entry
 //   stands: the write logs it in the trust log, naming the entry it

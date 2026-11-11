@@ -23,7 +23,10 @@
 //     decision as it stands among them (raise.cjs) — or in the person's own
 //     words read as another row or as none: a departure (16.10.1);
 //   - a raise the person didn't follow: no weight (16.12.3);
-//   - a call: Claude's own call;
+//   - a call: Claude's own call — but one a blind question was drawn on, a
+//     blind draw naming its entry, which went ahead while the question
+//     waits mid-build (16.17.6): no weight, the person's answer to the
+//     question its evidence, so the call is never counted beside it;
 //   - a reversal: a departure (16.10.10). It cancels the answer whose entry
 //     it reverses, an agreement or a call, and rewrites nothing: that
 //     answer's event stays as it was written (16.12.1, 16.12.2).
@@ -69,15 +72,15 @@ const { readProjectEvents } = require('./trust-log.cjs');
  * @typedef {{answers: Answer[], departures: Set<string>, verdicts: Map<string, Given[]>, judged: Set<string>, asked: Map<string, number>}} Evidence
  */
 
-/** @typedef {(event: Record<string, unknown>) => AnswerStanding} StandsBy */
+/** @typedef {(event: Record<string, unknown>, drawn: Set<unknown>) => AnswerStanding} StandsBy */
 
-/** Where an answer stands, by its event's type. @type {Readonly<Record<string, StandsBy>>} */
+/** Where an answer stands, by its event's type, `drawn` the entries blind questions were drawn on. @type {Readonly<Record<string, StandsBy>>} */
 const STANDING = Object.freeze(/** @type {Record<string, StandsBy>} */ ({
   raise: ({ didnt_follow: didntFollow, answer, reading, sealed }) => {
     if (didntFollow) return 'no-weight';
     return (answer ?? reading) === sealed ? 'agreement' : 'departure';
   },
-  call: () => 'call',
+  call: ({ entry }, drawn) => (drawn.has(entry) ? 'no-weight' : 'call'),
   reversal: () => 'departure',
 }));
 
@@ -143,13 +146,14 @@ function questionOf(event, question, corrected) {
  */
 function evidenceIn(events) {
   const read = events.filter(({ type }) => Object.hasOwn(STANDING, /** @type {string} */ (type)));
+  const drawn = new Set(events.filter(({ type }) => type === 'blind-draw').map(({ entry }) => entry));
   const cancels = new Map(read.filter(({ type }) => type === 'reversal').map(({ reverses, id }) => [reverses, /** @type {string} */ (id)]));
   const questions = new Map(read.filter(({ type }) => type !== 'reversal').map((event) => [event.entry, event]));
   const ordered = inTimeOrder(events);
   const corrected = correctedKinds(ordered.filter(({ type }) => type === 'correction'));
   const answers = read.map((event) => ({
     event,
-    standing: STANDING[/** @type {string} */ (event.type)](event),
+    standing: STANDING[/** @type {string} */ (event.type)](event, drawn),
     cancelled_by: cancels.get(event.entry) ?? null,
     ...questionOf(event, event.type === 'reversal' ? questions.get(event.reverses) : event, corrected),
   }));

@@ -51,6 +51,8 @@ const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditG
 const MAP_VERBS = Object.freeze(['add', 'add-batch', 'edit', 'rename', 'remove', 'order', 'brief']);
 // The raise commands that draw nothing: an answer, a question set aside, the questions waiting.
 const RAISE_ANSWERS = Object.freeze(['answer', 'aside', 'waiting']);
+// What a blind question's answer draws: its reveal (16.17.7).
+const REVEAL = '=== DISPLAY: blind question revealed ';
 
 const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
   // This checkout's knowledge setup: keyword-only, pinned as setup records
@@ -130,14 +132,16 @@ class Sim {
   // advisory rides the dump, the view-family pattern; a raise's draw and
   // show — every raise command but its answer, an aside and the questions
   // waiting — whose sections are the screen the raise is drawn as, none
-  // where it parks its task or proceeds; the entry, whose sections are what
-  // the phase reads on arrival; a unit's move, whose sections are start
-  // this work's screen it stages; the capture line, whose section is the
-  // one line it draws; and Claude's proposal for the record of the person,
-  // whose sections are the screen it is proposed on.
-  /** @param {string[]} args */
-  static carriesSections([group, verb]) {
+  // where it parks its task or proceeds; a blind question's answer, whose
+  // section is its reveal; the entry, whose sections are what the phase
+  // reads on arrival; a unit's move, whose sections are start this work's
+  // screen it stages; the capture line, whose section is the one line it
+  // draws; and Claude's proposal for the record of the person, whose
+  // sections are the screen it is proposed on.
+  /** @param {string[]} args @param {string} sections */
+  static carriesSections([group, verb], sections) {
     return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && MAP_VERBS.includes(verb))
+      || (group === 'raise' && verb === 'answer' && sections.startsWith(REVEAL))
       || (group === 'workunit' && verb === 'move') || (group === 'inbox' && verb === 'capture') || (group === 'person' && verb === 'propose');
   }
 
@@ -233,7 +237,7 @@ class Sim {
     const parsed = JSON.parse(first);
     assert.strictEqual(parsed.ok, true, `[${label}] engine answered ok:false`);
     this.sections = nl === -1 ? '' : res.stdout.slice(nl + 1);
-    if (!Sim.carriesSections(args)) {
+    if (!Sim.carriesSections(args, this.sections)) {
       assert.strictEqual(this.sections, '',
         `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
     }

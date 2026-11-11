@@ -281,6 +281,7 @@ describe('the seal (P1, P6)', () => {
       replaced_by: null,
       always: null,
       reason: EVERY_CALL_ASKS,
+      blind: false,
       at: sealed.at,
       answered: null,
       didnt_follow: 0,
@@ -450,12 +451,6 @@ describe('the decision point (29.5.2)', () => {
     assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason, raise: res.raise, redrawn: false });
     assert.strictEqual(seals()[res.raise].reason, reason);
     assert.strictEqual(sections, screen(res.raise, { reason }));
-  });
-
-  it('a blind ask refuses, naming where it is built, and seals nothing', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'A blind draw.' }));
-
-    assert.strictEqual(await refusedCall(CALL), 'raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing drawn');
   });
 });
 

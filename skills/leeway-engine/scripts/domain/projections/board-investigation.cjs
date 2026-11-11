@@ -43,7 +43,8 @@
 //   answering it, or replacing a decision of its chain (`downChain`) — and,
 //   before its question is logged, one carrying a step back. The latest
 //   gives the options as its screen draws them, the keep row among them,
-//   Claude's lean, what stepping back found, and once answered the
+//   Claude's lean as the screen shows it — a blind question's held back
+//   until answered — what stepping back found, and once answered the
 //   person's pick; one the person answered by keeping the decision leaves
 //   the raise before it standing. With none sealed here, after a /clear,
 //   what stepping back found is the log's and the pick is the fix in its
@@ -78,7 +79,7 @@ const { rowStanding, answersOn } = require('../topic-map.cjs');
 const { agentRows, surfacedAs } = require('../agent-state.cjs');
 const { ROLES } = require('../brief-names.cjs');
 const { sealsAt, sealWaits, downChain, investigationPlaces } = require('../raise.cjs');
-const { drawnRows } = require('./raise.cjs');
+const { drawnRows, leanShown } = require('./raise.cjs');
 const { huntOf, huntEntries, rootCauseNow } = require('../investigation-log.cjs');
 const { VALIDATIONS, validationSince, concludeDraws } = require('../investigation-conclude.cjs');
 const { gapsIn } = require('../spec-passes.cjs');
@@ -191,7 +192,7 @@ const investigationWaits = (at) => at.once('hunt-waits', () => {
       page: null,
       raised_by: raisedBy(at, seal),
       options: rows === null ? null : rows.length,
-      lean_first: rows === null || seal.fact ? null : rows[0]?.key === seal.call.lean,
+      lean_first: rows === null || leanShown(seal) === null ? null : rows[0]?.key === leanShown(seal),
     };
   });
   return concludeWaits(at) ? [...raises, CONCLUDE] : raises;
@@ -309,7 +310,7 @@ function fixDirectionOf(at) {
   const { fix } = ledgerAt(at);
   const seal = fixSealOf(at);
   const call = seal === null || seal.fact ? null : seal.call;
-  const options = call === null ? [] : drawnRows(/** @type {Seal} */ (seal)).map(({ key, name }) => ({ key, name, lean: call.lean === key }));
+  const options = call === null ? [] : drawnRows(/** @type {Seal} */ (seal)).map(({ key, name }) => ({ key, name, lean: leanShown(/** @type {Seal} */ (seal)) === key }));
   const steppedBack = call?.stepped_back ?? huntAt(at).fixDirection?.body ?? [];
   if (seal !== null && waitingSeals(at).includes(seal)) return { state: 'asking', stepped_back: steppedBack, options, pick: null, fix: null };
   const answered = seal?.answered ?? null;
@@ -452,7 +453,7 @@ function optionPage(at, key) {
   const row = seal === null || seal.fact ? undefined : drawnRows(seal).find((held) => held.key === key);
   if (seal === null || seal.fact || row === undefined) throw new Error(`${at.unit}'s fix direction holds no option ${key} in this conversation`);
   const { state, pick } = fixDirectionOf(at);
-  const standing = state === 'picked' && pick === key ? 'picked' : state === 'asking' && seal.call.lean === key ? 'lean' : 'option';
+  const standing = state === 'picked' && pick === key ? 'picked' : state === 'asking' && leanShown(seal) === key ? 'lean' : 'option';
   return { kind: 'hunt', unit: at.unit, item: 'option', name: key, title: row.name, state: standing, text: bodyText([row.text, row.notice]) };
 }
 

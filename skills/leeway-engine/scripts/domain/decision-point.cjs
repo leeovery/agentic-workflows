@@ -5,36 +5,53 @@
 // lean on goes to the person. One function, reached by every raise
 // (raise.cjs): Claude supplies the question and its lean, never the
 // decision. It answers ask, proceed (the call lands as Claude's), check
-// (Claude finds the answer out, nothing drawn) or ask blind, and the reason
-// for it.
+// (Claude finds the answer out, nothing drawn) or ask blind (Claude's
+// answer held back until the person has given theirs, 16.17), and the
+// reason for it.
 //
 // What it decides from (E1), as the raise gives it: the call; its label;
 // where it is made, and whether it blocks build work; whose the entry it
 // would replace is; Claude's mark that it always asks; whether it was sent
 // to check once already; the project; the model of the session making it;
-// and the time.
+// the time; and the question's id, the same on every raise of it (E3).
 //
 // Until the ask rule is switched on (29.19.2), every call asks (29.5.2),
 // with the rule's own reason. `ruled` is what it decides once switched: the
 // ask rule (ask-rule.cjs) over the trust log's counts for the project and
 // the model as of the time (trust-counts.cjs), the person's settings
 // (trust-settings.cjs) and their care entries, from the record of the
-// person (person.cjs).
+// person (person.cjs); and where the rule lets the call proceed — a quiet
+// kind's, or a one-answer call's (16.3.7) — a blind question drawn at the
+// share (16.17.3, 16.17.9): the question's id turned into a number, the
+// first 32 bits of its SHA-1 as a fraction, as the measured replay drew
+// (trust/replay_rule.py), drawing blind under the share — the wider share
+// while the call's count holds few answers of the project's own at the
+// session's model (trust-settings.cjs) — so the same question draws the
+// same way however often it is raised, and no tally is kept (16.17.4).
+// Claude never chooses which calls are drawn.
 // ---------------------------------------------------------------------------
 
+const crypto = require('crypto');
 const { rule } = require('./ask-rule.cjs');
+const { kindOf } = require('./labeller.cjs');
 const { countsOf } = require('./trust-counts.cjs');
 const { projectId } = require('./trust-log.cjs');
-const { trustSettings } = require('./trust-settings.cjs');
+const { trustSettings, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
 
 /** @typedef {import('./ask-rule.cjs').Ruling | 'blind'} Decision */
+/** @typedef {import('./trust-counts.cjs').Counts} Counts */
 /**
- * Where and when a call is decided, beside the call itself.
- * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number}} At
+ * Where and when a call is decided, beside the call itself, and the id its
+ * blind draw hashes: the question's, the same on every raise of it.
+ * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number, question: string}} At
  */
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
+const BLIND = 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.';
+// The draw reads the first 32 bits of the id's SHA-1: 8 hex digits.
+const DRAW_DIGITS = 8;
+const DRAW_RANGE = 2 ** 32;
 
 /**
  * Whether the call goes to the person, and why.
@@ -45,16 +62,37 @@ function decide(_call, _at) {
   return { decision: 'ask', reason: EVERY_CALL_ASKS };
 }
 
+/** The question's id as a number from 0 up to 1 (16.17.4). @param {string} question */
+function drawOf(question) {
+  return parseInt(crypto.createHash('sha1').update(question).digest('hex').slice(0, DRAW_DIGITS), 16) / DRAW_RANGE;
+}
+
+/**
+ * The share of the call's kind's calls — of the one-answer calls, for a
+ * call sorted `one` — drawn blind: the wide share while its count holds
+ * fewer than WIDE_UNTIL answers of the project's own at the session's
+ * model.
+ * @param {{sort: 'one'|'several'}} call @param {import('./labeller.cjs').Label} label @param {Counts} counts
+ */
+function blindShare({ sort }, label, counts) {
+  const count = sort === 'one' ? counts.one : counts.kinds[/** @type {import('./event-fields.cjs').Kind} */ (kindOf(label))];
+  return count.own < WIDE_UNTIL ? WIDE_BLIND_SHARE : BLIND_SHARE;
+}
+
 /**
  * The ask rule's decision on the call: over the counts the trust log holds
  * on the project, for the session's model as of the time, the person's
  * settings, and their care entries, which the record of the person holds,
- * each project's by its id (person.cjs).
+ * each project's by its id (person.cjs); where it lets the call proceed,
+ * asked blind where its question's id draws so.
  * @param {import('./raise.cjs').Call} call @param {At} at
  * @returns {{decision: Decision, reason: string}}
  */
-function ruled(call, { project: { root, name }, model, now, ...at }) {
-  return rule(call, { ...at, project: { id: projectId(root), name }, counts: countsOf(root, { model, now }), settings: trustSettings(), care: careEntries() });
+function ruled(call, { project: { root, name }, model, now, question, ...at }) {
+  const counts = countsOf(root, { model, now });
+  const ruling = rule(call, { ...at, project: { id: projectId(root), name }, counts, settings: trustSettings(), care: careEntries() });
+  if (ruling.decision !== 'proceed') return ruling;
+  return drawOf(question) < blindShare(call, /** @type {import('./labeller.cjs').Label} */ (at.label), counts) ? { decision: 'blind', reason: BLIND } : ruling;
 }
 
 module.exports = { decide, ruled };

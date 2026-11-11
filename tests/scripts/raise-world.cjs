@@ -7,19 +7,27 @@
 // over a suite's own world, its config folder and its call (`raiseHelpers`),
 // the conversation's environment and folder, the raises it sealed, the
 // trust log's text and events, the person's answer that must land, the
-// ledger's last line, and a raise event as the trust log holds it.
+// ledger's last line, and a raise event as the trust log holds it. And what
+// the suites raising under the ask rule share (test-engine-raise-rule.cjs,
+// test-engine-raise-blind.cjs): a kind made quiet in the trust log, the
+// conversation with the stand-in labelling a call, and a raise drawn.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
 const fs = require('fs');
 const path = require('path');
-const { ok } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
-const { trustLogHelpers } = require('./trust-world.cjs');
+const { DAY, lines, history, trustLogHelpers } = require('./trust-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { RAISE_SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
+const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+
+/** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
+/** @typedef {import('./labels.cjs').Marks} Marks */
 
 // A Claude Code session's id: the conversation the raises are drawn in.
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
@@ -72,7 +80,30 @@ function raiseHelpers(dir, config, call) {
     entry, kind: null, label: null, sort: call.sort, sealed: call.lean, answer: call.lean, via: 'typed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, ...own,
   });
 
-  return { conversation, inFolder, seals, logText, logged, project, answer, lastEntry, raiseEvent };
+  /**
+   * The trust log holding `clean` answers on `kind` in this project, each
+   * taking Claude's lean, as of a day ago: its text.
+   * @param {Kind} kind @param {number} [clean]
+   */
+  function quietOn(kind, clean = 30) {
+    const h = history({ project: project(), start: Date.now() - DAY });
+    h.agree(clean, kind);
+    fs.mkdirSync(config(), { recursive: true });
+    fs.writeFileSync(path.join(config(), TRUST_LOG), lines(...h.events));
+    return logText();
+  }
+
+  /** The conversation, the stand-in labelling `labelled`'s question `kind`, marked as `marks` says. @param {Record<string, unknown>} labelled @param {Kind} kind @param {Marks} [marks] */
+  const labelledAs = (labelled, kind, marks) => conversation(labelling(/** @type {string} */ (labelled.question), kind, marks));
+
+  /**
+   * A raise of `raising` at `at` with `flags`, in the conversation `env`
+   * names: its response and whatever it drew.
+   * @param {string} at @param {string[]} flags @param {Record<string, unknown>} raising @param {Record<string, string|undefined>} env
+   */
+  const raised = (at, flags, raising, env) => okSectionsAsync(dir(), ['raise', at, ...flags], { env, stdin: JSON.stringify(raising) });
+
+  return { conversation, inFolder, seals, logText, logged, project, answer, lastEntry, raiseEvent, quietOn, labelledAs, raised };
 }
 
 module.exports = { SESSION, WHY, raiseHelpers };

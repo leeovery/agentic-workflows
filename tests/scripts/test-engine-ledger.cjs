@@ -100,7 +100,7 @@ function parked(question, fields = {}) {
       rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
       lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
     },
-    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, ...fields,
+    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: false, ...fields,
   };
 }
 
@@ -184,18 +184,19 @@ describe('the events and their schemas', () => {
       [...HEADER, 'entry', 'rules'],
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
-      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model', 'blocks_build', 'replaced_by', 'always'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model', 'blocks_build', 'replaced_by', 'always', 'blind'],
       [...HEADER, 'task', 'parks'],
       [...HEADER, 'lines', 'files'],
     ]);
     assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'parked', 'rehomed', 'replaced', 'still-holds', 'unparked']);
   });
 
-  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none', () => {
+  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal — or, a blind question\'s answer keeping Claude\'s call, moving no one (16.17.6) — never Claude moving them, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none', () => {
     const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, why: 'They float every note.', sealed: 'A floating panel.' };
     assert.deepStrictEqual(validEvent(keep), keep);
     assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);
-    for (const moved of ['none', 'claude-moved-person']) assert.throws(() => validEvent({ ...keep, who_moved_whom: moved }), /its who_moved_whom is not one of person-moved-claude$/);
+    assert.deepStrictEqual(validEvent({ ...keep, who_moved_whom: 'none' }), { ...keep, who_moved_whom: 'none' });
+    assert.throws(() => validEvent({ ...keep, who_moved_whom: 'claude-moved-person' }), /its who_moved_whom is not one of person-moved-claude, none$/);
     assert.throws(() => validEvent({ ...keep, reason: 'a whim' }), /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
     assert.throws(() => validEvent({ ...keep, sealed: null }), /its sealed is not non-empty text/);
     const { why: _why, ...unexplained } = keep;
