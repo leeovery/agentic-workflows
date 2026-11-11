@@ -8,7 +8,7 @@ Every work unit is in one of three states. It is **in-progress** by default whil
 
 Closing a work unit — completing it, cancelling it, or absorbing it into an epic — also clears its scratch working files: the per-phase working notes the system keeps only so an interrupted session can pick up where it left off. Finished work keeps its real artifacts and its history; the scaffolding goes.
 
-None of these states is a one-way door. A cancelled work unit can be **reactivated** back to in-progress from manage — restoring its material to the knowledge base, since it is live thinking again; an experiment its cancel ended stays abandoned. Any working files it needs are simply rebuilt as you go. Completed work can also be revisited phase by phase without reactivating the whole unit, when you just want to amend an earlier phase.
+Cancelling is not a one-way door. A cancelled work unit can be **reactivated** back to in-progress from manage — restoring its material to the knowledge base, since it is live thinking again; an experiment its cancel ended stays abandoned. Any working files it needs are simply rebuilt as you go. A completed unit stays as it finished: manage lists it with nothing to do to it.
 
 ## Pivot: a feature that grew
 

@@ -273,6 +273,8 @@ function refuseTopic(cwd, epicManifest, into, topic, series) {
   if (epicMapItems[topic]) {
     throw new Error(`"${topic}" is already on ${into}'s discovery map — pick a different name`);
   }
+  const holder = Object.keys(epicMapItems).find((key) => epicMapItems[key]?.title === topic);
+  if (holder !== undefined) throw new Error(`"${holder}" on ${into}'s discovery map goes by "${topic}" — pick a different name`);
   if (Array.isArray(epicDiscovery.dismissed) && epicDiscovery.dismissed.includes(topic)) {
     throw new Error(`"${topic}" was dismissed from ${into}'s discovery map — pick a different name, or re-add it from a discovery session first`);
   }
@@ -317,15 +319,18 @@ function absorbableFeature(cwd, feature, featureManifest) {
 
 /**
  * Refuse an absorb of `feature` into `into` as `topic` that cannot run,
- * before anything moves (the header's): the feature as `absorbableFeature`
- * refuses it, the epic not an epic in progress before its spec, a phase
- * item of the feature's not named after it, and a topic the epic cannot
- * take. Answers the feature's discussion and experiment items.
+ * before anything moves (the header's): the topic's words as
+ * `arrivingEntry` refuses them, the feature as `absorbableFeature` refuses
+ * it, the epic not an epic in progress before its spec, a phase item of the
+ * feature's not named after it, and a topic the epic cannot take. Answers
+ * the topic's map entry and the feature's discussion and experiment items.
  * @param {string} cwd @param {string} feature @param {Record<string, any>} featureManifest
- * @param {string} into @param {Record<string, any>} epicManifest @param {string} topic
- * @returns {{discussionItem: Record<string, any>, experimentItem: Record<string, any>|undefined}}
+ * @param {string} into @param {Record<string, any>} epicManifest
+ * @param {{topic: string, summary?: string, description?: string}} arriving
+ * @returns {{entry: import('./discovery-map.cjs').BatchEntry, discussionItem: Record<string, any>, experimentItem: Record<string, any>|undefined}}
  */
-function refuseAbsorb(cwd, feature, featureManifest, into, epicManifest, topic) {
+function refuseAbsorb(cwd, feature, featureManifest, into, epicManifest, { topic, summary, description }) {
+  const entry = arrivingEntry(topic, { summary, description }, 'workunit absorb');
   if (feature === into) {
     throw new Error(`cannot absorb "${feature}" into itself`);
   }
@@ -351,16 +356,17 @@ function refuseAbsorb(cwd, feature, featureManifest, into, epicManifest, topic) 
   }
   const experimentItem = phaseItems(featureManifest, 'experiment')[feature];
   refuseTopic(cwd, epicManifest, into, topic, Boolean(experimentItem));
-  return { discussionItem, experimentItem };
+  return { entry, discussionItem, experimentItem };
 }
 
 /**
  * Whether the absorb would run as given, read off both units' manifests
- * and writing nothing — refused as the absorb refuses (`refuseAbsorb`).
- * @param {string} cwd @param {string} feature @param {{into: string, topic: string}} opts
+ * and writing nothing — refused by the checks the absorb runs
+ * (`refuseAbsorb`), in its words.
+ * @param {string} cwd @param {string} feature @param {{into: string, topic: string, summary?: string, description?: string}} opts
  */
-function absorbStands(cwd, feature, { into, topic }) {
-  refuseAbsorb(cwd, feature, loadWorkUnitManifest(cwd, feature), into, loadWorkUnitManifest(cwd, into), topic);
+function absorbStands(cwd, feature, { into, ...arriving }) {
+  refuseAbsorb(cwd, feature, loadWorkUnitManifest(cwd, feature), into, loadWorkUnitManifest(cwd, into), arriving);
 }
 
 /**
@@ -380,7 +386,6 @@ function absorbStands(cwd, feature, { into, topic }) {
  * @returns {WorkUnitAbsorbResult}
  */
 function absorbWorkUnit(cwd, feature, { into, topic, summary, description }) {
-  const entry = arrivingEntry(topic, { summary, description }, 'workunit absorb');
   const root = stateRoot(cwd);
   return withStateLock(root, () => {
     const featureManifest = loadWorkUnitManifest(cwd, feature);
@@ -388,7 +393,7 @@ function absorbWorkUnit(cwd, feature, { into, topic, summary, description }) {
     const warnings = [];
     const moved = withWorkUnitLock(cwd, into, () => {
       const epicManifest = loadWorkUnitManifest(cwd, into);
-      const { discussionItem, experimentItem } = refuseAbsorb(cwd, feature, featureManifest, into, epicManifest, topic);
+      const { entry, discussionItem, experimentItem } = refuseAbsorb(cwd, feature, featureManifest, into, epicManifest, { topic, summary, description });
       addBatchTo(epicManifest, [entry], null);
 
       const seedPlan = planSeeds(cwd, feature, into, Array.isArray(featureManifest.seeds) ? featureManifest.seeds : []);

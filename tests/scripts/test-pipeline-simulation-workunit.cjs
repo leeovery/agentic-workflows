@@ -6,13 +6,12 @@
 // unit brought back from the closed units, a completed unit with nothing to
 // do to it; a feature pivoted to an epic; a feature absorbed into an epic,
 // its epic picked and the absorb confirmed; shared files re-homed by absorb;
-// a decision changed mid-build, settled in the build; and the guards holding
-// mid-pipeline.
+// and the guards holding mid-pipeline. A decision changed mid-build (18.S68)
+// is test-pipeline-simulation-build-park.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
-// (pipeline-world.cjs), a copy per scenario, and the named world
-// `worlds.specToBuild` for the build's; each replays the engine calls the
-// skill prose makes, in prose order, and the oracle (pipeline-oracle.cjs)
+// (pipeline-world.cjs), a copy per scenario; each replays the engine calls
+// the skill prose makes, in prose order, and the oracle (pipeline-oracle.cjs)
 // audits the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
@@ -23,10 +22,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { stateGit, sectionOf, completeUnit, startItem } = require('./engine-harness.cjs');
-const {
-  Sim, worlds, SPEC_TO_BUILD_UNIT, sessionLog, continueUnit, continueInto, enterEntry, discussed, askedOn, epicRow, startMenu, answerGate, buildEntry,
-} = require('./pipeline-world.cjs');
-const { leaningCall } = require('./ledger-world.cjs');
+const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn, epicRow, startMenu, answerGate } = require('./pipeline-world.cjs');
 
 const { SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
 
@@ -53,7 +49,7 @@ function picked(sim, gate, key) {
 // The unit's row on a list of units picked, its own screen in manage drawn.
 /** @param {SimT} sim @param {string} gate @param {{rows: Record<string, Next>}} list @param {string} wu */
 function unitPicked(sim, gate, { rows }, wu) {
-  const key = Object.keys(rows).find((k) => rows[k].argv?.join(' ') === `render manage-unit ${wu}`);
+  const key = Object.keys(rows).find((k) => rows[k].argv?.[1] === 'manage-unit' && rows[k].argv?.[2] === wu);
   assert.ok(key, `${gate} lists ${wu}`);
   return picked(sim, gate, key);
 }
@@ -102,7 +98,7 @@ describe('pipeline simulation: workunit', () => {
 
     assert.ok(managed(sim, wu).rows.c, 'manage offers the unit in progress its cancel');
     assert.match(picked(sim, 'manage unit', 'c').out, /Cancelling \*\*Flip\*\* calls off the whole feature/);
-    ran(sim, answerGate(sim, 'cancel gate', '--pick', 'y').next);
+    assert.deepStrictEqual(ran(sim, answerGate(sim, 'cancel gate', '--pick', 'y').next).next, { kind: 'continue' }, 'nothing waits on a horizon, so the cancel goes on in manage');
     assert.strictEqual(sim.manifest(wu).status, 'cancelled');
     assert.match(sim.render(['workunit-receipt', wu, '--verb', 'cancel'], { expect: 'content' }), /marked as cancelled/);
 
@@ -373,30 +369,3 @@ describe('pipeline simulation: workunit', () => {
   });
 });
 
-describe('pipeline simulation: a decision changed mid-build', () => {
-  /** @type {SimT} */
-  let sim;
-  beforeEach(() => { sim = new Sim(worlds.specToBuild); });
-  afterEach(() => { sim.destroy(); });
-
-  it('18.S68, 12.15.4, 18.3.1: a decision a feature\'s build rests on changes there — the replacement asked of the person and recorded at the build\'s place, the unit\'s record holding the new answer; the feature never goes back to its discussion, and manage offers it cancel alone', async () => {
-    const wu = SPEC_TO_BUILD_UNIT;
-    buildEntry(sim, wu);
-    const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions;
-    const proposal = { ...leaningCall('An entry is kept a year.', 'An entry is kept for ever.'), question: 'How long is an entry kept?' };
-    const raised = await sim.runAsync(['raise', `${wu}.implementation`, '--replaces', decision.id, '--reason', 'changed-mind'], null, JSON.stringify(proposal));
-    assert.strictEqual(raised.decision, 'ask', 'a replacement in the build is asked of the person');
-
-    const asked = sim.run(['raise', 'draw', wu, raised.parked]);
-    sim.run(['raise', 'answer', asked.raise, '--pick', '1'], null, JSON.stringify({ why: 'A year is enough.' }));
-    const replaced = fs.readFileSync(path.join(sim.dir, '.leeway/.ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line)).filter((event) => event.event === 'replaced');
-    assert.deepStrictEqual(replaced.map((event) => [event.phase, event.replaces.startsWith(decision.id)]), [['implementation', true]], 'the replacement lands at the build\'s place');
-    const current = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions;
-    assert.deepStrictEqual([current.some((/** @type {{id: string}} */ d) => d.id === decision.id), JSON.stringify(current).includes('An entry is kept a year.')], [false, true],
-      'the unit\'s record holds the new answer, the old one replaced — what the build\'s task writer reworks against');
-
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].status, 'completed', 'the discussion stays decided');
-    assert.deepStrictEqual(Object.keys(managed(sim, wu).rows), ['c', 'h', 'b'], 'manage offers a build under way its cancel alone');
-    continueInto(sim, wu, 'implementation');
-  });
-});

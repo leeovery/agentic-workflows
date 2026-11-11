@@ -10,15 +10,18 @@
 //   lists them, each with its type and, closed, how it closed; a number
 //   opens the unit's own, and b/back draws the start menu (18.3.4). Setup,
 //   the drivers and the matrix join it with their phases.
-// - `render manage-unit <unit>`: the unit under the rule, "{Unit} ({type})",
+// - `render manage-unit <unit> [--from closed]`: the unit under the rule,
+//   "{Unit} ({type})",
 //   and what can be done to it as it stands (18.3.4–18.3.6): a feature in
 //   progress before its spec, p/pivot, and o/absorb while an epic before its
 //   spec can take it in — the same rules the verbs refuse by (spec-standing.cjs,
 //   workunit-absorb.cjs) — then c/cancel for any unit in progress, through
 //   its confirm (8.8.8); a cancelled unit, r/reactivate; a completed one,
-//   nothing yet. b/back draws manage, and Ask leads into the conversation.
+//   nothing yet. b/back draws the list it was opened from — manage, or with
+//   `--from closed` the closed units — and Ask leads into the conversation.
 // - `render closed`: the completed units, then the cancelled, each opening
-//   its own in manage; b/back draws the start menu (18.2.10).
+//   its own in manage, from the closed units; b/back draws the start menu
+//   (18.2.10).
 // - `render absorb-target <feature>`, the absorb's gate: the epics in
 //   progress before their spec that could take the feature in, numbered,
 //   their names by number in a DATA section, each carrying on in the
@@ -77,16 +80,24 @@ const listed = (manifests) => manifests
   .sort((a, b) => STATUS_ORDER.indexOf(a.m.status) - STATUS_ORDER.indexOf(b.m.status) || typeRank(a.m.work_type) - typeRank(b.m.work_type) || a.at - b.at)
   .map(({ m }) => m);
 
-/** A unit's row, opening its own in manage. @param {Record<string, any>} manifest @param {number} at @returns {MenuRow} */
-const unitRow = (manifest, at) => ({
+/** The lists a unit is opened from, each the unit's way back. */
+const LISTS = Object.freeze({
+  manage: Object.freeze({ label: 'Back to manage', next: engine('render', 'manage'), flag: /** @type {string[]} */ ([]) }),
+  closed: Object.freeze({ label: 'Back to the closed units', next: engine('render', 'closed'), flag: ['--from', 'closed'] }),
+});
+
+/** @typedef {keyof typeof LISTS} List */
+
+/** A unit's row on `list`, opening its own in manage. @param {List} list */
+const unitRowOn = (list) => (/** @type {Record<string, any>} */ manifest, /** @type {number} */ at) => /** @type {MenuRow} */ ({
   key: at + 1,
   label: { head: titlecase(manifest.name), tail: kindOf(manifest) },
-  next: engine('render', 'manage-unit', manifest.name),
+  next: engine('render', 'manage-unit', manifest.name, ...LISTS[list].flag),
 });
 
 /** Manage's screen over the project's units (the header's). @param {Record<string, any>[]} manifests @returns {MenuScreen} */
 function manageScreen(manifests) {
-  return { shows: [], question: 'What would you like to manage?', rows: listed(manifests).map(unitRow), back: BACK_TO_START };
+  return { shows: [], question: 'What would you like to manage?', rows: listed(manifests).map(unitRowOn('manage')), back: BACK_TO_START };
 }
 
 /** The closed units' screen (the header's). @param {Record<string, any>[]} manifests @returns {MenuScreen} */
@@ -96,7 +107,7 @@ function closedScreen(manifests) {
     shows: [],
     ...(closed.length === 0 ? { statement: 'Nothing has finished or been cancelled yet.' } : {}),
     question: 'Which work unit?',
-    rows: closed.map(unitRow),
+    rows: closed.map(unitRowOn('closed')),
     back: BACK_TO_START,
   };
 }
@@ -129,13 +140,17 @@ function unitRows(cwd, manifest) {
   ];
 }
 
-/** A unit's screen in manage (the header's). @param {string} cwd @param {Record<string, any>} manifest @returns {MenuScreen} */
-function manageUnitScreen(cwd, manifest) {
+/**
+ * A unit's screen in manage (the header's), opened from `list`.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {List} [list] @returns {MenuScreen}
+ */
+function manageUnitScreen(cwd, manifest, list = 'manage') {
+  const { label, next } = LISTS[list];
   return {
     shows: [],
     statement: `${titlecase(manifest.name)} (${kindOf(manifest)})`,
     rows: unitRows(cwd, manifest),
-    back: { label: 'Back to manage', next: engine('render', 'manage') },
+    back: { label, next },
     prompt: { label: 'Ask', description: 'Ask a question about this work unit', next: CARRY_ON },
   };
 }
@@ -154,10 +169,15 @@ const manageSurface = (cwd) => drawMenu(cwd, MENUS.manage, {}, manageScreen(load
 /** `render closed`. @param {string} cwd @returns {string} */
 const closedSurface = (cwd) => drawMenu(cwd, MENUS.closed, {}, closedScreen(loadAllManifests(cwd)));
 
-/** `render manage-unit <unit>`. @param {string} cwd @param {string|undefined} unit @returns {string} */
-function manageUnitSurface(cwd, unit) {
-  const manifest = unitNamed(cwd, unit, 'render manage-unit <work-unit>');
-  return drawMenu(cwd, MENUS['manage-unit'], { arg: manifest.name }, manageUnitScreen(cwd, manifest));
+/**
+ * `render manage-unit <unit> [--from closed]`.
+ * @param {string} cwd @param {string|undefined} unit @param {string|undefined} from @returns {string}
+ */
+function manageUnitSurface(cwd, unit, from) {
+  const usage = 'render manage-unit <work-unit> [--from closed]';
+  if (from !== undefined && from !== 'closed') throw new Error(`Usage: engine ${usage}`);
+  const manifest = unitNamed(cwd, unit, usage);
+  return drawMenu(cwd, MENUS['manage-unit'], { arg: manifest.name, flags: { from } }, manageUnitScreen(cwd, manifest, from ?? 'manage'));
 }
 
 /** A feature the absorb's gates draw for, refused where it cannot be absorbed. @param {string} cwd @param {string|undefined} feature @param {string} usage */
@@ -200,7 +220,7 @@ function absorbConfirmSurface(cwd, { dotpath, into, topic, summary, description 
   if (into === undefined || topic === undefined || summary === undefined) throw new Error(`Usage: engine ${usage}`);
   const manifest = featureToAbsorb(cwd, dotpath, usage);
   const feature = manifest.name;
-  absorbStands(cwd, feature, { into, topic });
+  absorbStands(cwd, feature, { into, topic, summary, description });
   const series = itemOf(manifest, 'experiment', feature);
   const facts = {
     discussion: /** @type {Record<string, any>} */ (itemOf(manifest, 'discussion', feature)).status,
@@ -215,4 +235,4 @@ function absorbConfirmSurface(cwd, { dotpath, into, topic, summary, description 
   ], { question: 'Absorb it?' }));
 }
 
-module.exports = { absorbTargets, manageScreen, closedScreen, manageUnitScreen, manageSurface, closedSurface, manageUnitSurface, absorbTargetSurface, absorbConfirmSurface };
+module.exports = { manageScreen, closedScreen, manageUnitScreen, manageSurface, closedSurface, manageUnitSurface, absorbTargetSurface, absorbConfirmSurface };

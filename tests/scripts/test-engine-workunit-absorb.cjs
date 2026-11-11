@@ -778,7 +778,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
       refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', name, ...WORDS], /is not a topic name — a lowercase slug/);
     }
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'fee-model', ...WORDS], /already on payments's discovery map/);
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'billing', ...WORDS], /"fee-model" on the map goes by "billing"/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'billing', ...WORDS], /^"fee-model" on payments's discovery map goes by "billing" — pick a different name$/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'dead-idea', ...WORDS], /was dismissed from payments's discovery map/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'session-model', ...WORDS], /discussion topic "session-model" already exists/);
     // The topic folder moves whole, so nothing it holds merges into a folder there.

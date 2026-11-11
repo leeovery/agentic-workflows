@@ -40,6 +40,7 @@ const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, addNameRefusal, DEFAULT_KIND } = require('./roadmap.cjs');
+const { cancelledFrom } = require('./topic-leave.cjs');
 const {
   roadmapMapView,
   roadmapAddGate,
@@ -616,12 +617,23 @@ function discoveryCancelStatement(manifest, topic) {
     return `Cancelling **${name}** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.`;
   }
   const parts = [`Cancelling **${name}** marks its ${listJoin(plan.items.map(({ phase, item }) => `${phase} [${item.status}]`))} cancelled — it can be reactivated later.`];
-  const experiments = openExperiments(plan.records);
-  if (experiments.length > 0) {
-    const one = experiments.length === 1;
-    parts.push(`${experiments.length} open experiment${one ? '' : 's'} (${experiments.join(', ')}) end${one ? 's' : ''} abandoned on the register.`);
-  }
+  if (plan.records.length > 0) parts.push(abandonedLine([{ name: null, experiments: openExperiments(plan.records) }]));
   return parts.join(' ');
+}
+
+/**
+ * What a cancel ends on the register, said one way for a topic's cancel and
+ * a unit's: its open experiments, a split counted with its parent
+ * (`openExperiments`), each topic's named by its title where the cancel
+ * spans several.
+ * @param {{name: string|null, experiments: string[]}[]} byTopic
+ * @returns {string}
+ */
+function abandonedLine(byTopic) {
+  const count = byTopic.reduce((n, { experiments }) => n + experiments.length, 0);
+  const one = count === 1;
+  const named = byTopic.map(({ name, experiments }) => (name === null ? experiments.join(', ') : `${name}: ${experiments.join(', ')}`)).join('; ');
+  return `${count} open experiment${one ? '' : 's'} (${named}) end${one ? 's' : ''} abandoned on the register.`;
 }
 
 /**
@@ -666,7 +678,7 @@ function epicUnitCancel(cwd, dotpath) {
  * where it stands — a single-topic unit's its one topic, an epic's asked for
  * in a session of the unit, its spec, build or review (18.4.20), or through
  * manage (18.3.4) — each open experiment record of its ending abandoned
- * (18.4.22).
+ * (18.4.22), an epic's named by their topics.
  * @param {string} cwd @param {string} dotpath
  * @returns {{statement: string, cancel: string[]}}
  */
@@ -677,11 +689,8 @@ function workUnitCancel(cwd, dotpath) {
   }
   const parts = [`Cancelling **${titlecase(workUnit)}** calls off the whole ${typeLabel.toLowerCase()} — it stops where it stands, and can be reactivated later.`];
   const open = unitOpenRecords(manifest);
-  if (open.length > 0) {
-    const records = open.flatMap(({ ids }) => ids);
-    const one = records.length === 1;
-    parts.push(`${records.length} open experiment record${one ? '' : 's'} (${open.map(({ topic, ids }) => `${topic}: ${ids.join(', ')}`).join('; ')}) end${one ? 's' : ''} abandoned on the register.`);
-  }
+  const epic = manifest.work_type === 'epic';
+  if (open.length > 0) parts.push(abandonedLine(open.map(({ topic, ids }) => ({ name: epic ? topicTitle(manifest, topic) : null, experiments: openExperiments(ids) }))));
   return { statement: parts.join(' '), cancel: ['workunit', 'cancel', workUnit] };
 }
 
@@ -1113,10 +1122,15 @@ function postponeAddress(cwd, dotpath) {
  * each horizon's row leads to that topic's postpone gate; a new horizon,
  * named in words, carries on. With `--park <name>`, it asks where an item
  * Claude is putting on the roadmap goes, saying so above the question
- * (18.8.11), and every row carries on with the horizon picked.
- * @param {string} cwd @param {{dotpath?: string, park?: string}} args @returns {string}
+ * (18.8.11), and every row carries on with the horizon picked. With
+ * `--back <name> --from <what was cancelled>`, it asks where an item a
+ * cancel put back on no horizon goes (18.8.20): each horizon's row moves it
+ * there, `roadmap move … --from`, whose answer leads on (topic-leave.cjs),
+ * and a horizon named in words is moved the same way, as its DATA says.
+ * @param {string} cwd @param {{dotpath?: string, park?: string, back?: string, from?: string}} args @returns {string}
  */
-function horizonPick(cwd, { dotpath, park }) {
+function horizonPick(cwd, { dotpath, park, back, from }) {
+  if (back !== undefined) return horizonBack(cwd, back, from);
   if (park !== undefined && dotpath !== undefined) throw new Error('render horizon-pick: --park names the item being put on the roadmap, and takes no address');
   const postponing = dotpath === undefined ? null : postponeAddress(cwd, dotpath);
   const state = roadmapState(cwd);
@@ -1128,14 +1142,44 @@ function horizonPick(cwd, { dotpath, park }) {
   }
   /** @type {import('./projections/surfaces.cjs').Next|undefined} */
   const carryOn = postponing === null && park === undefined ? undefined : { kind: 'continue' };
-  const options = state.horizons.map((horizon, i) => {
-    const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
-    const next = postponing === null ? carryOn : { kind: /** @type {const} */ ('engine'), argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] };
-    return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` }, { next });
-  });
+  const options = horizonRows(state, (horizon) => (postponing === null ? carryOn : { kind: 'engine', argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] }));
   options.push(cmdOption('n', 'new', 'A new horizon — name it', carryOn === undefined ? {} : { next: carryOn }));
   const putting = park === undefined ? '' : `Putting "${titlecase(park)}" on the roadmap.`;
   return section('MENU: horizon pick', MENU_INSTRUCTION, menu(putting, options, { question: 'Which horizon?' }));
+}
+
+/**
+ * A row for each of the roadmap's horizons, with how many wait there.
+ * @param {{horizons: string[], items: {horizon: string|null, state: string}[]}} state
+ * @param {(horizon: string) => import('./projections/surfaces.cjs').Next|undefined} nextOf
+ */
+function horizonRows(state, nextOf) {
+  return state.horizons.map((horizon, i) => {
+    const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
+    const next = nextOf(horizon);
+    return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` }, next === undefined ? {} : { next });
+  });
+}
+
+/**
+ * `render horizon-pick --back <name> --from <what was cancelled>` (the
+ * pick's): refused for an item not waiting on no horizon.
+ * @param {string} cwd @param {string} name @param {string|undefined} from @returns {string}
+ */
+function horizonBack(cwd, name, from) {
+  if (from === undefined) throw new Error('render horizon-pick: --back takes --from, what was cancelled — <work_unit>, or <work_unit>.discovery.<topic>');
+  cancelledFrom(from);
+  const state = roadmapState(cwd);
+  const row = state.items.find((r) => r.name === name);
+  if (row === undefined || row.horizon !== null || row.state !== 'waiting') throw new Error(`render horizon-pick: "${name}" is no roadmap item waiting on no horizon`);
+  /** @param {string} horizon @returns {import('./projections/surfaces.cjs').Next} */
+  const moved = (horizon) => ({ kind: 'engine', argv: ['roadmap', 'move', name, '--horizon', horizon, '--from', from] });
+  return dataSection([`a horizon named in words: engine roadmap move ${name} --horizon "<the horizon>" --from ${from}, then follow its next`])
+    + section('MENU: horizon pick', MENU_INSTRUCTION, menu(
+      `"${titlecase(name)}" is back on the roadmap, and the horizon it came from has been removed.`,
+      [...horizonRows(state, moved), cmdOption('n', 'new', 'A new horizon — name it', { next: { kind: 'continue' } })],
+      { question: 'Which horizon?' },
+    ));
 }
 
 // ` (new)` for a horizon an existing map does not hold yet; a never-born map
@@ -1509,7 +1553,7 @@ const SURFACES = {
   'start-menu': (cwd) => startMenuSurface(cwd),
   'epic-menu': (cwd, { dotpath }) => epicMenuSurface(cwd, dotpath),
   manage: (cwd) => manageSurface(cwd),
-  'manage-unit': (cwd, { dotpath }) => manageUnitSurface(cwd, dotpath),
+  'manage-unit': (cwd, { dotpath, from }) => manageUnitSurface(cwd, dotpath, from),
   closed: (cwd) => closedSurface(cwd),
 };
 

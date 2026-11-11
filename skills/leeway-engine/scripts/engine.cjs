@@ -113,7 +113,7 @@ const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { leaveNext, unitLeaveNext } = require('./domain/topic-leave.cjs');
+const { leaveNext, cancelNext, cancelledFrom } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -329,7 +329,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   roadmap add-batch --file <items.json>
   roadmap edit <name> --summary <text>
   roadmap rename <old> <new>
-  roadmap move <name> --horizon <h>
+  roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic>]
   roadmap archive <name>
   roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
@@ -385,7 +385,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
-  render horizon-pick      [<wu.discovery.topic> | --park <name>]
+  render horizon-pick      [<wu.discovery.topic> | --park <name> | --back <name> --from <wu>|<wu>.discovery.<topic>]
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
   render inbox-roadmap-gate --file <entries.json>
   render roadmap-harvest-gate
@@ -439,7 +439,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render start-menu
   render epic-menu <epic>
   render manage
-  render manage-unit <work-unit>
+  render manage-unit <work-unit> [--from closed]
   render closed
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
@@ -587,7 +587,7 @@ function runWorkunit(call, argv) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
       if (command === 'cancel') {
-        respond(call, { ...cancelWorkUnit(call.cwd, workUnit), next: unitLeaveNext(workUnit) });
+        respond(call, { ...cancelWorkUnit(call.cwd, workUnit), next: cancelNext(call.cwd, workUnit) });
         return;
       }
       respond(call, reactivateWorkUnit(call.cwd, workUnit));
@@ -1044,7 +1044,7 @@ function runTopic(call, argv) {
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
-      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.topic) });
+      respond(call, { ...cancelled, next: cancelNext(call.cwd, `${workUnit}.discovery.${cancelled.topic}`) });
       return;
     }
     respond(call, UNIT_VERBS[/** @type {keyof typeof UNIT_VERBS} */ (command)](call.cwd, workUnit, phase, topic));
@@ -1645,8 +1645,13 @@ function runRoadmap(call, argv) {
       if (positional.length !== 2) throw new Error('Usage: engine roadmap rename <old> <new>');
       respond(call, roadmap.renameRoadmapItem(cwd, positional[0], positional[1]));
     } else if (command === 'move') {
-      if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h>');
-      respond(call, roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
+      if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic>]');
+      if (opts.from === undefined) {
+        respond(call, roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
+      } else {
+        cancelledFrom(opts.from);
+        respond(call, { ...roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon), next: cancelNext(cwd, opts.from) });
+      }
     } else if (command === 'archive') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap archive <name>');
       respond(call, roadmap.archiveRoadmapItem(cwd, positional[0]));

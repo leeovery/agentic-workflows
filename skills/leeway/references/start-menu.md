@@ -25,4 +25,4 @@ Each of these rows carries on here, through its own reference. On return, run **
 
 ## Managing a Unit
 
-A unit picked in manage, or among the closed units, is drawn with what can be done to it, `render manage-unit {work_unit}`. Where a pick there carries on in the conversation, or its `next` runs a lifecycle verb: Load **[manage-work-unit.md](manage-work-unit.md)** with work_unit = `{work_unit}`.
+A unit picked in manage, or among the closed units, is drawn with what can be done to it, `render manage-unit {work_unit}`. Once it is drawn: Load **[manage-work-unit.md](manage-work-unit.md)** with work_unit = `{work_unit}`.

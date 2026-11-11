@@ -10,8 +10,4 @@ The feature becomes an epic, its one topic, under the feature's own name, the fi
 node .claude/skills/leeway-engine/scripts/engine.cjs workunit pivot {work_unit} --summary "{summary}" --description "{description}"
 ```
 
-A refusal names what holds the feature: say it in a line. Otherwise fetch its receipt and emit its sections verbatim per their markers, `--warn` where the response's `warnings` is non-empty:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot [--warn]
-```
+A refusal names what holds the feature: say it in a line. Otherwise the caller reports the pivot.

@@ -14,7 +14,9 @@
 // topic that left goes onto its epic's menu — sitting in its experiment, it
 // carries on; and one sitting in any phase of a unit it cancelled — any of
 // its topics, its spec, its build, a bugfix's investigation, a quick-fix's
-// session — onto the start menu; from anywhere else the flow carries on. The
+// session — onto the start menu; from anywhere else the flow carries on; and
+// a cancel leads first through the horizon pick for each roadmap item it put
+// back on a horizon removed meanwhile. The
 // verbs close the topic's agents still running, and their commit takes the
 // topic's log.
 //
@@ -180,6 +182,29 @@ describe('the verbs say what follows', () => {
     run(['workunit', 'reactivate', SOLO]);
     sitIn('licence');
     assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, CONTINUE);
+  });
+
+  it('18.8.20: a cancel putting a roadmap item back on a horizon removed meanwhile leads first through the horizon pick, then where the cancel goes — the conversation sitting in the topic onto the epic\'s menu, one sitting in a unit\'s spec onto the start menu', () => {
+    for (const [item, into] of [['seats', EPIC], ['badges', SOLO]]) {
+      run(['roadmap', 'add', item, '--horizon', 'gone', '--summary', `The ${item}`]);
+      const project = JSON.parse(readState(dir, layout.projectManifest));
+      project.roadmap.items[item].pulled_to = into === EPIC ? { work_unit: EPIC, topic: 'licence' } : { work_unit: SOLO };
+      writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    }
+    run(['roadmap', 'horizon', 'remove', 'gone']);
+    commitAll(dir, 'two items in flight, their horizon removed');
+
+    sitIn('licence');
+    const cancelled = run(['topic', 'cancel', EPIC, 'discovery', 'licence']);
+    assert.deepStrictEqual(cancelled.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'seats', '--from', `${EPIC}.discovery.licence`] });
+    const picked = answered(cancelled.next.argv.slice(1), 'horizon pick', ['--pick', '2']);
+    assert.deepStrictEqual(picked, { kind: 'engine', argv: ['roadmap', 'move', 'seats', '--horizon', 'later', '--from', `${EPIC}.discovery.licence`] });
+    assert.deepStrictEqual(run(picked.argv).next, ONTO_MENU);
+
+    labelled(SOLO, 'specification', SOLO);
+    const solo = run(['workunit', 'cancel', SOLO]);
+    assert.deepStrictEqual(solo.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'badges', '--from', SOLO] });
+    assert.deepStrictEqual(run(answered(solo.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next, ONTO_START);
   });
 });
 

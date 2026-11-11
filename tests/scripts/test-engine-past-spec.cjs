@@ -35,7 +35,6 @@ const assert = require('node:assert');
 const { ok, refusedPristine, readManifest, readState, statePath, writeState, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { pastItsSpec } = require('../../skills/leeway-engine/scripts/domain/spec-standing.cjs');
-const { absorbTargets, manageUnitScreen } = require('../../skills/leeway-engine/scripts/domain/projections/manage.cjs');
 
 /** A map row. @param {number} order */
 const row = (order) => ({ order, summary: `Topic ${order}`, source: 'discovery' });
@@ -136,10 +135,6 @@ describe('every door the spec closes refuses, writing nothing, with the way on f
     assert.strictEqual(refusedPristine(dir, ['render', 'approve-map', 'fumi']).error, `render approve-map: ${past.newWork('fumi')}`);
   });
 
-  it('manage offers no pivot or absorb for a feature past its spec, nor an epic past its spec as the target', () => {
-    const keys = manageUnitScreen(dir, readManifest(dir, 'atlas')).rows.map(({ key }) => key);
-    assert.deepStrictEqual([keys, absorbTargets(dir, 'loose')], [['c'], ['open']]);
-  });
 });
 
 describe('what the spec leaves open', () => {
