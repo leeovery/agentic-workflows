@@ -8,8 +8,11 @@
 // commit already writing nothing; a task landing again taking its new
 // commit, tip, `by` and `at`, `first` kept, and the records of its other
 // repositories left as they are; the record kept through the unit's cancel
-// and reactivate. Domain layer: the write called in process on a project
-// world built once and copied for each test.
+// and reactivate. Read back (task-landed.cjs), a recorded fix's commit up to
+// its recorded tip has landed, a later fix having undone its change, which
+// its change alone, with no pull request read, does not say. Domain layer:
+// the write called in process on a project world built once and copied
+// for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -21,6 +24,9 @@ const path = require('path');
 const { ok, git, head, lastMessage, readManifest, createFile, commitCode, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { recordLandings } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-record.cjs'));
+const { repoLanded } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/task-landed.cjs'));
+const { TRAILER } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/commit-task.cjs'));
+const { quickFixBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
 
 const UNIT = 'pay';
 
@@ -46,6 +52,9 @@ const project = () => {
   dir = world();
   return { at: dir, commits: git(dir, ['log', '--reverse', '--format=%H', 'main']).trim().split('\n').slice(-3) };
 };
+
+/** The commit the code's checkout is at. @param {string} at */
+const codeHead = (at) => git(at, ['rev-parse', 'HEAD']).trim();
 
 /** The commit's committer time, as the record holds it. @param {string} at @param {string} sha */
 const timeOf = (at, sha) => new Date(git(at, ['log', '-1', '--format=%cI', sha]).trim()).toISOString();
@@ -82,6 +91,24 @@ describe('the landing record\'s write (7.2.22)', () => {
       '.': { commit: three, tip: two, first: one, by: 'read', at: timeOf(at, three) },
       ext: { commit: one, tip: one, first: one, by: 'engine', at: timeOf(at, one) },
     });
+  });
+
+  it('a recorded fix\'s commit has landed though a later fix on the quick-fix\'s branch undid its change, the branch squashed onto main under the person\'s own message; read by its change alone, with no pull request read, it has not', () => {
+    const { at, commits: [one] } = project();
+    git(at, ['switch', '-q', '-c', quickFixBranch(UNIT), one]);
+    createFile(at, 'tip.txt', 'tip\n');
+    commitCode(at, `fix(pay): write the tip\n\n${TRAILER}: ${UNIT}-1-1`);
+    const undone = codeHead(at);
+    git(at, ['rm', '-q', 'tip.txt']);
+    createFile(at, 'note.txt', 'note\n');
+    commitCode(at, `fix(pay): note it instead\n\n${TRAILER}: ${UNIT}-1-2`);
+    git(at, ['switch', '-q', 'main']);
+    git(at, ['merge', '-q', '--squash', quickFixBranch(UNIT)]);
+    commitCode(at, 'In my own words');
+    const squash = codeHead(at);
+    const read = (/** @type {Map<string, any>} */ recorded) => repoLanded(at, UNIT, 'refs/heads/main', { since: null, recorded }).landedCommit(undone, `${UNIT}-1-1`);
+
+    assert.deepStrictEqual([read(new Map([[`${UNIT}-1-1`, { commit: squash, tip: undone, first: squash, by: 'engine', at: '' }]])), read(new Map())], [true, false]);
   });
 
   it('keeps the record through the unit\'s cancel and reactivate', () => {

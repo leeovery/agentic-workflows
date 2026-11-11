@@ -24,11 +24,14 @@
 // Written by the engine alone, never through the field surface (fields.cjs),
 // under the unit's lock, and committed to the state branch at the tail of
 // the verb that landed or read it (`recordLandings`), or carried by that
-// verb's own commit of the unit where it makes one (`writeLandings`): a
-// land verb records every task it lands, in the one operation; a verb
-// acting on a task's landing records each the read found landed by hand.
-// Display reads record nothing. Two clones that recorded one task in one repository differently
-// keep the remote's record (state-merge-rules.cjs): either says it landed.
+// verb's own commit of the unit where it makes one (`writeLandings`), and
+// only where the record gains something: a land verb records every task
+// its own merge landed (`engine`), and each its reads found landed with no
+// record (`read`), a landing it only brought here from the host among
+// them; a verb acting on a task's landing records each the read found
+// landed by hand. Display reads record nothing. Two clones that recorded
+// one task in one repository differently keep the remote's record
+// (state-merge-rules.cjs): either says it landed.
 // ---------------------------------------------------------------------------
 
 const { git } = require('../kernel/git.cjs');

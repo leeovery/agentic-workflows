@@ -43,20 +43,26 @@
 // record, else by its change (task-landed.cjs), each driver asking it of
 // the read its repository's context carries (`landedOn`). Every verb keeps
 // its reads, as a quick-fix's verbs do, so a driver reads the host once in
-// each repository, and again only what a merge of its own moved; a task a
-// merge of finish's landed again is read from then on at its branch's tip,
-// as the record its end writes holds it (`landedAgain`).
+// each repository, and again only what a merge of its own moved; each task
+// a merge of the verb's landed is noted on the context, and one a record
+// names read from then on at its branch's tip, as the record its end
+// writes holds it (`merged`).
 //
 // Each verb records its landings as it ends (landing-record.cjs,
-// `recording`): in each repository whose default branch it moved, every
-// task a commit it laid on the first-parent line names by its `Task:` line,
-// by the engine; and, where it answered rather than refused, each task its
-// read of the default branch finds landed with no record, the person's by
-// hand — a refusal recording only what moved before it. Its own state
-// commit of the record, `land({unit}): record …`, follows the verb's; the
-// landing finish's yes makes carries it in the completion's commit
-// (`finishMerge`). `open` and `chain` refuse a task landed by hand whose
-// branch was rewritten after it before any verb read it (task-landed.cjs,
+// `recording`), from the reads it made: by the engine, each task a merge
+// of its own landed, at the newest commit on the default branch's
+// first-parent line naming it by its `Task:` line, its first landing,
+// where no record names one, as the verb first read it; and, where it
+// answered rather than refused, by the read, each other task its reads
+// found landed with no record — the person's by hand, one it only brought
+// here from the host among them. A refusal records only what merged before
+// it, and a record not written is a warning beside the verb's answer, the
+// next verb acting on the landing reading it again. Its own state commit
+// of the record, `land({unit}): record …`, follows the verb's, and none is
+// made where nothing new landed; the landing finish's yes makes carries it
+// in the completion's commit (`finishMerge`). `open`, `phase` and `finish`
+// refuse, before anything moves, a task landed by hand whose branch was
+// rewritten after it before any verb read it (task-landed.cjs,
 // `rewritten`), naming the commit to put the branch back to.
 //
 // Where a task stands against its landing is decided there once, for every
@@ -249,15 +255,16 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  * each is made once (`readOnce`); what has landed on a commit there
  * (`landedOn`, task-landed.cjs), the one read of whether a task has landed
  * and where it stands against its landing every driver asks, each commit
- * read once; the tasks, shown, a merge of the verb's landed, those a record
- * names read from then on at their branches' tips as the record its end
- * writes holds them (`landedAgain`); the message a task landing alone lands
- * under (`message`); and the refusal of a task whose branch, at a commit,
- * holds another's work not landed on the default branch at a commit, past
- * it — or past the chain's tip given (`refuseHeld`).
+ * read once; the tasks, shown, a merge of the verb's landed, noted for the
+ * record its end writes, those a record names read from then on at their
+ * branches' tips as that record holds them (`merged`); the message a task
+ * landing alone lands under (`message`); and the refusal of a task whose
+ * branch, at a commit, holds another's work not landed on the default
+ * branch at a commit, past it — or past the chain's tip given
+ * (`refuseHeld`).
  * @typedef {{
  *   root: string, repo: string, unit: string, into: string, remote: string|null, gitlinks: string[], submodules: {path: string, ctx: LandingContext}[],
- *   reads: Map<string, unknown>, landedOn: (tip: string) => RepoLanded, landedAgain: (shown: string[]) => void, message: (ref: TaskRef) => string,
+ *   reads: Map<string, unknown>, landedOn: (tip: string) => RepoLanded, merged: (shown: string[]) => void, message: (ref: TaskRef) => string,
  *   refuseHeld: (task: {ref: TaskRef, branch: string}, head: string, into: string, from?: {name: string, commit: string}) => void,
  * }} LandingContext
  */
@@ -301,18 +308,31 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  * The project a verb lands in: its folder; its repositories, its own first,
  * and their contexts, each made once, as the verb first needs it, keeping
  * the reads its driver makes there, and of each the commit the driver took
- * each task at, by the repository's root, as far as the verb read it, none
- * where it read none (`taken`); the time the unit's work is read from
- * (`workSince`); its landing driver, read as first asked; and each task's
- * landing message, by the task shown, read as first asked (`taskMessage`).
+ * each task at, by the repository's root — read as first asked (`taken`),
+ * and as far as the verb read it, none where it read none (`took`); each
+ * one's default branch's tip as its context was made, null where it had
+ * none, the tasks the verb's merges landed there, by their internal ids
+ * (the context's `merged`), and the reads it made there, each source's in
+ * the order made, by the repository's root; the time the unit's work is
+ * read from (`workSince`);
+ * its landing driver, read as first asked; and each task's landing
+ * message, by the task shown, read as first asked (`taskMessage`).
  * @typedef {{
- *   cwd: string, unit: string, repos: Repo[], contexts: Map<string, LandingContext>, taken: Map<string, () => Map<string, string>>,
+ *   cwd: string, unit: string, repos: Repo[], contexts: Map<string, LandingContext>,
+ *   taken: Map<string, () => Map<string, string>>, took: Map<string, () => Map<string, string>>, tips: Map<string, string|null>, merged: Map<string, Set<string>>, reads: {root: string, made: () => RepoLanded[]}[],
  *   since: string|null, manifest: Record<string, any>|null, driver: () => LandingDriver, messages: Map<string, string>,
  * }} Project
  */
 
-/** The projects each land verb `recording` wraps makes, its own last: what their drivers took, its record reads (`settleLandings`). @type {Project[][]} */
-const recordingProjects = [];
+/**
+ * A land verb as `recording` wraps it: the project's repositories, read
+ * once for the verb, and the projects it made, its record read from them
+ * (`landingsLeft`).
+ * @typedef {{repos: Repo[], made: Project[]}} Frame
+ */
+
+/** The land verbs `recording` wraps, the innermost last. @type {Frame[]} */
+const recordingFrames = [];
 
 /**
  * One repository's part of a verb, and what it answered: null where there
@@ -343,20 +363,34 @@ function inRepo(repo, act) {
 }
 
 /**
- * Each task of `shown` a merge of the verb's landed that a record names,
- * read from then on at its branch's tip here as it stands — the tip the
- * record the verb's end writes holds (`settleLandings`) — so a later read
- * of the verb finds nothing past it (R29).
- * @param {string} root @param {string} unit @param {string|null} since @param {Map<string, import('./landing-record.cjs').LandingRecord>} recorded @param {string[]} shown
+ * The tasks of `shown` a merge of the verb's landed in the repository at
+ * `root`, noted on the project for the record the verb's end writes
+ * (`landingsLeft`); each a record names read from then on at its branch's
+ * tip here as it stands — the tip that record holds — so a later read of
+ * the verb finds nothing past it (R29).
+ * @param {Project} project @param {string} root @param {Map<string, import('./landing-record.cjs').LandingRecord>} recorded @param {string[]} shown
  */
-function readLandedAgain(root, unit, since, recorded, shown) {
-  const ids = shown.map((at) => taskId(parseShownTask(unit, at))).filter((id) => recorded.has(id));
-  if (ids.length === 0) return;
-  const tips = workIn(root, unit, since).tips();
-  for (const id of ids) {
+function noteMerged(project, root, recorded, shown) {
+  const ids = shown.map((at) => taskId(parseShownTask(project.unit, at)));
+  const noted = project.merged.get(root) ?? new Set();
+  for (const id of ids) noted.add(id);
+  project.merged.set(root, noted);
+  const again = ids.filter((id) => recorded.has(id));
+  if (again.length === 0) return;
+  const tips = workIn(root, project.unit, project.since).tips();
+  for (const id of again) {
     const tip = tips.get(id);
     if (tip !== undefined) recorded.set(id, { .../** @type {import('./landing-record.cjs').LandingRecord} */ (recorded.get(id)), tip });
   }
+}
+
+/**
+ * A merge's answer, the tasks it landed noted on its context (`merged`).
+ * @template {Record<string, any>|null} A @param {LandingContext} ctx @param {A} answer @returns {A}
+ */
+function noted(ctx, answer) {
+  ctx.merged(answer?.merged ?? []);
+  return answer;
 }
 
 /**
@@ -371,23 +405,29 @@ function repoContext(project, repo, remote) {
   return inRepo(named, () => {
     const stopped = lg.scratchBlock(repo.path);
     if (stopped !== null) throw new Error(`land: ${stopped}`);
+    const local = lg.branches(repo.path);
+    const into = lg.defaultBranch(repo.path, remote, nested, local);
+    project.tips.set(repo.path, local.get(into) ?? null);
     /** @type {Map<string, string>|undefined} */
     let took;
     const taken = () => (took ??= project.driver().taken(ctx));
-    project.taken.set(repo.path, () => took ?? new Map());
+    project.taken.set(repo.path, taken);
+    project.took.set(repo.path, () => took ?? new Map());
     const recorded = recordsIn(project.manifest, named);
+    const landedOn = landedIn(repo.path, project.unit, project.since, taken, recorded, workIn(repo.path, project.unit, project.since, local));
+    project.reads.push({ root: repo.path, made: landedOn.made });
     /** @type {LandingContext} */
     const ctx = {
       root: repo.path,
       repo: named,
       unit: project.unit,
-      into: lg.defaultBranch(repo.path, remote, nested),
+      into,
       remote,
       gitlinks: [],
       submodules: [],
       reads: new Map(),
-      landedOn: landedIn(repo.path, project.unit, project.since, taken, recorded),
-      landedAgain: (shown) => readLandedAgain(repo.path, project.unit, project.since, recorded, shown),
+      landedOn,
+      merged: (shown) => noteMerged(project, repo.path, recorded, shown),
       message: (ref) => taskMessage(project, ref),
       refuseHeld: (task, head, into, from = { name: ctx.into, commit: into }) => refuseHeld(ctx, taken(), task, head, into, from),
     };
@@ -399,10 +439,10 @@ function repoContext(project, repo, remote) {
  * The project a verb lands in, its own repository's context made first, its
  * landing driver the one its setting names, else the default, read as first
  * asked.
- * @param {string} cwd @param {string} unit @param {Repo[]} [repos] the project's, where the caller has read them
+ * @param {string} cwd @param {string} unit @param {Repo[]} [repos] the project's, where the caller has read them — the land verb's own, `recording` having read them
  * @returns {Project}
  */
-function projectOf(cwd, unit, repos = projectRepos(codeRoot(cwd))) {
+function projectOf(cwd, unit, repos = recordingFrames.at(-1)?.repos ?? projectRepos(codeRoot(cwd))) {
   assertUnit(unit);
   /** @type {LandingDriver|undefined} */
   let chosen;
@@ -416,10 +456,14 @@ function projectOf(cwd, unit, repos = projectRepos(codeRoot(cwd))) {
     manifest,
     contexts: new Map(),
     taken: new Map(),
+    took: new Map(),
+    tips: new Map(),
+    merged: new Map(),
+    reads: [],
     driver: () => (chosen ??= /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver)),
     messages: new Map(),
   };
-  recordingProjects.at(-1)?.push(project);
+  recordingFrames.at(-1)?.made.push(project);
   project.contexts.set('', repoContext(project, repos[0], remoteName(cwd)));
   return project;
 }
@@ -790,16 +834,20 @@ function landingTips(cwd, unit, repos, wanted) {
 
 /**
  * Each repository's part of a merge, children first, `act` run in each —
- * once no default branch points a submodule at a commit its own lacks,
- * found before anything merges (`repointsOf`); then, in a repository whose
- * default branch pointed one at a commit whose change the submodule
- * landed, each such submodule its merge left where it was pointed at that
- * landing through the driver (`mergedThenRepointed`).
+ * once no task it lands, of those `picks` names, has a branch rewritten
+ * after its work landed by hand (`refuseRewrittenIn`), and no default
+ * branch points a submodule at a commit its own lacks (`repointsOf`), each
+ * found before anything merges; then, in a repository whose default branch
+ * pointed one at a commit whose change the submodule landed, each such
+ * submodule its merge left where it was pointed at that landing through
+ * the driver (`mergedThenRepointed`).
  * @param {Project} project @param {LandingDriver} driver @param {Repo[]} walking @param {(ctx: LandingContext) => Record<string, any>|null} act
+ * @param {(ref: TaskRef) => boolean} picks
  * @returns {Step[]}
  */
-function mergeSteps(project, driver, walking, act) {
+function mergeSteps(project, driver, walking, act, picks) {
   const merging = walking.map((repo) => mergingIn(project, repo, walking));
+  refuseRewrittenIn(project, merging, picks);
   const repoints = repointsOf(driver, merging);
   return merging.map((ctx) => {
     const found = repoints.get(ctx.repo);
@@ -854,26 +902,53 @@ const didWith = (did) => (answer) => {
 };
 
 /**
+ * Refuse, before anything moves, a task of `refs` whose branch in one
+ * repository was rewritten after its work landed by hand on the default
+ * branch here, at `into`, no verb having recorded it (the stated edge,
+ * task-landed.cjs `rewritten`), naming the commit that landed, which the
+ * branch is put back to — the one refusal of it every land verb acting on
+ * a task's landing makes.
+ * @param {LandingContext} ctx @param {string} into @param {TaskRef[]} refs
+ */
+function refuseRewritten(ctx, into, refs) {
+  const read = ctx.landedOn(into);
+  for (const ref of refs) {
+    const off = read.rewritten(ref);
+    if (off === null) continue;
+    const landing = off.landing === null ? '' : ` (${lg.short(off.landing)})`;
+    throw new Error(`land: task ${shownTask(ref)}'s branch ${off.branch} was rewritten after its work landed on ${ctx.into}${landing}: its commit ${lg.short(off.sha)} landed, and the branch no longer holds it — put the branch back where it landed, git branch -f ${off.branch} ${lg.short(off.sha)}, and run this again; work past that goes on top of it`);
+  }
+}
+
+/**
+ * Refuse, before anything merges, a task the walk lands — of those `picks`
+ * names, by their refs — whose branch was rewritten after its work landed
+ * by hand (`refuseRewritten`), in each repository merging, read at its
+ * default branch's tip as its context was made.
+ * @param {Project} project @param {LandingContext[]} merging @param {(ref: TaskRef) => boolean} picks
+ */
+function refuseRewrittenIn(project, merging, picks) {
+  for (const ctx of merging) {
+    const into = project.tips.get(ctx.root);
+    if (into !== null && into !== undefined) inRepo(ctx.repo, () => refuseRewritten(ctx, into, ctx.landedOn(into).branched().filter(picks)));
+  }
+}
+
+/**
  * Where a task's branch stands in one repository holding it: landed on the
  * default branch, as the one read of what has landed reads it, or opened
  * already; past the chain's tip, to open on it; or with nothing past the
  * default branch or the chain's tip — refused where its branch was
- * rewritten after its work landed by hand, no verb having recorded it,
- * naming the commit that landed, which the branch is put back to (the
- * stated edge, task-landed.cjs `rewritten`); where it does not descend
- * from the tip; or where it holds another task's work not landed past it
- * (`refuseHeld`).
+ * rewritten after its work landed by hand (`refuseRewritten`); where it
+ * does not descend from the tip; or where it holds another task's work not
+ * landed past it (`refuseHeld`).
  * @param {LandingDriver} driver @param {LandingContext} ctx @param {LandingTask} task
  * @returns {{tip: ChainTip}|{opened: true}|{past: string}}
  */
 function standing(driver, ctx, task) {
   const into = lg.branches(ctx.root).get(ctx.into);
   if (into !== undefined && ctx.landedOn(into).task(task.ref).landed) return { opened: true };
-  const off = into === undefined ? null : ctx.landedOn(into).rewritten(task.ref);
-  if (off !== null) {
-    const landing = off.landing === null ? '' : ` (${lg.short(off.landing)})`;
-    throw new Error(`land: task ${shownTask(task.ref)}'s branch ${task.branch} was rewritten after its work landed on ${ctx.into}${landing}: its commit ${lg.short(off.sha)} landed, and the branch no longer holds it — put the branch back where it landed, git branch -f ${task.branch} ${lg.short(off.sha)}, and run this again; work past that goes on top of it`);
-  }
+  if (into !== undefined) refuseRewritten(ctx, into, [task.ref]);
   if (lg.isAncestor(ctx.root, task.branch, ctx.into)) return { past: ctx.into };
   driver.assertServes?.(ctx);
   const tip = driver.chainTip(ctx, task);
@@ -1042,7 +1117,7 @@ function landPhase(cwd, unit, given) {
   const project = projectOf(cwd, unit);
   const ofPhase = (/** @type {string} */ branch) => (names.taskOfBranch(unit, branch)?.phase ?? names.phaseOfBranch(unit, branch)) === phase;
   return withDriver(cwd, (driver) => {
-    const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, ofPhase)), (ctx) => driver.mergePhase(ctx, phase));
+    const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, ofPhase)), (ctx) => noted(ctx, driver.mergePhase(ctx, phase)), (ref) => ref.phase === phase);
     const answers = walk(steps, didWith((answer) => (answer.already ? null : `phase ${phase} merged`)));
     if (answers.length === 0 && !phaseChecks().landedPhase(cwd, unit, phase)) throw new Error(`land: phase ${phase} of ${unit} has no task opened — open its tasks first`);
     scratch().readersDone(cwd, scratch().READERS.phase(unit, phase));
@@ -1094,8 +1169,7 @@ function finishing(driver, ctx) {
       if (again !== undefined) {
         throw new Error(`land: phase ${again.phase} merged, and still has ${(again.merged ?? []).join(', ')} to land on ${ctx.into} — what merged never reached it, so land it by hand there and finish again`);
       }
-      const { warnings = [], ...merged } = next.merge();
-      ctx.landedAgain(merged.merged ?? []);
+      const { warnings = [], ...merged } = noted(ctx, next.merge());
       phases.push({ phase: next.phase, ...merged });
       for (const warning of warnings) warned.add(warning);
     }
@@ -1132,7 +1206,7 @@ function finishMerge(cwd, unit) {
   if (landsAsOne(cwd, unit)) return quickFixLand(cwd, unit, true);
   const project = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
-    const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, (branch) => names.isUnitBranch(unit, branch))), (ctx) => finishing(driver, ctx));
+    const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, (branch) => names.isUnitBranch(unit, branch))), (ctx) => finishing(driver, ctx), () => true);
     const merged = (/** @type {Answer} */ answer) => (answer.phases ?? []).length > 0;
     const did = (/** @type {Answer} */ answer) => (merged(answer) ? `phase ${answer.phases.map((/** @type {{phase: number}} */ phase) => phase.phase).join(', ')} merged` : null);
     return answered(walk(steps, didWith(did)), (answer) => merged(answer) || 'repointed' in answer);
@@ -1294,6 +1368,7 @@ function repoLanding(project, driver, repo, asFetched) {
     return head !== null && !commitsOn(head).some(isWork) && !lg.stampsUnit(root, head, key, unit, since);
   };
   const landed = repoLanded(root, unit, tip, { since, own: (id) => commits().filter((commit) => commit.id === id).pop() ?? null, merged: () => pull().merged, recorded: recordsIn(project.manifest, ctx.repo) });
+  project.reads.push({ root, made: () => [landed] });
   const { task, landedCommit, marking, line, landings } = landed;
   /** @param {string} rev */
   const holdsUnlanded = (rev) => commitsOn(rev).some(({ sha, id }) => !landedCommit(sha, id));
@@ -1499,10 +1574,10 @@ function quickFixLand(cwd, unit, closes = false) {
     const answers = carrying(warnings, () => {
       const steps = mergeSteps(read.project, driver, read.repos.map((held) => held.repo), (ctx) => {
         const held = /** @type {RepoLanding} */ (read.repos.find((each) => each.ctx.repo === ctx.repo));
-        if (!past.includes(held)) return driver.mergeQuickFix(ctx, null);
+        if (!past.includes(held)) return noted(ctx, driver.mergeQuickFix(ctx, null));
         const landing = { ...quickFixTask(cwd, held, shown), pointers: pointersOf(driver, held, ctx) };
-        return driver.mergeQuickFix(ctx, landing, driver.openQuickFix(held.ctx, landing));
-      });
+        return noted(ctx, driver.mergeQuickFix(ctx, landing, driver.openQuickFix(held.ctx, landing)));
+      }, () => false);
       return walk(steps, didWith((answer) => (answer.already ? null : `${unit}'s pull request merged`)));
     });
     if (closes) read.repos.forEach((held) => driver.finished?.(held.ctx));
@@ -1524,98 +1599,125 @@ function quickFixClose(read) {
 }
 
 /**
- * Each repository of the project's default branch's tip here, by its root,
- * null where it has no default branch to land on.
- * @param {string} cwd @param {Repo[]} repos @returns {Map<string, string|null>}
+ * The landings the engine made in one repository, as the verb's end
+ * records them: each task a merge of the verb's landed there (`merged`),
+ * at the newest commit of `range`, the default branch's first-parent line
+ * past where it stood as the verb began, naming it by its `Task:` line, at
+ * its branch's tip — its newest stamped commit where it has none — its
+ * first, where no record names one, its landing as the verb's first read
+ * there found it (`earlier`, R30), so a task changed after it landed by
+ * hand keeps that landing.
+ * @param {Repo} repo
+ * @param {{range: {sha: string, ids: string[]}[], merged: Set<string>, recorded: Map<string, import('./landing-record.cjs').LandingRecord>, work: ReturnType<typeof workIn>, first: () => RepoLanded, took: () => Map<string, string>}} read
+ * @returns {import('./landing-record.cjs').Landing[]}
  */
-function defaultTips(cwd, repos) {
-  return new Map(repos.map((repo) => {
-    try {
-      return [repo.path, lg.branches(repo.path).get(lg.landingBranch(cwd, repo)) ?? null];
-    } catch {
-      return [repo.path, null];
-    }
-  }));
+function engineLandings(repo, { range, merged, recorded, work, first, took }) {
+  return [...merged].flatMap((id) => {
+    const commit = range.find(({ ids }) => ids.includes(id))?.sha;
+    if (commit === undefined) return [];
+    const landing = { id, repo: repoName(repo), root: repo.path, commit, tip: work.tips().get(id) ?? work.stamps().get(id)?.sha ?? commit, by: /** @type {const} */ ('engine') };
+    const earlier = recorded.has(id) ? null : first().earlier(parseTaskId(id), took);
+    return earlier === null || earlier === commit ? [landing] : [{ ...landing, commit: earlier }, landing];
+  });
 }
 
 /**
- * The landings a land verb leaves, recorded (landing-record.cjs, 7.2.22):
- * in each repository whose default branch moved since `before`, each task
- * a commit the verb laid on its first-parent line names by its `Task:`
- * line, the first naming it — the engine's own landing, whatever the read
- * makes of it, one no record names that an earlier commit there names, as
- * the engine before the record landed it, taking that one for its first
- * (R30) — and, where the verb answered rather than refused (`acted`),
- * there or anywhere else, each task the read of the default branch finds
- * landed with no record (`foundIn`), the person's by hand, one changed
- * since at the commit its driver took (`taken`, the verb's own read): a
- * refusal records only what moved before it. Committed to the state
- * branch, its commit's warnings to `warnings` — or, `joined`, written for
- * the caller's own commit of the unit to carry.
- * @param {string} cwd @param {string} unit @param {Repo[]} repos @param {Map<string, string|null>} before @param {string[]} warnings @param {boolean} acted
- * @param {Map<string, () => Map<string, string>>} taken what the verb's drivers took, by each repository's root they read it in
- * @param {boolean} [joined]
+ * The landings a land verb leaves (landing-record.cjs, 7.2.22), in each
+ * repository it made a context in, read from the reads it made there
+ * (`frame`): by the engine, each task a merge of the verb's landed
+ * (`engineLandings`); and, where the verb answered rather than refused
+ * (`acted`), each other task its reads found landed with no record
+ * (`foundIn`) — the person's by hand, one changed since found at the
+ * commit its driver took as the verb read it — each task the repository
+ * holds work of that none of them was asked of asked of its last. A read
+ * of the default branch here is made where the verb made none there, or
+ * where that branch gained commits the verb's merges never laid, as it
+ * brings the default branch here up to the host's: the landings it only
+ * brought here are the read's, each changed since found at the commit its
+ * driver took, read where the verb never did. A refusal records only what
+ * merged before it; a repository the verb made no context in is left to
+ * the next verb working there.
+ * @param {string} cwd @param {string} unit @param {Frame} frame @param {boolean} acted
+ * @returns {import('./landing-record.cjs').Landing[]}
  */
-function settleLandings(cwd, unit, repos, before, warnings, acted, taken, joined = false) {
+function landingsLeft(cwd, unit, frame, acted) {
   const manifest = manifestOf(stateRoot(cwd), unit);
   const since = workSince(manifest);
-  const after = defaultTips(cwd, repos);
-  const found = repos.flatMap((repo) => {
-    const at = after.get(repo.path);
-    const from = before.get(repo.path);
-    const moved = from !== null && from !== undefined && at !== null && at !== undefined && from !== at;
-    if (at === null || at === undefined || (!acted && !moved)) return [];
-    const work = workIn(repo.path, unit, since);
+  const { made } = frame;
+  return frame.repos.flatMap((repo) => {
+    const [project] = made.filter(({ tips }) => tips.has(repo.path));
+    if (project === undefined) return [];
+    const refs = lg.branches(repo.path);
+    const at = refs.get(/** @type {LandingContext} */ (project.contexts.get(repo.dir)).into);
+    if (at === undefined) return [];
+    const from = project.tips.get(repo.path) ?? null;
+    const merged = new Set(made.flatMap((each) => [...(each.merged.get(repo.path) ?? [])]));
+    const reads = made.flatMap((each) => each.reads.filter(({ root }) => root === repo.path).flatMap((read) => read.made()));
+    /** @param {'took'|'taken'} how */
+    const driven = (how) => () => new Map(made.flatMap((each) => [...(each[how].get(repo.path)?.() ?? [])]));
+    const took = driven('took');
     const recorded = recordsIn(manifest, repoName(repo));
-    const named = moved ? lg.namedPast(repo.path, unit, /** @type {string} */ (from), at) : new Map();
-    const earlier = [...named.keys()].some((id) => !recorded.has(id)) ? lg.tasksMarkedOn(repo.path, /** @type {string} */ (from), unit, stamp(), since).named : new Map();
-    /** @type {import('./landing-record.cjs').Landing[]} */
-    const engine = [...named].flatMap(([id, commit]) => {
-      const landing = { id, repo: repoName(repo), root: repo.path, commit, tip: work.tips().get(id) ?? work.stamps().get(id)?.sha ?? commit, by: /** @type {const} */ ('engine') };
-      const first = recorded.has(id) ? undefined : earlier.get(id)?.at(-1)?.sha;
-      return first === undefined ? [landing] : [{ ...landing, commit: first }, landing];
-    });
+    const work = workIn(repo.path, unit, since, refs);
+    const fresh = (/** @type {string} */ tip) => landedIn(repo.path, unit, since, driven('taken'), recorded, work)(tip);
+    const range = from === null || from === at ? [] : lg.namedPast(repo.path, unit, from, at);
+    const engine = merged.size === 0 ? [] : engineLandings(repo, { range, merged, recorded, work, first: () => reads[0] ?? fresh(/** @type {string} */ (from)), took });
     if (!acted) return engine;
-    for (const { id, commit, tip } of engine) recorded.set(id, { commit, tip, first: commit, by: 'engine', at: '' });
-    const read = landedIn(repo.path, unit, since, taken.get(repo.path), recorded, work)(at);
-    for (const ref of read.known()) read.task(ref);
-    return [...engine, ...foundIn(read, repo)];
+    const brought = range.some(({ ids }) => !ids.some((id) => merged.has(id)));
+    const asked = reads.length === 0 || brought ? [...reads, fresh(at)] : reads;
+    const last = /** @type {RepoLanded} */ (asked.at(-1));
+    const read = new Set(asked.flatMap((each) => each.asked()));
+    for (const ref of last.known()) if (!read.has(taskId(ref))) last.task(ref);
+    return [...asked.flatMap((each) => foundIn(each, repo, reads.includes(each) ? took : undefined)).filter(({ id }) => !merged.has(id)), ...engine];
   });
-  if (joined) writeLandings(cwd, unit, found);
-  else recordLandings(cwd, unit, found, warnings);
+}
+
+/**
+ * `write` run, a record it leaves not written answered as a warning in
+ * `warnings`, the next verb acting on the landing reading it again.
+ * @param {() => unknown} write @param {string[]} warnings
+ */
+function settled(write, warnings) {
+  try {
+    write();
+  } catch (err) {
+    warnings.push(`the landing record was not written (${messageOf(err)}) — the next verb acting on the landing records it`);
+  }
 }
 
 /**
  * A land verb's answer, `act`'s, its landings recorded as it ends
- * (`settleLandings`) — a refusal's among them, after whatever moved before
+ * (`landingsLeft`) — a refusal's among them, after whatever merged before
  * it — the state commit's warnings beside the answer's; `joined`, an
  * answer's written for the caller's own commit of the unit to carry, as
- * finish's yes completes it.
+ * finish's yes completes it. A record not written leaves the answer as it
+ * stands, a warning saying so beside it (`settled`), and a refusal as it
+ * was refused.
  * @template {{warnings?: string[]}} R
  * @param {string} cwd @param {string} unit @param {() => R} act @param {boolean} [joined]
  * @returns {R}
  */
 function recording(cwd, unit, act, joined = false) {
   assertUnit(unit);
-  const repos = projectRepos(codeRoot(cwd));
-  const before = defaultTips(cwd, repos);
-  /** @type {Project[]} */
-  const made = [];
-  const taken = () => new Map(made.flatMap((project) => [...project.taken]));
+  /** @type {Frame} */
+  const frame = { repos: projectRepos(codeRoot(cwd)), made: [] };
   /** @type {R} */
   let answer;
-  recordingProjects.push(made);
+  recordingFrames.push(frame);
   try {
     answer = act();
   } catch (err) {
-    settleLandings(cwd, unit, repos, before, [], false, taken());
+    settled(() => recordLandings(cwd, unit, landingsLeft(cwd, unit, frame, false), []), []);
     throw err;
   } finally {
-    recordingProjects.pop();
+    recordingFrames.pop();
   }
   /** @type {string[]} */
   const warnings = [];
-  settleLandings(cwd, unit, repos, before, warnings, true, taken(), joined);
+  settled(() => {
+    const found = landingsLeft(cwd, unit, frame, true);
+    if (joined) writeLandings(cwd, unit, found);
+    else recordLandings(cwd, unit, found, warnings);
+  }, warnings);
   return warnings.length === 0 ? answer : { ...answer, warnings: [...(answer.warnings ?? []), ...warnings] };
 }
 

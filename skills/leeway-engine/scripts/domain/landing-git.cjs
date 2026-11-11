@@ -242,6 +242,16 @@ function isAncestor(root, ancestor, commit) {
 }
 
 /**
+ * Whether the branch here once stood at `sha`, as its reflog names it — as
+ * a branch rewritten past a landing leaves it; never where it keeps no
+ * reflog.
+ * @param {string} root @param {string} branch @param {string} sha
+ */
+function heldOnce(root, branch, sha) {
+  return (tryGit(root, ['reflog', 'show', '--format=%H', `${HEADS}${branch}`, '--']) ?? '').split('\n').includes(sha);
+}
+
+/**
  * Where among `commits`, each in full, the first stands that every other is
  * an ancestor of — the tip of the one line they make — or -1 where none
  * is; read in one call however many are given.
@@ -822,21 +832,17 @@ function tasksMarkedOn(root, on, unit, key, since) {
 }
 
 /**
- * The unit's tasks the commits on `to`'s first-parent line past `from` name
- * by their `Task:` lines, each at the oldest naming it: a landing's name,
- * as the engine's own writes one (landing-names.cjs).
+ * The commits on `to`'s first-parent line past `from`, newest first, each
+ * with the unit's tasks it names by its `Task:` lines, by their internal
+ * ids: a landing's name, as the engine's own writes one (landing-names.cjs).
  * @param {string} root @param {string} unit @param {string} from @param {string} to
- * @returns {Map<string, string>} the commit, by the task's internal id
+ * @returns {{sha: string, ids: string[]}[]}
  */
 function namedPast(root, unit, from, to) {
-  /** @type {Map<string, string>} */
-  const named = new Map();
-  for (const entry of git(root, ['log', '-z', '--first-parent', '--reverse', '--format=%H%n%B', `${from}..${to}`, '--']).split('\0').filter(Boolean)) {
+  return git(root, ['log', '-z', '--first-parent', '--format=%H%n%B', `${from}..${to}`, '--']).split('\0').filter(Boolean).map((entry) => {
     const end = entry.indexOf('\n');
-    const sha = entry.slice(0, end);
-    for (const id of names.tasksOfMessage(unit, entry.slice(end + 1)).map(taskId)) if (!named.has(id)) named.set(id, sha);
-  }
-  return named;
+    return { sha: entry.slice(0, end), ids: names.tasksOfMessage(unit, entry.slice(end + 1)).map(taskId) };
+  });
 }
 
 /** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */
@@ -1836,11 +1842,10 @@ function remoteHead(root, remote) {
  * the project's own, or one `nested` in its folder. Refuses where nothing
  * names one, where it is the state branch, and where the repository has no
  * local branch of its name.
- * @param {string} root @param {string|null} remote the repository's @param {boolean} [nested]
+ * @param {string} root @param {string|null} remote the repository's @param {boolean} [nested] @param {Map<string, string>} [local] its branches, where the caller read them
  * @returns {string}
  */
-function defaultBranch(root, remote, nested = false) {
-  const local = branches(root);
+function defaultBranch(root, remote, nested = false, local = branches(root)) {
   const configured = tryGit(root, ['config', '--get', 'init.defaultBranch'])?.trim() ?? '';
   const named = remoteHead(root, remote) ?? [configured, ...TRUNKS].find((branch) => local.has(branch));
   if (named === undefined) {
@@ -1881,7 +1886,7 @@ function landingBranch(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, belowOwn, copiesOf, standings, lastStamped, stampedAnywhere, timedOf, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
+  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, heldOnce, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, belowOwn, copiesOf, standings, lastStamped, stampedAnywhere, timedOf, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, landingBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,

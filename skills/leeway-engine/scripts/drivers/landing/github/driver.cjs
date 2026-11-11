@@ -739,7 +739,10 @@ function settlePointers(ctx, host, stacks, stack, fetched) {
  * below it `into` squashed, where it names one, else over their merge base
  * — then each branch into the one above, each pull request's `moves` set
  * on its merge (see the header) — refused, before anything is pushed,
- * where a merge conflicts in a file.
+ * where a merge conflicts in a file: its way on, where it stands on a
+ * squashed phase, its own commits rebased onto the default branch and
+ * pushed, as a merge of that branch into it would bring back what it undid
+ * of that phase's work (S3), else that merge.
  * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {string} into @param {Map<string, string|null>[]} moves @param {string|null} [squashed]
  * @returns {Pushed}
  */
@@ -752,7 +755,7 @@ function bringUp(ctx, host, stack, into, moves, squashed = null) {
     const merged = lg.mergeTree(ctx.root, base, pull.oid, below.commit);
     if ('conflicts' in merged) {
       throw new Error(`land: ${pull.head} conflicts with ${theirs} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing was pushed and nothing merged — `
-        + `merge ${theirs} into ${pull.head}, settling the conflict, push it, and land again`);
+        + `${squashed === null ? `merge ${theirs} into ${pull.head}, settling the conflict, push it,` : rebasedOnto(host, stack, theirs, squashed)} and land again`);
     }
     const tree = moves[i].size === 0 ? merged.tree : lg.treeWithPointers(ctx.root, merged.tree, moves[i]);
     const message = `chore(${ctx.unit}): merge ${below.name} into ${pull.head}\n`;
@@ -761,6 +764,20 @@ function bringUp(ctx, host, stack, into, moves, squashed = null) {
     return { pull, commit };
   });
   return pushUp(ctx, host, made, `phase ${stack.phase}'s branches were not brought up to date with ${ctx.into}`);
+}
+
+/**
+ * The way on of a stack built on a squashed phase that conflicts with the
+ * default branch on GitHub, `theirs` (`bringUp`): its own commits, those
+ * past `squashed`, rebased onto it, settling the conflict, its branches
+ * moved with them, then pushed — so its change keeps what it undid of the
+ * phase below.
+ * @param {Host} host @param {Stack} stack @param {string} theirs @param {string} squashed
+ */
+function rebasedOnto(host, stack, theirs, squashed) {
+  const heads = stack.pulls.map(({ head }) => head);
+  const all = heads.length > 1 ? ' --update-refs' : '';
+  return `rebase phase ${stack.phase}'s own commits onto ${theirs}, settling the conflict, with \`git rebase --onto ${theirs} ${lg.short(squashed)} ${heads[heads.length - 1]}${all}\`, push ${heads.length > 1 ? 'its branches' : 'it'} with \`git push --force-with-lease ${host.remote} ${heads.join(' ')}\`,`;
 }
 
 /**

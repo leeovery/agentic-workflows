@@ -101,6 +101,8 @@ function deleted(dir, branch, into = 'main') {
 module.exports = {
   /** The environment every call runs under. */
   env: GH_ENV,
+  /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-calls.cjs). */
+  gitCalls: { open: 53, phase: 95, again: 31, finish: 99 },
   /** The world readied for the driver, once per process. @param {string} dir */
   prepare: (dir) => {
     setLandingDriver(dir, 'github');
@@ -138,6 +140,8 @@ module.exports = {
     /** Rebased, pulled. @param {string} dir @param {string} branch @param {string} [into] */
     'a rebase on GitHub, pulled': (dir, branch, into) => mergedOnGithub(dir, branch, 'rebase', true, into),
   },
+  /** A task's pull request squashed by hand on GitHub under its default message, main here not pulled. @param {string} dir @param {string} branch */
+  byHandUnpulled: (dir, branch) => mergedOnGithub(dir, branch, 'squash', false),
   /** The ways a person merges it there that keep the branch's own commits on the default branch here. */
   byHandKeeping: {
     /** With a merge commit, pulled. @param {string} dir @param {string} branch @param {string} [into] */

@@ -9,7 +9,8 @@
 // land. A merge there is refused while its default branch's checkout is in
 // the middle of a merge. A person merges a quick-fix's branch by hand in
 // their own terminal, squashed, with a merge commit or fast-forwarded — the
-// last two keeping its own commits; cherry-picks a commit onto the default
+// last two keeping its own commits — and a task's branch squashed under
+// git's own message; cherry-picks a commit onto the default
 // branch there; and deletes a branch. A quick-fix is
 // open in a repository while its opening's ref is there. A person lands a
 // phase's branch by hand in their terminal too: squashed under git's own
@@ -50,6 +51,8 @@ const mergeCommit = (dir, branch, into) => onMain(dir, [['merge', '-q', '--no-ff
 module.exports = {
   /** The environment every call runs under: the suite's own. */
   env: {},
+  /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-calls.cjs). */
+  gitCalls: { open: 47, phase: 50, again: 29, finish: 89 },
   /** The world readied for the driver, once per process. @param {string} dir */
   prepare: (dir) => setLandingDriver(dir, 'local'),
   /** A repository nested in the world readied for the driver: nothing to ready. */
@@ -81,6 +84,8 @@ module.exports = {
     'a squash of its branch': (dir, branch, into) => onMain(dir, [['merge', '-q', '--squash', branch], ['commit', '-q', '-m', 'Spell it the British way']], into),
     'a merge commit of its branch': mergeCommit,
   },
+  /** A task's branch squashed by hand under git's own squash message — here, the default branch landing it having nowhere else to be brought from. @param {string} dir @param {string} branch */
+  byHandUnpulled: (dir, branch) => onMain(dir, [['merge', '-q', '--squash', branch], ['commit', '-q', '--no-edit']]),
   /** The ways of those, and others, that keep the branch's own commits on the default branch here. */
   byHandKeeping: {
     /** Fast-forwarded. @param {string} dir @param {string} branch @param {string} [into] */
