@@ -17,9 +17,10 @@
 //
 // Layer: verb. World: the project from the fixture library, with an epic,
 // `fumi`, copied for each test; each test keeps its conversation and its
-// trust log in a config folder of its own. No menu's screen is drawn yet, so
-// the frame draws the registry's entries with their keys given here, in
-// process, as a command draws them.
+// trust log in a config folder of its own. Of the menus' screens only the
+// verdict page's is drawn yet (test-engine-verdict.cjs), so the frame draws
+// the registry's entries with their keys given here, in process, as a
+// command draws them.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

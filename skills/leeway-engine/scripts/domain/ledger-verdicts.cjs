@@ -57,7 +57,9 @@
 //   Each shows Claude's lean beside it: the sealed answer of the nearest
 //   entry down its chain that holds one, or the answer of the nearest that
 //   held the lean, past the person's own earlier departures; beside a keep,
-//   the proposal it seals, the keep's row carrying the answer it kept.
+//   the proposal it seals, the keep's row carrying the answer it kept. The
+//   verdict page asks the first as a verdict point asks its own: the
+//   question it answers, the lean and the person's answer (verdict.cjs).
 // - A verdict point (16.10.2, 16.10.11) asks, one at a time in the ledger's
 //   order, each departure this machine logged in the work it closes that
 //   has no verdict yet, a skip among them; its count is of the departures
@@ -220,10 +222,34 @@ function departureRow(shower, id) {
 }
 
 /**
- * The departure a verdict point asks next: its entry; where it stands among
- * those the close asks, from 1; the question it answers, Claude's lean, and
- * the person's answer.
- * @typedef {{entry: string, at: number, of: number, question: string, lean: string|null, yours: string}} AskedVerdict
+ * A departure as a verdict asks it: its entry, the question it answers,
+ * Claude's lean, and the person's answer.
+ * @typedef {{entry: string, question: string, lean: string|null, yours: string}} Departure
+ */
+
+/**
+ * The departure `id` names as a verdict asks it (`Departure`): a keep's
+ * question the one its decision answers.
+ * @param {Shower} shower @param {string} id
+ * @returns {Departure}
+ */
+function departureOf(shower, id) {
+  const { folded, show } = shower;
+  const row = departureRow(shower, id);
+  const facts = factsOf(folded, id);
+  const decision = facts.event === 'kept' ? /** @type {string} */ (facts.entry) : id;
+  return {
+    entry: id,
+    question: /** @type {string} */ (show(/** @type {string} */ (factsOf(folded, decision).answers)).text),
+    lean: /** @type {string|null} */ (row.lean),
+    yours: /** @type {string} */ (row.text),
+  };
+}
+
+/**
+ * The departure a verdict point asks next: a departure, with where it
+ * stands among those the close asks, from 1.
+ * @typedef {Departure & {at: number, of: number}} AskedVerdict
  */
 
 /**
@@ -257,18 +283,7 @@ function verdictAsked(shower, root, closeOf) {
   const { folded } = shower;
   const { departures, waiting } = closeDepartures(folded, root, closeOf);
   if (waiting.length === 0) return null;
-  const [entry] = waiting;
-  const row = departureRow(shower, entry);
-  const facts = factsOf(folded, entry);
-  const decision = facts.event === 'kept' ? /** @type {string} */ (facts.entry) : entry;
-  return {
-    entry,
-    at: departures.length - waiting.length + 1,
-    of: departures.length,
-    question: /** @type {string} */ (shower.show(/** @type {string} */ (factsOf(folded, decision).answers)).text),
-    lean: /** @type {string|null} */ (row.lean),
-    yours: /** @type {string} */ (row.text),
-  };
+  return { ...departureOf(shower, waiting[0]), at: departures.length - waiting.length + 1, of: departures.length };
 }
 
 /**
@@ -279,4 +294,4 @@ function answerQueue(shower, root) {
   return { departures: queueOf(shower.folded, evidenceOf(root)).map((id) => departureRow(shower, id)) };
 }
 
-module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, queueOf, departureRow, verdictAsked, answerQueue, closeDepartures };
+module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, queueOf, departureRow, departureOf, verdictAsked, answerQueue, closeDepartures };

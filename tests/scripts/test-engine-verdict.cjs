@@ -21,8 +21,14 @@
 // given while it waited on the writer lock, and one waiting in any
 // conversation, which the queue leaves out too — and what argv names
 // outside §16.10's verdicts and points; an append that fails a warning, the
-// verdict waiting in the conversation for its next record. A second machine
-// is a config folder of its own over the same state.
+// verdict waiting in the conversation for its next record, and given at the
+// queue, leading to the verdict page while a departure waits, else the start
+// menu. `engine render verdicts`, the verdict page drawn in the menus' frame
+// (domain/projections/verdict-page.cjs): the queue's first departure, where
+// it stands and the latest skip it waits after, its rows giving each verdict
+// at the queue; nothing where none waits, nor of another machine's or
+// another project's. A second machine is a config folder of its own over the
+// same state.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; each test keeps the
@@ -39,7 +45,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  NO_SPACE, ok, refuses, refusedPristine, statePath, holdLock, lockAttempts, failingTrustAppends, cleanupFixture,
+  NO_SPACE, ok, refuses, refusedPristine, output, sectionOf, statePath, holdLock, lockAttempts, failingTrustAppends, cleanupFixture, withFrozenClock,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, answeredRaise } = require('./ledger-world.cjs');
@@ -51,6 +57,9 @@ const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
+const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
+const { dayMonth } = require(path.join(SCRIPTS, 'domain/dates.cjs'));
+const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 
 /** The person's answer, and who moved whom on it. @param {string} moved */
 function persons(moved) {
@@ -418,5 +427,78 @@ describe('the departures this machine logged (16.13.1, 16.13.5, 16.13.6)', () =>
     assert.deepStrictEqual(waiting(second), []);
     fs.appendFileSync(secondLog, `${JSON.stringify(raised)}\n`);
     assert.deepStrictEqual(waiting(second), [[unjudged, 'A panel.']]);
+  });
+});
+
+describe('the verdict page (16.10.6, 16.10.7, 16.10.12)', () => {
+  const START_MENU = { kind: 'engine', argv: ['render', 'start-menu'] };
+  const THE_PAGE = { kind: 'engine', argv: ['render', 'verdicts'] };
+
+  /** The page as drawn in the conversation. */
+  const page = () => output(dir, ['render', 'verdicts'], { env: SESSION });
+
+  /** The page's sections as the screen reads them, its emphasis dropped. @param {string} out */
+  const read = (out) => ['TITLE', 'DISPLAY: verdicts'].map((name) => sectionOf(out, name).replace(/\*\*|`/g, ''));
+
+  /** The verdict a row of the page leads to, given: its answer. @param {string} key */
+  const picked = (key) => ok(dir, /** @type {{argv: string[]}} */ (ok(dir, ['gate', 'verdicts', '--pick', key], { env: SESSION }).next).argv, { env: SESSION });
+
+  it('draws the queue\'s first departure in 16.10.7\'s shape: the count waiting, the project and topic with the point and day of its latest skip, the question, Claude\'s answer and the person\'s, then the three verdicts each given at the queue, help, and back to the start menu', async () => {
+    const first = await answered('A sheet.');
+    await answered('A frameless window.');
+    withFrozenClock(() => record('verdict', { entry: full(first), verdict: 'skip', point: 'ready-to-build' }, { cwd: dir, warnings: [] }));
+    const [skip] = logged('verdict');
+    // A skip read after it, given before it.
+    fs.appendFileSync(path.join(config(), TRUST_LOG), `${JSON.stringify({ ...skip, id: newId(), point: 'finish', at: '2025-12-31T09:00:00.000Z' })}\n`);
+
+    const out = page();
+
+    assert.deepStrictEqual(read(out), [
+      '# ■ Verdicts · 1 of 2 waiting\n',
+      `${projectName(dir)} · Note Window · skipped at ready to build, 1 Jan\n  └─ Is a note a panel?\n        My answer: A panel.\n        Yours: A sheet.\n`,
+    ]);
+    const give = (/** @type {string} */ verdict) => ({ kind: 'engine', argv: ['verdict', 'give', full(first), verdict, '--at', 'queue'] });
+    assert.deepStrictEqual(gateShown(), {
+      gate: 'verdicts',
+      question: 'What would my answer have cost the product?',
+      options: [
+        { key: 'n', word: 'nothing', head: 'Nothing — mine would have served as well', recommended: false, next: give('nothing') },
+        { key: 'f', word: 'fix', head: 'A fix later', recommended: false, next: give('fix') },
+        { key: 'l', word: 'loss', head: 'A real loss', recommended: false, next: give('loss') },
+        { key: 'h', word: 'help', head: 'What this screen is for, row by row', recommended: false, next: { kind: 'engine', argv: ['render', 'help', 'verdicts'] } },
+        { key: 'b', word: 'back', head: 'Back to the start menu — the rest keep waiting', recommended: false, next: START_MENU },
+      ],
+      typed: [],
+    });
+  });
+
+  it('each verdict given from it draws the next departure, one never asked shown by the day it was made, and the last leads to the start menu, the page drawing nothing once none waits; a skip given at the queue leaves its departure waiting', async () => {
+    const first = await answered('A sheet.');
+    const second = await answered('A frameless window.');
+    page();
+
+    assert.deepStrictEqual(picked('n'), { ok: true, entry: first, verdict: 'nothing', point: 'queue', next: THE_PAGE });
+    const made = /** @type {string} */ (entries().find((entry) => entry.id === full(second))?.at);
+    assert.deepStrictEqual(read(page()), ['# ■ Verdicts · 1 of 1 waiting\n', `${projectName(dir)} · Note Window · changed ${dayMonth(made.slice(0, 10))}\n  └─ Does a note float?\n        My answer: A panel.\n        Yours: A frameless window.\n`]);
+    assert.deepStrictEqual(give(second, 'skip', 'queue').next, THE_PAGE);
+    page();
+    assert.deepStrictEqual(picked('l'), { ok: true, entry: second, verdict: 'loss', point: 'queue', next: START_MENU });
+
+    assert.deepStrictEqual([page(), verdicts()], ['', [[full(first), 'nothing', 'queue'], [full(second), 'skip', 'queue'], [full(second), 'loss', 'queue']]]);
+  });
+
+  it('draws only this machine\'s departures in this project: a second machine draws nothing of the first\'s, nor an event under another project\'s id, until its own log holds the departure', async () => {
+    const departed = await answered('A sheet.');
+    const second = { ...SESSION, LEEWAY_CONFIG_DIR: path.join(config(), 'second-machine') };
+    const secondLog = path.join(second.LEEWAY_CONFIG_DIR, TRUST_LOG);
+    const [raised] = logged('raise');
+
+    fs.mkdirSync(path.dirname(secondLog), { recursive: true });
+    fs.writeFileSync(secondLog, `${JSON.stringify({ ...raised, id: newId(), project: newId() })}\n`);
+    assert.strictEqual(output(dir, ['render', 'verdicts'], { env: second }), '');
+    fs.appendFileSync(secondLog, `${JSON.stringify(raised)}\n`);
+
+    assert.match(sectionOf(output(dir, ['render', 'verdicts'], { env: second }), 'DISPLAY: verdicts'), /^ {2}└─ Is a note a panel\?$/m);
+    assert.deepStrictEqual(waiting(second), [[departed, 'A panel.']]);
   });
 });
