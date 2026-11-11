@@ -15,12 +15,12 @@
 // first round's readers, a finding filed, its report and calls drawn —
 // test-pipeline-simulation-review.cjs's.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed — a
-// copy per scenario, which replays the engine calls the review phase makes,
-// in order, the oracle (pipeline-oracle.cjs) auditing the whole state after
-// every mutation.
+// Layer: simulation. World: the named world `worlds.cutClosed`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick, its cut one phase, built and closed — a copy per scenario,
+// which replays the engine calls the review phase makes, in order, the
+// oracle (pipeline-oracle.cjs) auditing the whole state after every
+// mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -29,15 +29,12 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, writePhaseTasks, builders, taskBuilt, cutClosed, areaRead, testsRead, reviewNext, reviewCall, finished,
+  Sim, worlds, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finished,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledger';
 const UNCHECKED = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
 const UNSALTED = '## Findings\n\n- nit: the ledger never salts its hash\n  Scenario: an entry hashed\n\nVerdict: pass\n';
-
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
-const roundsWorld = worldFrom('pipeline-review-rounds-', (sim) => cutClosed(sim, WU));
 
 /**
  * The round under review recorded on area 1's finding `text`, called
@@ -67,7 +64,7 @@ function fixedRound(sim, phase, {
 describe('pipeline simulation: the review\'s rounds', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(roundsWorld);
+    sim = new Sim(worlds.cutClosed(WU));
   });
   afterEach(() => {
     sim.destroy();

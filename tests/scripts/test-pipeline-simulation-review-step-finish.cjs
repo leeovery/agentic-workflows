@@ -14,12 +14,12 @@
 // test-pipeline-simulation-review.cjs's; a round failing again and
 // settled, -review-settled.cjs's.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed — a
-// copy per scenario, which replays the engine calls the review phase's
-// skill makes, in order, the oracle (pipeline-oracle.cjs) auditing the
-// whole state after every mutation.
+// Layer: simulation. World: the named world `worlds.cutClosed`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick, its cut one phase, built and closed — a copy per scenario,
+// which replays the engine calls the review phase's skill makes, in order,
+// the oracle (pipeline-oracle.cjs) auditing the whole state after every
+// mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -29,19 +29,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worldFrom, cutClosed, answerGate, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, strayRound, finished, handoff,
+  Sim, worlds, answerGate, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, strayRound, finished, handoff,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledger';
 const UNCHECKED = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
 
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
-const finishWorld = worldFrom('pipeline-review-step-finish-', (sim) => cutClosed(sim, WU));
-
 describe('pipeline simulation: finish in step', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(finishWorld);
+    sim = new Sim(worlds.cutClosed(WU));
   });
   afterEach(() => {
     sim.destroy();

@@ -27,10 +27,10 @@
 // the board drawing it complete, as it drew the task building from its
 // builder's brief.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase — a copy per scenario,
-// which replays the engine calls the build makes, in order, the oracle
+// Layer: simulation. World: the named world `worlds.specToBuild`, built
+// once per run (pipeline-world.cjs) — a feature through its spec to ready
+// to build's pick, its cut one phase — a copy per scenario, which replays
+// the engine calls the build makes, in order, the oracle
 // (pipeline-oracle.cjs) auditing the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
@@ -43,20 +43,13 @@ const os = require('os');
 const path = require('path');
 const { stateGit, git, sectionOf } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn, answerGate, briefOf, deadReader, laidBeside, placeIn, landed,
+  Sim, worlds, buildEntry, startPhase, writePhaseTasks, carryOn, answerGate, briefOf, deadReader, laidBeside, placeIn, landed,
 } = require('./pipeline-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
 const { consolidationFaults } = require(path.join(DOMAIN, 'notes.cjs'));
 
-const WU = 'ledger';
-
-/** A feature through its spec to ready to build's pick: its cut, one phase. */
-const builtWorld = worldFrom('pipeline-build-phase-', (sim) => {
-  startUnit(sim, 'feature', WU, 'A ledger');
-  discussed(sim, WU, WU);
-  specToBuild(sim, WU, [WU], 'a');
-});
+const WU = 'ledgerly';
 
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
 const OFF_PHASE = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
@@ -65,7 +58,7 @@ describe('pipeline simulation: a phase of the cut', () => {
   let sim;
   /** @type {string} */ let builders;
   beforeEach(() => {
-    sim = new Sim(builtWorld);
+    sim = new Sim(worlds.specToBuild(WU, 'a'));
     builders = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-builders-')));
   });
   afterEach(() => {
@@ -80,7 +73,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     sim.write(`.leeway/${wu}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');
     assert.strictEqual(sim.run(['brief', 'task-writer', wu, '1']).agent, 'leeway-task-writer');
     writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Write the ledger', scenarios: ['1.S1'] }]);
-    sim.refuses(['task', 'start', wu, '1.1'], /^task start: phase 1 of ledger has not started — /);
+    sim.refuses(['task', 'start', wu, '1.1'], /^task start: phase 1 of ledgerly has not started — /);
     startPhase(sim, wu, 1);
     assert.ok(stateGit(sim.dir, ['ls-files', '--', `${wu}/build/log.md`]).trim() !== '', 'the build\'s log rides the state\'s commits (12.2.3)');
     assert.ok(carryOn(sim).text.includes(path.join(sim.dir, `.leeway/${wu}/build/log.md`)), 'a compaction re-reads the build\'s log (12.S4)');
@@ -100,7 +93,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     fs.mkdirSync(path.join(tree, 'verify'));
     fs.writeFileSync(path.join(tree, 'verify', 'features.md'), '# Features\n');
     fs.writeFileSync(path.join(tree, 'verify', 'drive.sh'), '#!/bin/sh\nprintf "pass\\n" > "$LEEWAY_RUN/verdict"\n', { mode: 0o755 });
-    sim.runIn(tree, ['commit', '--paths', 'verify/features.md', 'verify/drive.sh', '--task', wu, '1.1', '-m', 'feat(ledger): the verify setup']);
+    sim.runIn(tree, ['commit', '--paths', 'verify/features.md', 'verify/drive.sh', '--task', wu, '1.1', '-m', 'feat(ledgerly): the verify setup']);
     const setup = placeIn(sim, builder, 'Where the verify setup goes');
     fs.mkdirSync(path.dirname(setup), { recursive: true });
     fs.writeFileSync(setup, JSON.stringify({

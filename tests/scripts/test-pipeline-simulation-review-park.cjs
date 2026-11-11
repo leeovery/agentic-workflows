@@ -11,12 +11,12 @@
 // ready, answers through its raise, and a new builder builds the task
 // again and lands it (12.13.7, 24.2.2).
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed — a
-// copy per scenario, which replays the engine calls the review phase's
-// skill makes, in order, the oracle (pipeline-oracle.cjs) auditing the
-// whole state after every mutation.
+// Layer: simulation. World: the named world `worlds.cutClosed`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick, its cut one phase, built and closed — a copy per scenario,
+// which replays the engine calls the review phase's skill makes, in order,
+// the oracle (pipeline-oracle.cjs) auditing the whole state after every
+// mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -25,21 +25,18 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  Sim, worldFrom, cutClosed, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, buildLoop, carryOn,
+  Sim, worlds, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, buildLoop, carryOn,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
 const WU = 'ledger';
 const ASKS = 'Should a read check its hash?';
 
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
-const parkWorld = worldFrom('pipeline-review-park-', (sim) => cutClosed(sim, WU));
-
 describe('pipeline simulation: a fix task parked on the person in the review phase', () => {
   let sim;
   /** @type {ReturnType<typeof buildLoop>} */ let loop;
   beforeEach(() => {
-    sim = new Sim(parkWorld);
+    sim = new Sim(worlds.cutClosed(WU));
     loop = buildLoop(sim, WU);
   });
   afterEach(() => {

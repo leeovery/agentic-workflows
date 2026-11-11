@@ -1,12 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The `npm test` script's own guard (package.json): its one `node --test`
-// names every node suite under tests/ once, and nothing that is not one, so
-// a suite split or added is never left out of the run. A suite is any file
-// that takes a test from `node:test`, whatever its name, extension or
-// folder; a support module that takes only hooks, or names the module only
-// as a type, is not one.
+// The `npm test` script's own guard (package.json): one `node --test`, in a
+// folder of the run's own for the worlds its suites share, naming every node
+// suite under tests/ once, and nothing that is not one, so a suite split or
+// added is never left out of the run. A suite is any file that takes a test
+// from `node:test`, whatever its name, extension or folder; a support module
+// that takes only hooks, or names the module only as a type, is not one.
 //
 // Layer: unit. World: the script and the folder as they stand, and a temp
 // folder for the scan's own cases.
@@ -26,10 +26,16 @@ const REPO = path.join(__dirname, '../..');
 const MANUAL = ['tests/scripts/knowledge-openai-smoke.cjs'];
 const HOOKS = ['before', 'after', 'beforeEach', 'afterEach', 'mock'];
 
+// The worlds folder (run-worlds.cjs), made before the `node --test` and
+// removed as the script exits.
+const WORLDS ='export LEEWAY_TEST_WORLDS=$(mktemp -d); trap \'rm -rf "$LEEWAY_TEST_WORLDS"\' EXIT; ';
+
+/** The `npm test` script. */
+const script = () => JSON.parse(fs.readFileSync(PACKAGE, 'utf8')).scripts.test;
+
 /** The files the `npm test` script's one `node --test` runs, in its order. */
 function listed() {
-  const script = JSON.parse(fs.readFileSync(PACKAGE, 'utf8')).scripts.test;
-  const runs = [...script.matchAll(/(?:^|[\s;&|])node --test ([^;&|]+)/g)];
+  const runs = [...script().matchAll(/(?:^|[\s;&|])node --test ([^;&|]+)/g)];
   assert.strictEqual(runs.length, 1, 'the script runs node --test once');
   return runs[0][1].trim().split(/\s+/);
 }
@@ -75,6 +81,10 @@ function suites(dir, root) {
 }
 
 describe('the npm test script', () => {
+  it('runs in a worlds folder of the run\'s own, made at its start and removed at its end', () => {
+    assert.ok(script().startsWith(WORLDS), script().slice(0, 200));
+  });
+
   it('runs every node suite under tests/, each once, and names no file that is not one', () => {
     const found = suites(path.join(REPO, 'tests'), REPO).filter((file) => !MANUAL.includes(file));
     const run = listed();

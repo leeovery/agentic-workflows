@@ -40,6 +40,7 @@ const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/leeway-engine/script
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv } = require('./engine-harness.cjs');
 const { briefPath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/brief-names.cjs'));
 const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
+const { worldOfTheRun } = require('./run-worlds.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
@@ -341,24 +342,39 @@ function send(sim, wu, topic, from, slug) {
   return sim.run(sendArgv(sim, wu, topic, from, slug));
 }
 
+// A world built through the verbs by `build`, on a sim of its own made from
+// `base`, whose every presence it sweeps at the end, so the copies hold
+// nothing a session holds; left at `dir`.
+/** @param {(sim: Sim) => void} build @param {string} dir @param {() => string} base @returns {string} dir, symbolic links resolved */
+function builtAt(build, dir, base) {
+  const sim = new Sim(base);
+  build(sim);
+  for (let n = 0; n <= sim.conversations; n += 1) sim.run(['presence', 'cleanup', n === 0 ? 'sim-session' : `sim-session-${n}`]);
+  const at = copyWorld(sim.dir, dir);
+  sim.destroy();
+  return at;
+}
+
 // A scenario file's own world (tests/README.md §3): built once per process
-// through the verbs by `build`, on a sim of its own whose every presence it
-// sweeps at the end, so the copies hold nothing a session holds; then
-// copied for each sim made from it, `new Sim(world)`.
-/** @param {string} prefix the template's temp-directory prefix @param {(sim: Sim) => void} build @returns {() => string} */
-function worldFrom(prefix, build) {
+// on a copy of `base` — the project every scenario starts from, or a named
+// world — then copied for each sim made from it, `new Sim(world)`.
+/** @param {string} prefix the template's temp-directory prefix @param {(sim: Sim) => void} build @param {() => string} [base] @returns {() => string} */
+function worldFrom(prefix, build, base = simWorld) {
   /** @type {string|null} */
   let made = null;
   return () => {
-    if (made === null) {
-      const sim = new Sim();
-      build(sim);
-      for (let n = 0; n <= sim.conversations; n += 1) sim.run(['presence', 'cleanup', n === 0 ? 'sim-session' : `sim-session-${n}`]);
-      made = copyWorld(sim.dir, templateFolder(`${prefix}template-`));
-      sim.destroy();
-    }
+    made ??= builtAt(build, templateFolder(`${prefix}template-`), base);
     return copyWorld(made, fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   };
+}
+
+// A world several scenario files start from, named for what builds it and
+// its arguments: built once per run by the first process to ask
+// (run-worlds.cjs), then copied for each sim made from it.
+/** @param {string} name @param {string[]} args @param {(sim: Sim) => void} build @returns {() => string} */
+function namedWorld(name, args, build) {
+  return () => copyWorld(worldOfTheRun(`${name}(${args.join(',')})`, (dir) => { builtAt(build, dir, simWorld); }).dir,
+    fs.mkdtempSync(path.join(os.tmpdir(), `pipeline-${name}-`)));
 }
 
 // An epic started at its gate and its map of the named topics, each with its
@@ -1348,6 +1364,28 @@ function cutClosed(sim, wu) {
   continueInto(sim, wu, 'review');
 }
 
+// The named worlds (tests/README.md §3), each built once per run.
+const worlds = Object.freeze({
+  /**
+   * A feature through its spec to ready to build's pick in `position`, handed off into its build.
+   * @param {string} wu @param {'s'|'a'} position
+   */
+  specToBuild: (wu, position) => namedWorld('specToBuild', [wu, position], (sim) => {
+    startUnit(sim, 'feature', wu, 'A ledger');
+    discussed(sim, wu, wu);
+    specToBuild(sim, wu, [wu], position);
+  }),
+  /**
+   * The build the review phase reviews (`cutClosed`), in auto, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu.
+   * @param {string} wu
+   */
+  cutClosed: (wu) => namedWorld('cutClosed', [wu], (sim) => {
+    cutClosed(sim, wu);
+    assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build', 'start menu', 'start menu'],
+      '19.S6: between the one screen and the review, no gate stops the person — they pick the unit on the start menu alone, continuing it into its build and its review');
+  }),
+});
+
 // The verify setup the first task's builder records, its mutation tool
 // answering that nothing survived.
 const VERIFY_SETUP = Object.freeze({
@@ -1590,7 +1628,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, worlds, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

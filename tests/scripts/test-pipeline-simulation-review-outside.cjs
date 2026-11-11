@@ -11,12 +11,12 @@
 // reads refused (14.6.1). Finish held open
 // over one across a /clear is test-pipeline-simulation-review-outside-finish.cjs's.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed — a
-// copy per scenario, which replays the engine calls the review phase's
-// skill makes, in order, the oracle (pipeline-oracle.cjs) auditing the
-// whole state after every mutation.
+// Layer: simulation. World: the named world `worlds.cutClosed`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick, its cut one phase, built and closed — a copy per scenario,
+// which replays the engine calls the review phase's skill makes, in order,
+// the oracle (pipeline-oracle.cjs) auditing the whole state after every
+// mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -24,18 +24,15 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worldFrom, cutClosed, writeTasks, builtAside, failedHashRound, reviewNext,
+  Sim, worlds, writeTasks, builtAside, failedHashRound, reviewNext,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledger';
 
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
-const outsideWorld = worldFrom('pipeline-review-outside-', (sim) => cutClosed(sim, WU));
-
 describe('pipeline simulation: a task beyond the review\'s findings', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(outsideWorld);
+    sim = new Sim(worlds.cutClosed(WU));
   });
   afterEach(() => {
     sim.destroy();

@@ -12,12 +12,13 @@
 // and nowhere else (19.S6). A fix task parked on the person is
 // test-pipeline-simulation-review-park.cjs's.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed — a
-// copy per scenario, which replays the engine calls the review phase's
-// skill makes, in order, the oracle (pipeline-oracle.cjs) auditing the
-// whole state after every mutation.
+// Layer: simulation. World: the named world `worlds.cutClosed`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick, its cut one phase, built and closed, its build holding that
+// the person was stopped on the way at start this work and the one screen
+// alone (19.S6) — a copy per scenario, which replays the engine calls the
+// review phase's skill makes, in order, the oracle (pipeline-oracle.cjs)
+// auditing the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -25,23 +26,16 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worldFrom, cutClosed, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff, gatesAnswered,
+  Sim, worlds, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff, gatesAnswered,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
 const WU = 'ledger';
 
-/** A feature from start this work through its spec to ready to build's pick in auto, its cut's one phase built, reviewed, merged and closed, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu. */
-const questionsWorld = worldFrom('pipeline-review-questions-', (sim) => {
-  cutClosed(sim, WU);
-  assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build', 'start menu', 'start menu'],
-    '19.S6: between the one screen and the review, no gate stops the person — they pick the unit on the start menu alone, continuing it into its build and its review');
-});
-
 describe('pipeline simulation: a question asked in a review round', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(questionsWorld);
+    sim = new Sim(worlds.cutClosed(WU));
   });
   afterEach(() => {
     sim.destroy();

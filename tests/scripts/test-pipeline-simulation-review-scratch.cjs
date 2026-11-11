@@ -15,13 +15,13 @@
 // its tree check passing over each, takes its readers' apart, and finish
 // any of the unit's still left.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed, then
-// its drive needing what only a prepared checkout holds — a copy per
-// scenario, which replays the engine calls the review phase's skill and its
-// readers make, in order, the oracle (pipeline-oracle.cjs) auditing the
-// whole state after every mutation.
+// Layer: simulation. World: this file's own, built once on the named world
+// `worlds.cutClosed`, itself built once per run (pipeline-world.cjs) — a
+// feature through its spec to ready to build's pick, its cut one phase,
+// built and closed — its drive then needing what only a prepared checkout
+// holds; a copy per scenario, which replays the engine calls the review
+// phase's skill and its readers make, in order, the oracle
+// (pipeline-oracle.cjs) auditing the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -32,7 +32,7 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, cutClosed, testsRead, reviewNext, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, finished, PASSED_REPORT,
+  Sim, worldFrom, worlds, testsRead, reviewNext, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, finished, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledger';
@@ -45,9 +45,8 @@ const DRIVE = [
   '',
 ].join('\n');
 
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed; then its drive needing an ignored file and a linked folder. */
+/** The build the review phase reviews, its drive needing an ignored file and a linked folder. */
 const scratchWorld = worldFrom('pipeline-review-scratch-', (sim) => {
-  cutClosed(sim, WU);
   fs.appendFileSync(path.join(sim.dir, '.git/info/exclude'), '.env\nnode_modules/\n.worktreeinclude\n.claude/settings.local.json\n');
   const files = {
     '.env': 'KEY=1\n', 'node_modules/dep/index.js': 'module.exports = 1;\n', '.worktreeinclude': '.env\n',
@@ -57,7 +56,7 @@ const scratchWorld = worldFrom('pipeline-review-scratch-', (sim) => {
   fs.writeFileSync(path.join(sim.dir, 'verify/drive.sh'), DRIVE, { mode: 0o755 });
   git(sim.dir, ['add', 'verify/drive.sh']);
   git(sim.dir, ['commit', '-q', '-m', 'chore: the drive reads the environment']);
-});
+}, worlds.cutClosed(WU));
 
 describe('pipeline simulation: an area read in its reader\'s scratch worktree', () => {
   let sim;
