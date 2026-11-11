@@ -214,7 +214,7 @@ Commands:
   state-merge pick <1|2> <choice>
   github-rule <yes|no>
   github-squash <yes|no>
-  gate <name> (--pick <key> | --typed [<key>])
+  gate <name> (--pick <key> | --typed [<key>])   (free text's words on stdin)
 ${RAISE_USAGE.replace(/^/gm, '  ')}
   knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
   manifest get    <dotpath> [<field.path>]

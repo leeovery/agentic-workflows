@@ -188,7 +188,12 @@
 // - The person's own words on Claude's call are read before anything lands
 //   (answer-reader.cjs): the separate call reads their text against
 //   Claude's rows for the one it picks, so the entry and the event agree on
-//   whether it took the lean (16.19.1). A fact's are never read.
+//   whether it took the lean (16.19.1). They are read only where the answer
+//   would land: first, read as the landing reads under the lock, a raise
+//   the ledger holds the answer to is answered already, its words unread,
+//   and one no longer answerable — its question closed, its decision
+//   replaced, its park gone — is refused as the landing refuses it. A
+//   keep, a pick and a fact's words are never read.
 // - Who moved whom is the engine's alone (5.3.10): a pick other than the
 //   lean, the person's own words read as another row or as none, and a
 //   keep stood over it; own words read as the lean's row move no one, and a
@@ -249,7 +254,7 @@ const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('.
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { labelledBeside, questionText, kindOf } = require('./labeller.cjs');
-const { readAnswer } = require('./answer-reader.cjs');
+const { readOnRaise } = require('./answer-reader.cjs');
 const { type, TEXT, KEY, LINE, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
@@ -1267,16 +1272,35 @@ function ownWords(stdin) {
 }
 
 /**
+ * Whether the person's answer to `seal` is still to land, read as the
+ * landing reads under the lock: false where the ledger holds its answer
+ * already, or no state is found, either of which the landing says itself.
+ * Refuses, as the landing would, an answer it would refuse. The landing
+ * reads the ledger again, and its warnings are the ones said.
+ * @param {string} cwd @param {Seal} seal
+ */
+function stillToLand(cwd, seal) {
+  const root = findStateRoot(cwd);
+  if (root === null) return false;
+  return questions.readQuestions(root, [], (read) => {
+    if (read.facts.has(seal.id)) return false;
+    questions.checkAnswerable(read, seal.parks, subjectOf(seal), ANSWER_SAID);
+    landsAs(seal, AT_THE_ANSWER, null).checkRead(read);
+    return true;
+  });
+}
+
+/**
  * The person's own words on Claude's call — free text, typed — read by the
- * separate call against Claude's rows before anything lands: read as the
- * lean's row, an agreement, moving no one; read as another, or as none,
- * standing over the lean.
- * @param {CallSeal} seal @param {string} stdin
+ * separate call against Claude's rows before anything lands, where
+ * `toLand` says it will: read as the lean's row, an agreement, moving no
+ * one; read as another, or as none, standing over the lean.
+ * @param {CallSeal} seal @param {string} stdin @param {() => boolean} toLand
  * @returns {Given}
  */
-function ownWordsOn({ call }, stdin) {
+function ownWordsOn({ call }, stdin, toLand) {
   const words = ownWords(stdin);
-  const reading = readAnswer({ question: call.question, rows: call.rows, words: words.text });
+  const reading = toLand() ? readOnRaise(call.question, call.rows, words.text) : null;
   return { ...words, who_moved_whom: reading === call.lean ? 'none' : OVER_THE_LEAN, answer: null, with_text: true, via: 'typed', reading };
 }
 
@@ -1494,12 +1518,12 @@ function didntFollow(cwd, session, seal) {
 /**
  * How the person's answer lands: an answer to a fact; their own words; on a
  * replacement, a keep of the decision; else their pick of a row.
- * @param {string} session @param {Seal} seal @param {'pick'|'own'} form @param {string|null} key @param {() => string} stdin
+ * @param {string} cwd @param {string} session @param {Seal} seal @param {'pick'|'own'} form @param {string|null} key @param {() => string} stdin
  * @returns {Answering}
  */
-function answering(session, seal, form, key, stdin) {
+function answering(cwd, session, seal, form, key, stdin) {
   if (seal.fact) return factAnswered(seal, form, key, stdin());
-  if (form === 'own') return answeredWith(seal, ownWordsOn(seal, stdin()));
+  if (form === 'own') return answeredWith(seal, ownWordsOn(seal, stdin(), () => stillToLand(cwd, seal)));
   if (key === KEEP && seal.replaces !== null) return keeping(session, seal, seal.replaces, stdin());
   return answeredWith(seal, picked(session, seal, /** @type {string} */ (key), stdin()));
 }
@@ -1515,7 +1539,7 @@ function answerRaise(cwd, args, stdin) {
   const session = sessionOf(ANSWER_SAID);
   const seal = sealNamed(readSeals(session), prefix, ANSWER_SAID);
   if (form === 'didnt-follow') return didntFollow(cwd, session, seal);
-  return recordAnswer(cwd, session, seal, answering(session, seal, form, key, stdin));
+  return recordAnswer(cwd, session, seal, answering(cwd, session, seal, form, key, stdin));
 }
 
 /** Whether `raise` with `args` answers later: the draw, which waits on the one-decision check. @param {string[]} args */

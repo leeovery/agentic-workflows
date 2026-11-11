@@ -9,8 +9,8 @@
 // - The gate shown is the gate a command's MENU stated (surfaces.cjs),
 //   kept in the calling conversation's folder (conversation.cjs) as
 //   `gate-shown.json`: its name, its question, each row by its key with its
-//   word, its head, whether the engine recommended it and what answering it
-//   leads to, each typed row by its key with its label and what it leads
+//   word, its head, its tail and any detail beneath it, whether the engine
+//   recommended it and what answering it leads to, each typed row by its key with its label and what it leads
 //   to, the time it was shown, and its answer once given. The engine's
 //   dispatch and a skill's gateway write it once the command has answered,
 //   never as the MENU is built; a command that states no gate, or fails,
@@ -29,8 +29,9 @@
 //   joined by hyphens: `comment`, `tell-me-what-to-change`, a span `1-4`.
 // - An answer is a row picked by its key; a typed row, by its key; or free
 //   text, naming no row, the person's words given with it. The separate
-//   call reads the words against the gate's rows (answer-reader.cjs) for
-//   the one they pick, and they are dropped: the event says only that the
+//   call reads the words against the gate's question and its rows, as the
+//   person saw them, its typed rows never among them (answer-reader.cjs),
+//   for the one they pick, and they are dropped: the event says only that the
 //   answer was free text, and its reading, the row read from it, null where
 //   they pick none or the call cannot read them (16.13.3, 16.19.1,
 //   16.19.8). A reading leads nowhere: free text sets the gate aside
@@ -61,7 +62,7 @@ const path = require('path');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { conversationDir } = require('./conversation.cjs');
-const { readAnswer } = require('./answer-reader.cjs');
+const { readAtGate } = require('./answer-reader.cjs');
 const { idFrom } = require('./ledger-ids.cjs');
 const { gateShown, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { record } = require('./trust-log.cjs');
@@ -194,15 +195,6 @@ function pressedOnGate(session, shown, row) {
 }
 
 /**
- * The row the person's words pick among the gate's, as the separate call
- * reads them; null where they pick none, or the call cannot read them.
- * @param {ShownRecord} shown @param {string} words
- */
-function readingOf({ question, options }, words) {
-  return readAnswer({ question, rows: options.map(({ key, word, head }) => ({ key, text: word === null ? head : `${word} — ${head}` })), words });
-}
-
-/**
  * The person's answer at the gate `named` — by its name, or by the entry its
  * marker declares — logged to the trust log: the gate, the row picked or null
  * for free text and the row read from it, the row the engine recommended,
@@ -225,7 +217,7 @@ function answerGate(cwd, named, answer) {
   const via = 'pick' in answer && pressedOnGate(session, shown, /** @type {ShownOption} */ (row)) ? 'pressed' : 'typed';
   const recommended = shown.options.find((o) => o.recommended)?.key ?? null;
   const picked = row?.key ?? null;
-  const reading = 'words' in answer ? readingOf(shown, answer.words) : null;
+  const reading = 'words' in answer ? readAtGate(shown.question, shown.options, answer.words) : null;
   /** @type {string[]} */
   const warnings = [];
   const id = idFrom(session, name, shown.at);

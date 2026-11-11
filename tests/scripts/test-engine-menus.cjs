@@ -160,10 +160,10 @@ describe('the frame (E1, 18.9.1, 18.9.4, 23.2.1)', () => {
       gate: 'triage',
       question: 'What would you like to do?',
       options: [
-        { key: '1', word: null, head: 'The first idea', recommended: false, next: { kind: 'continue' } },
-        { key: 'w', word: 'work', head: 'Work on what is picked', recommended: false, next: HANDED },
-        { key: 'h', word: 'help', head: 'What this menu is for, row by row', recommended: false, next: { kind: 'engine', argv: ['render', 'help', 'triage'] } },
-        { key: 'b', word: 'back', head: 'Back to the start menu', recommended: false, next: START_MENU },
+        { key: '1', word: null, head: 'The first idea', tail: null, detail: null, recommended: false, next: { kind: 'continue' } },
+        { key: 'w', word: 'work', head: 'Work on what is picked', tail: null, detail: null, recommended: false, next: HANDED },
+        { key: 'h', word: 'help', head: 'What this menu is for, row by row', tail: null, detail: null, recommended: false, next: { kind: 'engine', argv: ['render', 'help', 'triage'] } },
+        { key: 'b', word: 'back', head: 'Back to the start menu', tail: null, detail: null, recommended: false, next: START_MENU },
       ],
       typed: [{ label: 'Pick', next: { kind: 'continue' } }],
     });
@@ -393,7 +393,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     assert.deepStrictEqual(withEnv(conversation(), gateShown), {
       gate: 'help',
       question: 'What would you like to do?',
-      options: [{ key: 'b', word: 'back', head: 'Back to triage', recommended: false, next: { kind: 'engine', argv: ['render', 'triage'] } }],
+      options: [{ key: 'b', word: 'back', head: 'Back to triage', tail: null, detail: null, recommended: false, next: { kind: 'engine', argv: ['render', 'triage'] } }],
       typed: [{ label: 'Ask', next: { kind: 'continue' } }],
     });
   });

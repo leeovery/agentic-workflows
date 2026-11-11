@@ -333,6 +333,11 @@ function readFile(dir, relativePath) {
   return fs.readFileSync(path.join(dir, relativePath), 'utf8');
 }
 
+/** Every file under `folder`, by its path. @param {string} folder @returns {string[]} */
+function filesUnder(folder) {
+  return fs.readdirSync(folder, { recursive: true, encoding: 'utf8' }).map((rel) => path.join(folder, rel)).filter((file) => fs.statSync(file).isFile());
+}
+
 function createFile(dir, relativePath, content) {
   const full = path.join(dir, relativePath);
   fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -342,5 +347,5 @@ function createFile(dir, relativePath, content) {
 
 module.exports = {
   STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, GIT_TIMEOUT_MS, git, testIdentity, bareRepo, templateFolder, useTempFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
-  statePath, stateRelative, layout, writeState, readState, readManifest, createManifest, createFile, readFile,
+  statePath, stateRelative, layout, writeState, readState, readManifest, createManifest, createFile, readFile, filesUnder,
 };

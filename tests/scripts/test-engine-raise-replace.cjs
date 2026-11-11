@@ -332,6 +332,19 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.deepStrictEqual(queue(), [[id, 'Beside the note it was made from', MAIN.text]]);
   });
 
+  it('the person\'s own words are read against Claude\'s proposals alone, keep never offered: read as the lean, the replacement moves no one, owed no verdict', async () => {
+    const id = await draw();
+    const log = path.join(config(), 'reader-calls.jsonl');
+
+    answer(id, ['--own'], { text: 'On the main screen, as you say', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: MAIN.key } }) });
+
+    const [{ argv }] = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepStrictEqual(JSON.parse(argv[argv.indexOf('--json-schema') + 1]).properties.row.enum, [MAIN.key, LAST.key, 'none of them']);
+    assert.deepStrictEqual(lastEntry(), replacementOf(id, { who_moved_whom: 'none', text: 'On the main screen, as you say', rules_out: [] }));
+    assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: null, with_text: true, reading: MAIN.key })]);
+    assert.deepStrictEqual(queue(), []);
+  });
+
   it('keep, pressed, its why on stdin: the person\'s keep at the raise\'s id — the decision, the reason and the cause, the why, Claude\'s proposal sealed — standing over it; one raise event naming the keep; the decision current, the keep shown beside it in the record and waiting in the queue with the proposal as its lean', async () => {
     const id = await draw();
     fs.writeFileSync(inFolder(PRESSED), JSON.stringify({ gate: `raise — ${id}`, answer: 'keep', at: new Date(Date.now() + 1000).toISOString() }));

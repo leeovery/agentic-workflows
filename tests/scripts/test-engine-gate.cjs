@@ -37,7 +37,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { ok, output, refuses, initRepo, cleanupFixture } = require('./engine-harness.cjs');
-const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout } = require('./discovery-test-utils.cjs');
+const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout, filesUnder } = require('./discovery-test-utils.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
 const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
@@ -103,9 +103,6 @@ const WORDS = 'not yet — I want to sort the repository settings out myself fir
 /** The separate calls the stub logged to `log`. @param {string} log @returns {{argv: string[], input: string}[]} */
 const calls = (log) => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
 
-/** Every file under `folder`, by its path. @param {string} folder @returns {string[]} */
-const filesUnder = (folder) => fs.readdirSync(folder, { recursive: true, encoding: 'utf8' }).map((rel) => path.join(folder, rel)).filter((file) => fs.statSync(file).isFile());
-
 /**
  * The mod's record of its last press: the code gate's `yes` unless `over`
  * says otherwise, sent `after` ms after the gate shown was shown.
@@ -166,7 +163,7 @@ const ownFields = ({ gate, recommended, picked, via, with_text: withText, readin
 const inConversation = (fn) => withEnv(conversation(), fn);
 
 describe('the gate shown (3.S6)', () => {
-  it('a render records the gate its MENU states for the conversation: its name, its question, each row with its word, its head, whether the engine recommends it and what it leads to, each typed row by its key, and when it was shown', () => {
+  it('a render records the gate its MENU states for the conversation: its name, its question, each row with its word, its head, its tail and detail, whether the engine recommends it and what it leads to, each typed row by its key, and when it was shown', () => {
     const before = Date.now();
     render(['migration-gate']);
     const after = Date.now();
@@ -175,7 +172,7 @@ describe('the gate shown (3.S6)', () => {
     assert.deepStrictEqual(record, {
       gate: 'migration gate',
       question: 'Ready to continue?',
-      options: [{ key: 'y', word: 'yes', head: 'Proceed', recommended: false, next: null }],
+      options: [{ key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null, recommended: false, next: null }],
       typed: [{ key: 'ask', label: 'Ask', next: null }],
       answered: null,
     });
@@ -255,7 +252,7 @@ describe('the gate shown (3.S6)', () => {
     assert.deepStrictEqual(gateShown(), {
       gate: 'answered gate',
       question: 'Go on?',
-      options: [{ key: 'y', word: 'yes', head: 'Go', recommended: false, next: null }],
+      options: [{ key: 'y', word: 'yes', head: 'Go', tail: null, detail: null, recommended: false, next: null }],
       typed: [],
     });
   });
@@ -368,10 +365,10 @@ describe('gate (6.6, 6.S18)', () => {
     assert.deepStrictEqual(ownFields(events()[0]), { gate: 'code gate', recommended: 'b', picked: null, via: 'typed', with_text: true, reading: null });
   });
 
-  it('16.S40: free text is read by the separate call against the gate\'s question and its rows, and the trust log holds the gate\'s name, the row recommended and the row read; the words land nowhere but the call, and the gate is set aside whatever they read, leading nowhere (16.13.3, 6.6.2)', () => {
+  it('16.S40: free text is read by the separate call against the gate\'s question and its rows, each whole as shown, and the trust log holds the gate\'s name, the row recommended and the row read; the words land nowhere but the call, and the gate is set aside whatever they read, leading nowhere (16.13.3, 6.6.2)', () => {
     render(['github-rule-gate']);
     const log = path.join(config(), 'calls.jsonl');
-    const { question, options } = shown();
+    const { question, options: [set] } = shown();
 
     const res = answer(['github rule gate', '--typed'], { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'n' } }) }, WORDS);
 
@@ -379,10 +376,33 @@ describe('gate (6.6, 6.S18)', () => {
     assert.deepStrictEqual(ownFields(events()[0]), { gate: 'github rule gate', recommended: null, picked: null, via: 'typed', with_text: true, reading: 'n' });
     const [call, ...more] = calls(log);
     assert.deepStrictEqual(more, []);
-    const rows = options.map((/** @type {{key: string, word: string, head: string}} */ o) => `- ${o.key}: ${o.word} — ${o.head}`).join('\n');
+    const rows = `- y: yes — ${set.head}\n- n: no — Leave it unset — setup carries on without it`;
     assert.strictEqual(call.input, `The question: ${question}\n\nThe options:\n${rows}\n\nThe reply: ${WORDS}`);
     const holding = [...filesUnder(config()), ...filesUnder(statePath(dir))].filter((file) => file !== log && fs.readFileSync(file, 'utf8').includes(WORDS));
     assert.deepStrictEqual(holding, [], 'the person\'s words were kept');
+  });
+
+  it('free text is read against the gate\'s command rows alone, its typed rows never offered', () => {
+    render(['migration-gate']);
+    const log = path.join(config(), 'calls.jsonl');
+
+    answer(['migration gate', '--typed'], { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'y' } }) }, WORDS);
+
+    const [{ argv }] = calls(log);
+    assert.deepStrictEqual(JSON.parse(argv[argv.indexOf('--json-schema') + 1]).properties.row.enum, ['y', 'none of them']);
+    assert.deepStrictEqual([shown().typed.map((/** @type {{key: string}} */ t) => t.key), events()[0].reading], [['ask'], 'y']);
+  });
+
+  it('a row picked or a typed row is never read: no call is made', () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const armed = { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'y' } }) };
+
+    render(['migration-gate']);
+    answer(['migration gate', '--pick', 'y'], armed);
+    render(['migration-gate']);
+    answer(['migration gate', '--typed', 'ask'], armed);
+
+    assert.deepStrictEqual([events().map((e) => [e.picked, e.reading]), calls(log)], [[['y', null], ['ask', null]], []]);
   });
 
   it('the answer is marked on the gate shown, and a gate answered takes no second answer until it is shown again', () => {
