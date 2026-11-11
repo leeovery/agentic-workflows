@@ -16,7 +16,7 @@
 // lock runs in process, and the test lets the lock go at the call's own
 // attempts (`lockAttempts`), never on a timer.
 //
-// Layer: verb.
+// Layer: process.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

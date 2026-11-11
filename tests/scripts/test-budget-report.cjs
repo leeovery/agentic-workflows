@@ -6,14 +6,16 @@
 // header, the meter's log read, and the report's parts over a fixture log:
 // the run against its guide, the suites over their budget, those within a
 // budget of their own, those with no layer, and the growth since the
-// previous run; and the meter (cpu-meter.cjs) as `npm test` arms it —
-// a suite's CPU logged with the CPU of a child only time(1) sees, the run's
-// output and status the runner's own, the previous log kept and the report
-// printed after the run; and a metered suite the runner cancels ending its
-// inner run.
+// previous run, each list capped; the previous run's log kept only from a
+// whole run; and the meter (cpu-meter.cjs) as `npm test` arms it — a
+// suite's CPU logged with the CPU of a child only time(1) sees, a child
+// that never sees the log, the run's output and status the runner's own,
+// the report printed after the run — its exit code and signal passed on,
+// time(1)'s report gone after it, an unwritable line never changing the
+// outcome, and a metered suite the runner cancels ending its inner run.
 //
-// Layer: unit; the meter's two tests are processes. World: a temp folder
-// holding a tiny suite and the npm script's log folder.
+// Layer: unit; the meter's tests are processes. World: a temp folder laid
+// out as a checkout, holding a tiny suite and its log.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -25,7 +27,7 @@ const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 
-const { headerOf, readLog, report, main } = require('./budget-report.cjs');
+const { headerOf, readLog, report, keep, main } = require('./budget-report.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const METER = path.join(__dirname, 'cpu-meter.cjs');
@@ -105,22 +107,38 @@ describe('the report', () => {
     ]);
   });
 
-  it('shows ten of a list, and every one with --all', () => {
-    const run = new Map(Array.from({ length: 12 }, (_, at) => [`none-${String(at).padStart(2, '0')}.cjs`, 12 - at]));
-    const listed = (/** @type {string[]} */ lines) => lines.filter((line) => /none-\d+\.cjs$/.test(line)).length;
-    assert.strictEqual(listed(report(run, header)), 10);
-    assert.strictEqual(report(run, header).at(-1), '  and 2 more (--all lists them)');
-    assert.strictEqual(listed(report(run, header, { all: true })), 12);
+  it('shows ten of each list, and every one with --all', () => {
+    const kinds = {
+      over: { layer: 'verb', own: null },
+      held: { layer: 'verb', own: { s: 100, why: 'held' } },
+      none: { layer: null, own: null },
+    };
+    const twelve = (/** @type {string} */ kind) => Array.from({ length: 12 }, (_, at) => [`${kind}-${String(at).padStart(2, '0')}.cjs`, 50 - at]);
+    const run = new Map(/** @type {[string, number][]} */ ([...twelve('over'), ...twelve('held'), ...twelve('none')]));
+    const prev = new Map([...run].map(([suite, s]) => [suite, s / 2]));
+    const of = (/** @type {string} */ suite) => kinds[/** @type {keyof typeof kinds} */ (suite.split('-')[0])];
+    const count = (/** @type {string[]} */ lines, /** @type {string} */ heading) => {
+      const from = lines.findIndex((line) => line.startsWith(heading));
+      const end = lines.findIndex((line, at) => at > from && !line.startsWith('  '));
+      return lines.slice(from + 1, end < 0 ? undefined : end);
+    };
+    const capped = report(run, of, { prev });
+    const whole = report(run, of, { prev, all: true });
+    for (const heading of ['over their budget', "over their layer's budget", 'no layer named', 'since the previous run']) {
+      const listed = count(capped, heading);
+      assert.strictEqual(listed.length, 11, heading);
+      assert.strictEqual(listed.at(-1), `  and ${heading === 'since the previous run' ? 26 : 2} more (--all lists them)`, heading);
+      assert.strictEqual(count(whole, heading).length, heading === 'since the previous run' ? 36 : 12, heading);
+    }
   });
 
-  it('names the suites new since the previous run, and those grown by more than a fifth and 2 s, most grown first', () => {
+  it('counts the suites new since the previous run, and names those grown by more than a fifth and 2 s, most grown first', () => {
     const prev = new Map([
       ['verb-over.cjs', 20], ['git-over.cjs', 27.2], ['unit-ok.cjs', 0.1], ['own-over.cjs', 50], ['own-held.cjs', 40], ['none-1.cjs', 12],
     ]);
-    assert.deepStrictEqual(report(RUN, header, { prev }).slice(-3), [
-      'since the previous run: 149 s -> 165 s; new or grown: 2',
-      '     27.3 s  was 20.0 s    verb-over.cjs',
-      '      3.0 s  new           none-2.cjs',
+    assert.deepStrictEqual(report(RUN, header, { prev }).slice(-2), [
+      'since the previous run: 149 s -> 165 s; grown: 1; new: 1',
+      '     27.3 s  was 20.0 s     verb-over.cjs',
     ]);
   });
 
@@ -129,6 +147,40 @@ describe('the report', () => {
     try {
       assert.deepStrictEqual(main([path.join(dir, 'cpu.jsonl')]), [`test budget: no CPU log at ${path.join(dir, 'cpu.jsonl')}`]);
       assert.match(main([dir])[0], /^test budget: no report — /);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('the previous run\'s log', () => {
+  /** A temp folder with a run's log holding lines for `suites`. @param {string[]} suites */
+  const logged = (suites) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'budget-keep-'));
+    fs.writeFileSync(path.join(dir, 'cpu.jsonl'), suites.map((suite) => `{"suite":"${suite}","cpu":1,"user":1,"sys":0,"status":0}\n`).join(''));
+    fs.writeFileSync(path.join(dir, 'cpu.prev.jsonl'), 'the run before\n');
+    return dir;
+  };
+  const listed = ['tests/scripts/test-a.cjs', 'tests/scripts/test-b.cjs'].map((suite) => path.join(ROOT, suite));
+
+  it('is the last run\'s where it logged every suite the script lists', () => {
+    const dir = logged(['tests/scripts/test-b.cjs', 'tests/scripts/test-a.cjs']);
+    try {
+      const run = fs.readFileSync(path.join(dir, 'cpu.jsonl'), 'utf8');
+      keep(path.join(dir, 'cpu.jsonl'), path.join(dir, 'cpu.prev.jsonl'), listed);
+      assert.deepStrictEqual(fs.readdirSync(dir), ['cpu.prev.jsonl']);
+      assert.strictEqual(fs.readFileSync(path.join(dir, 'cpu.prev.jsonl'), 'utf8'), run);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('stays the one before where the last run stopped short, whose log goes', () => {
+    const dir = logged(['tests/scripts/test-a.cjs']);
+    try {
+      keep(path.join(dir, 'cpu.jsonl'), path.join(dir, 'cpu.prev.jsonl'), listed);
+      assert.deepStrictEqual(fs.readdirSync(dir), ['cpu.prev.jsonl']);
+      assert.strictEqual(fs.readFileSync(path.join(dir, 'cpu.prev.jsonl'), 'utf8'), 'the run before\n');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -147,6 +199,18 @@ function checkout(name, source) {
   return dir;
 }
 
+/**
+ * Runs a checkout's suite as the runner starts one, armed with a log in the
+ * checkout; answers how it ended and what the folder holds after.
+ * @param {string} dir  @param {string} name  @param {string} log
+ */
+function metered(dir, name, log = path.join(dir, 'cpu.jsonl')) {
+  const run = spawnSync(process.execPath, [path.join('tests', name)], {
+    cwd: dir, encoding: 'utf8', timeout: 60_000, env: { ...process.env, LEEWAY_TEST_CPU_LOG: log },
+  });
+  return { status: run.status, signal: run.signal, left: fs.readdirSync(dir).sort() };
+}
+
 /** Polls `done` until it holds, at most `tries` times. @param {() => boolean} done @param {number} tries */
 async function until(done, tries) {
   for (let n = 0; n < tries && !done(); n += 1) await new Promise((resolve) => { setTimeout(resolve, 50); });
@@ -154,8 +218,8 @@ async function until(done, tries) {
 }
 
 describe('the meter', () => {
-  it('logs a suite\'s CPU with its child\'s, keeps the previous log, and ends the npm script with the run\'s status after the report', () => {
-    const burn = `const t = process.cpuUsage(); while (process.cpuUsage(t).user + process.cpuUsage(t).system < ${BURN * 1e6});`;
+  it('logs a suite\'s CPU with its child\'s, which never sees the log, and the npm script keeps the whole last run and ends with the run\'s status after the report', () => {
+    const burn = `const t = process.cpuUsage(); while (process.cpuUsage(t).user + process.cpuUsage(t).system < ${BURN * 1e6}); require('fs').writeFileSync('child-env.json', JSON.stringify([process.env.LEEWAY_TEST_CPU_LOG, process.env.LEEWAY_TEST_CPU_OUTER]));`;
     const dir = checkout('test-burn.cjs', [
       "const fs = require('fs');",
       "const { it } = require('node:test');",
@@ -165,12 +229,14 @@ describe('the meter', () => {
       "process.on('exit', () => { const own = process.cpuUsage(); fs.writeFileSync('own.json', JSON.stringify((own.user + own.system) / 1e6)); });",
       '',
     ].join('\n'));
-    const before = '{"suite":"tests/test-old.cjs","cpu":1,"user":1,"sys":0,"status":0}\n';
+    const suite = path.relative(ROOT, path.join(dir, 'tests', 'test-burn.cjs'));
+    const before = `{"suite":${JSON.stringify(suite)},"cpu":0.01,"user":0.01,"sys":0,"status":0}\n`;
     try {
-      fs.mkdirSync(path.join(dir, 'tests', '.cache'));
-      fs.writeFileSync(path.join(dir, 'tests', '.cache', 'cpu.jsonl'), before);
       const script = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts.test
         .replace(/(^|[\s;&|])node --test [^;&|]+/, '$1node --test tests/test-burn.cjs');
+      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ scripts: { test: script } }));
+      fs.mkdirSync(path.join(dir, 'tests', '.cache'));
+      fs.writeFileSync(path.join(dir, 'tests', '.cache', 'cpu.jsonl'), before);
       // The runner this suite runs under marks its children; the script's own runner must not read as one.
       const env = { ...process.env };
       delete env.NODE_TEST_CONTEXT;
@@ -178,16 +244,46 @@ describe('the meter', () => {
 
       assert.strictEqual(run.status, 1);
       assert.match(run.stdout, /the suite fails/);
-      assert.match(run.stdout, /\ntest budget \(CPU, user \+ sys\): 1 suites, .*\nover their budget: 0\nsince the previous run: 1 s -> .* s; new or grown: 1\n/);
+      assert.match(run.stdout, /\ntest budget \(CPU, user \+ sys\): 1 suites, .*\nover their budget: 0\nsince the previous run: 0 s -> 0 s; grown: 0; new: 0\n/);
+      assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'tests', '.cache')).sort(), ['cpu.jsonl', 'cpu.prev.jsonl']);
       assert.strictEqual(fs.readFileSync(path.join(dir, 'tests', '.cache', 'cpu.prev.jsonl'), 'utf8'), before);
       const lines = fs.readFileSync(path.join(dir, 'tests', '.cache', 'cpu.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
       assert.strictEqual(lines.length, 1);
       const [line] = lines;
       assert.deepStrictEqual(Object.keys(line), ['suite', 'cpu', 'user', 'sys', 'status']);
-      assert.deepStrictEqual([line.suite, line.status], [path.relative(ROOT, path.join(dir, 'tests', 'test-burn.cjs')), 1]);
+      assert.deepStrictEqual([line.suite, line.status], [suite, 1]);
       assert.strictEqual(line.cpu, Number((line.user + line.sys).toFixed(2)));
       const own = JSON.parse(fs.readFileSync(path.join(dir, 'own.json'), 'utf8'));
       assert.ok(own < BURN && line.cpu >= own + BURN, `the suite's own ${own} s and its run's ${line.cpu} s`);
+      assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'child-env.json'), 'utf8')), [null, null]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('ends with the suite\'s own exit code, time(1)\'s report gone from beside the log', () => {
+    const dir = checkout('test-code.cjs', 'process.exitCode = 7;\n');
+    try {
+      assert.deepStrictEqual(metered(dir, 'test-code.cjs'), { status: 7, signal: null, left: ['cpu.jsonl', 'tests'] });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('ends by the signal that ended the suite', () => {
+    const dir = checkout('test-signal.cjs', "process.kill(process.pid, 'SIGTERM');\nsetInterval(() => {}, 1000);\n");
+    try {
+      assert.deepStrictEqual(metered(dir, 'test-signal.cjs'), { status: null, signal: 'SIGTERM', left: ['cpu.jsonl', 'tests'] });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves the suite\'s outcome standing where its line cannot be written', () => {
+    const dir = checkout('test-unlogged.cjs', '');
+    try {
+      fs.mkdirSync(path.join(dir, 'cpu.jsonl'));
+      assert.deepStrictEqual(metered(dir, 'test-unlogged.cjs'), { status: 0, signal: null, left: ['cpu.jsonl', 'tests'] });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

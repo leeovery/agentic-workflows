@@ -7,7 +7,7 @@
 // engine's own layouts beside Claude Code's worktrees passed over — named from
 // the project, and in a project of one repo what git itself answers.
 //
-// Layer: verb.
+// Layer: git.
 //
 
 require('./hermetic-env.cjs');

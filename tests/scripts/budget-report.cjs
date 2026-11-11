@@ -5,16 +5,21 @@
 // budget. It prints four parts — the run against its guide; the suites over
 // their budget, worst first, and those held to a budget their header names
 // in place of their layer's, its reason beside it; the suites whose header
-// names no layer; and, given the previous run's log, the suites new or grown
-// since — and exits 0 whatever it finds. A report that forces a look, never
-// a failure.
+// names no layer; and, given the previous run's log, the suites grown since
+// and the count of those new — and exits 0 whatever it finds. A report that
+// forces a look, never a failure.
 //
 // A suite's budget is its layer's (tests/README.md §2), read as CPU
 // seconds: the layer its header names (`Layer: verb.`, or `Verb layer:`),
 // else the one a migration's or a simulation's file name gives it. A
 // `Budget: <n> s — <why>.` line in the header replaces the layer's.
 //
+// Before a run, `--keep` keeps the last run's log as the previous run's
+// where it logged every suite the `npm test` script in the current folder
+// lists, and removes it otherwise.
+//
 // usage: node tests/scripts/budget-report.cjs <cpu.jsonl> [--prev <cpu.jsonl>] [--all]
+//        node tests/scripts/budget-report.cjs --keep <cpu.jsonl> <prev.jsonl>
 
 const fs = require('fs');
 const path = require('path');
@@ -124,18 +129,41 @@ function report(cpu, header, { prev = null, all = false } = {}) {
   }
 
   if (prev) {
-    const was = (/** @type {Row} */ r) => prev.get(r.suite);
-    const grown = rows.filter((r) => {
-      const before = was(r);
-      return before === undefined || (r.s - before > GROWN.seconds && r.s > before * (1 + GROWN.share));
-    }).sort((a, b) => (b.s - (was(b) ?? 0)) - (a.s - (was(a) ?? 0)));
-    out.push(`since the previous run: ${sum([...prev.values()]).toFixed(0)} s -> ${total.toFixed(0)} s; new or grown: ${grown.length}`);
-    for (const r of grown) {
-      const before = was(r);
-      out.push(`  ${secs(r.s)}  ${(before === undefined ? 'new' : `was ${before.toFixed(1)} s`).padEnd(12)}  ${r.suite}`);
-    }
+    const fresh = rows.filter((r) => !prev.has(r.suite));
+    const grown = rows.filter((r) => prev.has(r.suite) && grew(/** @type {number} */ (prev.get(r.suite)), r.s))
+      .sort((a, b) => (b.s - /** @type {number} */ (prev.get(b.suite))) - (a.s - /** @type {number} */ (prev.get(a.suite))));
+    out.push(`since the previous run: ${sum([...prev.values()]).toFixed(0)} s -> ${total.toFixed(0)} s; grown: ${grown.length}; new: ${fresh.length}`);
+    for (const r of shown(grown)) out.push(`  ${secs(r.s)}  was ${secs(/** @type {number} */ (prev.get(r.suite))).trimStart().padEnd(9)}  ${r.suite}`);
+    out.push(...more(grown));
   }
   return out;
+}
+
+/** Whether a suite that cost `before` has grown to `now`. @param {number} before @param {number} now */
+function grew(before, now) {
+  return now - before > GROWN.seconds && now > before * (1 + GROWN.share);
+}
+
+/**
+ * Keeps a run's log as the previous run's where it logged every suite
+ * `listed` names, and removes it otherwise: a partial run never stands as
+ * the run a later one is set against.
+ * @param {string} log
+ * @param {string} prev
+ * @param {string[]} listed  the suites a whole run runs, absolute
+ */
+function keep(log, prev, listed) {
+  if (!fs.existsSync(log)) return;
+  const logged = new Set([...readLog(fs.readFileSync(log, 'utf8')).keys()].map((suite) => path.resolve(ROOT, suite)));
+  if (listed.every((suite) => logged.has(suite))) fs.renameSync(log, prev);
+  else fs.rmSync(log, { force: true });
+}
+
+/** The suites the `npm test` script in `dir` runs, absolute. @param {string} dir */
+function listedIn(dir) {
+  const script = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).scripts.test;
+  const run = /(?:^|[\s;&|])node --test ([^;&|]+)/.exec(script);
+  return run ? run[1].trim().split(/\s+/).map((suite) => path.resolve(dir, suite)) : [];
 }
 
 /** @param {number[]} values */
@@ -173,12 +201,17 @@ function logAt(file) {
 }
 
 /**
- * The report for the command line's arguments; never throws.
- * @param {string[]} args  `<cpu.jsonl> [--prev <cpu.jsonl>] [--all]`
+ * The report for the command line's arguments, or nothing for `--keep`;
+ * never throws.
+ * @param {string[]} args  `<cpu.jsonl> [--prev <cpu.jsonl>] [--all]`, or `--keep <cpu.jsonl> <prev.jsonl>`
  * @returns {string[]}
  */
 function main(args) {
   try {
+    if (args[0] === '--keep') {
+      keep(args[1], args[2], listedIn(process.cwd()));
+      return [];
+    }
     const at = args.indexOf('--prev');
     const prevFile = at >= 0 ? args[at + 1] : null;
     const file = args.find((a, i) => !a.startsWith('--') && (at < 0 || i !== at + 1));
@@ -190,6 +223,9 @@ function main(args) {
   }
 }
 
-if (require.main === module) console.log(main(process.argv.slice(2)).join('\n'));
+if (require.main === module) {
+  const lines = main(process.argv.slice(2));
+  if (lines.length > 0) console.log(lines.join('\n'));
+}
 
-module.exports = { BUDGETS, GUIDE_MIN, CORES, headerOf, readLog, report, main };
+module.exports = { headerOf, readLog, report, keep, main };

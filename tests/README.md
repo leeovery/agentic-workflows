@@ -145,12 +145,12 @@ Every change reports the CPU of each suite it touched, before and after: `user` 
 /usr/bin/time -p node --test tests/scripts/test-engine-ledger-write.cjs
 ```
 
-**The budget report.** `npm test` meters every suite and ends with the report; `npm run test:budget` prints it again for the checkout's last run. The meter (`cpu-meter.cjs`, required first by `hermetic-env.cjs`) runs each suite under time(1) and logs its CPU to `tests/.cache/cpu.jsonl`; the run before it is kept as `cpu.prev.jsonl`. The report (`budget-report.cjs`) never fails the run; it is there to force a look. It reads:
+**The budget report.** `npm test` meters every suite and ends with the report; `npm run test:budget` prints it again for the checkout's last run. The meter (`cpu-meter.cjs`, required first by `hermetic-env.cjs`) runs each suite under time(1) and logs its CPU to `tests/.cache/cpu.jsonl`; the run before it is kept as `cpu.prev.jsonl` where it ran every suite, so an interrupted run never stands as the one a later run is set against. The report (`budget-report.cjs`) never fails the run; it is there to force a look. It reads:
 
 - **the run**: its suites' CPU summed, and what that comes to on an idle machine (the sum over 8.5 cores' worth, or the longest suite where that is more) against the 6-minute guide;
 - **over their budget**: each suite over its layer's budget (§2), or the one its header names, worst first, with its CPU, its budget and its layer; then the suites over their layer's budget but within a budget of their own, each with its reason;
 - **no layer named**: the suites whose header names no layer, so no budget, heaviest first;
-- **since the previous run**: the run's CPU then and now, and every suite new since then or grown by more than a fifth and 2 s, so the change that moved the run is named in the run that moved it.
+- **since the previous run**: the run's CPU then and now, every suite grown by more than a fifth and 2 s, and how many are new, so the change that moved the run is named in the run that moved it.
 
 A builder answers each suite the report names, in the same change, in one of two ways:
 
