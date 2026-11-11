@@ -10,8 +10,10 @@
 // its id, the time the engine wrote it, its type, the project it happened
 // in — the project's id (16.13.5) and its name, its main checkout's folder,
 // both null for an event before the project has state — the model, by its
-// id (16.4.4): for a raise and a call, the one the call was made under, as
-// its raise sealed it; for any other, the one the conversation ran on;
+// id (16.4.4): for a raise, and a call a raise decided, the one the call was
+// made under, as the raise sealed it; for a call Claude's own `ledger
+// decide` or `ledger replace` lands, the caller's, which makes the call
+// there and then; for any other event, the one the conversation ran on;
 // null where none could be read — and the conversation's session, by
 // Claude Code's id for it, null where none was handed over. Then its own:
 //

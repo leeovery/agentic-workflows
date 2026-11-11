@@ -9,9 +9,9 @@
 // logged under that model, a builder's answered in the conversation among
 // them (16.4.4); and, the decision point forced to the rule in process
 // (`ruled`) as the switch will make it, a question Claude could find out
-// sent to check and asked once the same raise is made again — another
-// task's raise of it, and another proposal for a decision, sent to check
-// as any first is — a call with no label asked (16.S68), Claude's mark that
+// sent to check and asked once the same raise is made again, in any
+// words — another task's raise of it sent to check as any first is — a call
+// with no label asked (16.S68), Claude's mark that
 // always asks (`--always`), a danger question in a build in auto parking
 // its task (3.S15) — neither sent to check — a replacement mid-build asking
 // where it would replace the person's decision and proceeding where
@@ -50,7 +50,6 @@ const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { MODEL_LINES, countsFrom, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
-const { fingerprint } = require(path.join(SCRIPTS, 'kernel/fingerprint.cjs'));
 
 mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
 
@@ -87,11 +86,8 @@ const FRAMED = Object.freeze({
   rows: [{ key: '1', name: 'Thin', text: 'A thin frame', notice: 'notes stand out from the desk' }, { key: '2', name: 'Shadow', text: 'A shadow alone', notice: 'notes float with no edge' }],
 });
 
-/** Another proposal in place of the same decision: a glow at the note's edge. */
-const GLOWING = Object.freeze({
-  ...FRAMED,
-  rows: [{ key: '1', name: 'Glow', text: 'A soft glow', notice: 'notes light up at the edge' }, { key: '2', name: 'Line', text: 'A hairline', notice: 'notes keep a faint edge' }],
-});
+/** The same proposal, its first row reworded. */
+const REWORDED = Object.freeze({ ...FRAMED, rows: [{ ...FRAMED.rows[0], text: 'A thin frame round the note' }, FRAMED.rows[1]] });
 
 /** What the world holds, by name: each question's and decision's short id. */
 const made = { note: '', light: '', flat: '', where: '', size: '', edge: '', yours: '', mine: '' };
@@ -157,8 +153,6 @@ const raised = (at, flags, call, env) => okSectionsAsync(dir, ['raise', at, ...f
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
 
-/** A replacement of `entry` proposing `call`'s rows, as the record keeps it sent to check. @param {string} entry @param {{rows: {text: string}[]}} call */
-const proposing = (entry, { rows }) => `${full(entry)} proposing ${fingerprint(JSON.stringify(rows.map(({ text }) => text).sort()))}`;
 
 /**
  * The Claude Code folder of a session whose transcript last names `model`:
@@ -274,20 +268,22 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([parked.decision, parked.parked, lastEntry().why_asking], ['ask', 'Q1', checked]);
   });
 
-  it('a replacement Claude could find out is sent to check by the decision it would replace and its proposal: two decisions in one conversation are each sent their own, another proposal for the first is sent too, and the first proposal made again asks (16.11.7)', async (t) => {
+  it('a replacement Claude could find out is sent to check by the decision it would replace and the task raising it: two decisions in one conversation are each sent their own, and one raised again in other words asks; in the build, another task\'s raise of the same proposal, whose own check has not come back, is sent to check too (16.11.7)', async (t) => {
     byTheRule(t);
     quietOn('behaviour');
     const checkable = labelledAs(FRAMED, 'behaviour', { yes: ['checkable'] });
 
     const light = await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, checkable);
     const flat = await raised(NOTE, ['--replaces', made.flat, '--reason', 'was-wrong'], FRAMED, checkable);
-    const glow = await raised(NOTE, ['--replaces', made.light, '--reason', 'changed-mind'], GLOWING, checkable);
-    const again = await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, checkable);
+    const reworded = await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], REWORDED, checkable);
+    /** Claude's call in the build replaced for `task`. @param {string} task */
+    const replacingMine = (task) => raised(BUILD, ['--replaces', made.mine, '--reason', 'was-wrong', '--parks', task], FRAMED, checkable);
+    const mine = [await replacingMine('2.3'), await replacingMine('2.4')];
 
-    assert.deepStrictEqual([light.res.decision, flat.res.decision, glow.res.decision, Object.keys(sentToCheck() ?? {})], [
-      'check', 'check', 'check', [proposing(made.light, FRAMED), proposing(made.flat, FRAMED), proposing(made.light, GLOWING)],
+    assert.deepStrictEqual([light.res.decision, flat.res.decision, ...mine.map(({ res }) => res.decision), Object.keys(sentToCheck() ?? {})], [
+      'check', 'check', 'check', 'check', [`${full(made.light)} for no task`, `${full(made.flat)} for no task`, `${full(made.mine)} for 2.3`, `${full(made.mine)} for 2.4`],
     ]);
-    assert.deepStrictEqual([again.res.decision, again.res.reason], ['ask', 'Checking couldn\'t settle it, so it comes to you.']);
+    assert.deepStrictEqual([reworded.res.decision, reworded.res.reason], ['ask', 'Checking couldn\'t settle it, so it comes to you.']);
   });
 
   it('16.S68, the label\'s half: with no label — the stub serving no login — a call asks however quiet its kind, saying so', async (t) => {

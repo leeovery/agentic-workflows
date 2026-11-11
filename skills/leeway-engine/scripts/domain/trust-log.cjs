@@ -33,13 +33,15 @@
 //   `project_id` setup writes on the project manifest when it creates the
 //   state, never changed, its name beside it. A project manifest without one
 //   is refused, never filled in. An event before the project has state
-//   carries none. An event about a call of Claude's logs the model the
+//   carries none. An event about a call a raise decided logs the model the
 //   call was made under, as its caller gives it (raise.cjs seals it with
 //   the call), never the model of whoever runs the command logging it: an
 //   answer drawn in the conversation to a builder's raise is the builder's
-//   model's (16.4.4). Any other event's model is the one the caller's
-//   transcript last names (conversation.cjs), by its id: null where none
-//   can be read, or what is read is no model's id. The session is the id Claude Code handed the
+//   model's (16.4.4). Any other event's model — a call Claude's own `ledger
+//   decide` or `ledger replace` lands among them, made by the command
+//   logging it — is the one the caller's transcript last names
+//   (conversation.cjs), by its id: null where none can be read, or what is
+//   read is no model's id. The session is the id Claude Code handed the
 //   command, null where it handed none, or what it handed is no session's
 //   id. An event's time is to the millisecond. Its id is drawn afresh, or
 //   given by a caller whose rerun logs the same event again, so the read

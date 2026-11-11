@@ -129,14 +129,13 @@
 //   stood; either logged as a call carrying the sort, and the label and
 //   kind its decision takes. A check draws, seals, parks, lands and logs
 //   nothing, and its reason tells Claude to find the answer out (16.3.1):
-//   the conversation keeps the raise that was checked — a question by its
-//   id and the task raising it, none where no task does; a replacement by
-//   the decision it would replace and its proposal, the rows' answers by
-//   their fingerprint — as sent to check (`raise-checked.json` in its
-//   folder, under a lock of its own), so that raise made again is decided as
-//   one sent to check already, and asks (16.11.7), and another task's raise
-//   of the question, or another proposal, is not. A blind ask is refused
-//   until it is built.
+//   the conversation keeps the raise that was checked — by the question
+//   it answers, or the decision it would replace, and the task raising it,
+//   none where no task does — as sent to check (`raise-checked.json` in its
+//   folder, under a lock of its own), so that task's raise of it again, in
+//   any words, is decided as one sent to check already, and asks (16.11.7),
+//   and another task's raise of it is not. A blind ask is refused until it
+//   is built.
 // - A raise is no gate (gate.cjs): drawing it clears the gate shown.
 // - In the build (12.13) — and at a quick-fix's places for a question its
 //   task's builder asks, `--parks` naming the task; one Claude raises in the
@@ -277,7 +276,6 @@ const { messageOf, stdinObject } = require('../kernel/call.cjs');
 const { LOCK_TIMEOUT_MS, isObject, writeJsonAtomic, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
-const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
@@ -435,7 +433,7 @@ const KEEP = 'keep';
 // means a keep.
 const SCREEN_KEYS = ['t', 'e', 'technical', 'explain', 'comment', KEEP];
 const SEALS_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on the conversation\'s raises' };
-// What the conversation sent to check, each by the id of what its raise was about.
+// What the conversation sent to check, each by the raise checked (`checkedAs`).
 const RAISE_CHECKED = 'raise-checked.json';
 const CHECKED_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on what the conversation sent to check' };
 // The word the screen's "I don't follow" row is sent as (projections/raise.cjs).
@@ -1038,17 +1036,15 @@ function markChecked(session, checked) {
 }
 
 /**
- * The raise that was checked, as the conversation keeps it sent to check: a
- * question's by its id and the task raising it, `<id> for <task>` — `for no
- * task` where none does; a replacement's by the decision it would replace
- * and the proposal, its rows' answers by their fingerprint, `<id> proposing
- * <fingerprint>` — so only a raise whose own check came back is decided as
- * one sent to check already (16.11.7).
- * @param {Target} target @param {Call} call @param {string|null} task
+ * The raise that was checked, as the conversation keeps it sent to check:
+ * by the question it answers, or the decision it would replace, by its id,
+ * and the task raising it, `<id> for <task>` — `for no task` where none
+ * does — so only a raise whose own check came back is decided as one sent
+ * to check already (16.11.7), whatever its words.
+ * @param {Target} target @param {string|null} task
  */
-function checkedAs({ answers, replaces }, { rows }, task) {
-  if (replaces === null) return `${answers} for ${task ?? 'no task'}`;
-  return `${replaces.entry} proposing ${fingerprint(JSON.stringify(rows.map(({ text }) => text).sort()))}`;
+function checkedAs({ answers, replaces }, task) {
+  return `${answers ?? replaces?.entry} for ${task ?? 'no task'}`;
 }
 
 /**
@@ -1060,7 +1056,7 @@ function checkedAs({ answers, replaces }, { rows }, task) {
  * @returns {{decision: Decision, reason: string}}
  */
 function decided(cwd, { session, place, target, replacedBy, always, task, model }, call, label) {
-  const checked = checkedAs(target, call, task);
+  const checked = checkedAs(target, task);
   /** @type {At} */
   const at = {
     label, place, blocks_build: questions.blocksBuild(task === null ? [] : [task]), replaced_by: replacedBy, always,
