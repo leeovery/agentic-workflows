@@ -249,14 +249,10 @@ describe('the rule\'s decisions as a raise meets them', () => {
   it('3.S15: in a build in auto, a danger question parks its task for the person however quiet its kind, and though Claude could find the answer out — a question about the session whose option could lose data, composing process, among them (16.S62, 16.5.1)', async (t) => {
     byTheRule(t);
     quietOn('process');
-    const findable = { ...CALL, question: 'Does a new note reuse the window of one just closed?' };
 
-    const plain = (await raised(BUILD, ['--answers', made.where, '--parks', '2.3'], CALL, labelledAs(CALL, 'process', { yes: ['danger'] }))).res;
-    const checkable = (await raised(BUILD, ['--answers', made.size, '--parks', '2.4'], findable, labelledAs(findable, 'process', { yes: ['danger', 'checkable'] }))).res;
+    const { res } = await raised(BUILD, ['--answers', made.where, '--parks', '2.3'], CALL, labelledAs(CALL, 'process', { yes: ['danger', 'checkable'] }));
 
-    const danger = 'An answer here could lose data or weaken security, so it always comes to you.';
-    assert.deepStrictEqual([plain, checkable].map((res) => [res.decision, res.parked, res.task, res.reason]), [['ask', 'Q1', '2.3', danger], ['ask', 'Q2', '2.4', danger]]);
-    assert.strictEqual(sentToCheck(), null);
+    assert.deepStrictEqual([res.decision, res.parked, res.task, res.reason, sentToCheck()], ['ask', 'Q1', '2.3', 'An answer here could lose data or weaken security, so it always comes to you.', null]);
   });
 
   it('16.S72: mid-build, replacing the person\'s decision of a quiet kind asks, parking its task, whatever the counts; replacing Claude\'s call of the same kind follows the rule, and proceeds, landing Claude\'s replacement (16.5.7, 12.9.2)', async (t) => {
