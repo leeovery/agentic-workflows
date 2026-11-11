@@ -11,12 +11,12 @@
 // (14.5, 24.2.2). The failing round's wait on it is
 // test-pipeline-simulation-review-outside.cjs's.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed — a
-// copy per scenario, which replays the engine calls the review phase's
-// skill makes, in order, the oracle (pipeline-oracle.cjs) auditing the
-// whole state after every mutation.
+// Layer: simulation. World: the named world `worlds.cutClosed`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick, its cut one phase, built and closed — a copy per scenario,
+// which replays the engine calls the review phase's skill makes, in order,
+// the oracle (pipeline-oracle.cjs) auditing the whole state after every
+// mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -25,19 +25,16 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, cutClosed, writePhaseTasks, writeTasks, builtAside, areaRead, testsRead, reviewNext, finished,
+  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, writeTasks, builtAside, areaRead, testsRead, reviewNext, finished,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 const UNSALTED = '## Findings\n\n- nit: the hash is never salted\n  Scenario: an entry hashed\n\nVerdict: pass\n';
-
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
-const outsideWorld = worldFrom('pipeline-review-outside-finish-', (sim) => cutClosed(sim, WU));
 
 describe('pipeline simulation: finish held over a task beyond the review\'s findings', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(outsideWorld);
+    sim = new Sim(worlds.cutClosed);
   });
   afterEach(() => {
     sim.destroy();

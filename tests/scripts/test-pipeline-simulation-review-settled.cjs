@@ -13,12 +13,12 @@
 // test-pipeline-simulation-review-step-finish.cjs; a review failing then
 // passing with a fix each time, -review-rounds.cjs.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick, its cut one phase, built and closed — a
-// copy per scenario, which replays the engine calls the review phase's
-// skill makes, in order, the oracle (pipeline-oracle.cjs) auditing the
-// whole state after every mutation.
+// Layer: simulation. World: the named world `worlds.cutClosed`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick, its cut one phase, built and closed — a copy per scenario,
+// which replays the engine calls the review phase's skill makes, in order,
+// the oracle (pipeline-oracle.cjs) auditing the whole state after every
+// mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -28,19 +28,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worldFrom, cutClosed, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, strayRound,
+  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, strayRound,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledger';
+const WU = CUT_CLOSED_UNIT;
 const UNCHECKED = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
-
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
-const settledWorld = worldFrom('pipeline-review-settled-', (sim) => cutClosed(sim, WU));
 
 describe('pipeline simulation: a stuck round settled', () => {
   let sim;
   beforeEach(() => {
-    sim = new Sim(settledWorld);
+    sim = new Sim(worlds.cutClosed);
   });
   afterEach(() => {
     sim.destroy();

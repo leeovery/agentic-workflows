@@ -11,12 +11,12 @@
 // measure: nothing is below it, and it touches the project's repository
 // alone.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs) — a feature through its
-// spec to ready to build's pick in auto, its one phase of four tasks written
-// and started — a copy per scenario, which replays the engine calls the
-// build's prose makes, in order, the oracle (pipeline-oracle.cjs) auditing
-// the whole state after every mutation.
+// Layer: simulation. World: this file's own, built once on the named world
+// `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
+// feature through its spec to ready to build's pick in auto — its one phase
+// of four tasks written and started; a copy per scenario, which replays the
+// engine calls the build's prose makes, in order, the oracle
+// (pipeline-oracle.cjs) auditing the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -25,24 +25,21 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { traced, git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, startUnit, discussed, specToBuild, buildEntry, startPhase, writeTasks, landed, placeIn, buildLoop, builders, VERIFY_FILES, PASSED_REPORT,
+  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, landed, placeIn, buildLoop, builders, VERIFY_FILES, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
 
-const WU = 'ledgerly';
+const WU = SPEC_TO_BUILD_UNIT;
 const TASKS = 4;
 
 /** A feature in auto, its one phase of four tasks written and started, the first proving 1.S1. */
 const fourWorld = worldFrom('pipeline-build-scale-', (sim) => {
-  startUnit(sim, 'feature', WU, 'A ledger');
-  discussed(sim, WU, WU);
-  specToBuild(sim, WU, [WU], 'a');
   buildEntry(sim, WU);
   sim.run(['task', 'phase', WU, '1', '--title', 'Writing']);
   sim.run(['brief', 'task-writer', WU, '1']);
   writeTasks(sim, WU, 1, Array.from({ length: TASKS }, (_, at) => ({ title: `Write part ${at + 1}`, scenarios: at === 0 ? ['1.S1'] : undefined })));
   startPhase(sim, WU, 1);
-});
+}, worlds.specToBuild);
 
 describe('pipeline simulation: a task\'s cost by where it sits in its phase', () => {
   let sim;
