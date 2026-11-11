@@ -39,15 +39,31 @@
 // (16.8.1): until the ask rule is switched on, no offer comes. Once
 // switched, it is convergence.cjs's `offerDue`: the topic's run of
 // agreements, where it has come to the offer.
+//
+// Beside it, `gateStep`: whether a learned process gate (learned-gates.cjs)
+// shows, or runs as an automatic step on one of its rows (3.2.7). Every
+// surface that draws one asks it, at the gate's place — its unit, phase and
+// topic — and draws what it answers (projections/surfaces.cjs). Until the
+// learned gates are switched on (29.19.2), every gate shows. `learned` is
+// what it decides once switched: in a build in step, the gate shows, the
+// position read from the unit at each gate so a switch bites at once
+// (3.3.3, 3.3.6); elsewhere — only the build has a position (3.3.1) — as
+// the gate's count stands for the project and the session's model as of the
+// time, at the person's threshold, with its blind ask drawn. A gate off the
+// list shows, and nothing is read for it.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
 const { rule } = require('./ask-rule.cjs');
 const { kindOf } = require('./labeller.cjs');
-const { countsOf } = require('./trust-counts.cjs');
-const { projectId } = require('./trust-log.cjs');
+const { countsFrom, countsOf, gateCount, stateOf } = require('./trust-counts.cjs');
+const { projectId, modelOf, readPersonEvents } = require('./trust-log.cjs');
 const { trustSettings, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
+const { SHOWS, learnedGate, stepOf } = require('./learned-gates.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 
 /** @typedef {import('./ask-rule.cjs').Ruling | 'blind'} Decision */
 /** @typedef {import('./trust-counts.cjs').Counts} Counts */
@@ -56,6 +72,12 @@ const { careEntries } = require('./person.cjs');
  * blind draw hashes: the question's, the same on every raise of it; none
  * for a replacement, which is never drawn blind.
  * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number, question: string|null}} At
+ */
+/** @typedef {import('./learned-gates.cjs').GateStep} GateStep */
+/**
+ * Where a gate comes: the command's folder, and the gate's place — the unit,
+ * phase and topic it comes at, each null where it comes at none.
+ * @typedef {{cwd: string, place: {unit: string|null, phase: string|null, topic: string|null}}} GateAt
  */
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
@@ -116,4 +138,45 @@ function convergenceDue(_cwd, _unit, _topic) {
   return null;
 }
 
-module.exports = { decide, ruled, convergenceDue };
+/**
+ * Whether the learned gate `name` shows, or runs as an automatic step.
+ * @param {string} _name @param {GateAt} _at
+ * @returns {GateStep}
+ */
+function gateStep(_name, _at) {
+  return SHOWS;
+}
+
+/**
+ * Whether the unit's build is in step, at a place of the build: its
+ * implementation, or its review phase, whose fixes take the build's position
+ * (14.6.2).
+ * @param {string} root @param {GateAt['place']} place
+ */
+function inStep(root, { unit, phase }) {
+  return unit !== null && phase !== null && BUILD_PHASES.includes(phase) && manifestOf(root, unit)?.build?.position === 'step';
+}
+
+/**
+ * The learned gates' step on the gate `name`: shown in a build in step;
+ * else as its count stands on the project for the session's model as of
+ * now, at the person's threshold, its blind ask drawn from how many answers
+ * it holds. A gate off the list shows, reading nothing.
+ * @param {string} name @param {GateAt} at
+ * @returns {GateStep}
+ */
+function learned(name, { cwd, place }) {
+  const gate = learnedGate(name);
+  if (gate === null) return SHOWS;
+  const root = stateRoot(cwd);
+  if (inStep(root, place)) return SHOWS;
+  const now = Date.now();
+  /** @type {Record<string, unknown>[]} */
+  const events = [];
+  readPersonEvents(root, (event) => events.push(event));
+  const counts = countsFrom(events, { project: projectId(root), model: modelOf(cwd), now });
+  const answers = events.filter((event) => event.type === 'gate' && event.gate === gate && Date.parse(String(event.at)) <= now).length;
+  return stepOf(gate, stateOf(gateCount(counts, gate), trustSettings().threshold), { unit: place.unit, topic: place.topic, answers });
+}
+
+module.exports = { decide, ruled, convergenceDue, gateStep, learned };

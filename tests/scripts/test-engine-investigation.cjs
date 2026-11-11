@@ -18,7 +18,9 @@
 // 19.4.24); its validations' briefs, `brief root-cause-validation|fix-validation`
 // (domain/brief-records.cjs), from the log, the record, what the hunt rests
 // on and the code; and its close (domain/investigation-conclude.cjs), the
-// conclude gate, `render conclude`, a verdict owed asked first, and its yes,
+// conclude gate, `render conclude`, a verdict owed asked first — none where
+// the gate runs as an automatic step, each waiting in the verdict queue
+// (16.10.11) — and its yes,
 // `investigation conclude`, standing only once the root cause and the fix
 // rest on current entries, both validated since, nothing of the person's
 // open and no mail waiting, which completes the item, stamps its close,
@@ -54,6 +56,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 const { huntIn } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
+const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
 
 const BUG = 'crash';
 const HUNT = 'hunt';
@@ -989,7 +992,8 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual([fixes, area, after], [undefined, 'session restore', undefined]);
   });
 
-  it('16.10.5: a call the person changed in the investigation is asked its verdict first, at the conclusion, and the yes waits for it; none changed, none asked', async () => {
+  /** A call the person changed in the investigation, answering against Claude's lean: its decision's short id. */
+  async function departed() {
     const asked = wrote('ask', [], { ...CLAUDE, text: 'Should restore say what it lost?' });
     const call = {
       question: 'Should restore say what it lost?',
@@ -1000,7 +1004,11 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
       lean: '1', why: 'Restore is quiet today.', sort: 'one', mechanism: 'Restore prints one line.', product_wide: false,
     };
     const { res } = await okSectionsAsync(dir, ['raise', RIPE_AT, '--answers', asked], { env: env(), stdin: JSON.stringify(call) });
-    ok(dir, ['raise', 'answer', res.raise, '--pick', '2'], { env: env(), stdin: JSON.stringify({ why: 'The person wants to know.' }) });
+    return ok(dir, ['raise', 'answer', res.raise, '--pick', '2'], { env: env(), stdin: JSON.stringify({ why: 'The person wants to know.' }) }).id;
+  }
+
+  it('16.10.5: a call the person changed in the investigation is asked its verdict first, at the conclusion, and the yes waits for it; none changed, none asked', async () => {
+    await departed();
 
     const sections = conclude();
 
@@ -1014,5 +1022,18 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.doesNotMatch(after, /YOUR VERDICT/);
     assert.match(after, /^=== MENU: conclude gate /m);
     assert.strictEqual(run(['investigation', 'conclude', RIPE]).unit, RIPE);
+  });
+
+  it('16.10.11: stepped by the decision point at the investigation, the conclude run as a step on its yes asks no verdict there — its report stands in its menu\'s place, its DATA carrying the yes\'s next — and the yes concludes, the departure waiting in the verdict queue', async (t) => {
+    const changed = await departed();
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 'y' }));
+
+    const sections = conclude();
+
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place]), [['conclude gate', { unit: RIPE, phase: 'investigation', topic: RIPE }]]);
+    assert.doesNotMatch(sections, /YOUR VERDICT|^=== MENU/m);
+    assert.deepStrictEqual(sections.slice(sections.indexOf('=== DATA')).split('\n').slice(1, 4), ['automatic step: conclude gate', 'ran: y', `next: {"kind":"engine","argv":["investigation","conclude","${RIPE}"]}`]);
+    assert.strictEqual(run(['investigation', 'conclude', RIPE]).unit, RIPE);
+    assert.deepStrictEqual(run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
   });
 });

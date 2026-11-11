@@ -48,6 +48,10 @@
 //   and the one rule on that name keeps it out: it is never recorded as the
 //   gate shown, and `gate` refuses it, naming `raise answer`. Drawing one
 //   clears the gate shown, so only one shows at a time (6.6.10).
+// - A learned gate run as an automatic step (learned-gates.cjs) is no answer
+//   (E13): nothing is logged for it, it is never recorded as the gate shown,
+//   and the command clears the gate shown before it, as a raise's draw does,
+//   so `gate` refuses an answer to it.
 // - `gate` refuses, logging nothing, with no session, no gate shown,
 //   another gate's name, a key the gate lacks, free text with no words, and
 //   a gate already answered; each before the words are read. It writes no
@@ -64,7 +68,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { readAtGate } = require('./answer-reader.cjs');
 const { idFrom } = require('./ledger-ids.cjs');
-const { gateShown, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
+const { gateShown, gateStepped, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { record } = require('./trust-log.cjs');
 const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
 
@@ -113,12 +117,21 @@ function shownFile(session) {
 
 /**
  * Record the gate the command's MENU stated as the gate the calling
- * conversation was shown — run once the command is done. Never throws.
+ * conversation was shown — or, where the MENU ran as an automatic step,
+ * forget the one shown before it — run once the command is done. Never
+ * throws.
  */
 function recordGateShown() {
   const shown = gateShown();
   const session = handedSession();
-  if (shown === null || session === null || isRaise(shown.gate)) return;
+  if (session === null) return;
+  if (gateStepped()) {
+    try {
+      clearGateShown(session);
+    } catch { /* the command stands without it */ }
+    return;
+  }
+  if (shown === null || isRaise(shown.gate)) return;
   /** @type {ShownRecord} */
   const kept = {
     gate: nameOf(shown.gate),

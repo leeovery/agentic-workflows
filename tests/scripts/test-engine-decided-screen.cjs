@@ -12,7 +12,7 @@
 // changed none (16.S34), then the decided gate (9.S21); a payload the map
 // or the record refuses staging nothing; `engine decided strike|unstrike`
 // and `render decided-strike` (P8); and the wait for the topic's agents
-// still running (9.S63).
+// still running (9.S63), a learned gate (9.S47).
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs).
 // ---------------------------------------------------------------------------
@@ -27,6 +27,7 @@ const { ok, output, refusedPristine, sectionOf, readManifest, statePath } = requ
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerHelpers } = require('./ledger-world.cjs');
 const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, screen, staged, answer, run, reverse } = decidedHelpers(dir);
@@ -238,5 +239,22 @@ describe('the wait for agents (9.7.8, 9.S63)', () => {
 
   it('refuses a topic the unit lacks', () => {
     assert.strictEqual(refusedPristine(dir(), ['render', 'wait-agents', `${UNIT}.ghost`]).error, 'render wait-agents: fumi has no topic "ghost"');
+  });
+
+  it('9.S47, 3.S11: is a learned gate, stepped by the decision point at the topic\'s discussion — run as a step on its go, its report stands in its menu\'s place and its DATA carries the go\'s next — and none is asked while nothing runs', (t) => {
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 'g' }));
+    wait();
+    ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review'], { env: RUNNING });
+    const out = wait();
+
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place]), [['wait for agents', { unit: UNIT, phase: 'discussion', topic: 'note-window' }]]);
+    assert.strictEqual(out.slice(out.indexOf('\n') + 1), [
+      'automatic step: wait for agents',
+      'ran: g',
+      'next: {"kind":"continue"}',
+      '=== DISPLAY: automatic step (emit verbatim as a text code block (```text fence) — an automatic step: do not stop; carry on along the row it ran, as its DATA names it) ===',
+      'Going on without the running agents [auto]. Their reports wait for the next opening.',
+      '',
+    ].join('\n'));
   });
 });

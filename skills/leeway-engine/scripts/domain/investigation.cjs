@@ -4,7 +4,7 @@
 // Domain ring: an investigation's process gates as `render` serves them
 // (19.4.19), each read from the hunt its log holds (investigation-log.cjs)
 // and Claude's payload, and drawn by projections/investigation.cjs; each is
-// answered through `gate`, and nothing here writes.
+// answered through `gate` where it shows, and nothing here writes.
 //
 // - `investigation-plan <bugfix> --file <plan.json> [--revised]`: the
 //   payload `{"order": [{"hypothesis": "H{n}", "check": "<how>"}, …]}`,
@@ -15,6 +15,10 @@
 // - `investigation-check-in <bugfix> --file <check-in.json>`: the payload
 //   `{"resolved": ["H{n}", …], "next": "<what is checked next>"}`, the
 //   hypotheses resolved since the last gate, each one the log holds settled.
+//
+// Each gate is a learned one (learned-gates.cjs), drawn as the decision
+// point steps it at the investigation's place (`investigationStep`, the
+// conclude's too: investigation-conclude.cjs).
 //
 // Each refuses, opening on its command: a place whose investigation cannot
 // take work or has not started (`openInvestigation`), a payload that cannot
@@ -34,6 +38,7 @@ const { huntOf, openInvestigation } = require('./investigation-log.cjs');
 const { topicTitle } = require('./derivations.cjs');
 const { planScreen, checkInScreen } = require('./projections/investigation.cjs');
 const { dataSection } = require('./projections/surfaces.cjs');
+const decisionPoint = require('./decision-point.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Hypothesis} Hypothesis */
 /** @typedef {{dotpath?: string, file?: string, revised?: string}} Args */
@@ -57,6 +62,16 @@ function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
   const warnings = [];
   const hunt = huntOf(cwd, unit, warnings);
   return { unit, title: topicTitle(manifest, unit), hunt, warnings, given: readPayload(cwd, file) };
+}
+
+/**
+ * The decision point's step on the investigation's learned gate `gate`
+ * (19.4.19), at the investigation's place.
+ * @param {string} cwd @param {string} unit @param {string} gate
+ * @returns {import('./learned-gates.cjs').GateStep}
+ */
+function investigationStep(cwd, unit, gate) {
+  return decisionPoint.gateStep(gate, { cwd, place: { unit, phase: 'investigation', topic: unit } });
 }
 
 /** A gate's screen, what the read passed over said ahead of it. @param {string[]} warnings @param {string} screen */
@@ -95,7 +110,7 @@ function investigationPlanSurface(cwd, args) {
       order: order.map((hypothesis, at) => ({ hypothesis, check: lineOf(rows[at].check, `the plan's order[${at}] check`) })),
       settled: hunt.hypotheses.filter(({ state }) => state !== 'suspected'),
       changed: revised ? lineOf(plan.changed, 'what the finding changed') : null,
-    }));
+    }, investigationStep(cwd, unit, 'plan gate')));
   });
 }
 
@@ -108,8 +123,9 @@ function investigationCheckInSurface(cwd, args) {
     if (names.length === 0) throw new Error('the check-in names no hypothesis resolved — a check-in comes once one is');
     const open = namedHypotheses(hunt.hypotheses, names, 'the check-in').find(({ state }) => state === 'suspected');
     if (open !== undefined) throw new Error(`the check-in names ${open.name}, which the log holds open — log where it stands first: engine investigation-log hypothesis ${unit} ${open.name} --state <state>`);
-    return warned(warnings, checkInScreen({ title, hypotheses: hunt.hypotheses, resolved: names, experiments: hunt.experiments, next: lineOf(checkIn.next, 'what is checked next') }));
+    const view = { title, hypotheses: hunt.hypotheses, resolved: names, experiments: hunt.experiments, next: lineOf(checkIn.next, 'what is checked next') };
+    return warned(warnings, checkInScreen(view, investigationStep(cwd, unit, 'check-in gate')));
   });
 }
 
-module.exports = { investigationPlanSurface, investigationCheckInSurface };
+module.exports = { investigationPlanSurface, investigationCheckInSurface, investigationStep };

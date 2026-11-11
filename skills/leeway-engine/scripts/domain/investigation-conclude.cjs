@@ -33,7 +33,10 @@
 //   each departure the person made in the investigation that this machine
 //   logged is asked its verdict there first, one at a time — `verdict give
 //   … --at conclusion` — none asked where none was made (16.10.5,
-//   16.10.11); then the conclude gate: yes, keep going, and a comment. Its
+//   16.10.11); then the conclude gate: yes, keep going, and a comment. The
+//   gate is drawn as the decision point steps it (investigation.cjs): run as
+//   an automatic step, on its yes, no verdict is asked there, each waiting
+//   in the verdict queue (16.10.11). Its
 //   DATA names the areas this project's bugfixes have recorded, each as
 //   first spelt (bug-records.cjs), so Claude names an area alike. While
 //   the screen stands on what is staged, its yes waits on the person, as
@@ -47,7 +50,8 @@
 //   reading of it, one line of words, never checked against the map.
 // - The yes stands on the screen as drawn: what is staged was staged
 //   against the root cause and the fix as they stand, what the bug is in
-//   still holds, and no verdict is still to ask. Then, under the writer
+//   still holds, and no verdict is still to ask — unless the gate runs as an
+//   automatic step, the decision point asked again. Then, under the writer
 //   lock, in one manifest save, it completes the investigation's item and
 //   stamps its close, `concluded_at`, the instant (P2) — what the board
 //   dates the investigation by, its standing read from the item as every
@@ -84,6 +88,7 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { filled, shaped, readPayload, stage, stagedAt, refusing, stands } = require('./staged-payload.cjs');
 const { concludeScreen } = require('./projections/investigation.cjs');
+const { investigationStep } = require('./investigation.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Rested} Rested */
 /** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
@@ -315,6 +320,9 @@ function kept(cwd, bug, earlier) {
   return { ...bug, after_review: after };
 }
 
+/** The decision point's step on the conclude gate, a learned one (19.4.19). @param {string} cwd @param {string} unit */
+const concludeStep = (cwd, unit) => investigationStep(cwd, unit, 'conclude gate');
+
 /**
  * `render conclude <bugfix> [--file <recap.json>]`: the conclude, Claude's
  * recap staged from `--file` or read back as staged.
@@ -330,6 +338,7 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
       const staged = file === undefined
         ? stagedFor(cwd, unit, rootCause, fix)
         : stage(stagedFile(cwd, unit), { at: new Date().toISOString(), ...recapOf(cwd, unit, file), root_cause: rootCause.id, fix: fix.id });
+      const step = concludeStep(cwd, unit);
       return concludeScreen({
         unit,
         title: topicTitle(manifest, unit),
@@ -337,9 +346,9 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
         symptoms: hunt.symptoms.map(({ text }) => text),
         rootCause: rootCause.text,
         fix: fix.text,
-        verdict: verdictOf(cwd, unit, staged.at, warnings),
+        verdict: step.step === 'automatic' ? null : verdictOf(cwd, unit, staged.at, warnings),
         areas: recordedAreas(cwd),
-      });
+      }, step);
     } catch (err) {
       throw carrying(err, warnings);
     }
@@ -360,7 +369,9 @@ function concludeInvestigation(cwd, unit) {
     const { rootCause, fix } = closing(cwd, unit, 'investigation conclude', warnings);
     const staged = stagedFor(cwd, unit, rootCause, fix);
     const bug = stagedBug(cwd, unit, staged);
-    if (verdictOf(cwd, unit, staged.at, warnings) !== null) throw new Error(`a verdict is still to ask — engine render conclude ${unit} asks each before the yes`);
+    if (verdictOf(cwd, unit, staged.at, warnings) !== null && concludeStep(cwd, unit).step !== 'automatic') {
+      throw new Error(`a verdict is still to ask — engine render conclude ${unit} asks each before the yes`);
+    }
     const manifest = withWorkUnitLock(cwd, unit, () => {
       const fresh = loadWorkUnitManifest(cwd, unit);
       const item = fresh.phases[PHASE].items[unit];

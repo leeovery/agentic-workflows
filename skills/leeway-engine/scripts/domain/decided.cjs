@@ -126,6 +126,7 @@ const { runningAgents } = require('./agent-state.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
+const decisionPoint = require('./decision-point.cjs');
 const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, refusing, stands } = require('./staged-payload.cjs');
 const { ontoEpic } = require('./topic-leave.cjs');
 
@@ -633,7 +634,8 @@ function decidedStrikeSurface(cwd, { dotpath, page }) {
 
 /**
  * `render wait-agents <unit>.<topic>`: the wait for the topic's agents still
- * running, or nothing where none is.
+ * running, or nothing where none is — a learned gate, drawn as the decision
+ * point steps it at the topic's discussion.
  * @param {string} cwd @param {{dotpath?: string}} args
  * @returns {string}
  */
@@ -641,7 +643,9 @@ function waitAgentsSurface(cwd, { dotpath }) {
   const { unit, topic, manifest } = topicAddress(stateRoot(cwd), dotpath, 'wait-agents');
   if (itemOf(manifest, PHASE, topic) === undefined) throw new Error(`render wait-agents: ${unit} has no discussion of "${topic}"`);
   const running = runningAgents(cwd, unit, PHASE, topic);
-  return running.length === 0 ? '' : waitAgents(unit, topic, topicTitle(manifest, topic), running.map(({ kind }) => kind));
+  if (running.length === 0) return '';
+  const step = decisionPoint.gateStep('wait for agents', { cwd, place: { unit, phase: PHASE, topic } });
+  return waitAgents(unit, topic, topicTitle(manifest, topic), running.map(({ kind }) => kind), step);
 }
 
 /**

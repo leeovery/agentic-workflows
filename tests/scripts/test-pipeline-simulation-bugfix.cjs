@@ -19,7 +19,11 @@
 // in, the fix direction reworking the area as a feature with no validation
 // of its own, start this work's screen and its yes, the feature's
 // discussion reading the investigation as its earlier log at its first
-// opening.
+// opening. And a bugfix whose investigation's gates the person has always
+// said yes at, the decision point stepping them as it will once the learned
+// gates are switched on: the plan, the check-in and the conclude each run as
+// a learned step, the call the person changed waiting in the verdict queue,
+// and ready to build, its count as long, stopping before any code.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -35,9 +39,12 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const {
-  Sim, startUnit, enterEntry, handoff, answerGate, continueUnit, startRow, startNew, specToBuild,
+  Sim, startUnit, enterEntry, handoff, answerGate, gatesAnswered, continueUnit, startRow, startNew, specToBuild,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded,
 } = require('./pipeline-world.cjs');
+const { history, lines, DAY } = require('./trust-world.cjs');
+const decisionPoint = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/decision-point.cjs'));
+const { TRUST_LOG } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 
 const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
@@ -188,5 +195,30 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(Object.keys(earlier), ['earlier record', 'earlier log']);
     assert.strictEqual(fs.readFileSync(earlier['earlier log'], 'utf8'), hunt);
     assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.map((d) => d.text), ['The save writes a null that nothing checks.', 'Rework saving as a feature']);
+  });
+
+  it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan, check-in and conclude gates each run as a learned step, nothing answered at them; the fix the person changed waits in the verdict queue; ready to build, as long answered alike, still stops before any code', async (t) => {
+    // A unit whose draws at these counts ask no blind question.
+    const wu = 'save-null';
+    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway/manifest.json'), 'utf8'));
+    const seeded = history({ project, start: Date.now() - DAY });
+    for (const gate of ['plan gate', 'check-in gate', 'conclude gate']) for (let i = 0; i < 13; i += 1) seeded.gate(gate, { picked: 'y' });
+    for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
+    fs.writeFileSync(path.join(sim.configDir, TRUST_LOG), lines(...seeded.events));
+    t.mock.method(decisionPoint, 'gateStep', decisionPoint.learned);
+
+    startNew(sim);
+    startUnit(sim, 'bugfix', wu, 'Fix the crash');
+    handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
+    await rootCaused(sim, wu);
+    validated(sim, wu, 'root-cause');
+    await fixDirected(sim, wu, { pick: '2' });
+    validated(sim, wu, 'fix');
+    concluded(sim, wu);
+    const changed = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'Write a default in place of the null').id;
+    assert.deepStrictEqual(sim.run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
+
+    specToBuild(sim, wu, [wu]);
+    assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'ready to build']);
   });
 });

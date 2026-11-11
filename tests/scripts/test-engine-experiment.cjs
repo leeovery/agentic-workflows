@@ -4,9 +4,10 @@
 // The experiment series (leeway-engine/scripts/domain/experiment.cjs,
 // `engine experiment create|advance|approve|runs|conclude|abandon`): the
 // spawn from a discussion, measuring a question on its map it must name, and
-// its lock, the records in the topic's folder (4.11.15), the walk to verdict,
-// the tally of a running experiment's runs, splits, the release edges, the
-// topic's cancel, and the field surface's guards. The question on the map an
+// its lock, the records in the topic's folder (4.11.15), its now-or-later
+// gate, a learned one, the walk to verdict, the tally of a running
+// experiment's runs, splits, the release edges, the topic's cancel, and the
+// field surface's guards. The question on the map an
 // experiment measures is test-engine-experiment-question.cjs's.
 //
 // Layer: verb. World: experiment-world.cjs's lab, built once and copied, its
@@ -22,6 +23,7 @@ const path = require('path');
 
 const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, FROZEN_AT, stateGit, output, fixtureFrom, startItem } = require('./engine-harness.cjs');
 const { writeManifest, readManifest, setup, problemScratch, SESSION, MADE, walkTo } = require('./experiment-world.cjs');
+const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
 
 /** A question asked on timing's map: its short id. */
 function asked(dir, text) {
@@ -176,6 +178,16 @@ describe('the spawn commits its record and hands the conversation on', () => {
     spawn(dir, 'discussion', 'window-placement');
     assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', 'lab', 'timing'] });
     assert.deepStrictEqual(answered('lab', 'timing', 'l'), { kind: 'continue' });
+  });
+
+  it('the now-or-later gate is a learned one, stepped by the decision point at the spawning topic: run as a step on yes, its report stands in its menu\'s place and its DATA carries the handoff into the laboratory (24.1.2)', (t) => {
+    spawn(dir, 'discussion', 'window-placement');
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 'y' }));
+    const out = output(dir, ['render', 'experiment-spawn-gate', 'lab.discussion.timing', '--id', 'E1'], { env: SESSION });
+
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place]), [['experiment spawn gate', { unit: 'lab', phase: 'discussion', topic: 'timing' }]]);
+    assert.deepStrictEqual(out.split('\n').slice(1, 4), ['automatic step: experiment spawn gate', 'ran: y', 'next: {"kind":"handoff","skill":"leeway-experiment-process","args":["epic","lab","timing"]}']);
+    assert.match(out, /^=== DISPLAY: automatic step .*\nExperiment worked now \[auto\]\. Opening the laboratory\.\n$/m);
   });
 
   it('yes takes a single-topic unit\'s discussion straight into the laboratory for its topic', () => {

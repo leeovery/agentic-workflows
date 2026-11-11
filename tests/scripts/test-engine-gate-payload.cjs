@@ -7,19 +7,22 @@ require('./hermetic-env.cjs');
 // The GATE payload: each gate stated as data beside the MENU that displays
 // it, for a surface that draws the gate itself. Announced by the environment
 // and by nothing else — the first suite here is the proof that a session
-// without the announcement sees the bytes it always saw.
+// without the announcement sees the bytes it always saw. A learned gate run
+// as an automatic step states none, and leaves no gate shown to answer.
 
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFile, spawnSync } = require('child_process');
 
-const { output } = require('./engine-harness.cjs');
+const { output, refusedPristine } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { menuBlock } = require('../../skills/leeway-engine/scripts/gateway.cjs');
+const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
 
 const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
 
@@ -241,6 +244,35 @@ describe('gate payload — a render surface', () => {
     assert.strictEqual(gate.question, 'What next?');
     assert.strictEqual(gate.statement, '');
     assert.deepStrictEqual(gate.options.map((/** @type {{key: string}} */ o) => o.key), ['n', 'b', 's']);
+  });
+});
+
+describe('gate payload — a learned gate run as an automatic step (E13)', () => {
+  let dir;
+  let config;
+  beforeEach(() => {
+    dir = setupFixture();
+    config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-gate-payload-config-'));
+  });
+  afterEach(() => {
+    cleanupFixture(dir);
+    fs.rmSync(config, { recursive: true, force: true });
+  });
+
+  it('8.S22: the import prompt stepped by the decision point at no place, run as a step on skip, states no gate — its report in its menu\'s place — and the prompt shown before it is gone, so an answer to it refuses and nothing is logged', (t) => {
+    const env = { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
+    const file = createFile(dir, '.leeway/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing: ['/notes/sketch.png'] }));
+    const args = ['render', 'import-reprompt', '--file', file];
+    const shown = gateOf(output(dir, args, { env }))?.gate;
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 's' }));
+    const out = output(dir, args, { env });
+
+    assert.deepStrictEqual([shown, asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place])], ['import reprompt', [['import reprompt', { unit: null, phase: null, topic: null }]]]);
+    assert.strictEqual(gateOf(out), null);
+    assert.deepStrictEqual(markers(out).map((marker) => marker.split(' (')[0]), ['=== DISPLAY: missing imports', '=== DATA', '=== DISPLAY: automatic step']);
+    assert.match(out, /^automatic step: import reprompt\nran: s\nnext: null\n/m);
+    assert.strictEqual(refusedPristine(dir, ['gate', 'import reprompt', '--pick', 's'], { env }).error, 'gate: no gate has been shown in this conversation — render the gate, then answer it');
+    assert.strictEqual(fs.existsSync(path.join(config, 'trust.jsonl')), false, 'nothing is logged');
   });
 });
 
