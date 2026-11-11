@@ -220,7 +220,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     const [meet, temp] = [path.join(dir, 'meet'), path.join(dir, 'temp')];
     fs.mkdirSync(meet);
     fs.mkdirSync(temp);
-    const env = { ...armed({ 'The answer: ': rules(PANEL, SYNC), '': 'timeout' }), CLAUDE_STUB_MEET: `1:${meet}`, TMPDIR: temp };
+    const env = { ...armed({ 'The answer: ': rules(PANEL, SYNC), '': 'timeout' }), CLAUDE_STUB_MEET: `2:${meet}`, TMPDIR: temp };
     const begun = Date.now();
 
     assert.match(refusedPristine(dir, ['ledger', 'decide', NOTE, '--answers', question], { env, stdin: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things at once.' }) }).error, /the decision holds 2 rules/);
