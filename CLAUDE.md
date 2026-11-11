@@ -69,7 +69,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 - **Start** (`leeway`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
 - **Discovery** (`leeway-discovery`) — the product's conversation, where new work starts, and an epic's discovery, where its map is shaped and changed.
-- **Navigation** (`leeway-continue-epic`, `leeway-continue-linear`) — a work unit's continue menu.
+- **Navigation** (`leeway-continue-epic`) — an epic's menu; any other unit is continued from the start menu, where it stands.
 - **Phase skills** (`leeway-{phase}-process`) — one per phase after discovery, and a quick-fix's own, `leeway-quick-fix-process`, from its first fix to its close; what each holds is in CONVENTIONS.md (The Phase Skill).
 - **Bridge** (`leeway-bridge`) — where the work goes when an experiment's session leaves it: the experiment invokes it once its series has nothing left to work, or the person picks the menu (`next-experiment.md`).
 - **Capture** (`leeway-log-idea`, `leeway-log-bug`, `leeway-log-quickfix`) — write to the inbox; no steps, no gates.

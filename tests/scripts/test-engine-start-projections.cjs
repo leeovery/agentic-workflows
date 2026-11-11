@@ -3,10 +3,9 @@
 // ---------------------------------------------------------------------------
 // The start skill's projections (leeway-engine/scripts/domain/projections/
 // start.cjs, read through start.cjs, inbox-set.cjs and workunit-manage.cjs):
-// the overview and the start menu, the empty state, the inbox pickup, the
-// archived store, the working set and its gates, manage's list and a unit's
-// manage view, the absorb target menu, the brownfield offer's answer, the
-// roadmap's rows, and the completed and cancelled lists — each a golden of
+// the inbox pickup, the archived store, the working set and its gates,
+// manage's list and a unit's manage view, the absorb target menu, the
+// brownfield offer's answer, and the completed and cancelled lists — each a golden of
 // the screen whole, its gate payload held to the menu it states
 // (gate-audit.cjs).
 //
@@ -24,10 +23,6 @@ const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { startDetail } = require('../../skills/leeway-engine/scripts/domain/start.cjs');
 const {
-  startOverview,
-  startMenu,
-  emptyOverview,
-  emptyMenu,
   inboxPickupView,
   archivedView,
   workingSetView,
@@ -38,7 +33,6 @@ const {
   absorbTargetMenu,
   completedView,
 } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
-const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { combinedInbox, workingSetDetail } = require('../../skills/leeway-engine/scripts/domain/inbox-set.cjs');
 const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
@@ -87,252 +81,7 @@ function fullFixture(dir) {
   return startDetail(dir);
 }
 
-describe('start projections: overview', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('renders all four type sections, the inbox section, and the counts line byte-for-byte', () => {
-    assert.strictEqual(startOverview(fullFixture(dir)), [
-      'Features',
-      '  ├─ 1. Auth Flow',
-      '  └─ 2. Dark Mode',
-      '',
-      'Bugfixes',
-      '  └─ 3. Login Crash',
-      '',
-      'Quick Fixes',
-      '  └─ 4. Rename Api',
-      '',
-      'Epics',
-      '  └─ 5. Quiz Competition V1',
-      '',
-      'Inbox',
-      '  ├─ Smart Retry [idea]',
-      '  ├─ Dark Launch [idea]',
-      '  └─ Login Timeout [bug]',
-      '',
-      '1 completed, 1 cancelled.',
-      '',
-    ].join('\n'));
-  });
-
-  it('renders a single populated section with no inbox and no counts line', () => {
-    createManifest(dir, 'auth-flow', {});
-    assert.strictEqual(startOverview(startDetail(dir)), [
-      'Features',
-      '  └─ 1. Auth Flow',
-      '',
-    ].join('\n'));
-  });
-
-  it('numbers continuously across sections, skipping empty ones', () => {
-    createManifest(dir, 'dark-mode', {});
-    createManifest(dir, 'auth-flow', {});
-    createManifest(dir, 'v1', { work_type: 'epic', phases: { discussion: { items: { exploration: { status: 'in-progress' } } } } });
-    assert.strictEqual(startOverview(startDetail(dir)), [
-      'Features',
-      '  ├─ 1. Auth Flow',
-      '  └─ 2. Dark Mode',
-      '',
-      'Epics',
-      '  └─ 3. V1',
-      '',
-    ].join('\n'));
-  });
-
-  it('renders the inbox section rows with each item\'s bracketed type inline', () => {
-    createManifest(dir, 'auth-flow', {});
-    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--one.md', '# One\n');
-    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-02--qf-a.md', '# A\n');
-    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-03--qf-b.md', '# B\n');
-    const out = startOverview(startDetail(dir));
-    assert.ok(out.includes('\nInbox\n  ├─ One [idea]\n  ├─ A [quick-fix]\n  └─ B [quick-fix]\n'));
-  });
-
-  it('epic with no phase items renders a plain row (state lives in the menu tail)', () => {
-    createManifest(dir, 'fresh-epic', { work_type: 'epic' });
-    assert.strictEqual(startOverview(startDetail(dir)), [
-      'Epics',
-      '  └─ 1. Fresh Epic',
-      '',
-    ].join('\n'));
-  });
-
-});
-
-describe('start projections: menu', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('a single-topic unit with messages waiting carries the mail waiting cue on its row — an epic never does', () => {
-    createFile(dir, '.leeway/dark-mode/topics/dark-mode/mail/001-escalation-path.md', '### Escalation path\n');
-    createFile(dir, '.leeway/quiz-competition-v1/topics/menu-admin/mail/001-cost-model.md', '### Cost model\n');
-    const detail = fullFixture(dir);
-    assert.deepStrictEqual(detail.features.work_units.find((u) => u.name === 'dark-mode').mail_phases, ['discussion']);
-    assert.strictEqual(detail.features.work_units.find((u) => u.name === 'auth-flow').mail_phases, undefined);
-    assert.strictEqual(detail.epics.work_units[0].mail_phases, undefined);
-    const labels = startMenu(detail).keys.map((k) => drawLabel(k.label));
-    assert.ok(labels.includes('Continue "Dark Mode" — *feature, discussion (in-progress)* · mail waiting'), labels.join('\n'));
-    assert.ok(labels.includes('Continue "Quiz Competition V1" — *epic*'), labels.join('\n'));
-  });
-
-  it('renders continue entries then command options with the conditional i/v present', () => {
-    const menu = startMenu(fullFixture(dir));
-    assert.strictEqual(menu.rendered, [
-      '· · · · · · · · · · · ·',
-      '**`◆ What would you like to do?`**',
-      '',
-      '**`1`**           → Continue "Auth Flow" — *feature, ready for*',
-      `${NB(14)}*specification*`,
-      '**`2`**           → Continue "Dark Mode" — *feature, discussion*',
-      `${NB(14)}*(in-progress)*`,
-      '**`3`**           → Continue "Login Crash" — *bugfix, ready for*',
-      `${NB(14)}*investigation*`,
-      '**`4`**           → Continue "Rename Api" — *quick-fix, implementation*',
-      `${NB(14)}*(in-progress)*`,
-      '**`5`**           → Continue "Quiz Competition V1" — *epic*',
-      '**`p/product`**   → Talk about the product',
-      '**`s/start`**     → Start something new (not sure what kind yet)',
-      '**`f/feature`**   → Start new feature',
-      '**`e/epic`**      → Start new epic',
-      '**`b/bugfix`**    → Start new bugfix',
-      '**`q/quick-fix`** → Start new quick-fix',
-      '**`i/inbox`**     → View the inbox and triage its items',
-      '**`v/view`**      → View completed & cancelled work units',
-      '**`m/manage`**    → Manage a work unit\'s lifecycle',
-      '**`h/help`**      → How the workflows work',
-    ].join('\n'));
-  });
-
-  it('omits i and v when there is no inbox and nothing completed or cancelled', () => {
-    createManifest(dir, 'auth-flow', {});
-    const menu = startMenu(startDetail(dir));
-    assert.strictEqual(menu.rendered, [
-      '· · · · · · · · · · · ·',
-      '**`◆ What would you like to do?`**',
-      '',
-      '**`1`**           → Continue "Auth Flow" — *feature, ready for*',
-      `${NB(14)}*discussion*`,
-      '**`p/product`**   → Talk about the product',
-      '**`s/start`**     → Start something new (not sure what kind yet)',
-      '**`f/feature`**   → Start new feature',
-      '**`e/epic`**      → Start new epic',
-      '**`b/bugfix`**    → Start new bugfix',
-      '**`q/quick-fix`** → Start new quick-fix',
-      '**`m/manage`**    → Manage a work unit\'s lifecycle',
-      '**`h/help`**      → How the workflows work',
-    ].join('\n'));
-  });
-
-  it('shows v with cancelled-only work units', () => {
-    createManifest(dir, 'auth-flow', {});
-    createManifest(dir, 'dropped', { status: 'cancelled' });
-    const { keys } = startMenu(startDetail(dir));
-    assert.ok(keys.some((k) => k.key === 'v' && k.action === 'view_completed'));
-    assert.ok(!keys.some((k) => k.key === 'i'));
-  });
-
-  it('keys carry actions, work types/units, routes, and pre_seeds', () => {
-    const { keys } = startMenu(fullFixture(dir));
-    assert.deepStrictEqual(
-      keys.map((k) => [k.key, k.action, k.work_unit || null, k.route, k.pre_seed || null]),
-      [
-        ['1', 'continue_work_unit', 'auth-flow', '/leeway-continue-linear auth-flow', null],
-        ['2', 'continue_work_unit', 'dark-mode', '/leeway-continue-linear dark-mode', null],
-        ['3', 'continue_work_unit', 'login-crash', '/leeway-continue-linear login-crash', null],
-        ['4', 'continue_work_unit', 'rename-api', '/leeway-continue-linear rename-api', null],
-        ['5', 'continue_work_unit', 'quiz-competition-v1', '/leeway-continue-epic quiz-competition-v1', null],
-        ['p', 'open_product', null, '/leeway-discovery none none', null],
-        ['s', 'start_new', null, null, 'none'],
-        ['f', 'start_new', null, null, 'feature'],
-        ['e', 'start_new', null, null, 'epic'],
-        ['b', 'start_new', null, null, 'bugfix'],
-        ['q', 'start_new', null, null, 'quick-fix'],
-        ['i', 'view_inbox', null, null, null],
-        ['v', 'view_completed', null, null, null],
-        ['m', 'manage', null, null, null],
-        ['h', 'open_help', null, '/leeway-help', null],
-      ]
-    );
-    assert.deepStrictEqual(
-      keys.filter((k) => k.action === 'continue_work_unit').map((k) => k.work_type),
-      ['feature', 'feature', 'bugfix', 'quick-fix', 'epic']
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Sub-view projections
-// ---------------------------------------------------------------------------
-
 const DOTS = '· · · · · · · · · · · ·';
-
-describe('start projections: empty state', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('renders the bare empty overview and start menu with no inbox and no closed units', () => {
-    const detail = startDetail(dir);
-    assert.strictEqual(emptyOverview(detail), 'No active work found.\n');
-    const menu = emptyMenu(detail);
-    assert.strictEqual(menu.rendered, [
-      DOTS,
-      '**`◆ What would you like to start?`**',
-      '',
-      '**`p/product`**   → Talk about the product',
-      "**`s/start`**     → Not sure what kind yet — describe it and we'll",
-      `${NB(14)}shape it`,
-      '**`f/feature`**   → Single topic: discussion → spec → build → review',
-      '**`e/epic`**      → Multiple topics, multi-session: each discussed,',
-      `${NB(14)}then one spec → build → review`,
-      '**`b/bugfix`**    → Investigation → spec → build → review',
-      '**`q/quick-fix`** → One sitting: each fix built and reviewed, then',
-      `${NB(14)}closed`,
-      '**`h/help`**      → How the workflows work',
-    ].join('\n'));
-    assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.pre_seed || null]),
-      [
-        ['p', 'open_product', null],
-        ['s', 'start_new', 'none'],
-        ['f', 'start_new', 'feature'],
-        ['e', 'start_new', 'epic'],
-        ['b', 'start_new', 'bugfix'],
-        ['q', 'start_new', 'quick-fix'],
-        ['h', 'open_help', null],
-      ]
-    );
-  });
-
-  it('adds the counts line, singular inbox option, and view option when state has them', () => {
-    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
-    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-    const detail = startDetail(dir);
-    assert.strictEqual(emptyOverview(detail), [
-      'No active work found.',
-      '',
-      '1 completed, 1 cancelled.',
-      '',
-    ].join('\n'));
-    const menu = emptyMenu(detail);
-    assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and triage its items \(1 item\)/.test(menu.rendered));
-    assert.ok(/\*\*`v\/view`\*\* +→ View completed & cancelled work units/.test(menu.rendered));
-    assert.deepStrictEqual(
-      menu.keys.map((k) => k.action).slice(6),
-      ['view_inbox', 'view_completed', 'open_help']
-    );
-  });
-
-  it('pluralises the inbox option label', () => {
-    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-    createFile(dir, '.leeway/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
-    assert.ok(emptyMenu(startDetail(dir)).rendered.includes('triage its items (2 items)'));
-  });
-});
 
 describe('start projections: inbox pickup', () => {
   let dir;
@@ -649,152 +398,14 @@ describe('start projections: the brownfield offer\'s answer (8.S44, 8.12.1)', ()
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('changes no menu but the p row\'s note of owed research: the empty state, the start menu and manage offer the same rows whatever the answer — nothing asks whether to use the workflows, and no answer gates a way into work', () => {
-    const menus = () => ({
-      empty: emptyMenu(startDetail(dir)).keys,
-      start: startMenu(fullFixture(dir)).keys,
-      manage: manageListView(startDetail(dir)).menu,
-    });
-    const productLabel = (keys) => keys.find((k) => k.action === 'open_product').label;
-    const unanswered = menus();
+  it('changes nothing manage offers: nothing asks whether to use the workflows, and no answer gates a way into work', () => {
+    fullFixture(dir);
+    const unanswered = manageListView(startDetail(dir)).menu;
     for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
-      cleanupFixture(dir);
-      dir = setupFixture();
       writeBrownfieldOffer(dir, answer);
-      const answered = menus();
-      // The one exception: an accepted offer's p row notes the research owed (8.12.13).
-      for (const menu of answer === 'accepted' ? ['empty', 'start'] : []) {
-        assert.deepStrictEqual(productLabel(answered[menu]), { head: 'Talk about the product', tail: 'research owed' }, menu);
-        answered[menu] = answered[menu].map((k) => (k.action === 'open_product' ? { ...k, label: productLabel(unanswered[menu]) } : k));
-      }
-      assert.deepStrictEqual(answered, unanswered, answer);
+      assert.deepStrictEqual(manageListView(startDetail(dir)).menu, unanswered, answer);
     }
   });
-});
-
-describe('start projections: roadmap rows', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  function writeProjectRoadmap(dir2, roadmap) {
-    const fs = require('fs');
-    const path = require('path');
-    const p = path.join(dir2, '.leeway', 'manifest.json');
-    const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
-    fs.writeFileSync(p, JSON.stringify({ ...existing, roadmap }, null, 2));
-  }
-
-  /** The product's session `n` open: its log on disk and its marker on the project manifest. */
-  function openProductSession(dir2, n) {
-    const fs = require('fs');
-    const path = require('path');
-    createFile(dir2, `.leeway/.product/sessions/session-${n}.md`, `# Product session ${n}\n`);
-    const p = path.join(dir2, '.leeway', 'manifest.json');
-    const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
-    fs.writeFileSync(p, JSON.stringify({ ...existing, product_session: n }, null, 2));
-  }
-
-  const MAP = {
-    horizons: ['mvp', 'v1', 'someday'],
-    items: {
-      ordering: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'auth-flow' } },
-      menus: { horizon: 'mvp', summary: 's', origin: 'harvest' },
-      loyalty: { horizon: 'v1', summary: 's', origin: 'park:mvp' },
-    },
-  };
-
-  it('the overview gains a Roadmap section — per-horizon join breakdowns, empty horizons omitted', () => {
-    fullFixture(dir);
-    writeProjectRoadmap(dir, MAP);
-    const overview = startOverview(startDetail(dir));
-    assert.match(overview, /Roadmap\n  ├─ mvp — 1 in flight · 1 waiting\n  └─ v1 — 1 waiting\n/);
-    assert.ok(!overview.includes('someday —'), 'an empty horizon renders no row');
-  });
-
-  it('startMenu and emptyMenu carry the r/roadmap row only once the layer exists', () => {
-    const bare = startMenu(fullFixture(dir));
-    assert.ok(!bare.keys.some((k) => k.action === 'open_roadmap'), 'no roadmap row before the layer is born');
-
-    writeProjectRoadmap(dir, MAP);
-    const m = startMenu(startDetail(dir));
-    const row = m.keys.find((k) => k.action === 'open_roadmap');
-    assert.ok(row, 'the layer renders its row');
-    assert.strictEqual(row.key, 'r');
-    assert.strictEqual(row.route, '/leeway-roadmap open');
-    assert.strictEqual(drawLabel(row.label), 'Open the product roadmap');
-    const keys = m.keys.map((k) => k.key);
-    assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
-
-    openProductSession(dir, '002');
-    const open = startMenu(startDetail(dir)).keys.find((k) => k.action === 'open_roadmap');
-    assert.strictEqual(drawLabel(open.label), 'Open the product roadmap', 'an open product session is carried on through p, never the roadmap');
-  });
-
-  it('both menus carry the p/product row always, handing into discovery at no unit, with its session count and last date once it has sessions (18.2.13, 18.S70)', () => {
-    const productRow = (m) => m.keys.find((k) => k.action === 'open_product');
-    const PRODUCT = { key: 'p', word: 'product', action: 'open_product', route: '/leeway-discovery none none', label: 'Talk about the product' };
-    assert.deepStrictEqual(productRow(emptyMenu(startDetail(dir))), PRODUCT, 'a bare project has the row, no sessions named');
-
-    createFile(dir, '.leeway/.product/sessions/session-001.md', '## 2026-10-12 · session one\n\nPricing first.\n');
-    assert.strictEqual(drawLabel(productRow(emptyMenu(startDetail(dir))).label), 'Talk about the product — *1 session, last on 12 Oct*');
-
-    createFile(dir, '.leeway/.product/sessions/session-002.md', '## 2026-10-18 · session two\n\nSync.\n\n## 2026-10-19 · session three\n\nLicensing.\n');
-    createFile(dir, '.leeway/.product/sessions/session-003.md', '');
-    const full = startMenu(fullFixture(dir));
-    assert.strictEqual(drawLabel(productRow(full).label), 'Talk about the product — *3 sessions, last on 19 Oct*',
-      'the date is the latest conversation a log names, past a log none has written in yet');
-    const keys = full.keys.map((k) => k.key);
-    assert.ok(keys.indexOf('3') < keys.indexOf('p') && keys.indexOf('p') < keys.indexOf('s'), `after the work, before start: ${keys}`);
-  });
-
-  it('the p row notes the brownfield research while it is owed — its tail before any session, after the tail once there are sessions — and drops it once completed (8.12.13)', () => {
-    const productRow = () => emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_product');
-    writeBrownfieldOffer(dir, 'accepted');
-    assert.strictEqual(drawLabel(productRow().label), 'Talk about the product — *research owed*');
-    createFile(dir, '.leeway/.product/sessions/session-001.md', '## 2026-10-12 · session one\n\nPricing first.\n');
-    assert.strictEqual(drawLabel(productRow().label), 'Talk about the product — *1 session, last on 12 Oct* · research owed');
-    writeBrownfieldOffer(dir, 'completed');
-    assert.strictEqual(drawLabel(productRow().label), 'Talk about the product — *1 session, last on 12 Oct*');
-  });
-
-  it('sessions whose logs name no conversation are counted, with no date', () => {
-    createFile(dir, '.leeway/.product/sessions/session-001.md', '# Product session 001\n');
-    createFile(dir, '.leeway/.product/sessions/session-002.md', '# Product session 002\n');
-    const row = emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_product');
-    assert.strictEqual(drawLabel(row.label), 'Talk about the product — *2 sessions*');
-  });
-
-  it('both menus carry the h/help row unconditionally — nothing about the project hides the teaching', () => {
-    const HELP = { key: 'h', word: 'help', action: 'open_help', route: '/leeway-help', label: 'How the workflows work' };
-    const helpRow = (m) => m.keys.find((k) => k.action === 'open_help');
-
-    // A bare project, and one carrying every conditional row there is.
-    assert.deepStrictEqual(helpRow(emptyMenu(startDetail(dir))), HELP);
-    const empty = emptyMenu(startDetail(dir)).keys;
-    assert.strictEqual(empty[empty.length - 1].action, 'open_help', 'last on the empty menu');
-
-    writeProjectRoadmap(dir, MAP);
-    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    const full = startMenu(fullFixture(dir));
-    assert.deepStrictEqual(helpRow(full), HELP);
-    const keys = full.keys.map((k) => k.key);
-    assert.ok(keys.indexOf('m') < keys.indexOf('h'), 'after the manage row');
-    assert.strictEqual(full.keys[full.keys.length - 1].action, 'open_help', 'last on the start menu');
-  });
-
-  it('the harvested-no-work state never renders an empty screen', () => {
-    writeProjectRoadmap(dir, MAP);
-    const detail = startDetail(dir);
-    assert.strictEqual(detail.state.has_any_work, false);
-    const overview = emptyOverview(detail);
-    assert.match(overview, /^No work in flight\.\n\nRoadmap\n/);
-    assert.match(overview, /├─ mvp — 1 waiting · 1 orphaned/); // no work units exist in this fixture — the join names a missing unit honestly
-    const menu = emptyMenu(detail);
-    assert.ok(menu.keys.some((k) => k.action === 'open_roadmap'));
-  });
-
 });
 
 describe('start projections: manage unit', () => {

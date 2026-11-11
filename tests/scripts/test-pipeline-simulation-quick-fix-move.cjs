@@ -20,7 +20,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
   Sim, startUnit, handoff, answerGate, discussed, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
-  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase, writeTasks, finishClosed, fixBuilt, reviewNext,
+  continueInto, buildEntry, briefOf, writePhaseTasks, startPhase, writeTasks, finishClosed, fixBuilt, reviewNext,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -90,7 +90,7 @@ describe('pipeline simulation: quick-fix moves', () => {
 
     // The feature's build: its task writer's brief and its own task 1.1
     // meet none of the quick-fix's calls.
-    linearBuildPick(sim, wu, 'implementation');
+    continueInto(sim, wu, 'implementation');
     buildEntry(sim, wu);
     assert.doesNotMatch(briefOf(sim, sim.run(['brief', 'task-writer', wu, '1'])), /QUICK-FIX CALL/);
     writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Write the ledger', scenarios: ['1.S1'] }]);

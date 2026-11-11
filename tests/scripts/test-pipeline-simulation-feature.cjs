@@ -29,7 +29,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { sectionOf } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, enterEntry, carryOn, handoff, answerGate, gatesAnswered, decideTopic, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet,
+  Sim, sessionLog, enterEntry, carryOn, handoff, answerGate, gatesAnswered, decideTopic, startPick, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet,
   specEntry, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
 } = require('./pipeline-world.cjs');
 
@@ -45,7 +45,7 @@ describe('pipeline simulation: feature', () => {
     // The start menu's new-feature pick hands the work to discovery, which
     // shapes it in the product's conversation; start this work's yes creates
     // the unit, its brief its one topic's, and hands it to its discussion.
-    startNew(sim, 'feature');
+    startNew(sim);
     const shaped = shapedInTheProduct(sim, 'payments');
     const started = startThisWork(sim, {
       type: 'feature', name: wu, description: 'Payments feature', reason: 'One topic, decided in one discussion.',
@@ -120,7 +120,7 @@ describe('pipeline simulation: feature', () => {
     // records — the topic's, and the unit's own, which holds the line.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
     assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n\n/m);
-    assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build'], '8.S18: the person was stopped at start this work and the one screen alone');
+    assert.deepStrictEqual(gatesAnswered(sim), ['start menu', 'start this work', 'ready to build'], '8.S18: past the start menu\'s pick that began it, the person was stopped at start this work and the one screen alone');
   });
 
   it('start: a working set of inbox ideas and a bug hands discovery its seeds, which start this work lands as a feature, where no investigation runs for the bug (19.S9)', () => {
@@ -129,7 +129,7 @@ describe('pipeline simulation: feature', () => {
       sim.write('.leeway/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
       sim.write('.leeway/.inbox/bugs/2026-01-01--filters-lost-on-reload.md', '# Filters Lost On Reload\n'),
     ];
-    assert.ok(startKeys(sim).some((k) => k.action === 'view_inbox'), 'the start menu offers the inbox');
+    assert.strictEqual(startPick(sim, 't'), null, 'the start menu\'s triage carries on in the conversation, into the inbox');
     // Ideas carry no work type, so discovery decides it.
     const seeds = ideas.map((rel) => path.join(sim.dir, rel));
     const route = `/leeway-discovery start none "${seeds.join(',')}"`;
@@ -152,7 +152,7 @@ describe('pipeline simulation: feature', () => {
     const keys = () => [...sim.sections.matchAll(/^([a-z ]+): /gm)].map((m) => m[1]);
     const header = () => /^log header: (.*)$/m.exec(sim.sections)?.[1];
     const log = `.leeway/${wu}/topics/${wu}/log.md`;
-    startNew(sim, 'feature');
+    startNew(sim);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
     const first = enterEntry(sim, wu, 'discussion', wu);
@@ -170,7 +170,7 @@ describe('pipeline simulation: feature', () => {
 
   it('feature: a point needing decisions of its own pivots the unit to an epic at the person\'s yes — the point a new topic on its map, its question moved there by message — and the conversation carries on in its own topic (19.S33)', () => {
     const wu = 'filters';
-    startNew(sim, 'feature');
+    startNew(sim);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
     enterEntry(sim, wu, 'discussion', wu);

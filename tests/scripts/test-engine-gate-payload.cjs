@@ -290,16 +290,6 @@ describe('gate payload — a gateway menu', () => {
     });
   });
 
-  it("the start menu's numbered rows carry its question and their keys", () => {
-    createManifest(dir, 'auth', { work_type: 'feature' });
-    const gate = gateOf(runGateway(dir, 'leeway', ['view'], ANNOUNCED));
-
-    assert.strictEqual(gate.question, 'What would you like to do?');
-    assert.deepStrictEqual(gate.options[0],
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'feature, ready for discussion', cue: null, holder: null, detail: null, struck: false, recommended: false });
-    assert.deepStrictEqual(gate.typed, []);
-  });
-
   it('a held row states its holder apart from its tail, a recommended row its flag, and neither marker survives into the text', () => {
     seedHeldEpic(dir);
     const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['view', 'v1'], ANNOUNCED));
@@ -330,19 +320,6 @@ describe('gate payload — a gateway menu', () => {
     assert.deepStrictEqual(gate.options.map((/** @type {{key: string}} */ o) => o.key), ['b', 'y']);
   });
 
-  it('a glyph-off statement over a hand-glyphed question', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'bugfix',
-      phases: { investigation: { items: { auth: { status: 'completed' } } } },
-      completed_phases: ['discovery', 'investigation'],
-      next_phase: 'specification',
-    });
-    const gate = gateOf(runGateway(dir, 'leeway-continue-linear', ['view', 'auth'], ANNOUNCED));
-
-    assert.strictEqual(gate.question, 'Proceed?');
-    assert.strictEqual(gate.statement, 'Continuing "Auth" — ready for specification.');
-  });
-
 });
 
 describe('gate payload — every gateway verb', () => {
@@ -365,8 +342,7 @@ describe('gate payload — every gateway verb', () => {
   /** @type {Record<string, Record<string, GatewayCall[]>>} */
   const CALLS = {
     'leeway': {
-      index: [ungated()],
-      view: [gated('view')],
+      index: [refused()],
       inbox: [gated('inbox')],
       archived: [gated('archived')],
       'working-set': [gated('working-set', SET_ITEM), gated('working-set', SET_ITEM, BUG_ITEM)],
@@ -374,12 +350,6 @@ describe('gate payload — every gateway verb', () => {
       'working-set-drop-gate': [gated('working-set-drop-gate', SET_ITEM)],
       manage: [gated('manage'), gated('manage', 'checkout')],
       completed: [gated('completed')],
-      fallback: [ungated('checkout')],
-    },
-    'leeway-continue-linear': {
-      index: [refused()],
-      view: [ungated('view', 'checkout'), gated('view', 'crash-fix'), ungated('view', 'nowhere')],
-      fallback: [refused('checkout')],
     },
     'leeway-continue-epic': {
       index: [refused()],

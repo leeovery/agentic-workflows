@@ -79,6 +79,7 @@ const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { helpSurface } = require('./projections/help.cjs');
 const { verdictsSurface } = require('./verdict.cjs');
+const { startMenuSurface } = require('./projections/start-menu.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -1539,6 +1540,7 @@ const SURFACES = {
   'conclude': concludeSurface,
   'help': (_cwd, { dotpath, item, ...flags }) => helpSurface(dotpath, { arg: item, flags }),
   'verdicts': (cwd, { unit }) => verdictsSurface(cwd, unit ?? null),
+  'start-menu': (cwd) => startMenuSurface(cwd),
 };
 
 /**

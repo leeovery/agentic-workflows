@@ -112,6 +112,7 @@ const { CONCLUDE_USAGE, runInvestigationVerb } = require('./domain/investigation
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
+const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
 const { leaveNext } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
@@ -322,6 +323,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
   ${TOPIC_HANDOFF_USAGE}
+  ${UNIT_HANDOFF_USAGE}
   roadmap state
   roadmap add <name> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
@@ -435,6 +437,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render directive-stop --directive <id>
   render help <menu> [<arg>] [--<name> <value> …]
   render verdicts [--unit <unit>]
+  render start-menu
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -2317,12 +2320,15 @@ function runCode(call, argv) {
 // surface's. Nothing is written.
 // ---------------------------------------------------------------------------
 
+/** The forms that name no skill: a topic by its unit and name, and a unit where it stands. @type {Record<string, (cwd: string, args: string[]) => import('./domain/handoff.cjs').Handoff>} */
+const HANDOFF_FORMS = { topic: topicHandoff, unit: unitHandoff };
+
 /** @param {Call} call @param {string[]} argv */
 function runHandoff(call, argv) {
   const [skill, ...args] = argv;
   try {
-    if (skill === undefined) throw new Error(`Usage: engine handoff <skill|/skill> [args …], or engine ${TOPIC_HANDOFF_USAGE}`);
-    respondSections(call, handoffSections(skill === 'topic' ? topicHandoff(call.cwd, args) : resolveHandoff(call.cwd, skill, args)));
+    if (skill === undefined) throw new Error(`Usage: engine handoff <skill|/skill> [args …], engine ${TOPIC_HANDOFF_USAGE}, or engine ${UNIT_HANDOFF_USAGE}`);
+    respondSections(call, handoffSections(Object.hasOwn(HANDOFF_FORMS, skill) ? HANDOFF_FORMS[skill](call.cwd, args) : resolveHandoff(call.cwd, skill, args)));
   } catch (err) {
     failJson(call, err);
   }

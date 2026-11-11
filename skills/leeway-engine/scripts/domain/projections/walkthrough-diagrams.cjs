@@ -20,10 +20,11 @@
 const path = require('path');
 const { wrap, wrapWithPrefix, signpost } = require('../../kernel/render.cjs');
 const { loadActiveManifests } = require('../reads.cjs');
-const { startDetail } = require('../start.cjs');
+const { startMenuRead } = require('../start-menu.cjs');
+const { MENUS, menuBody } = require('../menus.cjs');
 const { roadmapState } = require('../roadmap.cjs');
 const { epicDetail } = require('../epic-detail.cjs');
-const { startOverview, startMenu } = require('./start.cjs');
+const { startMenuScreen } = require('./start-menu.cjs');
 const { roadmapMapView } = require('./roadmap.cjs');
 const { epicDashboard } = require('./epic.cjs');
 const { illustrate } = require('./surfaces.cjs');
@@ -292,14 +293,13 @@ function fixtureDir(surface) {
   return dir;
 }
 
-/** The start overview and the menu beneath it, as a first `/leeway` of the day shows them. @returns {string} */
+/** The start menu, as a first `/leeway` of the day shows it. @returns {string} */
 function startSample() {
-  const dir = fixtureDir('start-menu');
-  const detail = startDetail(dir);
+  const screen = startMenuScreen(startMenuRead(fixtureDir('start-menu'), { waits: false }));
   // The menu's opening dot rule frames a live gate; a sample has nothing to
-  // frame, so the rows arrive under the overview directly.
-  const rows = illustrate(() => startMenu(detail).rendered).split('\n').slice(1).join('\n');
-  return asPlainText(`${startOverview(detail).replace(/\n+$/, '')}\n\n${rows}`);
+  // frame, so the rows arrive under what it shows directly.
+  const rows = illustrate(() => menuBody(MENUS['start-menu'], {}, screen)).split('\n').slice(1).join('\n');
+  return asPlainText(`${screen.shows.join('\n')}\n\n${rows}`);
 }
 
 /** The roadmap after two of its launch items have been started as one epic. @returns {string} */

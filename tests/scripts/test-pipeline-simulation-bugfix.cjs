@@ -34,13 +34,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
-const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
-const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start.cjs'));
-const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/workunit.cjs'));
-const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, startUnit, enterEntry, handoff, answerGate, linearMenu, linearPick, backToStart, startNew, specToBuild,
+  Sim, startUnit, enterEntry, handoff, answerGate, continueUnit, startRow, startNew, specToBuild,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded,
 } = require('./pipeline-world.cjs');
 
@@ -102,7 +97,7 @@ describe('pipeline simulation: bugfix', () => {
   it('bugfix (19.S8, 22.S21, 24.S17, 11.S19): the investigation through its own verbs to its conclude → a gap answered before the spec, concluded again → the spec, entered at the unit, to ready to build', async () => {
     const wu = 'crash-fix';
     startUnit(sim, 'feature', 'saving', 'Saving the file');
-    startNew(sim, 'bugfix');
+    startNew(sim);
     const started = startUnit(sim, 'bugfix', wu, 'Fix the crash');
     assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', wu] });
 
@@ -114,12 +109,11 @@ describe('pipeline simulation: bugfix', () => {
       ['The save writes a null that nothing checks.', 'The save does hold', 'The save does atomic'],
     ], 'the hunt\'s findings, its root cause, the person\'s answer and the fix as replaced stand on the topic\'s record (19.S8), and the live server\'s permission never does');
     concluded(sim, wu);
-    // A session that stops here resumes from the bugfix's continue menu, which
-    // hands off where the conclude does — or goes back to the start menu,
-    // where the bugfix is still the row it was picked from.
-    assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);
-    assert.ok(backToStart(sim, linearMenu(sim, wu).keys)
-      .some((k) => k.action === 'continue_work_unit' && k.route === `/leeway-continue-linear ${wu}`));
+    // A session that stops here carries on from the start menu, the bugfix's
+    // row saying where it stands, and its Continue hands off where the
+    // conclude does.
+    assert.strictEqual(startRow(sim, wu), 'Continue bugfix: Crash Fix — *specification*');
+    assert.strictEqual(continueUnit(sim, wu).line, `→ Specification · ${wu}`);
     // The knowledge base reaches the root cause through the topic's record
     // (22.6.8).
     const query = async (/** @type {string} */ terms) => (await sim.engineAsync(['knowledge', 'query', terms])).stdout;
@@ -127,16 +121,11 @@ describe('pipeline simulation: bugfix', () => {
 
     // A gap routed back before the spec lands in the topic's mailbox, waiting
     // for its investigation: the delivery reopens the item, and the start
-    // menu's row and the bugfix's pipeline row say what waits.
+    // menu's row has the bugfix back in its investigation.
     sim.write('.leeway/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
     const gapLand = sim.run(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
     assert.strictEqual(gapLand.reopened, true);
-    const startRow = () => startMenu(START_GATEWAY.discover(sim.dir)).keys
-      .map((k) => drawLabel(k.label)).find((label) => label.startsWith('Continue "Crash Fix"'));
-    const bugfixUnit = () => LIB.detail.activeWorkUnit(sim.dir, wu).unit;
-    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · mail waiting');
-    assert.deepStrictEqual(bugfixUnit().mail_phases, ['investigation']);
-    assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · mail waiting\]/);
+    assert.strictEqual(startRow(sim, wu), 'Continue bugfix: Crash Fix — *investigation*');
 
     // The investigation entered again raises the message first, and makes
     // its resume's reads; the message's question goes on the map and the
@@ -151,8 +140,6 @@ describe('pipeline simulation: bugfix', () => {
     const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
     sim.run(['topic', 'answered', wu, wu, '001-retry-semantics', '--entry', gapQuestion.id]);
     assert.strictEqual(sim.run(['topic', 'mailbox', wu, wu]).files.length, 0);
-    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the answered mailbox retires the cue');
-    assert.strictEqual(bugfixUnit().mail_phases, undefined);
     sim.run(['ledger', 'decide', `${wu}.investigation.${wu}`, '--answers', gapQuestion.id], null,
       JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'Retry twice, then fail.', why: 'The spec needs a bound.' }));
     const record = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
@@ -162,7 +149,7 @@ describe('pipeline simulation: bugfix', () => {
 
     // The spec, entered at the unit — its route naming no topic — through its
     // corridor to ready to build's pick; the spec is never indexed (11.1.2).
-    assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);
+    assert.strictEqual(continueUnit(sim, wu).line, `→ Specification · ${wu}`);
     specToBuild(sim, wu, [wu]);
     assert.doesNotMatch(await query('holds as decided'), /^\[specification \|/m);
     // A build by its cut leaves nothing to revisit — never the spec
@@ -172,7 +159,7 @@ describe('pipeline simulation: bugfix', () => {
 
   it('bugfix moved to a feature from its investigation (19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {
     const wu = 'save-crash';
-    startNew(sim, 'bugfix');
+    startNew(sim);
     startUnit(sim, 'bugfix', wu, 'Fix the crash');
     handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
     await rootCaused(sim, wu);

@@ -801,11 +801,6 @@ describe('entry points — where a walk may begin', () => {
     assert.match(cases.entryErrors('leeway-help')[0], /not somewhere a session starts/);
   });
 
-  it('rejects any other navigation skill — always invoked by leeway, never cold', () => {
-    const [error] = cases.entryErrors('leeway-continue-linear');
-    assert.match(error, /not somewhere a session starts/);
-  });
-
   it('rejects the bridge — always invoked as a phase ends', () => {
     assert.match(cases.entryErrors('leeway-bridge')[0], /not somewhere a session starts/);
   });

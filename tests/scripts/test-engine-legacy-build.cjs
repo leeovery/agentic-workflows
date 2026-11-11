@@ -36,11 +36,11 @@ const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES } = require('../../skills/leeway-
 const { epicMenu, epicCompletedMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 const bridge = require('../../skills/leeway-bridge/scripts/gateway.cjs');
 const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
-const linear = require('../../skills/leeway-continue-linear/scripts/gateway.cjs');
 const epic = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
-const start = require('../../skills/leeway/scripts/gateway.cjs');
-const { startMenu, manageListView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
-const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { startDetail } = require('../../skills/leeway-engine/scripts/domain/start.cjs');
+const { manageListView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
+const { startMenuRead } = require('../../skills/leeway-engine/scripts/domain/start-menu.cjs');
+const { startMenuScreen } = require('../../skills/leeway-engine/scripts/domain/projections/start-menu.cjs');
 
 const done = (...names) => Object.fromEntries(names.map((n) => [n, { status: 'completed' }]));
 const at = (name, status) => ({ [name]: { status } });
@@ -110,24 +110,9 @@ describe('a unit built under the old plan reads its items and waits on the migra
     assert.deepStrictEqual(dumps, Object.fromEntries(LIVE.map((name) => [name, ['next_route: (none)']])));
   });
 
-  it('the linear menu shows the migration\'s line and the way back alone, its tree drawn from its items, nothing finalising', () => {
-    for (const name of LIVE) {
-      const view = linear.view(dir, name);
-      assert.deepStrictEqual(lines(view, /^  ([a-z]|[0-9])  /), [`  b  back  back  ${name}  → (internal)`], name);
-      assert.ok(view.includes(`· · · · · · · · · · · ·\n${waiting(name)}\n\n**\`◆ What next?\`**\n\n**\`b/back\`** → Return to the start menu`), name);
-      assert.ok(!view.includes('finalis'), name);
-    }
-    assert.deepStrictEqual(lines(linear.view(dir, 'old-bugfix'), /^  [├└]─ /), [
-      '  ├─ ✓ Investigation     [completed]',
-      '  ├─ ✓ Specification     [completed]',
-      '  ├─ ✓ Implementation    [completed]',
-      '  └─ → Review            [ready]',
-    ]);
-    assert.deepStrictEqual(Object.fromEntries(RETIRED_UNITS.map((name) => [name, lines(linear.view(dir, name), /^  [├└]─ |^(work_type|phase_label): /)])), {
-      'done-concern': ['work_type: cross-cutting', `phase_label: ${AT_THE_CUT}`, '  └─ ✓ Discussion    [completed]'],
-      'lab-concern': ['work_type: cross-cutting', `phase_label: ${AT_THE_CUT}`, '  ├─ ◐ Experiment    [in-progress]', '  └─ ◐ Discussion    [in-progress]'],
-      'old-concern': ['work_type: cross-cutting', `phase_label: ${AT_THE_CUT}`, '  └─ ◐ Discussion    [in-progress]'],
-    }, 'a retired type\'s unit waits on the cut whatever its items have in flight');
+  it('Continue refuses a feature, bugfix or quick-fix in the migration\'s line', () => {
+    const refusals = Object.fromEntries(LIVE.map((name) => [name, JSON.parse(call(dir, ['handoff', 'unit', name]).stderr).error]));
+    assert.deepStrictEqual(refusals, Object.fromEntries(LIVE.map((name) => [name, waiting(name)])));
   });
 
   it('the epic menu shows the migration\'s line and no way into its build, its completed topics its decided discussions', () => {
@@ -139,32 +124,17 @@ describe('a unit built under the old plan reads its items and waits on the migra
       [['1', 'discussion', 'alpha'], ['2', 'discussion', 'beta'], ['b', null, null]]);
   });
 
-  it('the start menu reads its next phase off its items, never offering to finalise it, and a closed one its last', () => {
-    const menu = start.discover(dir);
-    assert.deepStrictEqual({
-      units: ['epics', 'features', 'bugfixes'].flatMap((group) => menu[group].work_units.map((u) => `${u.name}: ${u.phase_label}`)),
-      closed: [...menu.completed, ...menu.cancelled].map((u) => `${u.name}: ${u.last_phase}`),
-    }, {
-      units: [
-        'old-epic: implementation (in-progress)',
-        'built-feature: ready for review',
-        `done-concern: ${AT_THE_CUT}`,
-        `lab-concern: ${AT_THE_CUT}`,
-        `old-concern: ${AT_THE_CUT}`,
-        'plan-feature: planning (in-progress)',
-        'reviewed-feature: pipeline complete',
-        'reviewing-feature: review (in-progress)',
-        'old-bugfix: ready for review',
-      ],
-      closed: ['done-feature: review', 'dropped-feature: planning'],
-    });
+  it('the start menu says each waits on the migration\'s cut, whatever its items have in flight, and the closed ones bring the view', () => {
+    const { units, closed } = startMenuRead(dir);
+    assert.deepStrictEqual(Object.fromEntries(units.map(({ name, progress }) => [name, progress])),
+      Object.fromEntries([...LIVE, 'old-epic'].sort().map((name) => [name, AT_THE_CUT])));
+    assert.strictEqual(closed, true);
   });
 
   it('a retired type\'s unit: listed with the features by its own type, on the start menu and manage\'s list, read by every verb, no phase or topic of it entered nor sent to, the type refused only where a unit is made', () => {
-    const detail = start.discover(dir);
-    const row = startMenu(detail).keys.find((k) => k.work_unit === 'old-concern');
-    assert.deepStrictEqual([row.work_type, row.route, drawLabel(row.label)],
-      ['cross-cutting', '/leeway-continue-linear old-concern', `Continue "Old Concern" — *cross-cutting, ${AT_THE_CUT}*`]);
+    const detail = startDetail(dir);
+    const row = startMenuScreen(startMenuRead(dir)).rows.find((r) => r.label.head === 'Continue cross-cutting: Old Concern');
+    assert.deepStrictEqual([row.label.tail, row.next], [AT_THE_CUT, { kind: 'engine', argv: ['handoff', 'unit', 'old-concern'] }]);
     assert.deepStrictEqual(manageListView(detail).rows.filter((r) => RETIRED_UNITS.includes(r.work_unit)).map((r) => r.work_type), ['cross-cutting', 'cross-cutting', 'cross-cutting']);
     assert.strictEqual(call(dir, ['manifest', 'get', 'old-concern', 'work_type']).stdout.trim(), 'cross-cutting');
     const message = path.join(dir, '.leeway', '.cache', 'message.md');

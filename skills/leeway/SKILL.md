@@ -225,42 +225,6 @@ Say `To open one of {work_unit}'s topics directly, name it too: /leeway {work_un
 
 ---
 
-## Step 1: Discover and Route
+## Step 1: The Start Menu
 
-!`node .claude/skills/leeway/scripts/gateway.cjs`
-
-If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run — and on a return to this step the output above is stale. In either case, execute the script before continuing:
-
-```bash
-node .claude/skills/leeway/scripts/gateway.cjs
-```
-
-Parse the output to understand the current workflow state:
-
-**From the per-type sections** (`=== EPICS ===` through `=== QUICK-FIXES ===`):
-- one line per active work unit — the name
-
-**From `=== COMPLETED ===` / `=== CANCELLED ===`** (present only when non-empty):
-- one line per closed work unit — `{name} ({work_type}, last phase: {phase})`
-
-**From `=== INBOX ===` / `=== ARCHIVED ===`** (present only when items exist):
-- one line per item — `{slug} ({type}, {date}) — {title}`
-
-**From `=== STATE ===`:**
-- `has_any_work` and the per-type counts
-- `completed_count` / `cancelled_count`
-- `has_inbox` / `inbox_count`, `has_archived` / `archived_count`
-
-Display and routing derive from the `view` snapshot in **active-work.md** — this dump is the index, not the display surface.
-
-#### If `state.has_any_work` is false
-
-Load **[empty-state.md](references/empty-state.md)** and follow its instructions as written.
-
-→ On return, return to **Step 1**.
-
-#### Otherwise
-
-Load **[active-work.md](references/active-work.md)** and follow its instructions as written.
-
-→ On return, proceed as the reference directed.
+Load **[start-menu.md](references/start-menu.md)** and follow its instructions as written.

@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/leeway/scripts/gateway.cjs');
+const { discover } = require('../../skills/leeway/scripts/gateway.cjs');
 
 const ADAPTER = path.join(__dirname, '../../skills/leeway/scripts/gateway.cjs');
 
@@ -333,112 +333,6 @@ describe('leeway discovery', () => {
   });
 });
 
-describe('leeway format', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('empty project pins the full dump byte-exactly', () => {
-    const out = format(discover(dir));
-    assert.strictEqual(out, [
-      '=== EPICS ===',
-      '=== FEATURES ===',
-      '=== BUGFIXES ===',
-      '=== QUICK-FIXES ===',
-      '=== STATE ===',
-      'has_any_work: false',
-      'counts: 0 epic, 0 feature, 0 bugfix, 0 quick-fix',
-      'completed_count: 0',
-      'cancelled_count: 0',
-      'has_inbox: false',
-      'inbox_count: 0',
-      'has_archived: false',
-      'archived_count: 0',
-      '',
-    ].join('\n'));
-  });
-
-  it('populated project pins the full dump byte-exactly', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { exploration: { status: 'completed' }, auth: { status: 'in-progress' } } },
-      },
-    });
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
-    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { dropped: { status: 'completed' } } } } });
-    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
-    createFile(dir, '.leeway/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
-    createFile(dir, '.leeway/.inbox/quickfixes/2026-03-28--bump-dep.md', '# Bump Dep\n\nContent.');
-    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-03-01--old-idea.md', '# Old Idea\n\nContent.');
-    const out = format(discover(dir));
-    assert.strictEqual(out, [
-      '=== EPICS ===',
-      '  v1',
-      '=== FEATURES ===',
-      '  auth',
-      '=== BUGFIXES ===',
-      '  crash',
-      '=== QUICK-FIXES ===',
-      '  rename-api',
-      '=== COMPLETED ===',
-      '  done-feat (feature, last phase: review)',
-      '=== CANCELLED ===',
-      '  dropped (bugfix, last phase: investigation)',
-      '=== INBOX ===',
-      '  smart-retry (idea, 2026-03-19) — Smart Retry',
-      '  login-timeout (bug, 2026-03-18) — Login Timeout',
-      '  bump-dep (quick-fix, 2026-03-28) — Bump Dep',
-      '=== ARCHIVED ===',
-      '  old-idea (idea, 2026-03-01) — Old Idea',
-      '=== STATE ===',
-      'has_any_work: true',
-      'counts: 1 epic, 1 feature, 1 bugfix, 1 quick-fix',
-      'completed_count: 1',
-      'cancelled_count: 1',
-      'has_inbox: true',
-      'inbox_count: 3',
-      'has_archived: true',
-      'archived_count: 1',
-      '',
-    ].join('\n'));
-  });
-
-  it('shows (last phase: none) for a closed unit with nothing completed', () => {
-    createManifest(dir, 'never-started', { work_type: 'feature', status: 'cancelled' });
-    const out = format(discover(dir));
-    assert.ok(out.includes('  never-started (feature, last phase: none)'));
-  });
-
-  it('inbox item with no H1 falls back to the slug as its title', () => {
-    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
-    const out = format(discover(dir));
-    assert.ok(out.includes('  no-title (idea, 2026-03-19) — no-title'));
-  });
-
-  it('omits COMPLETED, CANCELLED, INBOX, and ARCHIVED sections when empty', () => {
-    const out = format(discover(dir));
-    assert.ok(!out.includes('=== COMPLETED ==='));
-    assert.ok(!out.includes('=== CANCELLED ==='));
-    assert.ok(!out.includes('=== INBOX ==='));
-    assert.ok(!out.includes('=== ARCHIVED ==='));
-  });
-
-  it('carries no phase labels or active phases — the view verb owns them', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: { discussion: { items: { exploration: { status: 'completed' } } } },
-    });
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    const out = format(discover(dir));
-    assert.ok(!out.includes('  v1 ('));
-    assert.ok(!out.includes('  auth ('));
-  });
-});
-
 describe('leeway sub-view sections', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -493,11 +387,6 @@ describe('leeway sub-view sections', () => {
     assert.ok(out.includes('inbox_count: 0\n'), out);
     assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\nNo inbox items.\n'), out);
     assert.ok(!out.includes('=== MENU'), out);
-  });
-
-  it('reads the brownfield research owed from the project manifest, the p row noting it (8.12.13)', () => {
-    createFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' }));
-    assert.match(run(['view']), /^\*\*`p\/product`\*\* +→ Talk about the product — \*research owed\*$/m);
   });
 
   it('a set of any mix offers work and the roadmap row, its pre-seed the largest shape in it — never a blocker', () => {

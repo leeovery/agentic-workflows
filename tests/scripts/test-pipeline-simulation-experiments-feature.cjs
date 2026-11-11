@@ -21,7 +21,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, sessionLog, carryOn, menuEntry, handoffEntry, enterEntry, bridgeTo, waitAgents, startKeys, decideTopic, askedOn, DECIDED_ITEMS,
+  Sim, sessionLog, continueUnit, startMenu, handoffEntry, enterEntry, bridgeTo, waitAgents, decideTopic, askedOn, DECIDED_ITEMS,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -40,7 +40,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
   it('a single-topic back: the laboratory picker re-renders the start menu', () => {
     const wu = 'frame-rate';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Frame pacing', '--session-log-file', sessionLog(sim, wu)]);
-    menuEntry(sim, wu);
+    continueUnit(sim, wu);
     handoffEntry(sim, wu, 'discussion', wu);
     enterEntry(sim, wu, 'discussion', wu);
     sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# Discussion — ${wu}\n`);
@@ -53,19 +53,17 @@ describe('pipeline simulation: experiments, in a feature', () => {
     sim.handOver();
 
     // Two live records put the pick to the user; a back out of it, on a unit
-    // whose continue menu would hand straight back on, lands on the start
-    // menu — the arrival recorded, the state re-read, the unit still there.
+    // whose Continue would hand straight back on, lands on the start menu —
+    // no position, the state re-read, the unit still there.
     assert.match(sim.render(['experiment-pick', `${wu}.experiment.${wu}`], { expect: 'content' }), /b\/back/);
-    const startKey = () => startKeys(sim).find((k) => k.work_unit === wu);
-    assert.strictEqual(sim.run(['session', 'repair']).repaired, false, 'the sim has no tmux label to put back');
-    assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
-    assert.ok(startKey(), 'the start menu lists the unit the laboratory was entered from');
+    assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`),
+      'the start menu lists the unit the laboratory was entered from');
   });
 
   it('feature experiments: the waiting conversation routes to the laboratory and back, and decided over them goes on to its specification', () => {
     const wu = 'render-path';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Rendering decisions', '--session-log-file', sessionLog(sim, wu)]);
-    menuEntry(sim, wu);
+    continueUnit(sim, wu);
     handoffEntry(sim, wu, 'discussion', wu);
     enterEntry(sim, wu, 'discussion', wu);
     sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# Discussion — ${wu}\n`);
@@ -123,7 +121,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
   it('the question an experiment measures: waiting on the map while it runs, held from Claude\'s close, and once the person closed it first, the topic held from its spec until the report, a message, is read', () => {
     const wu = 'cold-start';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Launch time', '--session-log-file', sessionLog(sim, wu)]);
-    menuEntry(sim, wu);
+    continueUnit(sim, wu);
     handoffEntry(sim, wu, 'discussion', wu);
     enterEntry(sim, wu, 'discussion', wu);
     const at = `${wu}.discussion.${wu}`;

@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit, sectionOf, completeUnit, startItem } = require('./engine-harness.cjs');
-const { Sim, sessionLog, menuEntry, enterEntry, discussed, askedOn } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -202,7 +202,7 @@ describe('pipeline simulation: workunit', () => {
 
     // The discussion lands what the user shared mid-session — a binary and a
     // markdown source — and its log links them.
-    menuEntry(sim, feat);
+    continueUnit(sim, feat);
     enterEntry(sim, feat, 'discussion', feat);
     sim.write('shared/Dockset 05.PNG', 'png bytes\n');
     sim.write('shared/Onboarding.txt', 'the walkthrough\n');

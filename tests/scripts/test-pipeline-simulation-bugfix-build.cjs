@@ -27,7 +27,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
   Sim, investigated, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, buildEntry, writePhaseTasks, startPhase,
-  builders, taskBuilt, landed, placeIn, linearBuildPick, reviewNext, areaRead, testsRead, PASSED_REPORT, VERIFY_FILES,
+  builders, taskBuilt, landed, placeIn, continueInto, reviewNext, areaRead, testsRead, PASSED_REPORT, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
 /** @typedef {import('./pipeline-world.cjs').Sim} Sim */
@@ -87,7 +87,7 @@ describe('pipeline simulation: a bugfix\'s build', () => {
     sim.run(['land', 'phase', WU, '1']);
     sim.run(['checklist', 'close', 'phase-close', WU, '1']);
 
-    linearBuildPick(sim, WU, 'review');
+    continueInto(sim, WU, 'review');
     const { move, fixPhase } = reviewNext(sim, WU);
     assert.strictEqual(move, 'round');
     areaRead(sim, WU, SECOND_BASKET);

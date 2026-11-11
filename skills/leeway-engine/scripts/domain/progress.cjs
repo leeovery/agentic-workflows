@@ -13,16 +13,17 @@
 //   since the tracker holds only the phases whose tasks are written (7.4.2,
 //   28.2.1): "build, phase 2 of 3", and a phase whose start has not closed,
 //   its tasks not written, says so: "build, phase 3 of 5, not yet written".
-// - Any other phase is said by its name alone ("investigation", "review"),
-//   and a unit of a type the reshape retires as waiting on the migration's
-//   cut, as All work says it.
+// - Any other phase is said by its name alone ("investigation", "review").
+// - A unit waiting on the migration's cut — of a type the reshape retires,
+//   or built under the old plan (P12) — says so, whatever its items have in
+//   flight, since nothing is done in it until the cut.
 // ---------------------------------------------------------------------------
 
 const { nowOf, unitRead } = require('./projections/board-standing.cjs');
 const { epicWords } = require('./projections/board-unit.cjs');
 const { mapCount } = require('./projections/board-discovery.cjs');
 const { counted } = require('./projections/map.cjs');
-const { cutPhases, cutLength, phaseClosed, phaseStarted } = require('./derivations.cjs');
+const { cutPhases, cutLength, phaseClosed, phaseStarted, awaitsCut } = require('./derivations.cjs');
 
 /** How far a unit has come: its phase, and how far into it where the phase has a measure. @typedef {{phase: string, far: string|null}} Progress */
 
@@ -52,6 +53,7 @@ function buildMeasure(manifest) {
  * @returns {Progress}
  */
 function progressOf(cwd, manifest) {
+  if (awaitsCut(manifest)) return { phase: 'cut', far: null };
   const { phase } = nowOf(unitRead(cwd, manifest));
   return { phase, far: phase === 'build' ? buildMeasure(manifest) : epicMeasure(cwd, manifest, phase) };
 }

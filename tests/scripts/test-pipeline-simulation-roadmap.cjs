@@ -22,11 +22,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit, completeUnit } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, carryOn, arrive, handoff, enterEntry, discussed, pickRoute, startKeys, specEntry, literal,
+  Sim, sessionLog, arrive, handoff, enterEntry, discussed, startMenu, startPick, specEntry, literal,
   shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap,
 } = require('./pipeline-world.cjs');
 
@@ -132,7 +131,7 @@ describe('pipeline simulation: roadmap', () => {
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
     // The product's conversation opens before any item or work unit exists,
     // and a file the person shares lands in the product's assets.
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     sim.handOver();
     sim.run(['enter', 'discovery', 'product']);
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
@@ -264,12 +263,9 @@ describe('pipeline simulation: roadmap', () => {
     assert.match(failureGate, /⚑ Knowledge query failed\n {2}Error: loadStore: corrupted store file/);
     assert.match(failureGate, /MENU: query failure gate/);
 
-    // The home's `b/back`: the start menu records that the session is working
-    // nowhere first, then is re-rendered over the state the roadmap was
-    // entered from.
-    assert.strictEqual(sim.run(['session', 'repair']).repaired, false, 'the sim has no tmux label to put back');
-    assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
-    assert.match(START_GATEWAY.format(START_GATEWAY.discover(sim.dir)), /has_any_work: true/);
+    // The home's `b/back`: the start menu drawn again, the session working
+    // nowhere.
+    startMenu(sim);
 
     // Shipping the unit flips the derived state to shipped — nothing stored.
     completeUnit(sim.dir, 'mvp');
@@ -287,7 +283,7 @@ describe('pipeline simulation: roadmap', () => {
   });
 
   it('roadmap: something put aside in the product\'s conversation goes on the roadmap at once, its source the open log', () => {
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     sim.handOver();
     sim.run(['enter', 'discovery', 'product']);
     const source = '.product/sessions/session-001.md';

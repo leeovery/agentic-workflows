@@ -31,10 +31,11 @@ const { leaningCall } = require('./ledger-world.cjs');
 
 const WU = 'ledger';
 
-/** A feature from start this work through its spec to ready to build's pick in auto, its cut's one phase built, reviewed, merged and closed, the person stopped on the way at start this work and the one screen alone. */
+/** A feature from start this work through its spec to ready to build's pick in auto, its cut's one phase built, reviewed, merged and closed, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu. */
 const questionsWorld = worldFrom('pipeline-review-questions-', (sim) => {
   cutClosed(sim, WU);
-  assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build'], '19.S6: no gate stops the person between the one screen and the review');
+  assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build', 'start menu', 'start menu'],
+    '19.S6: between the one screen and the review, no gate stops the person — they pick the unit on the start menu alone, continuing it into its build and its review');
 });
 
 describe('pipeline simulation: a question asked in a review round', () => {
