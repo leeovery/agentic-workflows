@@ -41,7 +41,7 @@ const DEFAULT_QUERY_LIMIT = 10;
  * within QUERY_TIMEOUT_MS, a transient failure tried once more, a rate limit
  * waited out for QUERY_WAIT_BUDGET_MS in all — or null when none is.
  * @param {Config} cfg
- * @param {import('../../kernel/knowledge/providers/openai-engine.cjs').Patience} [patience]  over the query's own, for a caller that must wait less
+ * @param {import('../../kernel/knowledge/providers/openai-engine.cjs').Patience} [patience]  over the query's own, for a caller that must wait less; its `sleep` waits out the retry's backoff too
  * @returns {EmbeddingProvider|null}
  */
 function queryProvider(cfg, patience = {}) {
@@ -50,10 +50,11 @@ function queryProvider(cfg, patience = {}) {
     waitBudget: new WaitBudget(QUERY_WAIT_BUDGET_MS),
     ...patience,
   });
+  const retry = patience.sleep === undefined ? QUERY_RETRY : { ...QUERY_RETRY, sleep: patience.sleep };
   return provider && {
     model: () => provider.model(),
     dimensions: () => provider.dimensions(),
-    embedBatch: (texts) => withRetry(async () => provider.embedBatch(texts), QUERY_RETRY),
+    embedBatch: (texts) => withRetry(async () => provider.embedBatch(texts), retry),
   };
 }
 

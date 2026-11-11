@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // The decided suites' world and helpers (test-engine-decided-screen.cjs,
 // test-engine-decided-yes.cjs, test-engine-decided-close.cjs, and the
-// board's over it, test-engine-board-views.cjs and
-// test-engine-board-units.cjs): an epic, `fumi`, its two topics under
+// board's over it, test-engine-board-views.cjs,
+// test-engine-board-epic.cjs and test-engine-board-units.cjs): an epic, `fumi`, its two topics under
 // discussion, the note window's map written through the ledger's verbs —
 // the person's own answer, Claude's calls of two kinds, each labelled by the
 // stub armed for it (labels.cjs), and one unlabelled, a call handed over —

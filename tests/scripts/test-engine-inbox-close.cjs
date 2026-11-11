@@ -10,7 +10,7 @@
 // item's record with it. Refused, nothing written: a unit the project
 // lacks, a path no live item's, and a record that cannot be written, every
 // file put back. Finish's reading of the record and of the build's log is
-// test-engine-finish.cjs's.
+// test-engine-finish-inbox.cjs's.
 //
 // Layer: git. World: the project world with a unit, `pay`, and three
 // inbox items, built once (`fixtureFrom`) and copied for each test.
@@ -69,7 +69,7 @@ describe('inbox close (18.6.4, 18.6.6)', () => {
     ]]);
   });
 
-  it('18.6.4: closes a set for the unit that resolved it in one commit, each recorded beside what the record held', () => {
+  it('18.6.4, 4.S34: closes a set for the unit that resolved it in one commit, each moved to the archive under its name and recorded beside what the record held', () => {
     inbox(['close', 'none', live('loop')]);
     const res = inbox(['close', UNIT, live('phone'), live('button')]);
 

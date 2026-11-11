@@ -24,7 +24,7 @@ const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, okSectionsAsync, refusedPristine, stateGit, statePath, layout, setupGitFixture, fixtureFrom, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, callAsync, okSectionsAsync, refusedPristine, stateGit, statePath, layout, setupGitFixture, fixtureFrom, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -499,11 +499,12 @@ function ledgerWriteHelpers(dir) {
 }
 
 // ---------------------------------------------------------------------------
-// The copies suites (test-engine-ledger-copies.cjs, -boot, -race).
+// The copies suites (test-engine-ledger-copies*.cjs).
 // ---------------------------------------------------------------------------
 
 const NOTE_COPY = layout.knowledge('records', 'fumi', 'note-window.md');
 const SPACE_COPY = layout.knowledge('records', 'fumi', 'space-homing.md');
+const MINT_COPY = layout.knowledge('records', 'mint', 'mint.md');
 
 /**
  * The copies suites' helpers over the project `dir()` names, the suite's own
@@ -511,7 +512,7 @@ const SPACE_COPY = layout.knowledge('records', 'fumi', 'space-homing.md');
  * @param {() => string} dir
  */
 function copiesHelpers(dir) {
-  const { write } = ledgerHelpers(dir);
+  const { write, entries, full } = ledgerHelpers(dir);
 
   /** A question asked at `address`: its short id. @param {string} address @param {string} text */
   function ask(address, text) {
@@ -540,12 +541,29 @@ function copiesHelpers(dir) {
     return { question, decision: decide(NOTE, question, 'A floating panel.', [], { rules_out: ['a document window', 'a sheet'] }) };
   }
 
-  return { write, ask, decide, copy, indexedText, floatingPanel };
+  /** The day an entry was written, as a copy shows it. @param {string} short */
+  function writtenOn(short) {
+    return entries().find((e) => e.id === full(short)).at.slice(0, 10);
+  }
+
+  /** `old` replaced at `address`, a changed mind: the response. @param {string} address @param {string} old @param {Record<string, unknown>} content */
+  function change(address, old, content) {
+    return write('replace', address, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old one'], ...content });
+  }
+
+  /** A read by area: the knowledge base searched over the records alone. @param {string[]} terms */
+  async function byArea(...terms) {
+    const res = await callAsync(dir(), ['knowledge', 'query', ...terms, '--phase', 'record']);
+    assert.strictEqual(res.code, 0, res.stderr);
+    return res.stdout;
+  }
+
+  return { write, ask, decide, copy, indexedText, floatingPanel, writtenOn, change, byArea };
 }
 
 module.exports = {
   UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, writtenWorld, askedWorld, useCopiesWorld, ledgerHelpers, leaningCall, answeredRaise,
   LINKS, HEAP_MB, ids, ledgerReadHelpers,
   ID, AT_NOTE, ledgerWriteHelpers,
-  NOTE_COPY, SPACE_COPY, copiesHelpers,
+  NOTE_COPY, SPACE_COPY, MINT_COPY, copiesHelpers,
 };

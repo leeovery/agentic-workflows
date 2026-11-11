@@ -86,6 +86,14 @@ describe('roadmap projections: pull working set', () => {
     ].join('\n'));
   });
 
+  it('an item waiting on no horizon trails under (no horizon), the DATA tables naming it so (18.8.20)', () => {
+    const view = roadmapPullSetView(state([ROWS[1], { ...ROWS[3], horizon: null }]));
+    assert.deepStrictEqual(view.rows[1], { n: 2, name: 'loyalty', horizon: '(no horizon)', kind: 'idea' });
+    assert.match(view.data, /\n {2}2 {2}loyalty {2}\(no horizon\) {2}idea\n/);
+    assert.match(view.data, /\n {2}\(no horizon\) {2}1$/);
+    assert.match(view.display, /\(no horizon\)\n {2}└─ 2\. Loyalty — rewards/);
+  });
+
   it('a single waiting item takes the bare `1` option; none refuses', () => {
     const one = roadmapPullSetView(state([ROWS[1]]));
     assert.match(one.menu, /`1`/);

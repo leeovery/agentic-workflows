@@ -10,7 +10,8 @@
 // test-engine-board-review-rounds.cjs and -rounds-end.cjs, and where it
 // stands on every view test-engine-board-review-standing.cjs; a
 // specification, test-engine-board-spec.cjs and -spec-waits.cjs; a discussion and an experiment,
-// test-engine-board-views.cjs; a unit's page and All work,
+// test-engine-board-views.cjs; an epic's page,
+// test-engine-board-epic.cjs; another unit's page and All work,
 // test-engine-board-units.cjs.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),

@@ -4,8 +4,8 @@
 // driven through the engine CLI: inbox notes moved into the product's notes
 // as roadmap items under one commit — the kind from the note's folder, the
 // origin its file stem, the note the item's one source — each refusal before
-// anything moves; a capture of a name the product's notes hold taking the
-// next free one; and an archived item's note kept where it is. The rollbacks
+// anything moves; one name across the inbox and the product's notes, a
+// capture of a name any kind holds taking the next free one; and an archived item's note kept where it is. The rollbacks
 // are reached by failing a rename in process — the disk fault no CLI sequence
 // can stage.
 //
@@ -196,16 +196,28 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
     assert.match(output(dir, ['render', 'roadmap-view']), /Login Crash/);
   });
 
-  it('a capture the same day of a title a note in the product\'s notes holds takes the next free -{n}, of whichever kind, and comes onto the roadmap too (4.11.16)', () => {
-    const capture = (/** @type {string} */ kind, /** @type {string} */ text) =>
-      path.relative(dir, withFrozenClock(() => okSections(dir, ['inbox', 'capture', kind], { stdin: text })).res.captured);
-    runOk(dir, batch([{ name: 'offline-mode', horizon: 'later', summary: 's', note: capture('idea', '# Offline Mode\n') }]));
+  it('one name across the inbox: a title captured the same day in every kind takes the next free -{n} where any kind holds it, live, archived or in the product\'s notes, and every one reaches the roadmap, together and one after the other (4.11.16)', () => {
+    const capture = (/** @type {string} */ kind) =>
+      path.relative(dir, withFrozenClock(() => okSections(dir, ['inbox', 'capture', kind], { stdin: '# Offline Mode\n' })).res.captured);
+    const item = (/** @type {string} */ name, /** @type {string} */ note) => ({ name, horizon: 'later', summary: 's', note });
+    const idea = capture('idea');
+    const bug = capture('bug');
+    withFrozenClock(() => okSections(dir, ['inbox', 'archive', bug]));
+    const fix = capture('quick-fix');
+    runOk(dir, batch([item('offline-mode', idea), item('offline-typo', fix)]));
+    const archived = bug.replace('/.inbox/', '/.inbox/.archived/');
+    withFrozenClock(() => okSections(dir, ['inbox', 'restore', archived]));
+    runOk(dir, batch([item('offline-crash', bug)]));
+    const again = capture('bug');
 
-    const bug = capture('bug', '# Offline Mode\n');
-    assert.strictEqual(bug, '.leeway/.inbox/bugs/2026-01-01--offline-mode-2.md');
-    runOk(dir, batch([{ name: 'offline-crash', horizon: 'later', summary: 's', note: bug }]));
-    assert.deepStrictEqual(['offline-mode', 'offline-crash'].map((name) => readProject(dir).roadmap.items[name].sources),
-      [['.product/notes/2026-01-01--offline-mode.md'], ['.product/notes/2026-01-01--offline-mode-2.md']]);
+    assert.deepStrictEqual([idea, bug, fix, again], [
+      '.leeway/.inbox/ideas/2026-01-01--offline-mode.md',
+      '.leeway/.inbox/bugs/2026-01-01--offline-mode-2.md',
+      '.leeway/.inbox/quickfixes/2026-01-01--offline-mode-3.md',
+      '.leeway/.inbox/bugs/2026-01-01--offline-mode-4.md',
+    ]);
+    assert.deepStrictEqual(['offline-mode', 'offline-crash', 'offline-typo'].map((name) => readProject(dir).roadmap.items[name].sources),
+      [['.product/notes/2026-01-01--offline-mode.md'], ['.product/notes/2026-01-01--offline-mode-2.md'], ['.product/notes/2026-01-01--offline-mode-3.md']]);
   });
 
   it('a pulled item\'s note stays where it is — the archive refuses as for any pulled item', () => {

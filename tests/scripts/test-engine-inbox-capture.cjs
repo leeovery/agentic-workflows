@@ -5,7 +5,8 @@
 // `inbox capture <idea|bug|quick-fix> [--project <folder>]`, 18.6.1–18.6.3,
 // 18.6.8): the item's text on stdin written into the inbox where the state
 // lives, named for its title and the day, the next free `-{n}` where the
-// inbox or its archive holds the name; committed under the writer lock of
+// inbox or its archive holds the name (across kinds and the product's notes,
+// test-engine-roadmap-inbox.cjs); committed under the writer lock of
 // the project it lands in, alone, and pushed, a refused push a warning; its
 // one line drawn. It lands in the one state copy from a linked worktree
 // (18.S23), and in another project's inbox from a session in a project of
@@ -43,12 +44,16 @@ const line = (sections) => sectionOf(sections, 'DISPLAY: confirmation');
 describe('inbox capture (18.6.1, 18.6.2)', () => {
   it('18.S22: writes the text into the inbox where the state lives, named for its title and the day, commits it alone and pushes it, and draws its one line', () => {
     const { main, root, bare } = codeProject(world(), { remote: true, state: true });
+    const aside = layout.inbox('ideas', `${TODAY}--half-written.md`);
+    fs.mkdirSync(path.dirname(path.join(root, aside)), { recursive: true });
+    fs.writeFileSync(path.join(root, aside), '# Half Written\n');
     const { res, sections } = captured(main, ['bug'], BUG);
     const rel = layout.inbox('bugs', `${TODAY}--the-login-loops.md`);
 
     assert.deepStrictEqual(res, { ok: true, captured: path.join(root, rel), committed: git(root, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(fs.readFileSync(path.join(root, rel), 'utf8'), BUG);
-    assert.deepStrictEqual([git(root, ['log', '-1', '--format=%s']).trim(), touched(root, 'HEAD')], ['workflow(inbox): capture the-login-loops', [`A\t${rel}`]]);
+    assert.deepStrictEqual([git(root, ['log', '-1', '--format=%s']).trim(), touched(root, 'HEAD'), git(root, ['status', '--porcelain', '--untracked-files=all'])],
+      ['workflow(inbox): capture the-login-loops', [`A\t${rel}`], `?? ${aside}\n`]);
     assert.strictEqual(remoteTip(bare), tip(root, 'HEAD'));
     assert.strictEqual(line(sections), 'Logged bug: "The Login Loops"\n');
   });

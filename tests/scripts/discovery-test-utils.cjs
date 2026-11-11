@@ -238,6 +238,8 @@ const layout = Object.freeze({
   inbox: (kind, name) => `.inbox/${kind}/${name}`,
   /** A declined capture. @param {string} kind @param {string} name */
   archived: (kind, name) => `.inbox/.archived/${kind}/${name}`,
+  /** A roadmap item's note, moved off the inbox under its name. @param {string} name */
+  note: (name) => `.product/notes/${name}`,
   /** The knowledge directory, or a file in it. @param {...string} segments */
   knowledge: (...segments) => [KNOWLEDGE_DIR, ...segments].join('/'),
   /** The machine-local cache, or a path in it. @param {...string} segments */

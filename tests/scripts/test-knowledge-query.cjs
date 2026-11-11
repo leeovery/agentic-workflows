@@ -308,15 +308,14 @@ describe('queryProvider', () => {
     assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-record-ledger-001']);
   });
 
-  it('gives an endpoint that never answers two tries of its timeout, then runs keyword-only', async () => {
+  it('gives an endpoint that never answers two tries of its timeout, a second\'s wait between, then runs keyword-only', async (t) => {
     endpoint.mode = 'silent';
-    const timeoutMs = 50;
-    const backoffMs = 1000;
-    const started = performance.now();
-    const outcome = await queryThrough(queryProvider(endpoint.config, { timeoutMs }));
-    const elapsed = performance.now() - started;
-    assert.deepStrictEqual(endpoint.requests, [['receipts'], ['receipts']], 'two tries');
-    assert.ok(elapsed < 2 * timeoutMs + backoffMs + 1000, `keyword-only within the bound, after ${Math.round(elapsed)} ms`);
+    const fetched = globalThis.fetch;
+    let tries = 0;
+    t.mock.method(globalThis, 'fetch', (/** @type {any[]} */ ...args) => { tries += 1; return fetched(...args); });
+    const waits = [];
+    const outcome = await queryThrough(queryProvider(endpoint.config, { timeoutMs: 50, sleep: async (ms) => { waits.push(ms); } }));
+    assert.deepStrictEqual([tries, waits], [2, [1000]], 'two tries, the backoff between');
     assert.deepStrictEqual(outcome.notes, [
       '[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request timed out after 0.05s (network error): the endpoint did not answer; retry once the provider answers]',
     ]);

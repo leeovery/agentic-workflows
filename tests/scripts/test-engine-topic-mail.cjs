@@ -10,7 +10,7 @@
 // the topic's conversation parked as a
 // landing parks it — set back in progress where decided (10.S10) — a
 // postponed topic's message waiting in its mailbox and a cancelled topic's
-// gone to the inbox as an idea, as are a removed topic's — one removed while
+// gone to the inbox as an idea, named as a capture is, as are a removed topic's — one removed while
 // the send waited on the writer lock among them (8.8.16) — and a cancelled
 // unit's, the report and the commit naming which went and how (10.1.8),
 // each send under the writer lock and
@@ -58,6 +58,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { computeTopicLifecycle, buildDiscoveryMap } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const { BRANCH_REF } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { liveResolved } = require('../../skills/leeway-engine/scripts/domain/inbox.cjs');
 
 const EPIC = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'mail-session' });
@@ -286,15 +287,18 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(readState(dir, idea('price-floor')), `# ${landed('Pricing')}`);
   });
 
-  it('never overwrites an idea: the same slug sent to a cancelled topic twice in a day is refused, the scratch kept and the first idea as it was (10.1.6)', () => {
-    const idea = layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--lost-key.md`);
-    withFrozenClock(() => send(EPIC, 'removal', 'lost-key'));
-    const message = scratch('# Another thought\n');
-    assert.strictEqual(
-      withFrozenClock(() => refused(['topic', 'send', EPIC, 'removal', '--from', 'first-run', '--content', message, '--slug', 'lost-key'])),
-      `the inbox already holds ${at(idea)} — send it under another slug`,
-    );
-    assert.deepStrictEqual([fs.existsSync(message), readState(dir, idea)], [true, `# ${landed('First Run')}`]);
+  it('names the idea where a capture would be named, the inbox one namespace with the product\'s notes: a slug any item or note holds takes the next free -{n}, every idea as it was, and an item closed and claimed resolved stays closed (10.1.6, 4.11.16)', () => {
+    const named = (/** @type {string} */ slug) => `${FROZEN_AT.slice(0, 10)}--${slug}.md`;
+    writeState(dir, layout.note(named('lost-key')), '# Lost key, on the roadmap\n');
+    writeState(dir, layout.archived('ideas', named('stray')), '# Stray, closed\n');
+    commitAll(dir, 'a note and a closed item');
+    const sent = (/** @type {string} */ slug) => path.relative(statePath(dir), withFrozenClock(() => send(EPIC, 'removal', slug)).inbox_path);
+
+    assert.deepStrictEqual([sent('lost-key'), sent('lost-key'), sent('stray')], [
+      layout.inbox('ideas', named('lost-key-2')), layout.inbox('ideas', named('lost-key-3')), layout.inbox('ideas', named('stray-2')),
+    ]);
+    assert.deepStrictEqual([readState(dir, layout.note(named('lost-key'))), readState(dir, layout.inbox('ideas', named('lost-key-2')))], ['# Lost key, on the roadmap\n', `# ${landed('First Run')}`]);
+    assert.deepStrictEqual(liveResolved(dir, `Resolved: ${layout.inbox('ideas', named('stray'))}\n`), []);
   });
 
   it('waits a feature\'s message for its discussion and a bugfix\'s for its investigation', () => {
