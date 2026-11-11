@@ -22,7 +22,7 @@ const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const {
-  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
+  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, mapWayOn, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
   UNIT_PHASES, unitItems, discoveryUnitExists, promotedRefusal,
   cancelPlan, postponePlan, briefFile, topicDir, topicKey, noTopicRefusal, topicTitles, goesBy,
@@ -165,7 +165,7 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
   const next = computeNextAction(lifecycle);
   if (next && allowed.includes(next)) return;
   throw new Error(
-    `${phase} can't start on "${topic}" — ${lifecyclePhrase(lifecycle)}; the epic menu names its next step`,
+    `${phase} can't start on "${topic}" — ${lifecyclePhrase(lifecycle)}; in ${manifest.name}'s discovery, ${mapWayOn(manifest.name, topic, lifecycle)}`,
   );
 }
 

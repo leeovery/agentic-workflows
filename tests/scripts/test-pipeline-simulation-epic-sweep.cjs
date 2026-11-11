@@ -20,7 +20,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate,
+  Sim, worldFrom, discussed, mappedEpic, epicMenuAt, specEntry, handoff, answerGate,
 } = require('./pipeline-world.cjs');
 const { standingOn } = require('./board-world.cjs');
 
@@ -68,7 +68,7 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
     const yes = sim.run(answerGate(sim, 'approve the map', '--pick', 'y').next.argv);
     assert.deepStrictEqual(yes.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [WU] });
     handoff(sim, `/leeway-continue-epic ${WU}`);
-    arrive(sim, WU);
+    epicMenuAt(sim, WU);
   });
 
   it('S1, N4: the sweep\'s candidates alone, no topic reopened, hold the specification on the epic\'s DEFINITION by the map waiting, as the banner and All work have it (8.10.9)', () => {

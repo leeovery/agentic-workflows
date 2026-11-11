@@ -49,7 +49,7 @@ describe('pipeline simulation: epic-topics', () => {
       { source: 'discovery', summary: 'Data export', cancelled: true, previous_order: 1 });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Export"\./);
     assert.deepStrictEqual(setAside(), ['└─ Export — cancelled']);
-    sim.refuses(['topic', 'remove', wu, 'export'], /^"export" can't be removed — it is cancelled and stays on the map as record; reactivate it from the epic menu first$/);
+    sim.refuses(['topic', 'remove', wu, 'export'], /^"export" can't be removed — it is cancelled and stays on the map as record; reactivate it first: topic reactivate cuts discovery export$/);
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'export'], /"export" is already cancelled/);
     const returned = sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
     assert.deepStrictEqual(returned.restored, []);

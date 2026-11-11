@@ -310,7 +310,7 @@ describe('topic rename (8.8.17)', () => {
     assert.strictEqual(items()['discussing-topic'].summary, 'S');
     assert.deepStrictEqual(ok(dir, ['topic', 'order', UNIT, 'checkout-flow=1']).ordered, { 'discussing-topic': 1 });
     assert.strictEqual(refusedPristine(dir, ['topic', 'brief', UNIT, 'checkout-flow', '--brief', draft('late')]).error, 'topic brief: "discussing-topic" started — what bears on it goes as a message');
-    assert.strictEqual(refusedPristine(dir, ['topic', 'remove', UNIT, 'checkout-flow']).error, '"discussing-topic" can\'t be removed — discussion is in flight on it; cancel from the epic menu instead');
+    assert.strictEqual(refusedPristine(dir, ['topic', 'remove', UNIT, 'checkout-flow']).error, '"discussing-topic" can\'t be removed — discussion is in flight on it; cancel it instead: topic cancel payments discovery discussing-topic');
     assert.deepStrictEqual(ok(dir, ['topic', 'rename', UNIT, 'checkout-flow', 'payment-flow']).name, 'discussing-topic');
     assert.strictEqual(items()['discussing-topic'].title, 'payment-flow');
   });
@@ -390,11 +390,11 @@ describe('topic remove (8.8.6, 8.8.16, 8.10.11)', () => {
     findOn('fresh-topic');
 
     for (const [topic, refusal] of [
-      ['discussing-topic', 'discussion is in flight on it; cancel from the epic menu instead'],
-      ['decided-topic', 'discussion has concluded; cancel from the epic menu instead'],
-      ['cancelled-topic', 'it is cancelled and stays on the map as record; reactivate it from the epic menu first'],
-      ['postponed-topic', 'it is postponed and waits on the roadmap; pull it forward from the roadmap first'],
-      ['fresh-topic', 'the ledger holds entries on it, which name it for good; cancel from the epic menu instead'],
+      ['discussing-topic', 'discussion is in flight on it; cancel it instead: topic cancel payments discovery discussing-topic'],
+      ['decided-topic', 'discussion has concluded; cancel it instead: topic cancel payments discovery decided-topic'],
+      ['cancelled-topic', 'it is cancelled and stays on the map as record; reactivate it first: topic reactivate payments discovery cancelled-topic'],
+      ['postponed-topic', 'it is postponed and waits on the roadmap; pull it forward first: roadmap pull-forward postponed-topic --into payments'],
+      ['fresh-topic', 'the ledger holds entries on it, which name it for good; cancel it instead: topic cancel payments discovery fresh-topic'],
     ]) {
       assert.strictEqual(refusedPristine(dir, ['topic', 'remove', UNIT, topic]).error, `"${topic}" can't be removed — ${refusal}`);
     }
@@ -429,7 +429,7 @@ describe('the map\'s verbs racing the writes on their topic (8.8.6, 8.8.17)', ()
     const attempts = findingLandsWhileItWaits(t);
 
     assert.throws(() => removeTopic(dir, UNIT, 'fresh-topic'),
-      { message: '"fresh-topic" can\'t be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead' });
+      { message: '"fresh-topic" can\'t be removed — the ledger holds entries on it, which name it for good; cancel it instead: topic cancel payments discovery fresh-topic' });
 
     assert.deepStrictEqual(attempts, ['taken', 'made', 'made']);
     assert.deepStrictEqual(Object.keys(items()), Object.keys(ITEMS));

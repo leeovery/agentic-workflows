@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, mapTopics, sessionLog, menuEntry, handoffEntry, enterEntry, handoff, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked,
+  Sim, mapTopics, sessionLog, handoffEntry, enterEntry, handoff, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicPick,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -44,8 +44,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
     ]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     for (const topic of ['timing', 'layout']) {
-      menuEntry(sim, wu);
-      handoffEntry(sim, wu, 'discussion', topic);
+      epicPick(sim, wu, topic);
       enterEntry(sim, wu, 'discussion', topic);
       sim.write(`.leeway/${wu}/topics/${topic}/log.md`, `# Discussion — ${topic}\n`);
     }
@@ -99,11 +98,11 @@ describe('pipeline simulation: experiments, in an epic', () => {
     sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' });
     assert.deepStrictEqual(sim.run(['gate', 'experiment spawn gate', '--pick', 'y']).next,
       { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', wu, 'timing'] });
+    handoff(sim, `/leeway-experiment-process epic ${wu} timing`);
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders
     // only over a designed record.
-    menuEntry(sim, wu);
     handoffEntry(sim, wu, 'experiment', 'timing');
     sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
     sim.run(['experiment', 'advance', wu, 'timing', 'E1']);

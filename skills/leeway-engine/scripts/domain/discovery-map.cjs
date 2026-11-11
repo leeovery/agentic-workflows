@@ -47,7 +47,7 @@
 const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer, readProjectManifest } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { computeTopicLifecycle, lifecyclePhrase, CLOSED_LIFECYCLES, itemOf, topicDir, briefFile, dismissedNames, topicTitle, topicKey, noTopicRefusal } = require('./derivations.cjs');
+const { computeTopicLifecycle, lifecyclePhrase, mapWayOn, CLOSED_LIFECYCLES, itemOf, topicDir, briefFile, dismissedNames, topicTitle, topicKey, noTopicRefusal } = require('./derivations.cjs');
 const { KEBAB_SLUG_PATTERN } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, cacheScratch } = require('../kernel/state-root.cjs');
 const { namesTopic } = require('./ledger-fold.cjs');
@@ -213,10 +213,9 @@ function installBrief(cwd, unit, topic, { scratch, content }) {
  */
 function removeRefusal(manifest, name, named) {
   const { lifecycle } = computeTopicLifecycle(manifest, name);
-  if (lifecycle === 'cancelled') return `${lifecyclePhrase(lifecycle)}; reactivate it from the epic menu first`;
-  if (lifecycle === 'postponed') return `${lifecyclePhrase(lifecycle)}; pull it forward from the roadmap first`;
-  if (lifecycle !== 'fresh') return `${lifecyclePhrase(lifecycle)}; cancel from the epic menu instead`;
-  if (named) return 'the ledger holds entries on it, which name it for good; cancel from the epic menu instead';
+  const wayOn = mapWayOn(manifest.name, name, CLOSED_LIFECYCLES.includes(lifecycle) ? lifecycle : 'started');
+  if (lifecycle !== 'fresh') return `${lifecyclePhrase(lifecycle)}; ${wayOn}`;
+  if (named) return `the ledger holds entries on it, which name it for good; ${wayOn}`;
   return null;
 }
 

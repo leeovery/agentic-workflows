@@ -16,16 +16,18 @@
 //   its door, read once with what waits in every unit (waits.cjs): the
 //   authority gates, the questions, a decided topic a changed answer holds;
 //   a topic a wait is about is that wait's row alone, never listed again.
-//   The verdicts waiting on the epic's departures are one row, e/verdicts,
-//   its door the verdict page, the first of the lettered rows.
-// - Then the topics by what they need, in the map's foundations-first
-//   order: a topic not started reads Start, one in progress Continue, each
-//   with mail waiting where messages wait for it; a topic with experiments
-//   waiting leads into the laboratory. No count of a topic's questions
-//   shows (18.4.4). A row about a topic a session in another conversation
-//   holds is struck through, naming when it was last active (18.4.8); this
-//   conversation's own hold never reads as another's (1.S8), and a session
-//   that ended holds nothing (18.S69).
+//   The verdicts waiting on the epic's departures are one row among them,
+//   e/verdicts, its door the verdict page, drawn after the numbered waits.
+// - Then the topics by what they need (18.4.3): those in progress, then
+//   those not started, each need in the map's order; a topic not started
+//   reads Start, one in progress Continue, each with mail waiting where
+//   messages wait for it; a topic with experiments waiting leads into the
+//   laboratory. No count of a topic's questions shows (18.4.4). A row about
+//   a topic a session in another conversation holds in the phase the row
+//   opens — a wait's row and a topic's the discussion, the laboratory's the
+//   experiment — is struck through, naming when it was last active
+//   (18.4.8); this conversation's own hold never reads as another's (1.S8),
+//   and a session that ended holds nothing (18.S69).
 // - Then the way on past the topics, in place of plan rows (18.4.6): once
 //   every topic is decided, cancelled or postponed, s/spec, to start it or
 //   carry it on; during the build its row at the phase it is at, of its
@@ -34,10 +36,11 @@
 //   built under the old plan says so in place of its build's row (P12).
 // - d/discovery while the map is open, before the spec (18.4.19); b/back to
 //   the start menu.
-// - The recommended row leads: the first row of what waits, else of the
-//   topics, that no other conversation holds (18.4.7, 18.4.21); else the
-//   spec, the build or its review; else, in discovery, d. Rows follow it in
-//   their order, numbered as drawn.
+// - The recommended row leads, never one another conversation holds
+//   (18.4.21): the first of what waits; else the first topic in the map's
+//   foundations-first order that can be worked (18.4.7); else, while
+//   nothing but verdicts waits, the spec, the build or its review; else, in
+//   discovery, d. Rows follow it in their order, numbered as drawn.
 // - A finished epic's menu is its complete variant (18.4.23): its heading,
 //   its tally and its lists, and help and back alone.
 //
@@ -69,9 +72,9 @@ const { MENUS, drawMenu } = require('../menus.cjs');
 
 /**
  * A row as the menu composes it before it is numbered: its key where it is
- * lettered, the topic it is about and the phase that topic's hold is read
- * in, where it is a topic's.
- * @typedef {{key?: string, word?: string, label: LabelParts, next: Next, topic?: string, heldIn?: string}} Row
+ * lettered; where it is a topic's, the topic, the phase that topic's hold
+ * is read in, and the topic's place in the map's order.
+ * @typedef {{key?: string, word?: string, label: LabelParts, next: Next, topic?: string, heldIn?: string, order?: number|null}} Row
  */
 
 const MENU = MENUS['epic-menu'];
@@ -172,13 +175,13 @@ function topicRow(epic, { experiments }, row) {
   if (waiting > 0) {
     return {
       label: { head: `Continue "${row.title}" in the laboratory`, tail: `${counted(waiting, 'experiment')} waiting`, cue },
-      next: into(epic, LABORATORY, row.name), topic: row.name, heldIn: LABORATORY,
+      next: into(epic, LABORATORY, row.name), topic: row.name, heldIn: LABORATORY, order: row.order,
     };
   }
   const started = row.lifecycle === 'discussing';
   return {
     label: { head: `${started ? 'Continue' : 'Start'} "${row.title}"`, tail: started ? 'in progress' : 'not started', cue },
-    next: { kind: 'engine', argv: ['handoff', 'topic', epic, row.name] }, topic: row.name, heldIn: TOPIC_PHASE,
+    next: { kind: 'engine', argv: ['handoff', 'topic', epic, row.name] }, topic: row.name, heldIn: TOPIC_PHASE, order: row.order,
   };
 }
 
@@ -221,26 +224,44 @@ function verdictRows(waits) {
 }
 
 /**
- * Strike each row about a topic another conversation holds, naming when it
- * was last active (the header's).
- * @param {string} cwd @param {string} epic @param {Row[]} rows
+ * What strikes each row about a topic another conversation holds in the
+ * phase the row opens, naming when it was last active (the header's).
+ * @param {string} cwd @param {string} epic @returns {(row: Row) => Row}
  */
-function struck(cwd, epic, rows) {
+function striker(cwd, epic) {
   const held = scanPresence(cwd, epic).sessions.filter((r) => r.held && !ownsRow(r));
-  return rows.map((row) => {
+  return (row) => {
     const hold = held.find((r) => r.phase === row.heldIn && r.topic === row.topic);
     return hold === undefined ? row : { ...row, label: { ...row.label, holder: `in session (last active ${fmtAge(hold.age_seconds)} ago)` } };
-  });
+  };
+}
+
+/** Whether no other conversation holds the row. @param {Row} row */
+const free = (row) => row.label.holder === undefined;
+
+/** A topic's place in the map's order, a topic with none after every other. @param {Row} row */
+const mapOrder = (row) => row.order ?? Infinity;
+
+/**
+ * The recommended row (the header's): of what waits, the topics, and the
+ * way on past them.
+ * @param {Row[]} waiting @param {Row[]} topics @param {{numbered: Row[], spec: Row[]}} onward @param {Row|undefined} discovery
+ * @returns {Row|undefined}
+ */
+function recommendedOf(waiting, topics, onward, discovery) {
+  const topic = topics.filter(free).reduce((/** @type {Row|undefined} */ first, row) => (first === undefined || mapOrder(row) < mapOrder(first) ? row : first), undefined);
+  if (waiting.length > 0) return waiting.find(free) ?? topic;
+  return topic ?? onward.spec[0] ?? onward.numbered[0] ?? discovery;
 }
 
 /**
  * The rows in the order drawn, the recommended leading, numbered as drawn
  * (the header's).
- * @param {Row[]} numbered @param {Row[]} lettered @param {Row|undefined} recommended
+ * @param {Row[]} drawn @param {Row|undefined} recommended
  * @returns {MenuRow[]}
  */
-function ordered(numbered, lettered, recommended) {
-  const rows = recommended === undefined ? [...numbered, ...lettered] : [recommended, ...[...numbered, ...lettered].filter((row) => row !== recommended)];
+function ordered(drawn, recommended) {
+  const rows = recommended === undefined ? drawn : [recommended, ...drawn.filter((row) => row !== recommended)];
   let n = 0;
   return rows.map((row) => ({
     key: row.key ?? (n += 1),
@@ -275,15 +296,17 @@ function epicMenuScreen(cwd, manifest, waits) {
   if (phase === 'complete') return { title, shows: shown(detail, new Set()), rows: [], back: BACK };
   const waiting = new Set(waits.flatMap((wait) => (wait.kind === 'verdict' || wait.topic === null ? [] : [wait.topic])));
   const onward = onwardRows(cwd, manifest, phase, detail, waits);
-  const live = struck(cwd, epic, [...waitRows(detail, waits), ...topicRows(epic, detail, waiting)]);
+  const strike = striker(cwd, epic);
+  const waitsDrawn = waitRows(detail, waits).map(strike);
+  const topics = topicRows(epic, detail, waiting).map(strike);
   /** @type {Row[]} */
   const discovery = detail.map_closed ? [] : [{ key: 'd', word: 'discovery', label: { head: MAP_CHANGE }, next: { kind: 'handoff', skill: 'leeway-discovery', args: ['none', epic] } }];
-  const recommended = live.find((row) => row.label.holder === undefined) ?? onward.spec[0] ?? onward.numbered[0] ?? (phase === 'discovery' ? discovery[0] : undefined);
+  const recommended = recommendedOf(waitsDrawn, topics, onward, phase === 'discovery' ? discovery[0] : undefined);
   return {
     title,
     shows: shown(detail, waiting),
     ...(detail.old === null ? {} : { statement: detail.old }),
-    rows: ordered([...live, ...onward.numbered], [...verdictRows(waits), ...onward.spec, ...discovery], recommended),
+    rows: ordered([...waitsDrawn, ...verdictRows(waits), ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
     back: BACK,
   };
 }

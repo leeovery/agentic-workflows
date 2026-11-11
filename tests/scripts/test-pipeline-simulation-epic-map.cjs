@@ -356,7 +356,7 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['topic', 'reactivate', wu, 'discovery', 'delta']);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
     // The ledger names delta now, so it leaves the map only by its cancel.
-    sim.refuses(['topic', 'remove', wu, 'delta'], /^"delta" can't be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead$/);
+    sim.refuses(['topic', 'remove', wu, 'delta'], /^"delta" can't be removed — the ledger holds entries on it, which name it for good; cancel it instead: topic cancel overhaul discovery delta$/);
 
     // Epsilon: a topic a message names that the map lacks, landed with a
     // brief drawn from the message, then removed before anyone starts it —

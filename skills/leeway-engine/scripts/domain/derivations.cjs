@@ -663,7 +663,7 @@ function postponePlan(manifest, name, project, horizon) {
     locks.push({ reason: `"${name}" is already postponed — it waits on the roadmap` });
   }
   if (lifecycle === 'cancelled') {
-    locks.push({ reason: `"${name}" is cancelled — reactivate it from the epic menu first` });
+    locks.push({ reason: `"${name}" is cancelled — ${mapWayOn(manifest.name, name, lifecycle)}` });
   }
   if (buildBegun(manifest)) {
     locks.push({ reason: `postponing "${name}" is refused — ${manifest.name}'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit's cancel, through manage on the start menu` });
@@ -1063,6 +1063,20 @@ function lifecyclePhrase(lifecycle) {
     case 'decided': return 'discussion has concluded';
     case 'postponed': return 'it is postponed and waits on the roadmap';
     default: return 'it is cancelled and stays on the map as record'; // cancelled
+  }
+}
+
+// The way on past the door a topic's lifecycle closes, by the verb that
+// changes the map in the epic's discovery (8.6.5): a decided topic reopened
+// by a message, a postponed one pulled forward from the roadmap, a cancelled
+// one reactivated, and any other cancelled instead.
+/** @param {string} epic @param {string} topic @param {string} lifecycle @returns {string} */
+function mapWayOn(epic, topic, lifecycle) {
+  switch (lifecycle) {
+    case 'decided': return 'a message to it carrying why reopens it';
+    case 'postponed': return `pull it forward first: roadmap pull-forward ${topic} --into ${epic}`;
+    case 'cancelled': return `reactivate it first: topic reactivate ${epic} discovery ${topic}`;
+    default: return `cancel it instead: topic cancel ${epic} discovery ${topic}`;
   }
 }
 
@@ -1467,6 +1481,7 @@ module.exports = {
   CONVERSATION_ACTIONS,
   CLOSED_LIFECYCLES,
   lifecyclePhrase,
+  mapWayOn,
   promotedRefusal,
   itemOf,
   computeMapSummary,

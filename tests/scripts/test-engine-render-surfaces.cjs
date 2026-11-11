@@ -192,7 +192,7 @@ describe('postpone-gate', () => {
     const gate = (topic, unit = 'pay') => renderSurface(dir, 'postpone-gate', { dotpath: `${unit}.discovery.${topic}`, horizon: 'mvp' });
     assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — the map's topics are auth, busy$/);
     assert.throws(() => gate('away'), /render postpone-gate: "away" is already postponed — it waits on the roadmap/);
-    assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
+    assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it first: topic reactivate pay discovery gone/);
     assert.throws(() => gate('done', 'built'), /render postpone-gate: postponing "done" is refused — built's build has begun, so its map is closed/);
     assert.throws(() => gate('busy'), /render postpone-gate: postponing "busy" is refused while an experiment is live \(E2, with E2\.1\) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic/);
     assert.throws(() => gate('auth'), /render postpone-gate: postponing "auth" is refused — a roadmap item named "auth" \(horizon "mvp"\) is not this topic's: rename it on the roadmap, or rename the topic, first/);

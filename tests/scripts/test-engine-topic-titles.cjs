@@ -201,7 +201,7 @@ describe('every other verb, render and entry that names a topic takes its title,
   const CALLS = [
     ['topic edit', () => ok(dir, ['topic', 'edit', UNIT, NAME, '--summary', 'Notes, quickly']).name, KEY],
     ['topic rename', () => ok(dir, ['topic', 'rename', UNIT, NAME, 'note-pane']).renamed_from, KEY],
-    ['topic remove, refused for a started topic', () => refusedPristine(dir, ['topic', 'remove', UNIT, NAME]).error, `"${KEY}" can't be removed — discussion is in flight on it; cancel from the epic menu instead`],
+    ['topic remove, refused for a started topic', () => refusedPristine(dir, ['topic', 'remove', UNIT, NAME]).error, `"${KEY}" can't be removed — discussion is in flight on it; cancel it instead: topic cancel ${UNIT} discovery ${KEY}`],
     ['topic order', () => Object.keys(ok(dir, ['topic', 'order', UNIT, `${NAME}=3`]).ordered).join(), KEY],
     ['topic brief, refused for a started topic', () => {
       const draft = writeState(dir, layout.cache('scratch', 'brief.md'), 'What notes are for.\n');

@@ -239,6 +239,14 @@ describe('the screen (18.4.17)', () => {
     assert.deepStrictEqual(headings, ['Discovery', 'Discussion', 'Specification', 'Build', 'Review']);
   });
 
+  it('a topic\'s experiments waiting count its top-level records, a split worked through its parent', () => {
+    epicAs({ phases: { ...DISCUSSING.phases, experiment: { items: { onboarding: { status: 'in-progress', experiments: {
+      E1: { slug: 'first-run', status: 'designed' }, 'E1.1': { slug: 'first-run-split', status: 'designed' }, E2: { slug: 'permissions', status: 'concluded' },
+    } } } } } });
+
+    assert.deepStrictEqual(rowsOf(menuOf()).slice(2, 4), ['2           → Continue "Onboarding" in the laboratory — 1', '              experiment waiting']);
+  });
+
   it('an epic built under the old plan says it waits on the migration\'s cut in place of its build\'s row (P12)', () => {
     epicAs({ phases: { ...DISCUSSING.phases, implementation: { items: { billing: { status: 'in-progress' } } } } });
     const menu = screenOf(menuOf(), 'MENU: epic menu');
@@ -257,6 +265,22 @@ describe('the recommended row (18.4.7, 18.4.21)', () => {
       '2           → Start "Later" — not started',
       '3           → Start "Last" — not started',
     ]);
+  });
+
+  it('18.S13, 8.S41: the recommendation is the first topic that can be worked in the map\'s order, drawn first, the rest grouped by what they need', () => {
+    epicAs({ phases: { discovery: { approved_at: '2026-10-01T09:00:00.000Z', items: { second: row(2), first: row(1) } }, discussion: { items: { second: { status: 'in-progress' } } } } });
+
+    assert.deepStrictEqual(rowsOf(menuOf()).slice(0, 2), [
+      '1           → Start "First" — not started (recommended)',
+      '2           → Continue "Second" — in progress',
+    ]);
+  });
+
+  it('past discovery, discovery\'s row is never recommended — with every topic held elsewhere, no row is', () => {
+    epicAs({ phases: { discovery: { approved_at: '2026-10-01T09:00:00.000Z', items: { cards: row(1) } }, discussion: { items: { cards: { status: 'in-progress' } } } } });
+    beat('discussion', 'cards', 'peer', PEER);
+
+    assert.ok(!rowsOf(menuOf()).some((line) => line.includes('(recommended)')));
   });
 
   it('18.S57, 18.S14: a topic another conversation holds is never recommended — it keeps its place, struck, and the recommendation leads with the next', () => {

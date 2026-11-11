@@ -792,7 +792,7 @@ describe('a topic\'s start — the discovery map gates the birth of a phase item
   afterEach(() => { cleanupFixture(dir); });
 
   it('a marker-only cancelled row refuses the birth — the reactivate is the way back', () => {
-    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'iota'), { message: 'discussion can\'t start on "iota" — it is cancelled and stays on the map as record; the epic menu names its next step' });
+    assert.throws(() => startItem(dir, 'mapped', 'discussion', 'iota'), { message: 'discussion can\'t start on "iota" — it is cancelled and stays on the map as record; in mapped\'s discovery, reactivate it first: topic reactivate mapped discovery iota' });
     assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.iota, undefined, 'nothing born');
   });
 

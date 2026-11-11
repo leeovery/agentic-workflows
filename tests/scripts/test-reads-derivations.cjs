@@ -972,7 +972,7 @@ describe('reads + derivations', () => {
       const reasons = (name, proj = null, horizon = undefined) => postponePlan(m, name, proj, horizon).locks.map((l) => l.reason);
       assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — the map\'s topics are auth, timing, busy']);
       assert.deepStrictEqual(reasons('away'), ['"away" is already postponed — it waits on the roadmap']);
-      assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it from the epic menu first']);
+      assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it first: topic reactivate pay discovery gone']);
       assert.deepStrictEqual(reasons('timing'), [], 'a decided topic goes while the spec is written');
       assert.deepStrictEqual(postponePlan({ ...m, build: { position: 'auto' } }, 'timing', null).locks.map((l) => l.reason),
         ['postponing "timing" is refused — pay\'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit\'s cancel, through manage on the start menu']);
