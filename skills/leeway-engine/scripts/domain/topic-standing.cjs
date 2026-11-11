@@ -15,8 +15,11 @@
 //   the spec (4.11.2, 10.2.2).
 // - What the topic is now: postponed or cancelled on the map, promoted out
 //   of the unit, decided, or for a bugfix its investigation concluded, the
-//   unit's menu leading past it. A message waits in a postponed topic's
-//   mailbox, reopens a decided or concluded one and goes to the inbox for a
+//   unit's menu leading past it. A decided topic is entered all the same
+//   while an entry of it relies on an answer replaced since, to confirm
+//   each still holds or replace it, staying decided (10.2.6,
+//   ledger-affected.cjs). A message waits in a postponed topic's mailbox,
+//   reopens a decided or concluded one and goes to the inbox for a
 //   cancelled one (10.1.6, 10.1.8, 10.2.7), so only a promoted topic
 //   refuses it.
 // And whether a unit's discovery can still be talked in: an epic's, until
@@ -171,8 +174,22 @@ function topicClosure(at) {
 }
 
 /**
+ * Whether an entry of the topic relies on an answer replaced since (the
+ * header's); what the ledger's read said is left to the entry's own reads.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function reliesOnChanged(cwd, unit, topic) {
+  // Required here: the ledger's read reaches this module through the position.
+  const { readShownOnce } = require('./ledger-read.cjs');
+  const { waitsOnTopic } = require('./ledger-affected.cjs');
+  const root = stateRoot(cwd);
+  return readShownOnce(root, [], ({ folded }) => waitsOnTopic(folded, root, unit, topic));
+}
+
+/**
  * Why a discussion's topic cannot be entered: set aside on the map, closed,
- * or decided; null where it can.
+ * or decided but for an entry relying on a changed answer; null where it
+ * can.
  * @param {Standing} at @returns {string|null}
  */
 function discussionStanding(at) {
@@ -183,7 +200,7 @@ function discussionStanding(at) {
   if (lifecycle === 'cancelled') return SET_ASIDE.cancelled(topic, through);
   const closed = closedStanding(at);
   if (closed !== null) return closed;
-  return itemOf(manifest, 'discussion', topic)?.status === 'completed'
+  return itemOf(manifest, 'discussion', topic)?.status === 'completed' && !reliesOnChanged(cwd, unit, topic)
     ? `the topic "${topic}" is decided — it reopens through a message sent to it, or through ${through}`
     : null;
 }

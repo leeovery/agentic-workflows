@@ -801,10 +801,6 @@ describe('entry points — where a walk may begin', () => {
     assert.match(cases.entryErrors('leeway-help')[0], /not somewhere a session starts/);
   });
 
-  it('rejects the bridge — always invoked as a phase ends', () => {
-    assert.match(cases.entryErrors('leeway-bridge')[0], /not somewhere a session starts/);
-  });
-
   it('rejects a reference, which is never entered directly', () => {
     assert.match(cases.entryErrors('root-cause-validation.md')[0], /not somewhere a session starts/);
   });

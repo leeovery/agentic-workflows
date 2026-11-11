@@ -426,8 +426,8 @@ function checkLinks(files) {
 // Check 8 — H1 category rule (scoped to the leeway and leeway-* SKILL.md backbones).
 // Processing backbones (leeway-*-process, plus discovery — a phase that
 // talks — the engine and the project-level skills — roadmap, help) open with
-// a title H1; every other workflow backbone — leeway, the navigation skills,
-// the bridge — carries none.
+// a title H1; every other workflow backbone — leeway and the epic's menu —
+// carries none.
 // ---------------------------------------------------------------------------
 
 /** Whether a skill is one of the workflows' own — `leeway` or `leeway-*`. @param {string} name */
@@ -1798,10 +1798,10 @@ test('check 8 (H1 category) — enforces the processing/backbone split', () => {
     assert.strictEqual(checkH1Category([navWithH1]).length, 1, 'navigation backbone with H1 must be caught');
 
     const procGood = write(dir, 'skills/leeway-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
-    const bridgeGood = write(dir, 'skills/leeway-bridge/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const menuGood = write(dir, 'skills/leeway-continue-epic/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     const engineGood = write(dir, 'skills/leeway-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
     const discoveryGood = write(dir, 'skills/leeway-discovery/SKILL.md', '---\nname: leeway-discovery\n---\n\n# Discovery\n\nOne-liner.\n');
-    assert.strictEqual(checkH1Category([procGood, bridgeGood, engineGood, discoveryGood]).length, 0, 'correctly-categorised backbones must pass');
+    assert.strictEqual(checkH1Category([procGood, menuGood, engineGood, discoveryGood]).length, 0, 'correctly-categorised backbones must pass');
 
     const discoveryNoH1 = write(dir, 'skills/leeway-discovery/SKILL.md', 'One-liner purpose.\n\n## Entering\n');
     assert.strictEqual(checkH1Category([discoveryNoH1]).length, 1, 'discovery is a phase that talks: without an H1 it must be caught');
@@ -2034,12 +2034,12 @@ test('check 13b (capture skills) — 18.S22: catches a second engine line, the s
 
 test('check 14 (buried invoke) — catches an in-fence imperative, permits one outside a fence', () => {
   withTemp((dir) => {
-    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/leeway-bridge pay specification`.\n```\n');
+    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/leeway-continue-epic pay`.\n```\n');
     const v = checkBuriedInvoke([bad]);
     assert.strictEqual(v.length, 1, 'in-fence imperative must be caught');
     const start = write(dir, 'skills/x/c.md', '```\nInvoke `/leeway`.\n```\n');
     assert.strictEqual(checkBuriedInvoke([start]).length, 1, 'the way in, `/leeway`, is caught as a skill invocation too');
-    const good = write(dir, 'skills/x/b.md', 'Invoke `/leeway-bridge pay specification`.\n');
+    const good = write(dir, 'skills/x/b.md', 'Invoke `/leeway-continue-epic pay`.\n');
     assert.strictEqual(checkBuriedInvoke([good]).length, 0, 'the imperative outside a fence is the invocation form');
   });
 });
@@ -2634,11 +2634,11 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
     const phase = write(dir, 'skills/leeway-review-process/SKILL.md', [
       '# Review', '', '## Instructions', '', LOAD, '', '---', '', '## Resuming After Context Refresh', '', RELOAD, '',
     ].join('\n'));
-    const bridge = write(dir, 'skills/leeway-bridge/SKILL.md', ['Decide where the work goes.', '', '## Step 1: Route', '', RELOAD, ''].join('\n'));
+    const recovering = write(dir, 'skills/leeway-in-place/SKILL.md', ['Work in the conversation already open.', '', '## Step 1: Work', '', RELOAD, ''].join('\n'));
     const capture = write(dir, 'skills/leeway-log-idea/SKILL.md', 'Capture an idea.\n');
     const fenced = write(dir, 'skills/leeway-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
     const tooling = write(dir, '.claude/skills/review-work/SKILL.md', `## Instructions\n\n${LOAD}\n`);
-    const ok = checkFrameworkLoad([start, phase, bridge, capture, fenced, tooling]);
+    const ok = checkFrameworkLoad([start, phase, recovering, capture, fenced, tooling]);
     assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
 
     const missing = write(dir, 'skills/leeway-discovery/SKILL.md', ['---', 'name: leeway-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
@@ -2774,7 +2774,7 @@ test('check 35 (boot\'s stops) — catches a stop with no branch in the start sk
       '#### If `state` is `migrate`', '', '**STOP.**', '',
       '### Step 0.2: Setup', '', '#### If `state` is `merge`', '', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-merge-gate', '',
     ].join('\n'));
-    const other = write(dir, 'skills/leeway-bridge/SKILL.md', '### Step 0.1: Boot\n');
+    const other = write(dir, 'skills/leeway-roadmap/SKILL.md', '### Step 0.1: Boot\n');
     const v = checkBootStops([skill, other], stops);
     assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message]), [
       ['skills/leeway/SKILL.md', 11, 'the `repo` branch does not fetch `render repo-stop`'],

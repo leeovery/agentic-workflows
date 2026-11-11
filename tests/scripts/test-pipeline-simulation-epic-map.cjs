@@ -86,8 +86,7 @@ describe('pipeline simulation: epic map', () => {
     // Alpha: its menu row hands off to its discussion, decided at the
     // decided screen, back on the epic menu.
     assert.strictEqual(epicPick(sim, wu, 'alpha').args, `epic ${wu} alpha`);
-    discussed(sim, wu, 'alpha');
-    assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /^DECIDED\n {2}└─ Alpha$/m);
+    assert.match(arriveAtEpicMenu(sim, wu, discussed(sim, wu, 'alpha').next), /^DECIDED\n {2}└─ Alpha$/m);
     // The menu's way back: the start menu, the epic still its row.
     assert.deepStrictEqual(epicKey(sim, wu, 'b').next, { kind: 'engine', argv: ['render', 'start-menu'] });
     assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`));
@@ -224,8 +223,8 @@ describe('pipeline simulation: epic map', () => {
     const rowOf = (scan, phase, topic) => scan.sessions.find((r) => r.phase === phase && r.topic === topic);
     assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'delta'),
       'the verbs a session runs on its own topic leave a heartbeat behind');
-    // A beat reads held (deferral territory for the bridge, in-session
-    // territory for the epic view); the orderly clear drops it.
+    // A beat reads held (in-session territory for the epic view); the
+    // orderly clear drops it.
     sim.run(['presence', 'beat', wu, 'discussion', 'alpha']);
     const present = sim.run(['presence', 'scan', wu]);
     assert.strictEqual(rowOf(present, 'discussion', 'alpha').held, true);

@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, mapTopics, sessionLog, handoffEntry, enterEntry, handoff, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicPick,
+  Sim, mapTopics, sessionLog, handoffEntry, enterEntry, handoff, handoffBy, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicPick,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -179,7 +179,8 @@ describe('pipeline simulation: experiments, in an epic', () => {
     // The return leg re-renders the register — the series moved — ahead of
     // its gate: a record just closed and E3 still lives, so the session
     // offers the next experiment or the menu; once the series is finished
-    // the gate refuses and the bridge exit follows.
+    // the gate refuses and the laboratory's leave follows, the epic's
+    // Continue onto its menu.
     assert.match(sim.render(['experiment-register', `${wu}.experiment.timing`], { expect: 'content' }),
       /Experiments — Timing \(4 experiments\)[\s\S]*E2 multi-monitor\n.*↳ Abandoned — settled by E1 after all/);
     assert.match(sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' }),
@@ -188,6 +189,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.deepStrictEqual(last.released_waits, [{ phase: 'discussion', released: ['E3'], remaining: [] }]);
     assert.strictEqual(last.item_status, 'completed', 'every record terminal closes the item');
     sim.refuses(['render', 'experiment-next-gate', `${wu}.experiment.timing`], /no live experiments/);
+    assert.strictEqual(handoffBy(sim, ['handoff', 'unit', wu]).invoked, `/leeway-continue-epic ${wu}`);
     claudeDecides(sim, wu, 'timing', monitor, 'The one holding focus.');
     claudeDecides(sim, wu, 'timing', stacking, 'The newest.');
     decideTopic(sim, wu, 'timing');
@@ -207,6 +209,8 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'completed', 'the series settles, never cancelled');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'layout']);
     assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.layout, { status: 'in-progress' });
+    assert.deepStrictEqual([sim.manifest(wu).phases.experiment.items.layout.experiments.E1.status, sim.manifest(wu).phases.experiment.items.layout.experiments.E1.reason], ['abandoned', 'topic cancelled'],
+      '18.S58: the reactivate leaves the experiment abandoned');
     claudeDecides(sim, wu, 'layout', density, 'Twelve columns.');
     decideTopic(sim, wu, 'layout');
     assert.doesNotMatch(epicMenuLooked(sim, wu), /in the laboratory/, 'terminal records retire from the menu');

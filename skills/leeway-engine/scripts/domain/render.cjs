@@ -358,7 +358,7 @@ function experimentPickSurface(cwd, { dotpath }) {
  * The return leg's gate — fetched after a terminal record transition while
  * live records remain: work the next experiment in this session, or back to
  * the menu. Refuses when no live top-level record exists — the calling
- * prose takes the bridge exit then, never this gate.
+ * prose takes the laboratory's leave then, never this gate.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
@@ -367,7 +367,7 @@ function experimentNextGateSurface(cwd, { dotpath }) {
   const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-next-gate');
   const live = liveExperiments(rows);
   if (live.length === 0) {
-    throw new Error(`render experiment-next-gate: "${topic}"'s series holds no live experiments — the bridge exit follows a finished series`);
+    throw new Error(`render experiment-next-gate: "${topic}"'s series holds no live experiments — the laboratory's leave follows a finished series`);
   }
   return experimentNextGate(live);
 }

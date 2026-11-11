@@ -9,10 +9,11 @@
 // addressed to a topic leading to its postpone gate, the cancel gate's yes
 // running the cancel — an epic's unit through `topic cancel`, a single-topic
 // unit through `workunit cancel` — and every other row carrying on. Each
-// verb's `next`: the conversation sitting in the topic that left goes back
-// to its epic's menu, naming the phase and how it left; from anywhere else
-// the flow carries on. The verbs close the topic's agents still running, and
-// their commit takes the topic's log.
+// verb's `next` (18.4.20): the conversation sitting in the topic that left
+// goes onto its epic's menu, and one sitting in a single-topic unit it
+// cancelled onto the start menu; from anywhere else the flow carries on. The
+// verbs close the topic's agents still running, and their commit takes the
+// topic's log.
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its discussions
 // of `licence` and `onboarding` under way, and a roadmap with two horizons;
@@ -80,6 +81,7 @@ function answered(render, name, answer) {
 const sitIn = (topic) => run(['enter', 'discussion', EPIC, topic]);
 
 const CONTINUE = { kind: 'continue' };
+const ONTO_MENU = { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC] };
 
 describe('the gates lead to the verbs', () => {
   it('the postpone gate\'s yes runs the postpone; no and a Comment carry on', () => {
@@ -116,17 +118,29 @@ describe('the verbs say what follows', () => {
   it('postponing the conversation\'s own topic goes back to the epic\'s menu; postponing another carries on', () => {
     sitIn('licence');
     assert.deepStrictEqual(run(['topic', 'postpone', EPIC, 'onboarding', '--horizon', 'next']).next, CONTINUE);
-    assert.deepStrictEqual(run(['topic', 'postpone', EPIC, 'licence', '--horizon', 'next']).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC, 'discussion', 'postponed'] });
+    assert.deepStrictEqual(run(['topic', 'postpone', EPIC, 'licence', '--horizon', 'next']).next, ONTO_MENU);
   });
 
   it('cancelling the conversation\'s own topic goes back to the epic\'s menu; cancelling another carries on', () => {
     sitIn('licence');
     assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'onboarding']).next, CONTINUE);
-    assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'licence']).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC, 'discussion', 'cancelled'] });
+    assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'licence']).next, ONTO_MENU);
   });
 
   it('a conversation sitting nowhere in the epic carries on', () => {
     assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'licence']).next, CONTINUE);
+  });
+
+  it('18.S56: a feature cancelled from inside its own session goes onto the start menu', () => {
+    run(['enter', 'discussion', SOLO, SOLO]);
+    assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, { kind: 'handoff', skill: 'leeway', args: [] });
+  });
+
+  it('a feature cancelled from anywhere else — another unit\'s session, or none — carries on', () => {
+    assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, CONTINUE);
+    run(['workunit', 'reactivate', SOLO]);
+    sitIn('licence');
+    assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, CONTINUE);
   });
 });
 

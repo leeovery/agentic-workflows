@@ -16,9 +16,11 @@
 // implementation, which lands on the quick-fix's skill, the one that runs
 // it from its opener to its close (19.5.1).
 //
-// The epic's menu takes an epic in progress, and one completed alone where
-// finish hands it there, `review completed`. The start, `leeway`, takes
-// nothing: where finish hands every other unit once it is done.
+// The epic's menu takes the epic alone: one in progress, or one finish
+// completed, whose menu is its complete variant (18.4.23). The start,
+// `leeway`, takes nothing: where finish hands every other unit once it is
+// done, and where a feature's, bugfix's or quick-fix's cancel from inside
+// its session goes (18.4.20).
 //
 // Discovery is told how the conversation was come to: a work type, the
 // person starting a piece of work of that kind; `start`, a piece of work of
@@ -29,7 +31,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, EPIC_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
 const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -42,8 +44,6 @@ const HANDOFF_ENV = 'LEEWAY_HANDOFF';
 
 /** Discovery's way in for a piece of work of no kind yet. */
 const START = 'start';
-
-const OUTCOMES = ['completed', 'cancelled', 'postponed'];
 
 /** The skill a quick-fix's work runs in, from its opener to its close (19.5.1). */
 const QUICK_FIX_SKILL = 'leeway-quick-fix-process';
@@ -123,8 +123,8 @@ function assertWorkUnit(cwd, name, type) {
 }
 
 /**
- * Whether the unit is an epic finish completed: its one move onto the
- * epic's menu once done, handed `review completed` (24.1.2).
+ * Whether the unit is an epic finish completed, whose menu is its complete
+ * variant (18.4.23).
  * @param {string} cwd @param {string} unit
  */
 function finishedEpic(cwd, unit) {
@@ -226,15 +226,10 @@ const TARGETS = {
     where: () => at('Roadmap'),
   },
   'leeway-continue-epic': {
-    usage: '<epic> [<completed-phase> <outcome>]',
-    counts: [1, 3],
-    check: (cwd, [unit, phase, outcome]) => {
-      if (phase !== undefined) {
-        assertOneOf('the phase', phase, EPIC_PHASES);
-        assertOneOf('the outcome', outcome, OUTCOMES);
-      }
-      if (phase === 'review' && outcome === 'completed' && finishedEpic(cwd, unit)) return;
-      assertWorkUnit(cwd, unit, 'epic');
+    usage: '<epic>',
+    counts: [1],
+    check: (cwd, [unit]) => {
+      if (!finishedEpic(cwd, unit)) assertWorkUnit(cwd, unit, 'epic');
     },
     where: (_cwd, [unit]) => at('Epic', unit),
   },

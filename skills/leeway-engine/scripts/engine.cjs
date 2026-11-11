@@ -113,7 +113,7 @@ const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { leaveNext } = require('./domain/topic-leave.cjs');
+const { leaveNext, unitLeaveNext } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -552,9 +552,10 @@ function runVerdict(call, argv) {
 // commit.
 // cancel/reactivate are the lifecycle transactions: manifest write,
 // knowledge-base sync (warn-don't-block), scoped git commit, with an
-// engine-owned message; a unit completes at finish's yes. pivot flips
-// a feature to an epic — both manifests, the map registration, the
-// re-index — as one transaction with an engine-owned message. absorb merges
+// engine-owned message; a unit completes at finish's yes. A cancel answers
+// its `next` from where the calling conversation sits (topic-leave.cjs).
+// pivot flips a feature to an epic — both manifests, the map registration,
+// the re-index — as one transaction with an engine-owned message. absorb merges
 // a feature into an epic as a new topic and deletes the feature — validated
 // completely before anything moves, one multi-pathspec commit at the end.
 // move stages a quick-fix's or a bugfix's move to another type and draws
@@ -581,8 +582,11 @@ function runWorkunit(call, argv) {
       if (!workUnit || extra.length > 0) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
-      const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
-      respond(call, fn(call.cwd, workUnit));
+      if (command === 'cancel') {
+        respond(call, { ...cancelWorkUnit(call.cwd, workUnit), next: unitLeaveNext(workUnit) });
+        return;
+      }
+      respond(call, (command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit)(call.cwd, workUnit));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
@@ -1012,7 +1016,7 @@ function runTopic(call, argv) {
         throw new Error('Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"');
       }
       const postponed = postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon });
-      respond(call, { ...postponed, next: leaveNext(workUnit, postponed.topic, 'postponed') });
+      respond(call, { ...postponed, next: leaveNext(workUnit, postponed.topic) });
       return;
     }
     if (Object.hasOwn(MAP_VERBS, command)) {
@@ -1030,7 +1034,7 @@ function runTopic(call, argv) {
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
-      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.topic, 'cancelled') });
+      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.topic) });
       return;
     }
     respond(call, UNIT_VERBS[/** @type {keyof typeof UNIT_VERBS} */ (command)](call.cwd, workUnit, phase, topic));

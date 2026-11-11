@@ -344,7 +344,6 @@ describe('gate payload — every gateway verb', () => {
       manage: [gated('manage'), gated('manage', 'checkout')],
       completed: [gated('completed')],
     },
-    'leeway-bridge': { index: [refused()], fallback: [ungated('checkout')] },
     'leeway-roadmap': {
       view: [gated('view')],
       'pull-set': [gated('pull-set')],
@@ -421,7 +420,7 @@ describe('gate payload — every gateway verb', () => {
     createFile(dir, '.leeway/v1/topics/tax/mail/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
 
-    /** A linear unit whose one phase concluded — its view asks whether to proceed where that phase is revisitable, and hands straight on behind a decided discussion. @param {string} name @param {string} workType @param {string} phase @param {string} next */
+    /** A linear unit whose one phase concluded. @param {string} name @param {string} workType @param {string} phase @param {string} next */
     const concluded = (name, workType, phase, next) => createManifest(dir, name, {
       work_type: workType,
       phases: { [phase]: { items: { [name]: { status: 'completed' } } } },

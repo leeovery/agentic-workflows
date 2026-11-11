@@ -1,8 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's experiments in a feature: the waiting
-// conversation routed to the laboratory and back, decided over a concluded
+// The pipeline simulation's experiments in a feature: the spawn worked now
+// or put off until the feature's Continue (24.S18), the laboratory's leave
+// back into the conversation by the unit's Continue, decided over a concluded
 // experiment and on to its specification; the question on the map an
 // experiment measures, and its report reaching the topic as a message once
 // that question closed, the topic held from its spec until it is read; and the single-topic backs re-rendering the start
@@ -21,8 +22,27 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, sessionLog, continueUnit, startMenu, handoffEntry, enterEntry, bridgeTo, waitAgents, decideTopic, askedOn, DECIDED_ITEMS,
+  Sim, sessionLog, continueUnit, startMenu, handoffEntry, enterEntry, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, DECIDED_ITEMS,
 } = require('./pipeline-world.cjs');
+
+/**
+ * The now-or-later gate after a spawn, answered `pick`: its next.
+ * @param {Sim} sim @param {string} wu @param {string} id @param {'y'|'l'} pick
+ */
+function spawnGate(sim, wu, id, pick) {
+  sim.render(['experiment-spawn-gate', `${wu}.discussion.${wu}`, '--id', id], { expect: 'content' });
+  return answerGate(sim, 'experiment spawn gate', '--pick', pick).next;
+}
+
+/** The laboratory's leave once its series has nothing left to work (next-experiment.md): the unit's Continue. @param {Sim} sim @param {string} wu */
+const leaveTheLab = (sim, wu) => handoffBy(sim, ['handoff', 'unit', wu]).invoked;
+
+/** The feature's topic closed into its spec, and its `next` followed there. @param {Sim} sim @param {string} wu */
+function intoTheSpec(sim, wu) {
+  const { next } = decideTopic(sim, wu, wu);
+  assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+  follow(sim, next);
+}
 
 /**
  * Claude's answer to a question on the topic's map, once nothing measures it.
@@ -49,7 +69,10 @@ describe('pipeline simulation: experiments, in a feature', () => {
         '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, `# Problem — ${slug}\n`)]);
     }
     waitAgents(sim, wu, wu);
-    bridgeTo(sim, wu, 'experiment');
+    assert.deepStrictEqual(spawnGate(sim, wu, 'E2', 'l'), { kind: 'continue' });
+    // 24.S18: put off for later, the laboratory is reached by the feature's
+    // Continue while a record waits unrun.
+    assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/leeway-experiment-process feature ${wu} ${wu}\`.`);
     sim.handOver();
 
     // Two live records put the pick to the user; a back out of it, on a unit
@@ -68,9 +91,9 @@ describe('pipeline simulation: experiments, in a feature', () => {
     enterEntry(sim, wu, 'discussion', wu);
     sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# Discussion — ${wu}\n`);
 
-    // The spawn holds the conversation behind its evidence: the bridge routes
-    // to the experiment until the wait releases — the now-and-later exits
-    // land on the same state.
+    // The spawn holds the conversation behind its evidence: the unit's
+    // Continue goes to the laboratory until the wait releases — the
+    // now-and-later exits land on the same state.
     const budget = askedOn(sim, wu, wu, 'What frame budget do we hold to?');
     const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'frame-budget', '--from', 'discussion', '--question', budget,
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — frame budget\n')]);
@@ -78,10 +101,11 @@ describe('pipeline simulation: experiments, in a feature', () => {
     sim.refuses(['ledger', 'decide', `${wu}.discussion.${wu}`, '--answers', budget], /is measured by experiment E1, still running/, null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: '60fps.', why: 'A guess.' }));
 
-    // The pause fetches the wait for its agents, then hands off to the
-    // laboratory, which starts in a fresh context.
+    // 24.S18: worked now, the pause fetches the wait for its agents, then
+    // the spawn gate's yes hands off to the laboratory, which starts in a
+    // fresh context.
     waitAgents(sim, wu, wu);
-    bridgeTo(sim, wu, 'experiment');
+    follow(sim, spawnGate(sim, wu, 'E1', 'y'));
     handoffEntry(sim, wu, 'experiment', wu);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
     sim.run(['experiment', 'approve', wu, wu, 'E1']);
@@ -91,8 +115,10 @@ describe('pipeline simulation: experiments, in a feature', () => {
     sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'budget holds at 60fps']);
     sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
 
-    // The verdict lands the route back on the conversation.
-    bridgeTo(sim, wu, 'discussion');
+    // The series has nothing left to work: the laboratory's leave is the
+    // unit's Continue, back into the conversation.
+    assert.strictEqual(leaveTheLab(sim, wu), `/leeway-discussion-process feature ${wu}`);
+    handoffEntry(sim, wu, 'discussion', wu);
 
     // A second spawn holds the conversation again; the record's abandon is
     // the release — the wait closes and the series settles over its terminal
@@ -114,8 +140,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // over them, the feature goes on to its specification — no conclusion
     // routes it back.
     for (const [question, text] of [[budget, '60fps.'], [latency, 'What 60fps leaves.']]) claudeDecides(sim, wu, wu, question, text);
-    assert.deepStrictEqual(decideTopic(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
-    bridgeTo(sim, wu, 'specification');
+    intoTheSpec(sim, wu);
   });
 
   it('the question an experiment measures: waiting on the map while it runs, held from Claude\'s close, and once the person closed it first, the topic held from its spec until the report, a message, is read', () => {
@@ -141,7 +166,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // its report owed (11.2.1). Once concluded, the report reaches the topic
     // as a message; raised and answered there, the topic closes into its
     // spec.
-    bridgeTo(sim, wu, 'experiment');
+    follow(sim, spawnGate(sim, wu, 'E1', 'y'));
     handoffEntry(sim, wu, 'experiment', wu);
     for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, wu, wu, 'E1']);
     ledger(['decide', at, '--answers', budget], { by: 'person', who_moved_whom: 'none', text: 'Under a second.', why: 'It feels instant.' });
@@ -156,7 +181,6 @@ describe('pipeline simulation: experiments, in a feature', () => {
     const raised = ledger(['ask', at], { by: 'claude', who_moved_whom: 'none', text: 'Does the report change the budget?' });
     sim.run(['topic', 'answered', wu, wu, report, '--entry', raised]);
     ledger(['decide', at, '--answers', raised], { by: 'person', who_moved_whom: 'none', text: 'No — 0.8 s holds it.', why: 'The report measured it.' });
-    assert.deepStrictEqual(decideTopic(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
-    bridgeTo(sim, wu, 'specification');
+    intoTheSpec(sim, wu);
   });
 });

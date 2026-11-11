@@ -25,10 +25,10 @@ Nothing remains to work.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The spawning conversation picks the evidence up at its next entry — the menu is the router.
+> The spawning conversation picks the evidence up at its next entry.
 ```
 
-Invoke `/leeway-bridge {work_unit} experiment`.
+Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `unit {work_unit}`.
 
 #### Otherwise
 
@@ -65,7 +65,7 @@ Nothing was picked — put the gate back.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The spawning conversation picks the evidence up at its next entry — the menu is the router.
+> The spawning conversation picks the evidence up at its next entry.
 ```
 
-Invoke `/leeway-bridge {work_unit} experiment`.
+Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `unit {work_unit}`.

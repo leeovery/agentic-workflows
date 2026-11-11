@@ -274,6 +274,16 @@ function resumedReads({ unit, topic = '', started }, views) {
 }
 
 /**
+ * A decided topic, entered for its entries relying on an answer replaced
+ * since alone (10.2.6, topic-standing.cjs): it stays decided. None for any
+ * other.
+ * @param {Entering} at @returns {Line[]}
+ */
+function staysDecided({ manifest, topic = '' }) {
+  return itemOf(manifest, 'discussion', topic)?.status === 'completed' ? [as('stays decided')('entered for its affected entries alone')] : [];
+}
+
+/**
  * The reports of the agents the topic was left with in its phase, landed
  * since, with those lost with a process that no longer runs (9.7.8).
  * @param {Entering} at @returns {Line[]}
@@ -294,8 +304,9 @@ function agentReads({ cwd, unit, phase, topic = '' }) {
  * (`carriedBefore`).
  * Resuming adds the topic's own record (9.3.11), its map, and the entries a
  * replacement changed under it, each confirmed or replaced in the
- * conversation (9.3.6); then the agents the topic was left with. The log
- * comes with every entry's.
+ * conversation (9.3.6) — for a decided topic, what it is entered for
+ * (`staysDecided`); then the agents the topic was left with. The log comes
+ * with every entry's.
  * @param {Entering} at @returns {Line[]}
  */
 function discussionReads(at) {
@@ -308,6 +319,7 @@ function discussionReads(at) {
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
     ...(started ? [...earlierLines(cwd, manifest, unit, topic), ...carriedBefore(at)] : []),
     ...resumedReads(at, ['record', 'map', 'affected']),
+    ...staysDecided(at),
     ...agentReads(at),
   ];
 }

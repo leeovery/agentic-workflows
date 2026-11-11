@@ -64,7 +64,7 @@ a deduplicated fixture library you have to chase across the tree.
 conversation opens on — one of the engine's `HANDOFF_TARGETS`
 (`domain/handoff.cjs`): `leeway`, or a skill a handoff lands the
 work on in a fresh context. Never a skill only ever opened in place (help
-or the bridge — a case about help enters at `leeway` and picks
+— a case about help enters at `leeway` and picks
 `h/help`), and never a
 reference: a walk begun mid-session lacks the context the prose was
 written for (`lib/cases.cjs`).

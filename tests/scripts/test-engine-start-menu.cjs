@@ -9,7 +9,9 @@
 // ledger in any conversation (12.13.7) and a raise sealed in the
 // conversation that drew it; mail waiting for a unit's topic beside the
 // count, never in it (10.4.3); the count leaving the verdicts out, which
-// have the project's own row while they wait (18.2.11); the inbox as one
+// have the project's own row while they wait (18.2.11), a feature's among
+// them, its Continue going where it stands; an epic picked opening on its
+// menu with what waits there first (18.S3, 5.S23); the inbox as one
 // line (18.2.8); one Start row, the product's row with its sessions and the
 // research owed (18.2.13, 8.12.13), triage, the roadmap, the view once a
 // unit has closed (18.2.18), manage and help, its walk carried on in the
@@ -32,10 +34,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, okSectionsAsync, output, sectionOf, writeState, layout, commitAll } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, output, sectionOf, screenOf, writeState, layout, commitAll } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT: FUMI, MADE, leaningCall } = require('./ledger-world.cjs');
-const { NO_PAYLOAD, NOTE_MAP, writeIn, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { SOLO, SOLO_AT, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 const review = require('./review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -151,6 +153,19 @@ describe('the start menu (18.2.12)', () => {
     assert.deepStrictEqual(rowsShown().e, VERDICTS);
     const page = output(dir(), VERDICTS.argv, { env: { CLAUDE_CODE_SESSION_ID: HERE } });
     assert.match(sectionOf(page, 'MENU: verdicts'), /n\/nothing/);
+  });
+
+  it('19.1.3, 18.2.11: a linear unit has no menu — a feature\'s verdict waits on the e row, the queue across every unit, never in its count, and its Continue goes where it stands, never to its verdicts', () => {
+    const { answer } = answeredIn(dir(), SOLO_AT, 'Is a tally kept per day?', { ...MADE, text: 'Per day.', kind: 'behaviour' });
+    writeIn(dir(), 'replace', SOLO_AT, ['--replaces', answer, '--reason', 'changed-mind'], { by: 'person', drops: ['per day'], text: 'Per week.', why: 'The person wants it so.' });
+    const { menu } = startMenu();
+    const solo = /** @type {string} */ (menu.find((row) => row.includes('Solo')));
+    const { e, [solo.split(' ')[0]]: continued } = rowsShown();
+
+    assert.deepStrictEqual([solo.replace(/^\S+ /, ''), lettered(menu).find((row) => row.startsWith('e/')), e, continued], [
+      '→ Continue feature: Solo — discussion', 'e/verdicts → Give the verdict waiting on a call you changed', VERDICTS, { kind: 'engine', argv: ['handoff', 'unit', SOLO] },
+    ]);
+    assert.match(output(dir(), ['handoff', 'unit', SOLO], { env: { CLAUDE_CODE_SESSION_ID: HERE } }), /^skill: leeway-discussion-process\nargs: feature solo$/m);
   });
 
   it('18.2.3: the count says each kind waiting — the gates, the questions and the topics a changed answer holds — and the verdicts\' row how many wait', () => {
@@ -314,20 +329,28 @@ describe('the start menu (18.2.12)', () => {
   });
 });
 
-describe('a builder\'s question parked in the ledger (12.S31, 18.S2)', () => {
+describe('a builder\'s question parked in the ledger (12.S31, 18.S2, 5.S23)', () => {
   /** @type {string} */
   let dir;
   review.useWorld((copied) => {
     dir = copied;
   });
 
-  it('12.S31, 18.S2: a fix task\'s builder parks on a question, and the unit is listed first with it counted, read from the ledger in a new session; no other row counts anything, and no waiting section stands apart', async () => {
+  it('12.S31, 18.S2, 5.S23: a fix task\'s builder parks on a question, and the unit is listed first with it counted, read from the ledger in a new session; no other row counts anything, and no waiting section stands apart — and in an epic, picked there, the epic opens on its menu with the question first and recommended (18.S3, 18.2.4)', async () => {
     review.firstRoundFailed();
     review.enter();
     await review.fixParked();
-    const { menu } = drawnIn(dir, review.env(NEW_SESSION));
+    const env = review.env(NEW_SESSION);
+    const { menu } = drawnIn(dir, env);
+    createManifest(dir, review.UNIT, { ...review.readManifest(dir, review.UNIT), work_type: 'epic' });
+    drawnIn(dir, env);
+    const { next } = ok(dir, ['gate', 'start menu', '--pick', '1'], { env });
+    const opened = output(dir, next.argv, { env });
+    const first = screenOf(output(dir, ['render', 'epic-menu', review.UNIT], { env }), 'MENU: epic menu').slice(3, 5).join(' ').replace(/\s+/g, ' ');
 
     assert.strictEqual(menu[0], '1 → Continue feature: Pay — review · 1 question waiting for you');
     assert.deepStrictEqual(menu.filter((row) => row.includes('waiting for you')), [menu[0]]);
+    assert.match(opened, /^skill: leeway-continue-epic\nargs: pay$/m);
+    assert.strictEqual(first, '1 → Is the receipt mailed or printed? — a question waiting for you (recommended)');
   });
 });

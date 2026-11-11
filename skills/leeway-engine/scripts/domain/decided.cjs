@@ -652,7 +652,7 @@ function waitAgentsSurface(cwd, { dotpath }) {
 function nextAfter(manifest, unit) {
   return topicsSettled(manifest)
     ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['epic', unit] }
-    : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit, PHASE, 'completed'] };
+    : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit] };
 }
 
 /**

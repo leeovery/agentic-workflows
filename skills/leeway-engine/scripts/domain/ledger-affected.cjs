@@ -136,6 +136,14 @@ function affectedIn(folded, finished, unit, topic) {
 }
 
 /**
+ * Whether an affected entry waits on `topic` of `unit` (5.6.12).
+ * @param {Folded} folded @param {string} root @param {string} unit @param {string} topic
+ */
+function waitsOnTopic(folded, root, unit, topic) {
+  return affectedIn(folded, finishedUnits(root), unit, topic).length > 0;
+}
+
+/**
  * `ledger affected`: the affected entries waiting in a unit or on a topic,
  * each with where it stands, the topics it waits on, and what changed under
  * it — the entry it is held against, and each replacement on its way, the
@@ -159,4 +167,4 @@ function answerAffected({ folded, show, short }, { unit, topic }, root) {
   };
 }
 
-module.exports = { heldAgainst, answerAffected };
+module.exports = { heldAgainst, answerAffected, waitsOnTopic };

@@ -457,7 +457,7 @@ describe('the experiment surfaces', () => {
       E2: { slug: 'multi-monitor', status: 'abandoned', reason: 'moot' },
     });
     assert.throws(() => renderSurface(dir, 'experiment-next-gate', { dotpath: 'lab.experiment.timing' }),
-      /"timing"'s series holds no live experiments — the bridge exit follows a finished series/);
+      /"timing"'s series holds no live experiments — the laboratory's leave follows a finished series/);
     assert.throws(() => renderSurface(dir, 'experiment-next-gate', { dotpath: 'lab.discussion.timing' }),
       /address must be <work_unit>\.experiment\.<topic>/);
   });

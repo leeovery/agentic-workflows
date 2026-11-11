@@ -7,7 +7,7 @@
 // where the phase is not entered through it — applies `{original} ·
 // {work-unit} · {phase} · {topic}`, the topic left out where it is the
 // work unit, the product's conversation's entry `{original} · product`, a
-// navigation skill and the bridge `{original} · {work-unit}`, the roadmap
+// navigation skill `{original} · {work-unit}`, the roadmap
 // `{original} · roadmap`, and leeway puts the original back through boot's
 // `repair`. Leaving a place is never an event: the name changes on arrival,
 // and at session end, where `session cleanup` restores it. A resumed

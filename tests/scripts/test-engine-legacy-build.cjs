@@ -6,10 +6,10 @@
 // still read — phaseStatus and computeNextPhase answer from them as before
 // the build by its cut, the start menu's rows and the board's tabs with them,
 // a retired type's unit waiting on the cut — and every way into their work is
-// closed until 29.17's migration cuts them: the bridge routes them nowhere and
-// revisits nothing, Continue refuses each but an epic, which goes onto its
-// menu, where the migration's line stands with no way into the build,
-// manage never offers to mark them done, and the revisit list refuses them.
+// closed until 29.17's migration cuts them: Continue refuses each but an
+// epic, which goes onto its menu, where the migration's line stands with no
+// way into the build, manage never offers to mark them done, and the revisit
+// list refuses them.
 // A retired type's unit is listed with the
 // features, by its own type, waiting on the cut whatever it has in flight,
 // the board placing it there too; its manifest is read by every verb, and no
@@ -34,7 +34,6 @@ const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/sc
 const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { epicMenuScreen } = require('../../skills/leeway-engine/scripts/domain/projections/epic-menu.cjs');
-const bridge = require('../../skills/leeway-bridge/scripts/gateway.cjs');
 const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
 const { startDetail } = require('../../skills/leeway-engine/scripts/domain/start.cjs');
 const { manageListView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
@@ -70,7 +69,6 @@ const NAMES = Object.keys(UNITS);
 const RETIRED_UNITS = ['done-concern', 'lab-concern', 'old-concern'];
 const LIVE = ['plan-feature', 'built-feature', 'reviewing-feature', 'reviewed-feature', 'old-bugfix', 'old-quick-fix', ...RETIRED_UNITS];
 const SESSION = { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } };
-const lines = (text, re) => text.split('\n').filter((line) => re.test(line));
 const retired = (name) => `${name} is a cross-cutting unit, a type the reshape retires — it waits on the reshape's 29.17 migration, and nothing is done in it until then`;
 const RETIRED = retired('old-concern');
 const waiting = (name) => (RETIRED_UNITS.includes(name) ? retired(name) : `${name} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`);
@@ -105,11 +103,6 @@ describe('a unit built under the old plan reads its items and waits on the migra
       'lab-concern': ['in-progress in-progress ', `done: ${AT_THE_CUT}`],
       'done-concern': [' completed ', `done: ${AT_THE_CUT}`],
     });
-  });
-
-  it('the bridge routes it nowhere', () => {
-    const dumps = Object.fromEntries(LIVE.map((name) => [name, lines(bridge.format(bridge.discover(dir, name)), /^next_route: /)]));
-    assert.deepStrictEqual(dumps, Object.fromEntries(LIVE.map((name) => [name, ['next_route: (none)']])));
   });
 
   it('Continue refuses a feature, bugfix or quick-fix in the migration\'s line, and takes an epic onto its menu, where the line stands', () => {

@@ -65,8 +65,8 @@
 //   quick-fix's then puts the project's checkout back on the branch it
 //   lands on; then
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
-//   goes (24.1.2), a handoff each: an epic's menu, its review completed;
-//   the start menu, `/leeway`, for every other type.
+//   goes (24.1.2), a handoff each: an epic's menu, its complete variant
+//   (14.6.2, 18.4.23); the start menu, `/leeway`, for every other type.
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
 //   request whole (landing.cjs): one read, the screen's standing and no
@@ -251,9 +251,9 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
   });
 }
 
-/** Where the work goes once the unit is finished (24.1.2): an epic's menu, its review completed; else the start menu. @param {Record<string, any>} manifest @returns {Next} */
+/** Where the work goes once the unit is finished (24.1.2, 14.6.2): an epic's menu, its complete variant (18.4.23); else the start menu. @param {Record<string, any>} manifest @returns {Next} */
 function nextAfterFinish(manifest) {
-  return manifest.work_type === 'epic' ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [manifest.name, 'review', 'completed'] } : { kind: 'handoff', skill: 'leeway', args: [] };
+  return manifest.work_type === 'epic' ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [manifest.name] } : { kind: 'handoff', skill: 'leeway', args: [] };
 }
 
 /** The yes's refusal while the screen still has a verdict to ask. */
