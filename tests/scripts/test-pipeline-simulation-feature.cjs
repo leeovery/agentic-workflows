@@ -25,11 +25,10 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { sectionOf } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, enterEntry, carryOn, handoff, answerGate, gatesAnswered, decideTopic, startPick, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet,
+  Sim, sessionLog, enterEntry, carryOn, handoff, handoffBy, answerGate, gatesAnswered, decideTopic, startPick, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet,
   specEntry, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
 } = require('./pipeline-world.cjs');
 
@@ -80,7 +79,8 @@ describe('pipeline simulation: feature', () => {
       candidates: [{ name: 'refunds', reason: 'Nothing decides how a refund reaches the card.', horizon: 'later' }],
     });
     assert.deepStrictEqual(closed, { ok: true, unit: wu, topic: wu, lines: 1, withdrawals: 0, candidates: ['refunds'], next: { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] } });
-    assert.deepStrictEqual([sim.manifest(wu).phases.discussion.items[wu].status, BRIDGE.discover(sim.dir, wu).next_phase], ['in-progress', 'specification']);
+    assert.deepStrictEqual([sim.manifest(wu).phases.discussion.items[wu].status, handoffBy(sim, ['handoff', 'unit', wu]).invoked], ['in-progress', `/leeway-specification-process feature ${wu}`],
+      'its Continue goes into the spec, the topic staged there');
     sim.refuses(['render', 'decided', `${wu}.${wu}`], /^render decided: pay is a feature, whose topic closes into its spec with no gate/);
     handoff(sim, `/leeway-specification-process feature ${wu}`);
 
@@ -140,7 +140,7 @@ describe('pipeline simulation: feature', () => {
       shaped_by: [shapedInTheProduct(sim, 'filters')], seeds, brief: briefDraft(sim, wu, wu),
     });
     assert.deepStrictEqual(started.seeds.map((/** @type {{source: string}} */ seed) => seed.source), ['inbox:idea', 'inbox:idea', 'inbox:bug']);
-    assert.deepStrictEqual([started.next.skill, BRIDGE.discover(sim.dir, wu).next_phase], ['leeway-discussion-process', 'discussion'], 'the bug is the feature\'s to discuss: no investigation runs for it');
+    assert.deepStrictEqual([started.next.skill, handoffBy(sim, ['handoff', 'unit', wu]).invoked], ['leeway-discussion-process', `/leeway-discussion-process feature ${wu}`], 'the bug is the feature\'s to discuss: no investigation runs for it');
     sim.refuses(['enter', 'investigation', wu], /^a feature has no investigation/);
     // The yes moved the seeds out of the inbox, and the handoff checks each
     // is still there — so it can only come first.

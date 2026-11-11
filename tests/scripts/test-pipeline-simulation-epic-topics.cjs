@@ -149,9 +149,9 @@ describe('pipeline simulation: epic-topics', () => {
     const peerRow = presenceRow(after, 'experiment', 'alpha');
     assert.strictEqual(peerRow.held, true, 'the peer is still in its topic — a cancel never evicts another session');
     assert.strictEqual(peerRow.session_id, peer.id);
-    // The session that cancelled its topic hands off to the epic menu, which
-    // sets it aside.
-    assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'cancelled'), /^SET ASIDE\n {2}└─ Alpha — cancelled$/m);
+    // 18.S56: the session that cancelled its topic hands off onto the epic
+    // menu, which sets it aside.
+    assert.match(arriveAtEpicMenu(sim, wu, taken.next), /^SET ASIDE\n {2}└─ Alpha — cancelled$/m);
   });
 
   it('a postpone releases its own hold and never a peer\'s, whose next commit over it clears rather than beats', () => {
@@ -164,7 +164,7 @@ describe('pipeline simulation: epic-topics', () => {
     const taken = sim.run(['topic', 'postpone', wu, 'alpha', '--horizon', 'next']);
     assert.deepStrictEqual(taken.postponed, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'discussion', 'alpha'), undefined, 'the caller\'s own hold leaves with the topic');
-    assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'postponed'), /^SET ASIDE\n {2}└─ Alpha — postponed · roadmap next$/m);
+    assert.match(arriveAtEpicMenu(sim, wu, taken.next), /^SET ASIDE\n {2}└─ Alpha — postponed · roadmap next$/m, '18.S56: a postpone inside its session lands on the epic menu');
 
     // Back at the menu, the session postpones the topic a peer sits in.
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);

@@ -117,7 +117,7 @@ describe('pipeline simulation: epic', () => {
     const brief = sim.write('.leeway/.cache/scratch/brief-gamma.md', '# Gamma\n\nWhat alpha opened, where, why it matters, and what stays open.\n');
     const decided = decideTopic(sim, wu, 'alpha', { lines: [], candidates: [{ name: 'gamma', reason: 'Alpha opened a question of its own.', brief }] });
     assert.deepStrictEqual(decided.candidates, ['gamma']);
-    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu, 'discussion', 'completed'] });
+    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.gamma.summary, 'Alpha opened a question of its own.');
     assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/gamma/brief.md`)), 'the candidate lands with its brief');
 

@@ -14,12 +14,19 @@
 // and a feature, bugfix or quick-fix waiting on the migration's cut (P12),
 // in its line. The move itself is the handoff table's (handoff.cjs), checked
 // and composed as any other.
+//
+// Where the unit stands also says where a decided topic's entry relying on
+// an answer replaced since is answered (18.4.2, 12.15.4): in the topic
+// itself while the unit is in the phase its topics are talked through, else
+// in the phase it has come to, the unit never going back to its discussion
+// — the door the waits read gives it (waits.cjs) and the one the topic's
+// standing admits it by (topic-standing.cjs).
 // ---------------------------------------------------------------------------
 
 const { resolveHandoff, phaseSkill } = require('./handoff.cjs');
 const { knownUnit, noUnit } = require('./topic-standing.cjs');
 const { nowOf, unitRead } = require('./projections/board-standing.cjs');
-const { awaitsCut, buildRefusal, openRecords } = require('./derivations.cjs');
+const { awaitsCut, buildRefusal, mailPhase, openRecords } = require('./derivations.cjs');
 
 /** @typedef {import('./handoff.cjs').Handoff} Handoff */
 
@@ -36,6 +43,17 @@ const ENTERED_AS = Object.freeze({ build: 'implementation' });
 function phaseNow(cwd, manifest) {
   const { phase } = nowOf(unitRead(cwd, manifest));
   return ENTERED_AS[phase] ?? phase;
+}
+
+/**
+ * Where a decided topic's entry relying on a replaced answer is answered
+ * (the header's): null in the topic itself, else the phase the unit has
+ * come to.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {string|null}
+ */
+function affectedAnsweredIn(cwd, manifest) {
+  const now = phaseNow(cwd, manifest);
+  return now === mailPhase(manifest.work_type) ? null : now;
 }
 
 /**
@@ -68,4 +86,4 @@ function unitHandoff(cwd, args) {
   return resolveHandoff(cwd, phaseSkill(phaseNow(cwd, manifest), type), [type, unit]);
 }
 
-module.exports = { unitHandoff, phaseNow, UNIT_HANDOFF_USAGE };
+module.exports = { unitHandoff, affectedAnsweredIn, UNIT_HANDOFF_USAGE };

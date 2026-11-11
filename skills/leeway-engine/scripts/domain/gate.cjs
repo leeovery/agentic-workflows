@@ -135,6 +135,16 @@ function recordGateShown() {
   } catch { /* the command stands without it */ }
 }
 
+/**
+ * The gate the conversation `session` was shown last, answered or not; null
+ * where it was shown none.
+ * @param {string} session @returns {ShownRecord|null}
+ */
+function lastShown(session) {
+  const read = readJson(shownFile(session));
+  return isObject(read) ? /** @type {ShownRecord} */ (read) : null;
+}
+
 /** Forget the gate the conversation `session` was shown. @param {string} session */
 function clearGateShown(session) {
   fs.rmSync(shownFile(session), { force: true });
@@ -226,4 +236,4 @@ function answerGate(cwd, named, answer) {
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed };
+module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed, lastShown };

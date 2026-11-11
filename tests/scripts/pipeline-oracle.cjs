@@ -10,8 +10,8 @@
 //     the project's keeping the project_id setup gave it,
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
-//   - every navigation gateway (start, the continue menus, bridge) reads
-//     and renders the state without throwing,
+//   - every navigation menu (the start menu, an epic's) reads and renders
+//     the state without throwing,
 //   - every menu a gateway draws, and every menu a render draws, states
 //     itself whole in its gate payload once the gate surface is announced,
 //     and the gate a render's menu states is the one its conversation was
@@ -45,7 +45,6 @@ const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/kno
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
 const { isId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { openGate, gateShown } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { MENUS, menuBody } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/menus.cjs'));
@@ -262,14 +261,6 @@ function auditState(dir, label) {
     // An epic's menu draws over whatever state the pipeline is in, but a
     // cancelled epic's, which it refuses.
     if (manifest.work_type === 'epic' && manifest.status !== 'cancelled') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
-
-    // The bridge can always read a single-topic unit — it runs its gateway
-    // for no epic.
-    if (manifest.work_type !== 'epic') {
-      const bridged = BRIDGE.discover(dir, wu);
-      assert.ok(!bridged.error, ctx(`${wu}: bridge gateway errored: ${bridged.error}`));
-      BRIDGE.format(bridged);
-    }
   }
 
   // The start menu renders whatever state the pipeline is in once boot has

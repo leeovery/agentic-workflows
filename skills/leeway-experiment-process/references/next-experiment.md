@@ -25,10 +25,10 @@ Nothing remains to work.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The spawning conversation picks the evidence up at its next entry — the menu is the router.
+> The spawning conversation picks the evidence up at its next entry.
 ```
 
-Invoke `/leeway-bridge {work_unit} experiment`.
+Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `unit {work_unit}`.
 
 #### Otherwise
 
@@ -56,16 +56,14 @@ Derive `{dir}` = `.leeway/{work_unit}/topics/{topic}/experiments/{id}-{slug}`.
 
 **If the resolve returned no record** (`b/back` from the picker):
 
-Nothing was picked — put the gate back.
-
-→ Return to **B. Offer the Next Experiment**.
+Nothing was picked: follow the back's `next`, and take the answer of the gate it draws as this section does.
 
 #### If `menu`
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The spawning conversation picks the evidence up at its next entry — the menu is the router.
+> The spawning conversation picks the evidence up at its next entry.
 ```
 
-Invoke `/leeway-bridge {work_unit} experiment`.
+Follow the answer's `next`.

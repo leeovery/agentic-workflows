@@ -17,7 +17,7 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
-const { output, sectionOf, unreadableKnowledge, readState, layout, commitAll, traced } = require('./engine-harness.cjs');
+const { output, sectionOf, screenOf, unreadableKnowledge, readState, layout, commitAll, traced } = require('./engine-harness.cjs');
 const {
   UNIT, useWorld, env, reviewPassed, finishClosed, finishReady, readManifest, writeState, stateGit, refusedPristine, ok, assert,
 } = require('./review-world.cjs');
@@ -59,15 +59,21 @@ describe('finish yes (14.5.1, 24.1.2)', () => {
     assert.strictEqual(refused(['render', 'finish', UNIT]), `render finish: ${UNIT} is completed — new work starts from the start menu`);
   });
 
-  it('hands an epic back to its menu, its review completed — the handoff taking it once the epic is completed', () => {
+  it('14.S11, 14.6.2: hands an epic onto its menu, by its name alone — the handoff taking it once completed, the menu its complete variant (18.4.23)', () => {
     finishReady();
     writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir, UNIT), work_type: 'epic' }, null, 2));
     commitAll(dir, 'pay an epic');
 
     const { next } = ok(dir, ['finish', 'yes', UNIT], { env: env() });
 
-    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'review', 'completed'] });
-    assert.match(output(dir, ['handoff', next.skill, ...next.args], { env: env() }), /^skill: leeway-continue-epic\nargs: pay review completed$/m);
+    const menu = output(dir, ['render', 'epic-menu', UNIT], { env: env() });
+
+    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
+    assert.match(output(dir, ['handoff', next.skill, ...next.args], { env: env() }), /^skill: leeway-continue-epic\nargs: pay$/m);
+    assert.deepStrictEqual([sectionOf(menu, 'TITLE'), screenOf(menu, 'MENU: epic menu').slice(3)], [
+      '# **`■ Complete — Pay`**\n',
+      ['h/help → What this menu is for, row by row', 'b/back → Back to the start menu'],
+    ]);
   });
 
   it('says, on the screen and in the yes, that a knowledge base set up but not reading leaves the records indexed unchecked', () => {

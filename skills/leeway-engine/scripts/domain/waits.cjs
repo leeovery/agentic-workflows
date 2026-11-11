@@ -24,9 +24,10 @@
 //   no conversation, none counts. Everything else is read from the ledger
 //   and the unit's files, the same in any conversation.
 // - Each decided topic with an entry relying on an answer replaced since
-//   (10.2.6, ledger-affected.cjs), its door the phase the unit is in — the
-//   topic's own while the unit is in the phase its topics are talked
-//   through, else that phase, whose entry reads what the change affected.
+//   (10.2.6, ledger-affected.cjs), its door where such an entry is answered
+//   (unit-handoff.cjs): the topic's own while the unit is in the phase its
+//   topics are talked through, else that phase, whose entry reads what the
+//   change affected.
 // - Asked for, the verdicts waiting on the departures that stand in the
 //   unit, in the ledger's order (ledger-verdicts.cjs), each its door the
 //   verdict page drawn for the unit.
@@ -51,7 +52,7 @@ const { readyDraws } = require('./ready-to-build.cjs');
 const { finishDraws } = require('./finish.cjs');
 const { specUnderWay } = require('./spec-standing.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { phaseNow } = require('./unit-handoff.cjs');
+const { affectedAnsweredIn } = require('./unit-handoff.cjs');
 const {
   buildFinished, quickFixBuild, fixesBegun, reviewAsked, tasksBegun, itemOf, mailPhase, topicTitle,
 } = require('./derivations.cjs');
@@ -169,15 +170,14 @@ function specWaits(cwd, manifest, warnings) {
 }
 
 /**
- * The door to a decided topic a change affected: the topic's own while the
- * unit is in the phase its topics are talked through, else the phase it is
- * in (the header's).
- * @param {string} cwd @param {Record<string, any>} manifest @param {string} phase the phase its topics are talked through
- * @returns {(topic: string) => Next}
+ * The door to a decided topic a change affected: into where its entry is
+ * answered (unit-handoff.cjs, `affectedAnsweredIn`) — the topic's own, or
+ * the phase the unit is in.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {(topic: string) => Next}
  */
-function affectedDoor(cwd, manifest, phase) {
-  const now = phaseNow(cwd, manifest);
-  return now === phase ? (topic) => intoTopic(manifest, topic) : () => intoPhase(manifest, now);
+function affectedDoor(cwd, manifest) {
+  const phase = affectedAnsweredIn(cwd, manifest);
+  return phase === null ? (topic) => intoTopic(manifest, topic) : () => intoPhase(manifest, phase);
 }
 
 /** Each decided topic an answer it relied on, replaced since, holds (10.2.6). @param {string} cwd @param {Shower} shower @param {string} root @param {Record<string, any>} manifest @returns {Wait[]} */
@@ -187,7 +187,7 @@ function affectedWaits(cwd, shower, root, manifest) {
   const topics = /** @type {string[]} */ (answerAffected(shower, { unit: manifest.name, topic: null }, root).waiting
     .filter((topic) => topic !== null && itemOf(manifest, phase, topic)?.status === 'completed'));
   if (topics.length === 0) return [];
-  const door = affectedDoor(cwd, manifest, phase);
+  const door = affectedDoor(cwd, manifest);
   return topics.map((topic) => wait('affected', topic, `${topicTitle(manifest, topic)}: a decision it relies on changed`, door(topic), topic));
 }
 

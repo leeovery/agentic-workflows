@@ -150,21 +150,15 @@ describe('engine handoff — the composed answer for every target', () => {
       inlineAnswer('leeway-roadmap', 'open', '→ Roadmap'));
   });
 
-  it('the epic menu names the epic, bare or told what concluded and how', () => {
+  it('the epic menu names the epic alone', () => {
     assert.strictEqual(inline(dir, ['leeway-continue-epic', 'fumi']),
       inlineAnswer('leeway-continue-epic', 'fumi', '→ Epic · fumi'));
-    assert.strictEqual(inline(dir, ['leeway-continue-epic', 'fumi', 'discovery', 'completed']),
-      inlineAnswer('leeway-continue-epic', 'fumi discovery completed', '→ Epic · fumi'));
-    for (const outcome of ['completed', 'cancelled', 'postponed']) {
-      assert.strictEqual(payloadOf(carried(dir, ['leeway-continue-epic', 'fumi', 'discussion', outcome])).args,
-        `fumi discussion ${outcome}`);
-    }
   });
 
-  it('the epic menu takes an epic finish completed, handed its review completed (24.1.2)', () => {
+  it('14.6.2, 18.4.23: the epic menu takes an epic finish completed, by its name alone — its menu the complete variant', () => {
     createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
-    assert.strictEqual(inline(dir, ['leeway-continue-epic', 'done-epic', 'review', 'completed']),
-      inlineAnswer('leeway-continue-epic', 'done-epic review completed', '→ Epic · done-epic'));
+    assert.strictEqual(inline(dir, ['leeway-continue-epic', 'done-epic']),
+      inlineAnswer('leeway-continue-epic', 'done-epic', '→ Epic · done-epic'));
   });
 
   it('discovery into an existing epic takes the work type epic or none, and no seeds', () => {
@@ -435,9 +429,8 @@ describe('engine handoff — refusals', () => {
       [['leeway', 'fumi'], /^Usage: engine handoff leeway$/],
       [['leeway-roadmap'], /^Usage: engine handoff leeway-roadmap open$/],
       [['leeway-roadmap', 'open', 'extra'], /^Usage: engine handoff leeway-roadmap open$/],
-      [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic> \[<completed-phase> <outcome>\]$/],
-      [['leeway-continue-epic', 'fumi', 'discussion'], /^Usage: engine handoff leeway-continue-epic /],
-      [['leeway-continue-epic', 'fumi', 'discussion', 'completed', 'extra'], /^Usage: engine handoff leeway-continue-epic /],
+      [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
+      [['leeway-continue-epic', 'fumi', 'discussion', 'completed'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
       [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
       [['leeway-quick-fix-process', 'quick-fix', 'a', 'b'], /^Usage: engine handoff leeway-quick-fix-process <quick-fix> <work-unit>$/],
       [['leeway-implementation-process', 'epic'], /^Usage: engine handoff leeway-implementation-process <epic\|feature\|bugfix> <work-unit>$/],
@@ -486,25 +479,11 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['leeway-roadmap', 'pull'], /^the mode must be open — got "pull"$/);
   });
 
-  it('the epic menu refuses a unit that is no epic, a phase outside the epic\'s, and an unknown outcome', () => {
-    refused(dir, ['leeway-continue-epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
-    refused(dir, ['leeway-continue-epic', 'none'], /^work unit "none" not found$/);
-    refused(dir, ['leeway-continue-epic', 'fumi', 'investigation', 'completed'], /^the phase must be one of discovery\|experiment\|discussion\|specification\|implementation\|review — got "investigation"$/);
-    refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'abandoned'], /^the outcome must be one of completed\|cancelled\|postponed — got "abandoned"$/);
-  });
-
-  it('the epic menu refuses a completed epic but where finish hands it its review completed, and a completed feature however handed', () => {
-    createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
+  it('the epic menu refuses a unit that is no epic, a completed feature among them, and one the project lacks', () => {
     createManifest(dir, 'done-feature', { work_type: 'feature', status: 'completed' });
-    const notInProgress = /^work unit "done-epic" is completed — a handoff moves into work in progress$/;
-    refused(dir, ['leeway-continue-epic', 'done-epic'], notInProgress);
-    refused(dir, ['leeway-continue-epic', 'done-epic', 'implementation', 'completed'], notInProgress);
-    refused(dir, ['leeway-continue-epic', 'done-epic', 'review', 'cancelled'], notInProgress);
-    refused(dir, ['leeway-continue-epic', 'done-feature', 'review', 'completed'], /^work unit "done-feature" is of type feature, not epic$/);
-  });
-
-  it('the epic menu refuses a pause: no phase leaves on one', () => {
-    refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'paused'], /^the outcome must be one of completed\|cancelled\|postponed — got "paused"$/);
+    refused(dir, ['leeway-continue-epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
+    refused(dir, ['leeway-continue-epic', 'done-feature'], /^work unit "done-feature" is of type feature, not epic$/);
+    refused(dir, ['leeway-continue-epic', 'none'], /^work unit "none" not found$/);
   });
 
   it('every epic phase entered at a topic refuses the epic alone — the epic menu names the topic before it hands off', () => {

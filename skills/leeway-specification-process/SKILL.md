@@ -54,6 +54,7 @@ The person meets this phase at approve the map after the sweep, at a gap the mat
 - The review page → `spec page|published|marks|push {work_unit}`.
 - The close → `checklist show|done|skip|close ready-to-build {work_unit}`, then `render ready-to-build {work_unit} [--page]`, whose picks run `ready-to-build yes`; a feature's topic close, restaged → `decided stage|unstrike {work_unit} {work_unit}`.
 - The split → `render horizon-pick|postpone-gate {work_unit}.discovery.{topic}`, then `topic postpone` as the confirm's yes runs it, and `render topic-receipt`.
+- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
@@ -67,6 +68,16 @@ Mark each as it holds, `checklist done ready-to-build {work_unit} {item}`, or sk
 ## Backlogging
 
 The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back". Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{work_unit}`, phase = `specification`.
+
+## Cancelling the Work
+
+The person calls the work off. Fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
+
+The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; then follow the cancel's `next`:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]
+```
 
 ## Splitting the Epic
 

@@ -28,7 +28,6 @@ const ROOT = path.join(__dirname, '../..');
 const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
 const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
@@ -416,8 +415,8 @@ function carryOn(sim, identity = null) {
   return answer;
 }
 
-// Every place labels itself on arrival: a navigation skill, the bridge and
-// the roadmap label the place alone (`arrive`), the epic's menu by drawing
+// Every place labels itself on arrival: the start and the roadmap label the
+// place alone (`arrive`), the epic's menu by drawing
 // itself (`epicMenuAt`), and every phase skill's Step 0 records its place
 // before anything else (`handoffEntry`). The sim strips the tmux identity and
 // pins an empty config dir, so the tmux rename is the disabled or no-tmux
@@ -431,19 +430,13 @@ function arrive(sim, name) {
 }
 
 // The conversation at a place alone: a project place and an epic's menu
-// carry on in their own skill after a compaction, any other unit's place
-// nothing.
+// carry on in their own skill after a compaction.
 /** @param {Sim} sim @param {string} name */
 function arrived(sim, name) {
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name }, `the arrival records the place alone (${name})`);
   const skill = schema.PROJECT_IDENTITIES.includes(name) ? `leeway-${name}` : skillAt(name, undefined, sim.manifest(name).work_type);
-  if (skill === null) {
-    assert.strictEqual(here.skill, null, 'a linear unit\'s menu carries nothing on');
-    assert.match(here.text, /outside any phase, so there is nothing to carry on from\.$/);
-  } else {
-    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', skill, 'SKILL.md'), `the ${name} carries on in its own skill`);
-  }
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skill), 'SKILL.md'), `the ${name} carries on in its own skill`);
 }
 
 // An epic continued from the start menu: its row picked, which hands off to
@@ -462,8 +455,8 @@ function menuEntry(sim, wu) {
   return epicMenuAt(sim, wu);
 }
 
-// A move into a phase hands off — a menu's pick and a conclusion through the
-// bridge alike: carried by the gate mod, the conversation is cleared and the
+// A move into a phase hands off — a menu's pick and a conclusion's `next`
+// alike: carried by the gate mod, the conversation is cleared and the
 // phase skill starts in a fresh one, whose first engine call is its label —
 // marking the conversation and recording the place, so a compaction there
 // carries on in the phase's skill.
@@ -546,16 +539,6 @@ function handoffBy(sim, argv) {
   return { invoked, payload };
 }
 
-// The bridge's hop between a linear unit's phases: its gateway derives the
-// next phase and the route it is entered by, and the continuation hands that
-// route off.
-/** @param {Sim} sim @param {string} wu @param {string} phase */
-function bridgeTo(sim, wu, phase) {
-  const dump = BRIDGE.format(BRIDGE.discover(sim.dir, wu));
-  assert.match(dump, new RegExp(`^next_phase: ${phase}$`, 'm'), `the bridge derives ${phase}`);
-  handoff(sim, /** @type {string} */ (dump.match(/^next_route: (.*)$/m)?.[1]));
-}
-
 // The epic's menu as its skill draws it (leeway-continue-epic): the render
 // alone, which leaves the conversation at the epic. Answers the menu drawn.
 /** @param {Sim} sim @param {string} wu @returns {string} */
@@ -565,11 +548,13 @@ function epicMenuAt(sim, wu) {
   return drawn;
 }
 
-// An epic phase's conclusion or in-session exit hands off to the epic's
-// menu. Answers the menu drawn.
-/** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [outcome] @returns {string} */
-function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
-  handoff(sim, `/leeway-continue-epic ${wu} ${phase} ${outcome}`);
+// An epic's topic decided, or cancelled or postponed inside its own
+// session, hands off onto the epic's menu, named by the epic alone (18.4.20):
+// the verb's `next` followed. Answers the menu drawn.
+/** @param {Sim} sim @param {string} wu @param {Next} next @returns {string} */
+function arriveAtEpicMenu(sim, wu, next) {
+  assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] }, 'the move lands on the epic\'s menu');
+  follow(sim, next);
   return epicMenuAt(sim, wu);
 }
 
@@ -1694,6 +1679,6 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
-  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

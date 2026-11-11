@@ -20,6 +20,8 @@ const { isParentExperimentId } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, title, stateNote } = require('../conventions.cjs');
 const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, MENU_INSTRUCTION } = require('./surfaces.cjs');
 
+/** @typedef {import('./surfaces.cjs').Next} Next */
+
 /**
  * @typedef {object} SeriesRow
  * @property {string} id        `E1`, `E2`, … — sub-experiments `E1.1`, `E1.2`, …
@@ -91,29 +93,32 @@ function experimentApprovalGate(id) {
 /**
  * The record picker under the register — the several-live-records path: the
  * register shows the series, this menu takes the pick, one row per live
- * top-level record keyed by its id.
+ * top-level record keyed by its id; its back leads where `back` says.
  * @param {SeriesRow[]} live  live top-level rows, id order
+ * @param {Next} back
  * @returns {string}
  */
-function experimentPick(live) {
+function experimentPick(live, back) {
   return section('MENU: experiment pick', MENU_INSTRUCTION, menu('Which experiment?', [
     ...live.map((r) => cmdOption(r.id, null, { head: r.slug, tail: r.status })),
-    cmdOption('b', 'back', 'Leave without picking one'),
+    cmdOption('b', 'back', 'Leave without picking one', { next: back }),
   ]));
 }
 
 /**
  * The return leg's gate — a record just closed and the series still holds
- * live experiments: work the next one in this session, or back to the menu.
+ * live experiments: work the next one in this session, or back to the menu,
+ * where `leave` leads.
  * @param {SeriesRow[]} live  live top-level rows, id order
+ * @param {Next} leave
  * @returns {string}
  */
-function experimentNextGate(live) {
+function experimentNextGate(live, leave) {
   const names = live.map((r) => `${r.id} ${r.slug}`).join(', ');
   const statement = `The series still holds ${names}.`;
   return section('MENU: experiment next gate', MENU_INSTRUCTION, menu(statement, [
     cmdOption('y', 'yes', 'Work the next experiment'),
-    cmdOption('m', 'menu', 'Back to the menu'),
+    cmdOption('m', 'menu', 'Back to the menu', { next: leave }),
   ], { question: 'Work the next experiment?' }));
 }
 

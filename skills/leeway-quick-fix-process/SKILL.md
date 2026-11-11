@@ -140,7 +140,7 @@ A refusal names what to fix. The answer goes to `gate`; follow its `next`, and t
 
 The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; the unit is closed, and the turn ends:
+The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; then follow the cancel's `next`:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]

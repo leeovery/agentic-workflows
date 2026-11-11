@@ -89,7 +89,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     assert.ok(!('dock-icon' in manifest.phases.discovery.items), 'the struck candidate stays off the map');
     assert.deepStrictEqual(manifest.phases.discovery.dismissed, ['dock-badge', 'dock-icon'], '8.S60: the struck candidate is the person\'s answer, beside the names struck before');
     assert.strictEqual(manifest.phases.discussion.items['note-window'].status, 'completed');
-    assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'discussion', 'completed'] });
+    assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
     assert.deepStrictEqual([res.lines.length, res.candidates, res.struck, res.parked, res.warnings], [2, ['removing-fumi'], ['dock-icon'], undefined, undefined]);
     assert.strictEqual(lastMessage(dir()), 'decided(fumi): note-window');
     assert.deepStrictEqual(committedPaths(), [layout.manifest(UNIT), layout.brief(UNIT, 'removing-fumi')].sort(), 'the yes commits the map and the brief it installed');
@@ -193,7 +193,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'next'], { env: SESSION });
     close();
     staged({ lines: [], candidates: [candidate('removing-fumi', 'Nothing decides what removing Fumi takes back.')] });
-    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'discussion', 'completed'] });
+    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
   });
 
   it('closes a feature\'s topic into its spec with no gate: its decided screen and yes refused, naming the stage, which stages the payload against the close and hands off into the spec, the topic not yet decided; an epic\'s stages with its screen (11.2.1, 9.7.6)', () => {

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's backwards walk: a feature's discussion closed
-// into its spec, which the bridge offers no revisit into, its close voided
+// into its spec, the revisit list offering no way back into it, its close voided
 // as its discussion goes on before the spec is written — the discussion
 // entered again, in the entry's commit, a message sent to it while the spec
 // is entered — the spec waiting each time until it closes again (11.2.1,
@@ -22,7 +22,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { stateGit, layout } = require('./engine-harness.cjs');
-const { Sim, startUnit, discussed, arrive, send, sendArgv, specEntry, specWritten, specBuilt, enterEntry } = require('./pipeline-world.cjs');
+const { Sim, startUnit, discussed, send, sendArgv, specEntry, specWritten, specBuilt, enterEntry } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: backwards', () => {
   let sim;
@@ -34,9 +34,7 @@ describe('pipeline simulation: backwards', () => {
     startUnit(sim, 'feature', wu, 'Revisit flow');
     discussed(sim, wu, wu);
 
-    // The bridge offers no way back into the closed discussion: no revisit
-    // menu.
-    arrive(sim, wu);
+    // No way back into the closed discussion: the revisit list holds nothing.
     sim.refuses(['render', 'revisit-phases', wu], /has no completed earlier phase to revisit/);
 
     // Entered again, the discussion goes on, so its close is void in the

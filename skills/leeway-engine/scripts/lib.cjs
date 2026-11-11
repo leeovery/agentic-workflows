@@ -113,7 +113,6 @@ module.exports = {
     manageListView: startProjections.manageListView,
     manageUnitView: startProjections.manageUnitView,
     completedView: startProjections.completedView,
-    phaseRoute: workunitProjections.phaseRoute,
     revisitPhasesSection: workunitProjections.revisitPhasesSection,
   },
 };

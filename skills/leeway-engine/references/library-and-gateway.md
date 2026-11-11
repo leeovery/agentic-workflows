@@ -89,7 +89,6 @@ engine.project.manageListView(detail)             // → { data, menu, rows } �
 engine.project.manageUnitView(md)                 // → { data, menu } — the action menu
 engine.project.absorbTargetMenu(md)               // → MENU: absorb target — the render absorb-target surface
 engine.project.completedView(detail)              // → { data, menu, rows } — completed & cancelled pick menu; { data, display, rows } when nothing is closed
-engine.project.phaseRoute(type, phase, wu, topic) // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`, `{topic}` appended where a target names one and the phase is entered at a topic) — the bridge gateway's `next_route` and `revisit_routes`
 engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section over phaseTargets' revisit candidates ('' when none)
 
 // gateway: adapter harness
