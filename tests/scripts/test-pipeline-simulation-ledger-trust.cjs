@@ -54,6 +54,7 @@ describe('pipeline simulation: the trust log', () => {
     sim.run(['verdict', 'give', reversal, 'skip', '--at', 'decided']);
     sim.run(['verdict', 'queue']);
     sim.render(['verdicts'], { expect: 'content' });
+    sim.render(['verdicts', '--unit', wu], { expect: 'content' });
     sim.run(['verdict', 'give', reversal, 'loss', '--at', 'queue']);
     sim.render(['verdicts'], { expect: 'empty' });
     ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });

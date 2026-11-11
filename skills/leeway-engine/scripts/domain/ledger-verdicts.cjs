@@ -193,6 +193,14 @@ function queueOf(folded, evidence) {
 }
 
 /**
+ * Of `ids`, those standing in `unit`: a unit's share of the verdict queue.
+ * @param {Folded} folded @param {string[]} ids @param {string} unit
+ */
+function inUnit(folded, ids, unit) {
+  return ids.filter((id) => standingOf(folded, id).unit === unit);
+}
+
+/**
  * Claude's lean beside a departure: the sealed answer of the nearest entry
  * down its chain that holds one — a keep's own, Claude's proposal — or the
  * answer of the nearest that held the lean, past the person's own earlier
@@ -294,4 +302,4 @@ function answerQueue(shower, root) {
   return { departures: queueOf(shower.folded, evidenceOf(root)).map((id) => departureRow(shower, id)) };
 }
 
-module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, queueOf, departureRow, departureOf, verdictAsked, answerQueue, closeDepartures };
+module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, queueOf, inUnit, departureRow, departureOf, verdictAsked, answerQueue, closeDepartures };

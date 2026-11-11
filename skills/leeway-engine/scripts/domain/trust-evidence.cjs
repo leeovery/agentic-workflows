@@ -37,7 +37,8 @@
 // - The verdicts: each entry's, in the order given, by time, the order read
 //   breaking a tie — the log's, then each conversation's — as a verdict
 //   that waited lands after the log's; a correction of a verdict is one
-//   given at its own time (16.15.4).
+//   given at its own time (16.15.4), at no point. Each with the point it
+//   was given at, so the verdict page says where a skip was given.
 // - The judged: the entries whose latest verdict is one — nothing, a fix
 //   later or a real loss — and not a skip, which leaves a departure waiting
 //   (16.10.6).
@@ -58,7 +59,7 @@ const { readProjectEvents } = require('./trust-log.cjs');
  * whose call it was, null where its session's was unread.
  * @typedef {{event: Record<string, unknown>, standing: AnswerStanding, cancelled_by: string|null, kind: Kind|null, sort: Sort|null, model: string|null}} Answer
  */
-/** A verdict given on an entry: when, and which. @typedef {{at: number, verdict: string}} Given */
+/** A verdict given on an entry: when, which, and the point it was given at — null for a correction. @typedef {{at: number, verdict: string, point: string|null}} Given */
 /**
  * What this machine logged: its answers in the order read; the entries of
  * its departures; the verdicts given on each entry, in the order given; the
@@ -101,7 +102,7 @@ function verdictsByEntry(events) {
     if (event.verdict === null) continue;
     const entry = /** @type {string} */ (event.entry);
     const given = verdicts.get(entry) ?? [];
-    given.push({ at: timeOf(event), verdict: /** @type {string} */ (event.verdict) });
+    given.push({ at: timeOf(event), verdict: /** @type {string} */ (event.verdict), point: /** @type {string|undefined} */ (event.point) ?? null });
     verdicts.set(entry, given);
   }
   return verdicts;

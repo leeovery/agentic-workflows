@@ -1538,7 +1538,7 @@ const SURFACES = {
   'investigation-check-in': investigationCheckInSurface,
   'conclude': concludeSurface,
   'help': (_cwd, { dotpath, item, ...flags }) => helpSurface(dotpath, { arg: item, flags }),
-  'verdicts': verdictsSurface,
+  'verdicts': (cwd, { unit }) => verdictsSurface(cwd, unit ?? null),
 };
 
 /**

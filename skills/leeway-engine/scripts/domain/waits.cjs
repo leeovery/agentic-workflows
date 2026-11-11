@@ -29,7 +29,7 @@
 //   through, else that phase, whose entry reads what the change affected.
 // - Asked for, the verdicts waiting on the departures that stand in the
 //   unit, in the ledger's order (ledger-verdicts.cjs), each its door the
-//   verdict page.
+//   verdict page drawn for the unit.
 //
 // The call reads the ledger once, checked once, however many units it reads
 // and however many of their rules read it (ledger-fold.cjs, `readOnce`), or
@@ -38,9 +38,9 @@
 
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { readShownOnce, holdingShown } = require('./ledger-read.cjs');
-const { factsOf, standingOf } = require('./ledger-fold.cjs');
+const { factsOf } = require('./ledger-fold.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
-const { queueOf } = require('./ledger-verdicts.cjs');
+const { queueOf, inUnit } = require('./ledger-verdicts.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 const { sealsAt, sealWaits, raisePlaces } = require('./raise.cjs');
 const { waitingIn, askedOpenIds } = require('./questions.cjs');
@@ -84,8 +84,8 @@ const intoPhase = (manifest, phase) => ({ kind: 'handoff', skill: phaseSkill(pha
 /** The door into a topic of the unit, refused where the pick has gone stale (handoff.cjs, `topicHandoff`). @param {Record<string, any>} manifest @param {string} topic @returns {Next} */
 const intoTopic = (manifest, topic) => ({ kind: 'engine', argv: ['handoff', 'topic', manifest.name, topic] });
 
-/** The verdict page's door. @type {Next} */
-const VERDICTS = Object.freeze({ kind: 'engine', argv: ['render', 'verdicts'] });
+/** The verdict page's door, drawn for the unit. @param {string} unit @returns {Next} */
+const verdictsOf = (unit) => ({ kind: 'engine', argv: ['render', 'verdicts', '--unit', unit] });
 
 /** The phase each place the board has a unit come to is entered as, where it is not its own name. @type {Readonly<Record<string, string>>} */
 const ENTERED_AS = Object.freeze({ build: 'implementation' });
@@ -206,7 +206,7 @@ function unitWaits(cwd, root, read, manifest) {
     ...questions,
     ...(questions.length === 0 ? finishGate(cwd, manifest) : []),
     ...affectedWaits(cwd, shower, root, manifest),
-    ...read.queue.filter((id) => standingOf(shower.folded, id).unit === manifest.name).map((id) => wait('verdict', shower.short(id), String(shower.show(id).text), VERDICTS)),
+    ...inUnit(shower.folded, read.queue, manifest.name).map((id) => wait('verdict', shower.short(id), String(shower.show(id).text), verdictsOf(manifest.name))),
   ];
 }
 
