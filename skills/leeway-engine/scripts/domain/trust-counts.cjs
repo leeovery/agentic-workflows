@@ -32,10 +32,13 @@
 //   the answers or more a loss and so never goes automatic, the first
 //   counted; leaving it is a loss, free text read as no row among them.
 // - Weights (16.12.4): an answer counts half once 183 days old (16.12.6).
-//   And per model (16.4.4): the current model's answers, and those logged
-//   with none, in full; each generation before it in the list of model ids,
-//   at half the one after it, so a new model starts from its predecessor's
-//   counts at half; any other model's not at all.
+//   And per model (16.4.4), by the model whose call it answers — a
+//   reversal's that of the call it reverses, its age its own: the current
+//   model's answers, and those logged with none, in full; each generation
+//   before it in its line of model ids at half the one after it, so a new
+//   model starts from its predecessor's counts at half; any other model's
+//   not at all. A model no line holds is the first line's next generation,
+//   and a session whose model is unread that line's newest.
 // - The merge (16.14.3, 16.14.6): the person's other projects' answers,
 //   weighted, then scaled together to at most 10 answers' weight, are the
 //   prior the project's own answers are added to; a gate's are merged so too.
@@ -48,9 +51,10 @@
 //   kind asks until its bound falls below the threshold, then stays quiet
 //   until the bound exceeds a quarter above it, a bound at either line
 //   leaving the state as it was. The one-answer count starts quiet, and
-//   first asks once it holds an overrule and its bound exceeds the threshold
-//   itself (16.4.10). A gate shows, and goes automatic and back as a kind
-//   goes quiet and asks again (16.20.2).
+//   asks once it holds at least one overrule's weight, its own and its
+//   prior's together, and its bound exceeds the threshold itself the first
+//   time, a quarter above it after (16.4.10). A gate shows, and goes
+//   automatic and back as a kind goes quiet and asks again (16.20.2).
 // - What ships is this procedure and its defaults, never anyone's counts
 //   (16.16.1). The defaults are 16.20.1's; the ask rule reads the person's
 //   own settings over them.
@@ -76,9 +80,10 @@ const PRIOR_CAP = 10;
 const AGED_AFTER_MS = 183 * 24 * 60 * 60 * 1000;
 const AGED_WEIGHT = 0.5;
 const INHERITED_WEIGHT = 0.5;
-// The main session's models, oldest first (E4): a release on a new model
-// adds it last.
-const MODEL_GENERATIONS = Object.freeze(['claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5']);
+// The main session's models, each line oldest first (E4): a release on a
+// new model adds it last to its line, or a line of its own for a model that
+// inherits none of them.
+const MODEL_LINES = Object.freeze([Object.freeze(['claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5'])]);
 
 const CLEAN = 'clean';
 const LOSS = 'loss';
@@ -183,16 +188,30 @@ const below = (rate, { losses, clean }) => betaCdf(rate, 1 + losses, 1 + clean) 
 const above = (rate, { losses, clean }) => betaCdf(rate, 1 + losses, 1 + clean) < PERCENTILE;
 
 /**
- * How much an answer logged under `of` counts for the model `current`: in
- * full for the same model, or none named; half for each generation `of`
- * stands before it; else nothing.
- * @param {unknown} of @param {string|null} current
+ * The models whose answers `current` reads, nearest first: itself and the
+ * generations before it in its line of `lines`; a model no line holds,
+ * itself and then the first line's from its newest; a session whose model
+ * is unread, the first line's from its newest.
+ * @param {string|null} current @param {readonly (readonly string[])[]} [lines]
+ * @returns {string[]}
  */
-function modelWeight(of, current) {
-  if (of === null || of === current) return 1;
-  const now = MODEL_GENERATIONS.indexOf(/** @type {string} */ (current));
-  const then = MODEL_GENERATIONS.indexOf(/** @type {string} */ (of));
-  return then >= 0 && then < now ? INHERITED_WEIGHT ** (now - then) : 0;
+function ancestryOf(current, lines = MODEL_LINES) {
+  const line = current === null ? undefined : lines.find((generations) => generations.includes(current));
+  if (line !== undefined) return line.slice(0, line.indexOf(/** @type {string} */ (current)) + 1).reverse();
+  const continued = [...lines[0]].reverse();
+  return current === null ? continued : [current, ...continued];
+}
+
+/**
+ * How much an answer to a call of the model `of` counts for a model reading
+ * `ancestry`: in full where none is named; halved for each step back along
+ * it; else nothing.
+ * @param {string|null} of @param {string[]} ancestry
+ */
+function modelWeight(of, ancestry) {
+  if (of === null) return 1;
+  const back = ancestry.indexOf(of);
+  return back < 0 ? 0 : INHERITED_WEIGHT ** back;
 }
 
 /**
@@ -297,21 +316,22 @@ function countsFrom(events, { project, model, now }) {
   const one = emptyCount('one');
   /** @type {Map<string, Count>} */
   const gates = new Map();
-  /** @param {Record<string, unknown>} event @param {string|null} cancelledBy @returns {Held} */
-  const held = (event, cancelledBy) => ({
+  const ancestry = ancestryOf(model);
+  /** @param {Record<string, unknown>} event @param {string|null} of @param {string|null} cancelledBy @returns {Held} */
+  const held = (event, of, cancelledBy) => ({
     at: Date.parse(/** @type {string} */ (event.at)),
     own: event.project === project,
-    weight: modelWeight(event.model, model),
+    weight: modelWeight(of, ancestry),
     end: cancelledBy === null ? Infinity : /** @type {number} */ (timeOf.get(cancelledBy)),
   });
   for (const answer of evidence.answers) {
-    const answered = held(answer.event, answer.cancelled_by);
+    const answered = held(answer.event, answer.model, answer.cancelled_by);
     if (answered.weight === 0) continue;
     if (answer.kind !== null) kinds[answer.kind].changes.push(...kindChanges(answer, answered, evidence.verdicts, now));
     if (answer.sort === 'one') one.changes.push(...oneAnswerChanges(answer, answered, now));
   }
   for (const event of happened.filter(({ type }) => type === 'gate')) {
-    const answered = held(event, null);
+    const answered = held(event, /** @type {string|null} */ (event.model), null);
     if (answered.weight === 0) continue;
     const name = /** @type {string} */ (event.gate);
     const count = gates.get(name) ?? emptyCount('gate');
@@ -373,14 +393,14 @@ function usualSplit(weights) {
 
 /**
  * How each rule is walked: its split, whether it asks before any change,
- * where it first asks again — times the threshold — and whether asking needs
- * a loss.
- * @type {Readonly<Record<Rule, {split: (weights: Map<Outcome, number>) => Split, asks: boolean, opensAt: number, needsLoss: boolean}>>}
+ * where it first asks again — times the threshold — and the losses' weight
+ * asking needs: for the one-answer calls, one overrule's.
+ * @type {Readonly<Record<Rule, {split: (weights: Map<Outcome, number>) => Split, asks: boolean, opensAt: number, needs: number}>>}
  */
 const RULES = Object.freeze({
-  kind: { split: splitOf, asks: true, opensAt: ASK_AGAIN, needsLoss: false },
-  one: { split: splitOf, asks: false, opensAt: 1, needsLoss: true },
-  gate: { split: usualSplit, asks: true, opensAt: ASK_AGAIN, needsLoss: false },
+  kind: { split: splitOf, asks: true, opensAt: ASK_AGAIN, needs: 0 },
+  one: { split: splitOf, asks: false, opensAt: 1, needs: 1 },
+  gate: { split: usualSplit, asks: true, opensAt: ASK_AGAIN, needs: 0 },
 });
 
 /** Add `by` to `outcome`'s weight in `weights`. @param {Map<Outcome, number>} weights @param {Outcome} outcome @param {number} by */
@@ -396,7 +416,7 @@ function add(weights, outcome, by) {
  * @returns {State}
  */
 function stateOf({ rule, changes }, threshold) {
-  const { split: splitBy, asks: asksFirst, opensAt, needsLoss } = RULES[rule];
+  const { split: splitBy, asks: asksFirst, opensAt, needs } = RULES[rule];
   /** @type {Map<Outcome, number>} */
   const own = new Map();
   /** @type {Map<Outcome, number>} */
@@ -411,7 +431,7 @@ function stateOf({ rule, changes }, threshold) {
     if (asks && below(threshold, split)) {
       asks = false;
       opens = threshold * ASK_AGAIN;
-    } else if (!asks && above(opens, split) && (!needsLoss || split.losses > 0)) {
+    } else if (!asks && above(opens, split) && split.losses >= needs) {
       asks = true;
     }
   });
@@ -419,6 +439,6 @@ function stateOf({ rule, changes }, threshold) {
 }
 
 module.exports = {
-  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, MODEL_GENERATIONS,
-  betaCdf, upperBound, countsFrom, countsOf, gateCount, stateOf,
+  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, MODEL_LINES,
+  betaCdf, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf,
 };

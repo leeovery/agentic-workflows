@@ -9,9 +9,10 @@
 // departure cancelling the answer whose entry it reverses, that answer's
 // event as written — each answer's question, its kind and Claude's sort, a
 // reversal's those of the answer it reverses, the kind as last corrected;
-// the departures, each entry's verdicts in the order given, a correction
-// among them, and the entries given a verdict, each one's latest by its
-// time and not a skip; read in one pass, once by id,
+// the departures, each entry's verdicts in the order given, a correction of
+// one among them and never a correction of a kind, and the entries given a
+// verdict, each one's latest by its time and not a skip; read in one pass,
+// once by id,
 // from the log, a conversation's waiting events and an event kept ahead of
 // an entry this state's ledger holds, never one kept ahead of an entry it
 // lacks, and never another project's.
@@ -81,7 +82,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     const read = evidence(dir);
 
     assert.deepStrictEqual(read.answers, answers.map((event, i) => ({
-      event, standing: ['agreement', 'departure', 'departure', 'no-weight', 'call'][i], cancelled_by: null, kind: null, sort: ['several', 'several', 'several', 'several', 'one'][i],
+      event, standing: ['agreement', 'departure', 'departure', 'no-weight', 'call'][i], cancelled_by: null, kind: null, sort: ['several', 'several', 'several', 'several', 'one'][i], model: null,
     })));
     assert.deepStrictEqual(read.departures, new Set([departed, own]));
   });
@@ -229,5 +230,17 @@ describe('the verdicts given (16.10.9, 16.10.6)', () => {
         [lost, [{ at: Date.parse('2026-10-28T10:00:02Z'), verdict: 'loss' }, { at: Date.parse('2026-10-28T10:00:04Z'), verdict: 'fix' }]]]),
       new Set([skipped, lost]),
     ]);
+  });
+
+  it('never takes a correction of a kind for a verdict: a departure waiting stays unasked, and one judged a fix later keeps that verdict alone', () => {
+    const dir = project('fumi');
+    const [waiting, fixed] = ['Waiting', 'Fixed'].map(idOf);
+    raised(dir, waiting, DEPARTS);
+    raised(dir, fixed, DEPARTS);
+    record('verdict', { entry: fixed, verdict: 'fix', point: 'queue' }, from(dir));
+    for (const entry of [waiting, fixed]) record('correction', { entry, kind: 'look', verdict: null }, from(dir));
+
+    const read = evidence(dir);
+    assert.deepStrictEqual([[...read.verdicts.keys()], read.verdicts.get(fixed)?.map(({ verdict }) => verdict), read.judged, [...read.asked.keys()]], [[fixed], ['fix'], new Set([fixed]), [fixed]]);
   });
 });

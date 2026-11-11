@@ -26,8 +26,9 @@
 //     it reverses, an agreement or a call, and rewrites nothing: that
 //     answer's event stays as it was written (16.12.1, 16.12.2).
 // - Each answer's question: its kind and Claude's sort of it (16.11, 16.3.7),
-//   as its event holds them — a reversal's those of the answer it reverses,
-//   wherever each was read — and its kind as the person last corrected the
+//   and the model whose call it was, as its event holds them — a reversal's
+//   those of the answer it reverses, wherever each was read, its own model
+//   where the log holds none — and its kind as the person last corrected the
 //   kind of its entry, or of the entry a reversal reverses (16.15.4).
 // - The departures: the entries the answers standing as departures name. A
 //   departure another machine logged is none here: its verdict is given on
@@ -52,8 +53,9 @@ const { readProjectEvents } = require('./trust-log.cjs');
 /**
  * An answer the trust log holds: its event as written, where it stands, and
  * the id of the reversal that cancels it, null where none does; and its
- * question's kind and sort, each null where none is known.
- * @typedef {{event: Record<string, unknown>, standing: AnswerStanding, cancelled_by: string|null, kind: Kind|null, sort: Sort|null}} Answer
+ * question's kind and sort, each null where none is known, and the model
+ * whose call it was, null where its session's was unread.
+ * @typedef {{event: Record<string, unknown>, standing: AnswerStanding, cancelled_by: string|null, kind: Kind|null, sort: Sort|null, model: string|null}} Answer
  */
 /** A verdict given on an entry: when, and which. @typedef {{at: number, verdict: string}} Given */
 /**
@@ -114,17 +116,19 @@ function correctedKinds(corrections) {
 }
 
 /**
- * The question an answer's event answers: its kind and Claude's sort of it,
- * as `question`, the event naming it, holds them, its kind as the person
- * last corrected that of either entry — nulls where the question is none the
- * log holds.
+ * The question an answer's event answers: its kind, Claude's sort of it and
+ * the model whose call it was, as `question`, the event naming it, holds
+ * them, its kind as the person last corrected that of either entry — where
+ * the question is none the log holds, no kind or sort, and the answer's own
+ * model.
  * @param {Record<string, unknown>} event @param {Record<string, unknown>|undefined} question @param {Map<unknown, Kind>} corrected
- * @returns {{kind: Kind|null, sort: Sort|null}}
+ * @returns {{kind: Kind|null, sort: Sort|null, model: string|null}}
  */
 function questionOf(event, question, corrected) {
   return {
     kind: corrected.get(event.entry) ?? corrected.get(question?.entry) ?? /** @type {Kind|null} */ (question?.kind ?? null),
     sort: /** @type {Sort|null} */ (question?.sort ?? null),
+    model: /** @type {string|null} */ ((question ?? event).model),
   };
 }
 

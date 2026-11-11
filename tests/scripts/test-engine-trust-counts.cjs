@@ -5,9 +5,11 @@
 // over trust-evidence.cjs's answers and trust-log.cjs's read of every
 // project): each kind's count, the one-answer calls' and each gate's — what
 // counts clean and what a loss, weighted by age and model, merged with the
-// person's other projects capped at 10 answers' weight — the 95th
-// percentile of Beta(1 + losses, 1 + clean) held to §16's worked values,
-// and the state walked in time order at the threshold a question takes;
+// person's other projects capped at 10 answers' weight, a reversal by the
+// model of the call it reverses, a model no line holds as the first line's
+// next — the 95th percentile of Beta(1 + losses, 1 + clean) held to §16's
+// worked values, and the state walked in time order at the threshold a
+// question takes, each moment's changes together;
 // derived from the log each time, as of the clock passed in, never stored;
 // and what the release ships of them.
 //
@@ -35,7 +37,7 @@ const { trustEvent, readTrustEvent } = require(path.join(SCRIPTS, 'domain/trust-
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 const {
-  MODEL_GENERATIONS, upperBound, countsFrom, countsOf, gateCount, stateOf,
+  MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf,
 } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
@@ -49,7 +51,11 @@ const AT_10 = 0.1;
 const SIX_MONTHS = 183 * DAY;
 const HERE = PROJECT_ID;
 const ELSEWHERE = idOf('Aircon');
-const MODEL = MODEL_GENERATIONS[MODEL_GENERATIONS.length - 1];
+const [OPUS] = MODEL_LINES;
+const MODEL = OPUS[OPUS.length - 1];
+const BEFORE = OPUS[OPUS.length - 2];
+// A model no line holds.
+const UNLISTED = 'claude-sonnet-5';
 
 /** A bound to nine places, as the spec's figures are compared. @param {number} bound */
 const round = (bound) => Math.round(bound * 1e9) / 1e9;
@@ -97,10 +103,14 @@ function history() {
     },
     /** A raise Claude sorted `sort`, answered `answer`. @param {string} sort @param {string} answer @param {Kind} [kind] */
     sorted: (sort, answer, kind = 'behaviour') => raise(kind, answer, { sort }),
-    /** Claude's call on `kind`, sorted `sort`: its entry. @param {string|null} sort @param {Kind} [kind] */
-    call: (sort, kind = 'behaviour') => /** @type {string} */ (log('call', { entry: newId(), kind, label: label(kind), sort }).entry),
-    /** The person's reversal of `entry`: its own. @param {string} entry */
-    reverse: (entry) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }).entry),
+    /** Claude's call on `kind`, sorted `sort`: its entry. @param {string|null} sort @param {Kind} [kind] @param {Parameters<typeof log>[2]} [where] */
+    call: (sort, kind = 'behaviour', where = {}) => /** @type {string} */ (log('call', { entry: newId(), kind, label: label(kind), sort }, where).entry),
+    /** The person's reversal of `entry`: its own. @param {string} entry @param {Parameters<typeof log>[2]} [where] */
+    reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
+    /** A raise on behaviour Claude sorted `sort`, which the person didn't follow. @param {string} sort */
+    unfollowed: (sort) => {
+      log('raise', { entry: null, kind: 'behaviour', label: label('behaviour'), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, blocked_build: null });
+    },
     /** @param {string} entry @param {string} verdict @param {Parameters<typeof log>[2]} [where] */
     verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),
     /** @param {string} entry @param {{kind?: Kind|null, verdict?: string|null}} to */
@@ -114,7 +124,7 @@ function history() {
       : { gate: name, recommended: 'y', picked, via: 'pressed', with_text: false, reading: null }, where),
     /** The other events of the log, which answer nothing. */
     others: () => {
-      log('raise', { entry: null, kind: 'behaviour', label: label('behaviour'), sort: 'several', sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, blocked_build: null });
+      h.unfollowed('several');
       log('blind-draw', { entry: newId(), kind: 'behaviour' });
       log('position-switch', { unit: 'pay', to: 'step' });
       log('convergence', { unit: 'pay', topic: 'cards' });
@@ -231,12 +241,13 @@ describe('what a kind counts (16.4.2, 16.4.3, 16.10.8, 16.12)', () => {
 });
 
 describe('the count of Claude\'s one-answer calls (16.4.10)', () => {
-  it('holds the matrix\'s 64 calls · 1 overruled · 7%: each call and raise Claude sorted one, standing or taking the lean, clean, and one overruled a loss though judged nothing (16.4.2); a call sorted several, or by no raise, none of it', () => {
+  it('holds the matrix\'s 64 calls · 1 overruled · 7%: each call and raise Claude sorted one, standing or taking the lean, clean, and one overruled a loss though judged nothing (16.4.2); a call sorted several, or by no raise, and a raise sorted one the person didn\'t follow, none of it', () => {
     const h = history();
     for (let i = 0; i < 62; i += 1) h.call('one');
     h.sorted('one', '1');
     h.call('several');
     h.call(null);
+    h.unfollowed('one');
     h.verdict(h.reverse(h.call('one')), 'nothing');
 
     assert.deepStrictEqual(standing(countsIn(h).one), { asks: false, bound: 0.070914019, losses: 1, clean: 63 });
@@ -258,6 +269,39 @@ describe('the count of Claude\'s one-answer calls (16.4.10)', () => {
 
     assert.deepStrictEqual(walked, [false, false, true, false, false]);
   });
+
+  it('asks only once it holds at least one overrule\'s weight, its own and its prior\'s together: two overrules among 200 calls elsewhere, a tenth of one once capped, never make it ask in a new project, though 3 calls there leave its bound at 20.42%; one overrule there does; four among ten calls elsewhere carry over; one on a call of the model before, read at half, does not', () => {
+    /** @param {(h: ReturnType<typeof history>) => void} build */
+    const after = (build) => {
+      const h = history();
+      build(h);
+      return standing(countsIn(h).one);
+    };
+    /** @param {ReturnType<typeof history>} h */
+    const thinElsewhere = (h) => {
+      for (let i = 1; i <= 200; i += 1) {
+        const called = h.call('one', 'behaviour', { project: ELSEWHERE });
+        if (i % 100 === 0) h.reverse(called, { project: ELSEWHERE });
+      }
+      for (let i = 0; i < 3; i += 1) h.call('one');
+    };
+    const states = [
+      after(thinElsewhere),
+      after((h) => {
+        thinElsewhere(h);
+        h.reverse(h.call('one'));
+      }),
+      after((h) => {
+        for (let i = 0; i < 10; i += 1) {
+          const called = h.call('one', 'behaviour', { project: ELSEWHERE });
+          if (i >= 6) h.reverse(called, { project: ELSEWHERE });
+        }
+      }),
+      after((h) => h.reverse(h.call('one', 'behaviour', { model: BEFORE }))),
+    ];
+
+    assert.deepStrictEqual(states.map(({ asks, bound }) => [asks, bound]), [[false, 0.204242301], [true, 0.288268768], [true, 0.650188465], [false, 0.96638253]]);
+  });
 });
 
 describe('weights (16.12.4)', () => {
@@ -270,16 +314,55 @@ describe('weights (16.12.4)', () => {
     assert.deepStrictEqual(behaviour(h), { losses: 0.5, clean: 1.5 });
   });
 
-  it('16.S43: a new model starts from its predecessor\'s counts at half and earns the rest — the generation before that at a quarter, an answer logged with no model as the current model\'s, a model the list does not place, or a later one, not at all (E4)', () => {
+  it('16.S43: a new model starts from its predecessor\'s counts at half and earns the rest — the generation before that at a quarter, an answer logged with no model as the current model\'s, a model no line holds, or a later one, not at all (E4)', () => {
     const h = history();
-    const [first, second, third] = MODEL_GENERATIONS.slice(-3);
+    const [first, second, third] = OPUS.slice(-3);
     h.agree(8, 'behaviour', { model: first });
     h.agree(8, 'behaviour', { model: second });
-    h.agree(4, 'behaviour', { model: third });
+    h.agree(2, 'behaviour', { model: third });
     h.agree(1, 'behaviour', { model: null });
-    h.agree(3, 'behaviour', { model: 'claude-sonnet-5' });
+    h.agree(3, 'behaviour', { model: UNLISTED });
 
-    assert.deepStrictEqual([third, second].map((model) => behaviour(h, { model }).clean), [2 + 4 + 4 + 1, 4 + 8 + 1]);
+    assert.deepStrictEqual([third, second].map((model) => behaviour(h, { model }).clean), [2 + 4 + 2 + 1, 4 + 8 + 1]);
+  });
+
+  it('reads a model no line holds as the newest generation\'s successor, that generation at half and each before it halving again, and a session whose model is unread as that generation itself: so a log of the current model\'s answers holding overrules makes the one-answer count ask for either (16.12.4)', () => {
+    const h = history();
+    h.agree(4, 'behaviour', { model: BEFORE });
+    h.agree(13);
+    for (let i = 0; i < 4; i += 1) h.reverse(h.call('one'));
+
+    assert.deepStrictEqual([UNLISTED, null].map((model) => {
+      const { kinds, one } = countsIn(h, { model });
+      return [splitOf(kinds.behaviour), stateOf(one, AT_20).asks];
+    }), [[{ losses: 2, clean: 6.5 + 1 }, true], [{ losses: 4, clean: 13 + 2 }, true]]);
+  });
+
+  it('takes a line of its own as data: a model of a second line reads its own line\'s generations alone, and one no line holds still the first line\'s', () => {
+    const lines = [OPUS, ['claude-second-1', 'claude-second-2']];
+
+    assert.deepStrictEqual([ancestryOf('claude-second-2', lines), ancestryOf(UNLISTED, lines), ancestryOf(null, lines), ancestryOf(BEFORE, lines)], [
+      ['claude-second-2', 'claude-second-1'], [UNLISTED, ...[...OPUS].reverse()], [...OPUS].reverse(), [...OPUS.slice(0, -1)].reverse(),
+    ]);
+  });
+
+  it('weighs a reversal by the model whose call it reverses, its age its own: the person\'s agreement and Claude\'s one-answer call, reversed in a session on a model no line holds, count against the model that made them as a reversal there would — quiet behaviour asking again at 34.38% — and for the reversing model only as it inherits that model\'s answers, at half; a reversal of an entry no event names by its own model', () => {
+    const h = history();
+    h.agree(13);
+    const agreed = h.agree(1)[0];
+    const called = h.call('one');
+    const elsewhere = { model: UNLISTED };
+    h.correct(h.reverse(idOf('Unnamed'), elsewhere), { kind: 'look' });
+    h.reverse(agreed, elsewhere);
+    h.reverse(called, elsewhere);
+
+    assert.deepStrictEqual([MODEL, UNLISTED].map((model) => {
+      const { kinds, one } = countsIn(h, { model });
+      return [standing(kinds.behaviour), splitOf(one), splitOf(kinds.look)];
+    }), [
+      [{ asks: true, bound: 0.343825199, losses: 2, clean: 13 }, { losses: 1, clean: 0 }, { losses: 0, clean: 0 }],
+      [{ asks: true, bound: 0.448980622, losses: 1, clean: 6.5 }, { losses: 0.5, clean: 0 }, { losses: 1, clean: 0 }],
+    ]);
   });
 });
 
@@ -377,6 +460,16 @@ describe('the state, walked in time order (16.6.1–16.6.3, 16.13.6)', () => {
       { asks: true, bound: round(1 - 0.05 ** (1 / 7.5)), losses: 0, clean: 6.5 },
     ]);
   });
+
+  it('takes each moment\'s changes together: an answer turning six months old leaves at its full weight as it comes back at half, so quiet behaviour holding 16 clean answers and a loss stays quiet as one of them ages — never passing through 15 clean answers\' 25.01%', () => {
+    const h = history();
+    h.agree(1, 'behaviour', { at: FROZEN_MS - SIX_MONTHS - DAY });
+    h.agree(1, 'behaviour', { at: FROZEN_MS - 30 * DAY });
+    h.agree(14);
+    h.depart('loss');
+
+    assert.deepStrictEqual(standing(countsIn(h).kinds.behaviour), { asks: false, bound: 0.243734443, losses: 1, clean: 15.5 });
+  });
 });
 
 describe('a gate\'s count (16.20.2)', () => {
@@ -393,6 +486,29 @@ describe('a gate\'s count (16.20.2)', () => {
       { asks: false, bound: 0.192636176, losses: 0, clean: 13, usual: 'y' },
       { asks: true, bound: 0.343825199, losses: 2, clean: 13, usual: 'y' },
     ]);
+  });
+
+  it('takes a typed answer by the row read from it, never the row recommended; never takes free text read as no row for the usual answer, however often it comes; and on a tie takes the row counted first', () => {
+    const h = history();
+    for (let i = 0; i < 2; i += 1) h.gate('plan gate', { reading: 'n' });
+    for (let i = 0; i < 3; i += 1) h.gate('plan gate', { reading: null });
+    h.gate('conclude gate', { picked: 'n' });
+    h.gate('conclude gate', { picked: 'y' });
+
+    assert.deepStrictEqual(['plan gate', 'conclude gate'].map((name) => {
+      const { usual, losses, clean } = stateOf(gateCount(countsIn(h), name), AT_20);
+      return { usual, losses, clean };
+    }), [{ usual: 'n', losses: 3, clean: 2 }, { usual: 'n', losses: 1, clean: 1 }]);
+  });
+
+  it('weighs a gate\'s answers by age and model as a kind\'s: half once six months old, half from the model before, none from a model no line holds', () => {
+    const h = history();
+    for (let i = 0; i < 2; i += 1) h.gate('plan gate', { picked: 'y' }, { at: FROZEN_MS - SIX_MONTHS - DAY });
+    h.gate('plan gate', { picked: 'y' }, { at: FROZEN_MS - DAY });
+    for (let i = 0; i < 2; i += 1) h.gate('plan gate', { picked: 'y' }, { model: BEFORE });
+    h.gate('plan gate', { picked: 'y' }, { model: UNLISTED });
+
+    assert.strictEqual(stateOf(gateCount(countsIn(h), 'plan gate'), AT_20).clean, 2 * 0.5 + 1 + 2 * 0.5);
   });
 
   it('merges a gate\'s answers in other projects, and before any project, as a kind\'s are, capped at 10 answers\' weight (E14)', () => {

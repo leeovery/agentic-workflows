@@ -245,7 +245,7 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     assert.deepStrictEqual(run.commits, [{ repo: '.', commit: codeHead(dir) }, { repo: 'lib', commit: codeHead(lib) }]);
   });
 
-  it('15.4.2: a drive that exits failing having written its verdict is recorded as it wrote it; one that wrote none — or a folder in its place — records nothing, the refusal carrying its exit code and output, and so does a word of its own', () => {
+  it('15.4.2, 15.S19: a drive that exits failing having written its verdict is recorded as it wrote it, leaving the ask rule\'s counts as they were — nothing written to the trust log, the counts\' one source (15.12.1, 15.12.2); one that wrote none — or a folder in its place — records nothing, the refusal carrying its exit code and output, and so does a word of its own', (t) => {
     steering(dir, 'verdict/pass', 'pass\n');
     assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error, 'verify run: the run cannot be recorded — the drive wrote no verdict to $LEEWAY_RUN/verdict — it exited 0. Nothing was recorded.');
     fs.rmSync(path.join(steer(dir), 'verdict'), { recursive: true });
@@ -255,28 +255,19 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     steering(dir, 'verdict', 'proven\n');
     assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error, 'verify run: the run cannot be recorded — the drive\'s verdict "proven" is none of pass, fail, skipped. Nothing was recorded.');
     steering(dir, 'verdict', 'fail\n');
-
-    assert.strictEqual(ok(dir, ['verify', 'run', UNIT, '1.S1']).verdict, 'fail');
-    assert.strictEqual(JSON.parse(readState(dir, layout.run(UNIT, '1.S1', '001'))).verdict, 'fail');
-  });
-
-  it('15.S19: a run that catches a mistake leaves the ask rule\'s counts as they were — it writes nothing to the trust log, the counts\' one source (15.12.1, 15.12.2)', () => {
     const log = path.join(CONFIG, TRUST_LOG);
+    t.after(() => fs.rmSync(log, { force: true }));
     const header = { id: newId(), at: FROZEN_AT, project: projectManifest(dir).project_id, project_name: path.basename(dir), model: null, session: null };
     fs.writeFileSync(log, `${JSON.stringify(trustEvent('raise', header, {
       entry: newId(), kind: 'behaviour', label: null, sort: 'several', sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocked_build: null,
     }))}\n`);
     const counts = () => stateOf(countsOf(statePath(dir), { model: null, now: FROZEN_MS }).kinds.behaviour, THRESHOLD);
     const before = { log: fs.readFileSync(log, 'utf8'), counts: counts() };
-    steering(dir, 'verdict', 'fail\n');
 
-    try {
-      assert.strictEqual(ok(dir, ['verify', 'run', UNIT, '1.S1']).verdict, 'fail');
-      assert.deepStrictEqual({ log: fs.readFileSync(log, 'utf8'), counts: counts() }, before);
-      assert.strictEqual(before.counts.losses, 1);
-    } finally {
-      fs.rmSync(log);
-    }
+    assert.strictEqual(ok(dir, ['verify', 'run', UNIT, '1.S1']).verdict, 'fail');
+    assert.strictEqual(JSON.parse(readState(dir, layout.run(UNIT, '1.S1', '001'))).verdict, 'fail');
+    assert.deepStrictEqual({ log: fs.readFileSync(log, 'utf8'), counts: counts() }, before);
+    assert.strictEqual(before.counts.losses, 1);
   });
 
   it('15.S6, 12.7.10: a drive whose criterion\'s tests were skipped records skipped, and the scenario reads named, not run at the commits it ran at — a pass at code it does not hold counting for nothing, though it differs only in a nested clone', () => {
