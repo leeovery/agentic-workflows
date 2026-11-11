@@ -40,7 +40,6 @@
 
 const { messageOf } = require('../kernel/call.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { titlecase } = require('./conventions.cjs');
 const { loadManifest } = require('./reads.cjs');
 const { topicTitle } = require('./derivations.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -159,12 +158,12 @@ function skipOf(events, id) {
 }
 
 /**
- * The name of the place an entry was made in: its topic's, or its unit's
- * where it has no topic of its own.
+ * The name of the place an entry was made in: the name its topic goes by,
+ * or its unit's where it has no topic of its own.
  * @param {string} cwd @param {{unit: string, topic: string|null}} standing
  */
 function placeName(cwd, { unit, topic }) {
-  return topic === null || topic === unit ? titlecase(unit) : topicTitle(loadManifest(cwd, unit), topic);
+  return topicTitle(loadManifest(cwd, unit), topic ?? unit);
 }
 
 /**
