@@ -115,12 +115,17 @@ const TASKS = Object.freeze({
 /** Another unit, its name opening as this one's, whose landings sit beside this one's. */
 const OTHER = `${UNIT}-shop`;
 
-/** One file added in a repository and committed on the branch checked out, its message naming the task `trailer` names. @param {string} dir @param {string} file @param {string} [trailer] */
-function commitFile(dir, file, trailer) {
+/**
+ * One file added in a repository and committed on the branch checked out,
+ * its message naming the task `trailer` names by the trailer `key`: `Task`,
+ * as a landing names it, or the door's stamp.
+ * @param {string} dir @param {string} file @param {string} [trailer] @param {string} [key]
+ */
+function commitFile(dir, file, trailer, key = 'Task') {
   fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
   fs.writeFileSync(path.join(dir, file), `export const ${path.basename(file, '.js')} = 1;\n`);
   git(dir, ['add', file]);
-  git(dir, ['commit', '-q', '-m', trailer === undefined ? `add ${file}` : `feat(${trailer.split('-').slice(0, -2).join('-')}): add ${file}\n\nTask: ${trailer}`]);
+  git(dir, ['commit', '-q', '-m', trailer === undefined ? `add ${file}` : `feat(${trailer.split('-').slice(0, -2).join('-')}): add ${file}\n\n${key}: ${trailer}`]);
 }
 
 /** The scenarios' runs at main: `[scenario, verdict]`. */
@@ -283,13 +288,18 @@ function cutUnmerged() {
 /** A fix task's branch, as the landing names it. @param {number} phase @param {number} n @param {string} title */
 const fixBranch = (phase, n, title) => taskBranch({ unit: UNIT, phase, n }, 'feat', title);
 
-/** A task done in the tracker, its account taken, its branch made from `from` with a commit adding `file` in the repository at `repo`, its checkout back on main. @param {number} phase @param {number} n @param {string} title @param {string} from @param {string} file @param {string} [repo] */
-function fixBuilt(phase, n, title, from, file, repo = dir) {
+/**
+ * A task done in the tracker, its account taken, its branch made from
+ * `from` with a commit adding `file` in the repository at `repo`, naming
+ * the task by the trailer `key` (`commitFile`), its checkout back on main.
+ * @param {number} phase @param {number} n @param {string} title @param {string} from @param {string} file @param {string} [repo] @param {string} [key]
+ */
+function fixBuilt(phase, n, title, from, file, repo = dir, key = 'Task') {
   DRIVER.done(statePath(dir), { unit: UNIT, phase, n });
   accountTaken(dir, UNIT, `${phase}.${n}`);
   commitAll(dir, `task ${phase}.${n} done`);
   git(repo, ['checkout', '-q', '-b', fixBranch(phase, n, title), from]);
-  commitFile(repo, file, `${UNIT}-${phase}-${n}`);
+  commitFile(repo, file, `${UNIT}-${phase}-${n}`, key);
   git(repo, ['checkout', '-q', 'main']);
 }
 

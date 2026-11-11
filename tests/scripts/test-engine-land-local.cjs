@@ -4,15 +4,20 @@
 // The local landing driver's stacks (leeway-engine/scripts/drivers/landing/
 // local/driver.cjs), beyond what every driver does — the landing conformance
 // suite's: each phase's stack read off its branch, and merged by one rule,
-// its tasks' trailers on the default branch; the work a task is built on —
-// a branch it holds while that branch stands, never a tree alike, and the
-// work the default branch has counting for nothing; how a phase stacks on
-// another and replays onto a default branch that moved on, naming every
-// path a replay conflicts at, however long git's answer; and what finish
+// the one read of what has landed (task-landed.cjs); the work a task is
+// built on — a branch it holds while that branch stands, never a tree
+// alike, and the work the default branch has counting for nothing; how a
+// phase stacks on another and replays onto a default branch that moved on,
+// naming every path a replay conflicts at, however long git's answer; a
+// task whose change the default branch gained by hand past where its branch
+// was cut, duplicate work, landed there, so it and its phase answer already
+// and a phase stacked on it lands its own change alone; and what finish
 // says where it stops, a phase it merged offered again among them, so it
-// never loops. What it records, and the shapes of landing it reads,
-// are test-engine-land-reads.cjs's. Each refusal's way on is the remedy
-// table's (landing-remedies.cjs, followed by the
+// never loops.
+// Work landed by hand, and the review's change of it, are
+// test-engine-land-local-by-hand.cjs's; what it records, and the shapes of
+// landing it reads, test-engine-land-reads.cjs's. Each refusal's way on is
+// the remedy table's (landing-remedies.cjs, followed by the
 // test-engine-land-remedies-* suites); the person's checkouts,
 // test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's.
 // Git layer: the landing world (landing-world.cjs), built once and copied
@@ -33,7 +38,7 @@ const { card, rounding, currency } = TASKS;
 const project = useLandingWorld('engine-land-local-');
 
 describe('land: what the local driver reads off its stacks', () => {
-  it('refuses a phase with nothing opened, a task not open, and a task opened into a phase merged or chained there, saying so — and answers a phase merged as merged already', () => {
+  it('refuses a phase with nothing opened, a task not open, and the chain of a phase merged, nothing of it waiting, saying so — and answers a phase merged as merged already', () => {
     const dir = project();
     assert.deepStrictEqual([['land', 'phase', 'pay', '1'], ['land', 'chain', 'pay', '1.1']].map((args) => refusedMoving(dir, args)), [
       'land: phase 1 of pay has no task opened — open its tasks first',
@@ -41,12 +46,8 @@ describe('land: what the local driver reads off its stacks', () => {
     ]);
     ok(dir, openArgs(rounding));
     ok(dir, ['land', 'phase', 'pay', '2']);
-    const up = cutTask(dir, '2.2', 'fix', 'Round up', 'main', { 'up.txt': 'up\n' });
     assert.deepStrictEqual(alreadyMoving(dir, ['land', 'phase', 'pay', '2']), { ok: true, phase: 2, already: true, repos: [], driver: 'local' });
-    assert.deepStrictEqual([openArgs(up), ['land', 'chain', 'pay', '2.1']].map((args) => refusedMoving(dir, args)), [
-      'land: phase 2 is merged into main — task 2.2 lands in a phase not yet merged, so number it in one',
-      'land: phase 2 is merged into main — its stack is landed',
-    ]);
+    assert.strictEqual(refusedMoving(dir, ['land', 'chain', 'pay', '2.1']), 'land: phase 2 is merged into main — its stack is landed');
   });
 
   it('counts a phase merged once the default branch holds its tasks\' trailers, its branch kept or deleted — so a task built on one of them opens', () => {
@@ -164,15 +165,15 @@ describe('land: how the local driver stacks and replays', () => {
     assert.deepStrictEqual(refusal.slice(opening.length, -closing.length).split(', ').map(leaf), files.map(leaf).sort());
   });
 
-  it('lands a task whose change the default branch holds already as a commit that changes nothing, and names it', () => {
+  it('answers already, moving nothing, for a task whose change the default branch gained by hand past where its branch was cut, duplicate work, and for its phase — the task landed there — and lands a phase stacked on it, its own change alone', () => {
     const dir = project();
     git(dir, ['checkout', '-q', '-b', 'wip']);
-    ok(dir, openArgs(card));
-    commitFiles(dir, 'main', 'main', card.files, { message: 'the card, by hand' });
-    assert.deepStrictEqual(own(ok(dir, ['land', 'phase', 'pay', '1'])).landed_empty, [{ task: '1.1', why: 'its change was on main already' }]);
-    assert.deepStrictEqual(landedOn(dir, 'main'), [
-      { subject: 'the card, by hand', task: null, paths: ['card.txt'] },
-      { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: [] },
+    for (const task of [rounding, currency]) ok(dir, openArgs(task));
+    commitFiles(dir, 'main', 'main', rounding.files, { message: 'round the totals, by hand' });
+    const already = [openArgs(rounding), ['land', 'phase', 'pay', '2']].map((args) => alreadyMoving(dir, args).already);
+
+    assert.deepStrictEqual([already, own(ok(dir, ['land', 'phase', 'pay', '3'])).merged, landedOn(dir, 'main').map(({ subject, paths }) => [subject, paths])], [
+      [true, true], ['3.1'], [['round the totals, by hand', ['round.txt']], ['fix(pay): Name the currency', ['currency.txt']]],
     ]);
   });
 });

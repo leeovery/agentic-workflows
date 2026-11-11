@@ -130,6 +130,7 @@ const { stagedFile, nextAfter, OPENS_IN } = require('./start-this-work.cjs');
 const { startThisWorkScreen, aType } = require('./projections/discovery-gates.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
+/** @typedef {import('./landing.cjs').QuickFixLanding} QuickFixLanding */
 
 /**
  * A move as staged: the unit by its name, the type it moves to, Claude's
@@ -186,17 +187,17 @@ function assertInvestigating(manifest) {
  * A quick-fix's tasks as the tracker holds them — its fixes, then its
  * review's fix tasks, in every phase it has written — none where it has
  * written none: refused where one of them has landed, its pull request
- * merged by hand among them — finished first, the new work started on its
- * own, naming the lowest.
- * @param {string} cwd @param {Record<string, any>} manifest @param {string} to
+ * merged by hand among them, as `landing` reads it — finished first, the
+ * new work started on its own, naming the lowest.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} to @param {() => QuickFixLanding} landing
  * @returns {TaskRow[]}
  */
-function fixesOf(cwd, manifest, to) {
+function fixesOf(cwd, manifest, to, landing) {
   if (!fixesBegun(manifest)) return [];
   const unit = manifest.name;
   const fixes = trackedBuild(cwd, unit, FIXES_PHASE.number).tasks;
   if (fixes.length === 0) return fixes;
-  const read = quickFixLanding(cwd, unit);
+  const read = landing();
   const landed = fixes.find(({ ref }) => read.task(ref).landedAny);
   if (landed !== undefined) throw new Error(`${unit}'s fix ${shownTask(landed.ref)} has landed — finish the quick-fix, then start the ${to} as work of its own`);
   return fixes;
@@ -204,13 +205,13 @@ function fixesOf(cwd, manifest, to) {
 
 /**
  * The unit's move to `to` checked as it stands: a quick-fix's fixes, as
- * `fixesOf` answers them; none for a bugfix, whose root cause's validation
- * is taken in first (`assertMovable`), what the ledger's read said pushed
- * to `warnings`.
- * @param {string} cwd @param {Record<string, any>} manifest @param {string} to @param {string[]} warnings
+ * `fixesOf` answers them, from the landing `landing` reads; none for a
+ * bugfix, whose root cause's validation is taken in first
+ * (`assertMovable`), what the ledger's read said pushed to `warnings`.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} to @param {string[]} warnings @param {() => QuickFixLanding} [landing]
  * @returns {TaskRow[]}
  */
-function checkMove(cwd, manifest, to, warnings) {
+function checkMove(cwd, manifest, to, warnings, landing = () => quickFixLanding(cwd, manifest.name)) {
   const unit = manifest.name;
   const from = manifest.work_type;
   if (manifest.status !== 'in-progress') throw new Error(`${unit} is ${manifest.status ?? 'without a status'} — only work in progress moves`);
@@ -219,7 +220,7 @@ function checkMove(cwd, manifest, to, warnings) {
   assertMoves(unit, from, to);
   if (from === 'quick-fix' && legacyBuild(manifest)) throw new Error(`${unit} was scoped under the old plan, and moves once the reshape's 29.17 migration has cut it`);
   assertBeforeSpec(cwd, manifest, 'ownWork');
-  if (from === 'quick-fix') return fixesOf(cwd, manifest, to);
+  if (from === 'quick-fix') return fixesOf(cwd, manifest, to, landing);
   assertInvestigating(manifest);
   assertMovable(cwd, unit, warnings);
   return [];
@@ -397,7 +398,10 @@ function moveYes(cwd, staged) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   /** @type {string[]} */
   const warnings = [];
-  const fixes = checkMove(cwd, manifest, to, warnings);
+  /** @type {QuickFixLanding|undefined} */
+  let read;
+  const landing = () => (read ??= quickFixLanding(cwd, unit));
+  const fixes = checkMove(cwd, manifest, to, warnings, landing);
   const from = manifest.work_type;
   const quickFix = from === 'quick-fix';
   const begun = quickFix && fixesBegun(manifest);
@@ -413,7 +417,7 @@ function moveYes(cwd, staged) {
     }
     const branches = quickFix ? setBranchAside(cwd, unit) : [];
     const store = begun ? removeBuild(cwd, unit, FIXES_PHASE.number) : [];
-    const pullClosed = begun && quickFixClose(cwd, unit).closed;
+    const pullClosed = begun && quickFixClose(landing()).closed;
     setFilesAside(cwd, asides);
     writeBrief(cwd, unit, unit, draft.content);
     saveMoved(cwd, unit, to, description);

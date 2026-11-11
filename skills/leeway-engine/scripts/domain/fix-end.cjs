@@ -13,8 +13,9 @@
 // quick-fix's branch there is left (`quickFixLanding`, landing.cjs), as a
 // person's merge of a pull request by hand, by any method, leaves it:
 // landed where its newest commit of its own is on that branch, in a pull
-// request merged, or its change there, merging it changing nothing — named
-// there, where the repository holds no commit of its own — and in the pull
+// request merged, or its change there, merging it changing nothing, or a
+// commit there naming it was made after that one — named there, where the
+// repository holds no commit of its own — and in the pull
 // request where the one open holds that commit. Its own work is a commit
 // of its own through the door (commit-task.cjs), on the quick-fix's branch
 // or wherever the repository keeps it, or its change landed; it has landed
@@ -59,7 +60,7 @@ const { quickFixBuild, buildLength, FIXES_PHASE } = require('./derivations.cjs')
 const { shownTask, taskName } = require('./task-id.cjs');
 const { trackedPhase, trackedBuild, ENDED } = require('./task-verbs.cjs');
 const { quickFixLanding } = require('./landing.cjs');
-const { short: shortSha } = require('./landing-git.cjs');
+const { short: shortSha, inRepoWords } = require('./landing-git.cjs');
 const { taskRounds, pairPassed } = require('./round-report.cjs');
 const { remade } = require('./fix-branch.cjs');
 const { takeOutRecord, indexSummary } = require('./quick-fix-record.cjs');
@@ -118,9 +119,6 @@ function refuseOpening(cwd, ref, read) {
     : `land: ${taskName(ref)} has landed — a fix is done once it lands: task done ${ref.unit} ${shownTask(ref)}`);
 }
 
-/** A repository as a refusal names it: its folder, or nothing for the project's own. @param {RepoLanding} held */
-const inWords = (held) => (held.ctx.repo === '.' ? '' : ` in ${held.ctx.repo}`);
-
 /**
  * Where a task's work is neither landed nor on the quick-fix's branch, as
  * a branch cut again leaves a commit that did not apply there: the first
@@ -152,11 +150,11 @@ function undoneRefusal(cwd, ref) {
   if (!read.held) return `${taskName(ref)} holds no commit of its own — a fix met already, or with nothing to change, is closed as met: task close ${ref.unit} ${shown} --reason <why>`;
   const off = leftOffAt(landing, ref);
   if (off !== null) {
-    return `${taskName(ref)}'s commit ${shortSha(/** @type {string} */ (off.found))} is not on ${landing.branch}${inWords(off.held)} — make its change again there through the door: ${remade(ref, off.found)}`;
+    return `${taskName(ref)}'s commit ${shortSha(/** @type {string} */ (off.found))} is not on ${landing.branch}${inRepoWords(off.held.ctx.repo)} — make its change again there through the door: ${remade(ref, off.found)}`;
   }
   const out = read.each.find(({ read: held, task }) => !task.landed && !held.inPull(task));
   if (out !== undefined) {
-    return `${taskName(ref)}'s newest commit${inWords(out.read)} is not in ${ref.unit}'s pull request — a task is done once it is committed and in it: land open ${ref.unit} ${shown} pushes it`;
+    return `${taskName(ref)}'s newest commit${inRepoWords(out.read.ctx.repo)} is not in ${ref.unit}'s pull request — a task is done once it is committed and in it: land open ${ref.unit} ${shown} pushes it`;
   }
   return null;
 }
@@ -209,7 +207,7 @@ function refuseLeftOff(cwd, read) {
     if (off === null && !workGone(read, ref)) continue;
     const where = off === null
       ? 'holds no commit the repository keeps, and has not landed'
-      : `holds ${shortSha(/** @type {string} */ (off.found))}, which is neither landed nor on ${read.branch}${inWords(off.held)}`;
+      : `holds ${shortSha(/** @type {string} */ (off.found))}, which is neither landed nor on ${read.branch}${inRepoWords(off.held.ctx.repo)}`;
     throw new Error(`land: ${unit} lands once each task done is landed or in its pull request — ${taskName(ref)} ${where} — make its change again there through the door, then land again: ${remade(ref, off?.found ?? null)}`);
   }
 }

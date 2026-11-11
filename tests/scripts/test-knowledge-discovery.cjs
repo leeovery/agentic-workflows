@@ -108,7 +108,7 @@ function buildFixture(root) {
   // Quick-fix, completed: its short record, no phase's item, beside its build's log.
   proj.work_units['typo'] = { work_type: 'quick-fix' };
   writeJson(path.join(wf, 'typo', 'manifest.json'), {
-    name: 'typo', work_type: 'quick-fix', status: 'completed', created: '2026-01-05', phases: {}, fixes: { began: '2026-01-05T09:00:00Z' },
+    name: 'typo', work_type: 'quick-fix', status: 'completed', created: '2026-01-05', phases: {}, fixes: {},
   });
   writeFile(path.join(wf, 'typo', 'summary.md'), '## Spell the flag\n\n- What changed: The flag.\n');
   writeFile(path.join(wf, 'typo', 'build', 'log.md'), '# the build\'s — never indexed\n');

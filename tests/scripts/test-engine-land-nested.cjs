@@ -9,19 +9,14 @@
 // one moving it to a commit the submodule landed nothing for keeping that
 // commit; phases side by side, each moving the pointer — one at its second
 // task, cut from the default branch's tip — land in either order, the later
-// replayed onto the earlier; the project's default branch
-// moved where its checkout has it out, the submodule's checkout kept on its
-// default branch though the person's git recurses into submodules; a clone
-// with no default branch, the unit's branches in it holding nothing, passed
-// over; a project that is a folder of a larger repository records its
-// submodule's pointer at the path from the repository's top (7.2.17); a
-// task's branch moving the pointer to a commit the submodule here does not
-// hold refused at the open, naming both, and opened once it is fetched; and
-// a default branch pointing the submodule at a commit the submodule's own
-// does not hold refused before anything merges, naming it, a fetch of it no
-// way on, and landed past it once the submodule's is pulled up to it. Git
-// layer: the nested world (landing-world.cjs), built once and copied for
-// each test.
+// replayed onto the earlier; the project's default branch moved where its
+// checkout has it out, the submodule's checkout kept on its default branch
+// though the person's git recurses into submodules; and a project that is
+// a folder of a larger repository records its submodule's pointer at the
+// path from the repository's top (7.2.17). The nested repositories the
+// driver passes over or refuses are test-engine-land-nested-refusals.cjs's.
+// Git layer: the nested world (landing-world.cjs), built once and copied
+// for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -32,21 +27,11 @@ const path = require('path');
 
 const { ok, refuses, git, tip, initRepo, addSubmodule } = require('./engine-harness.cjs');
 const {
-  BASE, NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useNestedWorld, refusedMoving, finishReady,
+  BASE, NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useNestedWorld, landingCommits, pointersOn,
 } = require('./landing-world.cjs');
 
 const { rates, show } = NESTED_TASKS;
 const project = useNestedWorld('engine-land-nested-', (dir) => setLandingDriver(dir, 'local'));
-
-/** Each landing a default branch gained past the base, oldest first: the task it lands and the commit it is. @param {string} dir @param {string} [into] */
-const landings = (dir, into = 'main') => git(dir, ['log', '--reverse', '--first-parent', '--format=%(trailers:key=Task,valueonly,separator=%x2C)%x1f%H', `${BASE}..${into}`])
-  .split('\n').filter(Boolean).map((line) => line.split('\x1f'));
-
-/** The submodule's upstream, beside the project, its commits the submodule's checkout here lacks until fetched. @param {import('./landing-world.cjs').Nested} at */
-const upstreamOf = (at) => path.join(path.dirname(at.dir), NESTED.ext.folder);
-
-/** Each landing on the project's default branch, oldest first: the task it lands and where it points the submodule at `folder`. @param {string} dir @param {string} [folder] */
-const pointers = (dir, folder = NESTED.ext.folder) => landings(dir).map(([task, sha]) => [task, git(dir, ['rev-parse', `${sha}:${folder}`]).trim()]);
 
 describe('land phase: the local driver\'s submodule pointer', () => {
   it('points each task\'s landing at the submodule\'s landing of that task — a landing leaving the pointer carrying the one before it, and one moving it to a commit the submodule landed nothing for keeping it', () => {
@@ -59,9 +44,9 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     for (const task of [rates, show, bump, pin]) ok(at.dir, openArgs(task));
 
     ok(at.dir, ['land', 'phase', 'pay', '1']);
-    const landed = Object.fromEntries(landings(at.ext));
+    const landed = Object.fromEntries(landingCommits(at.ext));
     assert.deepStrictEqual(Object.keys(landed), ['pay-1-1', 'pay-1-3']);
-    assert.deepStrictEqual(pointers(at.dir), [['pay-1-1', landed['pay-1-1']], ['pay-1-2', landed['pay-1-1']], ['pay-1-3', landed['pay-1-3']], ['pay-1-4', base]]);
+    assert.deepStrictEqual(pointersOn(at.dir), [['pay-1-1', landed['pay-1-1']], ['pay-1-2', landed['pay-1-1']], ['pay-1-3', landed['pay-1-3']], ['pay-1-4', base]]);
     assert.deepStrictEqual(landedOn(at.dir, 'main').map(({ subject }) => subject), ['feat(pay): Add rates', 'feat(pay): Show rates', 'feat(pay): Bump rates', 'feat(pay): Pin ext']);
   });
 
@@ -77,9 +62,9 @@ describe('land phase: the local driver\'s submodule pointer', () => {
 
     ok(at.dir, ['land', 'phase', 'pay', '2']);
     ok(at.dir, ['land', 'phase', 'pay', '1']);
-    const landed = Object.fromEntries(landings(at.ext));
+    const landed = Object.fromEntries(landingCommits(at.ext));
     assert.deepStrictEqual(Object.keys(landed), ['pay-2-3', 'pay-1-1']);
-    assert.deepStrictEqual(pointers(at.dir), [['pay-2-2', was], ['pay-2-3', landed['pay-2-3']], ['pay-1-1', landed['pay-1-1']]]);
+    assert.deepStrictEqual(pointersOn(at.dir), [['pay-2-2', was], ['pay-2-3', landed['pay-2-3']], ['pay-1-1', landed['pay-1-1']]]);
     assert.strictEqual(landed['pay-1-1'], tip(at.ext, 'main'));
   });
 
@@ -101,59 +86,6 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     assert.strictEqual(git(at.dir, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), tip(at.ext, 'main'));
   });
 
-  it('passes over, in every verb, a clone the unit never touched that has no default branch to land on, though it holds the unit\'s branches', () => {
-    const at = project();
-    const odd = initRepo(path.join(at.dir, 'odd'));
-    git(odd, ['symbolic-ref', 'HEAD', 'refs/heads/work']);
-    git(odd, ['commit', '-q', '--allow-empty', '-m', 'odd']);
-    for (const task of [rates, show]) git(odd, ['branch', task.branch]);
-    const repos = (/** @type {{repos: {repo: string}[]}} */ answer) => answer.repos.map(({ repo }) => repo);
-
-    assert.deepStrictEqual(repos(ok(at.dir, openArgs(rates))), ['ext', 'lib', '.']);
-    assert.deepStrictEqual(repos(ok(at.dir, openArgs(show))), ['.']);
-    assert.deepStrictEqual(repos(ok(at.dir, ['land', 'chain', 'pay', '1.2'])), ['.']);
-    assert.deepStrictEqual(repos(ok(at.dir, ['land', 'phase', 'pay', '1'])), ['ext', 'lib', '.']);
-    finishReady(at.dir);
-    assert.deepStrictEqual(repos(ok(at.dir, ['land', 'finish', 'pay'])), []);
-  });
-
-  it('refuses, before anything opens, a task moving the submodule\'s pointer to a commit the submodule here does not hold — made in a clone of its own — naming both, and opens it once the commit is there', () => {
-    const at = project();
-    const task = track(at.dir, '2.2', 'feat', 'Elsewhere');
-    const elsewhere = commitFiles(upstreamOf(at), task.branch, 'main', { 'ext-elsewhere.txt': 'elsewhere\n' });
-    commitFiles(at.dir, task.branch, 'main', { 'elsewhere.txt': 'elsewhere\n' }, { gitlinks: { [NESTED.ext.folder]: elsewhere } });
-
-    assert.strictEqual(
-      refusedMoving(at.dir, openArgs(task)),
-      `land: task 2.2's branch ${task.branch} points ext at ${elsewhere.slice(0, 7)}, a commit ext here does not hold — commit the change in ext, on ${task.branch}, and open the task again`,
-    );
-    assert.strictEqual(git(at.ext, ['branch', '--list', task.branch]).trim(), '');
-    git(at.ext, ['fetch', '-q', upstreamOf(at), `${task.branch}:${task.branch}`]);
-    assert.deepStrictEqual(ok(at.dir, openArgs(task)).repos.map((/** @type {{repo: string}} */ { repo }) => repo), ['ext', '.']);
-  });
-
-  it('refuses, before anything merges, a phase whose default branch points the submodule at a commit the submodule\'s own default branch does not hold — the project pulled, the submodule not — naming it, though the commit is fetched, and lands past it once the submodule\'s default branch is pulled up to it', () => {
-    const at = project();
-    const pulled = commitFiles(upstreamOf(at), 'main', 'main', { 'ext-pulled.txt': 'pulled\n' });
-    commitFiles(at.dir, 'main', 'main', {}, { gitlinks: { [NESTED.ext.folder]: pulled }, message: 'bump ext' });
-    git(at.dir, ['reset', '-q']);
-    const task = track(at.dir, '2.2', 'feat', 'More ext');
-    const more = commitFiles(at.ext, task.branch, 'main', { 'ext-more.txt': 'more\n' });
-    commitFiles(at.dir, task.branch, 'main', { 'more.txt': 'more\n' }, { gitlinks: { [NESTED.ext.folder]: more } });
-    ok(at.dir, openArgs(task));
-    const ext = tip(at.ext, 'main');
-    const refusal = `land: main points ext at ${pulled.slice(0, 7)}, a commit ext's main does not hold — bring ext's main up to it, as \`git -C ext pull\` does where its remote holds it, and land again`;
-
-    assert.strictEqual(refuses(at.dir, ['land', 'phase', 'pay', '2']).error, refusal);
-    git(at.ext, ['fetch', '-q', upstreamOf(at), 'main']);
-    assert.strictEqual(refuses(at.dir, ['land', 'phase', 'pay', '2']).error, refusal);
-    assert.strictEqual(tip(at.ext, 'main'), ext);
-    git(at.ext, ['pull', '-q', '--ff-only', upstreamOf(at), 'main']);
-    ok(at.dir, ['land', 'phase', 'pay', '2']);
-    const [[landed, pointer]] = pointers(at.dir).slice(-1);
-    assert.deepStrictEqual([landed, pointer, git(at.ext, ['rev-parse', `${pointer}^`]).trim()], ['pay-2-2', tip(at.ext, 'main'), pulled]);
-  });
-
   it('records the pointer of a submodule in a project that is a folder of a larger repository at its path from the repository\'s top (7.2.17)', () => {
     const at = project();
     const app = path.join(at.dir, 'app');
@@ -167,7 +99,7 @@ describe('land phase: the local driver\'s submodule pointer', () => {
 
     assert.deepStrictEqual(ok(app, openArgs(task)).repos.map((/** @type {{repo: string}} */ { repo }) => repo), ['deep', '.']);
     ok(app, ['land', 'phase', 'pay', '1']);
-    assert.deepStrictEqual(landings(deep).map(([shown]) => shown), ['pay-1-5']);
-    assert.deepStrictEqual(pointers(at.dir, 'app/deep').slice(-1), [['pay-1-5', tip(deep, 'main')]]);
+    assert.deepStrictEqual(landingCommits(deep).map(([shown]) => shown), ['pay-1-5']);
+    assert.deepStrictEqual(pointersOn(at.dir, 'app/deep').slice(-1), [['pay-1-5', tip(deep, 'main')]]);
   });
 });

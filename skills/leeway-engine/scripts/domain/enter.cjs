@@ -237,7 +237,7 @@ const CARRIED = Object.freeze({
  * 19.5.16), read at its first opening as input it never changes, each by
  * what the move carried: the topic's record where lines were carried to
  * it, a bugfix's investigation log, and a quick-fix's build log, its
- * fixes' short records, `summary.md`, and each round's report of its
+ * fixes' short records in `summary.md`, and each round's report of its
  * review, in order, where they were set aside, the quick-fix's branch
  * kept in each repository whose commits on it stand unlanded, and each
  * fix's work it kept set aside (fix-aside.cjs) — none where the move

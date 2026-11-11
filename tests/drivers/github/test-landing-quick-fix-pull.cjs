@@ -27,7 +27,7 @@ const side = require('./landing.cjs');
 const { GH_ENV, github, bareOf, closeByHand, pulls, tipOnGithub } = require('./world.cjs');
 
 const { ok, refuses, git, withEnv, fixtureFrom, cleanupFixture } = harness;
-const { quickFixClose } = require('../../../skills/leeway-engine/scripts/domain/landing.cjs');
+const { quickFixLanding, quickFixClose } = require('../../../skills/leeway-engine/scripts/domain/landing.cjs');
 
 const world = fixtureFrom('github-landing-quick-fix-pull-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-pull-config-');
@@ -71,7 +71,8 @@ describe('a quick-fix\'s one pull request on GitHub (R14)', () => {
 
   it('closed by a move: the one open closed unmerged, and closed again, as a yes run again closes it, closing nothing', () => {
     dir = world();
-    const [first, again] = withEnv(as().env, () => [quickFixClose(dir, UNIT), quickFixClose(dir, UNIT)]);
+    const closed = () => quickFixClose(quickFixLanding(dir, UNIT));
+    const [first, again] = withEnv(as().env, () => [closed(), closed()]);
 
     assert.deepStrictEqual([first, again, pulls(dir)], [{ closed: true }, { closed: false }, [{ number: 1, state: 'CLOSED', base: 'main' }]]);
   });

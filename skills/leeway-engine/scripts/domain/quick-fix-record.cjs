@@ -30,7 +30,8 @@
 // where this checkout's knowledge base is set up, each fix's record a chunk
 // of its own (knowledge/artifacts.cjs), an index that fails a warning. It
 // takes a fix holding work of its own — a commit through the door, landed
-// by hand or not (landing.cjs, `quickFixLanding`) — in flight or done. It
+// by hand or not (landing.cjs, `quickFixLanding`), read off git alone, so
+// the verb reaches no host — in flight or done. It
 // refuses, writing and committing nothing,
 // every refusal opening `quick-fix record: `: a unit the project lacks or
 // holds not in progress; one that is no quick-fix built by its own arm
@@ -215,7 +216,7 @@ function recordableFix(cwd, manifest, given) {
   if (fix === undefined) throw new Error(`${taskName(ref)} is not in the tracker — its fixes are listed by task list ${unit} ${FIXES_PHASE.number}`);
   if (fix.status === 'closed') throw new Error(`${taskName(ref)} is closed — a fix closed lands nothing, so it keeps no record`);
   if (recordedIds(manifest).includes(taskId(ref))) throw new Error(`${taskName(ref)}'s record is written already — ${summaryFile(unit)} holds it, under \`## ${fix.title}\``);
-  if (!landing().quickFixLanding(cwd, unit).task(ref).held) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
+  if (!landing().quickFixLanding(cwd, unit, { asFetched: true }).task(ref).held) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
   return { ref, fix, warnings };
 }
 

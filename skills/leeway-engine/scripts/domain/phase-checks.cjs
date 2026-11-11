@@ -35,10 +35,10 @@
 //   the phase review by a finding in its standing's words (15.4.3). A stack
 //   whose tips cannot be read proves nothing, said as a warning.
 // - Its notes consolidated: as notes.cjs reads the consolidation's record.
-// - Its stack merged: every task not closed landed (landing.cjs), one at
+// - Its stack merged: every task not closed landed (task-landed.cjs), one at
 //   least — or, in step, its merge waiting at its gate, every task not
-//   closed chained into its stack, one at least (7.2.4); a task whose
-//   landing cannot be read so is not, said as a warning.
+//   closed in its stack, one at least: landed, or chained into it (7.2.4);
+//   a task whose landing cannot be read so is not, said as a warning.
 // - Phase 1's close also needs the verify setup recorded (12.3.3): a
 //   refusal of the close, not an item, so the checklist lists 6.4.9's items
 //   alone (6.S14).
@@ -63,7 +63,8 @@ const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
 const { consolidationFaults } = require('./notes.cjs');
 const { verifySetup } = require('./environment.cjs');
-const { landedTasks, allChained } = require('./landing.cjs');
+const { allChained } = require('./landing.cjs');
+const { unitLanded } = require('./task-landed.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { phaseName, shownTask } = require('./task-id.cjs');
 
@@ -134,14 +135,14 @@ const live = (tasks) => (tasks ?? []).filter(({ status }) => status !== 'closed'
 /** The phase's tasks not closed, by their rows. @param {Reading} at @param {number} phase */
 const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseLists(at, [phase])[0]);
 
-/** The unit's tasks landed, by their shown numbers, read once a call. @param {Reading} at @returns {Set<string>} */
-const landedOf = (at) => once(at, 'landed', () => landedTasks(at.cwd, at.unit, reposOf(at), dayBefore(at.manifest.created)));
+/** What has landed of the unit's tasks (task-landed.cjs), read once a call. @param {Reading} at @returns {import('./task-landed.cjs').UnitLanded} */
+const landedOf = (at) => once(at, 'landed', () => unitLanded(at.cwd, at.unit, reposOf(at), dayBefore(at.manifest.created)));
 
 /** Whether the phase's stack has merged: every task not closed landed, one at least. @param {Reading} at @param {number} phase */
 function phaseLanded(at, phase) {
   const rows = liveRows(at, phase);
-  const landed = landedOf(at);
-  return rows.length > 0 && rows.every(({ ref }) => landed.has(shownTask(ref)));
+  const { landed } = landedOf(at);
+  return rows.length > 0 && rows.every(({ ref }) => landed(ref));
 }
 
 /**
@@ -306,15 +307,16 @@ function scenariosWay(at, phase) {
 const notesConsolidated = (at, phase) => consolidationFaults(at.cwd, at.unit, phase).length === 0;
 
 /**
- * Whether every task of the phase not closed, one at least, is chained into
- * its stack (landing.cjs); not where one cannot be read so, said as a
- * warning.
+ * Whether every task of the phase not closed, one at least, is in its
+ * stack: landed (`landedOf`), else chained into it (landing.cjs); not where
+ * one cannot be read so, said as a warning.
  * @param {Reading} at @param {number} phase
  */
 function chained(at, phase) {
   const tasks = live(phaseTasks(at, phase));
+  const { landed } = landedOf(at);
   try {
-    return tasks.length > 0 && allChained(at.cwd, at.unit, tasks);
+    return tasks.length > 0 && allChained(at.cwd, at.unit, tasks.filter(({ ref }) => !landed(ref)));
   } catch (err) {
     at.warnings.push(messageOf(err));
     return false;
@@ -354,6 +356,12 @@ function phaseReviewRefusal(cwd, unit, phase) {
   return manifest === null ? null : reviewRefusalOf(reading(cwd, unit, manifest), phase);
 }
 
+/** Whether every task of the phase has landed, as the close reads it (`phaseLanded`): never for a unit the project lacks. @param {string} cwd @param {string} unit @param {number} phase */
+function landedPhase(cwd, unit, phase) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  return manifest !== null && phaseLanded(reading(cwd, unit, manifest), phase);
+}
+
 /** `phaseReviewRefusal`, as a call reads the unit. @param {Reading} at @param {number} phase @returns {string|null} */
 function reviewRefusalOf(at, phase) {
   if (phase > cutLength(at.manifest)) return null;
@@ -363,5 +371,5 @@ function reviewRefusalOf(at, phase) {
 
 module.exports = {
   reading, once, reposOf, landedOf, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
-  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, scenariosWay, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
+  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, scenariosWay, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf, landedPhase,
 };

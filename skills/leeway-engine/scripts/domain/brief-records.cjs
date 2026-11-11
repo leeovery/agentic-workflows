@@ -530,7 +530,7 @@ const { reviewReportFaults } = require('./review-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch, quickFixBranch } = require('./landing-names.cjs');
-const { branches, branchesHeldBy, holdingBranch, landsOn, latestOf, quoted } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, holdingBranch, landingBranch, latestOf, quoted } = require('./landing-git.cjs');
 const { childrenFirst } = require('../kernel/repos.cjs');
 const { heldIn, pointedAt } = require('./project-layout.cjs');
 const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
@@ -695,7 +695,7 @@ function rangeIn(repo, base, branch) {
 function basesOf(cwd, holding, given, what) {
   const has = holding.map((repo) => branches(repo.path).has(given));
   if (!has.includes(true)) throw new Error(`the base ${given} is no local branch in any repository holding ${what}`);
-  return holding.map((repo, at) => (has[at] ? given : landsOn(cwd, repo)));
+  return holding.map((repo, at) => (has[at] ? given : landingBranch(cwd, repo)));
 }
 
 /** Where a repository is laid out: what the brief names, its commit, and why there. @typedef {{named: string, commit: string, why: string}} Laid */
@@ -818,7 +818,7 @@ function drawScratchLayout(filling) {
   const { ref } = taskOf(filling);
   const { repos, branch, holding } = taskHolding(filling);
   return layoutOf(filling.cwd, repos, rangeTips(new Map(holding.map((repo) => [repo, branch]))), (repo) => (
-    branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
+    branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landingBranch(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
   ), scratchName.task(ref.unit, shownTask(ref), letterOf(filling)));
 }
 
@@ -1798,7 +1798,7 @@ function drawPhaseDiffRange(filling, warnings) {
   const holding = [...tips.keys()];
   const tipped = holding.map((repo) => /** @type {string} */ (tips.get(repo)));
   const { base } = filling.given;
-  const bases = base === undefined ? holding.map((repo) => landsOn(filling.cwd, repo)) : basesOf(filling.cwd, holding, base, `${what}'s tasks`);
+  const bases = base === undefined ? holding.map((repo) => landingBranch(filling.cwd, repo)) : basesOf(filling.cwd, holding, base, `${what}'s tasks`);
   return holding.map((repo, at) => rangeIn(repo, bases[at], tipped[at])).join('\n\n');
 }
 
@@ -1806,7 +1806,7 @@ function drawPhaseDiffRange(filling, warnings) {
 function drawPhaseScratchLayout(filling, warnings) {
   const { repos, tips } = phaseHolding(filling, warnings);
   const { unit, phase } = phaseOf(filling);
-  return layoutOf(filling.cwd, repos, rangeTips(tips), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
+  return layoutOf(filling.cwd, repos, rangeTips(tips), (repo) => onBranch(repo, landingBranch(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
 }
 
 /**
@@ -2136,7 +2136,7 @@ function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
   const unit = unitOf(filling);
   const named = filling.given.area === undefined ? scratchName.tests(unit) : scratchName.area(unit, filling.given.area, letterOf(filling));
-  return layoutOf(filling.cwd, repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), named);
+  return layoutOf(filling.cwd, repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landingBranch(filling.cwd, repo), 'the branch it lands on'), named);
 }
 
 /**

@@ -13,16 +13,63 @@
 // it, as for a required check. A person merges a quick-fix's pull request
 // by hand on GitHub's site, as the site's button does — squashed, with a
 // merge commit or rebased — pulling main here after it or not, a merge
-// commit pulled keeping its own commits here; and deletes a branch, on
+// commit pulled keeping its own commits here; cherry-picks a commit onto
+// the default branch here, pushing it to GitHub; and deletes a branch, on
 // GitHub and here. A quick-fix is open in a repository while a pull
-// request of its branch is open there.
+// request of its branch is open there. A person lands a phase by hand on
+// GitHub's site too, each of its pull requests, bottom first, merged onto
+// main — squashed under GitHub's own squash message, its commits' own, or
+// under their own words, with a merge commit, or rebased — or pushes its
+// last task's branch to main there, which GitHub reads as merging each of
+// its pull requests, and pulls main here.
 
 const path = require('path');
 const { git } = require('../../scripts/engine-harness.cjs');
 const { UNIT, setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
 const names = require('../../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 const { taskId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
-const { GH_ENV, githubWorld, github, bareOf, squashFromPullRequests, mergeByHand } = require('./world.cjs');
+const { GH_ENV, githubWorld, github, onGithub, bareOf, squashFromPullRequests, mergeByHand } = require('./world.cjs');
+const stub = require('./gh-stub.cjs');
+
+/**
+ * Each open pull request of a phase, bottom first, merged by hand on
+ * GitHub onto main by `method`, as the site's button merges it — a squash
+ * under GitHub's own squash message, else under `words` where given — and
+ * main here then pulled.
+ * @param {string} dir @param {number} phase @param {'squash'|'merge'|'rebase'} method @param {{subject: string, body: string}} [words]
+ */
+function phaseOnGithub(dir, phase, method, words) {
+  onGithub(dir, (state) => {
+    const kept = state.squash;
+    state.squash = { ...stub.GITHUB_SQUASH };
+    const pulls = state.pulls.filter((pull) => pull.state === 'OPEN' && names.taskOfBranch(UNIT, pull.head)?.phase === phase).sort((a, b) => a.number - b.number);
+    for (const pull of pulls) stub.mergePulls(stub.githubAt(dir), state, [pull], method, { into: 'main', ...words });
+    state.squash = kept;
+  });
+  if (git(dir, ['branch', '--show-current']).trim() === 'main') git(dir, ['pull', '-q', '--ff-only', '--no-recurse-submodules', 'origin', 'main']);
+  else git(dir, ['fetch', '-q', 'origin', 'main:main']);
+}
+
+/**
+ * A phase's last open pull request's branch pushed by hand onto main on
+ * GitHub, a fast-forward — each open pull request of the phase then merged
+ * there, as GitHub marks one whose head its base holds — and main here then
+ * pulled.
+ * @param {string} dir @param {number} phase
+ */
+function phasePushed(dir, phase) {
+  const pulls = github(dir).pulls.filter((pull) => pull.state === 'OPEN' && names.taskOfBranch(UNIT, pull.head)?.phase === phase).sort((a, b) => a.number - b.number);
+  git(dir, ['push', '-q', 'origin', `refs/heads/${pulls[pulls.length - 1].head}:refs/heads/main`]);
+  onGithub(dir, (state) => {
+    for (const pull of state.pulls.filter((held) => pulls.some(({ number }) => number === held.number))) {
+      const head = git(bareOf(dir), ['rev-parse', `refs/heads/${pull.head}`]).trim();
+      Object.assign(pull, { state: 'MERGED', merged: head });
+      git(bareOf(dir), ['update-ref', `refs/pull/${pull.number}/head`, head]);
+    }
+  });
+  if (git(dir, ['branch', '--show-current']).trim() === 'main') git(dir, ['pull', '-q', '--ff-only', '--no-recurse-submodules', 'origin', 'main']);
+  else git(dir, ['fetch', '-q', 'origin', 'main:main']);
+}
 
 /**
  * The open pull request of a branch merged by hand on GitHub by `method`,
@@ -98,4 +145,25 @@ module.exports = {
   },
   deleted,
   mergedOnGithub,
+  /** A commit cherry-picked by hand onto the default branch `into` here and pushed to GitHub. @param {string} dir @param {string} commit @param {string} [into] */
+  picked: (dir, commit, into = 'main') => {
+    const back = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
+    git(dir, ['switch', '-q', into]);
+    git(dir, ['cherry-pick', commit]);
+    git(dir, ['push', '-q', 'origin', into]);
+    git(dir, ['switch', '-q', back]);
+  },
+  /** The ways a person lands a phase by hand on GitHub's site, main here pulled after. */
+  phaseByHand: {
+    /** Squashed under GitHub's own squash message. @param {string} dir @param {number} phase */
+    'a squash under the default message': (dir, phase) => phaseOnGithub(dir, phase, 'squash'),
+    /** Squashed under the person's own message. @param {string} dir @param {number} phase */
+    'a squash under the person\'s own message': (dir, phase) => phaseOnGithub(dir, phase, 'squash', { subject: 'In my own words', body: '' }),
+    /** With a merge commit. @param {string} dir @param {number} phase */
+    'a merge commit': (dir, phase) => phaseOnGithub(dir, phase, 'merge'),
+    /** Rebased, each pull request's own commits put onto main under their own messages. @param {string} dir @param {number} phase */
+    'a rebase': (dir, phase) => phaseOnGithub(dir, phase, 'rebase'),
+    /** Fast-forwarded, its last task's branch pushed onto main there. @param {string} dir @param {number} phase */
+    'a fast-forward': (dir, phase) => phasePushed(dir, phase),
+  },
 };

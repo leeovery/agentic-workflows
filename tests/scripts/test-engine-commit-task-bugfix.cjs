@@ -7,8 +7,10 @@
 // refused before any check runs until the test that task wrote has run on
 // the unfixed code five times, failing each time, at task 1.1's tip, and
 // the commit being made is built on task 1.1's work — its tip below HEAD or
-// the merge in progress, or its landing in them, read as the landing reads
-// one — each refusal naming the way on: a first series, a test reworked
+// the merge in progress, or its landing in them, read by its change however
+// it landed — the engine's squash, or merged by hand with a merge commit,
+// rebased or squashed under the person's own message, no landing naming it
+// (7.2.22) — each refusal naming the way on: a first series, a test reworked
 // after a pass, a new series after task 1.1 moved, a merge of task 1.1's
 // branch, phase 1's merge, a merge of the branch it landed on, each merge
 // made as the hook before Bash lets a task in flight make one and committed
@@ -46,7 +48,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  call, ok, refusedPristine, cleanupFixture, createFile, git, initRepo, setEnvironment, accountTaken,
+  call, ok, refusedPristine, cleanupFixture, createFile, git, initRepo, setEnvironment, accountTaken, MERGED_BY_HAND,
 } = require('./engine-harness.cjs');
 const {
   UNIT, TEST, BUGGY, FIXED, CRASH_TEST, branchOf, HARDEN_BRANCH, landedOnMain, logging, testRuns, unfixedArgs, unproven, proven,
@@ -269,6 +271,30 @@ describe('commit --task: built on task 1.1\'s work where its landing is, every l
     accountTaken(dir, UNIT, '2.1');
     assert.strictEqual(ok(dir, ['land', 'open', UNIT, '2.1'], ending).task, '2.1');
   });
+});
+
+describe('commit --task: built on task 1.1\'s work where it was merged by hand, no landing naming it (7.2.22, 15.5.3)', () => {
+  for (const [how, merged] of Object.entries(MERGED_BY_HAND)) {
+    it(`by ${how}: a task of another phase laid out on main before it is refused naming the merge of main, task 1.1's work read on main by its change; main merged in as the refusal names it, the commit lands`, () => {
+      dir = proven();
+      git(dir, ['checkout', '-q', '-b', HARDEN_BRANCH, 'main']);
+      git(dir, ['checkout', '-q', 'main']);
+      landedOnMain(dir, 2, { 'src/app.js': FIXED });
+      merged(dir, branchOf(1));
+      git(dir, ['checkout', '-q', HARDEN_BRANCH]);
+      const hardening = () => {
+        createFile(dir, 'src/hardened.js', 'export const hardened = true;\n');
+        return commitArgs('2.1', 'src/hardened.js');
+      };
+      const unmerged = refusedUncommitted(hardening());
+      mergedAsNamed(unmerged);
+
+      const neither = `in the project's repository, this commit holds neither ${branchOf(1)}, task 1.1's branch, where the test was proven, nor its landing`;
+      assert.deepStrictEqual([unmerged, ok(dir, hardening(), building).checks], [
+        unprovenRefusal(`${neither}, which is on main — merge main in with \`git merge --no-ff --no-commit main\`, ${THROUGH_THE_DOOR}`, '2.1'), [{ name: 'reproducing test', exit: 0 }],
+      ]);
+    });
+  }
 });
 
 describe('land open and task done: a bugfix\'s reproducing task lands and is done once its bug is proven at its tip (15.5.3)', () => {

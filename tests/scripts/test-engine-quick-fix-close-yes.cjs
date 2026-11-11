@@ -5,14 +5,16 @@
 // `engine finish yes <qf>` — refused while a question Claude raised in its
 // conversation stands open in its ledger, after a /clear as before it
 // (19.5.25), and while the checkout holds changes not committed, landing
-// nothing — landing the pull request through the local landing driver as
-// one commit, its fixes in the order they were done (19.5.17), putting the
-// checkout back on the branch it lands on, completing the unit and naming
-// the start menu, its folder then holding `build/` and `summary.md` alone of
-// the work (4.S23), its record found once it is closed (22.S22), its
-// questions and notes read once, as its checklist alone reads them. Its screen
-// is test-engine-quick-fix-close.cjs's; the landing as one pull request, on
-// every driver, GitHub's among them (19.S38),
+// nothing — landing the pull request through the local landing driver as one
+// commit, its fixes in the order they were done (19.5.17), reading no ref the
+// local driver kept of an earlier quick-fix of its name, putting the checkout
+// back on the branch it lands on, letting go of every ref the local driver
+// kept of it — its opening and the head it merged — completing the unit and
+// naming the start menu, its folder then holding `build/` and `summary.md`
+// alone of the work (4.S23), its record found once it is closed (22.S22), its
+// questions and notes read once, as its checklist alone reads them. Its
+// screen is test-engine-quick-fix-close.cjs's; the landing as one pull
+// request, on every driver, GitHub's among them (19.S38),
 // test-engine-landing-conformance-quick-fix.cjs's.
 //
 // Layer: git. World: quick-fix-close-world.cjs — fixes 1.1 and 1.2 on the
@@ -30,6 +32,7 @@ const path = require('path');
 const {
   ok, callAsync, okSectionsAsync, refusedPristine, git, stateGit, statePath, readManifest, cleanupFixture, keywordOnlyKnowledge, traced, layout,
 } = require('./engine-harness.cjs');
+const { datedAt } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const { UNIT, PLACE, DESCRIPTION, checklistClosed } = require('./quick-fix-world.cjs');
 const { RAISED, world, closeHelpers } = require('./quick-fix-close-world.cjs');
@@ -60,18 +63,20 @@ function reading(t, args) {
 }
 
 describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
-  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23) — reading its questions and notes once, as its checklist alone does, the ledger once more, after the landing has written', (t) => {
+  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, lets go of every ref the local driver kept of it, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23) — reading its questions and notes once, as its checklist alone does, the ledger once more, after the landing has written', (t) => {
     dir = world();
     closeable();
     fs.writeFileSync(path.join(dir, 'src', 'stray.js'), 'stray\n');
     const main = git(dir, ['rev-parse', 'main']).trim();
     const dirty = [refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1']), git(dir, ['rev-parse', 'main']).trim()];
     fs.rmSync(path.join(dir, 'src', 'stray.js'));
+    const kept = () => git(dir, ['for-each-ref', '--format=%(refname)', 'refs/leeway/']).trim();
+    const opened = kept();
     const checked = reading(t, ['checklist', 'show', 'finish', UNIT]);
     const { result: done, ledger, notes } = reading(t, ['finish', 'yes', UNIT]);
 
     const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`;
-    assert.deepStrictEqual(dirty, [`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main]);
+    assert.deepStrictEqual([dirty, opened, kept()], [[`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main], `refs/leeway/quick-fix/${UNIT}/open`, '']);
     assert.deepStrictEqual([checked.notes > 0, notes, ledger - checked.ledger], [true, checked.notes, 1]);
     assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
       ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
@@ -101,6 +106,16 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     const said = `${UNIT} closes once each question asked in it is answered — ${asked} ${RAISED.question}: raise it again for the person to answer, raise ${PLACE} --answers ${asked}`;
     assert.deepStrictEqual(open, [`finish yes: ${said}`, `land: ${said}`, `land: ${said}`, main]);
     assert.deepStrictEqual([done.landed.map(({ merged }) => merged), readManifest(dir, UNIT).status], [[['1.1', '1.2']], 'completed']);
+  });
+
+  it('reads no ref the local driver kept of an earlier quick-fix of the same name, its opening at a commit made before this one was — never this one\'s, so never a stranger\'s branch refused: the yes lands the fixes and lets go of every ref of the name', () => {
+    dir = world();
+    closeable();
+    const earlier = datedAt('2020-01-01T00:00:00Z', () => git(dir, ['commit-tree', 'main^{tree}', '-m', 'An earlier typo fixed']).trim());
+    for (const name of ['open', `merged/${earlier}`]) git(dir, ['update-ref', `refs/leeway/quick-fix/${UNIT}/${name}`, earlier]);
+    const done = run(['finish', 'yes', UNIT]);
+
+    assert.deepStrictEqual([done.landed.map((/** @type {any} */ { repo, merged }) => [repo, merged]), git(dir, ['for-each-ref', '--format=%(refname)', 'refs/leeway/']).trim()], [[['.', ['1.1', '1.2']]], '']);
   });
 
   it('19.5.17: squashes the fixes in the order they were done, as their records were written, never by their numbers', () => {

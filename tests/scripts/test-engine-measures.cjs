@@ -25,7 +25,7 @@
 // copied, holding one finding of its spec's review and one bug found after
 // its review. What a conclude records of a bug is written into the
 // bugfixes' manifests here; the conclude writing it is
-// test-engine-investigation.cjs's.
+// test-engine-investigation-conclude.cjs's.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

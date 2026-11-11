@@ -81,7 +81,6 @@
 
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit, git } = require('../kernel/git.cjs');
-const { repoFacts } = require('../kernel/isolated-git.cjs');
 const { projectRepos, repoName, childrenFirst } = require('../kernel/repos.cjs');
 const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
@@ -100,17 +99,8 @@ const landing = () => require('./landing.cjs');
 /** The build's entry, read when asked, for the calling conversation's tasks in flight: it reads the task verbs too. */
 const buildEntry = () => require('./build-entry.cjs');
 
-/** The branch the checkout has out, or null where it is detached. @param {string} root */
-const branchOut = (root) => repoFacts(root)?.branch ?? null;
-
 /** The changes the project's checkout holds not committed outside the state. @param {string} cwd */
 const dirtOf = (cwd) => codeStatus(cwd).files.map(({ path }) => path);
-
-/** A repository as a line names it: its folder, or nothing for the project's own. @param {string} repo as answers name it */
-const inWords = (repo) => (repo === '.' ? '' : ` in ${lg.plain(repo)}`);
-
-/** A warning of a repository's, as the verb gives it: one in a nested repository naming it. @param {string} repo @param {string} warning */
-const saidIn = (repo, warning) => (repo === '.' ? warning : `in ${lg.plain(repo)}, ${warning}`);
 
 /**
  * Refuse a move of the project's checkout while it holds changes not
@@ -163,7 +153,7 @@ function checkOutBranch(cwd, unit) {
   const branch = quickFixBranch(unit);
   const { cut, remakes, warnings, made } = readied(landing().quickFixLanding(cwd, unit), true);
   for (const nested of made.filter((ctx) => ctx.repo !== '.')) lg.switchTo(nested.root, branch);
-  if (branchOut(root) !== branch) lg.switchTo(root, branch);
+  if (lg.branchOut(root) !== branch) lg.switchTo(root, branch);
   const said = [...remakes, ...warnings];
   return { branch, ...(cut.length > 0 ? { cut_again: cut } : {}), ...(said.length > 0 ? { warnings: said } : {}) };
 }
@@ -200,8 +190,8 @@ function readied(read, fresh = false) {
     const again = cutAgain(held);
     if (again === null) continue;
     cut.push(again.answer);
-    remakes.push(...again.remakes.map((warning) => saidIn(held.ctx.repo, warning)));
-    warnings.push(...again.theirs.map((warning) => saidIn(held.ctx.repo, warning)));
+    remakes.push(...again.remakes.map((warning) => lg.saidIn(held.ctx.repo, warning)));
+    warnings.push(...again.theirs.map((warning) => lg.saidIn(held.ctx.repo, warning)));
   }
   return { cut, remakes, warnings, made };
 }
@@ -245,7 +235,7 @@ function broughtIn(held, at) {
   const { root, repo } = held.ctx;
   const head = held.pull().head;
   if (head === null || lg.isAncestor(root, head, at) || !held.holdsUnlanded(head)) return;
-  const why = `takes the commits its pull request holds${inWords(repo)}`;
+  const why = `takes the commits its pull request holds${lg.inRepoWords(repo)}`;
   if (lg.isAncestor(root, at, head)) {
     moveBranch(root, held.branch, at, head, why);
     return;
@@ -253,7 +243,7 @@ function broughtIn(held, at) {
   if (lg.holdsChange(root, at, head)) return;
   const merged = lg.mergeTree(root, lg.mergeBase(root, at, head), at, head);
   if ('conflicts' in merged) {
-    throw new Error(`land: ${held.branch}${inWords(repo)} and its pull request's head, ${lg.short(head)}, each hold commits the other lacks, conflicting at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — `
+    throw new Error(`land: ${held.branch}${lg.inRepoWords(repo)} and its pull request's head, ${lg.short(head)}, each hold commits the other lacks, conflicting at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — `
       + `${mergeWayOn(held, head)}, and try again`);
   }
   const message = `Merge ${lg.short(head)}, ${held.ctx.unit}'s pull request's head, into ${held.branch}\n`;
@@ -380,7 +370,7 @@ function cutAgain(held) {
   const left = past.filter(({ sha, id }) => !held.landedCommit(sha, id));
   if (left.length === past.length) return null;
   const { tip: cut, off, theirs } = replayed(ctx.root, left, tip);
-  moveBranch(ctx.root, branch, at, cut, `holds work landed on ${ctx.into} by hand${inWords(ctx.repo)}, so it is cut again from there`);
+  moveBranch(ctx.root, branch, at, cut, `holds work landed on ${ctx.into} by hand${lg.inRepoWords(ctx.repo)}, so it is cut again from there`);
   const tasks = (/** @type {Commit[]} */ commits) => [...new Set(commits.flatMap(({ id }) => (id === null ? [] : [shownTask(parseTaskId(id))])))];
   const answer = {
     repo: ctx.repo,
@@ -411,7 +401,7 @@ function branchWayOn(ref) {
  */
 function putOnBranch(cwd, unit, repos) {
   const branch = quickFixBranch(unit);
-  const nested = repos.filter((repo) => repo.dir !== '' && branchOut(repo.path) !== branch);
+  const nested = repos.filter((repo) => repo.dir !== '' && lg.branchOut(repo.path) !== branch);
   if (nested.length === 0) return;
   const all = projectRepos(codeRoot(cwd));
   for (const repo of nested) {
@@ -480,11 +470,8 @@ const movedBranch = (unit) => `${MOVED}${quickFixBranch(unit)}`;
 /** A kept branch as the move and the first opening name it: with its repository, where it is nested. @param {Repo} repo @param {string} unit */
 const keptName = (repo, unit) => `${movedBranch(unit)}${repo.dir === '' ? '' : ` in ${lg.plain(repo.dir)}`}`;
 
-/** The branch a repository lands on, read off git here. @param {string} cwd @param {Repo} repo */
-const landsHere = (cwd, repo) => lg.landsOn(cwd, repo);
-
 /** Whether a repository's quick-fix branch holds commits past the branch it lands on. @param {string} cwd @param {Repo} repo @param {string} unit */
-const branchHolds = (cwd, repo, unit) => lg.holdsBeyond(repo.path, [quickFixBranch(unit)], [landsHere(cwd, repo)]);
+const branchHolds = (cwd, repo, unit) => lg.holdsBeyond(repo.path, [quickFixBranch(unit)], [lg.landingBranch(cwd, repo)]);
 
 /**
  * The names the quick-fix's branches holding commits past the branch each
@@ -537,9 +524,9 @@ function keptBranches(cwd, unit) {
  */
 function checkOutLanding(cwd, unit) {
   const branch = quickFixBranch(unit);
-  const out = childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => branchOut(repo.path) === branch);
+  const out = childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => lg.branchOut(repo.path) === branch);
   for (const repo of out) {
-    const lands = landsHere(cwd, repo);
+    const lands = lg.landingBranch(cwd, repo);
     const back = `${unit}'s tasks leave ${repo.dir === '' ? 'the project\'s checkout' : `${repoName(repo)}'s checkout`}, which holds changes not committed`;
     const way = (/** @type {string} */ dirty) => `${back} — ${dirty} — so it was not taken back to ${lands}: commit them on ${branch} or set them aside, then say yes again`;
     if (repo.dir === '') refuseDirt(cwd, way);
@@ -547,11 +534,11 @@ function checkOutLanding(cwd, unit) {
   }
   let own = null;
   for (const repo of out) {
-    const lands = landsHere(cwd, repo);
+    const lands = lg.landingBranch(cwd, repo);
     lg.switchTo(repo.path, lands);
     if (repo.dir === '') own = lands;
   }
   return own;
 }
 
-module.exports = { refuseDirty, refuseDirtyEnd, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, movedBranch, keptUnder, setBranchAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyEnd, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, keptUnder, setBranchAside, keptBranches };

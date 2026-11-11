@@ -724,16 +724,16 @@ function fixesRecovery(at, inFlight, session) {
 
 /**
  * A quick-fix's fixes begun, as its start: their one phase written into the
- * tracker where it lacks it, the tracker's verb committing it, then the
- * record of their beginning on the manifest, which the entry commits —
- * answering what the tracker's commit warned of.
+ * tracker where it lacks it, the tracker's verb committing it, then `fixes`
+ * made on the manifest, the record that they have begun (`fixesBegun`),
+ * which the entry commits — answering what the tracker's commit warned of.
  * @param {string} cwd @param {string} unit @returns {string[]}
  */
 function beginFixes(cwd, unit) {
   const written = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks !== null;
   const { warnings = [] } = written ? {} : writePhase(cwd, unit, String(FIXES_PHASE.number), FIXES_PHASE.name);
   const manifest = loadWorkUnitManifest(cwd, unit);
-  manifest.fixes = { began: isoNow() };
+  manifest.fixes = {};
   saveWorkUnitManifest(cwd, unit, manifest);
   return warnings;
 }

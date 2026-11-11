@@ -72,11 +72,10 @@ const { stateRoot, STATE_BRANCH } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
-const { repoFacts } = require('../kernel/isolated-git.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { taskOfBranch, quickFixBranch } = require('./landing-names.cjs');
-const { taskWorktree, committerTime } = require('./landing-git.cjs');
+const { taskWorktree, committerTime, branchOut } = require('./landing-git.cjs');
 const { quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const fixEnd = () => require('./fix-end.cjs');
 const fixBranch = () => require('./fix-branch.cjs');
@@ -197,7 +196,7 @@ function fromItsWorktree(session, cwd, ref, worktree) {
  */
 function refuseOtherBranch(cwd, ref) {
   const root = codeRoot(cwd);
-  const branch = repoFacts(root)?.branch ?? null;
+  const branch = branchOut(root);
   if (branch === null || branch === STATE_BRANCH) return;
   const quickFix = quickFixBuild(loadWorkUnitManifest(cwd, ref.unit));
   const own = taskOfBranch(ref.unit, branch);

@@ -10,10 +10,13 @@
 // `fix/{unit}` (fix-branch.cjs). A task's pull request title, and the
 // subject of the commit it squashes to, is `{type}({unit}): {title}`, and
 // the message's last line is the task's internal id as a `Task:` trailer,
-// which is how a task is read back off git: every such line names a task
-// the commit lands, so landings squashed together, their messages joined,
-// land each. A quick-fix lands as one pull request in each repository it
-// touches, its title and its one commit's subject `{type}({unit}): {title}`
+// which is how a landing names its task, and the only name of one a
+// landing is read by — the door's stamp never one (R28): every such line
+// names a task the commit lands, so landings squashed together, their
+// messages joined, land each — and a task merged by hand, named nowhere,
+// has landed by its change (task-landed.cjs). A quick-fix lands as one pull
+// request in each repository it touches, its title and its one commit's
+// subject `{type}({unit}): {title}`
 // — its type `feat` where any of its tasks is one, else `fix` where any is,
 // else the first task's, `fix` where it holds none, the person's own
 // commits alone — the rest of its message each of its tasks' landings in
@@ -170,33 +173,6 @@ function tasksOfMessage(unit, message, key = 'Task') {
 }
 
 /**
- * The unit's tasks a commit's message names by either mark a quick-fix's
- * landing reads (7.2.22): its `Task:` lines, then its lines naming a task
- * by `key`, the door's stamp — a task named by both once.
- * @param {string} unit @param {string} message @param {string} key
- * @returns {TaskRef[]}
- */
-function tasksNamedIn(unit, message, key) {
-  const ids = new Set([...tasksOfMessage(unit, message), ...tasksOfMessage(unit, message, key)].map(taskId));
-  return [...ids].map(parseTaskId);
-}
-
-/**
- * The unit's landings among commits, newest first, by the task each lands:
- * the newest of each task's.
- * @param {string} unit @param {{sha: string, message: string}[]} commits
- * @returns {Map<string, string>} the commit, by the task, shown
- */
-function landingsByTask(unit, commits) {
-  /** @type {Map<string, string>} */
-  const landings = new Map();
-  for (const { sha, message } of commits) {
-    for (const ref of tasksOfMessage(unit, message)) if (!landings.has(shownTask(ref))) landings.set(shownTask(ref), sha);
-  }
-  return landings;
-}
-
-/**
  * The type and title a task's landing carries in a commit's message — the
  * last subject of the unit's above its `Task:` line — or null where there is
  * none.
@@ -214,4 +190,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, landingOf, tasksOfMessage, tasksNamedIn, landingsByTask };
+module.exports = { slugOf, taskBranch, phaseBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, landingOf, tasksOfMessage };

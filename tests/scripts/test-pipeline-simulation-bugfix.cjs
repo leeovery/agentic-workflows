@@ -181,7 +181,7 @@ describe('pipeline simulation: bugfix', () => {
     assert.doesNotMatch(await query('holds as decided'), /^\[specification \|/m);
   });
 
-  it('bugfix moved to a feature from its investigation (19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {
+  it('bugfix moved to a feature from its investigation (19.S14, 19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {
     const wu = 'save-crash';
     startNew(sim);
     startUnit(sim, 'bugfix', wu, 'Fix the crash');

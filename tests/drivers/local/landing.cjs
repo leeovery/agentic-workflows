@@ -9,13 +9,22 @@
 // land. A merge there is refused while its default branch's checkout is in
 // the middle of a merge. A person merges a quick-fix's branch by hand in
 // their own terminal, squashed, with a merge commit or fast-forwarded — the
-// last two keeping its own commits; and deletes a branch. A quick-fix is
-// open in a repository while its opening's ref is there.
+// last two keeping its own commits; cherry-picks a commit onto the default
+// branch there; and deletes a branch. A quick-fix is
+// open in a repository while its opening's ref is there. A person lands a
+// phase's branch by hand in their terminal too: squashed under git's own
+// squash message or their own, or with a merge commit; its tasks' own
+// commits rebased onto the default branch, as GitHub's rebase merges them;
+// or fast-forwarded, the default branch moved to its last task's branch.
 
 const fs = require('fs');
 const path = require('path');
 const { git } = require('../../scripts/engine-harness.cjs');
 const { UNIT, setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
+const names = require('../../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+
+/** A phase's branch squashed onto main, committed under git's own squash message, else `message`. @param {string} dir @param {number} phase @param {string} [message] */
+const phaseSquashed = (dir, phase, message) => onMain(dir, [['merge', '-q', '--squash', names.phaseBranch(UNIT, phase)], ['commit', '-q', ...(message === undefined ? ['--no-edit'] : ['-m', message])]]);
 
 /** Git calls made with the default branch `into` checked out, the checkout then put back on the branch it was on. @param {string} dir @param {string[][]} calls @param {string} [into] */
 function onMain(dir, calls, into = 'main') {
@@ -23,6 +32,16 @@ function onMain(dir, calls, into = 'main') {
   git(dir, ['switch', '-q', into]);
   for (const args of calls) git(dir, args);
   git(dir, ['switch', '-q', back]);
+}
+
+/** The branch of the phase's last task. @param {string} dir @param {number} phase */
+function lastTaskBranch(dir, phase) {
+  const tasks = git(dir, ['for-each-ref', '--format=%(refname:lstrip=2)', 'refs/heads/']).split('\n')
+    .flatMap((branch) => {
+      const ref = names.taskOfBranch(UNIT, branch);
+      return ref?.phase === phase ? [{ branch, n: ref.n }] : [];
+    });
+  return tasks.reduce((last, task) => (task.n > last.n ? task : last)).branch;
 }
 
 /** Merged in with a merge commit. @param {string} dir @param {string} branch @param {string} [into] */
@@ -72,5 +91,20 @@ module.exports = {
   deleted: (dir, branch, into = 'main') => {
     if (git(dir, ['symbolic-ref', '-q', '--short', 'HEAD']).trim() === branch) git(dir, ['switch', '-q', into]);
     git(dir, ['branch', '-q', '-D', branch]);
+  },
+  /** A commit cherry-picked by hand onto the default branch `into`, in the person's own terminal. @param {string} dir @param {string} commit @param {string} [into] */
+  picked: (dir, commit, into) => onMain(dir, [['cherry-pick', commit]], into),
+  /** The ways a person lands a phase's branch onto main in their own terminal, the checkout put back where it was. */
+  phaseByHand: {
+    /** Squashed under git's own squash message. @param {string} dir @param {number} phase */
+    'a squash under the default message': (dir, phase) => phaseSquashed(dir, phase),
+    /** Squashed under the person's own message. @param {string} dir @param {number} phase */
+    'a squash under the person\'s own message': (dir, phase) => phaseSquashed(dir, phase, 'In my own words'),
+    /** With a merge commit. @param {string} dir @param {number} phase */
+    'a merge commit': (dir, phase) => mergeCommit(dir, names.phaseBranch(UNIT, phase)),
+    /** Its tasks' own commits put onto main one by one, under their own messages. @param {string} dir @param {number} phase */
+    'a rebase': (dir, phase) => onMain(dir, [['cherry-pick', `main..${lastTaskBranch(dir, phase)}`]]),
+    /** Fast-forwarded to its last task's branch. @param {string} dir @param {number} phase */
+    'a fast-forward': (dir, phase) => onMain(dir, [['merge', '-q', '--ff-only', lastTaskBranch(dir, phase)]]),
   },
 };

@@ -448,6 +448,23 @@ function commitCode(dir, message) {
 }
 
 /**
+ * The ways a person merges a task's branch by hand onto the branch the
+ * repository at `dir` has out that leave no commit naming the task by its
+ * `Task:` line: with a merge commit; rebased, its commits copied there under
+ * the host's identity, as GitHub's rebase merge copies them; or squashed
+ * under a message of the person's own.
+ * @type {Readonly<Record<string, (dir: string, branch: string) => void>>}
+ */
+const MERGED_BY_HAND = Object.freeze({
+  'a merge commit': (dir, branch) => git(dir, ['merge', '-q', '--no-ff', '-m', `Merge pull request #1 from ${branch}`, branch]),
+  'a rebase': (dir, branch) => git(dir, ['-c', 'user.name=GitHub', '-c', 'user.email=noreply@github.com', 'cherry-pick', `HEAD..${branch}`]),
+  'a squash under the person\'s own message': (dir, branch) => {
+    git(dir, ['merge', '-q', '--squash', branch]);
+    git(dir, ['commit', '-q', '-m', 'In their own words (#1)']);
+  },
+});
+
+/**
  * Everything in the world committed, each side where it holds a change: the
  * code tree on its branch, the state on the state branch where the
  * repository has one.
@@ -1121,7 +1138,7 @@ module.exports = {
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
-  commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, toolless, failingPs, accountFiles, accountTaken,
+  commitCode, MERGED_BY_HAND, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, toolless, failingPs, accountFiles, accountTaken,
   NO_SPACE, failingTrustAppends, failingStateCommits, retried, completeUnit, startItem, stampBooted,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment,
 };

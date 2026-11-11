@@ -36,21 +36,21 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const landingGit = require(path.join(SCRIPTS, 'domain/landing-git.cjs'));
 
 /**
- * What `act` answers, and how many times the landing read the branches of a
- * repository while it ran.
+ * What `act` answers, and how many times the landing driver read a
+ * repository's stacks while it ran (landing-git.cjs, `readOnce`).
  * @template T @param {() => T} act @returns {[T, number]}
  */
-function branchReads(act) {
-  const { branches } = landingGit;
+function stackReads(act) {
+  const { readOnce } = landingGit;
   let reads = 0;
-  landingGit.branches = (/** @type {string} */ root) => {
+  landingGit.readOnce = (/** @type {{reads?: Map<string, unknown>}} */ ctx, /** @type {string} */ key, /** @type {() => unknown} */ read) => readOnce(ctx, key, key === 'stacks' ? () => {
     reads += 1;
-    return branches(root);
-  };
+    return read();
+  } : read);
   try {
     return [act(), reads];
   } finally {
-    landingGit.branches = branches;
+    landingGit.readOnce = readOnce;
   }
 }
 
@@ -155,7 +155,7 @@ describe('a phase\'s close (6.4.9)', () => {
     ok(dir, ['land', 'open', UNIT, '1.1'], { env: SESSION });
     seen.push(merged());
     ok(dir, ['land', 'open', UNIT, '1.2'], { env: SESSION });
-    const [both, reads] = branchReads(merged);
+    const [both, reads] = stackReads(merged);
     seen.push(both);
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Mask a card', ['A card is masked.'])]);
     const unbranched = show('phase-close', 1);
