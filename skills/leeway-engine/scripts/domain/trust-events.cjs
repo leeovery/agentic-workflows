@@ -9,10 +9,13 @@
 // Every event opens with the same fields: the version of its line's shape,
 // its id, the time the engine wrote it, its type, the project it happened
 // in — the project's id (16.13.5) and its name, its main checkout's folder,
-// both null for an event before the project has state — the model the
-// conversation ran on (16.4.4), by its id, null where none could be read,
-// and the conversation's session, by Claude Code's id for it, null where
-// none was handed over. Then its own:
+// both null for an event before the project has state — the model, by its
+// id (16.4.4): for a raise, and a call a raise decided, the one the call was
+// made under, as the raise sealed it; for a call Claude's own `ledger
+// decide` or `ledger replace` lands, the caller's, which makes the call
+// there and then; for any other event, the one the conversation ran on;
+// null where none could be read — and the conversation's session, by
+// Claude Code's id for it, null where none was handed over. Then its own:
 //
 // - gate: an answer at a gate, by the gate's name (16.11.9), and the row
 //   the engine recommended, null where it recommended none; then the
@@ -23,7 +26,8 @@
 //   or several (16.3.7), and the row of Claude's sealed answer; then the
 //   answer, and whether the person didn't follow, which leaves no answer,
 //   no reading and no entry (16.9.3, 16.12.3); and, in a build, whether its
-//   question blocked build work, null outside one (16.4.7). A raise
+//   question blocked build work — a task parked on it as it was answered —
+//   null outside one (16.4.7). A raise
 //   followed has its entry: the command that writes the entry records the
 //   event (16.13.3).
 // - call: a call Claude made (16.3.7), by its ledger entry, with its kind,

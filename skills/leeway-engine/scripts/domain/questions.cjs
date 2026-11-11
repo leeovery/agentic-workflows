@@ -9,8 +9,9 @@
 // - A question: a park, and every park after it holding its number about
 //   the same thing — the question, in any of its wordings, or the decision a
 //   replacement would replace — each a task that met it while it waited and
-//   joined it, its line holding the first park's sealed call and its label,
-//   copied under the writer lock, so a question is labelled once. It goes
+//   joined it, its line holding the first park's sealed call, its label and
+//   the model it was decided under, copied under the writer lock, so a
+//   question is labelled once and its answer is the call's model's. It goes
 //   by its first park, which it is drawn from, and parks every task its
 //   parks name but where a close has taken the task off
 //   that park, an `unparked` line naming it: a park made outside any task —
@@ -123,11 +124,21 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  * asks now.
  * @typedef {{name: string, id: string, tasks: string[], line: Record<string, any>, asks: string}} WaitingOn
  */
-/** A park's call as sealed: Claude's call, the rows judged, why it asks, and its label (labeller.cjs). @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null}} Sealed */
+/** A park's call as sealed: Claude's call, the rows judged, why it asks, its label (labeller.cjs) and the model it was decided under. @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null}} Sealed */
 /** A question asked in a quick-fix's conversation still open: its short id, the place it is at, and what it asks. @typedef {{id: string, place: string, asks: string}} AskedOpen */
 /** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
 
 const DISCUSSING = 'discussing.json';
+
+/**
+ * Whether a question in the build blocks build work, as the ask rule and the
+ * trust log read it (16.4.7): a task parks on it. One parking none leaves
+ * the build carrying on.
+ * @param {readonly string[]} tasks the tasks it parks
+ */
+function blocksBuild(tasks) {
+  return tasks.length > 0;
+}
 const NUMBERED = /^Q([1-9][0-9]*)$/;
 const WAITING_USAGE = 'raise waiting <work-unit>';
 const ASIDE_USAGE = 'raise aside <work-unit> <question> …   (each by its number, Q{n}, or its park\'s id)';
@@ -230,6 +241,19 @@ function waitingParks(read, unit) {
 /** The questions of `unit` still waiting, oldest first. @param {Folded} read @param {string} unit */
 function waitingOf(read, unit) {
   return questionsOf(read, waitingParks(read, unit));
+}
+
+/**
+ * The tasks the question a seal was drawn from, `parks`, parks as `read`
+ * holds it: a task that joined it since the draw among them, one a close
+ * took off it since not; none for a raise of no question waiting in the
+ * build.
+ * @param {Folded} read @param {Parks|null} parks @returns {string[]}
+ */
+function parkedOn(read, parks) {
+  if (parks === null) return [];
+  const unit = /** @type {string} */ (factsOf(read, parks.park).unit);
+  return /** @type {Question} */ (questionsOf(read, parksOf(read, unit)).find((q) => q.park === parks.park)).tasks;
 }
 
 /** The numbers of the questions of `unit` still waiting, oldest first. @param {Folded} read @param {string} unit */
@@ -369,8 +393,8 @@ function parkedUnder(read, entryAt, unit, subject, sealed) {
   const joined = waitingParks(read, unit).find((id) => isAbout(read, id, subject));
   if (joined === undefined) return { number: nextNumber(read, unit), ...sealed };
   const { number, place } = factsOf(read, joined);
-  const { call, rows_judged: judged, why_asking: whyAsking, label } = entryAt(place);
-  return { number: /** @type {number} */ (number), call, rows_judged: judged, why_asking: whyAsking, label };
+  const { call, rows_judged: judged, why_asking: whyAsking, label, model } = entryAt(place);
+  return { number: /** @type {number} */ (number), call, rows_judged: judged, why_asking: whyAsking, label, model };
 }
 
 /**
@@ -528,8 +552,7 @@ function answerMeans(read, unit, parks, before) {
   const freed = [...new Set(before.filter((id) => !after.includes(id)).map((id) => taskOf(read, id)))]
     .filter((task) => task !== null && !held.has(task));
   if (freed.length > 0) return { freed: /** @type {string[]} */ (freed) };
-  const { tasks } = /** @type {Question} */ (questionsOf(read, parksOf(read, unit)).find((q) => q.park === parks.park));
-  const task = tasks.find((t) => held.has(t));
+  const task = parkedOn(read, parks).find((t) => held.has(t));
   if (task === undefined) return { means: 'no task waited on it' };
   const by = waitingOf(read, unit).filter((q) => q.tasks.includes(task)).map((q) => numbered(q.number));
   return { means: `task ${task} waits on ${by.join(', ')}` };
@@ -609,11 +632,15 @@ function checkAnswerable(read, parks, subject, said) {
 
 /**
  * `checkAnswerable`, read now: for "I don't follow", which lands nothing in
- * the ledger.
+ * the ledger. Answers the tasks the question parks as read (`parkedOn`).
  * @param {string} cwd @param {Parks|null} parks @param {Subject} subject @param {string} said @param {string[]} warnings
+ * @returns {string[]}
  */
 function answerable(cwd, parks, subject, said, warnings) {
-  readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read) => checkAnswerable(read, parks, subject, said));
+  return readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read) => {
+    checkAnswerable(read, parks, subject, said);
+    return parkedOn(read, parks);
+  });
 }
 
 /**
@@ -706,6 +733,6 @@ function parkingTask(root, unit, task, warnings) {
 }
 
 module.exports = {
-  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
+  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, parkedOn, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
   explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen,
 };

@@ -9,8 +9,10 @@
 // through its raise alone; Claude's calls made for a task; a replacement of
 // one proposed for its task, parking it, raised outside the build refused
 // and kept through its raise; and the task writer's gap, a call made in no
-// task, waiting parking none, a task joining it then closed, taken off it;
-// and a fact only the person holds parking its task, answered as a fact —
+// task, waiting parking none, drawn, then a task joining it — not followed
+// on the screen drawn while the task parks on it — then closed, taken off
+// it, and answered on that screen for no task; and a fact only the person
+// holds parking its task, answered as a fact —
 // each landing in the ledger and the trust log as the command that writes it.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -31,7 +33,7 @@ describe('pipeline simulation: the build\'s questions', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('a task parks on a question while the others carry on, and another meeting it joins it; the questions waiting listed oldest first, a task parked never ready nor done; one drawn and answered for its task, which builds again; another set aside, still waiting, answered through its raise alone, freeing both its tasks; Claude\'s calls made for a task, a replacement of one parking it, kept through its raise alone; the task writer\'s gap waiting parking none, a task joining it then closed, taken off it; a fact parking its task, answered as a fact', async () => {
+  it('a task parks on a question while the others carry on, and another meeting it joins it; the questions waiting listed oldest first, a task parked never ready nor done; one drawn and answered for its task, which builds again; another set aside, still waiting, answered through its raise alone, freeing both its tasks; Claude\'s calls made for a task, a replacement of one parking it, kept through its raise alone; the task writer\'s gap waiting parking none, drawn, a task joining it, not followed on the screen drawn, then the task closed, taken off it, and answered on that screen for no task; a fact parking its task, answered as a fact', async () => {
     const wu = 'ledger';
     startNew(sim);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'A ledger', '--session-log-file', sessionLog(sim, wu)]);
@@ -95,11 +97,13 @@ describe('pipeline simulation: the build\'s questions', () => {
     const versioning = sim.run(['ledger', 'ask', build], null, JSON.stringify({ ...made, text: 'Does every line carry its version?' })).id;
     const gap = await sim.runAsync(['raise', build, '--answers', versioning], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does every line carry its version?' }));
     assert.deepStrictEqual([gap.parked, gap.task], ['Q4', null], 'a call made in no task waits parking none');
-    // Task 1.4's builder meets it and joins it; folded into another task, 1.4 closes, taken off Q4, which still waits.
+    // The person draws it; task 1.4's builder then meets it and joins it, so not following the screen drawn blocks 1.4's build work.
+    const versioned = sim.run(['raise', 'draw', wu, 'Q4']);
     await raised(versioning, 'Does every line carry its version?', '1.4');
+    assert.strictEqual(sim.run(['raise', 'answer', versioned.raise, '--didnt-follow']).receipt, 'Q4 still open, explained again · still waiting · 1 waiting on you');
+    // Folded into another task, 1.4 closes, taken off Q4, which still waits: the answer on the screen drawn lands for no task.
     assert.deepStrictEqual(sim.run(['task', 'close', wu, '1.4', '--reason', 'Folded into 1.1.']).unparked, ['Q4'], 'a task closing is taken off its questions');
     assert.deepStrictEqual(waiting(), [['Q4', []]], 'a question its task left still waits, parking none');
-    const versioned = sim.run(['raise', 'draw', wu, 'Q4']);
     assert.strictEqual(sim.run(['raise', 'answer', versioned.raise, '--pick', '1'], null, JSON.stringify({ why: 'Every line says its version.' })).receipt,
       'Q4 answered · no task waited on it · nothing waiting on you');
 

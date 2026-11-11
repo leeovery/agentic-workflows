@@ -100,7 +100,7 @@ function parked(question, fields = {}) {
       rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
       lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
     },
-    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, ...fields,
+    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, ...fields,
   };
 }
 
@@ -184,7 +184,7 @@ describe('the events and their schemas', () => {
       [...HEADER, 'entry', 'rules'],
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
-      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking', 'label'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model'],
       [...HEADER, 'task', 'parks'],
       [...HEADER, 'lines', 'files'],
     ]);

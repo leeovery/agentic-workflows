@@ -25,7 +25,6 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const path = require('path');
 const {
   ok, stateGit, statePath, layout, writeState, readManifest, cleanupFixture,
 } = require('./engine-harness.cjs');
@@ -42,12 +41,8 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-/** A payload file beside the project, outside its working tree. @param {string} name @param {unknown} content */
-function payload(name, content) {
-  const file = path.join(path.dirname(dir), name);
-  fs.writeFileSync(file, typeof content === 'string' ? content : JSON.stringify(content));
-  return file;
-}
+/** A payload file in the project's own cache, never a name the temp folder shares with a suite running beside it. @param {string} name @param {unknown} content */
+const payload = (name, content) => writeState(dir, layout.cache(name), typeof content === 'string' ? content : JSON.stringify(content));
 
 /** A note for later banked by `task note`, as a builder or a pair's note is: its number. @param {string} text */
 const banked = (text) => run(['task', 'note', UNIT, '--file', payload('note.md', text)]).number;

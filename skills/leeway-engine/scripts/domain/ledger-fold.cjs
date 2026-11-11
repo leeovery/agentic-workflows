@@ -160,7 +160,7 @@
 const { AsyncLocalStorage } = require('async_hooks');
 const { withLedger } = require('./ledger.cjs');
 const { rehomedPlaces, asRehomed } = require('./ledger-rehomed.cjs');
-const { PRODUCT, entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs');
+const { PRODUCT, entryKind, decidedBy, claudesCall, roadmapItemOf } = require('./ledger-events.cjs');
 
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
@@ -763,6 +763,16 @@ function keptOf(folded, id) {
 }
 
 /**
+ * Whose the decision `id` is, as replacing it asks (16.5.7): the person's
+ * where a keep of theirs stands on it, else who decided it, read from it.
+ * @param {Folded} folded @param {string} id
+ * @returns {import('./ledger-events.cjs').DecidedBy}
+ */
+function whoseDecision(folded, id) {
+  return keptOf(folded, id).length > 0 ? 'person' : decidedBy(factsOf(folded, id));
+}
+
+/**
  * A file linked from an entry: its path, the link whose status stands, and
  * the link whose lift stands, each null where none live gives one.
  * @typedef {{path: string, status: string|null, lift: string|null}} Asset
@@ -1171,6 +1181,6 @@ function discoveredOf(folded, unit, topic) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, readOnce, holding, heldFacts, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  keptOf, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
+  keptOf, whoseDecision, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
   movedToBy,
 };

@@ -56,6 +56,12 @@
 //                  where it was raised and the question it answers, and its
 //                  answer once given — what `raise show` draws again
 //                  (raise.cjs)
+//   raise-checked.json
+//                  each raise the ask rule sent Claude to check, by the
+//                  raise checked — the question it answers, or the decision
+//                  it would replace, and the task raising it — what the rule
+//                  is told that raise made again was checked by (raise.cjs);
+//                  written under the lock beside it
 //   knowledge-query.json
 //                  the conversation's last `knowledge query`: its terms, its
 //                  filters, and what it returned or why it failed — what the

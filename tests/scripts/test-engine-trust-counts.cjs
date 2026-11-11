@@ -14,9 +14,9 @@
 // and what the release ships of them.
 //
 // Layer: unit. World: the events are built in memory, each a second after
-// the last, a day before the frozen clock; the read's tests keep a log in a
-// config folder of their own, a project a plain folder whose state root is
-// pinned (trust-world.cjs).
+// the last, a day before the frozen clock (trust-world.cjs, `history`); the
+// read's tests keep a log in a config folder of their own, a project a plain
+// folder whose state root is pinned (trust-world.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -27,23 +27,18 @@ const fs = require('fs');
 const path = require('path');
 
 const { FROZEN_MS, statePath, layout } = require('./engine-harness.cjs');
-const { idOf, PROJECT_ID, lines, waitingPath, useTrustWorld } = require('./trust-world.cjs');
-const { labelAnswers } = require('./labels.cjs');
+const { idOf, PROJECT_ID, DAY, MODEL, lines, waitingPath, useTrustWorld, history } = require('./trust-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
-const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
-const { trustEvent, readTrustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
+const { readTrustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 const {
   MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf,
 } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/trust-counts.cjs').Count} Count */
 
-const DAY = 24 * 60 * 60 * 1000;
 // The spec's figures: the 20% default (16.4.6), 10% where a change would be
 // hard to undo (16.4.8), and an answer six months old at 183 days (16.12.6).
 const AT_20 = 0.2;
@@ -52,86 +47,12 @@ const SIX_MONTHS = 183 * DAY;
 const HERE = PROJECT_ID;
 const ELSEWHERE = idOf('Aircon');
 const [OPUS] = MODEL_LINES;
-const MODEL = OPUS[OPUS.length - 1];
 const BEFORE = OPUS[OPUS.length - 2];
 // A model no line holds.
 const UNLISTED = 'claude-sonnet-5';
 
 /** A bound to nine places, as the spec's figures are compared. @param {number} bound */
 const round = (bound) => Math.round(bound * 1e9) / 1e9;
-
-/**
- * A history of the trust log's events in this project unless told another,
- * on the current model unless told another, each a second after the last
- * unless given its own time — the first a day before the clock.
- */
-function history() {
-  let clock = FROZEN_MS - DAY;
-  /** @type {Record<string, unknown>[]} */
-  const events = [];
-  /**
-   * @param {string} type @param {Record<string, unknown>} fields
-   * @param {{project?: string|null, model?: string|null, at?: number}} [where]
-   */
-  const log = (type, fields, { project = HERE, model = MODEL, at } = {}) => {
-    clock = at ?? clock + 1000;
-    const header = { id: newId(), at: new Date(clock).toISOString(), project, project_name: project === null ? null : 'fumi', model, session: null };
-    const event = trustEvent(type, header, fields);
-    events.push(event);
-    return event;
-  };
-  /** A label composing `kind`, null for none. @param {Kind|null} kind */
-  const label = (kind) => (kind === null ? null : { labeller: 'claude-sonnet-5', answers: ORDER.map((key) => labelAnswers(kind)[key]) });
-  /**
-   * A raise on `kind` answered `answer`, Claude's lean row 1: its entry.
-   * @param {Kind|null} kind @param {string} answer @param {{sort?: string}} [opts] @param {Parameters<typeof log>[2]} [where]
-   */
-  const raise = (kind, answer, { sort = 'several' } = {}, where = {}) => /** @type {string} */ (log('raise', {
-    entry: newId(), kind, label: label(kind), sort, sealed: '1', answer, via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocked_build: null,
-  }, where).entry);
-  const h = {
-    events,
-    /** The clock's time now, as the next event's is a second on. */
-    now: () => clock,
-    /** `n` answers on `kind` taking Claude's lean. @param {number} n @param {Kind|null} [kind] @param {Parameters<typeof log>[2]} [where] */
-    agree: (n, kind = 'behaviour', where = {}) => Array.from({ length: n }, () => raise(kind, '1', {}, where)),
-    /** A departure on `kind`, judged `verdict` where given: its entry. @param {string|null} [verdict] @param {Kind|null} [kind] @param {Parameters<typeof log>[2]} [where] */
-    depart: (verdict = null, kind = 'behaviour', where = {}) => {
-      const entry = raise(kind, '2', {}, where);
-      if (verdict !== null) h.verdict(entry, verdict, where);
-      return entry;
-    },
-    /** A raise Claude sorted `sort`, answered `answer`. @param {string} sort @param {string} answer @param {Kind} [kind] */
-    sorted: (sort, answer, kind = 'behaviour') => raise(kind, answer, { sort }),
-    /** Claude's call on `kind`, sorted `sort`: its entry. @param {string|null} sort @param {Kind} [kind] @param {Parameters<typeof log>[2]} [where] */
-    call: (sort, kind = 'behaviour', where = {}) => /** @type {string} */ (log('call', { entry: newId(), kind, label: label(kind), sort }, where).entry),
-    /** The person's reversal of `entry`: its own. @param {string} entry @param {Parameters<typeof log>[2]} [where] */
-    reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
-    /** A raise on behaviour Claude sorted `sort`, which the person didn't follow. @param {string} sort */
-    unfollowed: (sort) => {
-      log('raise', { entry: null, kind: 'behaviour', label: label('behaviour'), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, blocked_build: null });
-    },
-    /** @param {string} entry @param {string} verdict @param {Parameters<typeof log>[2]} [where] */
-    verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),
-    /** @param {string} entry @param {{kind?: Kind|null, verdict?: string|null}} to */
-    correct: (entry, { kind = null, verdict = null }) => log('correction', { entry, kind, verdict }),
-    /**
-     * An answer at gate `name`: a row pressed, or free text read as `reading`.
-     * @param {string} name @param {{picked?: string, reading?: string|null}} answer @param {Parameters<typeof log>[2]} [where]
-     */
-    gate: (name, { picked, reading = null }, where = {}) => log('gate', picked === undefined
-      ? { gate: name, recommended: 'y', picked: null, via: 'typed', with_text: true, reading }
-      : { gate: name, recommended: 'y', picked, via: 'pressed', with_text: false, reading: null }, where),
-    /** The other events of the log, which answer nothing. */
-    others: () => {
-      h.unfollowed('several');
-      log('blind-draw', { entry: newId(), kind: 'behaviour' });
-      log('position-switch', { unit: 'pay', to: 'step' });
-      log('convergence', { unit: 'pay', topic: 'cards' });
-    },
-  };
-  return h;
-}
 
 /**
  * The counts `h` holds for this project on `model`, as of `now`.
@@ -324,6 +245,14 @@ describe('weights (16.12.4)', () => {
     h.agree(3, 'behaviour', { model: UNLISTED });
 
     assert.deepStrictEqual([third, second].map((model) => behaviour(h, { model }).clean), [2 + 4 + 2 + 1, 4 + 8 + 1]);
+  });
+
+  it('holds the line the person ruled: Claude Fable 5.1 follows Claude Opus 5.5, its newest — so a Fable session starts from Opus 5.5\'s answers at half and earns the rest, an Opus 5.5 session never reads Fable\'s, and a model no line holds reads Fable\'s at half and Opus 5.5\'s at a quarter (E4)', () => {
+    const h = history();
+    h.agree(8, 'behaviour', { model: 'claude-opus-5-5' });
+    h.agree(2, 'behaviour', { model: 'claude-fable-5-1' });
+
+    assert.deepStrictEqual(['claude-fable-5-1', 'claude-opus-5-5', UNLISTED].map((model) => behaviour(h, { model }).clean), [2 + 4, 8, 1 + 2]);
   });
 
   it('reads a model no line holds as the newest generation\'s successor, that generation at half and each before it halving again, and a session whose model is unread as that generation itself: so a log of the current model\'s answers holding overrules makes the one-answer count ask for either (16.12.4)', () => {

@@ -56,34 +56,23 @@
 //   time, a quarter above it after (16.4.10). A gate shows, and goes
 //   automatic and back as a kind goes quiet and asks again (16.20.2).
 // - What ships is this procedure and its defaults, never anyone's counts
-//   (16.16.1). The defaults are 16.20.1's; the ask rule reads the person's
-//   own settings over them.
+//   (16.16.1). The defaults are 16.20.1's, held with the person's own
+//   settings over them (trust-settings.cjs).
 // ---------------------------------------------------------------------------
 
 const { evidenceIn } = require('./trust-evidence.cjs');
 const { readPersonEvents, projectId } = require('./trust-log.cjs');
 const { KINDS } = require('./event-fields.cjs');
+const { ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT } = require('./trust-settings.cjs');
 
 /** @typedef {import('./event-fields.cjs').Kind} Kind */
 /** @typedef {import('./trust-evidence.cjs').Answer} Answer */
 /** @typedef {import('./trust-evidence.cjs').Given} Given */
 
-// 16.20.1's defaults.
-const THRESHOLD = 0.2;
-// Factors of the threshold: where a change would be hard to undo (16.4.8),
-// and where a quiet kind asks again (16.6.1).
-const HARD_TO_UNDO = 0.5;
-const ASK_AGAIN = 1.25;
-const PERCENTILE = 0.95;
-// In answers' weight (16.14.3).
-const PRIOR_CAP = 10;
-const AGED_AFTER_MS = 183 * 24 * 60 * 60 * 1000;
-const AGED_WEIGHT = 0.5;
-const INHERITED_WEIGHT = 0.5;
 // The main session's models, each line oldest first (E4): a release on a
 // new model adds it last to its line, or a line of its own for a model that
 // inherits none of them.
-const MODEL_LINES = Object.freeze([Object.freeze(['claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5'])]);
+const MODEL_LINES = Object.freeze([Object.freeze(['claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5', 'claude-fable-5-1'])]);
 
 const CLEAN = 'clean';
 const LOSS = 'loss';
@@ -438,7 +427,4 @@ function stateOf({ rule, changes }, threshold) {
   return { asks, bound: upperBound(split), ...split };
 }
 
-module.exports = {
-  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, MODEL_LINES,
-  betaCdf, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf,
-};
+module.exports = { MODEL_LINES, betaCdf, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf };

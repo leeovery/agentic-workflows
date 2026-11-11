@@ -1815,7 +1815,8 @@ function runGate(call, argv) {
 // raise — a call Claude has a lean on, answering a question or replacing a
 // decision, put through the decision point and, where it asks, sealed in the
 // conversation and drawn (domain/raise.cjs, its screen
-// domain/projections/raise.cjs), or, where it proceeds, landed as Claude's —
+// domain/projections/raise.cjs), or, where it proceeds, landed as Claude's,
+// or, where it checks, nothing drawn —
 // answering once its rows' one-decision checks have; with --fact, a fact
 // only the person holds, always sealed and drawn; in the build, parking its
 // task where it asks; `show` draws a sealed raise again; `answer` records
@@ -1834,6 +1835,10 @@ async function runRaiseDraw(call, argv) {
     }
     if ('parked' in drawn) {
       respond(call, drawn);
+      return;
+    }
+    if (drawn.decision === 'check') {
+      respond(call, { decision: drawn.decision, reason: drawn.reason, ...(drawn.warnings.length > 0 ? { warnings: drawn.warnings } : {}) });
       return;
     }
     const { decision, reason, seal, redrawn, warnings } = drawn;

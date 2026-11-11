@@ -49,7 +49,8 @@ const { ignoresCase } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
-const { THRESHOLD, countsOf, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { countsOf, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { THRESHOLD } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));
 
 const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const BUILDING = 'verify-building';
