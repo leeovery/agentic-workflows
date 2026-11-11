@@ -10,15 +10,18 @@
 // who moved whom the engine's alone; pressed or typed (6.6.4); "I don't
 // follow" logged in the trust log alone, the raise left open (F1); every
 // refusal writing nothing; an answer given again, after a kill at a step
-// the raise adds or once it landed, landing nothing twice (E3); and a call
-// the decision point lets proceed landed as Claude's (E7).
+// the raise adds or once it landed, landing nothing twice (E3); the
+// person's own words read by the separate call before they land, read as
+// the lean an agreement owed no verdict (16.19.1); and a call the decision
+// point lets proceed landed as Claude's (E7).
 //
 // Layer: verb, and beside it process — the answer killed in a child at a
 // file call on its way. World: the ledger suites' unit with two
 // questions asked on the note window, built once and copied for each test;
 // each test keeps its conversation and the trust log in a config folder of
 // its own. The separate call is the stub binary, unarmed: no login, so
-// every row is drawn unjudged.
+// every row is drawn unjudged and no words are read, but where a test arms
+// it.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -31,7 +34,7 @@ const path = require('path');
 const {
   ENGINE, ok, okSectionsAsync, output, refusedPristine, killedAt, contend, stateGit, layout, cleanupFixture,
 } = require('./engine-harness.cjs');
-const { useTempFolder } = require('./discovery-test-utils.cjs');
+const { useTempFolder, statePath, filesUnder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, askedWorld, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
@@ -176,7 +179,7 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
     assert.deepStrictEqual(answered, { answer: '1' });
   });
 
-  it('the person\'s own words land with their text and why, and what they rule out where Claude gives it, none else; standing over the lean, logged as free text, typed, naming no row, its reading null', async () => {
+  it('the person\'s own words land with their text and why, and what they rule out where Claude gives it, none else; the separate call unable to read them — no login serves it — standing over the lean, logged as free text, typed, naming no row, with no row read (16.19.8)', async () => {
     const plain = await draw(asked.where);
     const ruling = await draw(asked.size);
 
@@ -205,6 +208,39 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
     assert.match(output(dir, ['raise', 'show', id], { env: conversation() }), new RegExp(`^\\{"ok":true,"raise":"${id}"\\}\\n=== MENU: raise — ${id} `));
     answer(id, ['--pick', '2']);
     assert.deepStrictEqual(logged().map((event) => [event.entry, event.didnt_follow]), [[null, true], [id, false]]);
+  });
+});
+
+describe('the person\'s own words, read (16.19.1, 16.19.6)', () => {
+  const AGREES = 'Wherever I am looking when I make it';
+  const DEPARTS = 'Always on the main screen';
+
+  it('read against Claude\'s rows, each whole as shown, by the call on Opus before the entry lands: read as the lean\'s row — the second, on a call leaning to it — an agreement, the entry moving no one and its event the row read, owed no verdict; read as another, standing over the lean, a departure waiting in the queue; the words kept in the entry and its knowledge copy alone', async () => {
+    const agreeing = await draw(asked.where, { call: { ...CALL, lean: MAIN.key } });
+    const departing = await draw(asked.size);
+    const log = path.join(config(), 'reader-calls.jsonl');
+    const env = { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ [AGREES]: { row: MAIN.key }, [DEPARTS]: { row: MAIN.key } }) };
+
+    answer(agreeing, ['--own'], { text: AGREES, why: WHY }, env);
+    const agreed = lastEntry();
+    answer(departing, ['--own'], { text: DEPARTS, why: WHY }, env);
+
+    assert.deepStrictEqual([agreed, lastEntry()], [
+      entryOf(agreeing, asked.where, { text: AGREES, rules_out: [], sealed: MAIN.text }),
+      entryOf(departing, asked.size, { who_moved_whom: 'person-moved-claude', text: DEPARTS, rules_out: [] }),
+    ]);
+    const own = { answer: null, with_text: true, reading: MAIN.key };
+    assert.deepStrictEqual(logged(), [raiseEvent(agreeing, { ...own, sealed: MAIN.key }), raiseEvent(departing, own)]);
+    const queued = ok(dir, ['verdict', 'queue'], { env: conversation() }).departures.map((/** @type {{id: string}} */ d) => full(d.id));
+    assert.deepStrictEqual(queued, [departing]);
+    const options = CALL.rows.map((row) => `- ${row.key}: ${row.text}\n  What you'd notice — ${row.name}: ${row.notice}`).join('\n');
+    const made = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepStrictEqual(made.map(({ argv, input }) => [argv[argv.indexOf('--model') + 1], input]), [AGREES, DEPARTS].map((words) => ['opus', `The question: ${CALL.question}\n\nThe options:\n${options}\n\nThe reply: ${words}`]));
+    const ledger = statePath(dir, layout.ledger);
+    const copies = statePath(dir, '.knowledge');
+    const kept = [...filesUnder(config()), ...filesUnder(statePath(dir))].filter((file) => file !== log && file !== ledger && !file.startsWith(`${copies}${path.sep}`));
+    assert.deepStrictEqual(kept.filter((file) => [AGREES, DEPARTS].some((words) => fs.readFileSync(file, 'utf8').includes(words))), [], 'the person\'s words were kept');
+    assert.ok(fs.readFileSync(ledger, 'utf8').includes(AGREES), 'the entry holds no words');
   });
 });
 
@@ -345,12 +381,16 @@ describe('once (E3)', () => {
     answer(own, ['--own'], { text: 'Half the screen', why: WHY });
     const [lines, events, sealed] = [entries().length, logged(), seals()];
 
+    const log = path.join(config(), 'reader-calls.jsonl');
+
     const again = answer(id, ['--pick', '1']);
     const ownAgain = answer(own, ['--pick', '1']);
+    const ownWordsAgain = answer(own, ['--own'], { text: 'Half the screen', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: '1' } }) });
 
     assert.deepStrictEqual(again, { ...first, committed: null, already: true, answer: '2' });
-    assert.deepStrictEqual([ownAgain.already, ownAgain.answer], [true, null]);
+    assert.deepStrictEqual([ownAgain.already, ownAgain.answer, ownWordsAgain.already, ownWordsAgain.answer], [true, null, true, null]);
     assert.deepStrictEqual([entries().length, logged(), seals()], [lines, events, sealed]);
+    assert.ok(!fs.existsSync(log), 'own words given again were read, though they land nothing');
   });
 
   it('"I don\'t follow" on a raise the ledger holds the answer to — an old screen\'s press — logs and counts nothing, says the raise was answered already with the row the line holds, and marks the seal a kill left unmarked', async () => {
@@ -489,7 +529,11 @@ describe('the answer\'s refusals, writing nothing', () => {
     const id = await draw();
     const decided = write('decide', NOTE, ['--answers', asked.where], { ...MADE, text: 'On the main screen', why: 'Notes gather.' }).id;
 
-    assert.strictEqual(refusedAnswer([id, '--pick', '2']),
-      `raise answer: the raise answers ${asked.where}, which is answered by ${decided} now — nothing recorded: a raise answers an open question, and the person's answer stays in the conversation`);
+    const log = path.join(config(), 'reader-calls.jsonl');
+    const closed = `raise answer: the raise answers ${asked.where}, which is answered by ${decided} now — nothing recorded: a raise answers an open question, and the person's answer stays in the conversation`;
+
+    assert.strictEqual(refusedAnswer([id, '--pick', '2']), closed);
+    assert.strictEqual(refusedAnswer([id, '--own'], { text: 'Half the screen', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: '1' } }) }), closed);
+    assert.ok(!fs.existsSync(log), 'own words that will not land were read');
   });
 });

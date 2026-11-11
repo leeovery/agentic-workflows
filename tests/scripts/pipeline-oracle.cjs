@@ -805,9 +805,12 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // count, but a fact's, blocking the build exactly where its seal's
 // question waited in it;
 // none of them for anything else; and nothing left waiting in a
-// conversation, as no append fails. Every verdict names a departure the
-// trust log holds — a raise answered against the lean, a keep among them,
-// or a reversal — that the ledger holds as a decision whose answer stood
+// conversation, as no append fails. A raise answered and the line it
+// landed agree on whether the answer took Claude's lean — its row, or the
+// row the separate call read from the person's own words — the line
+// standing over the lean exactly where it did not (16.19.1). Every verdict
+// names a departure the trust log holds — a raise answered against the
+// lean, a keep among them, or a reversal — that the ledger holds as a decision whose answer stood
 // over the lean, or a keep (16.13.6), and none follows one that is no skip
 // (16.10.1); the verdict a command that `ran` gave has its line, the latest.
 // Every call and raise carries the kind its label composes (16.11.3), and
@@ -876,7 +879,13 @@ function auditTrust(sim, label, ran = []) {
     ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count, blocking the build exactly where its question waited in it'));
   const waiting = folders.filter((name) => fs.existsSync(path.join(conversations, name, PENDING)));
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));
-  const departures = new Set([...ofType('raise').filter((e) => !e.didnt_follow && e.answer !== e.sealed), ...ofType('reversal')].map((e) => e.entry));
+  /** Whether a raise's answer took the lean: its row, or the row read from the person's own words. @type {(e: Record<string, any>) => boolean} */
+  const tookTheLean = (e) => (e.answer ?? e.reading) === e.sealed;
+  for (const raise of answers) {
+    assert.strictEqual(tookTheLean(raise), byId.get(raise.entry)?.who_moved_whom !== 'person-moved-claude',
+      ctx(`the raise ${raise.id} and the line it landed disagree on whether the person's answer took Claude's lean`));
+  }
+  const departures = new Set([...answers.filter((e) => !tookTheLean(e)), ...ofType('reversal')].map((e) => e.entry));
   /** @type {Map<string, Record<string, any>[]>} */
   const given = new Map();
   for (const v of ofType('verdict')) {

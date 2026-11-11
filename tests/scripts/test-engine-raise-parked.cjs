@@ -658,6 +658,15 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.deepStrictEqual(['2.3', '2.4'].map(marked), [null, { round: 1, n: 1 }]);
   });
 
+  it('12.1.4: the person\'s own words mark each task their question parks, read as the lean though they are: the decision they land is not the lean row\'s own text', () => {
+    parked(1, '2.3');
+    beingRead(['2.3'], ['a', 'b']);
+
+    answer(draw('Q1').res.raise, ['--own'], { text: 'Where I am looking, as you lean', why: WHY }, { CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: CURSOR.key } }) });
+
+    assert.deepStrictEqual([lastEntry().who_moved_whom, marked('2.3')], ['none', { round: 1, n: 1 }]);
+  });
+
   it('12.1.4: an answer other than the lean, given while the pair reads round 2 after round 1 failed, marks the task against round 2, never the round last reported, and the receipt waits for round 2', () => {
     parked(1, '2.4');
     for (const letter of ['a', 'b']) writeState(dir, `${UNIT}/build/tasks/2.4/round-1-${letter}.md`, '## Findings\n\n- bug: The note is lost.\n  Scenario: A note is written and read back.\n\nVerdict: fail\n');

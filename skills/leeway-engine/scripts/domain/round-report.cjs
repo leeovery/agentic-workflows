@@ -74,9 +74,11 @@
 // "builder", "change", "session"}` (`recordReviewer`, `recordBuilder`) —
 // the checkout's own, as the briefs are, so a task ended with no account
 // leaves nothing on the state branch. Something added to the task (`task
-// add`), or a call raised for it decided other than its lean (raise.cjs),
-// marks it, as it lands, with the round its pair was briefed for then,
-// reported or not, and the count of its changes,
+// add`), or a call raised for it answered other than with its lean row's
+// own text (raise.cjs) — any pick but the lean, a keep, or the person's
+// own words, read as the lean or not — marks it, as it lands, with the
+// round its pair was briefed for then, reported or not, and the count of
+// its changes,
 // `.cache/{unit}/build/tasks/{task}/changed.json`, `{"round": N, "n": K}`
 // (`markChanged`), beside the briefs' record it is read against — none
 // before any round is briefed, round 1 reading it.

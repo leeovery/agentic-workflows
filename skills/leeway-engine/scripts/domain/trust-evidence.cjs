@@ -16,10 +16,11 @@
 //   one's (16.13.5, trust-log.cjs). What it makes of them is pure
 //   (`evidenceIn`), so the counts make the same of every project's.
 // - Each answer stands, by its event:
-//   - a raise answered with Claude's sealed answer: an agreement;
+//   - a raise answered with Claude's sealed answer, or in the person's own
+//     words the separate call read as it (answer-reader.cjs): an agreement;
 //   - a raise answered with another row — on a replacement, keeping the
 //     decision as it stands among them (raise.cjs) — or in the person's own
-//     words, which name no row: a departure (16.10.1);
+//     words read as another row or as none: a departure (16.10.1);
 //   - a raise the person didn't follow: no weight (16.12.3);
 //   - a call: Claude's own call;
 //   - a reversal: a departure (16.10.10). It cancels the answer whose entry
@@ -70,9 +71,9 @@ const { readProjectEvents } = require('./trust-log.cjs');
 
 /** Where an answer stands, by its event's type. @type {Readonly<Record<string, StandsBy>>} */
 const STANDING = Object.freeze(/** @type {Record<string, StandsBy>} */ ({
-  raise: ({ didnt_follow: didntFollow, answer, sealed }) => {
+  raise: ({ didnt_follow: didntFollow, answer, reading, sealed }) => {
     if (didntFollow) return 'no-weight';
-    return answer === sealed ? 'agreement' : 'departure';
+    return (answer ?? reading) === sealed ? 'agreement' : 'departure';
   },
   call: () => 'call',
   reversal: () => 'departure',

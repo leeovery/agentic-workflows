@@ -247,7 +247,7 @@ function drawLabel(label) {
 
 /** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>}} GateCollection */
 
-/** @typedef {{key: string, word: string|null, head: string, recommended: boolean, next: Next|null}} ShownOption */
+/** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, recommended: boolean, next: Next|null}} ShownOption */
 /** @typedef {{label: string, next: Next|null}} ShownTyped */
 /**
  * The gate a MENU stated: its name as declared, its question, its rows and
@@ -331,7 +331,7 @@ function gateBlock(name) {
   shown = {
     gate: name,
     question,
-    options: taken.options.map((o) => ({ key: o.key, word: o.word, head: o.head, recommended: o.recommended, next: nextOf(o) })),
+    options: taken.options.map((o) => ({ key: o.key, word: o.word, head: o.head, tail: o.tail, detail: o.detail, recommended: o.recommended, next: nextOf(o) })),
     typed: taken.typed.map((t) => ({ label: t.label, next: nextOf(t) })),
   };
   if (!gateSurfaceAnnounced()) return '';

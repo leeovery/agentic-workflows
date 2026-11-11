@@ -214,7 +214,7 @@ Commands:
   state-merge pick <1|2> <choice>
   github-rule <yes|no>
   github-squash <yes|no>
-  gate <name> (--pick <key> | --typed [<key>])
+  gate <name> (--pick <key> | --typed [<key>])   (free text's words on stdin)
 ${RAISE_USAGE.replace(/^/gm, '  ')}
   knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
   manifest get    <dotpath> [<field.path>]
@@ -1776,10 +1776,22 @@ const runGithubSquash = answeringGithub('github-squash', answerGithubSquash);
 
 // ---------------------------------------------------------------------------
 // gate — the person's answer at a gate, logged to the trust log by the
-// gate's name and answered with what the row leads to (domain/gate.cjs).
+// gate's name and answered with what the row leads to (domain/gate.cjs);
+// free text, `--typed` alone, with the person's words on stdin.
 // ---------------------------------------------------------------------------
 
-const GATE_USAGE = 'Usage: engine gate <name> (--pick <key> | --typed [<key>])';
+const GATE_USAGE = 'Usage: engine gate <name> (--pick <key> | --typed [<key>])   (free text\'s words on stdin)';
+
+/**
+ * The answer a call gives: a row picked, a typed row, or free text, its
+ * words on stdin.
+ * @param {Record<string, any>} opts @param {() => string} stdin
+ * @returns {import('./domain/gate.cjs').Answer}
+ */
+function gateAnswer(opts, stdin) {
+  if ('pick' in opts) return { pick: opts.pick };
+  return opts.typed === undefined ? { words: stdin() } : { typed: opts.typed };
+}
 
 /** @param {Call} call @param {string[]} argv */
 function runGate(call, argv) {
@@ -1788,7 +1800,7 @@ function runGate(call, argv) {
     const name = positional.join(' ');
     const [answer, ...others] = Object.keys(opts);
     if (name === '' || others.length > 0 || (answer !== 'pick' && answer !== 'typed') || (answer === 'pick' && !opts.pick)) throw new Error(GATE_USAGE);
-    respond(call, answerGate(call.cwd, name, answer === 'pick' ? { pick: opts.pick } : { typed: opts.typed ?? null }));
+    respond(call, answerGate(call.cwd, name, gateAnswer(opts, call.stdin)));
   } catch (err) {
     failJson(call, err);
   }

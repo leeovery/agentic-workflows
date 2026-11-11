@@ -185,22 +185,32 @@
 //   lands, so nothing is affected; and where the decision is affected by
 //   the replacement the keep names as its cause, keeping it confirms it
 //   still holds against it (ledger-affected.cjs).
+// - The person's own words on Claude's call are read before anything lands
+//   (answer-reader.cjs): the separate call reads their text against
+//   Claude's rows for the one it picks, so the entry and the event agree on
+//   whether it took the lean (16.19.1). They are read only where the answer
+//   would land: first, read as the landing reads under the lock, a raise
+//   the ledger holds the answer to is answered already, its words unread,
+//   and one no longer answerable — its question closed, its decision
+//   replaced, its park gone — is refused as the landing refuses it. A
+//   keep, a pick and a fact's words are never read.
 // - Who moved whom is the engine's alone (5.3.10): a pick other than the
-//   lean, the person's own words and a keep stood over it; a pick of the
-//   lean is none, or the person come round to it where Claude says so on
-//   stdin. Any other value given refuses the answer. Claude proposed the
-//   replacement, so no answer to it is the person's reversal of an
+//   lean, the person's own words read as another row or as none, and a
+//   keep stood over it; own words read as the lean's row move no one, and a
+//   pick of the lean none, or the person come round to it where Claude says
+//   so on stdin. Any other value given refuses the answer. Claude proposed
+//   the replacement, so no answer to it is the person's reversal of an
 //   agreement of theirs: none logs a reversal.
 // - The same command lands the trust log's raise event (16.13.3,
 //   ledger-write.cjs): the line it landed — an entry, or a keep — the sort,
 //   the lean's key and the answer's — null for the person's own words, free
-//   text, typed, its reading null until the separate call reads it
-//   (16.19.1) — how it came, whether the person didn't follow, the sealed
-//   label and its kind, and no blocked build outside one (16.4.7);
-//   never a word of the question, the rows or the why. An answer was
-//   pressed where the gate mod announced itself and its last press sent
-//   that row from this raise's menu after the raise was drawn (gate.cjs);
-//   anything else was typed.
+//   text, typed, with the row the separate call read from them, null for
+//   none (16.19.1, 16.19.8) — how it came, whether the person didn't
+//   follow, the sealed label and its kind, and no blocked build outside one
+//   (16.4.7); never a word of the question, the rows, the why or the
+//   person's words. An answer was pressed where the gate mod announced
+//   itself and its last press sent that row from this raise's menu after
+//   the raise was drawn (gate.cjs); anything else was typed.
 // - Once (E3): under the writer lock, a ledger holding the minted id means
 //   the raise is answered: a rerun, after a kill past the append or once
 //   the answer landed, writes no second line and logs no second event, and
@@ -244,6 +254,7 @@ const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('.
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { labelledBeside, questionText, kindOf } = require('./labeller.cjs');
+const { readOnRaise } = require('./answer-reader.cjs');
 const { type, TEXT, KEY, LINE, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
@@ -327,8 +338,9 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
  * The person's answer as its entry and its event hold it: the entry's
  * text, why, what it rules out and who moved whom; the event's answer — the
  * row's key, null for the person's own words — whether it came as free
- * text, and how.
- * @typedef {{text: string, why: string, rules_out: string[], who_moved_whom: string, answer: string|null, with_text: boolean, via: Via}} Given
+ * text, how, and the row the separate call read from free text, null for
+ * none.
+ * @typedef {{text: string, why: string, rules_out: string[], who_moved_whom: string, answer: string|null, with_text: boolean, via: Via, reading: string|null}} Given
  */
 /**
  * How a raise lands, and what is checked under the lock before its links
@@ -1233,7 +1245,7 @@ function picked(session, seal, key, stdin) {
   const { why, who_moved_whom: moved } = answerOn('pick', stdin);
   return {
     text: row.text, why, rules_out: othersOf(call, row), who_moved_whom: movedBy(call.lean, key, moved),
-    answer: key, with_text: false, via: cameBy(session, seal, key),
+    answer: key, with_text: false, via: cameBy(session, seal, key), reading: null,
   };
 }
 
@@ -1250,26 +1262,60 @@ function factPicked(seal, key, stdin) {
 
 /**
  * The person's own words: their text and why, and what they rule out where
- * Claude gives it — free text, typed, standing over the lean.
+ * Claude gives it.
  * @param {string} stdin
- * @returns {Given}
+ * @returns {{text: string, why: string, rules_out: string[]}}
  */
 function ownWords(stdin) {
   const { text, why, rules_out: rulesOut = [] } = answerOn('own', stdin);
-  return { text, why, rules_out: rulesOut, who_moved_whom: OVER_THE_LEAN, answer: null, with_text: true, via: 'typed' };
+  return { text, why, rules_out: rulesOut };
+}
+
+/**
+ * Whether the person's answer to `seal` is still to land, read as the
+ * landing reads under the lock: false where the ledger holds its answer
+ * already, or no state is found, either of which the landing says itself.
+ * Refuses, as the landing would, an answer it would refuse. The landing
+ * reads the ledger again, and its warnings are the ones said.
+ * @param {string} cwd @param {Seal} seal
+ */
+function stillToLand(cwd, seal) {
+  const root = findStateRoot(cwd);
+  if (root === null) return false;
+  return questions.readQuestions(root, [], (read) => {
+    if (read.facts.has(seal.id)) return false;
+    questions.checkAnswerable(read, seal.parks, subjectOf(seal), ANSWER_SAID);
+    landsAs(seal, AT_THE_ANSWER, null).checkRead(read);
+    return true;
+  });
+}
+
+/**
+ * The person's own words on Claude's call — free text, typed — read by the
+ * separate call against Claude's rows before anything lands, where
+ * `toLand` says it will: read as the lean's row, an agreement, moving no
+ * one; read as another, or as none, standing over the lean.
+ * @param {CallSeal} seal @param {string} stdin @param {() => boolean} toLand
+ * @returns {Given}
+ */
+function ownWordsOn({ call }, stdin, toLand) {
+  const words = ownWords(stdin);
+  const reading = toLand() ? readOnRaise(call.question, call.rows, words.text) : null;
+  return { ...words, who_moved_whom: reading === call.lean ? 'none' : OVER_THE_LEAN, answer: null, with_text: true, via: 'typed', reading };
 }
 
 /**
  * The raise's event in the trust log: its entry, or null where the person
  * didn't follow; the kind of its sealed label, and the label; its sort; the
- * lean's key and the answer's; how it came; and blocking the build where
- * its question waited in one, else null (16.4.7).
- * @param {CallSeal} seal @param {{entry: unknown, answer: string|null, via: Via, with_text: boolean, didnt_follow: boolean}} answer
+ * lean's key and the answer's; how it came, and the row read from free
+ * text; and blocking the build where its question waited in one, else null
+ * (16.4.7).
+ * @param {CallSeal} seal @param {{entry: unknown, answer: string|null, via: Via, with_text: boolean, reading: string|null, didnt_follow: boolean}} answer
  */
-function raiseEvent({ call, parks, label }, { entry, answer, via, with_text: withText, didnt_follow: didntFollow }) {
+function raiseEvent({ call, parks, label }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow }) {
   return {
     entry, kind: kindOf(label), label, sort: call.sort, sealed: call.lean, answer,
-    via, with_text: withText, reading: null, didnt_follow: didntFollow, blocked_build: parks === null ? null : true,
+    via, with_text: withText, reading, didnt_follow: didntFollow, blocked_build: parks === null ? null : true,
   };
 }
 
@@ -1342,11 +1388,11 @@ function answerLanding(seal, { text, why, rules_out: rulesOut }, moved, sealed) 
 /**
  * The trust log's raise event for the person's answer, naming the line it
  * lands.
- * @param {CallSeal} seal @param {{answer: string|null, via: Via, with_text: boolean}} given
+ * @param {CallSeal} seal @param {{answer: string|null, via: Via, with_text: boolean, reading: string|null}} given
  * @returns {import('./ledger-write.cjs').Logs}
  */
-function raiseLogged(seal, { answer, via, with_text: withText }) {
-  return ({ id }) => ({ type: 'raise', fields: raiseEvent(seal, { entry: id, answer, via, with_text: withText, didnt_follow: false }) });
+function raiseLogged(seal, { answer, via, with_text: withText, reading }) {
+  return ({ id }) => ({ type: 'raise', fields: raiseEvent(seal, { entry: id, answer, via, with_text: withText, reading, didnt_follow: false }) });
 }
 
 /**
@@ -1387,7 +1433,7 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
     linked: { entry, reason, cause },
     content: { by: 'person', who_moved_whom: derivedMove({ event: 'kept', by: 'person' }, null, reason, null), why, sealed: leanRow(seal.call).text },
     checkRead: (read) => checkStillCurrent(entry, read),
-    answer: KEEP, logs: raiseLogged(seal, { answer: KEEP, via: cameBy(session, seal, KEEP), with_text: false }),
+    answer: KEEP, logs: raiseLogged(seal, { answer: KEEP, via: cameBy(session, seal, KEEP), with_text: false, reading: null }),
   };
 }
 
@@ -1460,7 +1506,7 @@ function didntFollow(cwd, session, seal) {
   const held = heldLine(cwd, seal.id, warnings);
   if (held !== null) return said(answeredAlready(session, seal, held));
   questions.answerable(cwd, seal.parks, subjectOf(seal), ANSWER_SAID, warnings);
-  if (!seal.fact) record('raise', raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, didnt_follow: true }), { cwd, warnings });
+  if (!seal.fact) record('raise', raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, reading: null, didnt_follow: true }), { cwd, warnings });
   changeSeals(session, (seals, put) => {
     const sealed = seals[seal.id];
     if (isSeal(sealed)) put({ ...sealed, didnt_follow: sealed.didnt_follow + 1 });
@@ -1472,12 +1518,12 @@ function didntFollow(cwd, session, seal) {
 /**
  * How the person's answer lands: an answer to a fact; their own words; on a
  * replacement, a keep of the decision; else their pick of a row.
- * @param {string} session @param {Seal} seal @param {'pick'|'own'} form @param {string|null} key @param {() => string} stdin
+ * @param {string} cwd @param {string} session @param {Seal} seal @param {'pick'|'own'} form @param {string|null} key @param {() => string} stdin
  * @returns {Answering}
  */
-function answering(session, seal, form, key, stdin) {
+function answering(cwd, session, seal, form, key, stdin) {
   if (seal.fact) return factAnswered(seal, form, key, stdin());
-  if (form === 'own') return answeredWith(seal, ownWords(stdin()));
+  if (form === 'own') return answeredWith(seal, ownWordsOn(seal, stdin(), () => stillToLand(cwd, seal)));
   if (key === KEEP && seal.replaces !== null) return keeping(session, seal, seal.replaces, stdin());
   return answeredWith(seal, picked(session, seal, /** @type {string} */ (key), stdin()));
 }
@@ -1493,7 +1539,7 @@ function answerRaise(cwd, args, stdin) {
   const session = sessionOf(ANSWER_SAID);
   const seal = sealNamed(readSeals(session), prefix, ANSWER_SAID);
   if (form === 'didnt-follow') return didntFollow(cwd, session, seal);
-  return recordAnswer(cwd, session, seal, answering(session, seal, form, key, stdin));
+  return recordAnswer(cwd, session, seal, answering(cwd, session, seal, form, key, stdin));
 }
 
 /** Whether `raise` with `args` answers later: the draw, which waits on the one-decision check. @param {string[]} args */

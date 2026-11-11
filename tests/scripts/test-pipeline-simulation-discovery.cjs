@@ -30,7 +30,7 @@ const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { spawnSync } = require('child_process');
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, handoff, answerGate, startKeys, startNew, pickRoute, epicPick, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft,
+  Sim, startUnit, handoff, answerGate, typeAtGate, startKeys, startNew, pickRoute, epicPick, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -133,7 +133,12 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(sim.run(['asset', 'spike', PRODUCT, 'pricing-page']).path, '.product/spikes/001-pricing-page');
     const shared = sim.write('notes/pricing.md', '# Pricing\n');
     sim.refuses(['asset', 'import', PRODUCT, shared, 'notes/gone.png'], /notes\/gone\.png/);
-    sim.render(['import-reprompt', '--file', sim.write('.leeway/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
+    // The person asks first in their own words, which sets the prompt
+    // aside; shown again, they skip.
+    const reprompt = () => sim.render(['import-reprompt', '--file', sim.write('.leeway/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
+    reprompt();
+    typeAtGate(sim, 'import reprompt', 'is the png one I need?');
+    reprompt();
     answerGate(sim, 'import reprompt', '--pick', 's');
     assert.deepStrictEqual(sim.run(['asset', 'import', PRODUCT, shared]).imports, ['.product/assets/pricing.md']);
 

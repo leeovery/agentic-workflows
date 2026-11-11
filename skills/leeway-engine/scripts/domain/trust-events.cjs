@@ -47,8 +47,9 @@
 // the mod off every answer is typed — and what it is: a row's key, which a
 // typed answer can be too (6.S18), or free text (`with_text`), which only
 // the keyboard gives. A row's key names its row, and nothing is read from
-// it; free text names none and is never kept (16.13.3) — the row it reads
-// as is null until the separate call reads it (16.19.1).
+// it; free text names none and is never kept (16.13.3) — the row the
+// separate call reads from it is its reading, null where it reads none
+// (16.19.1, 16.19.8).
 //
 // No field carries words: a row is named by its key, a gate by its name,
 // a unit and a topic by their slugs, a model and a session by their ids —

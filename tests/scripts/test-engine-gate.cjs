@@ -9,7 +9,8 @@
 // illustration, a raise's menu, or a command without a session — and
 // `engine gate`, which logs the answer to the trust log by the gate's name
 // (3.2.6, 16.11.9): the row the engine recommended and the row picked, a
-// typed row, or free text; pressed only where the mod's record of its last
+// typed row, or free text, its words read by the separate call for the row
+// they pick and dropped (16.S40, 16.S68); pressed only where the mod's record of its last
 // press names this gate and row after it was shown — whatever the rows mod
 // did with the send's own record — typed otherwise and always with the mod
 // off (6.6.3, 6.6.4); what the row leads to returned and never performed
@@ -23,7 +24,8 @@
 // which puts the code gate's recommended row on screen — shared by every
 // test; a plain repository without state for the gate before the project
 // has any. Each test keeps its conversation and its trust log in a config
-// folder of its own.
+// folder of its own. The separate call is the stub binary, unarmed — no
+// login, so no words are read — but where a test arms it.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -35,7 +37,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { ok, output, refuses, initRepo, cleanupFixture } = require('./engine-harness.cjs');
-const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout } = require('./discovery-test-utils.cjs');
+const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout, filesUnder } = require('./discovery-test-utils.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
 const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
@@ -89,11 +91,17 @@ const projectId = () => JSON.parse(fs.readFileSync(statePath(dir, layout.project
 /** Render a surface for the conversation. @param {string[]} args @param {Record<string, string|undefined>} [env] */
 const render = (args, env) => output(dir, ['render', ...args], { env: conversation(env) });
 
-/** Answer the gate shown. @param {string[]} args @param {Record<string, string|undefined>} [env] */
-const answer = (args, env) => ok(dir, ['gate', ...args], { env: conversation(env) });
+/** Answer the gate shown, `stdin` the person's words. @param {string[]} args @param {Record<string, string|undefined>} [env] @param {string} [stdin] */
+const answer = (args, env, stdin) => ok(dir, ['gate', ...args], { env: conversation(env), stdin });
 
-/** An answer the engine refuses: its error. @param {string[]} args @param {Record<string, string|undefined>} [env] */
-const refused = (args, env) => refuses(dir, ['gate', ...args], { env: conversation(env) }).error;
+/** An answer the engine refuses: its error. @param {string[]} args @param {Record<string, string|undefined>} [env] @param {string} [stdin] */
+const refused = (args, env, stdin) => refuses(dir, ['gate', ...args], { env: conversation(env), stdin }).error;
+
+/** What the person typed in place of a row. */
+const WORDS = 'not yet — I want to sort the repository settings out myself first';
+
+/** The separate calls the stub logged to `log`. @param {string} log @returns {{argv: string[], input: string}[]} */
+const calls = (log) => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
 
 /**
  * The mod's record of its last press: the code gate's `yes` unless `over`
@@ -155,7 +163,7 @@ const ownFields = ({ gate, recommended, picked, via, with_text: withText, readin
 const inConversation = (fn) => withEnv(conversation(), fn);
 
 describe('the gate shown (3.S6)', () => {
-  it('a render records the gate its MENU states for the conversation: its name, its question, each row with its word, its head, whether the engine recommends it and what it leads to, each typed row by its key, and when it was shown', () => {
+  it('a render records the gate its MENU states for the conversation: its name, its question, each row with its word, its head, its tail and detail, whether the engine recommends it and what it leads to, each typed row by its key, and when it was shown', () => {
     const before = Date.now();
     render(['migration-gate']);
     const after = Date.now();
@@ -164,7 +172,7 @@ describe('the gate shown (3.S6)', () => {
     assert.deepStrictEqual(record, {
       gate: 'migration gate',
       question: 'Ready to continue?',
-      options: [{ key: 'y', word: 'yes', head: 'Proceed', recommended: false, next: null }],
+      options: [{ key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null, recommended: false, next: null }],
       typed: [{ key: 'ask', label: 'Ask', next: null }],
       answered: null,
     });
@@ -244,7 +252,7 @@ describe('the gate shown (3.S6)', () => {
     assert.deepStrictEqual(gateShown(), {
       gate: 'answered gate',
       question: 'Go on?',
-      options: [{ key: 'y', word: 'yes', head: 'Go', recommended: false, next: null }],
+      options: [{ key: 'y', word: 'yes', head: 'Go', tail: null, detail: null, recommended: false, next: null }],
       typed: [],
     });
   });
@@ -348,13 +356,53 @@ describe('gate (6.6, 6.S18)', () => {
     assert.deepStrictEqual(ownFields(events()[0]), { gate: 'migration gate', recommended: null, picked: 'ask', via: 'typed', with_text: false, reading: null });
   });
 
-  it('18.S51: free text naming no row sets the gate aside — logged as free text, its reading left to the separate call, leading nowhere', () => {
+  it('18.S51, 16.S68: free text naming no row, which the separate call cannot read — no login serves it — sets the gate aside, logged as free text with no row read, leading nowhere', () => {
     showCodeGate(ANNOUNCED);
 
-    assert.deepStrictEqual(answer(['code gate', '--typed'], ANNOUNCED), {
+    assert.deepStrictEqual(answer(['code gate', '--typed'], ANNOUNCED, WORDS), {
       ok: true, gate: 'code gate', picked: null, recommended: 'b', via: 'typed', next: null,
     });
     assert.deepStrictEqual(ownFields(events()[0]), { gate: 'code gate', recommended: 'b', picked: null, via: 'typed', with_text: true, reading: null });
+  });
+
+  it('16.S40: free text is read by the separate call against the gate\'s question and its rows, each whole as shown, and the trust log holds the gate\'s name, the row recommended and the row read; the words land nowhere but the call, and the gate is set aside whatever they read, leading nowhere (16.13.3, 6.6.2)', () => {
+    render(['github-rule-gate']);
+    const log = path.join(config(), 'calls.jsonl');
+    const { question, options: [set] } = shown();
+
+    const res = answer(['github rule gate', '--typed'], { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'n' } }) }, WORDS);
+
+    assert.deepStrictEqual(res, { ok: true, gate: 'github rule gate', picked: null, recommended: null, via: 'typed', next: null });
+    assert.deepStrictEqual(ownFields(events()[0]), { gate: 'github rule gate', recommended: null, picked: null, via: 'typed', with_text: true, reading: 'n' });
+    const [call, ...more] = calls(log);
+    assert.deepStrictEqual(more, []);
+    const rows = `- y: yes — ${set.head}\n- n: no — Leave it unset — setup carries on without it`;
+    assert.strictEqual(call.input, `The question: ${question}\n\nThe options:\n${rows}\n\nThe reply: ${WORDS}`);
+    const holding = [...filesUnder(config()), ...filesUnder(statePath(dir))].filter((file) => file !== log && fs.readFileSync(file, 'utf8').includes(WORDS));
+    assert.deepStrictEqual(holding, [], 'the person\'s words were kept');
+  });
+
+  it('free text is read against the gate\'s command rows alone, its typed rows never offered', () => {
+    render(['migration-gate']);
+    const log = path.join(config(), 'calls.jsonl');
+
+    answer(['migration gate', '--typed'], { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'y' } }) }, WORDS);
+
+    const [{ argv }] = calls(log);
+    assert.deepStrictEqual(JSON.parse(argv[argv.indexOf('--json-schema') + 1]).properties.row.enum, ['y', 'none of them']);
+    assert.deepStrictEqual([shown().typed.map((/** @type {{key: string}} */ t) => t.key), events()[0].reading], [['ask'], 'y']);
+  });
+
+  it('a row picked or a typed row is never read: no call is made', () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const armed = { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'y' } }) };
+
+    render(['migration-gate']);
+    answer(['migration gate', '--pick', 'y'], armed);
+    render(['migration-gate']);
+    answer(['migration gate', '--typed', 'ask'], armed);
+
+    assert.deepStrictEqual([events().map((e) => [e.picked, e.reading]), calls(log)], [[['y', null], ['ask', null]], []]);
   });
 
   it('the answer is marked on the gate shown, and a gate answered takes no second answer until it is shown again', () => {
@@ -450,6 +498,17 @@ describe('gate — refusals, logging nothing', () => {
     assert.deepStrictEqual([events(), shown()], [[], record]);
   });
 
+  it('free text with no words on stdin, before any call is made', () => {
+    showCodeGate();
+    const record = shown();
+    const log = path.join(config(), 'calls.jsonl');
+
+    for (const words of ['', ' \n']) {
+      assert.strictEqual(refused(['code gate', '--typed'], { CLAUDE_STUB_LOG: log }, words), 'gate: free text at "code gate" comes with the person\'s words on stdin, read for the row they pick and dropped');
+    }
+    assert.deepStrictEqual([events(), shown(), calls(log)], [[], record, []]);
+  });
+
   it('a raise, by its menu or its name: a raise is no gate, and is answered by raise answer', () => {
     render(['migration-gate']);
     const record = shown();
@@ -462,7 +521,7 @@ describe('gate — refusals, logging nothing', () => {
 
   it('a call naming no gate, or neither answer, or both, is a usage error — and the name is whole, quoted or as bare words', () => {
     render(['github-rule-gate']);
-    const usage = 'Usage: engine gate <name> (--pick <key> | --typed [<key>])';
+    const usage = 'Usage: engine gate <name> (--pick <key> | --typed [<key>])   (free text\'s words on stdin)';
     for (const args of [['--pick', 'y'], ['github rule gate'], ['github rule gate', '--pick', 'y', '--typed'], ['github rule gate', '--pick']]) {
       assert.strictEqual(refused(args), usage, args.join(' '));
     }
