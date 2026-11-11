@@ -172,6 +172,10 @@ re-weighs each item below, each held as it is for today's model:
   second reader;
 - the habit-hook entries;
 - the reviewer count (`kernel/reviewers.cjs` in the engine);
+- the model lines the ask rule's counts pass down
+  (`domain/trust-counts.cjs` in the engine): the new model goes last in
+  its line, or into a line of its own where it starts from none of the
+  person's counts — until it is listed, it reads as the first line's next;
 - the effort threshold;
 - the raw calls' models and efforts: the one-decision check, the
   labeller, and the typed-answer reader;

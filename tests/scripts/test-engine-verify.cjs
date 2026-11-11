@@ -12,7 +12,9 @@
 // through the setup's parts in the calling checkout, clean, and records the
 // verdict the drive's script wrote, never Claude's, with its text evidence, its
 // recordings in the cache under their hash, each repository's HEAD it ran
-// against and the task in flight it ran for (15.S4, 15.S7, 4.S28); and
+// against and the task in flight it ran for (15.S4, 15.S7, 4.S28), and
+// nothing in the trust log, so a catch leaves the ask rule's counts as they
+// were (15.S19); and
 // `runsOf` reads what a scenario's runs prove, whatever their numbers — the
 // latest that was not skipped deciding, or against a head the nearest of the
 // runs at it or before it in every repository both name, a clone nested in
@@ -36,6 +38,7 @@ const path = require('path');
 const crypto = require('crypto');
 const {
   ok, refusedPristine, git, commitCode, commitAll, initRepo, cleanupFixture, statePath, layout, createFile, readState, writeState, lastMessage, touched, stateGit, output, holdLock, lockAttempts,
+  FROZEN_MS, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, partsRan, fiveParts, setupFile, setupArgs, unrecorded, world } = require('./verify-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
@@ -43,6 +46,10 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { runsOf } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
 const { ignoresCase } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
+const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
+const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { THRESHOLD, countsOf, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
 const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const BUILDING = 'verify-building';
@@ -238,7 +245,7 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     assert.deepStrictEqual(run.commits, [{ repo: '.', commit: codeHead(dir) }, { repo: 'lib', commit: codeHead(lib) }]);
   });
 
-  it('15.4.2: a drive that exits failing having written its verdict is recorded as it wrote it; one that wrote none — or a folder in its place — records nothing, the refusal carrying its exit code and output, and so does a word of its own', () => {
+  it('15.4.2, 15.S19: a drive that exits failing having written its verdict is recorded as it wrote it, leaving the ask rule\'s counts as they were — nothing written to the trust log, the counts\' one source (15.12.1, 15.12.2); one that wrote none — or a folder in its place — records nothing, the refusal carrying its exit code and output, and so does a word of its own', (t) => {
     steering(dir, 'verdict/pass', 'pass\n');
     assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error, 'verify run: the run cannot be recorded — the drive wrote no verdict to $LEEWAY_RUN/verdict — it exited 0. Nothing was recorded.');
     fs.rmSync(path.join(steer(dir), 'verdict'), { recursive: true });
@@ -248,9 +255,19 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     steering(dir, 'verdict', 'proven\n');
     assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error, 'verify run: the run cannot be recorded — the drive\'s verdict "proven" is none of pass, fail, skipped. Nothing was recorded.');
     steering(dir, 'verdict', 'fail\n');
+    const log = path.join(CONFIG, TRUST_LOG);
+    t.after(() => fs.rmSync(log, { force: true }));
+    const header = { id: newId(), at: FROZEN_AT, project: projectManifest(dir).project_id, project_name: path.basename(dir), model: null, session: null };
+    fs.writeFileSync(log, `${JSON.stringify(trustEvent('raise', header, {
+      entry: newId(), kind: 'behaviour', label: null, sort: 'several', sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocked_build: null,
+    }))}\n`);
+    const counts = () => stateOf(countsOf(statePath(dir), { model: null, now: FROZEN_MS }).kinds.behaviour, THRESHOLD);
+    const before = { log: fs.readFileSync(log, 'utf8'), counts: counts() };
 
     assert.strictEqual(ok(dir, ['verify', 'run', UNIT, '1.S1']).verdict, 'fail');
     assert.strictEqual(JSON.parse(readState(dir, layout.run(UNIT, '1.S1', '001'))).verdict, 'fail');
+    assert.deepStrictEqual({ log: fs.readFileSync(log, 'utf8'), counts: counts() }, before);
+    assert.strictEqual(before.counts.losses, 1);
   });
 
   it('15.S6, 12.7.10: a drive whose criterion\'s tests were skipped records skipped, and the scenario reads named, not run at the commits it ran at — a pass at code it does not hold counting for nothing, though it differs only in a nested clone', () => {

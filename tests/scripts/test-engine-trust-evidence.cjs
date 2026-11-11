@@ -7,8 +7,12 @@
 // sealed answer an agreement, with another row or the person's own words a
 // departure, one not followed no weight, a call Claude's call, a reversal a
 // departure cancelling the answer whose entry it reverses, that answer's
-// event as written — the departures, and the entries given a verdict, each
-// one's latest by its time and not a skip; read in one pass, once by id,
+// event as written — each answer's question, its kind and Claude's sort, a
+// reversal's those of the answer it reverses, the kind as last corrected;
+// the departures, each entry's verdicts in the order given, a correction of
+// one among them and never a correction of a kind, and the entries given a
+// verdict, each one's latest by its time and not a skip; read in one pass,
+// once by id,
 // from the log, a conversation's waiting events and an event kept ahead of
 // an entry this state's ledger holds, never one kept ahead of an entry it
 // lacks, and never another project's.
@@ -77,8 +81,33 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
 
     const read = evidence(dir);
 
-    assert.deepStrictEqual(read.answers, answers.map((event, i) => ({ event, standing: ['agreement', 'departure', 'departure', 'no-weight', 'call'][i], cancelled_by: null })));
+    assert.deepStrictEqual(read.answers, answers.map((event, i) => ({
+      event, standing: ['agreement', 'departure', 'departure', 'no-weight', 'call'][i], cancelled_by: null, kind: null, sort: ['several', 'several', 'several', 'several', 'one'][i], model: null,
+    })));
     assert.deepStrictEqual(read.departures, new Set([departed, own]));
+  });
+
+  it('gives each answer its question\'s kind and Claude\'s sort as its event holds them, a reversal those of the answer it reverses wherever each was read, and the kind as the person last corrected that of either entry (16.15.4)', (t) => {
+    const dir = project('fumi');
+    const [agreed, called, relabelled, unknown] = ['Agreed', 'Called', 'Relabelled', 'Unknown'].map(idOf);
+    const failing = failingTrustAppends(t);
+    inConversation(dir, () => raised(dir, agreed, { ...AGREES, kind: 'look', sort: 'one' }));
+    failing.mock.restore();
+    record('call', { entry: called, kind: 'scope', label: null, sort: 'several' }, from(dir));
+    raised(dir, relabelled, { ...AGREES, kind: 'look' });
+    const reversals = [reversal(dir, idOf('RevAgreed'), agreed), reversal(dir, idOf('RevCalled'), called), reversal(dir, idOf('RevUnknown'), unknown)];
+    /** @param {string} entry @param {string} kind */
+    const correct = (entry, kind) => record('correction', { entry, kind, verdict: null }, from(dir));
+    correct(relabelled, 'contract');
+    correct(relabelled, 'words');
+    correct(reversals[1].entry, 'internals');
+
+    const questions = evidence(dir).answers.map(({ event, kind, sort }) => [event.entry, kind, sort]);
+    assert.deepStrictEqual(questions, [
+      [called, 'scope', 'several'], [relabelled, 'words', 'several'],
+      [reversals[0].entry, 'look', 'one'], [reversals[1].entry, 'internals', 'several'], [reversals[2].entry, null, null],
+      [agreed, 'look', 'one'],
+    ]);
   });
 
   it('stands a reversal as a departure that cancels the agreement or the call whose entry it reverses, wherever each was read, and rewrites nothing: the answers it reverses stay as written, and one it never named stands (16.S41, 16.12.2)', (t) => {
@@ -184,5 +213,34 @@ describe('the verdicts given (16.10.9, 16.10.6)', () => {
     fs.writeFileSync(waitingPath(), lines(given(skipWaits, 'skip'), given(fixWaits, 'fix')));
 
     assert.deepStrictEqual(evidence(dir).judged, new Set([fixWaits]));
+  });
+
+  it('holds each entry\'s verdicts in the order given, a correction of one among them at its own time (16.15.4): a skip corrected judges the departure, a loss corrected to a fix later stands as the fix', () => {
+    const dir = project('fumi');
+    const [skipped, lost] = ['Skipped', 'Lost'].map(idOf);
+    /** @param {string} type @param {string} entry @param {string} verdict @param {string} second */
+    const given = (type, entry, verdict, second) => trustEvent(type, { id: newId(), at: `2026-10-28T10:00:0${second}Z`, project: PROJECT_ID, project_name: 'fumi', model: null, session: null },
+      type === 'verdict' ? { entry, verdict, point: 'queue' } : { entry, kind: null, verdict });
+    fs.mkdirSync(path.dirname(logPath()), { recursive: true });
+    fs.writeFileSync(logPath(), lines(given('correction', lost, 'fix', '4'), given('verdict', skipped, 'skip', '1'), given('verdict', lost, 'loss', '2'), given('correction', skipped, 'nothing', '3')));
+
+    const read = evidence(dir);
+    assert.deepStrictEqual([read.verdicts, read.judged], [
+      new Map([[skipped, [{ at: Date.parse('2026-10-28T10:00:01Z'), verdict: 'skip' }, { at: Date.parse('2026-10-28T10:00:03Z'), verdict: 'nothing' }]],
+        [lost, [{ at: Date.parse('2026-10-28T10:00:02Z'), verdict: 'loss' }, { at: Date.parse('2026-10-28T10:00:04Z'), verdict: 'fix' }]]]),
+      new Set([skipped, lost]),
+    ]);
+  });
+
+  it('never takes a correction of a kind for a verdict: a departure waiting stays unasked, and one judged a fix later keeps that verdict alone', () => {
+    const dir = project('fumi');
+    const [waiting, fixed] = ['Waiting', 'Fixed'].map(idOf);
+    raised(dir, waiting, DEPARTS);
+    raised(dir, fixed, DEPARTS);
+    record('verdict', { entry: fixed, verdict: 'fix', point: 'queue' }, from(dir));
+    for (const entry of [waiting, fixed]) record('correction', { entry, kind: 'look', verdict: null }, from(dir));
+
+    const read = evidence(dir);
+    assert.deepStrictEqual([[...read.verdicts.keys()], read.verdicts.get(fixed)?.map(({ verdict }) => verdict), read.judged, [...read.asked.keys()]], [[fixed], ['fix'], new Set([fixed]), [fixed]]);
   });
 });
