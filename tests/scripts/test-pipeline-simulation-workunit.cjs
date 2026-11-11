@@ -18,11 +18,8 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
-const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit, sectionOf, completeUnit, startItem } = require('./engine-harness.cjs');
-const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn, epicRow } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -139,8 +136,7 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, 'stray-topic']).files,
       [path.join(sim.dir, `.leeway/${epic}/topics/stray-topic/mail/001-rollback-owner.md`)],
       'the waiting message waits on the epic topic — its session raises it');
-    assert.match(epicDashboard(epic, EPIC_GATEWAY.discover(sim.dir, epic)).replace(/\n[ │]+/g, ' '),
-      /Stray Topic[^\n]*mail waiting/, 'the epic tree cues the waiting message');
+    assert.match(epicRow(sim, epic, 'Stray Topic') ?? '', /mail waiting/, 'the epic\'s menu cues the waiting message');
     const m = sim.manifest(epic);
     assert.ok(m.phases.discovery.items['stray-topic'], 'absorbed topic lands on the map');
     assert.strictEqual(m.phases.discussion.items['stray-topic'].status, 'in-progress');

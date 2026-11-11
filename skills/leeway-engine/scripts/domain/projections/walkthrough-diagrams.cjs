@@ -21,13 +21,12 @@ const path = require('path');
 const { wrap, wrapWithPrefix, signpost } = require('../../kernel/render.cjs');
 const { loadActiveManifests } = require('../reads.cjs');
 const { startMenuRead } = require('../start-menu.cjs');
-const { MENUS, menuBody } = require('../menus.cjs');
+const { MENUS, menuBody, QUESTION, rowOf } = require('../menus.cjs');
 const { roadmapState } = require('../roadmap.cjs');
-const { epicDetail } = require('../epic-detail.cjs');
 const { startMenuScreen } = require('./start-menu.cjs');
 const { roadmapMapView } = require('./roadmap.cjs');
-const { epicDashboard } = require('./epic.cjs');
-const { illustrate } = require('./surfaces.cjs');
+const { epicMenuScreen } = require('./epic-menu.cjs');
+const { illustrate, menu } = require('./surfaces.cjs');
 const { STATE_DIR_NAME, pinStateRoot } = require('../../kernel/state-root.cjs');
 
 // The column every diagram hangs off. Three columns reads as a figure inset
@@ -43,8 +42,7 @@ const ARROW = '↓';
 
 // Table: blank columns between the longest cell of a column and the next.
 const CELL_GAP = 2;
-// Rows indent three under a plain table and two beneath band dividers,
-// matching the dashboard's stage blocks.
+// Rows indent three under a plain table and two beneath band dividers.
 const TABLE_INDENT = GUTTER;
 const BAND_ROW_INDENT = 2;
 // Below this the last column stops being a column and the table renders one
@@ -60,7 +58,7 @@ const BAR_GLYPH = '█';
 const DIAGRAM_KINDS = ['flow', 'table', 'bars', 'sample'];
 
 /** The live surfaces a `sample` fence may name. */
-const SAMPLE_SURFACES = ['start-menu', 'roadmap', 'epic-dashboard'];
+const SAMPLE_SURFACES = ['start-menu', 'roadmap', 'epic-menu'];
 
 const FIXTURES_DIR = path.join(__dirname, '..', '..', '..', 'content', 'walkthrough', 'fixtures');
 
@@ -307,20 +305,23 @@ function roadmapSample() {
   return roadmapMapView(roadmapState(fixtureDir('roadmap'))).replace(/\n+$/, '');
 }
 
-/** The epic dashboard with topics in every band. The key and the ⚑ callouts stay behind: a sample teaches the shape, not the legend. @returns {string} */
+/** An epic's menu mid-discussion, nothing waiting: its heading, its tally and its decided topics, and the rows beneath. @returns {string} */
 function epicSample() {
-  const dir = fixtureDir('epic-dashboard');
+  const dir = fixtureDir('epic-menu');
   const manifest = loadActiveManifests(dir).find((m) => m.work_type === 'epic');
-  if (!manifest) throw new Error('walkthrough sample epic-dashboard: the fixture holds no active epic');
-  return epicDashboard(manifest.name, epicDetail(dir, manifest), { newArrivals: {}, presence: [] })
-    .replace(/\n+$/, '');
+  if (!manifest) throw new Error('walkthrough sample epic-menu: the fixture holds no active epic');
+  const { title, shows, rows } = epicMenuScreen(dir, manifest, []);
+  // As the start sample's, the rows arrive under what the screen shows, the
+  // dot rule that frames a live gate dropped.
+  const drawn = illustrate(() => menu('', rows.map(rowOf), { question: QUESTION })).split('\n').slice(1).join('\n');
+  return asPlainText(`■ ${title}\n${shows.join('\n')}\n\n${drawn}`);
 }
 
 /** @type {Record<string, () => string>} */
 const SAMPLES = {
   'start-menu': startSample,
   roadmap: roadmapSample,
-  'epic-dashboard': epicSample,
+  'epic-menu': epicSample,
 };
 
 /**

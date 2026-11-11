@@ -320,12 +320,6 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
   /** @type {[string, string[], keyof typeof WORLDS][]} */
   const CALLS = [
     ['leeway', ['manage', 'live-feature'], 'live'],
-    ['leeway-continue-epic', ['view', 'live-epic'], 'live'],
-    ['leeway-continue-epic', ['completed-menu', 'live-epic'], 'live'],
-    ['leeway-continue-epic', ['cancel-menu', 'live-epic'], 'live'],
-    ['leeway-continue-epic', ['reactivate-menu', 'live-epic'], 'live'],
-    ['leeway-continue-epic', ['postpone-menu', 'live-epic'], 'live'],
-    ['leeway-continue-epic', ['pull-forward-menu', 'live-epic'], 'live'],
     ['leeway-roadmap', ['view'], 'live'],
   ];
 

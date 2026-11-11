@@ -45,13 +45,13 @@ const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/kno
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
 const { isId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { openGate, gateShown } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { MENUS, menuBody } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/menus.cjs'));
 const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
+const { epicMenuSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic-menu.cjs'));
 const { unitHandoff } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/unit-handoff.cjs'));
 const { awaitsCut, buildRefusal } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
 const {
@@ -259,6 +259,10 @@ function auditState(dir, label) {
       }
     }
 
+    // An epic's menu draws over whatever state the pipeline is in, but a
+    // cancelled epic's, which it refuses.
+    if (manifest.work_type === 'epic' && manifest.status !== 'cancelled') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
+
     // The bridge can always read a single-topic unit — it runs its gateway
     // for no epic.
     if (manifest.work_type !== 'epic') {
@@ -268,19 +272,11 @@ function auditState(dir, label) {
     }
   }
 
-  // Every navigation surface renders without throwing — the menus must
-  // render whatever state the pipeline is in — and, announced, states each
-  // menu it draws as the gate beside it — the start menu once boot has the
-  // state's worktree in place, which its read stands on. Every route a view
-  // builds into a skill is one the handoff takes as it stands, or a move
-  // between menus.
+  // The start menu renders whatever state the pipeline is in once boot has
+  // the state's worktree in place, which its read stands on, and, announced,
+  // states its gate beside it; every route it builds into a skill is one the
+  // handoff takes as it stands.
   if (fs.existsSync(path.join(statePath(dir), '.git'))) auditStartMenu(dir, label);
-  for (const [name, views] of Object.entries(VIEW_MENUS)) {
-    for (const [gate, view] of views(dir)) {
-      auditGate(announcedRender(() => LIB.gateway.menuBlock(gate, view().rendered)), `${label} — ${name} view`);
-      auditRoutes(dir, view().keys, `${label} — ${name} view`);
-    }
-  }
 }
 
 // The ledger's projections, held to properties the events and the manifests
@@ -941,23 +937,6 @@ function auditRoutes(dir, keys, label) {
 // The gate payload
 // ---------------------------------------------------------------------------
 
-// The menus each gateway's `view` verb draws over the project: every epic's
-// menu and its completed topics.
-/** @typedef {{keys: {route?: string|null}[], rendered: string}} ViewMenu */
-
-/** A gateway's menu: the gate it states, by the gateway's name for it, and its composition. @typedef {[string, () => ViewMenu]} GatewayMenu */
-
-/** @type {Record<string, (dir: string) => GatewayMenu[]>} */
-const VIEW_MENUS = {
-  epic: (dir) => listWorkUnits(dir).flatMap((wu) => {
-    const detail = EPIC_GATEWAY.discover(dir, wu);
-    return detail ? [
-      /** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.epic, () => LIB.project.epicMenu(wu, detail)]),
-      /** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.resume, () => LIB.project.epicCompletedMenu(wu, detail)]),
-    ] : [];
-  }),
-};
-
 // The start menu over the project as it stands, its MENU composed as `render
 // start-menu` composes it — leaving the conversation where it is — and each
 // row's next going where it says: a handoff the table takes as it stands, a
@@ -996,6 +975,19 @@ function announcedRender(render) {
     openGate();
     return render();
   });
+}
+
+// A menu the engine draws in the menus' frame (menus.cjs), drawn in process
+// in no conversation, so nothing is recorded: announced, it states its gate
+// beside it, and each row it hands off from is one the handoff takes as it
+// stands.
+/** @param {string} dir @param {() => string} draw @param {string} label */
+function auditMenuDrawn(dir, draw, label) {
+  auditGate(announcedRender(draw), label);
+  for (const { key, next } of /** @type {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
+    if (next?.kind !== 'handoff') continue;
+    assert.doesNotThrow(() => resolveHandoff(dir, next.skill, next.args), `[${label}] the handoff refuses row ${key}'s /${next.skill} ${next.args.join(' ')}`);
+  }
 }
 
 /** @typedef {import('./pipeline-world.cjs').Sim} Sim */

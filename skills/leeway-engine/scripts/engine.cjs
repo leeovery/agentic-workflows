@@ -438,6 +438,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render help <menu> [<arg>] [--<name> <value> …]
   render verdicts [--unit <unit>]
   render start-menu
+  render epic-menu <epic>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;

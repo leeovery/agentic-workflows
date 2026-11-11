@@ -17,14 +17,8 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const {
-  epicMenu, epicDashboard,
-} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
-const {
-  Sim, mapTopics, sessionLog, menuEntry, handoffEntry, enterEntry, handoff, waitAgents, decideTopic, askedOn, send,
+  Sim, mapTopics, sessionLog, menuEntry, handoffEntry, enterEntry, handoff, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -83,16 +77,12 @@ describe('pipeline simulation: experiments, in an epic', () => {
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/layout/problem.md`, '# Problem — grid density\n')]);
     assert.strictEqual(e2.id, 'E1');
 
-    // The menu is experiment-shaped: one leading entry per topic with live
-    // records, ranked above every other recommendation — which record to
-    // work resolves inside the phase, never in the route.
-    const menu = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu));
-    const expEntries = menu.keys.filter((k) => k.action === 'continue_experiment');
-    assert.deepStrictEqual(expEntries.map((k) => [k.key, k.topic]),
-      [['1', 'timing'], ['2', 'layout']]);
-    assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
-    assert.match(expEntries[0].route, new RegExp(`^/leeway-experiment-process epic ${wu} timing$`));
-    assert.match(drawLabel(expEntries[0].label), /1 experiment queued/);
+    // Each topic with an experiment waiting is one row into the laboratory —
+    // which record to work resolves inside the phase, never in the row.
+    assert.deepStrictEqual([epicRow(sim, wu, 'Timing'), epicRow(sim, wu, 'Layout')], [
+      '2 → Continue "Timing" in the laboratory — 1 experiment waiting',
+      '1 → Continue "Layout" in the laboratory — 1 experiment waiting (recommended)',
+    ]);
 
     // Neither waiting conversation answers the question its experiment
     // measures while the evidence is out.
@@ -113,10 +103,6 @@ describe('pipeline simulation: experiments, in an epic', () => {
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders
     // only over a designed record.
-    // The dashboard renders over the live series — the waiting cue on the
-    // map row, the state audited whole after the spawn transactions.
-    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)), /awaiting E1/);
-
     menuEntry(sim, wu);
     handoffEntry(sim, wu, 'experiment', 'timing');
     sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
@@ -224,8 +210,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.layout, { status: 'in-progress' });
     claudeDecides(sim, wu, 'layout', density, 'Twelve columns.');
     decideTopic(sim, wu, 'layout');
-    assert.ok(!epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
-      .some((k) => k.action === 'continue_experiment'), 'terminal records retire from the menu');
+    assert.doesNotMatch(epicMenuLooked(sim, wu), /in the laboratory/, 'terminal records retire from the menu');
 
     // The series is never reactivated on its own — its rows stand; a new
     // spawn from the reopened conversation revives it at the next id.

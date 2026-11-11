@@ -8,9 +8,9 @@
 // a retired type's unit waiting on the cut — and every way into their work is
 // closed until 29.17's migration cuts them: the bridge routes them nowhere and
 // revisits nothing, Continue refuses each but an epic, which goes onto its
-// menu, where the migration's line and the way back stand alone, manage
-// never offers to mark them done, the epic's completed topics are its
-// decided discussions, and the revisit list refuses them. A retired type's unit is listed with the
+// menu, where the migration's line stands with no way into the build,
+// manage never offers to mark them done, and the revisit list refuses them.
+// A retired type's unit is listed with the
 // features, by its own type, waiting on the cut whatever it has in flight,
 // the board placing it there too; its manifest is read by every verb, and no
 // phase or topic of it is entered or sent to; the type is refused only where
@@ -33,10 +33,9 @@ const { call } = require('./engine-harness.cjs');
 const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
-const { epicMenu, epicCompletedMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
+const { epicMenuScreen } = require('../../skills/leeway-engine/scripts/domain/projections/epic-menu.cjs');
 const bridge = require('../../skills/leeway-bridge/scripts/gateway.cjs');
 const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
-const epic = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const { startDetail } = require('../../skills/leeway-engine/scripts/domain/start.cjs');
 const { manageListView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
 const { startMenuRead } = require('../../skills/leeway-engine/scripts/domain/start-menu.cjs');
@@ -119,13 +118,10 @@ describe('a unit built under the old plan reads its items and waits on the migra
     assert.strictEqual(unitHandoff(dir, ['old-epic']).skill, 'leeway-continue-epic');
   });
 
-  it('the epic menu shows the migration\'s line and no way into its build, its completed topics its decided discussions', () => {
-    const detail = epic.discover(dir, 'old-epic');
-    const menu = epicMenu('old-epic', detail);
-    assert.ok(menu.rendered.includes(`· · · · · · · · · · · ·\n${waiting('old-epic')}\n`), menu.rendered);
-    assert.deepStrictEqual(menu.keys.filter((k) => /implementation|review|planning/.test(k.route ?? '')), []);
-    assert.deepStrictEqual(epicCompletedMenu('old-epic', detail).keys.map((k) => [k.key, k.phase, k.topic]),
-      [['1', 'discussion', 'alpha'], ['2', 'discussion', 'beta'], ['b', null, null]]);
+  it('the epic menu shows the migration\'s line and no way into its build', () => {
+    const { statement, rows } = epicMenuScreen(dir, loadManifest(dir, 'old-epic'), []);
+    assert.strictEqual(statement, waiting('old-epic'));
+    assert.deepStrictEqual(rows.filter(({ next }) => next.kind === 'handoff' && /implementation|review|planning/.test(next.skill)), []);
   });
 
   it('the start menu says each waits on the migration\'s cut, whatever its items have in flight, and the closed ones bring the view', () => {

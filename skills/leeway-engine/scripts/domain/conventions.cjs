@@ -113,8 +113,8 @@ function discoveryGlyph(tier) {
 }
 
 // Discovery-map row `[tag]` vocabulary — the lifecycle label each map row
-// carries. One phrasing, every map render (epic dashboard, discovery session
-// map view). `mailWaiting` (the map row's mail_waiting) appends a `mail
+// carries. One phrasing, every map render (the discovery session's map
+// view). `mailWaiting` (the map row's mail_waiting) appends a `mail
 // waiting` cue on any lifecycle — messages wait in the topic's mailbox,
 // whatever its items' status, and drain when its session next sits.
 // `waits` (the map row's live waits, every kind) appends `awaiting E1`

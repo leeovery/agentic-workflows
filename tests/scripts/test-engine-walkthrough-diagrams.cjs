@@ -117,7 +117,7 @@ describe('walkthrough diagram layouts', () => {
       { screen: '02-where-everything-starts.md', tag: 'sample start-menu', text: '' },
       { screen: '03-what-the-work-is.md', tag: 'table', text: SOURCE.kinds },
       { screen: '04-the-product-takes-shape.md', tag: 'sample roadmap', text: '' },
-      { screen: '05-an-epic-and-its-topics.md', tag: 'sample epic-dashboard', text: '' },
+      { screen: '05-an-epic-and-its-topics.md', tag: 'sample epic-menu', text: '' },
       { screen: '06-the-journey-of-one-piece-of-work.md', tag: 'table', text: SOURCE.phases },
       { screen: '07-how-much-of-you-it-needs.md', tag: 'bars', text: SOURCE.effort },
       { screen: '08-living-with-it.md', tag: 'table', text: SOURCE.situations },
@@ -244,7 +244,7 @@ describe('walkthrough diagram layouts', () => {
     assert.ok(isDiagramKind('sample start-menu'));
     assert.ok(!isDiagramKind('mermaid'));
     assert.throws(() => renderDiagram('sample nowhere', '', FALLBACK),
-      /`sample` names one of start-menu, roadmap, epic-dashboard — got "nowhere"/);
+      /`sample` names one of start-menu, roadmap, epic-menu — got "nowhere"/);
   });
 });
 
@@ -337,34 +337,21 @@ describe('walkthrough sample surfaces', () => {
     ].join('\n'));
   });
 
-  it('epic-dashboard: topics in every band, no key and no callout', () => {
-    const out = sampleDiagram('epic-dashboard');
+  it('epic-menu: its heading, its tally and its decided topics, the rows beneath, no key and no callout', () => {
+    const out = sampleDiagram('epic-menu');
     assert.strictEqual(out, [
-      '── DISCOVERY ────────────────────────────────────────────────────',
+      '■ Discussion — Launch Core',
+      '3 topics · 1 decided · 1 in progress · 1 not started',
       '',
-      'DISCUSSION (3 topics · 1 decided · 1 in flight · 1 fresh)',
-      '  ├─ ✓ Sign In',
-      '  │     Accounts, sessions and the sign-in surface.',
-      '  │     ↳ Decided',
-      '  │',
-      '  ├─ ◐ Billing',
-      '  │     Plans, invoices and the payment provider.',
-      '  │     ↳ Discussing',
-      '  │',
-      '  └─ ○ Usage Limits',
-      '        What a plan allows, and what happens at the edge.',
-      '        ↳ Fresh',
+      'DECIDED',
+      '  └─ Sign In',
       '',
-      '── DEFINITION ───────────────────────────────────────────────────',
+      '◆ What would you like to do?',
       '',
-      'SPECIFICATION (1 completed)',
-      '  └─ Sign In       [completed]',
-      '     └─ Sign In    [incorporated]',
-      '',
-      '── DELIVERY ─────────────────────────────────────────────────────',
-      '',
-      'IMPLEMENTATION (1 in-progress)',
-      '  └─ Sign In    [in-progress]',
+      '1           → Continue "Billing" — in progress (recommended)',
+      '2           → Start "Usage Limits" — not started',
+      'd/discovery → Change the map — a new topic, cancel, postpone,',
+      '              pull forward, reactivate, or reopen a decided topic',
     ].join('\n'));
     assert.ok(!out.includes('⚑'), 'a sample carries no callout');
     assert.ok(!/Key:|Status:/.test(out), 'a sample carries no legend');
@@ -591,37 +578,24 @@ describe('walkthrough screens', () => {
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
       "An epic is what a piece of work becomes when it turns out to be several things wearing one name. Confirming one doesn't end discovery. It opens into a design session across the whole of it, with the system as a second senior engineer who is willing to disagree, and who writes down not only what was decided but what was considered and dropped. The reason the whole is designed before any part is that the parts share decisions: a choice about accounts constrains billing, and a decision made twice is a decision made differently. Only when you say the ground is covered are the topics drawn out, and each leaves with a brief carrying the decisions, the rejected paths and the open questions that concern it.",
       "",
-      "From then on the epic is lived through its dashboard: the three stages as bands, each topic beneath them at wherever it has got to, and a menu that recommends the next move. Topics travel at their own pace, so one can be under construction while another is still being decided, and the dashboard is where that is visible at a glance.",
+      "From then on the epic is lived through its menu: the phase it is in as the heading, how many topics are decided and how many are still open, and a row for each topic you can pick up, the recommended one first. Each topic is talked through in a conversation of its own, and the epic moves on to its spec once every one is decided, cancelled or postponed.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
-      "── DISCOVERY ────────────────────────────────────────────────────",
+      "■ Discussion — Launch Core",
+      "3 topics · 1 decided · 1 in progress · 1 not started",
       "",
-      "DISCUSSION (3 topics · 1 decided · 1 in flight · 1 fresh)",
-      "  ├─ ✓ Sign In",
-      "  │     Accounts, sessions and the sign-in surface.",
-      "  │     ↳ Decided",
-      "  │",
-      "  ├─ ◐ Billing",
-      "  │     Plans, invoices and the payment provider.",
-      "  │     ↳ Discussing",
-      "  │",
-      "  └─ ○ Usage Limits",
-      "        What a plan allows, and what happens at the edge.",
-      "        ↳ Fresh",
+      "DECIDED",
+      "  └─ Sign In",
       "",
-      "── DEFINITION ───────────────────────────────────────────────────",
+      "◆ What would you like to do?",
       "",
-      "SPECIFICATION (1 completed)",
-      "  └─ Sign In       [completed]",
-      "     └─ Sign In    [incorporated]",
-      "",
-      "── DELIVERY ─────────────────────────────────────────────────────",
-      "",
-      "IMPLEMENTATION (1 in-progress)",
-      "  └─ Sign In    [in-progress]",
+      "1           → Continue \"Billing\" — in progress (recommended)",
+      "2           → Start \"Usage Limits\" — not started",
+      "d/discovery → Change the map — a new topic, cancel, postpone,",
+      "              pull forward, reactivate, or reopen a decided topic",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Here Sign In is being built while Billing is still being decided and Usage Limits hasn't started.",
+      "Here Sign In is decided, Billing is still being talked through and Usage Limits hasn't started.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",

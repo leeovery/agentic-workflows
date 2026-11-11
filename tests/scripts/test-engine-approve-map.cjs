@@ -31,9 +31,8 @@ const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePa
 const { joinedTo } = require('./roadmap-world.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
-const { epicMenuKeys } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
+const { epicMenuScreen } = require('../../skills/leeway-engine/scripts/domain/projections/epic-menu.cjs');
 const { NBSP } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
-const epicGateway = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 
 const dir = useGatesWorld('epic');
 const { scratch, payload, screen, answer, run } = gatesHelpers(dir);
@@ -240,8 +239,8 @@ describe('approve the map, the yes (8.8.3, 8.8.13, 8.14.11)', () => {
       'M\tmanifest.json',
     ].sort());
     assert.ok(!fs.existsSync(statePath(dir(), STAGED)), 'the staged payload goes');
-    assert.strictEqual(epicMenuKeys(EPIC, epicGateway.discover(dir(), EPIC)).find((key) => key.recommended)?.topic, 'note-model',
-      'the epic\'s menu marks the first topic in the map\'s order next');
+    assert.deepStrictEqual(epicMenuScreen(dir(), readManifest(dir(), EPIC), []).rows.find(({ label }) => label.recommended)?.next,
+      { kind: 'engine', argv: ['handoff', 'topic', EPIC, 'note-model'] }, 'the epic\'s menu recommends the first topic in the map\'s order');
   });
 
   it('draws a first map unmarked, a topic the person added while it was shaped among it (8.8.6)', () => {
