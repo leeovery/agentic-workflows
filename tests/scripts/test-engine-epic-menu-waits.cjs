@@ -38,7 +38,7 @@ const { drawLabel } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cj
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/waits.cjs').Wait} Wait */
 
-const VERDICTS = Object.freeze({ kind: 'engine', argv: ['render', 'verdicts'] });
+const VERDICTS = Object.freeze({ kind: 'engine', argv: ['render', 'verdicts', '--unit', FUMI] });
 const PEER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'peer-session', CLAUDE_PID: String(process.ppid) });
 
 /** A verdict waiting, by its id. @param {string} id */

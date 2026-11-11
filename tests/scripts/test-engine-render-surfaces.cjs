@@ -550,20 +550,6 @@ describe('render phase-note', () => {
   });
 });
 
-describe('selection not-found display', () => {
-  const { selectionNotFound } = require('../../skills/leeway-engine/scripts/domain/projections/selection.cjs');
-  it('renders the terminal byte-exactly, in the noun the menu continues', () => {
-    assert.strictEqual(selectionNotFound('work unit', 'ghost'), [
-      '=== DISPLAY: not found (emit verbatim as a text code block (```text fence), then STOP — terminal condition) ===',
-      'No active work unit named "ghost" found.',
-      '',
-      'Run /leeway to see available work units or begin a new one.',
-      '',
-    ].join('\n'));
-    assert.ok(selectionNotFound('epic', 'x').includes('No active epic named "x" found.\n\nRun /leeway to see available epics'));
-  });
-});
-
 describe('roadmap surfaces', () => {
   let dir;
   beforeEach(() => { dir = setup(); });

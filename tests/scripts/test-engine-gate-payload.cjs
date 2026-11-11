@@ -124,8 +124,8 @@ describe('gate payload — the announce switch', () => {
 
   it('a gateway view says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
     seedHeldEpic(dir);
-    const plain = runGateway(dir, 'leeway', ['view']);
-    const announced = runGateway(dir, 'leeway', ['view'], ANNOUNCED);
+    const plain = runGateway(dir, 'leeway', ['manage']);
+    const announced = runGateway(dir, 'leeway', ['manage'], ANNOUNCED);
 
     assert.ok(!plain.includes('=== GATE'), plain);
     assert.strictEqual(withoutGate(announced), plain);
@@ -368,8 +368,9 @@ describe('gate payload — every gateway verb', () => {
   /**
    * One project holding every state the gateway menus draw from: an inbox
    * and an archive, a roadmap with items waiting, an epic whose discussion a
-   * peer holds while a message waits in its mailbox —
-   * beside a completed topic whose input moved, a cancelled topic, a topic
+   * peer holds while a message waits in its mailbox, and one not started
+   * with a message waiting — beside a completed topic whose input moved, a
+   * cancelled topic, a topic
    * postponed to the roadmap and a blocked plan — a unit of each
    * linear type ready for its next phase, a feature with a message waiting,
    * and closed units.
@@ -417,6 +418,7 @@ describe('gate payload — every gateway verb', () => {
       },
     });
     createFile(dir, '.leeway/v1/topics/auth/mail/001.md', '# A message\n');
+    createFile(dir, '.leeway/v1/topics/tax/mail/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
 
     /** A linear unit whose one phase concluded — its view asks whether to proceed where that phase is revisitable, and hands straight on behind a decided discussion. @param {string} name @param {string} workType @param {string} phase @param {string} next */
@@ -492,11 +494,6 @@ describe('gate payload — every gateway verb', () => {
       }
     });
   }
-
-  it('the sweep reaches the display only a missing unit draws', () => {
-    const drawn = [...responses.values()].map(({ stdout }) => stdout).join('\n');
-    assert.ok(drawn.includes('=== DISPLAY: not found ('), 'no gateway call drew === DISPLAY: not found (');
-  });
 
   it('the world reaches every row shape the menu builders draw, the epic\'s menu among the gateways\'', () => {
     const gates = [...[...responses.values()].map(({ stdout }) => stdout), epicMenu].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);

@@ -40,7 +40,6 @@ const workunitManage = require('./domain/workunit-manage.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
-const selectionProjections = require('./domain/projections/selection.cjs');
 const surfaces = require('./domain/projections/surfaces.cjs');
 
 module.exports = {
@@ -101,7 +100,6 @@ module.exports = {
   project: {
     titlecase: conventions.titlecase,
     actionsTable: surfaces.actionsTable,
-    selectionNotFound: selectionProjections.selectionNotFound,
     roadmapTitle: roadmapProjections.roadmapTitle,
     roadmapMapView: roadmapProjections.roadmapMapView,
     roadmapProposalView: roadmapProjections.roadmapProposalView,
