@@ -27,12 +27,14 @@ const ROOT = path.join(__dirname, '../..');
 const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
 const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start.cjs'));
+const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
+const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
+const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
+const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
 const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv } = require('./engine-harness.cjs');
@@ -417,13 +419,12 @@ function arrive(sim, name) {
   }
 }
 
-// The start menu, then a work unit's continue menu, as a conversation reaches
-// them: boot's repair (the start menu is no position), then the unit's own
-// label.
+// The start menu, then an epic's menu, as a conversation reaches them: the
+// start menu drawn (it is no position), then the epic's own label.
+/** @param {Sim} sim @param {string} wu */
 function menuEntry(sim, wu) {
-  const repair = sim.run(['session', 'repair']);
-  assert.strictEqual(repair.repaired, false, 'the sim has no tmux label to put back');
-  assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
+  assert.strictEqual(sim.manifest(wu).work_type, 'epic', 'only an epic has a menu of its own — any other unit is continued where it stands');
+  startMenu(sim);
   arrive(sim, wu);
 }
 
@@ -487,18 +488,28 @@ function specEntry(sim, wu, topics) {
 // Either way what is invoked is the route itself.
 /** @param {Sim} sim @param {string} route */
 function handoff(sim, route) {
-  const argv = ['handoff', ...shellWords(route)];
+  const { invoked, payload } = handoffBy(sim, ['handoff', ...shellWords(route)]);
+  assert.strictEqual(invoked, route, 'invoked in place, the skill takes the route as it stands');
+  return payload;
+}
+
+// A handoff the engine call `argv` makes — a route as it stands, or a unit's
+// Continue: unannounced, the session invokes the DATA's skill with its args;
+// announced, the mod carries the continuation that invokes the same. Answers
+// the route invoked and the mod's payload.
+/** @param {Sim} sim @param {string[]} argv */
+function handoffBy(sim, argv) {
   const inline = sim.engine(argv);
-  assert.strictEqual(inline.code, 0, `[handoff ${route}] refused\n${inline.stderr}`);
+  assert.strictEqual(inline.code, 0, `[engine ${argv.join(' ')}] refused\n${inline.stderr}`);
   assert.match(inline.stdout, /^handoff: inline$/m);
   assert.ok(!inline.stdout.includes('=== HANDOFF'), 'the payload is the mod\'s, present only announced');
   const data = (/** @type {string} */ field) => inline.stdout.match(new RegExp(`^${field}: (.*)$`, 'm'))?.[1];
-  assert.strictEqual([`/${data('skill')}`, data('args')].filter(Boolean).join(' '), route, 'invoked in place, the skill takes the route as it stands');
+  const invoked = [`/${data('skill')}`, data('args')].filter(Boolean).join(' ');
   const carried = engine.run(argv, { cwd: sim.dir, env: { ...sim.env, LEEWAY_HANDOFF: '1' } });
   assert.match(carried.stdout, /^handoff: mod$/m);
   const payload = JSON.parse(carried.stdout.split(/^=== HANDOFF .*$/m)[1].trim());
-  assert.strictEqual(payload.text, `Invoke \`${route}\`.`, 'nothing travels but the route');
-  return payload;
+  assert.strictEqual(payload.text, `Invoke \`${invoked}\`.`, 'nothing travels but the route');
+  return { invoked, payload };
 }
 
 // The bridge's hop between a linear unit's phases: its gateway derives the
@@ -560,31 +571,11 @@ function epicBuildPick(sim, wu, action) {
   return row;
 }
 
-// A linear unit built by its cut continued from its menu (24.1.6): its
-// continue routes into the build, or into its review phase once every phase
-// of its cut has closed, and hands off there.
-/** @param {Sim} sim @param {string} wu @param {'implementation'|'review'} phase */
-function linearBuildPick(sim, wu, phase) {
-  menuEntry(sim, wu);
-  const { keys } = linearMenu(sim, wu);
-  assert.strictEqual(keys.find((k) => k.action === 'continue')?.route, `/${skillAt(wu, phase, sim.manifest(wu).work_type)} ${sim.manifest(wu).work_type} ${wu}`,
-    `the menu continues the unit into its ${phase}`);
-  pickRoute(sim, keys, 'continue');
-  sim.handOver();
-}
-
 /** The epic menu's entry for a command option. @param {Sim} sim @param {string} wu @param {string} action */
 function epicKey(sim, wu, action) {
   const key = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys.find((k) => k.action === action);
   assert.ok(key, `the epic menu offers ${action}`);
   return key;
-}
-
-/** A linear unit's continue menu, its type read from its manifest. @param {Sim} sim @param {string} wu */
-function linearMenu(sim, wu) {
-  const found = LIB.detail.activeWorkUnit(sim.dir, wu);
-  assert.ok(found, `${wu} is a linear unit in progress`);
-  return LIB.project.workUnitMenu(found.type, found.unit);
 }
 
 // The person's answer at the gate shown, through `gate` as the prose gives
@@ -825,35 +816,72 @@ function concluded(sim, wu, bug = {}) {
 // investigation, worked to its conclude and handed into its spec.
 /** @param {Sim} sim @param {string} wu @param {string} description */
 async function investigated(sim, wu, description) {
-  startNew(sim, 'bugfix');
+  startNew(sim);
   startUnit(sim, 'bugfix', wu, description);
   handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
   await hunted(sim, wu);
   concluded(sim, wu);
 }
 
-/** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} wu @param {string} action */
-function linearPick(sim, wu, action) {
-  return pickRoute(sim, linearMenu(sim, wu).keys, action);
+// The start menu as the start skill draws it (start-menu.md), and every
+// menu's back: `render start-menu`, which leaves the conversation at no
+// position. Answers the rows the gate shown holds, each with its next.
+/** @param {Sim} sim @returns {{key: string, word: string|null, head: string, next: any}[]} */
+function startMenu(sim) {
+  sim.render(['start-menu'], { expect: 'content' });
+  assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
+  const folder = path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID);
+  return JSON.parse(fs.readFileSync(path.join(folder, SHOWN), 'utf8')).options;
 }
 
-/** The start menu, or the empty state's, as the project stands. @param {Sim} sim */
-function startKeys(sim) {
-  const result = START_GATEWAY.discover(sim.dir);
-  return (result.state.has_any_work ? startMenu(result) : LIB.project.emptyMenu(result)).keys;
+// A row of the start menu picked, as start-menu.md takes it: the menu drawn,
+// the answer through `gate`, and its next followed — a handoff, or a unit's
+// Continue, `handoff unit` — or carrying on in the conversation. Answers the
+// move's payload, null for a row that carries on.
+/** @param {Sim} sim @param {string} key */
+function startPick(sim, key) {
+  assert.ok(startMenu(sim).some((row) => row.key === key), `the start menu offers ${key}`);
+  const { next } = answerGate(sim, 'start menu', '--pick', key);
+  if (next.kind === 'continue') return null;
+  if (next.kind === 'handoff') return handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  assert.deepStrictEqual(next.argv.slice(0, 2), ['handoff', 'unit'], 'the start menu\'s one engine move is a unit\'s Continue');
+  return handoffBy(sim, next.argv).payload;
+}
+
+// A unit continued from the start menu (19.1.3): its row picked, which hands
+// off where the unit stands, with no menu between.
+/** @param {Sim} sim @param {string} wu */
+function continueUnit(sim, wu) {
+  const row = startMenu(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`);
+  assert.ok(row, `the start menu lists ${wu}`);
+  return startPick(sim, row.key);
+}
+
+// A unit built by its cut continued from the start menu (24.1.6): into the
+// build, or into its review phase once every phase of its cut has closed.
+/** @param {Sim} sim @param {string} wu @param {'implementation'|'review'} phase */
+function continueInto(sim, wu, phase) {
+  const type = sim.manifest(wu).work_type;
+  assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/${skillAt(wu, phase, type)} ${type} ${wu}\`.`, `Continue takes the unit into its ${phase}`);
+  sim.handOver();
+}
+
+/** The start menu's row for a unit, as it reads. @param {Sim} sim @param {string} wu */
+function startRow(sim, wu) {
+  const row = startMenuScreen(startMenuRead(sim.dir)).rows.find(({ next }) => next.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`);
+  assert.ok(row, `the start menu lists ${wu}`);
+  return drawLabel(row.label);
 }
 
 // A menu's `b/back` (start-menu.md): an internal move, no route — the start
-// menu records that the session is working nowhere first, then is re-rendered
-// over the state the menu was entered from. Answers the start menu's keys.
+// menu drawn again, which records that the session is working nowhere.
+// Answers the start menu's rows.
 /** @param {Sim} sim @param {{action: string, route?: string|null}[]} keys */
 function backToStart(sim, keys) {
   const back = keys.find((k) => k.action === 'back');
   assert.ok(back, 'the menu offers its way back to the start menu');
   assert.strictEqual(back.route, null, 'back is a move between menus, never a handoff');
-  assert.strictEqual(sim.run(['session', 'repair']).repaired, false, 'the sim has no tmux label to put back');
-  assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
-  return startKeys(sim);
+  return startMenu(sim);
 }
 
 // route-to-discovery: new work goes to discovery with its work type's
@@ -919,12 +947,11 @@ function startUnit(sim, type, wu, description) {
   return started;
 }
 
-// The start menu's new-work row builds no route — it goes to discovery with
-// the row's pre-seed and no seeds.
-/** @param {Sim} sim @param {string} preSeed */
-function startNew(sim, preSeed) {
-  assert.ok(startKeys(sim).some((k) => k.action === 'start_new' && k.pre_seed === preSeed), `the start menu offers new ${preSeed} work`);
-  return toDiscovery(sim, preSeed, 'none');
+// The start menu's Start row: new work goes to discovery as a piece of work
+// of no kind yet, which discovery finds as the person talks (18.2.7).
+/** @param {Sim} sim */
+function startNew(sim) {
+  return startPick(sim, 's');
 }
 
 // The roadmap's pull (pull.md): the picked items handed to discovery as its
@@ -1308,17 +1335,17 @@ function firstPhaseBuilt(sim, wu, title, task, file) {
 }
 
 // The build the review phase reviews: a feature through its spec to ready
-// to build's pick, continued from its menu into the build, its cut's one
-// phase — the verify setup and the code — built, reviewed, merged and
-// closed, and continued from its menu into its review phase.
+// to build's pick, continued from the start menu into the build, its cut's
+// one phase — the verify setup and the code — built, reviewed, merged and
+// closed, and continued from the start menu into its review phase.
 /** @param {Sim} sim @param {string} wu */
 function cutClosed(sim, wu) {
   startUnit(sim, 'feature', wu, 'A ledger');
   discussed(sim, wu, wu);
   specToBuild(sim, wu, [wu], 'a');
-  linearBuildPick(sim, wu, 'implementation');
+  continueInto(sim, wu, 'implementation');
   firstPhaseBuilt(sim, wu, 'The work', 'Write the ledger', 'src/ledger.js');
-  linearBuildPick(sim, wu, 'review');
+  continueInto(sim, wu, 'review');
 }
 
 // The verify setup the first task's builder records, its mutation tool
@@ -1564,6 +1591,6 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
-  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

@@ -40,7 +40,7 @@ describe('pipeline simulation: epic', () => {
 
   it('epic: start this work creates the epic and carries its conversation into it; the map\'s yes lands the topics in order and hands off to the menu, which recommends the first', () => {
     const wu = 'fumi';
-    startNew(sim, 'epic');
+    startNew(sim);
     const started = startThisWork(sim, {
       type: 'epic', name: wu, description: 'Stickies, but smarter.', reason: 'Its parts each need decisions.',
       shaped_by: [shapedInTheProduct(sim, 'notes')],

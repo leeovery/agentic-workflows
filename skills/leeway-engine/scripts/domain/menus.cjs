@@ -97,9 +97,17 @@ const HELP_LABEL = 'What this menu is for, row by row';
  */
 const registered = (id, gate, named, arrival, help = {}, keys = []) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze(keys), help: Object.freeze({ label: HELP_LABEL, ...help }) });
 
+/** The start menu's help: "■ Help", the walk through Leeway reached from it, which the start skill carries on into (23.2.3). @type {Partial<MenuHelp>} */
+const START_HELP = Object.freeze({
+  label: 'How Leeway works',
+  heading: 'Help',
+  closing: 'Ask about anything else, or walk through the whole thing.',
+  rows: Object.freeze([{ key: 'w', word: 'walk', label: 'Walk through how Leeway works', next: Object.freeze({ kind: 'continue' }) }]),
+});
+
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */
 const MENUS = Object.freeze({
-  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', { label: 'How Leeway works' }),
+  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', START_HELP, [NUMBERED, 'p', 's', 't', 'r', 'e', 'v', 'm']),
   'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit'),
   triage: registered('triage', 'triage', 'triage', 'none'),
   archived: registered('archived', 'archived items', 'the archived items', 'none'),
@@ -152,11 +160,11 @@ function checkRow(m, { key, next }) {
 const rowOf = ({ key, word, label, next }) => cmdOption(String(key), word, label, { next });
 
 /**
- * The menu's MENU section: its statement and its question over its rows,
- * then help, the back row and the prompt row.
+ * The menu as its MENU section holds it: its statement and its question
+ * over its rows, then help, the back row and the prompt row.
  * @param {Menu} m @param {Drawn} drawn @param {MenuScreen} screen
  */
-function menuOf(m, drawn, { statement, question = QUESTION, rows, back, prompt }) {
+function menuBody(m, drawn, { statement, question = QUESTION, rows, back, prompt }) {
   for (const row of rows) checkRow(m, row);
   if (back !== undefined && !m.keys.includes(BACK)) throw new Error(`${m.id} registers no back row`);
   const lines = [
@@ -165,8 +173,11 @@ function menuOf(m, drawn, { statement, question = QUESTION, rows, back, prompt }
     ...(back === undefined ? [] : [cmdOption(BACK, 'back', back.label, { next: back.next })]),
     ...(prompt === undefined ? [] : [promptOption(prompt.label, prompt.description, { next: prompt.next })]),
   ];
-  return menuSection(m.gate, MENU_INSTRUCTION, menu(statement === undefined ? '' : wrap(statement, displayWidth()).join('\n'), lines, { question }));
+  return menu(statement === undefined ? '' : wrap(statement, displayWidth()).join('\n'), lines, { question });
 }
+
+/** The menu's MENU section, under its gate. @param {Menu} m @param {Drawn} drawn @param {MenuScreen} screen */
+const menuOf = (m, drawn, screen) => menuSection(m.gate, MENU_INSTRUCTION, menuBody(m, drawn, screen));
 
 /**
  * Leave the conversation where drawing the menu does (the header's).
@@ -196,4 +207,4 @@ function drawMenu(cwd, m, drawn, screen) {
   return out;
 }
 
-module.exports = { MENUS, NUMBERED, HELP_GATE, QUESTION, menuNamed, titleOf, menuAgain, rowOf, drawMenu };
+module.exports = { MENUS, NUMBERED, HELP_GATE, QUESTION, menuNamed, titleOf, menuAgain, rowOf, menuBody, drawMenu };

@@ -891,52 +891,12 @@ function computeNextPhase(manifest, specWritten = false) {
   return { next_phase: 'discussion', phase_label: 'ready for discussion' };
 }
 
-// Pipeline phases whose aggregate status is in-progress, in pipeline order.
-// computeNextPhase short-circuits on a completed review, so a reopened
-// earlier phase (mid-revisit) would otherwise masquerade as a finished
-// pipeline.
-function computeInProgressPhases(manifest, pipeline, specWritten = false) {
-  return pipeline.filter((phase) => phaseStatus(manifest, phase, specWritten) === 'in-progress');
-}
-
-/**
- * The active work unit's next-phase state with the mid-revisit override
- * applied. computeNextPhase short-circuits on a completed review, so a
- * finished pipeline reports `next_phase: done`; but a reopened earlier phase
- * means the unit is mid-revisit: the phase in flight is the next action. A
- * retired type's unit keeps its waiting label, whatever its items have in
- * flight. The one derivation both the start dashboard and the single-topic
- * work-unit detail read, so the two can never disagree.
- * @param {object} manifest
- * @param {string[]} pipeline  the work type's pipeline phases, in order
- * @param {boolean} [specWritten]  the unit's spec is written (phaseStatus)
- * @returns {{next_phase: string, phase_label: string, in_progress_phases: string[]}}
- */
-function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
-  const state = computeNextPhase(manifest, specWritten);
-  const inProgress = computeInProgressPhases(manifest, pipeline, specWritten);
-  let nextPhase = state.next_phase;
-  let phaseLabel = state.phase_label;
-  if (nextPhase === 'done' && inProgress.length > 0 && retiredRefusal(manifest) === null) {
-    nextPhase = inProgress[0];
-    phaseLabel = `${inProgress[0]} (in-progress)`;
-  }
-  return {
-    next_phase: nextPhase,
-    phase_label: phaseLabel,
-    in_progress_phases: inProgress,
-  };
-}
-
 /**
  * The last phase, in the given pipeline order, with at least one completed
  * item — or null when nothing has completed. Single-topic phases carry one
  * item, so "an item completed" and "the phase aggregate is completed" coincide;
  * epics keep the per-item reading (one topic completing a phase is enough). A
  * phase keeping no items, the one spec, completes as `phaseStatus` reads it.
- * The one spelling every closed-unit surface reads (start dashboard,
- * single-topic detail, epic gateway) — each passes the pipeline its display
- * walks.
  * @param {object} manifest
  * @param {string[]} pipeline  phases to scan, in order
  * @returns {string|null}
@@ -1355,10 +1315,10 @@ function ownNamedItems(manifest, phase) {
 }
 
 /**
- * The phase whose topic has mail waiting in a single-topic unit — the start
- * rows' and the continue dashboard's cue: the unit's mail phase, where mail
- * waits for the unit's own topic or, where the phase's items carry names of
- * their own, for any of them; none where none waits.
+ * The phase whose topic has mail waiting in a single-topic unit — its start
+ * menu row's cue: the unit's mail phase, where mail waits for the unit's
+ * own topic or, where the phase's items carry names of their own, for
+ * any of them; none where none waits.
  * @param {string} stateDir  the state root @param {{name: string, work_type: string}} manifest @returns {string[]}
  */
 function mailPhases(stateDir, manifest) {
@@ -1499,8 +1459,6 @@ module.exports = {
   topicWaits,
   settleItemStatus,
   computeNextPhase,
-  computeInProgressPhases,
-  computeUnitPhaseState,
   lastCompletedPhase,
   collectAnalysisInputs,
   computeAnalysisCacheStatus,

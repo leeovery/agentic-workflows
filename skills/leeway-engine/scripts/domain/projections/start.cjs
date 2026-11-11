@@ -1,47 +1,28 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: leeway projections — the Workflow Overview display and
-// the unified continue/start menu over one StartDetail (see ../start.cjs),
-// plus the skill's state-derived sub-views: the empty state, the inbox pickup
-// and archived lists, the working set, the manage flow, and the completed &
+// Domain ring: leeway projections — the start skill's state-derived
+// sub-views over one StartDetail (see ../start.cjs): the inbox pickup and
+// archived lists, the working set, the manage flow, and the completed &
 // cancelled view. Sub-view projections return `{data, display, menu}` bodies
 // — a pick view carries its menu, or its display when there is nothing to
-// pick (the adapter wraps them in section markers).
+// pick (the adapter wraps them in section markers). The start menu itself is
+// start-menu.cjs's.
 //
-// Deterministic: same detail, same string. The overview is a flat list (one
-// numbered item + one └─ sub-row each, numbering continuous across the type
-// sections) — composed line-by-line here, not a continuous-gutter tree. Menus
-// carry machine action keys so skills route on keys, never on labels.
+// Deterministic: same detail, same string. Menus carry machine action keys so
+// skills route on keys, never on labels.
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
-const { combinedInbox } = require('../inbox-set.cjs');
 const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
-const { dayMonth } = require('../dates.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
-/** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
-/** @typedef {import('../start.cjs').InboxDetail} InboxDetail */
 /** @typedef {import('../inbox-set.cjs').PickupItem} PickupItem */
 /** @typedef {import('../inbox-set.cjs').WorkingSetDetail} WorkingSetDetail */
 /** @typedef {import('../workunit-manage.cjs').ManageDetail} ManageDetail */
 /** @typedef {import('./surfaces.cjs').LabelParts} LabelParts */
-
-
-/**
- * @typedef {object} StartMenuKey
- * @property {string} key             what the user types (`1`, `2`, …, `s`, `m`, …)
- * @property {string} [word]          long form of a command option (`start`, `inbox`, …)
- * @property {string} action          machine action key — skills route on this, never the label
- * @property {string} [work_type]     continue entries
- * @property {string} [work_unit]     continue entries
- * @property {string} [pre_seed]      start_new entries: `none` | a work type
- * @property {string|null} route      skill invocation, or null for internal flows
- * @property {import('./surfaces.cjs').OptionLabel} label
- */
 
 /**
  * @typedef {object} TypeSection
@@ -58,259 +39,6 @@ const SECTIONS = [
   { label: 'Quick Fixes:', group: 'quick_fixes', type: 'quick-fix' },
   { label: 'Epics:', group: 'epics', type: 'epic' },
 ];
-
-/** The continue menu a work unit of `type` opens on. @param {TypeSection['type']} type */
-function continueSkill(type) {
-  return type === 'epic' ? 'leeway-continue-epic' : 'leeway-continue-linear';
-}
-
-// ---------------------------------------------------------------------------
-// Shared composition helpers
-// ---------------------------------------------------------------------------
-
-// The Inbox section rows: one per live item (pickup order), the bracketed
-// type riding inline after the title — unnumbered on purpose, `i/inbox` is
-// where items are acted on.
-/** @param {InboxDetail} inbox */
-function inboxRows(inbox) {
-  const items = combinedInbox(inbox);
-  return items.map((item, i) => `  ${i === items.length - 1 ? '└─' : '├─'} ${item.title} [${item.type}]`);
-}
-
-// The Roadmap section rows: one per horizon, list order, the join breakdown
-// riding inline — unnumbered on purpose, `r/roadmap` is where the map is
-// acted on. Lifecycle arrives derived (lifecycle by join, never stored).
-/** @param {StartDetail['roadmap']} roadmap */
-function roadmapRows(roadmap) {
-  const CATEGORIES = /** @type {const} */ ([
-    ['in-flight', 'in flight'],
-    ['waiting', 'waiting'],
-    ['shipped', 'shipped'],
-    ['orphaned', 'orphaned'],
-  ]);
-  const horizons = roadmap.horizons.filter((h) => roadmap.items.some((i) => i.horizon === h));
-  return horizons.map((h, i) => {
-    const members = roadmap.items.filter((item) => item.horizon === h);
-    const parts = CATEGORIES
-      .map(([state, label]) => [members.filter((m) => m.state === state).length, label])
-      .filter(([n]) => Number(n) > 0)
-      .map(([n, label]) => `${n} ${label}`);
-    // Horizon labels render as stored — the user's own release words.
-    return `  ${i === horizons.length - 1 ? '└─' : '├─'} ${h} — ${parts.join(' · ')}`;
-  });
-}
-
-/** The product row's note while the brownfield research is owed. */
-const RESEARCH_OWED = 'research owed';
-
-// The roadmap menu row, rendered only once the layer exists.
-/** @param {StartDetail} detail @returns {StartMenuKey|null} */
-function roadmapMenuRow(detail) {
-  if (!detail.roadmap.exists) return null;
-  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/leeway-roadmap open', label: 'Open the product roadmap' };
-}
-
-/**
- * The product's conversation's row, always there (18.2.13): its session count
- * and last date once it has sessions, and the brownfield research while it is
- * owed, which the conversation's next opening resumes (8.12.13). It hands
- * into discovery at no unit.
- * @param {StartDetail} detail @returns {StartMenuKey}
- */
-function productMenuRow({ product: { sessions, last }, research_owed: owed }) {
-  const head = 'Talk about the product';
-  const count = `${sessions} session${sessions === 1 ? '' : 's'}`;
-  const tail = sessions === 0 ? null : last === null ? count : `${count}, last on ${dayMonth(last)}`;
-  /** @type {string|LabelParts} */
-  let label = head;
-  if (tail !== null) label = { head, tail, cue: owed ? RESEARCH_OWED : undefined };
-  else if (owed) label = { head, tail: RESEARCH_OWED };
-  return { key: 'p', word: 'product', action: 'open_product', route: '/leeway-discovery none none', label };
-}
-
-/** @type {StartMenuKey} */
-const HELP_ROW = { key: 'h', word: 'help', action: 'open_help', route: '/leeway-help', label: 'How the workflows work' };
-
-// ---------------------------------------------------------------------------
-// Overview
-// ---------------------------------------------------------------------------
-
-/**
- * Section A — the Workflow Overview display. One code-block string: a flat
- * tree of names per non-empty type section, numbering continuous across
- * sections, the Inbox section (one row per live item), and the
- * completed/cancelled count line. A pure inventory — per-unit state lives in
- * the menu's metadata tails, never here.
- * @param {StartDetail} detail
- * @returns {string}
- */
-function startOverview(detail) {
-  const lines = [];
-  let n = 0;
-  for (const s of SECTIONS) {
-    const units = detail[s.group].work_units;
-    if (units.length === 0) continue;
-    lines.push(s.label.replace(/:$/, ''));
-    units.forEach((u, i) => {
-      n += 1;
-      lines.push(`  ${i === units.length - 1 ? '└─' : '├─'} ${n}. ${titlecase(u.name)}`);
-    });
-    lines.push('');
-  }
-  if (detail.roadmap.exists && detail.roadmap.items.length > 0) {
-    lines.push('Roadmap');
-    lines.push(...roadmapRows(detail.roadmap));
-    lines.push('');
-  }
-  if (detail.state.has_inbox) {
-    lines.push('Inbox');
-    lines.push(...inboxRows(detail.inbox));
-    lines.push('');
-  }
-  if (detail.completed_count > 0 || detail.cancelled_count > 0) {
-    lines.push(`${detail.completed_count} completed, ${detail.cancelled_count} cancelled.`);
-    lines.push('');
-  }
-  return lines.join('\n').replace(/\n+$/, '\n');
-}
-
-// ---------------------------------------------------------------------------
-// Menu
-// ---------------------------------------------------------------------------
-
-// A unit's entry tail names the unit's own type: a migrated unit of a retired
-// type is listed with the features. Messages waiting on the unit's topic cue
-// `mail waiting` after the tail, as the epic rows carry it.
-/** @param {WorkUnitEntry} unit @param {TypeSection['type']} type @returns {LabelParts} */
-function continueLabel(unit, type) {
-  const t = titlecase(unit.name);
-  if (type === 'epic') return { head: `Continue "${t}"`, tail: 'epic' };
-  return {
-    head: `Continue "${t}"`,
-    tail: `${unit.work_type}, ${unit.phase_label}`,
-    cue: (unit.mail_phases || []).length > 0 ? 'mail waiting' : undefined,
-  };
-}
-
-/**
- * Section B — the interactive menu. `keys` carries the machine action keys
- * (skills route on these); `rendered` is the dotted-gate markdown block.
- * Numbered continue entries first (overview order and numbering), then the
- * product's conversation (`p`, always), the roadmap once it exists, then
- * the start-new and lifecycle command options (`i` only with a live
- * inbox, `v` only with completed/cancelled work units).
- * @param {StartDetail} detail
- * @returns {{keys: StartMenuKey[], rendered: string}}
- */
-function startMenu(detail) {
-  /** @type {StartMenuKey[]} */
-  const numbered = [];
-  for (const s of SECTIONS) {
-    for (const u of detail[s.group].work_units) {
-      numbered.push({
-        key: String(numbered.length + 1),
-        action: 'continue_work_unit',
-        work_type: u.work_type,
-        work_unit: u.name,
-        route: `/${continueSkill(s.type)} ${u.name}`,
-        label: continueLabel(u, s.type),
-      });
-    }
-  }
-
-  /** @type {StartMenuKey[]} */
-  const options = [productMenuRow(detail)];
-  const roadmapRow = roadmapMenuRow(detail);
-  if (roadmapRow) options.push(roadmapRow);
-  options.push(
-    { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: 'Start something new (not sure what kind yet)' },
-    { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Start new feature' },
-    { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Start new epic' },
-    { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Start new bugfix' },
-    { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'Start new quick-fix' },
-  );
-  if (detail.state.has_inbox) {
-    options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: 'View the inbox and triage its items' });
-  }
-  if (detail.completed_count > 0 || detail.cancelled_count > 0) {
-    options.push({ key: 'v', word: 'view', action: 'view_completed', route: null, label: 'View completed & cancelled work units' });
-  }
-  options.push({ key: 'm', word: 'manage', action: 'manage', route: null, label: "Manage a work unit's lifecycle" });
-  options.push(HELP_ROW);
-
-  const lines = ['What would you like to do?', ''];
-  for (const e of numbered) {
-    lines.push(cmdOption(e.key, null, e.label));
-  }
-  for (const o of options) {
-    lines.push(cmdOption(o.key, o.word, o.label));
-  }
-
-  return { keys: [...numbered, ...options], rendered: dotMenu(lines) };
-}
-
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
-
-/**
- * The empty-state Workflow Overview: no active work, closed counts when any.
- * A project with a roadmap never renders an empty screen (design/product-roadmap.md decision 21
- * — the harvested-no-work state is a real state): the horizon rows stand in
- * for the missing work sections.
- * @param {StartDetail} detail
- * @returns {string}
- */
-function emptyOverview(detail) {
-  let out;
-  if (detail.roadmap.exists && detail.roadmap.items.length > 0) {
-    out = 'No work in flight.\n\nRoadmap\n' + roadmapRows(detail.roadmap).join('\n') + '\n';
-  } else {
-    out = 'No active work found.\n';
-  }
-  if (detail.completed_count > 0 || detail.cancelled_count > 0) {
-    out += `\n${detail.completed_count} completed, ${detail.cancelled_count} cancelled.\n`;
-  }
-  return out;
-}
-
-/**
- * The empty-state start menu — the product's conversation and the roadmap
- * once it exists, then the five start-new options with
- * pipeline-shape labels, `i` only with a live inbox, `v` only with closed
- * work units. Same key shape as startMenu, so the ACTIONS table and routing
- * are uniform.
- * @param {StartDetail} detail
- * @returns {{keys: StartMenuKey[], rendered: string}}
- */
-function emptyMenu(detail) {
-  /** @type {StartMenuKey[]} */
-  const options = [productMenuRow(detail)];
-  const roadmapRow = roadmapMenuRow(detail);
-  if (roadmapRow) options.push(roadmapRow);
-  options.push(
-    { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: "Not sure what kind yet — describe it and we'll shape it" },
-    { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Single topic: discussion → spec → build → review' },
-    { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Multiple topics, multi-session: each discussed, then one spec → build → review' },
-    { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Investigation → spec → build → review' },
-    { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'One sitting: each fix built and reviewed, then closed' },
-  );
-  if (detail.state.has_inbox) {
-    const n = detail.state.inbox_count;
-    options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: `View the inbox and triage its items (${n} item${n === 1 ? '' : 's'})` });
-  }
-  if (detail.completed_count > 0 || detail.cancelled_count > 0) {
-    options.push({ key: 'v', word: 'view', action: 'view_completed', route: null, label: 'View completed & cancelled work units' });
-  }
-  options.push(HELP_ROW);
-
-  const lines = ['What would you like to start?', ''];
-  for (const o of options) {
-    lines.push(cmdOption(o.key, o.word, o.label));
-  }
-
-  return { keys: options, rendered: dotMenu(lines) };
-}
 
 // ---------------------------------------------------------------------------
 // Inbox pickup + archived store
@@ -732,10 +460,6 @@ function completedActions(workUnit, status) {
 }
 
 module.exports = {
-  startOverview,
-  startMenu,
-  emptyOverview,
-  emptyMenu,
   inboxPickupView,
   archivedView,
   archivedActions,

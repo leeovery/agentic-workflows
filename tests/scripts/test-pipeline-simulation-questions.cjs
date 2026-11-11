@@ -33,7 +33,7 @@ describe('pipeline simulation: the build\'s questions', () => {
 
   it('a task parks on a question while the others carry on, and another meeting it joins it; the questions waiting listed oldest first, a task parked never ready nor done; one drawn and answered for its task, which builds again; another set aside, still waiting, answered through its raise alone, freeing both its tasks; Claude\'s calls made for a task, a replacement of one parking it, kept through its raise alone; the task writer\'s gap waiting parking none, a task joining it then closed, taken off it; a fact parking its task, answered as a fact', async () => {
     const wu = 'ledger';
-    startNew(sim, 'feature');
+    startNew(sim);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'A ledger', '--session-log-file', sessionLog(sim, wu)]);
     writePhaseTasks(sim, wu, 1, 'The ledger', [{ title: 'Write the ledger' }, { title: 'Read the ledger' }, { title: 'Fold the ledger' }, { title: 'Index the ledger' }]);
     const build = `${wu}.implementation`;

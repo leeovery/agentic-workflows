@@ -9,7 +9,8 @@ require('./hermetic-env.cjs');
 // engine composes the continuation and the line naming where the work goes,
 // and answers which way the work travels: the gate mod carries it where the
 // session announced handoff support, the session invokes it in place where it
-// did not.
+// did not. Two forms name no skill: a topic by its unit and name, and a
+// unit alone, the start menu's Continue, where it stands.
 
 const fs = require('fs');
 const path = require('path');
@@ -350,17 +351,79 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
   });
 });
 
+describe('engine handoff unit — Continue, into the unit where it stands (19.1.3, E6)', () => {
+  let dir;
+  beforeEach(() => { dir = seed(); });
+  afterEach(() => cleanupFixture(dir));
+
+  const PHASE = Object.freeze({ name: 'One', sections: [], scenarios: [], relies_on: [] });
+  const CLOSED = Object.freeze({ items: {}, closed: '2026-01-01T00:00:00Z' });
+  /** A unit's one topic, at a status, in a phase. @param {string} phase @param {string} unit @param {string} status */
+  const item = (phase, unit, status) => ({ [phase]: { items: { [unit]: { status } } } });
+
+  it('19.S2, 19.S3: a feature mid-discussion goes straight into its discussion, a bugfix into its investigation, a quick-fix into its own session, and a unit in its spec, its build or its review into that phase — no menu between', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix' });
+    createManifest(dir, 'typo', { work_type: 'quick-fix' });
+    createManifest(dir, 'specced', { phases: item('discussion', 'specced', 'completed') });
+    createFile(dir, '.leeway/specced/spec.md', '# Spec\n');
+    createManifest(dir, 'building', { phases: item('discussion', 'building', 'completed'), build: { position: 'auto' }, cut: { phases: [PHASE] } });
+    createManifest(dir, 'reviewing', {
+      work_type: 'bugfix', phases: item('investigation', 'reviewing', 'completed'), build: { position: 'auto' }, cut: { phases: [PHASE] },
+      checklists: { 'phase-1-start': CLOSED, 'phase-1-close': CLOSED },
+    });
+    const answers = ['note-window', 'crash', 'typo', 'specced', 'building', 'reviewing'].map((unit) => inline(dir, ['unit', unit]));
+
+    assert.deepStrictEqual(answers, [
+      inlineAnswer('leeway-discussion-process', 'feature note-window', '→ Discussion · note-window'),
+      inlineAnswer('leeway-investigation-process', 'bugfix crash', '→ Investigation · crash'),
+      inlineAnswer('leeway-quick-fix-process', 'quick-fix typo', '→ Implementation · typo'),
+      inlineAnswer('leeway-specification-process', 'feature specced', '→ Specification · specced'),
+      inlineAnswer('leeway-implementation-process', 'feature building', '→ Implementation · building'),
+      inlineAnswer('leeway-review-process', 'bugfix reviewing', '→ Review · reviewing'),
+    ]);
+  });
+
+  it('an epic goes onto its menu, carried as the menu\'s own handoff is', () => {
+    assert.strictEqual(carried(dir, ['unit', 'fumi']), carried(dir, ['leeway-continue-epic', 'fumi']));
+  });
+
+  it('24.S18, P8: a feature whose discussion put an experiment off for later goes to the laboratory while it waits unrun, and back into its discussion once it is concluded or abandoned', () => {
+    const series = (status) => ({ ...item('discussion', 'note-window', 'in-progress'), experiment: { items: { 'note-window': { status: 'in-progress', experiments: { E1: { status, slug: 'speed' } } } } } });
+    createManifest(dir, 'note-window', { phases: series('conceived') });
+    const waiting = inline(dir, ['unit', 'note-window']);
+    createManifest(dir, 'note-window', { phases: series('abandoned') });
+
+    assert.deepStrictEqual([waiting, inline(dir, ['unit', 'note-window'])], [
+      inlineAnswer('leeway-experiment-process', 'feature note-window note-window', '→ Experiment · note-window'),
+      inlineAnswer('leeway-discussion-process', 'feature note-window', '→ Discussion · note-window'),
+    ]);
+  });
+
+  it('refuses another shape, a unit the project lacks, and a closed one — seen through the view, brought back through manage', () => {
+    createManifest(dir, 'shipped', { status: 'completed' });
+    createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
+    const cases = [
+      [[], 'Usage: engine handoff unit <work-unit>'],
+      [['fumi', 'extra'], 'Usage: engine handoff unit <work-unit>'],
+      [['nowhere'], 'there is no work unit "nowhere" — the start menu lists the work in progress'],
+      [['shipped'], 'shipped is completed — closed work is seen through the start menu\'s view, and brought back through manage'],
+      [['dropped'], 'dropped is cancelled — closed work is seen through the start menu\'s view, and brought back through manage'],
+    ];
+    assert.deepStrictEqual(cases.map(([args]) => refuses(dir, ['handoff', 'unit', ...args]).error), cases.map(([, error]) => error));
+  });
+});
+
 describe('engine handoff — refusals', () => {
   let dir;
   beforeEach(() => { dir = seed(); });
   afterEach(() => cleanupFixture(dir));
 
   it('a call naming no skill refuses with the usage', () => {
-    refused(dir, [], /^Usage: engine handoff <skill\|\/skill> \[args …\], or engine handoff topic <work-unit> <topic>$/);
+    refused(dir, [], /^Usage: engine handoff <skill\|\/skill> \[args …\], engine handoff topic <work-unit> <topic>, or engine handoff unit <work-unit>$/);
   });
 
   it('a skill no move into work lands on refuses, naming the targets — scoping among them, no pipeline holding it (19.5.5)', () => {
-    for (const skill of ['leeway-help', 'leeway-bridge', 'leeway-continue-linear', 'leeway-research-process', 'leeway-scoping-process', 'leeway-log-idea', 'leeway-nonsense']) {
+    for (const skill of ['leeway-help', 'leeway-bridge', 'leeway-research-process', 'leeway-scoping-process', 'leeway-log-idea', 'leeway-nonsense']) {
       refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: leeway-discovery, `));
     }
   });

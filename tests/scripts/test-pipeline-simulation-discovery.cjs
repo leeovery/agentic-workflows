@@ -27,10 +27,12 @@ const os = require('os');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
+const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
+const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
 const { spawnSync } = require('child_process');
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, handoff, answerGate, typeAtGate, startKeys, startNew, pickRoute, epicPick, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft,
+  Sim, startUnit, handoff, answerGate, typeAtGate, startPick, startNew, epicPick, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -69,9 +71,9 @@ function inTheProduct(sim) {
   return res;
 }
 
-/** The handoff the roadmap's p makes (the roadmap skill's open_product), its row checked first. @param {Sim} sim */
+/** The handoff the roadmap's p makes (the roadmap skill's open_product), its row checked first, the roadmap opened from the start menu. @param {Sim} sim */
 function roadmapsProduct(sim) {
-  pickRoute(sim, startKeys(sim), 'open_roadmap');
+  startPick(sim, 'r');
   arrive(sim, 'roadmap');
   const keys = LIB.project.roadmapHomeMenu(LIB.roadmap.roadmapState(sim.dir)).keys;
   assert.ok(keys.some((k) => k.key === 'p' && k.action === 'open_product'), 'the roadmap offers the product\'s conversation as p');
@@ -98,9 +100,9 @@ describe('pipeline simulation: discovery\'s entry', () => {
     sim.destroy();
   });
 
-  it('the start menu\'s p, the roadmap\'s p and start\'s s all reach the product\'s conversation, one log carried on across them, each conversation catching up the last (8.S3, 8.S62, 8.S65, 8.S70)', () => {
+  it('the start menu\'s p, the roadmap\'s p and start\'s s all reach the product\'s conversation, one log carried on across them, each conversation catching up the last (8.S3, 8.S62, 8.S65, 8.S70, 19.S27)', () => {
     sim.run(['session', 'repair']);
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     const first = inTheProduct(sim);
     assert.deepStrictEqual([first.started, typeof first.committed], [true, 'string'], 'the first entry opens the session and commits it');
     assert.match(stateGit(sim.dir, ['ls-files', '--', logOf(PRODUCT, 1)]), /session-001\.md/, 'logged in .product/sessions, committed with its start');
@@ -115,7 +117,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
       ['the transcript of session sim-session-1, which last wrote the log, is gone — say so in one line, and carry on from the log']);
 
     const left = transcriptOf(sim, 'sim-session-2');
-    startNew(sim, 'none');
+    startNew(sim);
     inTheProduct(sim);
     assert.deepStrictEqual(named(sim, 'catch up'), [`read ${left} from the log's last write onward, and add to the log what it is missing`],
       'the conversation that ended without a word is named for catch-up at the next return');
@@ -124,7 +126,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
   });
 
   it('the next day\'s opening, after the session was ended, opens the next log and reads where it had got to (8.S69)', () => {
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     inTheProduct(sim);
     fs.appendFileSync(logPath(sim, PRODUCT, 1), '\nLicensing waits on pricing.\n');
 
@@ -154,18 +156,18 @@ describe('pipeline simulation: discovery\'s entry', () => {
     sim.run(['discovery-session', 'close', PRODUCT, '-m', 'discovery(product): end session 001']);
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.map((/** @type {{name: string, sources: string[]}} */ i) => [i.name, i.sources]), [['licensing', [logOf(PRODUCT, 1)]]]);
 
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     const next = inTheProduct(sim);
     assert.strictEqual(next.started, true);
     assert.deepStrictEqual([named(sim, 'session log'), named(sim, 'log'), named(sim, 'research owed')],
       [[logPath(sim, PRODUCT, 1)], [logPath(sim, PRODUCT, 2)], ['no']]);
-    assert.strictEqual(LIB.project.startMenu(LIB.detail.startDetail(sim.dir)).keys.find((k) => k.action === 'open_product')?.label.tail?.startsWith('2 sessions, last on '), true,
+    assert.match(/** @type {any} */ (startMenuScreen(startMenuRead(sim.dir)).rows.find((row) => row.key === 'p')?.label).tail, /^2 sessions, last on /,
       'the start menu\'s row counts the sessions and names the last date');
   });
 
   it('a compaction at either level names the skill, the open log and the log\'s transcript to catch up from (8.S67, 8.S75, 24.S19)', () => {
     mappedEpic(sim, EPIC, ['licensing']);
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     inTheProduct(sim);
     const transcript = transcriptOf(sim, sim.env.CLAUDE_CODE_SESSION_ID);
     const atProduct = carryOn(sim).text;
@@ -182,7 +184,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
 
   it('the level moves in one session: the product to an epic and back, each log ending on a pointer to the next, the position and presence moving with no handoff (8.S71, 24.S20)', () => {
     mappedEpic(sim, EPIC, ['licensing']);
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     inTheProduct(sim);
     const conversation = sim.conversations;
 
@@ -274,7 +276,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     // to its menu, and opening the product's conversation from it resumes
     // the research.
     sim.run(['boot']);
-    pickRoute(sim, startKeys(sim), 'open_product');
+    startPick(sim, 'p');
     inTheProduct(sim);
     assert.deepStrictEqual(named(sim, 'research owed'), ['yes']);
 
@@ -285,7 +287,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.deepStrictEqual(sim.run(['ledger', 'product']).discovery.map((/** @type {{id: string}} */ e) => e.id), [finding], 'the findings landed at the product\'s place');
 
     sim.run(['boot']);
-    startNew(sim, 'none');
+    startNew(sim);
     inTheProduct(sim);
     assert.deepStrictEqual(named(sim, 'research owed'), ['no'], 'a later session does not run it again');
   });

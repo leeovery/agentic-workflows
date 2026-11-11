@@ -280,13 +280,13 @@ describe('the gate shown (3.S6)', () => {
 
   it('a skill\'s gateway records the gate its MENU states, as the engine\'s dispatch does', () => {
     const script = path.join(SKILLS, 'leeway/scripts/gateway.cjs');
-    const res = spawnSync('node', [script, 'view'], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...conversation() } });
+    const res = spawnSync('node', [script, 'manage'], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...conversation() } });
     assert.strictEqual(res.status, 0, res.stderr);
 
     const { gate, question, options: [first] } = shown();
-    assert.deepStrictEqual([gate, question], ['start menu', 'What would you like to do?']);
+    assert.deepStrictEqual([gate, question], ['manage pick', 'Which work unit?']);
     assert.deepStrictEqual(events(), [], 'nothing is logged until the gate is answered');
-    assert.strictEqual(answer(['start menu', '--pick', first.key]).picked, first.key);
+    assert.strictEqual(answer(['manage pick', '--pick', first.key]).picked, first.key);
   });
 });
 

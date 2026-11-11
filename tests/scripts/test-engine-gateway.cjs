@@ -185,40 +185,6 @@ describe('gateway: each menu states a gate of its own', () => {
   });
 });
 
-describe('gateway: a head-of-skill insert is never a gate', () => {
-  const INSERT = /^!`node \.claude\/skills\/(.+?)`$/gm;
-  const inserts = fs.readdirSync(SKILLS).flatMap((skill) => {
-    const file = path.join(SKILLS, skill, 'SKILL.md');
-    if (!fs.existsSync(file)) return [];
-    return [...fs.readFileSync(file, 'utf8').matchAll(INSERT)].map((m) => ({ skill, argv: m[1].split(' ') }));
-  });
-
-  let dir;
-  beforeEach(() => {
-    dir = setupFixture();
-    const items = (phase, name, status) => ({ [phase]: { items: { [name]: { status } } } });
-    for (const [type, phase] of [['epic', 'discussion'], ['feature', 'discussion'], ['bugfix', 'investigation'], ['quick-fix', 'planning']]) {
-      createManifest(dir, `live-${type}`, { work_type: type, phases: items(phase, type === 'epic' ? 'auth' : `live-${type}`, 'in-progress') });
-      createManifest(dir, `done-${type}`, { work_type: type, status: 'completed', phases: items(phase, type === 'epic' ? 'auth' : `done-${type}`, 'completed') });
-    }
-    createFile(dir, '.leeway/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
-  });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('finds the inserts it guards', () => {
-    assert.ok(inserts.length > 0, 'no head insert found — the scan would pass vacuously');
-  });
-
-  for (const { skill, argv } of inserts) {
-    it(`${skill}: the insert answers without a MENU section`, () => {
-      const res = spawnSync('node', [path.join(SKILLS, argv[0]), ...argv.slice(1)], { cwd: dir, encoding: 'utf8' });
-      assert.strictEqual(res.status, 0, res.stderr);
-      assert.ok(res.stdout.trim().length > 0, 'the insert answered nothing');
-      assert.doesNotMatch(res.stdout, /^=== MENU/m);
-    });
-  }
-});
-
 // A context-refresh recovery reads state and carries on with nothing shown;
 // the gate the flow resumes at is fetched by the step that shows it. Every
 // command a recovery names — a full `node .claude/skills/…` call, or an
@@ -323,11 +289,9 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     });
   }
 
-  // Every linear unit with an earlier phase to revisit, and a migrated unit
-  // of a retired type waiting on the migration's cut, its way back alone;
-  // the epic holds a cancelled topic, a topic postponed to the
-  // roadmap and a plan blocked on a dependency, so each of its sub-views
-  // offers rows.
+  // A linear unit to manage; the epic holds a cancelled topic, a topic
+  // postponed to the roadmap and a plan blocked on a dependency, so each of
+  // its sub-views offers rows.
   const WORLDS = {
     live: (/** @type {string} */ dir) => {
       projectManifest(dir);
@@ -350,21 +314,11 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
         },
       });
       linearUnit(dir, 'live-feature', 'feature', 'planning', 'implementation');
-      linearUnit(dir, 'live-bugfix', 'bugfix', 'investigation', 'specification');
-      linearUnit(dir, 'live-quickfix', 'quick-fix', 'planning', 'implementation');
-      createManifest(dir, 'live-policy', {
-        work_type: 'cross-cutting',
-        phases: { discussion: { items: { 'live-policy': { status: 'completed' } } }, specification: { items: { 'live-policy': { status: 'completed' } } } },
-      });
     },
-    // No active work: the start view's empty state, every conditional row on.
-    quiet: projectManifest,
   };
 
   /** @type {[string, string[], keyof typeof WORLDS][]} */
   const CALLS = [
-    ['leeway', ['view'], 'live'],
-    ['leeway', ['view'], 'quiet'],
     ['leeway', ['manage', 'live-feature'], 'live'],
     ['leeway-continue-epic', ['view', 'live-epic'], 'live'],
     ['leeway-continue-epic', ['completed-menu', 'live-epic'], 'live'],
@@ -372,10 +326,6 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     ['leeway-continue-epic', ['reactivate-menu', 'live-epic'], 'live'],
     ['leeway-continue-epic', ['postpone-menu', 'live-epic'], 'live'],
     ['leeway-continue-epic', ['pull-forward-menu', 'live-epic'], 'live'],
-    ['leeway-continue-linear', ['view', 'live-feature'], 'live'],
-    ['leeway-continue-linear', ['view', 'live-bugfix'], 'live'],
-    ['leeway-continue-linear', ['view', 'live-quickfix'], 'live'],
-    ['leeway-continue-linear', ['view', 'live-policy'], 'live'],
     ['leeway-roadmap', ['view'], 'live'],
   ];
 

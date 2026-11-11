@@ -41,7 +41,7 @@ describe('pipeline simulation: epic map', () => {
 
   it('epic: map lifecycle, per-topic discussions, mail, presence, cancel/reactivate, the map\'s verbs', () => {
     const wu = 'overhaul';
-    startNew(sim, 'epic');
+    startNew(sim);
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Payments overhaul', '--session-log-file', log]);
     // The work-type commit opened the session; discovery's run step labels
@@ -96,7 +96,7 @@ describe('pipeline simulation: epic map', () => {
     assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /Discussion completed for "Overhaul"\./);
     // The menu's way back: the start menu, the epic still its row.
     assert.ok(backToStart(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys)
-      .some((k) => k.action === 'continue_work_unit' && k.route === `/leeway-continue-epic ${wu}`));
+      .some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`));
 
     // Beta discussed to its decided screen, a background review's back-off
     // walked on the way; gamma-prime cancelled mid-flight and reactivated

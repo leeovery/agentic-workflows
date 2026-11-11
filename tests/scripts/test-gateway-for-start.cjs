@@ -8,9 +8,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/leeway/scripts/gateway.cjs');
+const { discover } = require('../../skills/leeway/scripts/gateway.cjs');
 
 const ADAPTER = path.join(__dirname, '../../skills/leeway/scripts/gateway.cjs');
 
@@ -19,49 +19,28 @@ describe('leeway discovery', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('returns empty state when no work units exist', () => {
+  /** @param {{work_units: {name: string}[]}} group */
+  const names = (group) => group.work_units.map(({ name }) => name);
+
+  it('lists nothing when no work units exist', () => {
     const r = discover(dir);
-    assert.strictEqual(r.state.has_any_work, false);
-    assert.strictEqual(r.state.epic_count, 0);
-    assert.strictEqual(r.state.feature_count, 0);
-    assert.strictEqual(r.state.bugfix_count, 0);
+    assert.deepStrictEqual([r.epics, r.features, r.bugfixes, r.quick_fixes].map(names), [[], [], [], []]);
+    assert.deepStrictEqual([r.completed, r.cancelled], [[], []]);
   });
 
-  it('groups work units by type', () => {
+  it('groups the units in progress by type, the closed ones apart', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     createManifest(dir, 'dark-mode', { work_type: 'feature' });
     createManifest(dir, 'login-crash', { work_type: 'bugfix' });
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix' });
+    createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed', phases: { review: { items: { a: { status: 'completed' } } } } });
+    createManifest(dir, 'old', { work_type: 'feature', status: 'completed' });
     const r = discover(dir);
-    assert.strictEqual(r.state.has_any_work, true);
-    assert.strictEqual(r.state.epic_count, 1);
-    assert.strictEqual(r.state.feature_count, 1);
-    assert.strictEqual(r.state.bugfix_count, 1);
-    assert.strictEqual(r.epics.work_units[0].name, 'v1');
-    assert.strictEqual(r.features.work_units[0].name, 'dark-mode');
-    assert.strictEqual(r.bugfixes.work_units[0].name, 'login-crash');
+    assert.deepStrictEqual([r.epics, r.features, r.bugfixes, r.quick_fixes].map(names), [['v1'], ['dark-mode'], ['login-crash'], ['rename-api']]);
+    assert.deepStrictEqual(r.features.work_units[0], { name: 'dark-mode', work_type: 'feature' });
   });
 
-  it('computes next_phase for feature pipeline', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.features.work_units[0].next_phase, 'specification');
-    assert.strictEqual(r.features.work_units[0].phase_label, 'ready for specification');
-  });
-
-  it('computes next_phase for bugfix pipeline', () => {
-    createManifest(dir, 'crash', {
-      work_type: 'bugfix',
-      phases: { investigation: { items: { crash: { status: 'in-progress' } } } },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.bugfixes.work_units[0].next_phase, 'investigation');
-    assert.strictEqual(r.bugfixes.work_units[0].phase_label, 'investigation (in-progress)');
-  });
-
-  it('epic stays active when one topic completes review with others mid-pipeline', () => {
+  it('an epic stays listed with one topic reviewed and others mid-pipeline, and a feature in review is never filtered out', () => {
     createManifest(dir, 'mint', {
       work_type: 'epic',
       phases: {
@@ -76,104 +55,27 @@ describe('leeway discovery', () => {
         review: { items: { 'cli-presentation': { status: 'completed' } } },
       },
     });
-    const r = discover(dir);
-    assert.strictEqual(r.state.has_any_work, true);
-    assert.strictEqual(r.state.epic_count, 1);
-    assert.strictEqual(r.epics.work_units[0].name, 'mint');
-  });
-
-  it('epic with completed status is not listed as active', () => {
-    createManifest(dir, 'shipped', {
-      work_type: 'epic',
-      status: 'completed',
-      phases: { review: { items: { a: { status: 'completed' } } } },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.state.epic_count, 0);
-  });
-
-  it('skips archived work units', () => {
-    createManifest(dir, 'old', { work_type: 'feature', status: 'completed' });
-    createManifest(dir, 'active', { work_type: 'feature' });
-    const r = discover(dir);
-    assert.strictEqual(r.state.feature_count, 1);
-    assert.strictEqual(r.features.work_units[0].name, 'active');
-  });
-
-  it('handles multiple features', () => {
-    createManifest(dir, 'a', { work_type: 'feature', phases: { discussion: { items: { a: { status: 'in-progress' } } } } });
-    createManifest(dir, 'b', { work_type: 'feature', phases: { specification: { items: { b: { status: 'completed' } } } } });
-    const r = discover(dir);
-    assert.strictEqual(r.state.feature_count, 2);
-    assert.strictEqual(r.features.work_units.length, 2);
-  });
-
-  it('epic includes active_phases', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { exploration: { status: 'completed' }, auth: { status: 'in-progress' } } },
-        specification: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.deepStrictEqual(r.epics.work_units[0].active_phases, ['discussion', 'specification']);
-  });
-
-  it('epic with no phases has empty active_phases', () => {
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    const r = discover(dir);
-    assert.deepStrictEqual(r.epics.work_units[0].active_phases, []);
-  });
-
-  it('feature/bugfix units include phase_label', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
-    });
-    createManifest(dir, 'crash', {
-      work_type: 'bugfix',
-      phases: { investigation: { items: { crash: { status: 'completed' } } } },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.features.work_units[0].phase_label, 'discussion (in-progress)');
-    assert.strictEqual(r.bugfixes.work_units[0].phase_label, 'ready for specification');
-  });
-
-  it('has_any_work counts a unit in progress — only closed units leave it false', () => {
-    createManifest(dir, 'archived', { work_type: 'feature', status: 'completed' });
-    assert.strictEqual(discover(dir).state.has_any_work, false);
-    createManifest(dir, 'tidy', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
-    assert.strictEqual(discover(dir).state.has_any_work, true);
-  });
-
-  it('groups quick-fix work units separately', () => {
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix' });
-    createManifest(dir, 'auth', { work_type: 'feature' });
-    const r = discover(dir);
-    assert.strictEqual(r.state.quickfix_count, 1);
-    assert.strictEqual(r.quick_fixes.work_units[0].name, 'rename-api');
-    assert.strictEqual(r.state.feature_count, 1);
-    assert.strictEqual(r.state.has_any_work, true);
-  });
-
-  it('quick-fix includes phase_label: its fixes in flight once begun (19.5.14)', () => {
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
-    const r = discover(dir);
-    assert.strictEqual(r.quick_fixes.work_units[0].phase_label, 'implementation (in-progress)');
-  });
-
-  it('P12: a quick-fix its old scoping made, every phase of it completed, waits on the cut: its close is what completes a quick-fix', () => {
-    createManifest(dir, 'done-qf', {
-      work_type: 'quick-fix',
       phases: {
-        planning: { items: { 'done-qf': { status: 'completed' } } },
-        implementation: { items: { 'done-qf': { status: 'completed' } } },
-        review: { items: { 'done-qf': { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed' } } },
+        planning: { items: { auth: { status: 'completed' } } },
+        implementation: { items: { auth: { status: 'completed' } } },
+        review: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    const [unit] = discover(dir).quick_fixes.work_units;
-    assert.strictEqual(unit.phase_label, 'waiting on the migration\'s cut');
+    const r = discover(dir);
+    assert.deepStrictEqual([names(r.epics), names(r.features)], [['mint'], ['auth']]);
+  });
+
+  it('lists the completed and the cancelled units apart, each with the phase it closed in', () => {
+    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
+    createManifest(dir, 'cancelled-bug', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { 'cancelled-bug': { status: 'completed' } } } } });
+    createManifest(dir, 'active-feat', { work_type: 'feature', phases: { discussion: { items: { 'active-feat': { status: 'in-progress' } } } } });
+    const r = discover(dir);
+    assert.deepStrictEqual(r.completed, [{ name: 'done-feat', work_type: 'feature', status: 'completed', last_phase: 'review' }]);
+    assert.deepStrictEqual(r.cancelled, [{ name: 'cancelled-bug', work_type: 'bugfix', status: 'cancelled', last_phase: 'investigation' }]);
   });
 
   it('discovers inbox quickfixes', () => {
@@ -188,59 +90,7 @@ describe('leeway discovery', () => {
   it('includes quickfixes in inbox total_count', () => {
     createFile(dir, '.leeway/.inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
     createFile(dir, '.leeway/.inbox/quickfixes/2026-03-28--qf.md', '# QF\n\nContent.');
-    const r = discover(dir);
-    assert.strictEqual(r.inbox.total_count, 2);
-    assert.strictEqual(r.state.inbox_count, 2);
-  });
-
-  it('epic active_phases ignores flat status with no items', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: { discussion: { status: 'in-progress' } },
-    });
-    const r = discover(dir);
-    assert.deepStrictEqual(r.epics.work_units[0].active_phases, []);
-  });
-
-  it('includes completed work units in separate array', () => {
-    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    createManifest(dir, 'active-feat', { work_type: 'feature', phases: { discussion: { items: { 'active-feat': { status: 'in-progress' } } } } });
-    const r = discover(dir);
-    assert.strictEqual(r.completed_count, 1);
-    assert.strictEqual(r.completed[0].name, 'done-feat');
-    assert.strictEqual(r.completed[0].work_type, 'feature');
-    assert.strictEqual(r.completed[0].last_phase, 'review');
-  });
-
-  it('includes cancelled work units in separate array', () => {
-    createManifest(dir, 'cancelled-bug', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { 'cancelled-bug': { status: 'completed' } } } } });
-    const r = discover(dir);
-    assert.strictEqual(r.cancelled_count, 1);
-    assert.strictEqual(r.cancelled[0].name, 'cancelled-bug');
-    assert.strictEqual(r.cancelled[0].last_phase, 'investigation');
-  });
-
-  it('completed and cancelled counts are zero when none exist', () => {
-    createManifest(dir, 'active', { work_type: 'feature', phases: { discussion: { items: { active: { status: 'in-progress' } } } } });
-    const r = discover(dir);
-    assert.strictEqual(r.completed_count, 0);
-    assert.strictEqual(r.cancelled_count, 0);
-  });
-
-  it('feature in review (in-progress) is not filtered out', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'completed' } } },
-        planning: { items: { auth: { status: 'completed' } } },
-        implementation: { items: { auth: { status: 'completed' } } },
-        review: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.features.count, 1);
-    assert.strictEqual(r.features.work_units[0].next_phase, 'review');
+    assert.strictEqual(discover(dir).inbox.total_count, 2);
   });
 
   it('discovers inbox ideas', () => {
@@ -250,8 +100,6 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.inbox.ideas[0].slug, 'smart-retry');
     assert.strictEqual(r.inbox.ideas[0].date, '2026-03-19');
     assert.strictEqual(r.inbox.ideas[0].title, 'Smart Retry Logic');
-    assert.strictEqual(r.state.has_inbox, true);
-    assert.strictEqual(r.state.inbox_count, 1);
   });
 
   it('discovers inbox bugs', () => {
@@ -261,7 +109,6 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.inbox.bugs[0].slug, 'login-timeout');
     assert.strictEqual(r.inbox.bugs[0].date, '2026-03-18');
     assert.strictEqual(r.inbox.bugs[0].title, 'Login Timeout');
-    assert.strictEqual(r.state.has_inbox, true);
   });
 
   it('discovers mixed inbox ideas and bugs', () => {
@@ -272,7 +119,6 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.inbox.idea_count, 2);
     assert.strictEqual(r.inbox.bug_count, 1);
     assert.strictEqual(r.inbox.total_count, 3);
-    assert.strictEqual(r.state.inbox_count, 3);
   });
 
   it('returns empty inbox when no inbox directory exists', () => {
@@ -280,8 +126,6 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.inbox.idea_count, 0);
     assert.strictEqual(r.inbox.bug_count, 0);
     assert.strictEqual(r.inbox.total_count, 0);
-    assert.strictEqual(r.state.has_inbox, false);
-    assert.strictEqual(r.state.inbox_count, 0);
   });
 
   it('skips inbox files that do not match expected filename format', () => {
@@ -318,124 +162,8 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.inbox.archived.total_count, 1);
   });
 
-  it('exposes has_archived and archived_count in state', () => {
-    createFile(dir, '.leeway/.inbox/.archived/quickfixes/2026-03-28--gone.md', '# Gone\n\nContent.');
-    const r = discover(dir);
-    assert.strictEqual(r.state.has_archived, true);
-    assert.strictEqual(r.state.archived_count, 1);
-  });
-
   it('returns empty archived when no archived directory exists', () => {
-    const r = discover(dir);
-    assert.strictEqual(r.inbox.archived.total_count, 0);
-    assert.strictEqual(r.state.has_archived, false);
-    assert.strictEqual(r.state.archived_count, 0);
-  });
-});
-
-describe('leeway format', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('empty project pins the full dump byte-exactly', () => {
-    const out = format(discover(dir));
-    assert.strictEqual(out, [
-      '=== EPICS ===',
-      '=== FEATURES ===',
-      '=== BUGFIXES ===',
-      '=== QUICK-FIXES ===',
-      '=== STATE ===',
-      'has_any_work: false',
-      'counts: 0 epic, 0 feature, 0 bugfix, 0 quick-fix',
-      'completed_count: 0',
-      'cancelled_count: 0',
-      'has_inbox: false',
-      'inbox_count: 0',
-      'has_archived: false',
-      'archived_count: 0',
-      '',
-    ].join('\n'));
-  });
-
-  it('populated project pins the full dump byte-exactly', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { exploration: { status: 'completed' }, auth: { status: 'in-progress' } } },
-      },
-    });
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
-    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { dropped: { status: 'completed' } } } } });
-    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
-    createFile(dir, '.leeway/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
-    createFile(dir, '.leeway/.inbox/quickfixes/2026-03-28--bump-dep.md', '# Bump Dep\n\nContent.');
-    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-03-01--old-idea.md', '# Old Idea\n\nContent.');
-    const out = format(discover(dir));
-    assert.strictEqual(out, [
-      '=== EPICS ===',
-      '  v1',
-      '=== FEATURES ===',
-      '  auth',
-      '=== BUGFIXES ===',
-      '  crash',
-      '=== QUICK-FIXES ===',
-      '  rename-api',
-      '=== COMPLETED ===',
-      '  done-feat (feature, last phase: review)',
-      '=== CANCELLED ===',
-      '  dropped (bugfix, last phase: investigation)',
-      '=== INBOX ===',
-      '  smart-retry (idea, 2026-03-19) — Smart Retry',
-      '  login-timeout (bug, 2026-03-18) — Login Timeout',
-      '  bump-dep (quick-fix, 2026-03-28) — Bump Dep',
-      '=== ARCHIVED ===',
-      '  old-idea (idea, 2026-03-01) — Old Idea',
-      '=== STATE ===',
-      'has_any_work: true',
-      'counts: 1 epic, 1 feature, 1 bugfix, 1 quick-fix',
-      'completed_count: 1',
-      'cancelled_count: 1',
-      'has_inbox: true',
-      'inbox_count: 3',
-      'has_archived: true',
-      'archived_count: 1',
-      '',
-    ].join('\n'));
-  });
-
-  it('shows (last phase: none) for a closed unit with nothing completed', () => {
-    createManifest(dir, 'never-started', { work_type: 'feature', status: 'cancelled' });
-    const out = format(discover(dir));
-    assert.ok(out.includes('  never-started (feature, last phase: none)'));
-  });
-
-  it('inbox item with no H1 falls back to the slug as its title', () => {
-    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
-    const out = format(discover(dir));
-    assert.ok(out.includes('  no-title (idea, 2026-03-19) — no-title'));
-  });
-
-  it('omits COMPLETED, CANCELLED, INBOX, and ARCHIVED sections when empty', () => {
-    const out = format(discover(dir));
-    assert.ok(!out.includes('=== COMPLETED ==='));
-    assert.ok(!out.includes('=== CANCELLED ==='));
-    assert.ok(!out.includes('=== INBOX ==='));
-    assert.ok(!out.includes('=== ARCHIVED ==='));
-  });
-
-  it('carries no phase labels or active phases — the view verb owns them', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: { discussion: { items: { exploration: { status: 'completed' } } } },
-    });
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    const out = format(discover(dir));
-    assert.ok(!out.includes('  v1 ('));
-    assert.ok(!out.includes('  auth ('));
+    assert.strictEqual(discover(dir).inbox.archived.total_count, 0);
   });
 });
 
@@ -495,9 +223,19 @@ describe('leeway sub-view sections', () => {
     assert.ok(!out.includes('=== MENU'), out);
   });
 
-  it('reads the brownfield research owed from the project manifest, the p row noting it (8.12.13)', () => {
-    createFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' }));
-    assert.match(run(['view']), /^\*\*`p\/product`\*\* +→ Talk about the product — \*research owed\*$/m);
+  it('a call naming no verb is refused with the usage, every verb in it', () => {
+    const res = spawnSync('node', [ADAPTER], { cwd: dir, encoding: 'utf8' });
+    assert.deepStrictEqual([res.status, res.stdout, res.stderr], [1, '',
+      'Error: a verb is required\nUsage: gateway.cjs <inbox|archived|working-set|working-set-add-gate|working-set-drop-gate|manage|completed> [args…]\n']);
+  });
+
+  it('the inbox offers the archived items once one is archived, and only then', () => {
+    createFile(dir, '.leeway/.inbox/ideas/2026-05-02--live-idea.md', '# Live Idea\n');
+    const before = run(['inbox']);
+    assert.ok(before.includes('has_archived: false\n') && !before.includes('a/archived'), before);
+    createFile(dir, '.leeway/.inbox/.archived/quickfixes/2026-03-28--gone.md', '# Gone\n');
+    const after = run(['inbox']);
+    assert.ok(after.includes('has_archived: true\n') && after.includes('**`a/archived`** → View archived items (restore or delete)'), after);
   });
 
   it('a set of any mix offers work and the roadmap row, its pre-seed the largest shape in it — never a blocker', () => {

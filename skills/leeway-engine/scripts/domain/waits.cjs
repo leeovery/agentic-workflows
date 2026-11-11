@@ -50,8 +50,8 @@ const { decidedDraws } = require('./decided.cjs');
 const { readyDraws } = require('./ready-to-build.cjs');
 const { finishDraws } = require('./finish.cjs');
 const { specUnderWay } = require('./spec-standing.cjs');
-const { nowOf, unitRead } = require('./projections/board-standing.cjs');
 const { phaseSkill } = require('./handoff.cjs');
+const { phaseNow } = require('./unit-handoff.cjs');
 const {
   buildFinished, quickFixBuild, fixesBegun, reviewAsked, tasksBegun, itemOf, mailPhase, topicTitle,
 } = require('./derivations.cjs');
@@ -60,7 +60,10 @@ const {
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./raise.cjs').Seal} Seal */
 
-/** @typedef {'map'|'decided'|'ready'|'finish'|'question'|'affected'|'verdict'} WaitKind */
+/** Every kind of wait (the header's). */
+const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish', 'question', 'affected', 'verdict']));
+
+/** @typedef {typeof WAIT_KINDS[number]} WaitKind */
 /**
  * A wait (the header's): its kind; its id — a question's number or short
  * id, a topic's name, a gate's own; its words; the topic it is about, where
@@ -86,9 +89,6 @@ const intoTopic = (manifest, topic) => ({ kind: 'engine', argv: ['handoff', 'top
 
 /** The verdict page's door, drawn for the unit. @param {string} unit @returns {Next} */
 const verdictsOf = (unit) => ({ kind: 'engine', argv: ['render', 'verdicts', '--unit', unit] });
-
-/** The phase each place the board has a unit come to is entered as, where it is not its own name. @type {Readonly<Record<string, string>>} */
-const ENTERED_AS = Object.freeze({ build: 'implementation' });
 
 /** The phase a unit's tasks are built in now: its review once its build has finished, or a quick-fix's review asked for; else its build. @param {Record<string, any>} manifest */
 const buildPlace = (manifest) => ((quickFixBuild(manifest) ? reviewAsked(manifest) : buildFinished(manifest)) ? 'review' : 'implementation');
@@ -176,8 +176,8 @@ function specWaits(cwd, manifest, warnings) {
  * @returns {(topic: string) => Next}
  */
 function affectedDoor(cwd, manifest, phase) {
-  const now = nowOf(unitRead(cwd, manifest)).phase;
-  return now === phase ? (topic) => intoTopic(manifest, topic) : () => intoPhase(manifest, ENTERED_AS[now] ?? now);
+  const now = phaseNow(cwd, manifest);
+  return now === phase ? (topic) => intoTopic(manifest, topic) : () => intoPhase(manifest, now);
 }
 
 /** Each decided topic an answer it relied on, replaced since, holds (10.2.6). @param {string} cwd @param {Shower} shower @param {string} root @param {Record<string, any>} manifest @returns {Wait[]} */
@@ -234,4 +234,4 @@ function waitsOf(cwd, manifests, { verdicts = false, session = null, shower = nu
   return { waits, warnings };
 }
 
-module.exports = { waitsOf };
+module.exports = { WAIT_KINDS, waitsOf };

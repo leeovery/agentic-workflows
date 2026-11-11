@@ -73,11 +73,10 @@ engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / 
 
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
-engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
+engine.detail.startDetail(cwd)                    // → StartDetail (the units in progress by type, the closed ones, the inbox)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: the work-type pre-seed, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null
-engine.detail.activeWorkUnit(cwd, wu)             // → { type, unit: WorkUnitEntry } — one single-topic unit in progress (feature | bugfix | quick-fix, or a migrated unit of a retired type, waiting on the migration's cut), its type read from its manifest; null otherwise
 engine.detail.phaseTargets(cwd, manifest, nextPhase) // → { next, revisit } — where each single-topic route enters: next, the {phase, topic} of the next phase, topic naming the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise; revisit, the phases of the revisit candidates (completed phases before nextPhase, pipeline-filtered, never the experiment, a decided discussion or the spec, nor a phase entered at a topic once the unit is past its spec), each entered by the unit alone
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` table's lines — each key's `key` and `word` (`—` for none), then `cells(key)` under `columns`
@@ -91,10 +90,6 @@ engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, di
 engine.project.epicPostponeMenu(detail, { presence }) // → { keys, title, display, rendered } — Postponable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
 engine.project.epicPullForwardMenu(detail)        // → { keys, title, display, rendered } — Postponed Topics pick menu over the topics this epic postponed that still wait, each row naming its horizon; the key carries the roadmap item's own name
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
-engine.project.startOverview(detail)              // → Workflow Overview display block
-engine.project.startMenu(detail)                  // → { keys, rendered } — continue entries + start/lifecycle options
-engine.project.emptyOverview(detail)              // → empty-state overview block
-engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
 engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies; { data, display } when the inbox is empty
 engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
 engine.project.workingSetView(ws, summaries)      // → { data, title, display, menu } — set tree and menu
@@ -104,9 +99,6 @@ engine.project.manageListView(detail)             // → { data, menu, rows } �
 engine.project.manageUnitView(md)                 // → { data, menu } — the action menu
 engine.project.absorbTargetMenu(md)               // → MENU: absorb target — the render absorb-target surface
 engine.project.completedView(detail)              // → { data, menu, rows } — completed & cancelled pick menu; { data, display, rows } when nothing is closed
-engine.project.workUnitStatus(type, unit)         // → status display block (pipeline tree)
-engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
-engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
 engine.project.phaseRoute(type, phase, wu, topic) // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`, `{topic}` appended where a target names one and the phase is entered at a topic) — the bridge gateway's `next_route` and `revisit_routes`
 engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section over phaseTargets' revisit candidates ('' when none)
 
