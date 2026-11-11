@@ -2051,7 +2051,7 @@ function areaNamed(filling, warnings) {
 /** The whole change, read once a fill (review-change.cjs). */
 const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
   const { rounds } = reviewOf(filling, warnings);
-  return changeOf(filling.cwd, unitOf(filling), fixPhase(unitManifest(filling), rounds.length), filling.given.base ?? null, reposOf(reviewReading(filling, warnings)));
+  return changeOf(filling.cwd, unitOf(filling), fixPhase(unitManifest(filling), rounds.length), filling.given.base ?? null, reposOf(reviewReading(filling, warnings)), warnings);
 });
 
 /**

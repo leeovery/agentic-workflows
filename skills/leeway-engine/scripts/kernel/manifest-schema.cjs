@@ -175,6 +175,14 @@ const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 // picked there and switched since through `workunit position`.
 const BUILD_POSITIONS = /** @type {const} */ (['auto', 'step']);
 
+// The landing record (landing-record.cjs, 7.2.22): the unit's manifest holds
+// each task's landing as `landings`, by the task's internal id, then the
+// repository's folder in the project, `.` for its own — `{commit, tip,
+// first, by, at}`, `by` one of `LANDING_BY` — written by the engine alone.
+const LANDINGS = 'landings';
+const LANDING_RECORD_FIELDS = Object.freeze(['commit', 'tip', 'first', 'by', 'at']);
+const LANDING_BY = Object.freeze(['engine', 'read']);
+
 // Phase-item statuses that end a topic's life in its phase — excluded from
 // aggregation. One vocabulary for every consumer (derivations, the position,
 // the engine's topic reads).
@@ -267,6 +275,9 @@ module.exports = {
   EXPERIMENT_SPAWN_PHASES,
   VALID_WORK_UNIT_STATUSES,
   BUILD_POSITIONS,
+  LANDINGS,
+  LANDING_RECORD_FIELDS,
+  LANDING_BY,
   TERMINAL_STATUSES,
   PRODUCT,
   PROJECT_IDENTITIES,

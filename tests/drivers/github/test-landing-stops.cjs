@@ -260,7 +260,7 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.deepStrictEqual([pulls(dir), tipOnGithub(dir, card.branch)], [[], theirs]);
   });
 
-  it('the push names its branch whatever the person\'s push settings, carries no tag, and git never waits on a prompt — the fetch and the push as a task opens, and the fetches as its phase merges, run with git\'s prompt off, as the state branch\'s do', () => {
+  it('the push names its branch whatever the person\'s push settings, carries no tag, and git never waits on a prompt — the fetch and the push as a task opens, the fetches as its phase merges, and the push of the state commit recording its landing, each with git\'s prompt off', () => {
     const dir = project();
     git(dir, ['config', 'remote.origin.push', 'refs/heads/*:refs/heads/elsewhere/*']);
     git(dir, ['config', 'push.followTags', 'true']);
@@ -277,7 +277,7 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
       );
       ok(dir, ['land', 'phase', 'pay', '1']);
 
-      assert.deepStrictEqual(fs.readFileSync(seen, 'utf8').split('\n').filter(Boolean), ['0', '0', '0', '0']);
+      assert.deepStrictEqual(fs.readFileSync(seen, 'utf8').split('\n').filter(Boolean), ['0', '0', '0', '0', '0']);
     } finally {
       fs.rmSync(bin, { recursive: true, force: true });
     }

@@ -32,6 +32,7 @@ const {
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
+  LANDINGS,
 } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -84,6 +85,13 @@ function parseProjectPath(pathArg) {
 function refuseProjectId(fieldSegments) {
   if (fieldSegments[0] === 'project_id') {
     fail('project_id is the engine\'s own: it mints it as it creates the state, and it never changes');
+  }
+}
+
+/** Refuse a write or delete of the unit's landing record (landing-record.cjs). @param {string|null} phase @param {string[]} fieldSegments */
+function refuseLandings(phase, fieldSegments) {
+  if (phase === null && fieldSegments[0] === LANDINGS) {
+    fail(`"${LANDINGS}" is the engine's own landing record: a land verb writes it as it lands a task, and a verb acting on a landing as it reads one made by hand`);
   }
 }
 
@@ -880,6 +888,7 @@ function cmdSet(cwd, args) {
     const fieldSegments = write.field.split('.');
     refuseEmptyFieldSegments(write.field, fieldSegments);
     refuseShadowField(phase, topic, fieldSegments);
+    refuseLandings(phase, fieldSegments);
     refuseContainerWrite(fieldSegments);
     const segments = resolveSegments(phase, topic, fieldSegments);
     validateSet(segments, write.value, fieldSegments);
@@ -942,6 +951,7 @@ function cmdPush(cwd, args) {
 
   refuseEmptyFieldSegments(args[1], fieldSegments);
   refuseShadowField(phase, topic, fieldSegments);
+  refuseLandings(phase, fieldSegments);
   if (GUARDED_CONTAINERS.includes(fieldSegments[0])) {
     fail(`"${fieldSegments[0]}" is a guarded state container — its fields take vocabulary values via set, never array pushes`);
   }
@@ -1012,6 +1022,7 @@ function cmdPull(cwd, args) {
   requireWorkUnit(cwd, workUnit);
 
   refuseShadowField(phase, topic, fieldSegments);
+  refuseLandings(phase, fieldSegments);
   const segments = resolveSegments(phase, topic, fieldSegments);
 
   const result = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
@@ -1049,6 +1060,7 @@ function cmdDelete(cwd, args) {
 
   const { workUnit, phase, topic } = parsePath(args[0]);
   const fieldSegments = args[1].split('.');
+  refuseLandings(phase, fieldSegments);
 
   requireWorkUnit(cwd, workUnit);
 
@@ -1121,6 +1133,7 @@ function cmdApply(cwd, args) {
         const fieldSegments = field.split('.');
         refuseEmptyFieldSegments(field, fieldSegments);
         refuseShadowField(phase, topic, fieldSegments);
+        refuseLandings(phase, fieldSegments);
         refuseContainerWrite(fieldSegments);
         const segments = resolveSegments(phase, topic, fieldSegments);
         validateSet(segments, value, fieldSegments);
@@ -1131,6 +1144,7 @@ function cmdApply(cwd, args) {
     if (typeof op.field !== 'string' || op.field === '') {
       fail(`apply: ${at} — "field" must be a non-empty field path`);
     }
+    refuseLandings(phase, op.field.split('.'));
     return { kind: /** @type {const} */ ('delete'), path: op.path, field: op.field, segments: resolveSegments(phase, topic, op.field.split('.')) };
   });
 

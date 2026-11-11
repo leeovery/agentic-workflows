@@ -1,0 +1,96 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The landing record's write (landing-record.cjs, 7.2.22): each landing on
+// the unit's manifest, by its task and its repository, `first` its first
+// landing's commit, `at` the landing commit's committer time, committed to
+// the state branch under a subject naming the tasks; one recorded at that
+// commit already writing nothing; a task landing again taking its new
+// commit, tip, `by` and `at`, `first` kept, and the records of its other
+// repositories left as they are; the record kept through the unit's cancel
+// and reactivate. Domain layer: the write called in process on a project
+// world built once and copied for each test.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, afterEach } = require('node:test');
+const assert = require('node:assert');
+const path = require('path');
+
+const { ok, git, head, lastMessage, readManifest, createFile, commitCode, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
+const { recordLandings } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-record.cjs'));
+
+const UNIT = 'pay';
+
+const world = fixtureFrom('engine-landing-record-', (template) => {
+  createManifest(template, UNIT, { created: '2026-07-01' });
+  ok(template, ['manifest', 'set', 'project.work_units.pay.work_type', 'feature']);
+  commitAll(template, 'pay made');
+  for (const name of ['one', 'two', 'three']) {
+    createFile(template, `${name}.txt`, `${name}\n`);
+    commitCode(template, name);
+  }
+});
+
+/** @type {string|null} */
+let dir = null;
+afterEach(() => {
+  if (dir !== null) cleanupFixture(dir);
+  dir = null;
+});
+
+/** A copy of the world, with its code commits oldest first. */
+const project = () => {
+  dir = world();
+  return { at: dir, commits: git(dir, ['log', '--reverse', '--format=%H', 'main']).trim().split('\n').slice(-3) };
+};
+
+/** The commit's committer time, as the record holds it. @param {string} at @param {string} sha */
+const timeOf = (at, sha) => new Date(git(at, ['log', '-1', '--format=%cI', sha]).trim()).toISOString();
+
+/** A landing of the task `n` of phase 1 in the repository `repo`. @param {string} at @param {number} n @param {string} commit @param {string} tip @param {'engine'|'read'} by @param {string} [repo] */
+const landing = (at, n, commit, tip, by, repo = '.') => ({ id: `${UNIT}-1-${n}`, repo, root: at, commit, tip, by });
+
+describe('the landing record\'s write (7.2.22)', () => {
+  it('records each landing at its commit, first that commit, at its committer time, in one state commit naming the tasks', () => {
+    const { at, commits: [one, two, three] } = project();
+    const warnings = [];
+    const wrote = recordLandings(at, UNIT, [landing(at, 2, three, two, 'engine'), landing(at, 1, three, one, 'engine')], warnings);
+
+    assert.deepStrictEqual([wrote, warnings, readManifest(at, UNIT).landings, lastMessage(at)], [true, [], {
+      [`${UNIT}-1-2`]: { '.': { commit: three, tip: two, first: three, by: 'engine', at: timeOf(at, three) } },
+      [`${UNIT}-1-1`]: { '.': { commit: three, tip: one, first: three, by: 'engine', at: timeOf(at, three) } },
+    }, `land(${UNIT}): record 1.2, 1.1 landed`]);
+  });
+
+  it('a landing recorded at its commit already writes nothing, and commits nothing', () => {
+    const { at, commits: [one, two] } = project();
+    recordLandings(at, UNIT, [landing(at, 1, two, one, 'engine')], []);
+    const before = head(at);
+
+    assert.deepStrictEqual([recordLandings(at, UNIT, [landing(at, 1, two, one, 'read')], []), head(at), readManifest(at, UNIT).landings[`${UNIT}-1-1`]['.'].by], [false, before, 'engine']);
+  });
+
+  it('a task landing again takes its new commit, tip, by and at, first kept, its record in another repository left as it is (R30)', () => {
+    const { at, commits: [one, two, three] } = project();
+    recordLandings(at, UNIT, [landing(at, 1, one, one, 'engine'), landing(at, 1, one, one, 'engine', 'ext')], []);
+    recordLandings(at, UNIT, [landing(at, 1, three, two, 'read')], []);
+
+    assert.deepStrictEqual(readManifest(at, UNIT).landings[`${UNIT}-1-1`], {
+      '.': { commit: three, tip: two, first: one, by: 'read', at: timeOf(at, three) },
+      ext: { commit: one, tip: one, first: one, by: 'engine', at: timeOf(at, one) },
+    });
+  });
+
+  it('keeps the record through the unit\'s cancel and reactivate', () => {
+    const { at, commits: [one] } = project();
+    recordLandings(at, UNIT, [landing(at, 1, one, one, 'engine')], []);
+    const recorded = readManifest(at, UNIT).landings;
+    ok(at, ['workunit', 'cancel', UNIT]);
+    ok(at, ['workunit', 'reactivate', UNIT]);
+
+    assert.deepStrictEqual(readManifest(at, UNIT).landings, recorded);
+  });
+});

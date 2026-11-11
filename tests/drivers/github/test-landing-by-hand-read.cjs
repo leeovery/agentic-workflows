@@ -46,7 +46,7 @@ const project = useLandingWorld('github-landing-by-hand-read-', side.prepare);
 const OWN_MESSAGE = Object.freeze({ squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'BLANK' });
 
 /** The subjects of the landings the review's change draws, its work not landed read from phases 1 to `phases`. @param {string} dir @param {number} phases */
-const landingsDrawn = (dir, phases) => withEnv(GH_ENV, () => changeOf(dir, 'pay', phases, null, projectRepos(dir))).holding.flatMap(({ parts }) => parts.map(({ landed }) => landed?.subject ?? null));
+const landingsDrawn = (dir, phases) => withEnv(GH_ENV, () => changeOf(dir, 'pay', phases, null, projectRepos(dir), [])).holding.flatMap(({ parts }) => parts.map(({ landed }) => landed?.subject ?? null));
 
 /**
  * The ways a person merges a feature's pull request on GitHub's site that

@@ -124,6 +124,7 @@ describe('pipeline simulation: the build', () => {
     sim.refuses(['render', 'phase-merge-gate', WU, '1'], /a phase's stack merges with no gate/);
     sim.run(['land', 'phase', WU, '1']);
     assert.deepStrictEqual([deadReviewer, ...beside].map((top) => fs.existsSync(top)), [false, true, true], 'the dead phase reviewer\'s scratch worktree taken apart as the phase merges, no other');
+    assert.deepStrictEqual(Object.entries(sim.manifest(WU).landings).map(([id, byRepo]) => [id, Object.entries(byRepo).map(([repo, { by }]) => [repo, by])]), [[`${WU}-1-1`, [['.', 'engine']]]], 'the phase\'s landing recorded by the engine, its task in the project\'s repository');
     sim.run(['checklist', 'close', 'phase-close', WU, '1']);
     fs.appendFileSync(path.join(sim.dir, `.leeway/${WU}/build/log.md`), '\nPhase 1 closed.\n');
 

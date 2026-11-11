@@ -167,6 +167,7 @@ const { holdingBranch, holdsBeyond, landingBranch } = require('./landing-git.cjs
 const { layOutAt, layOutCommits, scratchTop, takeApart } = require('./project-layout.cjs');
 const { isoNow, dayBefore } = require('./dates.cjs');
 const { repoLanded } = require('./task-landed.cjs');
+const { recordsIn } = require('./landing-record.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
 const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
 const {
@@ -692,8 +693,9 @@ function commitsTouching(repo, args) {
  * their trailer, oldest first; `own`, the person's own commits since the
  * unit's work began that the commit it has out holds — past the branch it
  * lands on, or on it, as a fast-forward lays them — the work of a task of
- * it as the one read of what has landed reads whose work a commit is
- * (task-landed.cjs, `ownedSince`, R32), oldest first.
+ * it as the one read of what has landed reads whose work a commit is, a
+ * recorded landing's commit its task's (task-landed.cjs, `ownedSince`,
+ * R32), oldest first.
  * @param {string} cwd @param {Repo} repo @param {string} unit @param {number} phase @param {string|null} since the time the unit's work is read from
  * @returns {{stamped: {sha: string, paths: string[]}[], own: {sha: string, paths: string[]}[]}}
  */
@@ -706,7 +708,8 @@ function phaseCommits(cwd, repo, unit, phase, since) {
   };
   const stamped = commitsTouching(repo, ['--reverse', '--topo-order', '--fixed-strings', `--grep=${TRAILER}: ${unit}-${phase}-`]).filter(({ tasks }) => tasks.some(ofPhase));
   const held = new Set(stamped.map(({ sha }) => sha));
-  const owned = repoLanded(repo.path, unit, landingBranch(cwd, repo), { since }).ownedSince('HEAD')
+  const recorded = recordsIn(manifestOf(stateRoot(cwd), unit), repoName(repo));
+  const owned = repoLanded(repo.path, unit, landingBranch(cwd, repo), { since, recorded }).ownedSince('HEAD')
     .filter(({ sha, owners }) => !held.has(sha) && owners.some(ofPhase)).map(({ sha }) => sha);
   const own = owned.length === 0 ? [] : commitsTouching(repo, ['--no-walk=unsorted', ...owned]);
   /** @param {{sha: string, paths: string[]}[]} commits */

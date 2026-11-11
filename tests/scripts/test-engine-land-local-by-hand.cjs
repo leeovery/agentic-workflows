@@ -20,8 +20,10 @@
 // before each to the one holding its change; of a task with the person's
 // own commit between its own, or past its last, and a later task cut from
 // it, rebased together, their branches kept, each drawn from its own run,
-// the person's own copy the earlier's work (`ownersOf`), each task's change
-// searched for once; of such tasks fast-forwarded onto main, the person's
+// the person's own copy the earlier's work (`ownersOf`), each task's last
+// commit searched for once and drawn again from the record that read
+// writes, searching nothing, a task not landed beside them, the person's own
+// commit past its last; of such tasks fast-forwarded onto main, the person's
 // own commit on main before them and on the earlier's branch below its
 // first commit in neither part, no task's work (R32); of a task merged by
 // a merge commit, then the person's own on its branch merged by another,
@@ -60,7 +62,7 @@ function onMain(dir, act) {
 }
 
 /** The review's change, its work not landed read from phases 1 to `phases`, as `read` takes it. @template T @param {string} dir @param {number} phases @param {(change: ReturnType<typeof changeOf>) => T} read */
-const changeRead = (dir, phases, read) => read(changeOf(dir, 'pay', phases, null, projectRepos(dir)));
+const changeRead = (dir, phases, read) => read(changeOf(dir, 'pay', phases, null, projectRepos(dir), []));
 
 /** Each landing the change draws, by its subject. @param {ReturnType<typeof changeOf>} change */
 const subjects = (change) => change.holding.flatMap(({ parts }) => parts.map(({ landed }) => landed?.subject ?? null));
@@ -74,8 +76,11 @@ const landedNow = (dir, shown) => {
   return unitLanded(dir, 'pay', projectRepos(dir), null).landed({ unit: 'pay', phase, n });
 };
 
-/** The searches of whether a line holds a change that `read` makes (`lg.holdChanges`). @param {() => unknown} read */
-const scans = (read) => traced(read).commands.filter((command) => command.startsWith('merge-tree')).length;
+/** What `read` answers, and the searches it makes of whether a line holds a change (`lg.holdChanges`). @template T @param {() => T} read @returns {[T, number]} */
+const searching = (read) => {
+  const { result, commands } = traced(read);
+  return [result, commands.filter((command) => command.startsWith('merge-tree')).length];
+};
 
 /** Where tasks 4.1 and 4.2 landed on main, in one read. @param {string} dir */
 const bothLandings = (dir) => {
@@ -191,7 +196,7 @@ describe('land: the review\'s change of work landed by hand on the local driver 
     assert.deepStrictEqual(changeRead(dir, 4, ranges), [[from, earlierLast], [earlierLast, laterLast]]);
   });
 
-  it('a task of its commit and the person\'s own past it, and a later task cut from its branch, rebased onto main by hand together, their branches kept: the earlier drawn through the person\'s own copy past its last commit, its landing\'s run reaching on through its work; the later from that copy — each task\'s change searched for once, as reading where they landed searches, a task whose first commit is its last never searched for again', () => {
+  it('a task of its commit and the person\'s own past it, and a later task cut from its branch, rebased onto main by hand together, their branches kept: the earlier drawn through the person\'s own copy past its last commit, its landing\'s run reaching on through its work; the later from that copy — each task\'s last commit searched for once, as reading where they landed searches, and the earlier\'s tip past it once more, for the record that read writes; the same drawn again from that record, searching nothing, a task not landed beside them, the person\'s own commit past its last', () => {
     const dir = project();
     const { branch } = cutTask(dir, '4.1', 'feat', 'Part 1', 'main', { 'part-1.txt': '1\n' });
     commitFiles(dir, branch, branch, { 'mine.txt': 'mine\n' }, { message: 'my own words past it' });
@@ -199,8 +204,13 @@ describe('land: the review\'s change of work landed by hand on the local driver 
     const from = tip(dir, 'main');
     datedAt(new Date(Date.now() + 60_000).toISOString(), () => onMain(dir, () => MERGED_BY_HAND['a rebase'](dir, later.branch)));
     const [mine, laterLast] = [tip(dir, 'main~1'), tip(dir, 'main')];
+    const open = cutTask(dir, '4.3', 'feat', 'Part 3', 'main', { 'part-3.txt': '3\n' });
+    commitFiles(dir, open.branch, open.branch, { 'mine-3.txt': 'mine\n' }, { message: 'my own words past part 3' });
 
-    assert.deepStrictEqual([changeRead(dir, 4, ranges), scans(() => changeRead(dir, 4, ranges))], [[[from, mine], [mine, laterLast]], scans(() => bothLandings(dir))]);
+    const [, searched] = searching(() => bothLandings(dir));
+    const drawn = [[from, mine], [mine, laterLast]];
+
+    assert.deepStrictEqual([searching(() => changeRead(dir, 4, ranges)), searching(() => changeRead(dir, 4, ranges))], [[drawn, searched + 1], [drawn, 0]]);
   });
 
   it('a task of its commit, the person\'s own between and its commit again, and a later task cut from its branch, fast-forwarded onto main by hand, the person\'s own commit on main before it and on its branch below its first: each drawn from its own run — the earlier from its first commit through the person\'s own between, the later from the earlier\'s last — the person\'s own on main and below the task\'s first in neither, no task\'s work (R32)', () => {

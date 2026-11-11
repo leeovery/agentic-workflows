@@ -86,6 +86,7 @@ const { runsOf } = require('./runs.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { quickFixLanding } = require('./landing.cjs');
 const { unitLanded } = require('./task-landed.cjs');
+const { recordLandings } = require('./landing-record.cjs');
 const { branches, landingBranch, mergeBase } = require('./landing-git.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { fixAcceptance, fixScenarios } = require('./fix-acceptance.cjs');
@@ -98,6 +99,7 @@ const { stackOf } = require('./phase-stack.cjs');
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./task-landed.cjs').RepoLanded} RepoLanded */
 /** @typedef {import('./task-landed.cjs').UnitLanded} UnitLanded */
+/** @typedef {import('./landing.cjs').QuickFixLanding} QuickFixLanding */
 /** @typedef {import('./fix-acceptance.cjs').FixAcceptance} FixAcceptance */
 
 /**
@@ -295,18 +297,24 @@ function fixBase(cwd, unit, phase, repos) {
 
 /**
  * The whole change (the header's), its work not landed read from the
- * unit's phases to `phases`.
- * @param {string} cwd @param {string} unit @param {number} phases @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
+ * unit's phases to `phases`, and each landing its read found that no
+ * record names, recorded (landing-record.cjs), the record's commit's
+ * warnings pushed to `warnings`.
+ * @param {string} cwd @param {string} unit @param {number} phases @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's @param {string[]} warnings
  * @returns {Change}
  */
-function changeOf(cwd, unit, phases, given, repos) {
+function changeOf(cwd, unit, phases, given, repos, warnings) {
   const numbers = phasesTo(phases);
   const lists = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, numbers).phases);
   /** @type {UnitLanded|undefined} */
   let read;
+  /** @type {QuickFixLanding|undefined} */
+  let quickFix;
   const landed = () => (read ??= unitLanded(cwd, unit, repos, workSince(cwd, unit)));
   const pending = () => notLanded(numbers, lists, () => landed().landed, wholeOf(cwd, unit));
-  return changeFrom(cwd, unit, { pending, tasks: () => tasksIn(lists), landed }, given, repos, false);
+  const change = changeFrom(cwd, unit, { pending, tasks: () => tasksIn(lists), landed, quickFix: () => (quickFix ??= quickFixLanding(cwd, unit)) }, given, repos);
+  recordLandings(cwd, unit, [...(read?.found() ?? []), ...(quickFix?.found() ?? [])], warnings);
+  return change;
 }
 
 /**
@@ -323,7 +331,7 @@ function changeOf(cwd, unit, phases, given, repos) {
 function trackedChange(cwd, unit, phases, { lists, landed, wholeOf }, repos) {
   const numbers = phasesTo(phases);
   const listed = numbers.map((phase) => lists[phase - 1]);
-  return changeFrom(cwd, unit, { pending: () => notLanded(numbers, listed, () => landed.landed, wholeOf), tasks: () => tasksIn(listed), landed: () => landed }, null, repos, true);
+  return changeFrom(cwd, unit, { pending: () => notLanded(numbers, listed, () => landed.landed, wholeOf), tasks: () => tasksIn(listed), landed: () => landed, quickFix: () => quickFixLanding(cwd, unit, { asFetched: true }) }, null, repos);
 }
 
 /** Every task among phases' lists. @param {(TaskRow[]|null|undefined)[]} lists @returns {TaskRef[]} */
@@ -331,15 +339,14 @@ const tasksIn = (lists) => lists.flatMap((list) => (list ?? []).map(({ ref }) =>
 
 /**
  * The whole change (the header's), its landings of its tasks: a
- * quick-fix's, its work not landed its one branch (`quickFixChange`); any
- * other unit's, its tasks done and not landed (`changeOn`) — each read
- * only where asked.
- * @param {string} cwd @param {string} unit @param {{pending: () => TaskDetail[], tasks: () => TaskRef[], landed: () => UnitLanded}} read @param {string|null} given @param {Repo[]} repos
- * @param {boolean} asFetched whether a quick-fix's is read with no host asked (`quickFixLanding`)
+ * quick-fix's, its work not landed its one branch, as its landing's read
+ * `quickFix` reads it (`quickFixChange`); any other unit's, its tasks done
+ * and not landed (`changeOn`) — each read only where asked.
+ * @param {string} cwd @param {string} unit @param {{pending: () => TaskDetail[], tasks: () => TaskRef[], landed: () => UnitLanded, quickFix: () => QuickFixLanding}} read @param {string|null} given @param {Repo[]} repos
  * @returns {Change}
  */
-function changeFrom(cwd, unit, { pending, tasks, landed }, given, repos, asFetched) {
-  return isQuickFix(cwd, unit) ? quickFixChange(cwd, unit, tasks(), given, repos, asFetched) : changeOn(cwd, unit, { pending: pending(), tasks: tasks(), landed: landed() }, given, repos);
+function changeFrom(cwd, unit, { pending, tasks, landed, quickFix }, given, repos) {
+  return isQuickFix(cwd, unit) ? quickFixChange(unit, tasks(), given, repos, quickFix()) : changeOn(cwd, unit, { pending: pending(), tasks: tasks(), landed: landed() }, given, repos);
 }
 
 /** Whether the unit is built as a quick-fix (`quickFixBuild`). @param {string} cwd @param {string} unit */
@@ -386,17 +393,16 @@ function changeOn(cwd, unit, { pending, tasks, landed }, given, repos) {
 
 /**
  * A quick-fix's whole change (the header's), read through its landing's
- * one read (`quickFixLanding`, landing.cjs), `tasks` its tasks: in each
- * repository it touches, each landing of one on the branch it lands on as
- * the host has it (`landingParts`), then its branch where that holds a
- * commit not landed past it.
- * @param {string} cwd @param {string} unit @param {TaskRef[]} tasks @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
- * @param {boolean} asFetched whether the landing is read with no host asked
+ * one read, `read` (`quickFixLanding`, landing.cjs), `tasks` its tasks: in
+ * each repository it touches, each landing of one on the branch it lands
+ * on as the host has it (`landingParts`), then its branch where that holds
+ * a commit not landed past it.
+ * @param {string} unit @param {TaskRef[]} tasks @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
+ * @param {QuickFixLanding} read
  * @returns {Change}
  */
-function quickFixChange(cwd, unit, tasks, given, repos, asFetched) {
+function quickFixChange(unit, tasks, given, repos, read) {
   refuseBase(given, repos);
-  const read = quickFixLanding(cwd, unit, { asFetched });
   const holding = repos.flatMap((repo) => {
     const held = read.repos.find((each) => each.repo.path === repo.path);
     if (held === undefined) return [];

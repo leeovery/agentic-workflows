@@ -803,11 +803,11 @@ describe('repoLanded: the person\'s own commit inside a task\'s branch, below it
     assert.deepStrictEqual([read.landedCommit(at(`${branchOf(6)}~1`), `${UNIT}-1-6`), read.landedCommit(at('undo'), `${UNIT}-1-5`)], [true, false]);
   });
 
-  it('a task whose commit undoes the person\'s own commit past another task\'s, that task\'s work (R32), its branch cut there: the other task\'s commit alone cherry-picked onto main and its own branch squashed there, it has not landed, nor its commit read alone — the change its work is laid on that person\'s own commit, never landed', () => {
+  it('a task whose commit undoes the person\'s own commit past another task\'s, that task\'s work (R32), its branch cut there, the other task\'s branch at that commit: the other task\'s commit alone cherry-picked onto main and its own branch squashed there, the chain landed whole — it has landed, its commit read alone too, and the other task with it, however the later undid the earlier\'s work (the ancestor rule)', () => {
     const dir = repo(tipsWorld, 'own-work');
     const undo = git(dir, ['rev-parse', branchOf(10)]).trim();
 
-    assert.deepStrictEqual([landed(dir, [10]).landed, repoLanded(dir, UNIT, MAIN, { since: null }).landedCommit(undo, `${UNIT}-1-10`)], [[false], false]);
+    assert.deepStrictEqual([landed(dir, [9, 10]).landed, repoLanded(dir, UNIT, MAIN, { since: null }).landedCommit(undo, `${UNIT}-1-10`)], [[true, true], true]);
   });
 
   it('a task read from its last commit, its work the commits that commit holds: cut from another task\'s branch past the person\'s own commit there, its commit cherry-picked onto main, the person\'s own past it never among them — its landing that copy', () => {
@@ -860,7 +860,7 @@ describe('unitLanded: each task\'s last commit read once for every revision of a
       return real(...args);
     };
     try {
-      const read = unitLanded(dir, UNIT, [project], null);
+      const read = unitLanded(dir, UNIT, [project], null, null);
       const onMain = read.on(project, MAIN);
       const landedOn = [onMain.task(ref).landed, read.on(project, 'refs/heads/again').task(ref).landed];
 

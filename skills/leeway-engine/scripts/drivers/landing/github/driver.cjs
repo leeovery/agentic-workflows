@@ -56,7 +56,11 @@
 //   and `github-squash yes` sets it wherever it is not, so a refusal names
 //   that verb (github-setup.cjs). A lone pull request is merged alone
 //   under that same subject and body, its base made the default branch
-//   first where it stood on another phase's task. Either merges only once
+//   first where it stood on another phase's task. A stack built on a phase
+//   GitHub squashed is first brought up to date with the default branch,
+//   its change read over where it was cut from that phase, so the squash,
+//   which reads it over the default branch, keeps what it undid of that
+//   phase's work (S3, `squashedBelow`). Either merges only once
 //   GitHub has worked out that each of its pull requests can, at the head
 //   the driver last pushed or read — GitHub works it out again after
 //   anything moves one: a push to its head, its base changed or moved, a
@@ -670,26 +674,57 @@ function meetsMove(paths, base, onto, heads) {
 }
 
 /**
- * The repository's submodules' pointers settled on a stack's branches
- * before GitHub merges it (see the header): the stack brought up to date
- * with the default branch on GitHub where a squash would meet a pointer
- * both sides moved, else the top's pointers recorded where they are not the
- * rule's — against the default branch on GitHub as `fetched` found it:
- * each pull request's head it pushed.
+ * Where a stack was cut from the phase it is built on that the default
+ * branch on GitHub, `into`, holds the change of but not the commits, as a
+ * squash merged it: of the nearest phase whose newest pull request merged
+ * shares commits with the stack's bottom that `into` lacks, the newest both
+ * hold — its head, or below it where its branch moved on after the stack
+ * was cut, as the engine's commit pointing a submodule at its landing moves
+ * it — the merge base the stack's change is read over (`bringUp`); null
+ * where none.
+ * @param {LandingContext} ctx @param {Map<number, Stack>} stacks @param {Stack} stack @param {string} into
+ * @returns {string|null}
+ */
+function squashedBelow(ctx, stacks, stack, into) {
+  const bottom = stack.pulls[0].oid;
+  const heads = [...stacks.values()].filter((other) => other.phase !== stack.phase).sort((one, other) => other.phase - one.phase)
+    .flatMap((other) => other.pulls.filter((pull) => pull.state === 'MERGED').slice(-1).map(({ oid }) => oid));
+  for (const oid of heads) {
+    const cut = lg.mergeBase(ctx.root, oid, bottom);
+    if (!lg.isAncestor(ctx.root, cut, into)) return cut;
+  }
+  return null;
+}
+
+/**
+ * A stack's branches readied before GitHub squashes it (see the header):
+ * brought up to date with the default branch on GitHub where the phase it
+ * is built on was squashed into it (`squashedBelow`), its change read over
+ * that phase's head, so GitHub's squash, reading it over the default
+ * branch, keeps what the stack undid of that phase's work (S3) — or where
+ * a squash would meet a submodule's pointer both sides moved; else the
+ * top's pointers recorded where they are not the rule's — against the
+ * default branch on GitHub as `fetched` found it: each pull request's head
+ * it pushed. A default branch not fetched leaves a stack with no
+ * submodule as it is, GitHub's to refuse.
  * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack @param {{commit: string}|{failed: string}} fetched
  * @returns {Pushed}
  */
 function settlePointers(ctx, host, stacks, stack, fetched) {
-  if (ctx.gitlinks.length === 0) return [];
+  if (ctx.gitlinks.length === 0) {
+    const below = 'failed' in fetched ? null : squashedBelow(ctx, stacks, stack, fetched.commit);
+    return below === null ? [] : bringUp(ctx, host, stack, /** @type {{commit: string}} */ (fetched).commit, stack.pulls.map(() => new Map()), below);
+  }
   const into = defaultOn(ctx, fetched);
+  const below = squashedBelow(ctx, stacks, stack, into);
   const moves = movesOf(ctx, stacks, stack, into);
   const heads = stack.pulls.map(({ oid }) => oid);
-  const [base, onto, ...held] = lg.pointersAt(ctx.root, [lg.mergeBase(ctx.root, into, heads[0]), into, ...heads], ctx.gitlinks);
+  const [base, onto, ...held] = lg.pointersAt(ctx.root, [below ?? lg.mergeBase(ctx.root, into, heads[0]), into, ...heads], ctx.gitlinks);
   const top = stack.pulls[stack.pulls.length - 1];
   const own = held[held.length - 1];
   const recorded = new Map(moves.flatMap((moved) => [...moved]));
   const pointed = new Map([...recorded].filter(([at, sha]) => sha !== (own.get(at) ?? null)));
-  if (meetsMove(ctx.gitlinks, base, onto, [...held.slice(0, -1), new Map([...own, ...pointed])])) return bringUp(ctx, host, stack, into, moves);
+  if (below !== null || meetsMove(ctx.gitlinks, base, onto, [...held.slice(0, -1), new Map([...own, ...pointed])])) return bringUp(ctx, host, stack, into, moves, below);
   if (pointed.size === 0) return [];
   const listed = [...pointed.keys()].map(lg.plain).join(', ');
   const message = names.pointedMessage(ctx.unit, [...pointed.keys()].map(lg.plain));
@@ -700,18 +735,20 @@ function settlePointers(ctx, host, stacks, stack, fetched) {
 
 /**
  * A stack brought up to date with the default branch on GitHub, `into`:
- * merged into the bottom branch, then each branch into the one above, each
- * pull request's `moves` set on its merge (see the header) — refused, before
- * anything is pushed, where a merge conflicts in a file.
- * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {string} into @param {Map<string, string|null>[]} moves
+ * merged into the bottom branch — over `squashed`, the head of the phase
+ * below it `into` squashed, where it names one, else over their merge base
+ * — then each branch into the one above, each pull request's `moves` set
+ * on its merge (see the header) — refused, before anything is pushed,
+ * where a merge conflicts in a file.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {string} into @param {Map<string, string|null>[]} moves @param {string|null} [squashed]
  * @returns {Pushed}
  */
-function bringUp(ctx, host, stack, into, moves) {
+function bringUp(ctx, host, stack, into, moves, squashed = null) {
   const signed = lg.signs(ctx.root);
   const theirs = `${host.remote}/${ctx.into}`;
   let below = { commit: into, name: ctx.into };
   const made = stack.pulls.map((pull, i) => {
-    const base = lg.pointedLike(ctx.root, lg.mergeBase(ctx.root, below.commit, pull.oid), pull.oid, ctx.gitlinks);
+    const base = lg.pointedLike(ctx.root, i === 0 && squashed !== null ? squashed : lg.mergeBase(ctx.root, below.commit, pull.oid), pull.oid, ctx.gitlinks);
     const merged = lg.mergeTree(ctx.root, base, pull.oid, below.commit);
     if ('conflicts' in merged) {
       throw new Error(`land: ${pull.head} conflicts with ${theirs} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing was pushed and nothing merged — `

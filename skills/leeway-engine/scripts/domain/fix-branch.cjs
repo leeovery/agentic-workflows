@@ -85,6 +85,7 @@ const { projectRepos, repoName, childrenFirst } = require('../kernel/repos.cjs')
 const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
 const { commitStateTail } = require('./commit.cjs');
+const { recordLandings } = require('./landing-record.cjs');
 const lg = require('./landing-git.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
@@ -142,16 +143,20 @@ function refuseDirtyClose(cwd, unit) {
  * The project's checkout put on the quick-fix's branch once every
  * repository's is readied (the header's), the project's own cut at the
  * first start where neither it nor the host has one, and each nested
- * checkout whose branch the readying made put on it too. Answers the
- * branch, and each repository the readying cut again, with its warnings,
- * where it did.
+ * checkout whose branch the readying made put on it too — each landing
+ * the readying's read found that no record names recorded first
+ * (landing-record.cjs), so a task landed by hand stays landed as its
+ * branch is cut again. Answers the branch, and each repository the
+ * readying cut again, with its warnings, where it did.
  * @param {string} cwd @param {string} unit
  * @returns {{branch: string, cut_again?: Record<string, unknown>[], warnings?: string[]}}
  */
 function checkOutBranch(cwd, unit) {
   const root = codeRoot(cwd);
   const branch = quickFixBranch(unit);
-  const { cut, remakes, warnings, made } = readied(landing().quickFixLanding(cwd, unit), true);
+  const read = landing().quickFixLanding(cwd, unit);
+  const { cut, remakes, warnings, made } = readied(read, true);
+  recordLandings(cwd, unit, read.found(), warnings);
   for (const nested of made.filter((ctx) => ctx.repo !== '.')) lg.switchTo(nested.root, branch);
   if (lg.branchOut(root) !== branch) lg.switchTo(root, branch);
   const said = [...remakes, ...warnings];
@@ -358,7 +363,8 @@ function theirsLeftOff(branch, onto, { sha, message, paths }) {
  * that did — the repository, where the branch moved from and to, the tasks
  * replayed, those left off — and a warning for each task, and each commit
  * of the person's, left off; null where it holds none, or the repository
- * lacks it.
+ * lacks it. Each task whose commits it drops is read for its landing, so
+ * the read's record holds it (`found`).
  * @param {RepoLanding} held
  * @returns {{answer: Record<string, unknown>, remakes: string[], theirs: string[]}|null}
  */
@@ -369,6 +375,8 @@ function cutAgain(held) {
   const past = held.commits();
   const left = past.filter(({ sha, id }) => !held.landedCommit(sha, id));
   if (left.length === past.length) return null;
+  const dropped = past.filter((commit) => !left.includes(commit));
+  for (const id of new Set(dropped.flatMap(({ id }) => (id === null ? [] : [id])))) held.task(parseTaskId(id));
   const { tip: cut, off, theirs } = replayed(ctx.root, left, tip);
   moveBranch(ctx.root, branch, at, cut, `holds work landed on ${ctx.into} by hand${lg.inRepoWords(ctx.repo)}, so it is cut again from there`);
   const tasks = (/** @type {Commit[]} */ commits) => [...new Set(commits.flatMap(({ id }) => (id === null ? [] : [shownTask(parseTaskId(id))])))];
