@@ -14,9 +14,11 @@
 // archive and the return can each find the row that waits for it.
 //
 // An archived item (18.8.13) stays on the manifest, its name taken
-// (18.8.21), marked `archived: {at, horizon}` — when, and the horizon it
-// left — in place of its `horizon`, its sources and its note kept: off the
-// roadmap's home until `move` brings it back onto a horizon.
+// (18.8.21), marked `archived: {at, horizon[, postponed_from]}` — when, the
+// horizon it left, and the topic whose postpone the archive ended — in place
+// of its `horizon`, its sources and its note kept: off the roadmap's home
+// until `move` brings it back onto a horizon, or that topic's next postpone
+// does.
 //
 // Authority splits at the pull (design/product-roadmap.md, decision 25):
 // left of it the map is loose — un-pulled items take every edit; right of it
@@ -42,8 +44,8 @@
 //
 // Known edge: a postponed topic whose name another roadmap item holds,
 // waiting or archived, is refused the postpone, naming both (18.8.17); the
-// item an earlier postpone of the epic left there, archived since, comes
-// back with it instead.
+// topic's own item, archived since its earlier postpone, comes back with it
+// instead.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -915,7 +917,8 @@ function refuseArchive(cwd, item, name) {
  * stage of the epic (18.8.17) — "actually never" has one door — so the
  * marker and every stashed item flip to cancelled, the topic's waiting mail
  * goes to the inbox as a cancel's does (10.1.6), the item's `postponed_from`
- * goes with the hold it named, and one commit covers both manifests and the
+ * moves onto its archive mark — the hold over, the topic's next postpone
+ * still finding its own item — and one commit covers both manifests and the
  * mail. Self-commits.
  * @param {string} cwd @param {string} name
  * @returns {RoadmapOpResult}
@@ -939,6 +942,7 @@ function archiveRoadmapItem(cwd, name) {
     refuseArchive(cwd, item, name);
     const left = typeof item.horizon === 'string' ? item.horizon : null;
     item.archived = { at: isoNow(), horizon: left };
+    if (postponed) item.archived.postponed_from = { work_unit: postponed.work_unit, topic: postponed.topic };
     delete item.horizon;
     delete item.postponed_from;
     /** @type {RoadmapOpResult} */

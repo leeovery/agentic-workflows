@@ -997,14 +997,18 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, ...born });
     });
 
-    it('an archived item an earlier postpone of the epic left is brought back; another\'s, archived or waiting, is the clash (18.8.17, 18.8.21)', () => {
+    it('the topic\'s own archived item is brought back — its archive mark naming the topic, whatever its name or origin, or, with no hold on its mark, a postpone of the epic\'s making under the topic\'s name; another\'s is the clash (18.8.17, 18.8.21)', () => {
       const archived = { at: '2026-11-10T09:00:00Z', horizon: 'next' };
       const own = { summary: 's', origin: 'postpone:pay', archived };
       const others = { summary: 's', origin: 'harvest', archived };
-      const held = { roadmap: { horizons: ['next'], items: { timing: own, pacing: others } } };
+      const marked = { summary: 's', origin: 'harvest', archived: { ...archived, postponed_from: { work_unit: 'pay', topic: 'checkout' } } };
+      const markedElsewhere = { summary: 's', origin: 'postpone:pay', archived: { ...archived, postponed_from: { work_unit: 'pay', topic: 'refunds' } } };
+      const held = { roadmap: { horizons: ['next'], items: { timing: own, pacing: others, 'guest-checkout': marked, returns: markedElsewhere } } };
       assert.deepStrictEqual(postponeTarget(held, 'pay', 'timing', 'timing'), { name: 'timing', item: own, joined: false, archived: true, clash: false });
       assert.deepStrictEqual(postponeTarget(held, 'pay', 'pacing', 'pacing'), { name: 'pacing', item: others, joined: false, archived: false, clash: true });
       assert.deepStrictEqual(postponeTarget(held, 'cart', 'timing', 'timing'), { name: 'timing', item: own, joined: false, archived: false, clash: true }, 'another epic\'s postpone is not this one\'s');
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'checkout', 'checkout'), { name: 'guest-checkout', item: marked, joined: false, archived: true, clash: false }, 'found by its mark, under its own name');
+      assert.deepStrictEqual(postponeTarget(held, 'pay', 'returns', 'returns'), { name: 'returns', item: markedElsewhere, joined: false, archived: false, clash: true }, 'a mark naming another topic is another\'s, whatever its origin');
     });
 
     it('the clash phrase names the topic and the item, the horizon the item has or its archive, and stands without either (18.8.17, 18.8.21)', () => {

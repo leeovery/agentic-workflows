@@ -177,6 +177,24 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(runOk(dir, ['state']).items[0].state, 'waiting');
   });
 
+  it('a harvest-born item taken into a topic, postponed, archived, the topic reactivated and postponed again, comes back by its archive mark, whatever its name: one item, waiting on the horizon chosen, postponed from the topic (18.8.17)', () => {
+    runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order']);
+    boundTo(dir, 'mvp', 'ordering', 'guest-ordering');
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const first = readProject(dir).roadmap.items['guest-ordering'];
+    runOk(dir, ['archive', 'guest-ordering']);
+    engineOk(['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
+
+    assert.match(output(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'later']),
+      /Its own item \*\*Guest Ordering\*\* comes back from the archive under "later" \(new\)\./);
+    const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
+
+    assert.deepStrictEqual(res.roadmap, { name: 'guest-ordering', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false, from_archive: true });
+    assert.deepStrictEqual(readProject(dir).roadmap.items, { 'guest-ordering': { ...first, horizon: 'later' } });
+    assert.deepStrictEqual(first.postponed_from, { work_unit: 'mvp', topic: 'ordering' });
+    assert.strictEqual(runOk(dir, ['state']).items[0].state, 'waiting');
+  });
+
   it('an illegal horizon refuses at the gate and at the verb, and the epic never moves', () => {
     const before = epicText();
     assert.throws(() => output(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'v2.1']));
@@ -259,7 +277,8 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(m.phases.discovery.items.ordering.previous_order, 1, 'the stashed order survives for the reactivate');
     assert.strictEqual(m.phases.discussion.items.ordering.status, 'cancelled');
     assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
-    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering, { ...kept, archived: { at: '2026-01-01T00:00:00Z', horizon: 'next' } });
+    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering,
+      { ...kept, archived: { at: '2026-01-01T00:00:00Z', horizon: 'next', postponed_from: { work_unit: 'mvp', topic: 'ordering' } } }, 'the hold ended, kept on the mark');
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: archive ordering — ordering cancelled in mvp');
     assert.deepStrictEqual(stateGit(dir, ['show', '--no-renames', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
       `A\t${idea.slice('.leeway/'.length)}`, 'M\tmanifest.json', `D\t${message.slice('.leeway/'.length)}`, 'M\tmvp/manifest.json',

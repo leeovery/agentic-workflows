@@ -456,10 +456,11 @@ function itemJoin(item) {
 
 /**
  * The archive mark an item carries (18.8.13) — when it was archived and the
- * horizon it left, `{at, horizon}` — or null. A malformed mark reads as
- * none, as a malformed join does.
+ * horizon it left, `{at, horizon}`, and the topic whose postpone the archive
+ * ended, `postponed_from`, where it ended one — or null. A malformed mark
+ * reads as none, as a malformed join does.
  * @param {Record<string, any>} item
- * @returns {{at: string, horizon: string|null}|null}
+ * @returns {{at: string, horizon: string|null, postponed_from?: unknown}|null}
  */
 function itemArchived(item) {
   const mark = item.archived;
@@ -531,33 +532,44 @@ function itemPostponedFrom(item) {
 
 /**
  * @typedef {object} PostponeTarget
- * @property {string} name   the item the postpone writes — the joined item's own name, or the name the topic goes by
+ * @property {string} name   the item the postpone writes — the topic's own item's name, or the name the topic goes by
  * @property {Record<string, any>|undefined} item  what already sits there
  * @property {boolean} joined  the item is joined to this topic, so the postpone re-waits it
- * @property {boolean} archived  the item is the one an earlier postpone of this epic left, archived since, so the postpone brings it back
+ * @property {boolean} archived  the item is this topic's own, archived since an earlier postpone, so the postpone brings it back
  * @property {boolean} clash  the item is another's, so the postpone refuses
  */
 
 /**
- * The roadmap item a postpone would write: the one joined to `{workUnit,
- * topic}` — re-waited, whatever its name — or, when none is joined, the name
- * a birth would take, the one the topic goes by (8.8.20), with whatever
- * already sits on it: the item an earlier postpone of this epic left there,
- * archived since and brought back, or another's (the clash). The one join
- * the plan's lock, the gate's statement, and the verb all read.
+ * The topic whose postpone an archive ended, as the item's archive mark
+ * keeps it, or null. @param {Record<string, any>} item
+ */
+function archivedHold(item) {
+  return topicAddress(itemArchived(item)?.postponed_from);
+}
+
+/**
+ * The roadmap item a postpone would write: the topic's own — joined to
+ * `{workUnit, topic}` and re-waited, or archived with its mark naming the
+ * topic and brought back, whatever its name — or, where it has none, the
+ * name a birth would take, the one the topic goes by (8.8.20), with
+ * whatever already sits on it: an item a postpone of this epic made there,
+ * archived with no hold on its mark and brought back, or another's (the
+ * clash). The one join the plan's lock, the gate's statement, and the verb
+ * all read.
  * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
  * @param {string} goes  the name the topic goes by
  * @returns {PostponeTarget}
  */
 function postponeTarget(project, workUnit, topic, goes) {
   const items = roadmapItems(project);
-  for (const [name, item] of Object.entries(items)) {
-    if (!item || typeof item !== 'object') continue;
-    const join = itemJoin(item);
-    if (join && join.work_unit === workUnit && join.topic === topic) return { name, item, joined: true, archived: false, clash: false };
-  }
+  const entries = Object.entries(items).filter(([, item]) => item && typeof item === 'object');
+  const ours = (/** @type {{work_unit: string, topic?: string}|null} */ at) => at !== null && at.work_unit === workUnit && at.topic === topic;
+  const joined = entries.find(([, item]) => ours(itemJoin(item)));
+  if (joined) return { name: joined[0], item: joined[1], joined: true, archived: false, clash: false };
+  const kept = entries.find(([, item]) => ours(archivedHold(item)));
+  if (kept) return { name: kept[0], item: kept[1], joined: false, archived: true, clash: false };
   const item = items[goes];
-  const archived = item !== undefined && itemArchived(item) !== null && item.origin === `postpone:${workUnit}`;
+  const archived = item !== undefined && itemArchived(item) !== null && archivedHold(item) === null && item.origin === `postpone:${workUnit}`;
   return { name: goes, item, joined: false, archived, clash: item !== undefined && !archived };
 }
 
