@@ -118,15 +118,15 @@ describe('an epic\'s gates, the topics a changed answer holds, and the verdicts 
     ]);
   });
 
-  it('asked for, each verdict waiting on a departure standing in the unit, by its entry and words, its door the verdict page — never unasked, and never another unit\'s', () => {
+  it('asked for, each verdict waiting on a departure standing in the unit, by its entry and words, its door the verdict page drawn for the unit (18.4.2) — never unasked, and never another unit\'s', () => {
     const sync = reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
     const tally = answeredIn(dir(), SOLO_AT, 'Does a tally show a total?', { ...MADE, text: 'It does.' });
     const total = writeIn(dir(), 'replace', SOLO_AT, ['--replaces', tally.answer, '--reason', 'changed-mind'], { by: 'person', drops: ['the total'], text: 'No total.', why: 'The person wants it so.' });
-    const VERDICTS = { kind: 'engine', argv: ['render', 'verdicts'] };
+    const pageOf = (/** @type {string} */ unit) => ({ kind: 'engine', argv: ['render', 'verdicts', '--unit', unit] });
 
     assert.deepStrictEqual([waitsIn(dir(), [FUMI, SOLO]), waitsIn(dir(), [FUMI, SOLO], { verdicts: true })], [
       { [FUMI]: [], [SOLO]: [] },
-      { [FUMI]: [wait('verdict', sync, 'Off until you turn it on.', VERDICTS)], [SOLO]: [wait('verdict', total, 'No total.', VERDICTS)] },
+      { [FUMI]: [wait('verdict', sync, 'Off until you turn it on.', pageOf(FUMI))], [SOLO]: [wait('verdict', total, 'No total.', pageOf(SOLO))] },
     ]);
   });
 

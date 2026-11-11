@@ -219,7 +219,7 @@ describe('the verdicts given (16.10.9, 16.10.6)', () => {
     assert.deepStrictEqual(evidence(dir).judged, new Set([fixWaits]));
   });
 
-  it('holds each entry\'s verdicts in the order given, a correction of one among them at its own time (16.15.4): a skip corrected judges the departure, a loss corrected to a fix later stands as the fix', () => {
+  it('holds each entry\'s verdicts in the order given, each with its point, a correction of one among them at its own time and at no point (16.15.4): a skip corrected judges the departure, a loss corrected to a fix later stands as the fix', () => {
     const dir = project('fumi');
     const [skipped, lost] = ['Skipped', 'Lost'].map(idOf);
     /** @param {string} type @param {string} entry @param {string} verdict @param {string} second */
@@ -230,8 +230,8 @@ describe('the verdicts given (16.10.9, 16.10.6)', () => {
 
     const read = evidence(dir);
     assert.deepStrictEqual([read.verdicts, read.judged], [
-      new Map([[skipped, [{ at: Date.parse('2026-10-28T10:00:01Z'), verdict: 'skip' }, { at: Date.parse('2026-10-28T10:00:03Z'), verdict: 'nothing' }]],
-        [lost, [{ at: Date.parse('2026-10-28T10:00:02Z'), verdict: 'loss' }, { at: Date.parse('2026-10-28T10:00:04Z'), verdict: 'fix' }]]]),
+      new Map([[skipped, [{ at: Date.parse('2026-10-28T10:00:01Z'), verdict: 'skip', point: 'queue' }, { at: Date.parse('2026-10-28T10:00:03Z'), verdict: 'nothing', point: null }]],
+        [lost, [{ at: Date.parse('2026-10-28T10:00:02Z'), verdict: 'loss', point: 'queue' }, { at: Date.parse('2026-10-28T10:00:04Z'), verdict: 'fix', point: null }]]]),
       new Set([skipped, lost]),
     ]);
   });

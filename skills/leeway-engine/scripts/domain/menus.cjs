@@ -90,12 +90,12 @@ const QUESTION = 'What would you like to do?';
 const HELP_LABEL = 'What this menu is for, row by row';
 
 /**
- * A menu as the registry holds it, none of its rows drawn yet, its help the
- * plain one but where `help` says.
- * @param {string} id @param {string} gate @param {string} named @param {Arrival} arrival @param {Partial<MenuHelp>} [help]
+ * A menu as the registry holds it, its rows' keys those `keys` names — none
+ * until its screen is drawn — its help the plain one but where `help` says.
+ * @param {string} id @param {string} gate @param {string} named @param {Arrival} arrival @param {Partial<MenuHelp>} [help] @param {string[]} [keys]
  * @returns {Menu}
  */
-const registered = (id, gate, named, arrival, help = {}) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze([]), help: Object.freeze({ label: HELP_LABEL, ...help }) });
+const registered = (id, gate, named, arrival, help = {}, keys = []) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze(keys), help: Object.freeze({ label: HELP_LABEL, ...help }) });
 
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */
 const MENUS = Object.freeze({
@@ -108,7 +108,7 @@ const MENUS = Object.freeze({
   manage: registered('manage', 'manage', 'manage', 'none'),
   'manage-unit': registered('manage-unit', 'manage unit', 'managing the unit', 'none'),
   closed: registered('closed', 'closed units', 'the closed units', 'none'),
-  verdicts: registered('verdicts', 'verdicts', 'the verdict queue', 'none'),
+  verdicts: registered('verdicts', 'verdicts', 'the verdict queue', 'none', { label: 'What this screen is for, row by row' }, ['n', 'f', 'l', 'b']),
 });
 
 /** The menu a render names, refused where none is. @param {string|undefined} id @returns {Menu} */

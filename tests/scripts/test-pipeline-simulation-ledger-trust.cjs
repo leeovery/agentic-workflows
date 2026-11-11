@@ -28,7 +28,7 @@ describe('pipeline simulation: the trust log', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
     const wu = 'fumi';
     sim.env = {
       ...sim.env,
@@ -53,7 +53,10 @@ describe('pipeline simulation: the trust log', () => {
     const reversal = ledger(['replace', note, '--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['a panel'], text: 'A document window.', why: 'Notes are documents.' });
     sim.run(['verdict', 'give', reversal, 'skip', '--at', 'decided']);
     sim.run(['verdict', 'queue']);
+    sim.render(['verdicts'], { expect: 'content' });
+    sim.render(['verdicts', '--unit', wu], { expect: 'content' });
     sim.run(['verdict', 'give', reversal, 'loss', '--at', 'queue']);
+    sim.render(['verdicts'], { expect: 'empty' });
     ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });
 
     /** Claude's lean on a question of its own, raised, and the person's pick of row `key`. @param {string} text @param {'1'|'2'} key */

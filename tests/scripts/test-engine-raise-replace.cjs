@@ -387,7 +387,7 @@ describe('a keep changes nothing current (5.6.10)', () => {
     const { decisions } = ok(dir, ['ledger', 'record', UNIT, 'note-window'], { env: elsewhere });
     const decision = decisions.find((/** @type {{id: string}} */ d) => full(d.id) === full(made.opens));
     assert.deepStrictEqual([decision?.kept.map((/** @type {{id: string}} */ k) => full(k.id)), queue(elsewhere)], [[kept], []]);
-    const refused = refusedPristine(dir, ['verdict', 'give', kept, 'skip', '--at', 'queue'], { env: elsewhere });
+    const refused = refusedPristine(dir, ['verdict', 'give', kept, 'loss', '--at', 'queue'], { env: elsewhere });
     assert.match(refused.error, /^verdict give: \w+ is no departure this machine logged — a departure's verdict is given on the machine where it was made/);
     assert.ok(!fs.existsSync(path.join(/** @type {string} */ (elsewhere.LEEWAY_CONFIG_DIR), TRUST_LOG)), 'the second machine logged a verdict it refused');
     const given = ok(dir, ['verdict', 'give', kept, 'nothing', '--at', 'queue'], { env: conversation() });

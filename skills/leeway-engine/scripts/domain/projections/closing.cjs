@@ -19,7 +19,9 @@
 //   (P8);
 // - the first departure still to be asked its verdict — what it decides,
 //   Claude's answer and the person's — and the verdict gate over it, each
-//   verdict given at the gate's own point (16.10.2, 16.10.11).
+//   verdict given at the gate's own point (16.10.2, 16.10.11); the
+//   departure's tree and the three verdicts the verdict queue draws alike
+//   (projections/verdict-page.cjs).
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, clipped, MENU_INSTRUCTION } = require('./surfaces.cjs');
@@ -191,13 +193,28 @@ function strikeRows({ unit, topic, parks, candidates }, key, flags = []) {
   return [];
 }
 
-/** The verdict asked of one departure: the question, Claude's answer and the person's. @param {AskedVerdict} verdict */
-function verdictBlock({ at, of, question, lean, yours }) {
-  return block(`YOUR VERDICT (${at} of ${counted(of, 'call')} you changed)`, renderTree([{
+/** The departure a verdict judges, as a tree: the question it answers, Claude's answer and the person's. @param {Pick<AskedVerdict, 'question'|'lean'|'yours'>} departure */
+function departureTree({ question, lean, yours }) {
+  return renderTree([{
     title: clipped(question, ROW_MAX),
     body: [...(lean === null ? [] : [`My answer: ${lean}`]), `Yours: ${yours}`],
-  }], { width: TREE_WIDTH }));
+  }], { width: TREE_WIDTH });
 }
+
+/** The verdict asked of one departure: the question, Claude's answer and the person's. @param {AskedVerdict} verdict */
+function verdictBlock(verdict) {
+  return block(`YOUR VERDICT (${verdict.at} of ${counted(verdict.of, 'call')} you changed)`, departureTree(verdict));
+}
+
+/** The question every verdict is asked by. */
+const VERDICT_QUESTION = 'What would my answer have cost the product?';
+
+/** The three verdicts a departure is given, each by its key, its word and its label, as every verdict point and the queue draw them (16.10.2, 16.10.7). */
+const VERDICT_ROWS = Object.freeze([
+  Object.freeze({ key: 'n', verdict: 'nothing', label: 'Nothing — mine would have served as well' }),
+  Object.freeze({ key: 'f', verdict: 'fix', label: 'A fix later' }),
+  Object.freeze({ key: 'l', verdict: 'loss', label: 'A real loss' }),
+]);
 
 /**
  * The verdict gate over the departure a screen asks about: each verdict
@@ -208,11 +225,9 @@ function verdictGate({ entry }, point) {
   /** @param {string} verdict */
   const give = (verdict) => runs(['verdict', 'give', entry, verdict, '--at', point]);
   return section('MENU: verdict', MENU_INSTRUCTION, menu('', [
-    cmdOption('n', 'nothing', 'Nothing — mine would have served as well', give('nothing')),
-    cmdOption('f', 'fix', 'A fix later', give('fix')),
-    cmdOption('l', 'loss', 'A real loss', give('loss')),
+    ...VERDICT_ROWS.map(({ key, verdict, label }) => cmdOption(key, verdict, label, give(verdict))),
     cmdOption('s', 'skip', 'Skip — I can\'t call it yet; it waits in the verdict queue', give('skip')),
-  ], { question: 'What would my answer have cost the product?' }));
+  ], { question: VERDICT_QUESTION }));
 }
 
-module.exports = { runs, block, series, kindCounts, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, verdictBlock, verdictGate };
+module.exports = { runs, block, series, kindCounts, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, departureTree, verdictBlock, VERDICT_QUESTION, VERDICT_ROWS, verdictGate };
