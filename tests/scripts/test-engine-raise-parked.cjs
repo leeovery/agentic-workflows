@@ -453,7 +453,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     assert.deepStrictEqual(lastEntry(), { ...line, task: '2.5', id: full(joined.id) });
   });
 
-  it('12.S11: a call that proceeds in the build lands Claude\'s decision for its task, and one made outside any task for none, parking nothing', async (t) => {
+  it('12.S11: a call that proceeds in the build lands Claude\'s decision for its task, and one made outside any task for none, parking nothing — each call event saying whether it blocked build work, as the replay reads it', async (t) => {
     t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.' }));
 
     const { res } = await park(made.where, '2.3');
@@ -461,6 +461,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     const outside = (await outsideTask(made.size, REVIEW)).res;
     assert.deepStrictEqual([outside.decision, lastEntry().event, lastEntry().task], ['proceed', 'decided', null]);
     assert.deepStrictEqual(waiting(), []);
+    assert.deepStrictEqual(logged().map(({ type, blocks_build: blocks }) => [type, blocks]), [['call', true], ['call', false]]);
   });
 
   it('refuses, writing and sealing nothing: a task named elsewhere, --task, a task not as screens show one, and --parks twice', async () => {
@@ -593,7 +594,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     assert.deepStrictEqual(sealed, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'implementation', topic: null },
       answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, reason: EVERY_CALL_ASKS, blind: false,
-      answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'], went_ahead: null },
+      raised: entries().find((e) => e.id === park)?.at, answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'], went_ahead: null },
     });
 
     const afresh = okSections(dir, ['raise', 'draw', UNIT, park.slice(0, 8)], { env: cleared() });

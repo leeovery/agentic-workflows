@@ -42,6 +42,7 @@ const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { replay } = require(path.join(SCRIPTS, 'domain/replay.cjs'));
 const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { DEFAULTS } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));
+const { MODEL_LINES } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
 const { folder, logPath } = useTrustWorld('engine-matrix-');
 
@@ -49,6 +50,8 @@ const ENV = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION });
 const UNIT = 'fumi';
 const OTHER = idOf('Aircon');
 const AT_25 = Object.freeze({ ...DEFAULTS, threshold: 0.25 });
+// The CPU a replay of a busy year may take.
+const REPLAY_BUDGET_S = 3;
 
 /** An engine command a row leads to. @param {...string} argv */
 const engine = (...argv) => ({ kind: 'engine', argv });
@@ -222,26 +225,56 @@ function drawnHistory(project) {
 /**
  * The history 16.15.3's replay draws, in `project`, every question in the
  * last day: twelve behaviour questions taking Claude's lean, then one the
- * person changed, judged a fix later, then three more taking it; and four
- * on contract.
+ * person changed, not yet judged, then three more taking it; and four on
+ * contract. At 20% behaviour asks until its thirteenth question and again
+ * after the change; at 25% it goes quiet after its eleventh and stays so.
  * @param {string} project
  */
 function replayedHistory(project) {
   const h = history({ project });
   h.agree(12, 'behaviour');
-  h.depart('fix', 'behaviour');
+  h.depart(null, 'behaviour');
   h.agree(3, 'behaviour');
   h.agree(4, 'contract');
   return h;
 }
 
-/** A behaviour question in the project at `dir`, blocking build work where `blocks`, as the decision point is given it. @param {string} dir @param {boolean} blocks */
-function behaviourAt(dir, blocks) {
-  return ruled(/** @type {any} */ ({ sort: 'several' }), {
+/** The decision point's ruling on a behaviour question in the project at `dir`, blocking build work where `blocks`. @param {string} dir @param {boolean} blocks */
+function behaviourRuled(dir, blocks) {
+  return withFrozenClock(() => ruled(/** @type {any} */ ({ sort: 'several' }), {
     label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, checked: false,
     project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS,
-  }).decision;
+  }));
 }
+
+/** The decision point's decision on a behaviour question in the project at `dir`, blocking build work where `blocks`. @param {string} dir @param {boolean} blocks */
+const behaviourAt = (dir, blocks) => behaviourRuled(dir, blocks).decision;
+
+/** The record of the person holding the care entries `entries` alone, each `[kind, project id, when added]`, the project Fumi. @param {...[string, string, number]} entries */
+function careHeld(...entries) {
+  fs.mkdirSync(path.join(folder(), 'config'), { recursive: true });
+  fs.writeFileSync(path.join(folder(), 'config', 'person.md'), `<!-- leeway: the record of you, version 1 -->\n\n# The record of you\n\n## Care entries\n\n${entries.map(([kind, id, added]) => `- Fumi: ${kind} · ${id} · ${new Date(added).toISOString()}`).join('\n')}\n`);
+}
+
+/**
+ * `fn` run in the time zone `zone`, the person's own day read there: its
+ * answer.
+ * @template T @param {string} zone @param {() => T} fn
+ * @returns {T}
+ */
+function inZone(zone, fn) {
+  const held = process.env.TZ;
+  process.env.TZ = zone;
+  try {
+    return fn();
+  } finally {
+    if (held === undefined) delete process.env.TZ;
+    else process.env.TZ = held;
+  }
+}
+
+/** The replay's found line, in the time zone UTC. @param {string} dir @param {string[]} args */
+const found = (dir, args) => inZone('UTC', () => screenOf(render(dir, ['matrix-replay', ...args]), 'DISPLAY: matrix replay').slice(1).join(' ').replace(/ {2,}/g, ' ').trim());
 
 describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
   it('17.S1: the matrix as 16.15.1 draws it — each kind\'s overturned and lost of its answered and the rate the rule runs on, from the trust log; Claude\'s one-answer calls; the threshold mid-build; and how review findings split, from the ledger; its rows the threshold\'s and the build\'s replays, care, help and back to manage', () => {
@@ -351,7 +384,62 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
     assert.deepStrictEqual([rowOf(drawn, 'look'), rowOf(drawn, 'scope')], ['  look          0 of 1     0   22%  asks', '  scope         0 of 0     0   53%  asks']);
   });
 
-  it('P11: each review finding falls in the lane of what settled it — merged into what the record holds, apply; moved to another topic or to the roadmap, route, however it is answered after; the person\'s answer, their "your call" and "don\'t care" among it, walked; Claude\'s own call, decide — and one still open, Claude\'s own question and one on a topic since cancelled, put on the roadmap before it was, in none', () => {
+  it('N7: an answer carried in is counted once, under its kind, though the one-answer calls\' count reads it too', () => {
+    const { dir } = fumi();
+    const h = history({ project: OTHER });
+    for (let i = 0; i < 5; i += 1) h.raise('words', '1', { sort: 'one' });
+    logHolding(h.events);
+
+    assert.match(block(matrix(dir), 'Carried', 1)[0], /^Carried from your other projects: 5 answers' weight,/);
+  });
+
+  it('N4: the one-answer calls\' line says where they stand — asking until the rate falls under the threshold; quiet since it did, asking again over a quarter above it; quiet with overrules weighing under one whole — their rate told from every line the threshold draws', () => {
+    const { dir, id } = fumi();
+    /** Claude's one-answer calls, `n` of them, then one the person reversed, in `h`. @param {ReturnType<typeof history>} h @param {number} n */
+    const overruledAfter = (h, n) => {
+      for (let i = 0; i < n; i += 1) h.call('one', null);
+      h.reverse(h.call('one', null));
+    };
+    const asking = history({ project: id });
+    overruledAfter(asking, 10);
+    const band = history({ project: id });
+    overruledAfter(band, 10);
+    overruledAfter(band, 10);
+    const inherited = history({ project: id, model: MODEL_LINES[0][2] });
+    overruledAfter(inherited, 5);
+
+    const said = [asking, band, inherited].map((h) => {
+      logHolding(h.events);
+      const drawn = matrix(dir);
+      const heading = drawn.indexOf('CLAUDE\'S ONE-ANSWER CALLS');
+      return drawn.slice(heading + 1, drawn.indexOf('', heading)).map((line) => line.trim()).join(' ');
+    });
+
+    assert.deepStrictEqual(said, [
+      '11 calls · 1 overruled · rate 34%. Overrules have lifted the rate over your 20%, so they ask you until it falls under it.',
+      '22 calls · 2 overruled · rate 24.9%. They went quiet once the rate fell under your 20%, and go ahead as mine until it rises over 25%.',
+      '6 calls · 1 overruled · rate 65%. They go ahead as mine, and ask you once overrules lift the rate over your 20%. They ask only once overrules weigh one whole overrule; these weigh 0.5.',
+    ]);
+  });
+
+  it('a kind\'s rate a hair over a line is told from it: over the line where a quiet kind asks again, and over the one where a change hard to undo asks', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    h.agree(15, 'scope');
+    h.depart('loss', 'scope');
+    h.agree(34, 'words');
+    h.depart('loss', 'words');
+    logHolding(h.events);
+
+    const drawn = matrix(dir);
+
+    assert.deepStrictEqual([rowOf(drawn, 'scope'), rowOf(drawn, 'words')], [
+      '  scope        1 of 16     1  25.01%  asks',
+      '  words        1 of 35     1  12.51%  quiet · hard to undo asks',
+    ]);
+  });
+
+  it('P11: each review finding falls in the lane of what settled it — merged into what the record holds, apply; moved to another topic or to the roadmap, route, however it is answered after; the person\'s answer, their "your call" and "don\'t care" among it, theirs the migration carried over, and a call of Claude\'s they kept since, walked; Claude\'s own call, decide, the person\'s replacement of it since counted elsewhere — and one still open, Claude\'s own question and one on a topic since cancelled, put on the roadmap before it was, in none', () => {
     const { dir } = fumi();
     ledgerHolding(dir, (add) => {
       const found = add({
@@ -366,28 +454,35 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
       add(answered(add(asked('Does a note snap?')), 'claude', 'your-call'));
       add(answered(add(asked('How round is a corner?')), 'claude', 'dont-care'));
       add(answered(add(asked('Does a note have a shadow?')), 'claude'));
+      const faded = add(answered(add(asked('Does a note fade?')), 'claude'));
+      add({ event: 'kept', ...on(), by: 'person', who_moved_whom: 'none', entry: faded, reason: 'changed-mind', cause: null, why: 'It reads well.', sealed: 'So it is.', given: 'own' });
+      const bordered = add(asked('Does a note have a border?'));
+      add({ ...answered(bordered, 'person'), event: 'replaced', replaces: add(answered(bordered, 'claude')), reason: 'was-wrong', cause: null, drops: [], of: 'decision' });
+      add(answered(add(asked('Does a note keep its place?')), 'person', 'carried'));
       add(asked('Does a note have a title?'));
       add(answered(add(asked('Does a note float above?', 'claude')), 'claude'));
       add({ ...moved(add(asked('Does the tray hold notes?', 'review', 'tray')), 'roadmap:tray'), ...on('tray') });
     });
 
     assert.deepStrictEqual(block(matrix(dir), 'HOW REVIEW FINDINGS SPLIT', 5), [
-      'HOW REVIEW FINDINGS SPLIT (7 across Fumi\'s reviews)',
-      '  apply   1  14%  the record or a fact settles it',
-      '  decide  1  14%  Claude\'s call',
-      '  walked  3  43%  asked you',
-      '  route   2  29%  belongs to another topic',
+      'HOW REVIEW FINDINGS SPLIT (10 across Fumi\'s reviews)',
+      '  apply   1  10%  the record or a fact settles it',
+      '  decide  2  20%  Claude\'s call',
+      '  walked  5  50%  asked you',
+      '  route   2  20%  belongs to another topic',
     ]);
   });
 
-  it('with nothing answered and the settings the person picked, the matrix says so: every kind asks, the one-answer calls go ahead, no finding is settled, and mid-build names the person\'s pick', () => {
+  it('with nothing answered and the settings the person picked, the matrix says so: every kind asks, a care entry in another project none of this one\'s, the one-answer calls go ahead, no finding is settled, and mid-build names the person\'s pick', () => {
     const { dir } = fumi();
     settingsHolding(JSON.stringify({ trust: { threshold: 0.25, build_threshold: 0.3 } }));
+    careHeld(['scope', OTHER, FROZEN_MS - DAY]);
 
     const drawn = matrix(dir);
 
-    assert.deepStrictEqual([drawn[0], rowOf(drawn, 'internals'), ...block(drawn, 'CLAUDE\'S', 3), ...block(drawn, 'MID-BUILD', 2), ...block(drawn, 'HOW REVIEW', 2)], [
+    assert.deepStrictEqual([drawn[0], rowOf(drawn, 'scope'), rowOf(drawn, 'internals'), ...block(drawn, 'CLAUDE\'S', 3), ...block(drawn, 'MID-BUILD', 2), ...block(drawn, 'HOW REVIEW', 2)], [
       'Your threshold is 25%. A kind asks you until its rate falls under',
+      '  scope         0 of 0     0   95%  asks',
       '  internals     0 of 0     0   95%  asks',
       'CLAUDE\'S ONE-ANSWER CALLS',
       '  0 calls · 0 overruled · rate 95%. They go ahead as mine, and',
@@ -431,7 +526,7 @@ describe('the replay (16.15.2, 16.15.3, P14)', () => {
 
   it('P14: the period is the last 30 days while they hold 20 questions or more, else the whole log, the line naming it; a question counts once its answer landed; overruled counts a reversal since as it counts a departure', () => {
     const project = { id: OTHER, name: 'Aircon' };
-    const at = { project, settings: AT_25, care: [], now: FROZEN_MS, blocking: false };
+    const at = { project, settings: DEFAULTS, proposed: AT_25, care: [], now: FROZEN_MS, blocking: false };
     const old = history({ project: OTHER, start: FROZEN_MS - 40 * DAY });
     old.agree(10, 'behaviour');
     const reversed = old.agree(1, 'behaviour')[0];
@@ -444,8 +539,8 @@ describe('the replay (16.15.2, 16.15.3, P14)', () => {
     recent.agree(1, null);
     const month = replay([...old.events, ...recent.events], at);
 
-    assert.deepStrictEqual(whole, { since: Date.parse(/** @type {string} */ (old.events[0].at)), whole: true, asked: 30, skipped: 1, overruled: 1 });
-    assert.deepStrictEqual(month, { since: FROZEN_MS - 30 * DAY, whole: false, asked: 20, skipped: 0, overruled: 0 });
+    assert.deepStrictEqual(whole, { since: Date.parse(/** @type {string} */ (old.events[0].at)), whole: true, more: false, questions: 30, changed: 1, overruled: 1 });
+    assert.deepStrictEqual(month, { since: FROZEN_MS - 30 * DAY, whole: false, more: false, questions: 20, changed: 0, overruled: 0 });
   });
 
   it('16.4.7: a raise mid-build replays the questions that blocked build work alone, against the threshold used elsewhere where none is picked; and the whole log names its first day', () => {
@@ -455,10 +550,10 @@ describe('the replay (16.15.2, 16.15.3, P14)', () => {
     h.agree(12, 'look');
     logHolding(h.events);
 
-    assert.deepStrictEqual(screen(render(dir, ['matrix-replay', '--build', '25']), ['DISPLAY: matrix replay', 'MENU: matrix replay']).slice(0, 8), [
+    assert.deepStrictEqual(inZone('UTC', () => screen(render(dir, ['matrix-replay', '--build', '25']), ['DISPLAY: matrix replay', 'MENU: matrix replay'])).slice(0, 8), [
       '25% MID-BUILD IN PLACE OF THE 20%',
-      '  Since 31 Dec, 25% mid-build would have skipped 1 question that',
-      '  blocked build work; you\'d have overruled none of them.',
+      '  Since 31 Dec 2025, 25% mid-build would have skipped 1 question',
+      '  that blocked build work; you\'d have overruled none of them.',
       '· · · · · · · · · · · ·',
       'At 25% mid-build, the line where a change would be hard to undo',
       'moves to 12.5%, and a quiet kind asks again over 31.25%.',
@@ -475,6 +570,7 @@ describe('the replay (16.15.2, 16.15.3, P14)', () => {
       [['--threshold', '20'], 'render matrix-replay: 20% is your threshold already'],
       [['--build', '30%'], 'render matrix-replay: 30% is your threshold mid-build already'],
       [['--build', '15'], 'render matrix-replay: mid-build the threshold rises over your 20%, never to 15% — a lower one is your threshold\'s own pick'],
+      [['--build', '20'], 'render matrix-replay: mid-build the threshold rises over your 20%, never to 20% — a lower one is your threshold\'s own pick'],
       [['--threshold', '100'], 'render matrix-replay: "100" is no threshold — a percent above 0 and below 100, as 25 or 12.5'],
       [['--threshold', '0'], 'render matrix-replay: "0" is no threshold — a percent above 0 and below 100, as 25 or 12.5'],
       [['--threshold', 'a lot'], 'render matrix-replay: "a lot" is no threshold — a percent above 0 and below 100, as 25 or 12.5'],
@@ -482,6 +578,142 @@ describe('the replay (16.15.2, 16.15.3, P14)', () => {
       [[], 'render matrix-replay: --threshold <percent> or --build <percent>, one and not both'],
     ];
     for (const [args, error] of refusals) assert.strictEqual(refused(dir, ['render', 'matrix-replay', ...args]), error, args.join(' '));
+  });
+});
+
+describe('the replay decides each question as the rule did (16.15.2, 16.15.3)', () => {
+  const at = Object.freeze({ project: { id: OTHER, name: 'Aircon' }, settings: DEFAULTS, proposed: AT_25, care: [], now: FROZEN_MS, blocking: false });
+
+  it('16.S63: questions parked mid-build together and answered in turn are each decided at their raise, over the counts before any of them was answered — none skipped', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    h.blocking(9);
+    h.parked(4);
+    logHolding(h.events);
+
+    assert.strictEqual(found(dir, ['--build', '25']), 'Since 31 Dec 2025, 25% mid-build would have skipped none of the 13 questions that blocked build work you answered.');
+  });
+
+  it('a question raised, others answered while it waits, then it answered: it is decided over what came before its raise alone', () => {
+    const h = history({ project: OTHER });
+    h.agree(9, 'behaviour');
+    const raised = h.now() + 500;
+    h.agree(3, 'behaviour');
+    h.raise('behaviour', '1', { raised });
+
+    assert.deepStrictEqual(replay(h.events, at), { since: Date.parse(/** @type {string} */ (h.events[0].at)), whole: true, more: false, questions: 13, changed: 2, overruled: 0 });
+  });
+
+  it('N3: skipped counts the questions the setting proposed lets go ahead where the person\'s own asks, never those both let go ahead', () => {
+    const h = history({ project: OTHER });
+    h.agree(20, 'behaviour');
+
+    assert.deepStrictEqual([replay(h.events, at).changed, replay(h.events, { ...at, settings: { ...DEFAULTS, threshold: 0.22 } }).changed], [3, 2]);
+  });
+
+  it('each question is decided from what its event holds — its model, its sort, a decision of the person\'s it would replace, Claude\'s mark — in its own project alone; a reversal after the clock is none yet; and the period holds a question decided as it opens', () => {
+    /**
+     * Twelve behaviour answers taking Claude's lean in Aircon, then `then`:
+     * the replay at 25% as of the clock `nowOf` reads — its questions, those
+     * it changed and those overruled.
+     * @param {(h: ReturnType<typeof history>) => void} then @param {(h: ReturnType<typeof history>) => number} [nowOf]
+     */
+    const changedAfter = (then, nowOf = () => FROZEN_MS) => {
+      const h = history({ project: OTHER });
+      h.agree(12, 'behaviour');
+      then(h);
+      const { changed, overruled, questions } = replay(h.events, { ...at, now: nowOf(h) });
+      return [questions, changed, overruled];
+    };
+    const month = history({ project: OTHER, start: FROZEN_MS - 30 * DAY - 1000 });
+    month.agree(20, null);
+
+    assert.deepStrictEqual([
+      changedAfter((h) => h.raise('behaviour', '1')),
+      changedAfter((h) => h.raise('behaviour', '1', {}, { model: MODEL_LINES[0][1] })),
+      changedAfter((h) => h.raise('behaviour', '1', { sort: 'one' })),
+      changedAfter((h) => h.raise('behaviour', '1', { replacedBy: 'person' })),
+      changedAfter((h) => h.raise('behaviour', '1', { always: 'live-server' })),
+      changedAfter((h) => h.raise('behaviour', '1', {}, { project: idOf('Pay') })),
+      changedAfter((h) => h.reverse(h.raise('behaviour', '1')), (h) => h.now() - 500),
+      replay(month.events, at).whole,
+    ], [[13, 3, 0], [13, 2, 0], [13, 2, 0], [13, 2, 0], [13, 2, 0], [12, 2, 0], [13, 3, 0], false]);
+  });
+
+  it('a care entry stands for the questions decided after it was added alone, as the record holds it', () => {
+    const { dir, id } = fumi();
+    const h = replayedHistory(id);
+    logHolding(h.events);
+    careHeld(['behaviour', id, Date.parse(/** @type {string} */ (h.events[12].at)) + 500]);
+
+    assert.strictEqual(found(dir, ['--threshold', '25']), 'Last month 25% would have skipped 3 questions; you\'d have overruled 1 of them.');
+  });
+
+  it('16.15.3 below the person\'s threshold: Claude\'s calls that went ahead, each decided again as it landed — those the lower setting would have asked, and those the person overruled since; a call no raise decided is none of them', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    h.agree(13, 'behaviour');
+    const calls = Array.from({ length: 4 }, () => h.call('several', 'behaviour'));
+    h.call(null, 'behaviour');
+    h.reverse(calls[1]);
+    logHolding(h.events);
+
+    assert.strictEqual(found(dir, ['--threshold', '15']), 'Since 31 Dec 2025, 15% would have asked you 4 more questions; you overruled 1 of those calls.');
+  });
+
+  it('below the person\'s threshold on a history from before the rule let a call go ahead, every question asked: there is nothing to replay', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    h.agree(20, 'behaviour');
+    h.call(null, 'behaviour');
+    logHolding(h.events);
+
+    assert.strictEqual(found(dir, ['--threshold', '15']), 'No call of mine has gone ahead in Fumi yet, so a replay has nothing to show.');
+  });
+
+  it('N5: a raise mid-build where no question has blocked build work yet says so, however many others were answered', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    h.agree(30, 'behaviour');
+    logHolding(h.events);
+
+    assert.strictEqual(found(dir, ['--build', '25']), 'No question has blocked build work in Fumi yet, so a replay mid-build has nothing to show.');
+  });
+
+  it('N9: the whole log\'s first day is the person\'s own, in their time zone, with its year', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    h.blocking(11);
+    logHolding(h.events);
+
+    const opens = inZone('America/Los_Angeles', () => screenOf(render(dir, ['matrix-replay', '--build', '25']), 'DISPLAY: matrix replay')[1]);
+
+    assert.match(opens, /^ {2}Since 30 Dec 2025, 25% mid-build/);
+  });
+});
+
+describe('the replay\'s cost', () => {
+  it('a busy year across three projects — twenty questions and twenty calls a day each — ended over a month ago, so the whole log replays, in one walk through it, each count walked once', () => {
+    const kinds = /** @type {const} */ (['behaviour', 'look', 'words', 'scope', 'process', 'internals', 'contract']);
+    const opened = FROZEN_MS - 396 * DAY;
+    const events = [OTHER, idOf('Pay'), idOf('Docs')].flatMap((project, p) => {
+      const h = history({ project, start: opened });
+      for (let d = 0; d < 7300; d += 1) {
+        const when = opened + (d * DAY) / 20 + p;
+        h.agree(1, kinds[d % kinds.length], { at: when });
+        h.call('several', kinds[d % kinds.length], { at: when + DAY / 40 });
+      }
+      return h.events;
+    });
+
+    const started = process.cpuUsage();
+    const { questions } = replay(events, { project: { id: OTHER, name: 'Aircon' }, settings: DEFAULTS, proposed: AT_25, care: [], now: FROZEN_MS, blocking: false });
+    const { user, system } = process.cpuUsage(started);
+
+    assert.strictEqual(questions, 7300);
+    // About 0.7 s of CPU here; walking each question's counts afresh cost
+    // 12 s. CPU, not wall time, so load does not move it.
+    assert.ok((user + system) / 1e6 < REPLAY_BUDGET_S, `the replay took ${(user + system) / 1e6} s of CPU, over ${REPLAY_BUDGET_S} s`);
   });
 });
 
@@ -504,9 +736,9 @@ describe('the person\'s settings (16.4.7, 16.13.2, E10)', () => {
     assert.deepStrictEqual(block(matrix(dir), 'MID-BUILD', 2)[1], '  25%, your pick, where elsewhere it is 20%.');
   });
 
-  it('the threshold is written only on the person\'s y/yes on its replay, merged into the settings file beside the knowledge base\'s; with no pick, another pick, or a pick of another number, nothing is written', () => {
+  it('the threshold is written only on the person\'s y/yes on its replay, merged into the settings file beside the knowledge base\'s and every other setting under its key; with no pick, another pick, or a pick of another number, nothing is written', () => {
     const { dir } = fumi();
-    const held = JSON.stringify({ knowledge: { provider: 'openai', model: 'text-embedding-3-small' }, other: 1 });
+    const held = JSON.stringify({ knowledge: { provider: 'openai', model: 'text-embedding-3-small' }, other: 1, trust: { build_threshold: 0.4, later: 'kept' } });
     settingsHolding(held);
     const unpicked = 'trust threshold: the person has not picked 30% — only their y/yes on its replay, render matrix-replay --threshold 30, sets it, and nothing is written';
 
@@ -523,7 +755,37 @@ describe('the person\'s settings (16.4.7, 16.13.2, E10)', () => {
     assert.deepStrictEqual(refusals, [unpicked, unpicked, unpicked]);
     assert.strictEqual(unwritten, held);
     assert.deepStrictEqual(set, { ok: true, threshold: '25%', next: engine('render', 'matrix') });
-    assert.deepStrictEqual(JSON.parse(/** @type {string} */ (settingsText())), { knowledge: { provider: 'openai', model: 'text-embedding-3-small' }, other: 1, trust: { threshold: 0.25 } });
+    assert.deepStrictEqual(JSON.parse(/** @type {string} */ (settingsText())), { knowledge: { provider: 'openai', model: 'text-embedding-3-small' }, other: 1, trust: { build_threshold: 0.4, later: 'kept', threshold: 0.25 } });
+  });
+
+  it('a pick is checked against the settings as they stand when it is written: one another conversation has set meanwhile is refused, and nothing written', () => {
+    const { dir } = fumi();
+    render(dir, ['matrix-replay', '--threshold', '25']);
+    pick(dir, 'matrix replay', 'y');
+    const meanwhile = JSON.stringify({ trust: { threshold: 0.25 } });
+    settingsHolding(meanwhile);
+
+    assert.strictEqual(refused(dir, ['trust', 'threshold', '25']), 'trust threshold: 25% is your threshold already');
+    assert.strictEqual(settingsText(), meanwhile);
+  });
+
+  it('N1: a threshold picked above the pick mid-build leaves mid-build the threshold\'s own — a question blocking build work never asks where the same question elsewhere goes ahead — and the matrix says the pick sits below it', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    h.blocking(9);
+    logHolding(h.events);
+    for (const flag of ['--build', '--threshold']) {
+      render(dir, ['matrix-replay', flag, flag === '--build' ? '25' : '30']);
+      run(dir, pick(dir, 'matrix replay', 'y').next.argv);
+    }
+
+    const [blocking, elsewhere] = [behaviourRuled(dir, true), behaviourRuled(dir, false)];
+
+    assert.deepStrictEqual(JSON.parse(/** @type {string} */ (settingsText())), { trust: { build_threshold: 0.25, threshold: 0.3 } });
+    assert.deepStrictEqual([blocking.decision, elsewhere.decision], ['proceed', 'proceed']);
+    assert.strictEqual(blocking.reason, elsewhere.reason);
+    assert.match(blocking.reason, /under your 30%\.$/);
+    assert.deepStrictEqual(block(matrix(dir), 'MID-BUILD', 2)[1], '  30%, the same as elsewhere: your 25% pick sits below it.');
   });
 
   it('a settings file that does not read, or holds a setting the rule cannot read, is refused, naming it, and never written over; a pick with no conversation is refused', () => {

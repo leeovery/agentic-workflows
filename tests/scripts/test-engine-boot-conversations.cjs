@@ -88,7 +88,7 @@ describe('engine boot: the conversation folders', () => {
   it('while the append still fails, a boot warns and the trust log event waits, its folder kept though the transcript is gone; once it can succeed, the next boot lands it, then the tidy-up takes the folder (16.S74)', () => {
     const session = '6f1c2b9a-0d4e-4a7b-9c3e-2f5a8b7d1e40';
     const header = { id: newId(), at: '2026-10-28T10:00:00Z', project: null, project_name: null, model: null, session };
-    const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null }))}\n`;
+    const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null, blocks_build: null }))}\n`;
     const trust = path.join(config, 'trust.jsonl');
     conversation(session, { workflow: '', transcript: transcriptPath('app', session), 'trust-pending.jsonl': waiting });
     fs.mkdirSync(trust, { recursive: true });

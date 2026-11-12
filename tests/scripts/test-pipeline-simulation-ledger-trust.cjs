@@ -11,8 +11,9 @@
 // — the run of answers cueing the offer, the person's yes, and the rest of
 // the topic settled under the rule, the decision point and its convergence
 // seam forced to what switching the rule on makes them; and the matrix —
-// the threshold and its raise mid-build each picked from its replay, and
-// the person's corrections of a kind and a verdict in words.
+// the threshold and its raise mid-build each picked from its replay, a
+// lower threshold replayed and kept from, and the person's corrections of
+// a kind and a verdict in words.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -43,7 +44,7 @@ describe('pipeline simulation: the trust log', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one; then the matrix, the threshold and its raise mid-build each picked from its replay, and the person\'s corrections of a call\'s kind and of the verdict they gave', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one; then the matrix, the threshold and its raise mid-build each picked from its replay, a lower one replayed and kept from, and the person\'s corrections of a call\'s kind and of the verdict they gave', async () => {
     const wu = 'fumi';
     sim.env = {
       ...sim.env,
@@ -121,6 +122,8 @@ describe('pipeline simulation: the trust log', () => {
       sim.render(['matrix-replay', ...setting], { expect: 'content' });
       sim.run(answerGate(sim, 'matrix replay', '--pick', 'y').next.argv);
     }
+    sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' });
+    assert.deepStrictEqual(answerGate(sim, 'matrix replay', '--pick', 'n').next, { kind: 'engine', argv: ['render', 'matrix'] });
     sim.run(['trust', 'correct', call, '--kind', 'behaviour']);
     sim.run(['trust', 'correct', reversal, '--verdict', 'fix']);
     sim.render(['matrix'], { expect: 'content' });

@@ -59,8 +59,12 @@
 // later; walked, answered by the person, their "your call" and "don't care"
 // among it, since each was asked them; decide, settled by Claude's own call.
 // A move routes it however it is answered after, as a merge applies it;
-// one still open is in no lane yet. A decision carried over by the
-// migration is read by who made it.
+// one still open is in no lane yet. An answer is read by its first entry,
+// how the finding was settled at the review — a later replacement is an
+// overrule, counted where the trust log counts it — as it stands decided
+// through the person's latest keep on it, a call of Claude's they kept
+// walked (ledger-fold.cjs, `decidedNow`); and one carried over by the
+// migration by who made it.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -68,7 +72,7 @@ const path = require('path');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { foldLedger, ID_FACTS, factsOf, isLive, questionStands, answersOf } = require('./ledger-fold.cjs');
+const { foldLedger, ID_FACTS, factsOf, isLive, questionStands, decidedNow } = require('./ledger-fold.cjs');
 const { decidedBy } = require('./ledger-events.cjs');
 const { readReport } = require('./round-report.cjs');
 const { recordedRounds } = require('./review-phase.cjs');
@@ -234,7 +238,8 @@ const ASKED = new Set(['person', 'your-call', 'dont-care']);
 
 /**
  * The lane a review's finding went to (the header's), by its question's
- * first entry; null while it is open.
+ * first entry, as it stands decided through the person's latest keep
+ * (`decidedNow`); null while it is open.
  * @param {Folded} folded @param {string} question
  * @returns {Lane|null}
  */
@@ -243,7 +248,7 @@ function laneOf(folded, question) {
   if (stands === 'merged') return 'apply';
   if (factsOf(folded, question).moves.some((move) => isLive(folded, move))) return 'route';
   if (stands !== 'answered') return null;
-  const answer = factsOf(folded, answersOf(folded, question)[0]);
+  const answer = decidedNow(folded, /** @type {string} */ (factsOf(folded, factsOf(folded, question).root).answered_by.find((id) => isLive(folded, id))));
   const by = decidedBy(answer);
   return ASKED.has(by) || (by === 'carried' && answer.by === 'person') ? 'walked' : 'decide';
 }

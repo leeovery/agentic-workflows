@@ -7,7 +7,10 @@
 // file in the system config directory, `config.json`, under its `trust` key,
 // beside the knowledge base's: the threshold, a fraction, and its raise
 // mid-build where a question blocks build work, null until the person picks
-// one (16.4.7). The person's pick from a replay writes one (16.15,
+// one (16.4.7). Mid-build reads the higher of the two: a pick the threshold
+// has since risen past, or none, leaves it the threshold's own, so a
+// question that blocks build work never asks where the same question
+// elsewhere goes ahead. The person's pick from a replay writes one (16.15,
 // trust-verbs.cjs), merged into the file beside the rest (system-config.cjs).
 // A settings file that does not read as JSON, or a `trust` key holding no
 // setting's value, is refused, naming the file; a key under it no setting of
@@ -56,6 +59,12 @@ const TRUST = 'trust';
 
 /** What the release ships, the person having changed nothing. @type {Readonly<Settings>} */
 const DEFAULTS = Object.freeze({ threshold: THRESHOLD, build_threshold: null });
+
+/** Whether the person's raise mid-build holds: picked, and above the threshold (the header's). @param {Settings} settings */
+const buildRaised = ({ threshold, build_threshold: build }) => build !== null && build > threshold;
+
+/** The threshold mid-build (the header's). @param {Settings} settings */
+const midBuild = (settings) => (buildRaised(settings) ? /** @type {number} */ (settings.build_threshold) : settings.threshold);
 
 /** Whether `value` is a threshold: a fraction above none and below all. @param {unknown} value */
 const isRate = (value) => typeof value === 'number' && value > 0 && value < 1;
@@ -119,6 +128,6 @@ function setTrustSetting(name, value) {
 }
 
 module.exports = {
-  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL, REVEAL_LAST, DEFAULTS, trustSettings, setTrustSetting,
+  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL, REVEAL_LAST, DEFAULTS, buildRaised, midBuild, trustSettings, setTrustSetting,
   CONVERGENCE_RUN,
 };

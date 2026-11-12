@@ -14,17 +14,23 @@
 //   stands: asking; quiet, and asking again over a quarter above the
 //   threshold while its rate is between; quiet, where a question hard to
 //   undo still asks; quiet; or asking under the person's care entry,
-//   whatever its counts. Then Claude's one-answer calls, the threshold
-//   mid-build, and how review findings split across their lanes (17.1.3).
-//   A rate is shown to as few places as tell it from every line the screen
-//   names (ask-rule.cjs). Its rows: `t/threshold` and `u/build`, each
+//   whatever its counts. Then Claude's one-answer calls, where they stand
+//   and the line they ask over; the threshold mid-build, the person's pick
+//   where it holds, else the threshold's own, saying so where the threshold
+//   has risen past the pick; and how review findings split across their
+//   lanes (17.1.3). A rate is shown to as few places as tell it from every
+//   line the threshold draws (ask-rule.cjs). Its rows: `t/threshold` and `u/build`, each
 //   carrying on for the person to name a number, whose replay comes first;
 //   `c/care` to the care entries; and `b/back` to manage. The frame adds
 //   `h/help`. No row edits a kind (16.15.4): a kind or a verdict is
 //   corrected in words.
 // - The replay: titled "Matrix · {Project} · Replay"; the setting proposed
 //   in place of the person's, and what it would have changed over the
-//   period replayed (replay.cjs); the lines it moves with it; then whether
+//   period replayed (replay.cjs) — above theirs, the questions it would
+//   have skipped and those the person would have overruled; below it, the
+//   questions it would have asked of Claude's calls, and those the person
+//   overruled — the period's start the person's own day; or, with nothing
+//   to replay, that there is nothing; the lines it moves with it; then whether
 //   to use it — `y/yes` to `trust threshold` or `trust build-threshold`,
 //   `n/no` back to the matrix, keeping theirs, and Comment carrying on for
 //   another number.
@@ -34,9 +40,9 @@ const { wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { titleSection, section, menu, cmdOption, promptOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { percent, against } = require('../ask-rule.cjs');
-const { HARD_TO_UNDO, ASK_AGAIN, PRIOR_CAP } = require('../trust-settings.cjs');
+const { HARD_TO_UNDO, ASK_AGAIN, PRIOR_CAP, buildRaised, midBuild } = require('../trust-settings.cjs');
 const { LANES } = require('../measures.cjs');
-const { dayMonth } = require('../dates.cjs');
+const { localDay } = require('../dates.cjs');
 
 /** @typedef {import('../event-fields.cjs').Kind} Kind */
 /** @typedef {import('../trust-counts.cjs').KindTally} KindTally */
@@ -58,7 +64,13 @@ const { dayMonth } = require('../dates.cjs');
  * weight carried in from their other projects; each kind's row, danger's
  * first; the one-answer calls, their rate and whether they ask; and how
  * review findings split.
- * @typedef {{project: string, settings: Settings, carried: number, kinds: KindRow[], one: {tally: OneTally, bound: number, asks: boolean}, split: Record<Lane, number>}} MatrixView
+ * @typedef {{project: string, settings: Settings, carried: number, kinds: KindRow[], one: OneRow, split: Record<Lane, number>}} MatrixView
+ */
+/**
+ * Claude's one-answer calls as the matrix reads them: their tally, their
+ * rate, whether they ask, the rate they ask over while quiet, and the
+ * weight of the overrules the rate holds.
+ * @typedef {{tally: OneTally, bound: number, asks: boolean, opens: number, losses: number}} OneRow
  */
 /** Which setting a replay proposes. @typedef {'threshold'|'build'} Setting */
 /**
@@ -136,29 +148,45 @@ function carriedSays(project, carried) {
   return `Carried from your other projects: ${weighed(carried)} answers' weight, at most ${PRIOR_CAP} for each kind and for my one-answer calls. Each rate here starts from them and moves with ${project}'s own answers; the counts below are ${project}'s alone.`;
 }
 
+/** A rate shown to as few places as tell it from every line the threshold draws. @param {number} bound @param {number} threshold */
+const rateAt = (bound, threshold) => rateAgainst(bound, Object.values(linesOf(threshold)));
+
 /** The table of kinds. @param {MatrixView} view */
 function kindsTable({ settings: { threshold }, kinds }) {
-  const { at, again, hard, hardAgain } = linesOf(threshold);
   return columns([
     ['kind', 'overturned', 'lost', 'rate'],
     ...kinds.map((row) => (row.kind === 'danger'
       ? [row.kind, DASH, DASH, DASH, standing(row, threshold)]
-      : [row.kind, `${row.tally.overturned} of ${row.tally.answered}`, String(row.tally.lost), rateAgainst(row.bound, [at, again, hard, hardAgain]), standing(row, threshold)])),
+      : [row.kind, `${row.tally.overturned} of ${row.tally.answered}`, String(row.tally.lost), rateAt(row.bound, threshold), standing(row, threshold)])),
   ], [1, 2, 2]);
 }
 
-/** Claude's one-answer calls, and where they stand. @param {MatrixView} view */
-function oneSays({ settings: { threshold }, one: { tally, bound, asks } }) {
-  const counted = `${tally.calls} calls · ${tally.overruled} overruled · rate ${against(bound, threshold)}.`;
-  const going = asks
-    ? `Overrules have lifted the rate over your ${percent(threshold)}, so they ask you until it falls under it.`
-    : `They go ahead as mine, and ask you once overrules lift the rate over your ${percent(threshold)}.`;
-  return `${counted} ${going}`;
+/**
+ * Where Claude's one-answer calls stand: asking until the rate falls under
+ * the threshold; or going ahead until it rises over the line they ask
+ * over — the threshold itself until they first ask, a quarter above it
+ * after they went quiet — and only once their overrules weigh one whole
+ * overrule.
+ * @param {number} threshold @param {OneRow} one
+ */
+function oneGoing(threshold, { asks, opens, losses }) {
+  if (asks) return `Overrules have lifted the rate over your ${percent(threshold)}, so they ask you until it falls under it.`;
+  const going = opens > threshold
+    ? `They went quiet once the rate fell under your ${percent(threshold)}, and go ahead as mine until it rises over ${percent(opens)}`
+    : `They go ahead as mine, and ask you once overrules lift the rate over your ${percent(threshold)}`;
+  return losses > 0 && losses < 1 ? `${going}. They ask only once overrules weigh one whole overrule; these weigh ${weighed(losses)}.` : `${going}.`;
 }
 
-/** The threshold mid-build, where a question blocks work. @param {Settings} settings */
-function midBuildSays({ threshold, build_threshold: build }) {
+/** Claude's one-answer calls, and where they stand. @param {MatrixView} view */
+function oneSays({ settings: { threshold }, one }) {
+  return `${one.tally.calls} calls · ${one.tally.overruled} overruled · rate ${rateAt(one.bound, threshold)}. ${oneGoing(threshold, one)}`;
+}
+
+/** The threshold mid-build, where a question blocks work: the higher of the person's pick and the threshold. @param {Settings} settings */
+function midBuildSays(settings) {
+  const { threshold, build_threshold: build } = settings;
   if (build === null) return `${percent(threshold)}, the same as elsewhere, until a build's own answers show how much to raise it.`;
+  if (!buildRaised(settings)) return `${percent(threshold)}, the same as elsewhere: your ${percent(build)} pick sits below it.`;
   return `${percent(build)}, your pick, where elsewhere it is ${percent(threshold)}.`;
 }
 
@@ -210,27 +238,44 @@ function matrixScreen(view) {
 const percentArg = (rate) => percent(rate).slice(0, -1);
 
 /** The setting a replay proposes, as its screen names it, and the person's now. @param {ReplayView} view */
-function settingOf({ setting, proposed, settings: { threshold, build_threshold: build } }) {
+function settingOf({ setting, proposed, settings }) {
+  const { threshold } = settings;
   if (setting === 'threshold') return { named: percent(proposed), current: threshold, heading: `${percent(proposed)} IN PLACE OF YOUR ${percent(threshold)}` };
-  const current = build ?? threshold;
-  return { named: `${percent(proposed)} mid-build`, current, heading: `${percent(proposed)} MID-BUILD IN PLACE OF ${build === null ? 'THE' : 'YOUR'} ${percent(current)}` };
+  const current = midBuild(settings);
+  return { named: `${percent(proposed)} mid-build`, current, heading: `${percent(proposed)} MID-BUILD IN PLACE OF ${buildRaised(settings) ? 'YOUR' : 'THE'} ${percent(current)}` };
 }
 
-/** When the period replayed starts, as its line opens. @param {Replayed} replayed */
+/** When the period replayed starts, as its line opens: the person's own day. @param {Replayed} replayed */
 function periodSays({ since, whole }) {
-  return whole ? `Since ${dayMonth(new Date(/** @type {number} */ (since)).toISOString().slice(0, 10))},` : 'Last month';
+  return whole ? `Since ${localDay(/** @type {number} */ (since))},` : 'Last month';
 }
 
-/** What the replay found, in a sentence. @param {ReplayView} view */
+/** `n` of `word`, a plural past one. @param {number} n @param {string} word */
+const counted = (n, word) => `${n} ${n === 1 ? word : `${word}s`}`;
+
+/** Nothing to replay, said for the replay `view` shows. @param {ReplayView} view */
+function nothingSays({ project, setting, replayed: { more } }) {
+  const build = setting === 'build';
+  const none = more ? `No call of mine has gone ahead${build ? ' in the build' : ''} in ${project} yet`
+    : build ? `No question has blocked build work in ${project} yet` : `You haven't answered a question in ${project} yet`;
+  return `${none}, so a replay${build ? ' mid-build' : ''} has nothing to show.`;
+}
+
+/** What the replay found, in a sentence: skipped where it asks less, asked where it asks more. @param {ReplayView} view */
 function foundSays(view) {
-  const { replayed, project } = view;
-  const { named } = settingOf(view);
-  if (replayed.asked === 0) return `You haven't answered a question in ${project} yet, so a replay has nothing to show.`;
-  const blocking = view.setting === 'build' ? ' that blocked build work' : '';
-  if (replayed.skipped === 0) return `${periodSays(replayed)} ${named} would have skipped none of the ${replayed.asked} questions${blocking} you answered.`;
-  const questions = replayed.skipped === 1 ? 'question' : 'questions';
-  const overruled = replayed.overruled === 0 ? 'none' : String(replayed.overruled);
-  return `${periodSays(replayed)} ${named} would have skipped ${replayed.skipped} ${questions}${blocking}; you'd have overruled ${overruled} of them.`;
+  const { replayed } = view;
+  const { questions, changed, overruled, more } = replayed;
+  if (questions === 0) return nothingSays(view);
+  const opens = `${periodSays(replayed)} ${settingOf(view).named} would have`;
+  const build = view.setting === 'build';
+  const among = overruled === 0 ? 'none' : String(overruled);
+  if (more) {
+    if (changed === 0) return `${opens} asked you none of the ${counted(questions, 'call')} that went ahead as mine${build ? ' in the build' : ''}.`;
+    return `${opens} asked you ${changed} more ${changed === 1 ? 'question' : 'questions'}${build ? ' in the build' : ''}; you overruled ${among} of those calls.`;
+  }
+  const blocking = build ? ' that blocked build work' : '';
+  if (changed === 0) return `${opens} skipped none of the ${counted(questions, 'question')}${blocking} you answered.`;
+  return `${opens} skipped ${counted(changed, 'question')}${blocking}; you'd have overruled ${among} of them.`;
 }
 
 /** The lines the proposed setting moves. @param {ReplayView} view */

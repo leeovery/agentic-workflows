@@ -45,7 +45,7 @@ const { logPath, logText, project } = useTrustWorld('trust-evidence-');
 // A raise's fields, Claude's sealed answer row 1: answered with it, with
 // another row, in the person's own words — read as no row, as row 1 or as
 // row 2 — or not followed.
-const RAISE = Object.freeze({ kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false });
+const RAISE = Object.freeze({ kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, raised: '2026-01-01T00:00:00.000Z', blind: false });
 const AGREES = Object.freeze({ ...RAISE, answer: '1' });
 const DEPARTS = Object.freeze({ ...RAISE, answer: '2' });
 const OWN_WORDS = Object.freeze({ ...RAISE, answer: null, via: 'typed', with_text: true });
@@ -78,7 +78,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     const [agreed, departed, own, ownAgreed, ownDeparted, called, careless] = ['Agreed', 'Departed', 'Own', 'OwnAgreed', 'OwnDeparted', 'Called', 'Careless'].map(idOf);
     const answers = [
       raised(dir, agreed, AGREES), raised(dir, departed, DEPARTS), raised(dir, own, OWN_WORDS), raised(dir, ownAgreed, OWN_WORDS_AGREEING), raised(dir, ownDeparted, OWN_WORDS_DEPARTING),
-      record('raise', NOT_FOLLOWED, from(dir)), record('call', { entry: called, kind: null, label: null, sort: 'one' }, from(dir)),
+      record('raise', NOT_FOLLOWED, from(dir)), record('call', { entry: called, kind: null, label: null, sort: 'one', blocks_build: false }, from(dir)),
       raised(dir, careless, { ...AGREES, via: 'typed', dont_care: true }),
     ];
     record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: null }, from(dir));
@@ -96,7 +96,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
   it('16.17.6: stands a call a blind draw names as no weight — Claude\'s call gone ahead while its blind question waits, the person\'s answer to that question its evidence — wherever the draw was read, and a call no draw names as Claude\'s call', (t) => {
     const dir = project('fumi');
     const [ahead, alone] = ['Ahead', 'Alone'].map(idOf);
-    const calls = [ahead, alone].map((entry) => record('call', { entry, kind: 'behaviour', label: null, sort: 'several' }, from(dir)));
+    const calls = [ahead, alone].map((entry) => record('call', { entry, kind: 'behaviour', label: null, sort: 'several', blocks_build: entry === ahead }, from(dir)));
     const failing = failingTrustAppends(t);
     inConversation(dir, () => record('blind-draw', { entry: ahead, kind: 'behaviour' }, from(dir)));
     failing.mock.restore();
@@ -110,7 +110,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     const failing = failingTrustAppends(t);
     inConversation(dir, () => raised(dir, agreed, { ...AGREES, kind: 'look', sort: 'one' }));
     failing.mock.restore();
-    record('call', { entry: called, kind: 'scope', label: null, sort: 'several' }, from(dir));
+    record('call', { entry: called, kind: 'scope', label: null, sort: 'several', blocks_build: false }, from(dir));
     raised(dir, relabelled, { ...AGREES, kind: 'look' });
     const reversals = [reversal(dir, idOf('RevAgreed'), agreed), reversal(dir, idOf('RevCalled'), called), reversal(dir, idOf('RevUnknown'), unknown)];
     /** @param {string} entry @param {string} kind */
@@ -133,7 +133,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     const failing = failingTrustAppends(t);
     const waited = inConversation(dir, () => raised(dir, agreed, AGREES));
     failing.mock.restore();
-    const call = record('call', { entry: called, kind: null, label: null, sort: 'one' }, from(dir));
+    const call = record('call', { entry: called, kind: null, label: null, sort: 'one', blocks_build: false }, from(dir));
     const kept = raised(dir, untouched, AGREES);
     const [first, second] = [reversal(dir, reversedAgreement, agreed), reversal(dir, reversedCall, called)];
     const written = [logText(), fs.readFileSync(waitingPath(), 'utf8')];

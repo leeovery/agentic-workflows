@@ -42,4 +42,10 @@ function dayMonth(stamp) {
   return `${day} ${MONTHS[month - 1]}`;
 }
 
-module.exports = { todayStamp, isoNow, dayBefore, daysSince, dayMonth };
+/** The person's own day at the time `at`, in their time zone, as a screen shows it: `16 Oct 2026`. @param {number} at */
+function localDay(at) {
+  const day = new Date(at);
+  return `${day.getDate()} ${MONTHS[day.getMonth()]} ${day.getFullYear()}`;
+}
+
+module.exports = { todayStamp, isoNow, dayBefore, daysSince, dayMonth, localDay };

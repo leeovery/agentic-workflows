@@ -34,7 +34,8 @@
 //   a quarter above it.
 // The threshold a question takes is the person's (16.4.6), their raise of it
 // mid-build once they pick one where the question blocks build work — the
-// build's mark, never Claude's word (16.4.7) — and half of either where a
+// build's mark, never Claude's word (16.4.7), and never below the threshold
+// itself (trust-settings.cjs) — and half of either where a
 // later change would reach beyond the piece, the label's tenth answer
 // (16.4.8). Where in the cone the work is enters nowhere (16.7.2).
 //
@@ -45,7 +46,7 @@
 
 const { kindOf, hardToUndo, checkable, danger } = require('./labeller.cjs');
 const { stateOf } = require('./trust-counts.cjs');
-const { HARD_TO_UNDO, ASK_AGAIN } = require('./trust-settings.cjs');
+const { HARD_TO_UNDO, ASK_AGAIN, buildRaised, midBuild } = require('./trust-settings.cjs');
 
 /** @typedef {import('./labeller.cjs').Label} Label */
 /** @typedef {import('./event-fields.cjs').Kind} Kind */
@@ -113,15 +114,14 @@ function against(bound, line) {
 }
 
 /**
- * The threshold the question takes: the person's — raised mid-build where it
- * blocks build work and they picked a raise — halved where it would be hard
- * to undo.
+ * The threshold the question takes: the person's — mid-build where it
+ * blocks build work — halved where it would be hard to undo.
  * @param {Context} context @param {boolean} hard
  * @returns {Line}
  */
 function lineOf({ settings, blocks_build: blocks }, hard) {
-  const raised = blocks && settings.build_threshold !== null;
-  const base = raised ? /** @type {number} */ (settings.build_threshold) : settings.threshold;
+  const raised = blocks && buildRaised(settings);
+  const base = blocks ? midBuild(settings) : settings.threshold;
   const limit = hard ? base * HARD_TO_UNDO : base;
   const where = raised ? ' mid-build' : '';
   return { limit, said: hard ? `the ${percent(limit)} for what's hard to undo${where}` : `your ${percent(limit)}${where}` };

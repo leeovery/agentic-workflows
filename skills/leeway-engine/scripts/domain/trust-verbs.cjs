@@ -11,13 +11,14 @@
 //   (person.cjs); each kind's tally, its bound and where it stands at the
 //   threshold and at half of it, and the one-answer calls', from the trust
 //   log's counts, the person's events read once (trust-counts.cjs); the
-//   weight carried in from their other projects, danger's apart, as it
-//   always asks; and how this project's review findings split, from its
-//   ledger (measures.cjs).
+//   weight carried in from their other projects, each answer once,
+//   danger's apart, as it always asks; and how this project's review
+//   findings split, from its ledger (measures.cjs).
 // - `render matrix-replay --threshold <n> | --build <n>`: the trust log
-//   replayed against the threshold proposed, or its raise mid-build
-//   (replay.cjs), `n` a percent above 0 and below 100. It refuses the
-//   setting as it stands, and a raise mid-build not above the threshold.
+//   replayed against the threshold proposed, or its raise mid-build, in
+//   place of the person's settings (replay.cjs), `n` a percent above 0 and
+//   below 100. It refuses the setting as it stands, and a raise mid-build
+//   not above the threshold.
 // - `trust threshold <n>` and `trust build-threshold <n>`: the setting
 //   written to the settings file (trust-settings.cjs, 16.13.7) on the
 //   person's yes on the replay of it, as the gate recorded it (gate.cjs) —
@@ -44,7 +45,7 @@ const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
 const { liveness } = require('./ledger-units.cjs');
 const { record, readPersonEvents, modelOf } = require('./trust-log.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
-const { countsFrom, tallyFrom, stateOf, carriedWeight } = require('./trust-counts.cjs');
+const { countsFrom, tallyFrom, stateOf } = require('./trust-counts.cjs');
 const { HARD_TO_UNDO, trustSettings, setTrustSetting } = require('./trust-settings.cjs');
 const { careEntries, careIn } = require('./person.cjs');
 const { hereOf, sessionOf } = require('./person-verbs.cjs');
@@ -98,16 +99,16 @@ function matrixView(cwd, here, warnings) {
   const settings = trustSettings();
   const cared = new Set(careIn(careEntries(), here.id).map(({ kind }) => kind));
   const { threshold } = settings;
-  const one = stateOf(counts.one, threshold);
+  const { bound, asks, opens, losses } = stateOf(counts.one, threshold);
   return {
     project: here.name,
     settings,
-    carried: [...MATRIX_KINDS.filter((kind) => kind !== 'danger').map((kind) => counts.kinds[kind]), counts.one].reduce((sum, count) => sum + carriedWeight(count), 0),
+    carried: [...tally.carried].reduce((sum, [carrier, weight]) => (carrier === 'danger' ? sum : sum + weight), 0),
     kinds: MATRIX_KINDS.map((kind) => {
       const at = stateOf(counts.kinds[kind], threshold);
       return { kind, tally: tally.kinds[kind], bound: at.bound, asks: at.asks, hardAsks: stateOf(counts.kinds[kind], threshold * HARD_TO_UNDO).asks, cared: cared.has(kind) };
     }),
-    one: { tally: tally.one, bound: one.bound, asks: one.asks },
+    one: { tally: tally.one, bound, asks, opens, losses },
     split: findingsSplit({ facts: foldLedger(here.root, ID_FACTS, warnings), live: liveness(here.root) }),
   };
 }
@@ -153,8 +154,8 @@ function proposing(said, settings, setting, rate) {
     if (rate === threshold) throw new Error(`${said}: ${percent(rate)} is your threshold already`);
     return { ...settings, threshold: rate };
   }
-  if (rate === build) throw new Error(`${said}: ${percent(rate)} is your threshold mid-build already`);
   if (rate <= threshold) throw new Error(`${said}: mid-build the threshold rises over your ${percent(threshold)}, never to ${percent(rate)} — a lower one is your threshold's own pick`);
+  if (rate === build) throw new Error(`${said}: ${percent(rate)} is your threshold mid-build already`);
   return { ...settings, build_threshold: rate };
 }
 
@@ -172,7 +173,7 @@ function replaySurface(cwd, { threshold, build }) {
   const here = hereOf(cwd);
   const settings = trustSettings();
   const replayed = replay(personEvents(here.root), {
-    project: { id: here.id, name: here.name }, settings: proposing(said, settings, setting, rate), care: careEntries(), now: Date.now(), blocking: setting === 'build',
+    project: { id: here.id, name: here.name }, settings, proposed: proposing(said, settings, setting, rate), care: careEntries(), now: Date.now(), blocking: setting === 'build',
   });
   return replayScreen({ project: here.name, setting, proposed: rate, settings, replayed });
 }
