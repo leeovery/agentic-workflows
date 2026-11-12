@@ -18,7 +18,7 @@
 // taking it off the question for good, and the rule off changing nothing
 // (16.17.6). The account's refusal is test-engine-task-account.cjs's.
 //
-// Layer: verb. Budget: 18 s — the hold's tests drive the task through its
+// Layer: verb. Budget: 20 s — the hold's tests drive the task through its
 // pair's rounds, its changes and the person's answers, each a state commit,
 // once for every way the hold begins and ends.
 // World: the ledger suites' unit with questions asked in its

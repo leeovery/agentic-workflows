@@ -124,7 +124,7 @@ describe('the way on from a round (12.1.4, 12.14, 24.2.4)', () => {
     reviewerRefused('round 1 of task 1.2 of pay passed — its review is over');
   });
 
-  it('13.4.6: a task whose failed round the orchestrator settled, while a question waiting parks it, owes no account: its builder\'s brief says the review was settled and the task waits', () => {
+  it('13.4.6, 13.4.8: a task whose failed round the orchestrator settled, while a question waiting parks it, owes no account: its builder\'s brief says the review was settled and the task waits, and its reviewer is given no way on, its review over', () => {
     reported(1, 'a');
     reported(1, 'b');
     writeState(dir, 'pay/build/tasks/1.2/round-1-settled.md', 'Settled.\n');
@@ -133,6 +133,8 @@ describe('the way on from a round (12.1.4, 12.14, 24.2.4)', () => {
     const { brief } = issued(['builder', UNIT, '1.2']);
 
     assert.ok(brief.includes('The orchestrator settled the task\'s review in round 1, and it waits on Q1, a question for the person: write no account while it waits — the answer decides whether the task lands as it was settled, or changes.'), brief);
+    assert.ok(!brief.includes('Your reviewers passed the task'), brief);
+    reviewerRefused('round 1 of task 1.2 of pay was settled — its review is over');
   });
 
   it('S2 (12.14): a task its pair passed, its account not taken, lands nowhere — land open, land chain and task done each refused, naming its builder\'s brief', () => {
