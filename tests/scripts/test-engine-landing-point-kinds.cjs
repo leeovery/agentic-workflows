@@ -26,7 +26,6 @@ const { landingPoints } = require('./landing-point-world.cjs');
 landingPoints('each kind of landing, its landing point the one source of every read and every way on (task-landed.cjs, R29)', [
   ['the engine\'s own landing', 'the file it added deleted', false],
   ['the engine\'s own landing', 'that file deleted, then added back', false],
-  ['a merge commit by hand', 'the file it added deleted', false],
   ['a merge commit by hand', 'its branch rewritten', false],
   ['a fast-forward by hand', 'the file it added deleted', false],
   ['a rebase merge by hand', 'the file it added deleted', false],

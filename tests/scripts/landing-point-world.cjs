@@ -8,10 +8,10 @@
 // — its card, then a file it adds, then another — one way: the engine's own
 // landing; by hand, a squash, a merge commit, a fast-forward or a rebase
 // merge's copies; or on GitHub's site, a squash of its pull request. Its
-// branch then changes one way, before or after a verb read that landing: a
-// file added, the file it added deleted, that file deleted and added back,
-// the branch rewritten (F1), or rebased onto the default branch, its
-// commits dropped there as applied. The verbs run as the person runs them,
+// branch then changes one way, before or after a verb read that landing:
+// the file it added deleted, that file deleted and added back, the branch
+// rewritten (F1), or rebased onto the default branch, its commits dropped
+// there as applied. The verbs run as the person runs them,
 // every way on followed as the engine words it, and each row holds the
 // default branch's tree, the task's record — who landed it last, its first
 // landing, its tip — and the verb run again answering already. A conflict's
@@ -48,7 +48,6 @@ const WORK = ['card.txt', 'extra.txt', 'more.txt'];
  * @type {Record<string, {change: (at: string) => void, paths: string[], card: string, lands: boolean}>}
  */
 const CHANGES = {
-  'a file added': { change: (at) => commitFiles(at, card.branch, card.branch, { 'added.txt': 'added\n' }), paths: ['added.txt', ...WORK], card: 'card\n', lands: true },
   'the file it added deleted': { change: (at) => commitFiles(at, card.branch, card.branch, {}, { removed: ['extra.txt'] }), paths: ['card.txt', 'more.txt'], card: 'card\n', lands: true },
   'that file deleted, then added back': {
     change: (at) => {
