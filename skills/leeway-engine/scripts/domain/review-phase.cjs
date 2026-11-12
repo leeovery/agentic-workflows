@@ -103,7 +103,7 @@ const { readSpec, specReading } = require('./spec-sections.cjs');
 const { slugOf } = require('./landing-names.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
-const { isCurrent, factsOf } = require('./ledger-fold.cjs');
+const { isCurrent, factsOf, decidedNow } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { heldBackIn } = require('./questions.cjs');
@@ -554,9 +554,9 @@ function unitCalls(shower, unit, held = new Set()) {
 
 /**
  * Why `given` names no file-or-drop call of the review phase's — a current
- * decision of Claude's own at `{unit}.review` (14.3.7), or at the place
- * `phase` names, a quick-fix's close at its implementation — or null where
- * it does.
+ * decision standing Claude's own (ledger-fold.cjs, `decidedNow`) at
+ * `{unit}.review` (14.3.7), or at the place `phase` names, a quick-fix's
+ * close at its implementation — or null where it does.
  * @param {Shower} shower @param {string} unit @param {string} given @param {string} [phase]
  * @returns {string|null}
  */
@@ -569,7 +569,7 @@ function reviewCallFault({ folded }, unit, given, phase = 'review') {
   }
   const facts = factsOf(folded, id);
   if (facts.kind !== 'decision' || facts.unit !== unit || facts.phase !== phase) return `${given} is no decision made at ${unit}.${phase} — a file-or-drop call is Claude's, written there: ledger decide ${unit}.${phase}`;
-  if (!claudesCall(facts)) return `${given} is the person's decision — a file-or-drop call is Claude's own, never offered (14.3.5)`;
+  if (!claudesCall(decidedNow(folded, id))) return `${given} is the person's decision — a file-or-drop call is Claude's own, never offered (14.3.5)`;
   return isCurrent(folded, id) ? null : `${given} is no longer current`;
 }
 

@@ -456,7 +456,22 @@ const pairPassed = (round) => round.passes || round.settled;
  * @param {string} cwd @param {TaskRef} ref @param {readonly string[]} [letters] the count's
  */
 function taskPassed(cwd, ref, letters = REVIEWER_LETTERS) {
-  const rounds = taskRounds(cwd, ref, letters);
+  return passedBy(cwd, ref, taskRounds(cwd, ref, letters));
+}
+
+/**
+ * Whether a task passed its pair as `taskPassed` reads it, but from its
+ * rounds reported whole (`wholeRounds`), so a round still being reported
+ * reads as not passed, never refused: what a read of where the task stands
+ * takes, its question waiting holding it open once it has (questions.cjs).
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function passedWhole(cwd, ref) {
+  return passedBy(cwd, ref, wholeRounds(cwd, ref));
+}
+
+/** Whether the last of a task's rounds `rounds` passed it, nothing changed under it since. @param {string} cwd @param {TaskRef} ref @param {readonly Round[]} rounds */
+function passedBy(cwd, ref, rounds) {
   const last = rounds.at(-1);
   return last !== undefined && pairPassed(last) && changedUnder(cwd, ref, rounds) === null;
 }
@@ -634,6 +649,6 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
 module.exports = {
   passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, changedPath, briefedPath, briefedOf, recordReviewer, recordBuilder, laidOutPath, laidOutOf, recordLaidOut,
   roundStanding, beingRead, readRefusal, pendingChange,
-  taskRounds, wholeRounds, pairPassed, taskPassed, markChanged, changedIn, changedUnder, changedRefusal, roundUnderReview, phaseReviewPath,
+  taskRounds, wholeRounds, pairPassed, taskPassed, passedWhole, markChanged, changedIn, changedUnder, changedRefusal, roundUnderReview, phaseReviewPath,
   phaseFolder, phaseReviewBegun, phaseReports, phaseRecords,
 };

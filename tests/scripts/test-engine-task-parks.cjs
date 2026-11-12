@@ -10,13 +10,19 @@
 // refused with no session before anything moves — a question it leaves
 // parking none still waiting, and the task reopened and parked again
 // parking again; and a task parked, raised to the person, its builder's stop
-// taken off it. The account's refusal is test-engine-task-account.cjs's.
+// taken off it; and a blind question whose call went ahead for its task
+// parking that task once its pair has passed it, never before, the
+// person's answer freeing it — as built, on their answer, or waiting on
+// another question still — and the rule off changing nothing (16.17.6).
+// The account's refusal is test-engine-task-account.cjs's.
 //
 // Layer: verb. World: the ledger suites' unit with questions asked in its
 // build and phase 2 written in the tracker — 2.1 closed, 2.2 to 2.4 open —
 // built once and copied for each test; each test keeps its conversations
 // and the trust log in a config folder of its own. The separate call is the
-// stub binary, unarmed: no login, so every row is drawn unjudged.
+// stub binary, unarmed: no login, so every row is drawn unjudged, but
+// labelling the call's question where a test arms it; the decision point
+// forced to draw blind where a test says so.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -27,10 +33,16 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, treeSnapshot, head, fixtureFrom, statePath, cleanupFixture, accountTaken } = require('./engine-harness.cjs');
+const { ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, treeSnapshot, head, fixtureFrom, statePath, writeState, cleanupFixture, accountTaken } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { recordReviewer, roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { freedAt } = require(path.join(SCRIPTS, 'domain/task-parks.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
 const BUILD = `${UNIT}.implementation`;
 const REVIEW = `${UNIT}.review`;
@@ -84,7 +96,7 @@ afterEach(() => {
 });
 
 const { ledgerText, full } = ledgerHelpers(() => dir);
-const { conversation, answer, lastEntry } = raiseHelpers(() => dir, config, CALL);
+const { conversation, answer, lastEntry, seals, labelledAs } = raiseHelpers(() => dir, config, CALL);
 
 /** A raise at `at` parking `task` on `question`: its response. @param {string} question @param {string} task @param {string} [at] */
 async function park(question, task, at = BUILD) {
@@ -198,5 +210,154 @@ describe('task close takes the task off its questions', () => {
     assert.deepStrictEqual(waiting(), [['Q1', ['2.4', '2.3']]]);
     assert.deepStrictEqual(ready(), ['2.2']);
     assert.match(refusedPristine(dir, ['task', 'done', UNIT, '2.3'], { env: conversation() }).error, /^task done: task 2\.3 of fumi waits on Q1/);
+  });
+});
+
+describe('a blind question whose call went ahead holds its task open at its done point (16.17.6)', () => {
+  /** The decision point drawing every call blind for test `t`, as the rule switched on draws one. @param {import('node:test').TestContext} t */
+  const drawingBlind = (t) => t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
+
+  /** Claude's call on where a note opens, cheap to undo, raised for 2.3: the raise's response. */
+  const raisedFor23 = async () => (await okSectionsAsync(dir, ['raise', BUILD, '--answers', made.where, '--parks', '2.3'], { env: labelledAs(CALL, 'behaviour', { hardToUndo: false }), stdin: JSON.stringify(CALL) })).res;
+
+  /** Task `task`'s pair briefed for round 1 in the conversation, and passing it: its done point. @param {string} task */
+  function passed(task) {
+    const [phase, n] = task.split('.').map(Number);
+    for (const letter of ['a', 'b']) {
+      recordReviewer(dir, { unit: UNIT, phase, n }, 1, letter, SESSION);
+      writeState(dir, roundReportPath({ unit: UNIT, phase, n }, 1, letter), '## Findings\n\nNone.\n\nVerdict: pass\n');
+    }
+  }
+
+  /** Q1 drawn and answered `how`, its rows keyed as its question's id drew them: the answer's response. @param {'lean'|'other'|'dont-care'} how */
+  function answeredQ1(how) {
+    const { raise } = okSections(dir, ['raise', 'draw', UNIT, 'Q1'], { env: conversation() }).res;
+    if (how === 'dont-care') return answer(raise, ['--dont-care'], null);
+    const { lean, rows } = seals()[raise].call;
+    return answer(raise, ['--pick', how === 'lean' ? lean : rows.find((/** @type {{key: string}} */ row) => row.key !== lean).key]);
+  }
+
+  /** The ledger's lines, in order. */
+  const lines = () => ledgerText().trim().split('\n').map((line) => JSON.parse(line));
+
+  /** The mark a change left on 2.3, or null where it left none. */
+  const marked = () => {
+    const file = statePath(dir, `.cache/${UNIT}/build/tasks/2.3/changed.json`);
+    return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+  };
+
+  const HELD = 'task 2.3 of fumi waits on Q1, parked for the person — they answer it through its raise: raise draw fumi Q1';
+
+  it('blocks none of its rounds: until its pair passes the task, the question parks nothing and the task is ready', async (t) => {
+    drawingBlind(t);
+
+    const res = await raisedFor23();
+
+    assert.deepStrictEqual([res.decision, res.task], ['blind', null]);
+    assert.deepStrictEqual([waiting(), ready()], [[['Q1', []]], ['2.2', '2.3', '2.4']]);
+  });
+
+  it('once its pair has passed the task, parks it: never ready, its account and its done refused naming the question\'s raise, moving and writing nothing, the other tasks going on; a close takes it off the question, which still waits, its answer then holding nothing: no park written, the task standing as built', async (t) => {
+    drawingBlind(t);
+    await raisedFor23();
+    passed('2.3');
+
+    assert.deepStrictEqual([waiting(), ready()], [[['Q1', ['2.3']]], ['2.2', '2.4']]);
+    assert.strictEqual(refusedPristine(dir, ['task', 'account', UNIT, '2.3'], { env: conversation() }).error, `task account: ${HELD}`);
+    assert.strictEqual(refusedPristine(dir, ['task', 'done', UNIT, '2.3'], { env: conversation() }).error, `task done: ${HELD}`);
+    const park = lines().find((line) => line.event === 'parked');
+    assert.deepStrictEqual(taskVerb('close', '2.3', ['--reason', 'Folded into 2.4.']).unparked, ['Q1']);
+    assert.deepStrictEqual([lastEntry().parks, waiting()], [[park.id], [['Q1', []]]]);
+    assert.strictEqual(answeredQ1('lean').receipt, 'Q1 answered · task 2.3 stands as built · nothing waiting on you');
+    assert.strictEqual(lines().filter((line) => line.event === 'parked').length, 1);
+  });
+
+  it('the person\'s answer that is Claude\'s writes the park holding the task first, joining the question, so it frees the task as any park\'s answer does: the task builds again as built, never marked changed, its done let through', async (t) => {
+    drawingBlind(t);
+    await raisedFor23();
+    passed('2.3');
+
+    assert.strictEqual(answeredQ1('lean').receipt, 'Q1 answered · task 2.3 builds again as built · nothing waiting on you');
+    const [hold, keep] = lines().slice(-2);
+    assert.deepStrictEqual([hold.event, hold.task, hold.went_ahead, hold.reason, hold.blind, hold.number, keep.event], ['parked', '2.3', null, 'asked-blind', true, 1, 'kept']);
+    assert.ok(freedAt(dir, UNIT).has('2.3'), 'the answer freed it, so a turn reads it as gone back in flight');
+    assert.deepStrictEqual([waiting(), ready(), marked()], [[], ['2.2', '2.3', '2.4'], null]);
+    accountTaken(dir, UNIT, '2.3');
+    assert.strictEqual(taskVerb('done', '2.3').task, '2.3');
+  });
+
+  it('the person\'s answer that is not Claude\'s frees the task built again on their answer, marked changed under its passed round, so its pair reads it again', async (t) => {
+    drawingBlind(t);
+    await raisedFor23();
+    passed('2.3');
+
+    assert.strictEqual(answeredQ1('other').receipt, 'Q1 answered · task 2.3 builds again on your answer · nothing waiting on you');
+    assert.deepStrictEqual([waiting(), marked()], [[], { round: 1, n: 1 }]);
+    assert.match(refusedPristine(dir, ['task', 'account', UNIT, '2.3'], { env: conversation() }).error, /^task account: task 2\.3 of fumi changed after round 1 passed/);
+  });
+
+  it('the person\'s "don\'t care" frees the task as built, Claude\'s answer the builder\'s', async (t) => {
+    drawingBlind(t);
+    await raisedFor23();
+    passed('2.3');
+
+    assert.strictEqual(answeredQ1('dont-care').receipt, 'Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 builds again as built · nothing waiting on you');
+    assert.deepStrictEqual([waiting(), ready(), marked()], [[], ['2.2', '2.3', '2.4'], null]);
+  });
+
+  it('an answer leaving the task parked by another question: it stands as built, waiting on that question', async (t) => {
+    const blind = drawingBlind(t);
+    await raisedFor23();
+    blind.mock.restore();
+    await park(made.size, '2.3');
+    passed('2.3');
+
+    assert.deepStrictEqual(waiting(), [['Q1', ['2.3']], ['Q2', ['2.3']]]);
+    assert.strictEqual(answeredQ1('lean').receipt, 'Q1 answered · task 2.3 stands as built, waiting on Q2 · 1 waiting on you');
+    assert.deepStrictEqual([waiting(), ready()], [[['Q2', ['2.3']]], ['2.2', '2.4']]);
+  });
+
+  it('a question answered before its task\'s done point never holds it: the task, passed after, is let through, never read as freed, so a turn takes it as a task never parked', async (t) => {
+    drawingBlind(t);
+    await raisedFor23();
+    answeredQ1('lean');
+    passed('2.3');
+
+    assert.deepStrictEqual([waiting(), ready(), freedAt(dir, UNIT).has('2.3')], [[], ['2.2', '2.3', '2.4'], false]);
+    accountTaken(dir, UNIT, '2.3');
+    assert.strictEqual(taskVerb('done', '2.3').task, '2.3');
+  });
+
+  it('something added to the task after its pair passed it puts it back before its done point: the question parks it no longer, so its pair reads it again', async (t) => {
+    drawingBlind(t);
+    await raisedFor23();
+    passed('2.3');
+    const file = statePath(dir, '.cache', 'addition.md');
+    fs.writeFileSync(file, 'A note opens where the pointer is.\n');
+
+    taskVerb('add', '2.3', ['--file', file, '--by', 'orchestrator']);
+
+    assert.deepStrictEqual([waiting(), ready()], [[['Q1', []]], ['2.2', '2.3', '2.4']]);
+  });
+
+  it('the answer run again after a kill took it between the park holding the task and its own line: the question parks the task once, and no second park is written', async (t) => {
+    drawingBlind(t);
+    await raisedFor23();
+    passed('2.3');
+    const { v: _v, id: _id, at: _at, ...ahead } = lines().find((line) => line.event === 'parked');
+    appendEntry(statePath(dir), { ...ahead, task: '2.3', went_ahead: null }, []);
+
+    assert.deepStrictEqual(waiting(), [['Q1', ['2.3']]]);
+    assert.strictEqual(answeredQ1('lean').receipt, 'Q1 answered · task 2.3 builds again as built · nothing waiting on you');
+    assert.strictEqual(lines().filter((line) => line.event === 'parked').length, 2);
+  });
+
+  it('with the rule off nothing changes: the call asks, parking its task outright, never going ahead, and its answer frees it as any question\'s does, writing no park besides', async () => {
+    const res = await raisedFor23();
+    passed('2.3');
+
+    assert.deepStrictEqual([res.decision, res.task, res.landed], ['ask', '2.3', undefined]);
+    assert.strictEqual(answered('Q1').receipt, 'Q1 answered · task 2.3 builds again · nothing waiting on you');
+    assert.strictEqual(lines().filter((line) => line.event === 'parked').length, 1);
   });
 });

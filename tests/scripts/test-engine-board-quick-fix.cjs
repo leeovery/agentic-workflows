@@ -5,7 +5,8 @@
 // board-quick-fix.cjs, 20.14), its fixes: This session in its one session —
 // the change its note pins, each fix as the build draws a task with its
 // pair's rounds, Claude's calls and the earlier decision the change
-// replaces; a fix's builder's question parking it, and the fixes stopped;
+// replaces, whose it was as it stood decided; a fix's builder's question
+// parking it, a fix its blind question holds open, and the fixes stopped;
 // its tab's row and All work; a fix's page, its reviews and its scenarios'
 // pages; and every phase a session can be in drawing a view of its own
 // (27.S8). What waits on the person and the close: -waits.cjs; the record
@@ -135,6 +136,22 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     ]);
   });
 
+  it('REPLACES reads whose the decision was as it stood decided: Claude\'s call in another unit the person kept is theirs', () => {
+    dir = working();
+    atTheFixes();
+    const { ask, decide, full } = ledgerReadHelpers(() => dir);
+    createManifest(dir, 'palette', { phases: { discussion: { items: { palette: { status: 'in-progress' } } } } });
+    const at = 'palette.discussion.palette';
+    const claudes = decide(at, ask(at, 'Which palette?'), 'The palette is warm.');
+    appendEntry(statePath(dir), {
+      event: 'kept', unit: 'palette', topic: 'palette', phase: 'discussion', session: SESSION,
+      by: 'person', who_moved_whom: 'none', entry: full(claudes), reason: 'was-wrong', cause: null, why: 'Warm suits it.', sealed: 'The palette is cool.', given: 'own',
+    }, []);
+    replaced(claudes, 'claude', 'The palette is slate.');
+
+    assert.deepStrictEqual(board().view.replaces.find((/** @type {{id: string}} */ row) => row.id === claudes), { id: claudes, text: 'The palette is warm.', by: 'person', unit_title: 'Palette' });
+  });
+
   /**
    * A question parked on Claude's call in the quick-fix, proposing to
    * replace it, as `how` has it.
@@ -153,6 +170,19 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     parkedOnTheCall({ reason: 'asked-blind', task: null, went_ahead: '1.1', blind: true });
 
     assert.deepStrictEqual(board().view.calls, []);
+  });
+
+  it('16.17.6: a fix whose blind question\'s call went ahead for it waits on that question once its pair has passed it, held open, never before', () => {
+    dir = working();
+    atTheFixes();
+    parkedOnTheCall({ reason: 'asked-blind', task: null, went_ahead: '1.1', blind: true });
+    const reading = board().view.fixes[0].state;
+    reported('1.1', 1, true);
+    const held = board();
+
+    assert.deepStrictEqual([reading, held.view.fixes[0], held.questions.map(({ question, parks }) => [question, parks])], [
+      'building', fix('1.1', FLAG, 'waits', { on: ['Q1'], rounds: { passed: 1 } }), [['Q1', [{ task: '1.1', title: FLAG }]]],
+    ]);
   });
 
   /** The person's keep of Claude's call in the quick-fix, given `given`, as a blind question's answer lands it. @param {'own'|'dont-care'} given */

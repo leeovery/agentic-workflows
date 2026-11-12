@@ -70,7 +70,7 @@ const { BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
-const { isCurrent, factsOf } = require('./ledger-fold.cjs');
+const { isCurrent, factsOf, decidedNow } = require('./ledger-fold.cjs');
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
@@ -118,21 +118,24 @@ function unitRefusal(cwd, unit) {
 }
 
 /**
- * Claude's calls at the spec: the current decisions of Claude's made there,
- * each with the question it answers.
+ * Claude's calls at the spec: the current decisions made there that stand
+ * Claude's (ledger-fold.cjs, `decidedNow`), each with the question it
+ * answers.
  * @param {Shower} shower @param {string} unit
  * @returns {import('./projections/closing.cjs').ShownCall[]}
  */
 function callsAtSpec(shower, unit) {
   const { folded } = shower;
   return [...folded.facts].flatMap(([id, facts]) => {
-    if (facts.kind !== 'decision' || facts.unit !== unit || facts.phase !== PHASE || !claudesCall(facts) || !isCurrent(folded, id)) return [];
+    if (facts.kind !== 'decision' || facts.unit !== unit || facts.phase !== PHASE || !isCurrent(folded, id)) return [];
+    const stands = decidedNow(folded, id);
+    if (!claudesCall(stands)) return [];
     const shown = shower.show(id);
     return [{
       question: facts.answers === null ? null : /** @type {string} */ (shower.show(facts.answers).text),
       answer: /** @type {string} */ (shown.text),
       kind: /** @type {string|null} */ (shown.kind ?? null),
-      handed: handedTag({ given: facts.given ?? undefined }),
+      handed: handedTag({ given: stands.given ?? undefined }),
     }];
   });
 }

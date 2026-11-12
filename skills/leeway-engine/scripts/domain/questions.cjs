@@ -19,15 +19,23 @@
 //   (12.5.5) — names none, and a question parking nothing waits as any other,
 //   nothing waiting on it: a blind question among them whose call went
 //   ahead for its task while it waits (16.17.6), which names that task and
-//   blocks it not, so every count of the questions waiting on the person
-//   holds it. While it waits, the call is held back from every list of the
-//   build's calls — a task's page, a quick-fix's board, the ledger's since
-//   and the review's calls decided for the person — each asking
-//   `heldBackIn`; and the question is about the question the call answers,
-//   never the call. Whether a question is asked blind is its first park's,
-//   sealed with its call, so a task joining it parks on it blind as well.
-//   What it asks is Claude's call's question as sealed, or, where its
-//   question has been reworded since, its wording as it stands.
+//   blocks none of its rounds, so every count of the questions waiting on
+//   the person holds it. Once the task has passed its pair — its done
+//   point (round-report.cjs, `passedWhole`) — the question parks it, held
+//   open until the person answers, as every read of the questions reads it
+//   (`heldOpen`): the task is never ready, done nor its account taken, a
+//   close takes it off the question, and the build goes on without it; the
+//   park is written as the person's answer lands (raise.cjs), so the
+//   answer frees it as it frees any park's task, the ledger's line of it
+//   where it went back in flight. While it waits, the call is held back
+//   from every list of the build's calls — a task's page, a quick-fix's
+//   board, the ledger's since and the review's calls decided for the
+//   person — each asking `heldBackIn`; and the question is about the
+//   question the call answers, never the call. Whether a question is asked
+//   blind is its first park's, sealed with its call, so a task joining it
+//   parks on it blind as well. What it asks is Claude's call's question as
+//   sealed, or, where its question has been reworded since, its wording as
+//   it stands.
 // - Its number: `Q{n}`, per unit, the next after the highest the unit's
 //   parks hold, live or not, so none is ever reused and a queued "Q2" never
 //   shifts when Q1 is answered; a task joining a question waiting takes its
@@ -66,7 +74,9 @@
 //   one in flight where it is one of several freed (12.7.9); where none is,
 //   the task a question still waiting holds; on a blind question whose
 //   call went ahead, what became of the task it went ahead for — built
-//   again on the person's answer, or standing as built; where none is and
+//   again on the person's answer, or standing as built — and where the
+//   question held it open, that it builds again, so, or that it stands so
+//   and waits on the question still holding it; where none is and
 //   it parks none, that no task waited on it; else still
 //   waiting — how many questions of the unit still wait, and the
 //   next to raise. The next is read from the conversation's discussion
@@ -100,6 +110,8 @@ const { shortId, resolveId } = require('./ledger-ids.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ID_FACTS, readFolded, factsOf, whyDead, questionStands, notCurrent, keptOf, wordingOf, isCurrent, standingOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
+const { passedWhole } = require('./round-report.cjs');
+const { parseShownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
@@ -343,7 +355,50 @@ function unitRoot(cwd, unit, said, usage) {
  * @returns {T}
  */
 function readQuestions(root, warnings, answer) {
-  return readFolded(root, ID_FACTS, warnings, (facts, entryAt) => answer({ facts, live: liveness(root) }, entryAt));
+  return readFolded(root, ID_FACTS, warnings, (facts, entryAt) => answer(heldOpen(root, { facts, live: liveness(root) }, entryAt), entryAt));
+}
+
+/**
+ * The ledger `read` as the questions read it: each blind question's park
+ * whose call went ahead for its task, waiting, the task not taken off it by
+ * a close, parking that task once the task has passed its pair — its done
+ * point (round-report.cjs) — where no park of the question names it
+ * already: held open until the person answers (16.17.6). Never before its
+ * done point, so the question blocks none of the task's rounds.
+ * @param {string} root @param {Folded} read @param {EntryAt} entryAt
+ * @returns {Folded}
+ */
+function heldOpen(root, read, entryAt) {
+  /** @type {[string, string][]} */
+  const holds = [];
+  for (const [id, { event, task, unparked_by: unparkedBy, unit, place }] of read.facts) {
+    if (event !== 'parked' || task !== null || unparkedBy.length > 0 || !waits(read, id)) continue;
+    const ahead = entryAt(place).went_ahead;
+    if (ahead !== null && !parkedAlready(read, id, ahead) && passedWhole(root, parseShownTask(unit, ahead))) holds.push([id, ahead]);
+  }
+  if (holds.length === 0) return read;
+  const facts = new Map(read.facts);
+  for (const [id, task] of holds) facts.set(id, { ...factsOf(read, id), task });
+  return { ...read, facts };
+}
+
+/** Whether a park waiting about what the park `id` is about names `task`. @param {Folded} read @param {string} id @param {string} task */
+function parkedAlready(read, id, task) {
+  const subject = subjectOf(read, id);
+  return waitingParks(read, /** @type {string} */ (factsOf(read, id).unit)).some((other) => isAbout(read, other, subject) && taskOf(read, other) === task);
+}
+
+/**
+ * The task the blind question `parks` holds open as the questions read it
+ * (`heldOpen`) with no park written naming it yet — which its answer writes
+ * as it lands (raise.cjs) — else null.
+ * @param {string} cwd @param {Parks|null} parks @param {string[]} warnings
+ * @returns {string|null}
+ */
+function heldUnwritten(cwd, parks, warnings) {
+  if (parks === null || parks.went_ahead === null) return null;
+  const ahead = parks.went_ahead;
+  return readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read) => (factsOf(read, parks.park).task === ahead ? ahead : null));
 }
 
 /**
@@ -596,10 +651,10 @@ function receiptLine(names, outcome, means, count, next) {
  * What an answer to the question `parks` meant for the build, the unit's
  * parks waiting before it `before`: the tasks parks held that waited
  * before it and wait no longer, that no park still waiting holds, as
- * `freedWords` says them; none, where a question still waiting holds its
- * task; and none where it parks no task.
+ * `freedWords` says them; where none is, the task it parks a question still
+ * waiting holds, and those questions; and none where it parks no task.
  * @param {Folded} read @param {string} unit @param {Parks} parks @param {string[]} before
- * @returns {{freed: string[]}|{means: string}}
+ * @returns {Meant}
  */
 function answerMeans(read, unit, parks, before) {
   const after = waitingParks(read, unit);
@@ -608,35 +663,52 @@ function answerMeans(read, unit, parks, before) {
     .filter((task) => task !== null && !held.has(task));
   if (freed.length > 0) return { freed: /** @type {string[]} */ (freed) };
   const task = parkedOn(read, parks).find((t) => held.has(t));
-  if (task === undefined) return { means: 'no task waited on it' };
-  const by = waitingOf(read, unit).filter((q) => q.tasks.includes(task)).map((q) => numbered(q.number));
-  return { means: `task ${task} waits on ${by.join(', ')}` };
+  if (task === undefined) return { waits: null };
+  return { waits: { task, on: waitingOf(read, unit).filter((q) => q.tasks.includes(task)).map((q) => numbered(q.number)) } };
 }
 
+/** What an answer meant for the build (`answerMeans`). @typedef {{freed: string[]}|{waits: {task: string, on: string[]}|null}} Meant */
+
+/** A task a question still waiting holds, as a line says it; or that no task waited. @param {{task: string, on: string[]}|null} waits */
+const waitsWords = (waits) => (waits === null ? 'no task waited on it' : `task ${waits.task} waits on ${waits.on.join(', ')}`);
+
 /**
- * The tasks an answer freed building again — one, or each of theirs — one
- * its pair is reading once that round is read (round-report.cjs), and in
- * step, one at a time (12.7.9): once the task in flight is done, where it
- * is none of them; else from the one in flight, where they are several.
- * @param {string[]} freed @param {import('./task-verbs.cjs').StepTurn|null} turn @param {(task: string) => number|null} read the round its pair reads
+ * The tasks an answer freed building again — one, or each of theirs, one
+ * of them `how` it builds again where given — one its pair is reading once
+ * that round is read (round-report.cjs), and in step, one at a time
+ * (12.7.9): once the task in flight is done, where it is none of them;
+ * else from the one in flight, where they are several.
+ * @param {string[]} freed @param {import('./task-verbs.cjs').StepTurn|null} turn @param {(task: string) => number|null} read the round its pair reads @param {string|null} [how]
  */
-function freedWords(freed, turn, read) {
+function freedWords(freed, turn, read, how = null) {
   const reading = freed.length === 1 ? read(freed[0]) : null;
   const behind = turn !== null && !freed.includes(turn.inFlight) ? require('./task-verbs.cjs').turnEnds(turn) : null;
   const waits = [...(reading === null ? [] : [`its pair has read round ${reading}`]), ...(behind === null ? [] : [behind])];
-  const again = `${freed.length === 1 ? `task ${freed[0]} builds` : 'their tasks build'} again${waits.length === 0 ? '' : ` once ${waits.join(' and ')}`}`;
+  const again = `${freed.length === 1 ? `task ${freed[0]} builds` : 'their tasks build'} again${how === null ? '' : ` ${how}`}${waits.length === 0 ? '' : ` once ${waits.join(' and ')}`}`;
   return turn !== null && behind === null && freed.length > 1 ? `${again}, task ${turn.inFlight} first` : again;
 }
 
 /**
  * What became of the task a blind question's call went ahead for, as its
- * answer landed: built again on the person's answer where it replaced the
- * call, else standing as built.
- * @param {{task: string, changed: boolean}} ahead
+ * answer landed, `ahead`: built again on the person's answer where it
+ * replaced the call, else standing as built — and where the question held
+ * it open (`heldOpen`), that it builds again so, as `freed` says when, or,
+ * a question still waiting holding it, that it waits on that question.
+ * @param {Ahead} ahead @param {Meant} meant @param {(how: string) => string} freed
  */
-function aheadWords({ task, changed }) {
-  return changed ? `task ${task} is built again on your answer` : `task ${task} stands as built`;
+function aheadWords({ task, changed, held }, meant, freed) {
+  const done = changed ? `task ${task} is built again on your answer` : `task ${task} stands as built`;
+  if (!held) return done;
+  if ('freed' in meant) return freed(changed ? 'on your answer' : 'as built');
+  return meant.waits === null ? done : `${done}, waiting on ${meant.waits.on.join(', ')}`;
 }
+
+/**
+ * The task a blind question's call went ahead for, as its answer landed:
+ * whether the answer replaced the call, and whether the question held the
+ * task open at its done point (`heldOpen`).
+ * @typedef {{task: string, changed: boolean, held: boolean}} Ahead
+ */
 
 /**
  * The receipt of the person's answer to the parked question `parks`, read
@@ -649,14 +721,14 @@ function aheadWords({ task, changed }) {
  * they never saw, standing as the builder's.
  * @param {string} cwd @param {string} unit @param {Parks} parks @param {string[]} before @param {string[]} warnings
  * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow @param {(task: string) => number|null} read the round a task's pair reads
- * @param {{ahead?: {task: string, changed: boolean}|null, left?: string|null}} [how]
+ * @param {{ahead?: Ahead|null, left?: string|null}} [how]
  */
 function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read, { ahead = null, left = null } = {}) {
   const root = /** @type {string} */ (findStateRoot(cwd));
   const name = numbered(parks.number);
   const { meant, waiting } = readQuestions(root, warnings, (read) => ({ meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit) }));
-  const said = 'means' in meant ? meant.means : freedWords(meant.freed, turnNow(), read);
-  const means = ahead === null ? said : aheadWords(ahead);
+  const freed = (/** @type {string|null} */ how) => ('freed' in meant ? freedWords(meant.freed, turnNow(), read, meant.freed.length === 1 ? how : null) : waitsWords(meant.waits));
+  const means = ahead === null ? freed(null) : aheadWords(ahead, meant, freed);
   const outcome = left === null ? 'answered' : `answered · my answer stands as the builder's: ${left}`;
   return receiptLine([name], outcome, means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
 }
@@ -801,5 +873,5 @@ function parkingTask(root, unit, task, warnings) {
 
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, sealedOf, parkedUnder, parkedQuestion, parkedOn, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen, heldBackIn, heldBack,
+  explainedReceipt, checkAnswerable, checkStillWaiting, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen, heldBackIn, heldBack, heldUnwritten,
 };

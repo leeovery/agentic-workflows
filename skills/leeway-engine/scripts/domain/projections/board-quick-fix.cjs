@@ -39,8 +39,8 @@
 //   person has answered (16.17.2, questions.cjs); REPLACES, for each current
 //   decision made there, the decision made in another unit its chain of
 //   replacements goes back to, past those made in the quick-fix, with its
-//   words, whose it was and the unit's title; both read in one read of the
-//   ledger.
+//   words, whose it was, as it stood decided (ledger-fold.cjs, `decidedNow`),
+//   and the unit's title; both read in one read of the ledger.
 // - THE RECORD is `summary.md`'s, each fix's under its title, once every
 //   fix has ended and one at least is done.
 // ---------------------------------------------------------------------------
@@ -132,7 +132,7 @@ const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at
       const replaced = replacing(id);
       if (replaced === null) return [];
       const { unit } = madeOn(folded, replaced);
-      return [{ id: short(replaced), text: String(show(replaced).text), by: factsOf(folded, replaced).by === 'person' ? /** @type {const} */ ('person') : /** @type {const} */ ('claude'), unit_title: titlecase(unit) }];
+      return [{ id: short(replaced), text: String(show(replaced).text), by: decidedNow(folded, replaced).by === 'person' ? /** @type {const} */ ('person') : /** @type {const} */ ('claude'), unit_title: titlecase(unit) }];
     }),
     raised: [
       ...askedOpenIds(folded, at.unit).map((id) => ({ kind: /** @type {const} */ ('raised'), id: short(id), text: String(show(id).text).replace(/\s+/g, ' ').trim(), page: null })),

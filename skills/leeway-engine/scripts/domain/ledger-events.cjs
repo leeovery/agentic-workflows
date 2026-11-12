@@ -88,8 +88,11 @@
 //   none; the task Claude's call went ahead for, `went_ahead`, where a blind
 //   question drawn on a call cheap to undo let the call land for its task
 //   while it waits (16.17.6) — the question then proposing to replace that
-//   call, `asked-blind`, and parking no task, so it blocks none — null for
-//   every other; its number in its unit, `Q{number}`, the engine's, minted
+//   call, `asked-blind`, and parking no task, so it blocks none of the
+//   task's rounds — null for every other; the park holding that task open
+//   once it passed its pair, written as the person's answer lands
+//   (questions.cjs, `heldOpen`), is that question's too, `asked-blind`,
+//   parking the task; its number in its unit, `Q{number}`, the engine's, minted
 //   as it parks and never reused, or, for a task joining a question already
 //   waiting, that question's (questions.cjs); and the call sealed, so it is
 //   raised as it was put whenever the person is ready, in whatever
@@ -288,8 +291,8 @@ const PARKED_CALL_FIELDS = Object.freeze({ ...CALL_FIELDS, lean: nullable(KEY), 
  * answers a question, and has no lean, why or sort, and is never blind,
  * while a call has all three and leans to a row it holds; and a blind
  * question on Claude's call gone ahead (`went_ahead`) proposes to replace
- * that call, asked blind, parking no task, and is the only park of that
- * reason.
+ * that call for its reason, asked blind, parking no task — the park holding
+ * that task open, for that reason, asked blind too.
  * @param {Record<string, any>} parked
  * @returns {string|null}
  */
@@ -297,8 +300,9 @@ function parkHolds({ question, replaces, reason, cause, task, went_ahead: wentAh
   if ((question === null) === (replaces === null)) return 'a parked question answers a question or proposes a replacement, one and not both';
   if ((replaces === null) !== (reason === null)) return 'a replacement proposed gives its reason, and only a replacement does';
   if (cause !== null && replaces === null) return 'only a replacement proposed has a cause';
-  if ((wentAhead !== null) !== (reason === ASKED_BLIND)) return `a blind question on Claude's call gone ahead names the task it went ahead for, its reason ${ASKED_BLIND}, and only it does`;
-  if (wentAhead !== null && (task !== null || !blind)) return 'a blind question on Claude\'s call gone ahead is asked blind and parks no task';
+  if (wentAhead !== null && reason !== ASKED_BLIND) return `a blind question on Claude's call gone ahead proposes to replace it for its reason, ${ASKED_BLIND}`;
+  if (reason === ASKED_BLIND && !blind) return `a park for ${ASKED_BLIND} is asked blind: Claude's call gone ahead, or the task it went ahead for held open`;
+  if (reason === ASKED_BLIND && (wentAhead === null) === (task === null)) return 'a blind question on Claude\'s call gone ahead names the task it went ahead for and parks none; the park holding that task open parks it, naming none gone ahead';
   const leans = [call.lean, call.why, call.sort].filter((given) => given !== null).length;
   if (leans === 0) {
     if (blind) return 'a fact parked is never blind: it has no answer of Claude\'s to hold back';
