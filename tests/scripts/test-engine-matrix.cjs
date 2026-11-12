@@ -33,7 +33,7 @@ const path = require('path');
 
 const { ok, output, refuses, screenOf, statePath, readState, layout, fixtureFrom, withFrozenClock, FROZEN_MS } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { idOf, SESSION, DAY, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
+const { idOf, UNDRAWN, SESSION, DAY, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -239,11 +239,11 @@ function replayedHistory(project) {
   return h;
 }
 
-/** The decision point's ruling on a behaviour question in the project at `dir`, blocking build work where `blocks`. @param {string} dir @param {boolean} blocks */
+/** The decision point's ruling on a behaviour question in the project at `dir`, blocking build work where `blocks`, its id one the blind draw never takes. @param {string} dir @param {boolean} blocks */
 function behaviourRuled(dir, blocks) {
   return withFrozenClock(() => ruled(/** @type {any} */ ({ sort: 'several' }), {
     label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, checked: false,
-    project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS,
+    project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS, question: UNDRAWN,
   }));
 }
 
@@ -466,10 +466,10 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
 
     assert.deepStrictEqual(block(matrix(dir), 'HOW REVIEW FINDINGS SPLIT', 5), [
       'HOW REVIEW FINDINGS SPLIT (10 across Fumi\'s reviews)',
-      '  apply   1  10%  the record or a fact settles it',
-      '  decide  2  20%  Claude\'s call',
-      '  walked  5  50%  asked you',
-      '  route   2  20%  belongs to another topic',
+      '  apply    1  10%  the record or a fact settles it',
+      '  decide   2  20%  Claude\'s call',
+      '  walked   5  50%  asked you',
+      '  route    2  20%  belongs to another topic',
     ]);
   });
 
