@@ -453,9 +453,13 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     ]);
   });
 
-  it('`render help` refuses a menu the registry does not name, and one with no help yet', () => {
+  it('`render help` refuses a menu the registry does not name, and one with no help yet', (t) => {
+    const unwritten = [path.join(SCRIPTS, 'domain/projections/triage.help.md'), path.join(SCRIPTS, 'domain/projections/archived.help.md')];
+    const exists = fs.existsSync;
+    t.mock.method(fs, 'existsSync', (/** @type {fs.PathLike} */ file) => !unwritten.includes(String(file)) && exists(file));
+
     assert.strictEqual(refuses(dir, ['render', 'help', 'inbox']).error, 'there is no menu "inbox" — the menus: start-menu, epic-menu, triage, archived, archived-item, roadmap, manage, manage-unit, closed, verdicts, care');
-    assert.deepStrictEqual([refuses(dir, ['render', 'help', 'triage', '--pick', '1']).error, refuses(dir, ['render', 'help', 'archived']).error], [
+    assert.deepStrictEqual([refuses(dir, ['render', 'help', 'triage', '--file', 'pick.json']).error, refuses(dir, ['render', 'help', 'archived']).error], [
       'there is no help for triage yet — its help is triage.help.md, beside its projection',
       'there is no help for the archived items yet — its help is archived.help.md, beside its projection',
     ]);
@@ -473,9 +477,9 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     assert.deepStrictEqual([
       menuDrift(drawn('triage', ['#', 'w', 'a']), help),
       menuDrift(TRIAGE, null),
-      menuDrift(MENUS.triage, help),
+      menuDrift(drawn('triage', []), help),
       menuDrift(TRIAGE, help),
-      menuDrift(MENUS.triage, null),
+      menuDrift(drawn('triage', []), null),
     ], [
       ['triage: row a has no help', 'triage: its help tells of a row b the menu does not register'],
       ['triage: its rows have no help — triage.help.md, beside its projection'],

@@ -37,7 +37,8 @@
 // it, or null for one the person had fixed straight away (P4) — the files
 // and the record one commit. `restore` and `delete` drop an item's record:
 // a restored item is live again, and a deleted one is gone. Finish reads
-// the record for the closures its screen lists (`closedBy`), and the
+// the record for the closures its screen lists (`closedBy`), triage's
+// archived items for who closed each (`closures`), and the
 // build's log for the items its `Resolved: {path}` lines claim the work
 // resolved, still live (`liveResolved`, 6.4.10).
 // ---------------------------------------------------------------------------
@@ -377,6 +378,12 @@ function deleteItems(cwd, paths) {
   return committedResult({ deleted, committed: outcome.committed }, outcome, warnings);
 }
 
+/** The record of who closed each archived item, by `{folder}/{file}` (the header's). @param {string} cwd @returns {Record<string, Closure>} */
+function closures(cwd) {
+  const record = readProjectManifest(cwd)[CLOSED];
+  return isObject(record) ? record : {};
+}
+
 /**
  * The items the record says `unit` closed, in the order closed: each one's
  * title — its file's name where it has none — and kind.
@@ -386,9 +393,7 @@ function deleteItems(cwd, paths) {
 function closedBy(cwd, unit) {
   // Required here: the start's reads this module.
   const { titleOf } = require('./start.cjs');
-  const record = readProjectManifest(cwd)[CLOSED];
-  if (!isObject(record)) return [];
-  return Object.entries(record).filter(([, closure]) => closure.unit === unit).map(([key]) => {
+  return Object.entries(closures(cwd)).filter(([, closure]) => closure.unit === unit).map(([key]) => {
     const item = parseInboxPath(cwd, statePath(cwd, ARCHIVED, key), { archived: true });
     const file = statePath(cwd, item.rel);
     return { title: (fs.existsSync(file) ? titleOf(fs.readFileSync(file, 'utf8')) : null) ?? item.slug, kind: FOLDER_KIND[item.folder] };
@@ -486,6 +491,7 @@ module.exports = {
   closeItems,
   restoreItems,
   deleteItems,
+  closures,
   closedBy,
   liveResolved,
   freeItemPath,

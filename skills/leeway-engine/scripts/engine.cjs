@@ -387,9 +387,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render pivot-continuation <wu>
   render absorb-target     <feature>
   render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
-  render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
-  render inbox-content     --path <inbox path>[,<inbox path>…]
   render inbox-restore-receipt --path <live path>
   render inbox-delete-receipt --path <archived path>
   render completed-actions <wu>
@@ -398,7 +396,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render roadmap-add-gate --horizon <name>
   render horizon-pick      [<wu.discovery.topic> | --park <name> | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]]
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
-  render inbox-roadmap-gate --file <entries.json>
   render roadmap-harvest-gate
   render roadmap-parks-gate
   render query-failure-gate --file <payload.json>
@@ -455,6 +452,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render care [--added <kind> | --dropped <kind>]
   render care-kind
   render care-drop
+  render triage [--file <pick.json>]
+  render archived
+  render archived-item --path <archived path>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;

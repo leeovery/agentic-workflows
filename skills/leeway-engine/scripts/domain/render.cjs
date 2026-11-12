@@ -22,13 +22,12 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { displayWidth } = require('../kernel/terminal.cjs');
-const { titlecase, tag } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
+const { titlecase } = require('./conventions.cjs');
+const { section, dataSection, CONTINUE_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
-const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
-const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
+const { completedActions } = require('./projections/start.cjs');
+const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
@@ -39,7 +38,7 @@ const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
-const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, addNameRefusal, DEFAULT_KIND } = require('./roadmap.cjs');
+const { roadmapState, hasRoadmapNode, validateKind, markedKind, addNameRefusal, DEFAULT_KIND } = require('./roadmap.cjs');
 const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
 const {
   roadmapMapView,
@@ -83,6 +82,7 @@ const { verdictsSurface } = require('./verdict.cjs');
 const { startMenuSurface } = require('./projections/start-menu.cjs');
 const { epicMenuSurface } = require('./projections/epic-menu.cjs');
 const { manageSurface, manageUnitSurface, closedSurface, absorbTargetSurface, absorbConfirmSurface } = require('./projections/manage.cjs');
+const { triageSurface, archivedSurface, archivedItemSurface, archivedDeleteGateSurface } = require('./projections/triage.cjs');
 const { careSurface, careKindSurface, careDropSurface } = require('./person-verbs.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
@@ -984,62 +984,8 @@ function pivotContinuation(cwd, args) {
   return pivotContinuationMenu(workUnit);
 }
 
-// ---------------------------------------------------------------------------
-// Archived-store gates — the sub-view's menus over one archived item,
-// resolved by its store path so the title on the label is the file's own.
-// ---------------------------------------------------------------------------
-
 /**
- * @param {string} cwd @param {{dotpath: string, path?: string}} args @param {string} surface
- * @returns {import('./inbox-set.cjs').PickupItem}
- */
-function resolveArchivedItem(cwd, { path: given }, surface) {
-  if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — the selected archived item`);
-  try {
-    return archivedItem(cwd, /** @type {string} */ (given));
-  } catch (err) {
-    throw new Error(`render ${surface}: ${/** @type {Error} */ (err).message}`);
-  }
-}
-
-/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
-function archivedActionsSurface(cwd, args) {
-  return archivedActions(resolveArchivedItem(cwd, args, 'archived-actions'));
-}
-
-/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
-function archivedDeleteGateSurface(cwd, args) {
-  return archivedDeleteGate(resolveArchivedItem(cwd, args, 'archived-delete-gate'));
-}
-
-// The inbox surfaces over several items take their paths comma-joined, the
-// shape the inbox seeds take.
-/** @param {string|undefined} given @param {string} surface @param {string} what @returns {string[]} */
-function inboxPathsArg(given, surface, what) {
-  if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — ${what}`);
-  return /** @type {string} */ (given).split(',');
-}
-
-// inbox-content — inbox items in full, live or archived, in the order given;
-// each file's content as written, its frontmatter skipped.
-/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
-function inboxContentSurface(cwd, args) {
-  const paths = inboxPathsArg(args.path, 'inbox-content', 'the inbox items to show, comma-joined');
-  /** @type {import('./inbox-set.cjs').PickupItem[]} */
-  let items;
-  try {
-    items = inboxItems(cwd, paths);
-  } catch (err) {
-    throw new Error(`render inbox-content: ${messageOf(err)}`);
-  }
-  return inboxContent(items.map((item) => {
-    const { lines, bodyStart } = sourceLines(fs.readFileSync(item.path, 'utf8'));
-    return { item, body: lines.slice(bodyStart).join('\n').replace(/^\n+/, '').trimEnd() };
-  }));
-}
-
-/**
- * The single-item receipts after the archived sub-view acts, over the path
+ * The single-item receipts after an archived item is restored or deleted, over the path
  * the verb answered: a restore's item must be live again, and a delete's
  * gone from the archive — its title read from git's last copy.
  * @param {string} cwd @param {{dotpath: string, path?: string}} args
@@ -1215,49 +1161,6 @@ function horizonBack(cwd, name, from, then) {
 /** @param {{exists: boolean, horizons: string[]}} roadmap @param {string} horizon */
 function horizonFlag(roadmap, horizon) {
   return roadmap.exists && !roadmap.horizons.includes(horizon) ? ' (new)' : '';
-}
-
-/**
- * The confirm before inbox items move onto the roadmap, over the very file
- * `roadmap add-batch` takes — every entry with a note, all under one
- * horizon. add-batch's own plan runs as a dry run, so the gate refuses
- * exactly where the verb would; each item shows its name, the kind its
- * note's folder gives it where not an idea, and its summary.
- * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function inboxRoadmapGate(cwd, { file }) {
-  if (!file) throw new Error('render inbox-roadmap-gate: --file <entries.json> is required');
-  const entries = readJsonPayload(cwd, file, 'inbox-roadmap-gate');
-  /** @type {ReturnType<typeof planRoadmapBatch>} */
-  let plan;
-  try {
-    if (Array.isArray(entries) && entries.some((e) => !e || e.note === undefined)) {
-      throw new Error('every entry names its inbox note');
-    }
-    plan = planRoadmapBatch(cwd, entries);
-  } catch (err) {
-    throw new Error(`render inbox-roadmap-gate: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  const items = plan.entries;
-  const horizon = items[0].horizon;
-  if (items.some((item) => item.horizon !== horizon)) {
-    throw new Error('render inbox-roadmap-gate: every entry goes under the one horizon');
-  }
-  const one = items.length === 1;
-  const statement = [
-    `Putting ${one ? 'this' : 'these'} on the roadmap under "${horizon}"${horizonFlag(plan, horizon)}, waiting until ${one ? 'it is' : 'each is'} pulled into work — ${one ? 'its note leaves' : 'their notes leave'} the inbox with ${one ? 'it' : 'them'}:`,
-    '',
-    ...items.map((item) => {
-      const kind = markedKind(item.kind);
-      return `- **${titlecase(item.name)}**${kind ? ` ${tag(kind)}` : ''} — ${item.summary}`;
-    }),
-    ...(plan.exists ? [] : ['', `The roadmap is created with ${one ? 'it' : 'them'}.`]),
-  ].join('\n');
-  return section('MENU: inbox roadmap gate', MENU_INSTRUCTION, menu(statement, [
-    cmdOption('y', 'yes', `Put ${one ? 'it' : 'them'} on the roadmap`),
-    cmdOption('n', 'no', `Leave ${one ? 'it' : 'them'} in the inbox — nothing moves`),
-    promptOption('Comment', 'Tell me what to change (name, horizon, or summary)'),
-  ], { question: `Put ${one ? 'it' : 'them'} on the roadmap?` }));
 }
 
 /** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
@@ -1518,9 +1421,7 @@ const SURFACES = {
   'pivot-continuation': pivotContinuation,
   'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
   'absorb-confirm-gate': absorbConfirmSurface,
-  'archived-actions': archivedActionsSurface,
-  'archived-delete-gate': archivedDeleteGateSurface,
-  'inbox-content': inboxContentSurface,
+  'archived-delete-gate': (cwd, { path: given }) => archivedDeleteGateSurface(cwd, given),
   'inbox-restore-receipt': inboxRestoreReceiptSurface,
   'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'completed-actions': completedActionsSurface,
@@ -1529,7 +1430,6 @@ const SURFACES = {
   'roadmap-add-gate': roadmapAddGateSurface,
   'horizon-pick': horizonPick,
   'park-gate': parkGate,
-  'inbox-roadmap-gate': inboxRoadmapGate,
   'roadmap-harvest-gate': roadmapHarvestGateSurface,
   'roadmap-parks-gate': roadmapParksGateSurface,
   'query-failure-gate': queryFailureGateSurface,
@@ -1586,6 +1486,9 @@ const SURFACES = {
   'care': (cwd, { added, dropped }) => careSurface(cwd, { added, dropped }),
   'care-kind': careKindSurface,
   'care-drop': careDropSurface,
+  triage: (cwd, { file }) => triageSurface(cwd, file),
+  archived: (cwd) => archivedSurface(cwd),
+  'archived-item': (cwd, { path: given }) => archivedItemSurface(cwd, given),
 };
 
 /**

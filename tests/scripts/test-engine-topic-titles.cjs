@@ -334,6 +334,7 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a phase, or a work type': [
       'handoff.cjs › phaseTarget › phase',
+      'inbox-set.cjs › unitTitle › unit',
       'projections/epic-menu.cjs › epicMenuScreen › phase',
       'projections/workunit.cjs › revisitPhasesSection › phase',
       'render.cjs › phaseCompleted › phase',
@@ -357,7 +358,6 @@ describe('every screen names a topic through one helper', () => {
       'projections/transactions.cjs › MAP_LINES › c.from_roadmap',
       'render.cjs › horizonBack › name',
       'render.cjs › horizonPick › park',
-      'render.cjs › inboxRoadmapGate › item.name',
       'render.cjs › parkGate › name',
       'render.cjs › postponeStatement › target.name',
     ],

@@ -123,14 +123,14 @@ describe('pipeline simulation: feature', () => {
     assert.deepStrictEqual(gatesAnswered(sim), ['start menu', 'start this work', 'ready to build'], '8.S18: past the start menu\'s pick that began it, the person was stopped at start this work and the one screen alone');
   });
 
-  it('start: a working set of inbox ideas and a bug hands discovery its seeds, which start this work lands as a feature, where no investigation runs for the bug (19.S9)', () => {
+  it('start: inbox ideas and a bug picked in triage and worked as one hand discovery their seeds with no type, which start this work lands as a feature, where no investigation runs for the bug (19.S9, 18.S49)', () => {
     const ideas = [
       sim.write('.leeway/.inbox/ideas/2026-01-01--saved-search-filters.md', '# Saved Search Filters\n'),
       sim.write('.leeway/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
       sim.write('.leeway/.inbox/bugs/2026-01-01--filters-lost-on-reload.md', '# Filters Lost On Reload\n'),
     ];
-    assert.strictEqual(startPick(sim, 't'), null, 'the start menu\'s triage carries on in the conversation, into the inbox');
-    // Ideas carry no work type, so discovery decides it.
+    assert.strictEqual(startPick(sim, 't'), null, 'the start menu\'s triage draws triage');
+    // Triage carries no work type: discovery finds it.
     const seeds = ideas.map((rel) => path.join(sim.dir, rel));
     const route = `/leeway-discovery start none "${seeds.join(',')}"`;
     assert.strictEqual(workTheSet(sim, ideas).text, `Invoke \`${route}\`.`);

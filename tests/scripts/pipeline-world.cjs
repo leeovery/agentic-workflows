@@ -615,6 +615,12 @@ function epicRow(sim, wu, title) {
   return screenOf(epicMenuLooked(sim, wu), 'MENU: epic menu').join('\n').split(/\n(?=\S)/).find((row) => row.includes(`"${title}"`))?.replace(/\s+/g, ' ');
 }
 
+// The rows of the gate the conversation was last shown, each with its next.
+/** @param {Sim} sim @returns {{key: string, word: string|null, head: string, recommended: boolean, next: Next}[]} */
+function shownRows(sim) {
+  return JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, SHOWN), 'utf8')).options;
+}
+
 // What the epic's menu sets aside as it is looked at, a line a topic.
 /** @param {Sim} sim @param {string} wu @returns {string[]} */
 function epicSetAside(sim, wu) {
@@ -627,8 +633,7 @@ function epicSetAside(sim, wu) {
 /** @param {Sim} sim @param {string} wu @param {string} pick @returns {{key: string, head: string, recommended: boolean, next: Next}} */
 function epicKey(sim, wu, pick) {
   epicMenuAt(sim, wu);
-  const { options } = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, SHOWN), 'utf8'));
-  const row = options.find((/** @type {{key: string, next: Next}} */ o) => o.key === pick || opens(o.next) === pick);
+  const row = shownRows(sim).find((/** @type {{key: string, next: Next}} */ o) => o.key === pick || opens(o.next) === pick);
   assert.ok(row, `the epic menu offers ${pick}`);
   return row;
 }
@@ -917,21 +922,25 @@ async function investigated(sim, wu, description) {
 function startMenu(sim) {
   sim.render(['start-menu'], { expect: 'content' });
   assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
-  const folder = path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID);
-  return JSON.parse(fs.readFileSync(path.join(folder, SHOWN), 'utf8')).options;
+  return shownRows(sim);
 }
 
 // A row of the start menu picked, as start-menu.md takes it: the menu drawn,
-// the answer through `gate`, and its next followed — a handoff, or a unit's
-// Continue, `handoff unit` — or carrying on in the conversation. Answers the
-// move's payload, null for a row that carries on.
+// the answer through `gate`, and its next followed — a handoff, a unit's
+// Continue, `handoff unit`, or another of the project's menus drawn — or
+// carrying on in the conversation. Answers the move's payload, null for a
+// row that draws a menu or carries on.
 /** @param {Sim} sim @param {string} key */
 function startPick(sim, key) {
   assert.ok(startMenu(sim).some((row) => row.key === key), `the start menu offers ${key}`);
   const { next } = answerGate(sim, 'start menu', '--pick', key);
   if (next.kind === 'continue') return null;
   if (next.kind === 'handoff') return handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
-  assert.deepStrictEqual(next.argv.slice(0, 2), ['handoff', 'unit'], 'the start menu\'s one engine move is a unit\'s Continue');
+  if (next.argv[0] === 'render') {
+    sim.render(next.argv.slice(1), { expect: 'content' });
+    return null;
+  }
+  assert.deepStrictEqual(next.argv.slice(0, 2), ['handoff', 'unit'], 'the start menu\'s one move into work is a unit\'s Continue');
   return handoffBy(sim, next.argv).payload;
 }
 
@@ -969,14 +978,6 @@ function backToStart(sim, keys) {
   assert.ok(back, 'the menu offers its way back to the start menu');
   assert.strictEqual(back.route, null, 'back is a move between menus, never a handoff');
   return startMenu(sim);
-}
-
-// route-to-discovery: new work goes to discovery with its work type's
-// pre-seed, or `start` where it has none, no work unit, and its inbox seeds
-// quoted — `none` where it has none.
-/** @param {Sim} sim @param {string} workType @param {string} seeds */
-function toDiscovery(sim, workType, seeds) {
-  return handoff(sim, `/leeway-discovery ${workType === 'none' ? 'start' : workType} none "${seeds}"`);
 }
 
 // A handoff into `discovery none` landing: the product's conversation
@@ -1051,13 +1052,25 @@ function pullFromRoadmap(sim, items) {
   return handoff(sim, `/leeway-discovery ${wayIn} none "${items.map((name) => `roadmap:${name}`).join(',')}"`);
 }
 
-// The working set's w/work (inbox-working-set F): a set of any mix goes to
-// discovery, the largest shape in it its pre-seed and the items' inbox paths
-// its seeds.
+// Items picked in triage (triage.md): Claude's pick, by the items' paths,
+// with what fits with it, drawn. Answers the rows of the gate it states.
+/** @param {Sim} sim @param {string[]} picked state-relative or absolute @param {string[]} [fits] */
+function triagePick(sim, picked, fits = []) {
+  const absolute = (/** @type {string} */ given) => path.resolve(sim.dir, given);
+  const file = sim.write(`${STATE_DIR_NAME}/.cache/triage.json`, { picked: picked.map(absolute), fits: fits.map(absolute) });
+  sim.render(['triage', '--file', file], { expect: 'content' });
+  return shownRows(sim);
+}
+
+// Triage's w/work (triage.md): what is picked goes to discovery as one piece
+// of work, the items its seeds, quoted, and no type — discovery finds it
+// (18.7.6). Answers the handoff's payload.
 /** @param {Sim} sim @param {string[]} paths */
 function workTheSet(sim, paths) {
-  const set = LIB.detail.workingSetDetail(sim.dir, paths);
-  return toDiscovery(sim, set.set_type, set.items.map((/** @type {{path: string}} */ item) => item.path).join(','));
+  triagePick(sim, paths);
+  const { next } = answerGate(sim, 'triage', '--pick', 'w');
+  const [type, unit, seeds] = next.args;
+  return handoff(sim, `/${next.skill} ${type} ${unit} "${seeds}"`);
 }
 
 // The spec's corridor as the skill runs it (11.3–11.8): entered at the unit,
@@ -1697,6 +1710,6 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
-  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

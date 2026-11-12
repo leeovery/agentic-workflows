@@ -72,18 +72,10 @@ engine.presence.ownsRow(row)                      // → does the calling sessio
 engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / `12m` / `3h` / `2d`
 
 // domain: detail builders + projections
-engine.detail.startDetail(cwd)                    // → StartDetail (the inbox, live and archived)
-engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
-engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: the work-type pre-seed, addable items)
 engine.detail.phaseTargets(cwd, manifest, nextPhase) // → { next, revisit } — where each single-topic route enters: next, the {phase, topic} of the next phase, topic naming the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise; revisit, the phases of the revisit candidates (completed phases before nextPhase, pipeline-filtered, never the experiment, a decided discussion or the spec, nor a phase entered at a topic once the unit is past its spec), each entered by the unit alone
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` table's lines — each key's `key` and `word` (`—` for none), then `cells(key)` under `columns`
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
-engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies; { data, display } when the inbox is empty
-engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
-engine.project.workingSetView(ws, summaries)      // → { data, title, display, menu } — set tree and menu
-engine.project.workingSetAddGate(ws)              // → MENU: add gate, the addable items as its rows — the gateway working-set-add-gate verb
-engine.project.workingSetDropGate(ws)             // → MENU: drop gate, the set's items as its rows — the gateway working-set-drop-gate verb
 engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section over phaseTargets' revisit candidates ('' when none)
 
 // gateway: adapter harness

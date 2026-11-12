@@ -121,6 +121,7 @@ The review runs without the person but for its reports and finish. Every questio
 - A question only the person can answer → `ledger ask {work_unit}.review [--task {task}]`, then `raise {work_unit}.review --answers {question_id} [--parks {task}]`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.
+- An inbox item closed wrongly, asked back → `inbox restore {path}`, its archived path, and its `Resolved:` line taken out of the build's log.
 - The close → `checklist show|done|skip|close finish {work_unit}`, then `render finish {work_unit}`, whose yes runs `finish yes`.
 - The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.

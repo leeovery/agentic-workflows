@@ -87,6 +87,7 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - Earlier work → `knowledge query "{term}" …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.
+- An inbox item closed wrongly, asked back → `inbox restore {path}`, its archived path, and its `Resolved:` line taken out of the build's log.
 - The close → `checklist show|done|skip|close finish {work_unit}`, then `render finish {work_unit}`, whose yes runs `finish yes` and whose review row runs `review ask`.
 - The work as a feature or a bugfix → `workunit move {work_unit} --to {type:[feature|bugfix]} --file {payload}`, whose yes runs `start-this-work yes`.
 - The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.

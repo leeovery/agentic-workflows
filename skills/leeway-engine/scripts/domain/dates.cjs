@@ -29,7 +29,12 @@ function dayBefore(stamp) {
   return Number.isNaN(at) ? null : new Date(at - DAY_MS).toISOString();
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Whole days from the date a stamp names to today (UTC), none for a date to come. @param {string} stamp `YYYY-MM-DD` @returns {number} */
+function daysSince(stamp) {
+  return Math.max(0, Math.round((Date.parse(todayStamp()) - Date.parse(stamp)) / DAY_MS));
+}
+
+const MONTHS =['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** A date stamp as a screen shows it: `2026-10-16` as `16 Oct`. @param {string} stamp `YYYY-MM-DD` */
 function dayMonth(stamp) {
@@ -37,4 +42,4 @@ function dayMonth(stamp) {
   return `${day} ${MONTHS[month - 1]}`;
 }
 
-module.exports = { todayStamp, isoNow, dayBefore, dayMonth };
+module.exports = { todayStamp, isoNow, dayBefore, daysSince, dayMonth };

@@ -1,22 +1,35 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: inbox pickup collation — the combined, date-ordered item list
-// the pickup and archived sub-views number, the working-set detail (the
-// selection the pickup carries toward discovery), and one archived item by
-// its store path (the gates the archived sub-view fetches over it), and the
-// receipts' items after a restore or a delete. Pure over the state's inbox
-// plus the caller-held paths — and the state branch's history, for an item
-// deleted out of the tree: same files, same paths, same answer. Path
-// validation comes from domain/inbox — the same layout rules the inbox
-// transactions enforce.
+// Domain ring: what triage reads (projections/triage.cjs) — the inbox's
+// items by kind, and the archived items, each with how it left the inbox;
+// one item by its store path, live or archived, for the screens over it and
+// the receipts after a restore or a delete. Pure over the state's inbox and
+// the project manifest's record of closures, and the state branch's history
+// for when an item was archived and for an item deleted out of the tree.
+// Path validation is domain/inbox's, the rules the inbox's verbs keep.
+//
+// - The live items by kind — ideas, bugs, quick-fixes — the newest first
+//   within each, numbered across the kinds in that order (18.7.3). An
+//   item's date is its file name's, never the file's time, which a clone
+//   resets.
+// - The archived items, the latest to leave first (18.7.11): one an
+//   `inbox close` recorded, closed by the unit whose work resolved it,
+//   named by its title — its name where the unit is gone — or closed with
+//   no unit (18.6.10), on the day it closed; any other archived on the day
+//   the state branch took it into the archive, a day unknown while that is
+//   uncommitted.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
-const { stateRoot, statePath, insideState } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { titlecase } = require('./conventions.cjs');
 const { discoverInbox, titleOf } = require('./start.cjs');
-const { parseInboxPath, ARCHIVED, FOLDER_KIND } = require('./inbox.cjs');
+const { parseInboxPath, closures, ARCHIVED, FOLDER_KIND } = require('./inbox.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { topicTitle } = require('./derivations.cjs');
 
 /**
  * @typedef {object} PickupItem
@@ -30,97 +43,67 @@ const { parseInboxPath, ARCHIVED, FOLDER_KIND } = require('./inbox.cjs');
  */
 
 /**
- * @typedef {object} WorkingSetDetail
- * @property {PickupItem[]} items    the set, in the caller's order
- * @property {number} count
- * @property {'none'|'bugfix'|'quick-fix'} set_type  the work-type pre-seed the set carries into discovery (see setType)
- * @property {PickupItem[]} addable  live inbox items not in the set, pickup order
+ * How an archived item left the inbox (the header's): closed by a unit,
+ * named by its title, or by none; else archived. `on` is the day it left,
+ * null where it is not known.
+ * @typedef {{closed: boolean, by: string|null, on: string|null}} Left
  */
 
+/** @typedef {PickupItem & {left: Left}} ArchivedItem */
+
+/** The kinds of item in the order triage lists them, by folder. */
+const KIND_ORDER = Object.freeze(['ideas', 'bugs', 'quickfixes']);
+
 /**
- * One folder's scan rows as pickup items (unnumbered; combine() numbers).
+ * One folder's scan rows as pickup items, unnumbered.
  * @param {import('./start.cjs').InboxScan} scan
- * @param {'ideas'|'bugs'|'quickfixes'} folder
+ * @param {string} folder
  * @returns {PickupItem[]}
  */
 function folderItems(scan, folder) {
   const rows = folder === 'ideas' ? scan.ideas : folder === 'bugs' ? scan.bugs : scan.quickfixes;
-  return rows.map((r) => ({
-    n: 0,
-    type: FOLDER_KIND[folder],
-    folder,
-    date: r.date,
-    slug: r.slug,
-    title: r.title,
-    path: r.path,
-  }));
+  return rows.map((r) => ({ n: 0, type: FOLDER_KIND[folder], folder, date: r.date, slug: r.slug, title: r.title, path: r.path }));
 }
 
+/** Two items by date, then by slug. @param {PickupItem} a @param {PickupItem} b */
+const byDate = (a, b) => a.date.localeCompare(b.date) || a.slug.localeCompare(b.slug);
+
 /**
- * The combined pickup list over one inbox scan, live or archived: all three
- * folders, sorted by date (oldest first) then slug, numbered 1..N.
+ * One inbox scan, live or archived, as one list: every folder's items,
+ * oldest first, then by slug, numbered 1..N.
  * @param {import('./start.cjs').InboxScan} scan
  * @returns {PickupItem[]}
  */
 function combinedInbox(scan) {
-  const items = [
-    ...folderItems(scan, 'ideas'),
-    ...folderItems(scan, 'bugs'),
-    ...folderItems(scan, 'quickfixes'),
-  ];
-  items.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
-  items.forEach((item, i) => { item.n = i + 1; });
-  return items;
+  return KIND_ORDER.flatMap((folder) => folderItems(scan, folder)).sort(byDate).map((item, i) => ({ ...item, n: i + 1 }));
 }
 
 /**
- * The work-type pre-seed for a set: work takes the largest shape in it, and
- * bugs and quick-fixes never add size — any idea leaves the type to
- * discovery (`none`), no idea and any bug is a bugfix, quick-fixes alone a
- * quick-fix.
- * @param {PickupItem[]} items
- * @returns {'none'|'bugfix'|'quick-fix'}
- */
-function setType(items) {
-  if (items.some((item) => item.type === 'idea')) return 'none';
-  if (items.some((item) => item.type === 'bug')) return 'bugfix';
-  return 'quick-fix';
-}
-
-/**
- * Build the working-set detail for a held selection of live inbox paths.
- * Loud on anything outside the live inbox — the set can only hold items that
- * are still there to act on.
+ * The live inbox by kind (the header's): each kind with its items, the
+ * newest first, numbered across the kinds; and how many items the archive
+ * holds.
  * @param {string} cwd
- * @param {string[]} paths  live inbox paths, caller's order
- * @returns {WorkingSetDetail}
+ * @returns {{kinds: {folder: string, items: PickupItem[]}[], archived: number}}
  */
-function workingSetDetail(cwd, paths) {
-  if (paths.length === 0) throw new Error('working set is empty — pass at least one inbox path');
-  const live = combinedInbox(discoverInbox(cwd));
-
-  /** @type {PickupItem[]} */
-  const items = paths.map((given, i) => ({ ...storeItem(cwd, live, given, false), n: i + 1 }));
-
-  const inSet = new Set(items.map((item) => item.path));
-  const addable = live.filter((item) => !inSet.has(item.path)).map((item, i) => ({ ...item, n: i + 1 }));
-
-  return {
-    items,
-    count: items.length,
-    set_type: setType(items),
-    addable,
-  };
+function inboxByKind(cwd) {
+  const scan = discoverInbox(cwd);
+  let n = 0;
+  const kinds = KIND_ORDER.map((folder) => ({
+    folder,
+    items: folderItems(scan, folder).sort((a, b) => byDate(b, a)).map((item) => ({ ...item, n: (n += 1) })),
+  }));
+  return { kinds, archived: scan.archived.total_count };
 }
 
 /**
- * One item of a store list by its given path — the one lookup both stores
+ * One item of a store's list by its given path — the one lookup both stores
  * share. Loud on a path outside the store, or one nothing sits at.
+ * @template {PickupItem} T
  * @param {string} cwd
- * @param {PickupItem[]} list  the store's combined list
+ * @param {T[]} list  the store's items
  * @param {string} given  inbox path
  * @param {boolean} archived
- * @returns {PickupItem}
+ * @returns {T}
  */
 function storeItem(cwd, list, given, archived) {
   const at = statePath(cwd, parseInboxPath(cwd, given, { archived }).rel);
@@ -130,16 +113,61 @@ function storeItem(cwd, list, given, archived) {
 }
 
 /**
- * One archived item by its store path — the selection the archived sub-view
- * holds while it acts on it. `n` is the item's place in the combined store
- * list; the sub-view numbers group-major, so a surface showing a number
- * renumbers over the view's order, never over this.
+ * The day the state branch last took each archived file in, by its path in
+ * the state; none for one it holds no commit of.
+ * @param {string} cwd @returns {Map<string, string>}
+ */
+function archiveDays(cwd) {
+  const log = isolatedGit(stateRoot(cwd)).tryRun(['log', '--no-renames', '--diff-filter=A', '--relative', '--format=@%cs', '--name-only', '--', ARCHIVED]) ?? '';
+  /** @type {Map<string, string>} */
+  const days = new Map();
+  let day = '';
+  for (const line of log.split('\n')) {
+    if (line.startsWith('@')) day = line.slice(1);
+    else if (line !== '' && !days.has(line)) days.set(line, day);
+  }
+  return days;
+}
+
+/** A unit's title, read from its manifest; its name where the unit is gone. @param {string} cwd @param {string} unit */
+function unitTitle(cwd, unit) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  return manifest === null ? titlecase(unit) : topicTitle(manifest, unit);
+}
+
+/** An archived item's place in the state, as the record and git name it. @param {PickupItem} item */
+const archivedRel = ({ folder, path: file }) => `${folder}/${path.basename(file)}`;
+
+/**
+ * The archived items, each with how it left the inbox (the header's), the
+ * latest to leave first. Git is asked only where an item was archived
+ * rather than closed.
+ * @param {string} cwd @returns {ArchivedItem[]}
+ */
+function archivedItems(cwd) {
+  const items = combinedInbox(discoverInbox(cwd).archived);
+  const record = closures(cwd);
+  const days = items.every((item) => Object.hasOwn(record, archivedRel(item))) ? new Map() : archiveDays(cwd);
+  /** @param {PickupItem} item @returns {Left} */
+  const leftOf = (item) => {
+    const closure = record[archivedRel(item)];
+    if (closure === undefined) return { closed: false, by: null, on: days.get(`${ARCHIVED}/${archivedRel(item)}`) ?? null };
+    return { closed: true, by: closure.unit === null ? null : unitTitle(cwd, closure.unit), on: closure.at.slice(0, 10) };
+  };
+  return items
+    .map((item) => ({ ...item, left: leftOf(item) }))
+    .sort((a, b) => (b.left.on ?? '').localeCompare(a.left.on ?? '') || a.n - b.n)
+    .map((item, i) => ({ ...item, n: i + 1 }));
+}
+
+/**
+ * One archived item by its store path, with how it left the inbox.
  * @param {string} cwd
  * @param {string} given  archived inbox path
- * @returns {PickupItem}
+ * @returns {ArchivedItem}
  */
 function archivedItem(cwd, given) {
-  return storeItem(cwd, combinedInbox(discoverInbox(cwd).archived), given, true);
+  return storeItem(cwd, archivedItems(cwd), given, true);
 }
 
 /**
@@ -182,21 +210,4 @@ function deletedItemTitle(cwd, given) {
   return titleOf(content) || parsed.slug;
 }
 
-/**
- * Inbox items by their paths, live or archived — each path read for the
- * store it names, in the order given. Loud on a path outside both stores, or
- * one nothing sits at.
- * @param {string} cwd
- * @param {string[]} paths  inbox paths
- * @returns {PickupItem[]}
- */
-function inboxItems(cwd, paths) {
-  const scan = discoverInbox(cwd);
-  const stores = { live: combinedInbox(scan), archived: combinedInbox(scan.archived) };
-  return paths.map((given) => {
-    const archived = insideState(cwd, given, ARCHIVED);
-    return storeItem(cwd, archived ? stores.archived : stores.live, given, archived);
-  });
-}
-
-module.exports = { combinedInbox, workingSetDetail, archivedItem, liveItem, deletedItemTitle, inboxItems };
+module.exports = { combinedInbox, inboxByKind, storeItem, archivedItems, archivedItem, liveItem, deletedItemTitle };
