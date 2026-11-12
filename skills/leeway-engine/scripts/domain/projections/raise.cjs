@@ -25,7 +25,9 @@
 // answered, the reveal (16.17.7): what the person picked, what Claude would
 // have picked, and, on the question's kind in the project, how often Claude
 // has picked as the person did (P9), a text display Claude carries on
-// past.
+// past; or, for the person's "don't care" outside the build, a line naming
+// Claude's answer as the builder's (`leftScreen`), the build's receipt
+// naming it there (questions.cjs).
 // Every line above the rows is the menu's statement, so a surface drawing
 // the gate payload draws it all. Claude's words are escaped, so they read
 // as written, never as markup; the mechanism keeps its lines, each drawn
@@ -197,4 +199,15 @@ function revealScreen({ yours, lean, took, kind, project, alike, of }) {
   return section('DISPLAY: blind question revealed', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
-module.exports = { drawnRows, keepingRow, leanShown, raiseScreen, revealScreen };
+/**
+ * A blind question the person's "don't care" left to Claude, outside the
+ * build: Claude's answer, which they never saw, standing as the
+ * builder's (16.17.2, 9.2.16) — in the reveal's display.
+ * @param {string} lean the lean row's answer
+ * @returns {string}
+ */
+function leftScreen(lean) {
+  return section('DISPLAY: blind question revealed', CONTINUE_INSTRUCTION, wrapWithPrefix(`My answer stands as the builder's: ${revealed(lean)}`, { width: TREE_WIDTH }).join('\n'));
+}
+
+module.exports = { drawnRows, keepingRow, leanShown, raiseScreen, revealScreen, leftScreen };

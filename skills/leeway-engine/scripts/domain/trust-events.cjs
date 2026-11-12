@@ -37,8 +37,9 @@
 //   its label does not hold, as the raise sealed it, so a replay of the
 //   rule over the log decides as it did: whether it blocked build work, a
 //   task parking on it as it was raised (16.4.7);
-//   whose the decision it would replace was — who decided it, or the person
-//   where they kept it since — null for a question's answer (16.5.7); and
+//   whose the decision it would replace was — who decided it, or as the
+//   person's keep of it since was given, theirs or their "don't care" —
+//   null for a question's answer (16.5.7); and
 //   Claude's mark that it always asks, null for none (19.4.20, 19.4.22);
 //   and whether it was asked blind, Claude's answer held back (16.17.2), so
 //   an answer given cold reads as one on its own, wherever its draw names.

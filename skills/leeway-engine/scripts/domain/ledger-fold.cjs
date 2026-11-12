@@ -763,13 +763,26 @@ function keptOf(folded, id) {
 }
 
 /**
- * Whose the decision `id` is, as replacing it asks (16.5.7): the person's
- * where a keep of theirs stands on it, else who decided it, read from it.
+ * Whose the decision `id` is, as replacing it asks (16.5.7): as the latest
+ * keep of the person's standing on it was given — theirs, or handed over by
+ * their "don't care" (9.2.16) — else who decided it, read from it.
  * @param {Folded} folded @param {string} id
  * @returns {import('./ledger-events.cjs').DecidedBy}
  */
 function whoseDecision(folded, id) {
-  return keptOf(folded, id).length > 0 ? 'person' : decidedBy(factsOf(folded, id));
+  return decidedBy(factsOf(folded, keptOf(folded, id).at(-1) ?? id));
+}
+
+/**
+ * How the entry `id` stands given: a decision handed over by the person's
+ * "don't care" where the latest keep of theirs standing on it was given so
+ * — on Claude's call gone ahead while a blind question waited (raise.cjs) —
+ * else as it was written; null for an entry that is no decision.
+ * @param {Folded} folded @param {string} id @returns {string|null}
+ */
+function givenNow(folded, id) {
+  const keep = keptOf(folded, id).at(-1);
+  return keep !== undefined && factsOf(folded, keep).given === 'dont-care' ? 'dont-care' : factsOf(folded, id).given;
 }
 
 /**
@@ -1181,6 +1194,6 @@ function discoveredOf(folded, unit, topic) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, readOnce, holding, heldFacts, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  keptOf, whoseDecision, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
+  keptOf, whoseDecision, givenNow, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
   movedToBy,
 };

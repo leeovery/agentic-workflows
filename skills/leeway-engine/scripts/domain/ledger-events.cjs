@@ -65,7 +65,11 @@
 //   (16.10.1). But the person's answer to a blind question drawn on
 //   Claude's own call, which went ahead while it waited (16.17.6), keeps
 //   that call where it is Claude's answer, sealed in it, for that question's
-//   reason, `asked-blind`: moving no one, an agreement owed none.
+//   reason, `asked-blind`: moving no one, an agreement owed none. How the
+//   keep was given: the person's own, `own`, or their "don't care",
+//   `dont-care`, which hands the call over, the builder's (9.2.16) — on that
+//   blind question's call alone (raise.cjs); the call then stands given
+//   so (ledger-fold.cjs, `givenNow`).
 // - asset: a file linked from an entry (9.10.5–9.10.7, 9.10.16):
 //   the entry and the file's path from the state root; the status the link
 //   gives it, canonical or reference; and the lift, the path in the project
@@ -303,6 +307,11 @@ function parkHolds({ question, replaces, reason, cause, task, went_ahead: wentAh
   return call.rows.some((/** @type {{key: string}} */ row) => row.key === call.lean) ? null : `its call leans to ${call.lean}, a row it does not hold`;
 }
 
+/** Why a keep's "don't care" is on no blind question's call gone ahead, or null. @param {Record<string, any>} kept */
+function keepHolds({ given, reason }) {
+  return given === 'dont-care' && reason !== ASKED_BLIND ? 'a keep is given dont-care only on Claude\'s call gone ahead while a blind question waited, asked-blind' : null;
+}
+
 /** Why a task taken off its questions names none of them, or null. @param {Record<string, any>} unparked */
 function unparkHolds({ parks }) {
   return parks.length === 0 ? 'a task taken off its questions names the parks it is taken off' : null;
@@ -340,7 +349,8 @@ const SCHEMA = {
       field('cause', nullable(ID)),
       field('why', TEXT),
       field('sealed', TEXT),
-    ]),
+      field('given', oneOf('own', 'dont-care')),
+    ], 1, keepHolds),
     asset: event(
       [field('entry', ID), field('path', PATH), field('status', nullable(oneOf(...ASSET_STATUSES))), field('into', nullable(CODE_PATH))],
       1,

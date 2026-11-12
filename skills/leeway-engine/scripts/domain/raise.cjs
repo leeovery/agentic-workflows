@@ -262,10 +262,11 @@
 //   Claude's why, as a call that proceeds lands, moving no one. A fact
 //   refuses it: it holds no lean of Claude's to land. On a blind question
 //   Claude's sealed answer lands so too, the person never having seen it:
-//   nothing is revealed, the receipt naming Claude's answer as the
-//   builder's, and its raise event carries no weight (trust-evidence.cjs);
-//   on Claude's call gone ahead, the call stands as built, kept as a keep
-//   keeps it, its task never marked changed. Where the call's kind stands
+//   no reveal, but Claude's answer named as the builder's — by the receipt
+//   in the build, by a line of the reveal's display outside it — and its
+//   raise event carries no weight (trust-evidence.cjs); on Claude's call
+//   gone ahead, the call stands as built, kept as a keep keeps it, given
+//   `dont-care`, its task never marked changed. Where the call's kind stands
 //   under a care entry in this project, and the person's "don't care"
 //   answers to it now run a multiple of three in a row, blind or not
 //   (person.cjs), the response cues Claude to propose dropping the entry
@@ -356,7 +357,7 @@ const { record, modelOf, projectId } = require('./trust-log.cjs');
 const { careEntries, dropCue } = require('./person.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
-const { drawnRows, keepingRow, raiseScreen, revealScreen } = require('./projections/raise.cjs');
+const { drawnRows, keepingRow, raiseScreen, revealScreen, leftScreen } = require('./projections/raise.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 const { alikeOn } = require('./trust-counts.cjs');
 const decisionPoint = require('./decision-point.cjs');
@@ -1177,8 +1178,9 @@ function decided(cwd, raising, call, label) {
  * replace`'s where it names `--replaces`, else `ledger decide`'s — in the
  * raise's words: a question it answers still open; a decision it replaces
  * a decision, its answer as it stands kept for the screen's own row, and
- * whose it is — who decided it, or the person where they kept it since. Its
- * usage is a fact's where `fact`.
+ * whose it is — who decided it, or as the person's keep of it since was
+ * given, theirs or their "don't care" (`whoseDecision`). Its usage is a
+ * fact's where `fact`.
  * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact
  * @returns {{place: Place, target: Target, replacedBy: DecidedBy|null, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
  */
@@ -1827,11 +1829,12 @@ function factAnswered(seal, form, key, stdin) {
 /**
  * The person keeping the decision a raise on a replacement proposed to
  * replace, as it stands: a keep of it, for the reason and cause sealed,
- * the why given, the lean row's text sealed in it, `moved` who moved whom;
- * what its event holds, and the answer as they gave it. On a blind
- * question drawn on Claude's call gone ahead, `asked-blind`, the keep is
- * the person agreeing with that call, or leaving it to Claude, so its
- * raise event names the call: a later reversal of it cancels the
+ * the why given, the lean row's text sealed in it, `moved` who moved whom,
+ * given as their own or, for their "don't care", so, handing the decision
+ * over (9.2.16); what its event holds, and the answer as they gave it. On
+ * a blind question drawn on Claude's call gone ahead, `asked-blind`, the
+ * keep is the person agreeing with that call, or leaving it to Claude, so
+ * its raise event names the call: a later reversal of it cancels the
  * agreement, as a reversal cancels the answer whose entry it reverses
  * (16.12.2, trust-evidence.cjs).
  * @param {CallSeal} seal @param {Replacing} replacing @param {string} moved @param {string} why @param {Logged} logged @param {Yours} yours
@@ -1841,7 +1844,7 @@ function kept(seal, { entry, reason, cause }, moved, why, logged, yours) {
   return {
     lands: 'keep',
     linked: { entry, reason, cause },
-    content: { by: 'person', who_moved_whom: moved, why, sealed: leanRow(seal.call).text },
+    content: { by: 'person', who_moved_whom: moved, why, sealed: leanRow(seal.call).text, given: logged.dont_care ? 'dont-care' : 'own' },
     checkRead: (read) => checkStillCurrent(entry, read),
     answer: logged.answer, logged, yours,
     ...(reason === ASKED_BLIND ? { names: entry } : {}),
@@ -2031,13 +2034,26 @@ function revealOf(cwd, seal, { yours, logged }) {
 }
 
 /**
+ * What a blind raise's answer that landed now shows (16.17.2): its reveal;
+ * for the person's "don't care", Claude's answer as the builder's outside
+ * the build, the receipt naming it in the build. Null for any other.
+ * @param {string} cwd @param {Seal} seal @param {'pick'|'own'|'dont-care'} form @param {Answering} given @param {{already?: true}} recorded
+ * @returns {string|null}
+ */
+function shownOnAnswer(cwd, seal, form, given, recorded) {
+  if (seal.fact || !seal.blind || recorded.already) return null;
+  if (form !== 'dont-care') return revealOf(cwd, seal, given);
+  return seal.parks === null ? leftScreen(leanRow(seal.call).text) : null;
+}
+
+/**
  * `raise answer <id> (--pick <key> | --own | --dont-care |
  * --didnt-follow)`: the person's answer to a raise this conversation drew
  * — a row, `keep` on a replacement, their own words, their "don't care",
- * or that they didn't follow — and, on a blind raise whose answer landed
- * now, its reveal, but for a "don't care"; null else. A "don't care" reads
- * the care entries before anything lands, so care entries that do not read
- * refuse it with nothing written.
+ * or that they didn't follow — and what a blind raise's answer shows
+ * (`shownOnAnswer`). A "don't care" reads the care entries before anything
+ * lands, so care entries that do not read refuse it with nothing
+ * written.
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  * @returns {{answered: Record<string, unknown>, reveal: string|null}}
  */
@@ -2050,7 +2066,7 @@ function answerRaise(cwd, args, stdin) {
   const given = answering(cwd, session, seal, form, key, stdin);
   const recorded = recordAnswer(cwd, session, seal, given);
   const answered = care === null ? recorded : { ...recorded, ...dropCued(cwd, seal, recorded, care) };
-  return { answered, reveal: seal.blind && form !== 'dont-care' && recorded.already === undefined ? revealOf(cwd, /** @type {CallSeal} */ (seal), given) : null };
+  return { answered, reveal: shownOnAnswer(cwd, seal, form, given, recorded) };
 }
 
 /** Whether `raise` with `args` answers later: the draw, which waits on the one-decision check. @param {string[]} args */

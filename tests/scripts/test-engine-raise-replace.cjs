@@ -157,7 +157,7 @@ function replacementOf(id, own = {}) {
 function keepOf(id) {
   return {
     v: 1, id, event: 'kept', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
-    by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, why: WHY, sealed: MAIN.text,
+    by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, why: WHY, sealed: MAIN.text, given: 'own',
   };
 }
 

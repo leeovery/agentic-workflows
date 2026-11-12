@@ -60,7 +60,7 @@ const { HARD_TO_UNDO, ASK_AGAIN } = require('./trust-settings.cjs');
  * @property {Label|null} label the labeller's, null where it gave none
  * @property {{unit: string, phase: string, topic: string|null}} place where the call is made
  * @property {boolean} blocks_build made in the build for a task, which a question asked parks
- * @property {DecidedBy|null} replaced_by whose the entry the call would replace is — who decided it, or the person where they kept it since — null where it replaces none
+ * @property {DecidedBy|null} replaced_by whose the entry the call would replace is — who decided it, or as the person's keep of it since was given, theirs or their "don't care" — null where it replaces none
  * @property {Always|null} always the mark it always asks by, null for none
  * @property {boolean} checked sent to check once already
  * @property {{id: string, name: string}} project the project the call is made in

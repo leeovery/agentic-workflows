@@ -801,7 +801,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
 
   it('the receipt names only the tasks the answer freed: a replacement kept, then proposed again for another task and kept again, frees that task alone', () => {
     parkedReplacement(1, '2.4');
-    appended({ event: 'kept', by: 'person', who_moved_whom: 'person-moved-claude', entry: made.frameless, reason: 'was-wrong', cause: null, why: WHY, sealed: FRAMED.rows[0].text });
+    appended({ event: 'kept', by: 'person', who_moved_whom: 'person-moved-claude', entry: made.frameless, reason: 'was-wrong', cause: null, why: WHY, sealed: FRAMED.rows[0].text, given: 'own' });
     parkedReplacement(2, '3.1');
 
     const res = answer(draw('Q2').res.raise, ['--pick', 'keep']);
