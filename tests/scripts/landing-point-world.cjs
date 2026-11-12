@@ -15,10 +15,12 @@
 // every way on followed as the engine words it, and each row holds the
 // default branch's tree, the task's record — who landed it last, its first
 // landing, its tip — and the verb run again answering already. A conflict's
-// row follows its way on: another task rewriting the card lands, then 1.1's
-// card changes and its file is deleted; the way on rebases its commits since
-// its landing onto the default branch, the conflict settled the branch's
-// way, and its change lands, the file it took back staying gone. Each
+// row follows its way on: another task rewriting the card and 1.1's last
+// file lands, then 1.1's card changes and its file is deleted; the conflict
+// is read over 1.1's landing, at the card alone; the way on rebases its
+// commits since its landing onto the default branch, the conflict settled
+// the branch's way, and its change lands, the file it took back staying
+// gone. Each
 // suite runs it through its own `describe`, `it` and `afterEach`.
 // Conformance layer: the landing world (landing-world.cjs), built once per
 // driver and copied for each row.
@@ -70,9 +72,9 @@ const CHANGES = {
 
 /**
  * The table's rows, against each shipped driver, under `title`, through the
- * calling suite's own `describe`, `it` and `afterEach`: `rows`, but those
- * landing on GitHub's site where the driver lands on none; and, for each
- * landing of `conflicts`, its conflict's row.
+ * calling suite's own `describe`, `it` and `afterEach`: `rows`, and for each
+ * landing of `conflicts` its conflict's row, but those landing on GitHub's
+ * site where the driver lands on none.
  * @param {string} title @param {Row[]} rows @param {string[]} conflicts
  * @param {{describe: typeof import('node:test').describe, it: typeof import('node:test').it, afterEach: typeof import('node:test').afterEach}} test
  */
@@ -166,22 +168,23 @@ function landingPoints(title, rows, conflicts, { describe, it, afterEach }) {
         });
       }
 
-      for (const how of conflicts) {
+      for (const how of conflicts.filter((landed) => landed in LANDINGS)) {
         const { land, taken } = LANDINGS[how];
-        it(`1.1 landed by ${how}, 4.1 then rewriting its card and landing, then 1.1's card changed and its file deleted: land phase refuses the conflict, naming 1.1's commits since its landing rebased onto the default branch; that followed, the conflict settled the branch's way, its change lands, the file staying gone`, () => {
+        it(`1.1 landed by ${how}, 4.1 then rewriting its card and its last file and landing, then 1.1's card changed and its file deleted: land phase refuses the conflict at the card alone, read over 1.1's landing, naming its commits since its landing rebased onto the default branch; that followed, the conflict settled the branch's way, its change lands, the file staying gone`, () => {
           const at = (dir = world());
           const before = side.holds(at);
           land(at);
           const landed = side.defaultTip(at);
           const stood = tip(at, card.branch);
-          ok(at, openArgs(cutTask(at, '4.1', 'fix', 'Word the card', 'main', { 'card.txt': 'a card\n' })));
+          ok(at, openArgs(cutTask(at, '4.1', 'fix', 'Word the card', 'main', { 'card.txt': 'a card\n', 'more.txt': 'more, worded\n' })));
           ok(at, ['land', 'phase', UNIT, '4']);
           commitFiles(at, card.branch, card.branch, { 'card.txt': 'card v2\n' }, { removed: ['extra.txt'] });
           const answers = [...(taken ? [] : [openArgs(card)]), PHASE].map((args) => landing(at, args));
           const into = mergedOnGithub === undefined ? 'main' : 'origin/main';
+          const wayOn = `\`git rebase --onto ${into} ${short(stood)} ${card.branch}\``;
 
           assert.deepStrictEqual([
-            answers.map(({ refusal }) => refusal?.includes(`\`git rebase --onto ${into} ${short(stood)} ${card.branch}\``) ?? null),
+            answers.map(({ refusal }) => (refusal === null ? null : refusal.includes(' at card.txt, so ') && refusal.includes(wayOn))),
             landedWork(at, before), recordOf(at), ok(at, PHASE).already,
           ], [
             [...(taken ? [] : [null]), true],

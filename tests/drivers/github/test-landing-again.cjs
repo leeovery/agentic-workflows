@@ -11,9 +11,10 @@
 // its last commit made again — is pushed over it, and lands so; where its
 // change conflicts with a later change on main on GitHub, refused before
 // anything is pushed or opened, the way on followed, it lands. A branch here moved
-// off a head GitHub holds that has not landed is refused, both changed
-// since the task landed, nothing pushed or opened — GitHub's merged into
-// it, the two land whole. Landings by
+// off a head GitHub holds that has not landed — one taking back the task's
+// file, read over its tip at its landing — is refused, both changed since
+// the task landed, nothing pushed or opened — GitHub's merged into it, the
+// two land whole. Landings by
 // hand read are test-landing-by-hand-read.cjs's. Git layer: the landing
 // world on a fake GitHub (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
@@ -116,23 +117,23 @@ describe('a feature\'s task changed after its pull request merged on GitHub (7.2
     ]);
   });
 
-  it('its last commit made again here, GitHub\'s head moved on since it merged by a commit not landed: refused, both changed since it landed, nothing pushed or opened — GitHub\'s merged into it as the refusal says, the two land whole', () => {
+  it('its last commit made again here without its file, GitHub\'s head moved on since it merged by a commit taking that file back, not landed: refused, read over its tip at its landing, which sees the file go — both changed since it landed, nothing pushed or opened — GitHub\'s merged into it as the refusal says, the two land whole, the file gone', () => {
     const dir = project();
     const tip = squashedByHand(dir);
-    commitFiles(dir, tip.branch, tip.branch, { 'note.txt': 'note\n' }, { message: 'feat(pay): a note\n\nLeeway-Task: pay-4-1' });
+    commitFiles(dir, tip.branch, tip.branch, {}, { removed: ['tip.txt'], message: 'feat(pay): take the tip back\n\nLeeway-Task: pay-4-1' });
     git(dir, ['push', '-q', 'origin', tip.branch]);
     const head = tipOnGithub(dir, tip.branch);
     git(dir, ['branch', '-f', tip.branch, `${tip.branch}~1`]);
-    const again = madeAgain(dir, tip.branch, { 'tip.txt': 'tip\n', 'more.txt': 'more\n' });
+    const again = madeAgain(dir, tip.branch, { 'more.txt': 'more\n' });
     const from = calls(dir).length;
     const refusal = refused(dir, ['land', 'phase', 'pay', '4']);
     const untouched = [madeSince(dir, from), tipOnGithub(dir, tip.branch)];
     mergedInto(dir, tip.branch, `origin/${tip.branch}`);
     const landed = own(ok(dir, ['land', 'phase', 'pay', '4']));
 
-    assert.deepStrictEqual([refusal, untouched, landed.merged, ['note.txt', 'more.txt'].map((file) => heldOn(bareOf(dir), file))], [
+    assert.deepStrictEqual([refusal, untouched, landed.merged, ['tip.txt', 'more.txt'].map((file) => heldOn(bareOf(dir), file))], [
       `land: task 4.1's branch ${tip.branch} has moved here and on GitHub since its pull request #1 merged, to ${again.slice(0, 7)} and ${head.slice(0, 7)} — merge origin/${tip.branch} into ${tip.branch}, and land again`,
-      [[], head], ['4.1'], ['note\n', 'more\n'],
+      [[], head], ['4.1'], [null, 'more\n'],
     ]);
   });
 

@@ -10,7 +10,9 @@
 // a change: the file it added deleted, deleted and added back, the branch
 // rewritten (F1), or, the squash on GitHub's site, rebased onto the default
 // branch, its commits dropped there as applied, its landing point still the
-// commit its driver took, never its tip read whole. A squash by hand is
+// commit its driver took, never its tip read whole; and the squash on
+// GitHub's site's change conflicting with a later landing, read over its
+// landing point, its way on followed. A squash by hand is
 // test-engine-landing-point.cjs's; the rows and what each holds,
 // landing-point-world.cjs's. Conformance layer.
 // ---------------------------------------------------------------------------
@@ -31,4 +33,4 @@ landingPoints('each kind of landing, its landing point the one source of every r
   ['a squash on GitHub\'s site', 'the file it added deleted', false],
   ['a squash on GitHub\'s site', 'its branch rewritten', false],
   ['a squash on GitHub\'s site', 'its branch rebased onto the default branch, its commits dropped there as applied', false],
-], [], { describe, it, afterEach });
+], ['a squash on GitHub\'s site'], { describe, it, afterEach });
