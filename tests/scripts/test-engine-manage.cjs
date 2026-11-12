@@ -302,11 +302,11 @@ describe('manage\'s rows followed (8.8.8, 18.3.4)', () => {
 
     const confirm = drawn(dir, managing(dir, EPIC).rows.c.argv.slice(1), 'cancel gate');
     const cancelled = followed(dir, confirm.rows.y);
-    assert.deepStrictEqual(cancelled.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'pane-layouts', '--from', EPIC] });
+    assert.deepStrictEqual(cancelled.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'pane-layouts', '--from', EPIC, '--then', 'pane-themes'] });
 
     const first = drawn(dir, cancelled.next.argv.slice(1), 'horizon pick');
     assert.deepStrictEqual(first.screen.slice(1, 7), ['"Pane Layouts" is back on the roadmap, and the horizon it came from has been removed.', '', '◆ Which horizon?', '', '1     → someday — 1 waiting', 'n/new → A new horizon — name it']);
-    assert.strictEqual(sectionOf(first.out, 'DATA').trim(), `a horizon named in words: engine roadmap move pane-layouts --horizon "<the horizon>" --from ${EPIC}, then follow its next`);
+    assert.strictEqual(sectionOf(first.out, 'DATA').trim(), `a horizon named in words: engine roadmap move pane-layouts --horizon "<the horizon>" --from ${EPIC} --then pane-themes, then follow its next`);
     assert.deepStrictEqual(first.rows.n, { kind: 'continue' });
     const moved = followed(dir, first.rows['1']);
     assert.deepStrictEqual(moved.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'pane-themes', '--from', EPIC] });

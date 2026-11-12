@@ -1,6 +1,6 @@
 # Handing Off
 
-*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu and its direct open of a topic, review's route back to implementation, the laboratory's leave, the code-session gate's back on an epic, a decided topic's way back to its epic's menu, and the roadmap's talk about the product.*
+*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu and its direct open of a topic, the moves into discovery from the start and from the roadmap, the laboratory's leave, and a decided topic's way back to its epic's menu.*
 
 ---
 

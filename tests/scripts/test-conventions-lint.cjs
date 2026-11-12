@@ -1438,6 +1438,44 @@ function checkBootStops(files, stops = BOOT_STOPS) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 36 — a skill that draws a menu whose back draws the start menu loads
+// the start menu's reference, so the start menu's rows have their prose when
+// that `next` draws it in the skill's conversation. The start skill owns the
+// reference. Which menus' backs draw the start menu is the engine's, read
+// from no prose: the list below is theirs, held by hand.
+// ---------------------------------------------------------------------------
+
+const BACK_TO_START_MENUS = ['epic-menu', 'manage', 'closed'];
+const START_MENU_LOAD = /Load \*\*\[start-menu\.md\]\((?:\.\.\/)+leeway\/references\/start-menu\.md\)\*\*/;
+
+/** The skill a file under `skills/` belongs to, by its folder. @param {string} file */
+function skillFolderOf(file) {
+  const parts = file.split(path.sep);
+  const idx = parts.lastIndexOf('skills');
+  return idx === -1 ? null : parts[idx + 1] ?? null;
+}
+
+function checkBackToStartLoads(files, menus = BACK_TO_START_MENUS) {
+  const draws = new RegExp(`engine\\.cjs render (${menus.join('|')})(?=\\s|$)`);
+  /** @type {Map<string, {loads: boolean, draws: {file: string, line: number, menu: string}[]}>} */
+  const skills = new Map();
+  for (const file of files) {
+    const skill = skillFolderOf(file);
+    if (skill === null || skill === START_SKILL) continue;
+    const seen = skills.get(skill) ?? { loads: false, draws: [] };
+    readLines(file).forEach((line, i) => {
+      if (START_MENU_LOAD.test(line)) seen.loads = true;
+      const drawn = draws.exec(line);
+      if (drawn !== null) seen.draws.push({ file, line: i + 1, menu: drawn[1] });
+    });
+    skills.set(skill, seen);
+  }
+  return [...skills.entries()].flatMap(([skill, { loads, draws: drawn }]) => (loads ? [] : drawn.map(({ file, line, menu }) => ({
+    file, line, message: `${skill} draws the ${menu}, whose back draws the start menu, and loads no start-menu.md`,
+  }))));
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1475,6 +1513,7 @@ const CHECKS = [
   ['33: nothing writes the project\'s CLAUDE.md', (files) => checkNoClaudeMdWrites(files, codeFiles())],
   ['34: the build\'s prose prescribes nothing the builder does unprompted', checkBuildProse],
   ['35: the start skill draws every one of boot\'s stops', checkBootStops],
+  ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
 ];
 
 // ---------------------------------------------------------------------------
@@ -2782,6 +2821,21 @@ test('check 35 (boot\'s stops) — catches a stop with no branch in the start sk
     ], `a branch outside the boot step is none of it, got ${report(v)}`);
     const stepless = write(dir, 'skills/leeway/SKILL.md', '## Step 0: Initialisation\n');
     assert.deepStrictEqual(checkBootStops([stepless], stops).map((x) => x.message), ['the start skill has no boot step, Step 0.1']);
+  });
+});
+
+test('check 36 (the start menu\'s load) — catches a skill drawing a menu whose back is the start menu with no load of start-menu.md in any of its files; passes a skill that loads it from a reference, the start skill, and a menu whose back is another', () => {
+  withTemp((dir) => {
+    const fetch = (menu) => `\`\`\`bash\nnode .claude/skills/leeway-engine/scripts/engine.cjs render ${menu} {work_unit}\n\`\`\`\n`;
+    const bare = write(dir, 'skills/leeway-continue-epic/SKILL.md', `## The Menu\n\n${fetch('epic-menu')}`);
+    const v = checkBackToStartLoads([bare]);
+    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message]), [
+      ['skills/leeway-continue-epic/SKILL.md', 4, 'leeway-continue-epic draws the epic-menu, whose back draws the start menu, and loads no start-menu.md'],
+    ], `got ${report(v)}`);
+    const loaded = write(dir, 'skills/leeway-continue-epic/references/back.md', 'Load **[start-menu.md](../../leeway/references/start-menu.md)** and follow its instructions as written.\n');
+    const own = write(dir, 'skills/leeway/references/manage-work-unit.md', fetch('manage'));
+    const other = write(dir, 'skills/leeway-x/SKILL.md', fetch('manage-unit'));
+    assert.deepStrictEqual(checkBackToStartLoads([bare, loaded, own, other]), [], 'a reference\'s load serves its skill, and the start skill owns the reference');
   });
 });
 

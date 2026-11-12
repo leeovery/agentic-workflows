@@ -80,7 +80,8 @@ const { pastSpecRefusal } = require('./spec-standing.cjs');
  * @property {string[]} [inbox]          remove: each waiting message's idea in the inbox, absolute
  * @property {{name: string, horizon: string|null}[]} [roadmap_returned] remove: the roadmap items back on their horizons, none where theirs was removed meanwhile
  * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone] remove: those whose horizon was removed meanwhile
- * @property {number} [map_total]        topics on the map after the change
+ * @property {import('./projections/surfaces.cjs').Next} [next] remove: its way on, through the horizon pick for each of those (topic-leave.cjs)
+ * @property {number} [map_total]       topics on the map after the change
  * @property {string|null} [committed]
  * @property {string} [note]
  * @property {string[]} [warnings]

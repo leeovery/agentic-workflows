@@ -83,6 +83,7 @@ const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPE
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { approveMapScreen, sweptMapScreen, sweptStrikePick } = require('./projections/discovery-gates.cjs');
 const { counted } = require('./projections/map.cjs');
+const { ontoEpic } = require('./topic-leave.cjs');
 
 /**
  * A topic as staged: one on the map by its key alone; a new one with its
@@ -599,7 +600,7 @@ function stagedForYes(cwd, unit, manifest) {
  * @returns {import('./projections/surfaces.cjs').Next}
  */
 function nextAfter(unit, manifest, swept) {
-  return swept && topicsSettled(manifest) ? { kind: 'continue' } : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit] };
+  return swept && topicsSettled(manifest) ? { kind: 'continue' } : ontoEpic(unit);
 }
 
 /** A brief's text, ending on a newline. @param {string} text */

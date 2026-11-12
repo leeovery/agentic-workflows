@@ -15,8 +15,9 @@
 // carries on; and one sitting in any phase of a unit it cancelled — any of
 // its topics, its spec, its build, a bugfix's investigation, a quick-fix's
 // session — onto the start menu; from anywhere else the flow carries on; and
-// a cancel leads first through the horizon pick for each roadmap item it put
-// back on a horizon removed meanwhile. The
+// a cancel, or a removal of a topic not yet started, leads first through the
+// horizon pick for each roadmap item it put back on a horizon removed
+// meanwhile, and for nothing else. The
 // verbs close the topic's agents still running, and their commit takes the
 // topic's log.
 //
@@ -205,6 +206,36 @@ describe('the verbs say what follows', () => {
     const solo = run(['workunit', 'cancel', SOLO]);
     assert.deepStrictEqual(solo.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'badges', '--from', SOLO] });
     assert.deepStrictEqual(run(answered(solo.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next, ONTO_START);
+  });
+
+  /** `item` pulled forward into the epic as a topic, from a horizon removed since. @param {string} item */
+  function pulledFromGone(item) {
+    run(['roadmap', 'add', item, '--horizon', 'gone', '--summary', `The ${item}`]);
+    run(['roadmap', 'pull-forward', item, '--into', EPIC]);
+    run(['roadmap', 'horizon', 'remove', 'gone']);
+  }
+
+  /** The horizon pick for `item`, as what put it back leads to it. @param {string} item @param {string} from */
+  const pickFor = (item, from) => ({ kind: 'engine', argv: ['render', 'horizon-pick', '--back', item, '--from', from] });
+
+  it('18.8.20, 8.8.16: a removal of a topic not yet started leads through the horizon pick for the item it put back on none, then carries on', () => {
+    pulledFromGone('tour');
+    const removed = run(['topic', 'remove', EPIC, 'tour']);
+    assert.deepStrictEqual([removed.roadmap_horizon_gone, removed.next], [[{ name: 'tour', horizon: 'gone' }], pickFor('tour', `${EPIC}.discovery.tour`)]);
+    const moved = run(answered(removed.next.argv.slice(1), 'horizon pick', ['--pick', '2']).argv);
+    assert.deepStrictEqual([moved.horizon, moved.next], ['later', CONTINUE]);
+  });
+
+  it('18.8.20: a cancel asks only about what it put back — an item another verb left on no horizon is no pick of its, at its start or along its chain', () => {
+    pulledFromGone('tour');
+    run(['topic', 'remove', EPIC, 'tour']);
+    assert.deepStrictEqual(run(['workunit', 'cancel', BUG]).next, CONTINUE);
+
+    pulledFromGone('seats');
+    const cancelled = run(['topic', 'cancel', EPIC, 'discovery', 'seats']);
+    assert.deepStrictEqual(cancelled.next, pickFor('seats', `${EPIC}.discovery.seats`));
+    assert.deepStrictEqual(run(answered(cancelled.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next, CONTINUE);
+    assert.strictEqual(run(['roadmap', 'state']).items.find((/** @type {{name: string}} */ { name }) => name === 'tour').horizon, null, 'left for its own way on');
   });
 });
 

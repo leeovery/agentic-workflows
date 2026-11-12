@@ -114,7 +114,7 @@ const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { leaveNext, cancelNext, cancelledFrom } = require('./domain/topic-leave.cjs');
+const { leaveNext, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -208,6 +208,15 @@ const MAP_USAGE = Object.freeze({
   order: 'topic order <work-unit> <topic>=<n> [<topic>=<n> …]',
   brief: 'topic brief <work-unit> <name> --brief <draft>',
 });
+
+const ROADMAP_MOVE_USAGE = 'roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic> [--then <item>,…]]';
+
+/**
+ * The items a cancel or a removal put back on no horizon, which its way on
+ * asks a horizon for (topic-leave.cjs).
+ * @param {{roadmap_horizon_gone?: {name: string}[]}} result @returns {string[]}
+ */
+const homelessNames = (result) => (result.roadmap_horizon_gone ?? []).map(({ name }) => name);
 
 const USAGE = `Usage: engine <command> [args]
 
@@ -331,7 +340,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   roadmap add-batch --file <items.json>
   roadmap edit <name> --summary <text>
   roadmap rename <old> <new>
-  roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic>]
+  ${ROADMAP_MOVE_USAGE}
   roadmap archive <name>
   roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
@@ -387,7 +396,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
-  render horizon-pick      [<wu.discovery.topic> | --park <name> | --back <name> --from <wu>|<wu>.discovery.<topic>]
+  render horizon-pick      [<wu.discovery.topic> | --park <name> | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]]
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
   render inbox-roadmap-gate --file <entries.json>
   render roadmap-harvest-gate
@@ -613,7 +622,8 @@ function runWorkunit(call, argv) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
       if (command === 'cancel') {
-        respond(call, { ...cancelWorkUnit(call.cwd, workUnit), next: cancelNext(call.cwd, workUnit) });
+        const cancelled = cancelWorkUnit(call.cwd, workUnit);
+        respond(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) });
         return;
       }
       respond(call, reactivateWorkUnit(call.cwd, workUnit));
@@ -703,7 +713,8 @@ const MAP_VERBS = {
   remove: (cwd, argv) => {
     const { positional } = parseArgs(argv);
     if (positional.length !== 2) throw mapUsage('remove');
-    return removeTopic(cwd, positional[0], positional[1]);
+    const removed = removeTopic(cwd, positional[0], positional[1]);
+    return { ...removed, next: putBackNext(cwd, `${positional[0]}.discovery.${removed.name}`, homelessNames(removed)) };
   },
   order: (cwd, argv) => {
     const { positional } = parseArgs(argv);
@@ -1070,7 +1081,7 @@ function runTopic(call, argv) {
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
-      respond(call, { ...cancelled, next: cancelNext(call.cwd, `${workUnit}.discovery.${cancelled.topic}`) });
+      respond(call, { ...cancelled, next: putBackNext(call.cwd, `${workUnit}.discovery.${cancelled.topic}`, homelessNames(cancelled)) });
       return;
     }
     respond(call, UNIT_VERBS[/** @type {keyof typeof UNIT_VERBS} */ (command)](call.cwd, workUnit, phase, topic));
@@ -1671,12 +1682,13 @@ function runRoadmap(call, argv) {
       if (positional.length !== 2) throw new Error('Usage: engine roadmap rename <old> <new>');
       respond(call, roadmap.renameRoadmapItem(cwd, positional[0], positional[1]));
     } else if (command === 'move') {
-      if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic>]');
+      if (positional.length !== 1 || !opts.horizon || (opts.then !== undefined && opts.from === undefined)) throw new Error(`Usage: engine ${ROADMAP_MOVE_USAGE}`);
       if (opts.from === undefined) {
         respond(call, roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
       } else {
-        cancelledFrom(opts.from);
-        respond(call, { ...roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon), next: cancelNext(cwd, opts.from) });
+        putBackBy(opts.from);
+        const asking = stillToAsk(opts.then);
+        respond(call, { ...roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon), next: putBackNext(cwd, opts.from, asking) });
       }
     } else if (command === 'archive') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap archive <name>');

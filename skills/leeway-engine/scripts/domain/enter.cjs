@@ -95,6 +95,7 @@ const { IMPLEMENTATION } = require('./build-entry.cjs');
 const { REVIEW } = require('./review-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 const { recordToRead } = require('./person.cjs');
+const { ontoEpic } = require('./topic-leave.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
 
@@ -102,7 +103,7 @@ const { recordToRead } = require('./person.cjs');
  * The ways on from a question the entry puts where its place is held: the
  * entry again with `--take`, and the epic's menu to go back to, null where
  * there is none.
- * @typedef {{take: string[], menu: {skill: string, args: string[]}|null}} HeldWays
+ * @typedef {{take: string[], menu: import('./projections/surfaces.cjs').Next|null}} HeldWays
  */
 
 /** @typedef {import('./topic-standing.cjs').Standing} Standing */
@@ -504,7 +505,7 @@ function settle(cwd, entry, at, held, departure) {
 function waysOn({ phase, unit, topic, manifest }, move) {
   return {
     take: ['enter', phase, unit, ...(topic === undefined ? [] : [topic]), TAKE, ...(move ? [MOVE] : [])],
-    menu: manifest.work_type === 'epic' ? { skill: 'leeway-continue-epic', args: [unit] } : null,
+    menu: manifest.work_type === 'epic' ? ontoEpic(unit) : null,
   };
 }
 

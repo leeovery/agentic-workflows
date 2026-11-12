@@ -49,15 +49,37 @@ function inboxLine(n) {
 }
 
 /**
+ * Where a roadmap item a cancel put back now stands, other than back with
+ * the work: another piece of work took it meanwhile, it was archived, or
+ * the roadmap holds it under that name no more.
+ * @typedef {{name: string, work_unit?: string, archived?: boolean}} Stayed
+ */
+
+/**
+ * What a reactivate says of each roadmap item its cancel put back that it
+ * left where it is (18.8.20).
+ * @param {Stayed[]} stayed
+ * @returns {string[]}
+ */
+function stayedLines(stayed) {
+  return stayed.map(({ name, work_unit: unit, archived }) => {
+    const item = `"${titlecase(name)}"`;
+    if (unit !== undefined) return `${item} stays with "${titlecase(unit)}", which took it meanwhile.`;
+    return archived ? `${item} stays archived.` : `${item} is no longer on the roadmap under that name.`;
+  });
+}
+
+/**
  * workunit cancel / reactivate / pivot receipts, each confirming the unit
  * by name: the pivot saying it is an epic now, its discussion the first
- * topic on its map.
+ * topic on its map, and the reactivate each roadmap item its cancel put
+ * back that it left where it is.
  * @param {'cancel'|'reactivate'|'pivot'} verb
  * @param {string} workUnit
- * @param {{warn?: boolean, inbox?: number, kept?: string[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside
+ * @param {{warn?: boolean, inbox?: number, kept?: string[], stayed?: Stayed[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside; `stayed`: reactivate — the items it left
  * @returns {string}
  */
-function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [] } = {}) {
+function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [], stayed = [] } = {}) {
   const name = titlecase(workUnit);
   if (verb === 'cancel') {
     return joined([
@@ -68,7 +90,7 @@ function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [] } 
   if (verb === 'reactivate') {
     return joined([
       warn ? warningBlock('Knowledge indexing warning', 'The work unit is reactivated. The next start retries the indexing.') : null,
-      confirmation(`"${name}" reactivated.`),
+      confirmation([`"${name}" reactivated.`, ...stayedLines(stayed)].join(' ')),
     ]);
   }
   return joined([
@@ -81,14 +103,15 @@ function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [] } 
  * topic cancel / reactivate / postpone / restore receipts, each confirming
  * the unit by name: the postpone names the horizon it waits under, and the reactivate and the
  * pull forward's restore the statuses their items returned to (none for a
- * never-started topic), and the cancel how many waiting messages it moved to
- * the inbox (10.1.6).
+ * never-started topic), the reactivate each roadmap item its cancel put back
+ * that it left where it is, and the cancel how many waiting messages it
+ * moved to the inbox (10.1.6).
  * @param {'cancel'|'reactivate'|'postpone'|'restore'} verb
  * @param {string} name  the topic as screens title it
- * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null, inbox?: number}} [opts]
+ * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null, inbox?: number, stayed?: Stayed[]}} [opts]
  * @returns {string}
  */
-function topicReceipt(verb, name, { warn = false, restored = [], horizon = null, inbox = 0 } = {}) {
+function topicReceipt(verb, name, { warn = false, restored = [], horizon = null, inbox = 0, stayed = [] } = {}) {
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. The next start removes its chunks from the knowledge base.') : null,
@@ -106,7 +129,7 @@ function topicReceipt(verb, name, { warn = false, restored = [], horizon = null,
     : '';
   return joined([
     warn ? warningBlock('Knowledge indexing warning', `The topic is ${verb === 'restore' ? 'pulled forward' : 'reactivated'}. The next start retries the indexing.`) : null,
-    confirmation(verb === 'restore' ? `Pulled "${name}" forward.${returned}` : `Reactivated "${name}".${returned}`),
+    confirmation(verb === 'restore' ? `Pulled "${name}" forward.${returned}` : [`Reactivated "${name}".${returned}`, ...stayedLines(stayed)].join(' ')),
   ]);
 }
 

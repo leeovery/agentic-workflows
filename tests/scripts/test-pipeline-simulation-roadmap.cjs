@@ -26,7 +26,7 @@ const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit, completeUnit } = require('./engine-harness.cjs');
 const {
   Sim, sessionLog, arrive, handoff, enterEntry, discussed, startMenu, startPick, specEntry, literal,
-  shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap,
+  shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap, answerGate,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -213,17 +213,17 @@ describe('pipeline simulation: roadmap', () => {
     enterEntry(sim, 'mvp', 'discussion', 'guest-ordering');
 
     // The cancel-revert hop: cancelling the joined topic hands the item back
-    // to waiting; reactivation does NOT re-join (the revert is one-way — a
-    // re-pull re-binds deliberately).
+    // to waiting, and reactivating the topic takes it back (18.8.20).
     enterEntry(sim, 'mvp', 'discussion', 'menu-management');
     const cancelled = sim.run(['topic', 'cancel', 'mvp', 'discovery', 'menu-management']);
     assert.deepStrictEqual(cancelled.roadmap_reverted, ['menu-management']);
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting');
-    sim.run(['topic', 'reactivate', 'mvp', 'discovery', 'menu-management']);
+    assert.deepStrictEqual(sim.run(['topic', 'reactivate', 'mvp', 'discovery', 'menu-management']).roadmap_rejoined, ['menu-management']);
+    assert.match(sim.render(['topic-receipt', 'mvp.discovery.menu-management', '--verb', 'reactivate'], { expect: 'content' }), /^Reactivated "Menu Management"\. Restored discussion \[in-progress\]\.$/m);
     state = sim.run(['roadmap', 'state']);
-    assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting',
-      'reactivation never silently re-joins');
+    const retaken = state.items.find((i) => i.name === 'menu-management');
+    assert.deepStrictEqual([retaken.state, retaken.work_unit, retaken.topic], ['in-flight', 'mvp', 'menu-management']);
 
     // The map as discovery reads it, nothing struck from it yet.
     assert.match(sim.render(['discovery-map', 'mvp'], { expect: 'content' }), /^dismissed \(0\):\n {2}\(none\)$/m);
@@ -243,6 +243,19 @@ describe('pipeline simulation: roadmap', () => {
     sim.run(['topic', 'remove', 'mvp', 'reporting']);
     // The map names what was struck, which the re-add is refused against.
     assert.match(sim.render(['discovery-map', 'mvp'], { expect: 'content' }), /Struck from the map \(1\)\n {2}· Reporting/);
+    assert.deepStrictEqual(removed.next, { kind: 'continue' });
+
+    // A removal whose item's horizon went meanwhile asks for one (18.8.20):
+    // its next leads through the pick for that item, and the move on to
+    // carrying on.
+    sim.run(['roadmap', 'add', 'seasonal-menu', '--horizon', 'autumn', '--summary', 'the menu turns with the season']);
+    sim.run(['roadmap', 'pull-forward', 'seasonal-menu', '--into', 'mvp']);
+    sim.run(['roadmap', 'horizon', 'remove', 'autumn']);
+    const homeless = sim.run(['topic', 'remove', 'mvp', 'seasonal-menu']);
+    assert.deepStrictEqual(homeless.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'seasonal-menu', '--from', 'mvp.discovery.seasonal-menu'] });
+    sim.render(homeless.next.argv.slice(1), { expect: 'content' });
+    const placed = sim.run(answerGate(sim, 'horizon pick', '--pick', '1').next.argv);
+    assert.deepStrictEqual([placed.horizon, placed.next], [sim.run(['roadmap', 'state']).horizons[0], { kind: 'continue' }]);
 
     // The render surfaces hold over the live state: the map view and the
     // add-to-joined-horizon gate, whose DATA names the unit its delivery row
@@ -271,7 +284,7 @@ describe('pipeline simulation: roadmap', () => {
     completeUnit(sim.dir, 'mvp');
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'guest-ordering').state, 'shipped');
-    assert.deepStrictEqual(state.totals, { items: 5, waiting: 4, in_flight: 0, shipped: 1, orphaned: 0 });
+    assert.deepStrictEqual(state.totals, { items: 6, waiting: 4, in_flight: 0, shipped: 2, orphaned: 0 });
     // The view renders the shipped row from the join, after the completion.
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /✓ Guest Ordering/);
 
@@ -357,18 +370,22 @@ describe('pipeline simulation: roadmap', () => {
     horizons.forEach((h, i) => assert.match(pick, new RegExp(`\\*\\*\`${i + 1}\`\\*\\*\\s+→ ${h} — \\*1 waiting\\*`)));
   });
 
-  it('roadmap: work-unit cancel reverts every join into the unit', () => {
+  it('roadmap: work-unit cancel reverts every join into the unit, and its reactivate takes back what still waits (18.8.20)', () => {
     sim.run(['roadmap', 'add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
     sim.run(['roadmap', 'add', 'menus', '--horizon', 'mvp', '--summary', 's']);
     startFromRoadmap(sim, ['ordering', 'menus'], { type: 'epic', name: 'mvp', description: 'MVP', reason: 'Its parts each need decisions.' });
     const res = sim.run(['workunit', 'cancel', 'mvp']);
     assert.deepStrictEqual([...res.roadmap_reverted].sort(), ['menus', 'ordering']);
-    const state = sim.run(['roadmap', 'state']);
-    assert.deepStrictEqual(state.totals, { items: 2, waiting: 2, in_flight: 0, shipped: 0, orphaned: 0 });
-    // Pulling forward into the cancelled unit refuses; reactivation reopens the road.
+    assert.deepStrictEqual(sim.run(['roadmap', 'state']).totals, { items: 2, waiting: 2, in_flight: 0, shipped: 0, orphaned: 0 });
+    // Pulling forward into the cancelled unit refuses; archived meanwhile,
+    // an item stays archived through the reactivate, which says so.
     sim.refuses(['roadmap', 'pull-forward', 'ordering', '--into', 'mvp'], /cancelled/);
-    sim.run(['workunit', 'reactivate', 'mvp']);
-    sim.run(['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
+    sim.run(['roadmap', 'archive', 'menus']);
+    const back = sim.run(['workunit', 'reactivate', 'mvp']);
+    assert.deepStrictEqual([back.roadmap_rejoined, back.roadmap_stayed], [['ordering'], ['menus']]);
+    assert.match(sim.render(['workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'menus'], { expect: 'content' }), /^"Mvp" reactivated\. "Menus" stays archived\.$/m);
+    const state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual([state.totals.in_flight, state.items.find((i) => i.name === 'ordering').work_unit], [1, 'mvp']);
   });
 
   it('roadmap: absorb re-aims a feature\'s joins at the epic — its idea at the topic, its bug riding with the unit — never an orphan, and its sources follow the files', () => {

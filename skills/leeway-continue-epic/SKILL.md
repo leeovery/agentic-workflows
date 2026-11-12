@@ -1,7 +1,7 @@
 ---
 name: leeway-continue-epic
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
 ---
 
 An epic's menu: what waits on the person in it, its topics, and the way on.
@@ -26,4 +26,4 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render epic-menu {work_unit
 
 A refusal names the way on: say it in a line.
 
-The answer goes to `gate`; follow its `next`.
+The answer goes to `gate`; follow its `next`. A `next` that draws the start menu, `render start-menu`, hands the conversation to the start menu: Load **[start-menu.md](../leeway/references/start-menu.md)** and follow its instructions as written.

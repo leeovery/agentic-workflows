@@ -1,6 +1,6 @@
 # Start Menu
 
-*Reference for **[leeway](../SKILL.md)** — loaded by its Step 1, and by the back of the roadmap, help and the epic menu, and of the code-session gate outside an epic.*
+*Reference for **[leeway](../SKILL.md)** — loaded by its Step 1, and by the back of the roadmap, help and the epic menu.*
 
 ---
 

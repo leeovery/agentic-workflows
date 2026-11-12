@@ -6,8 +6,8 @@
 // files the item's sources — pulled back, or archived with its epic's row; and
 // a join reverted by the cancel of its topic or its unit, never by the unit's
 // completion, onto the horizon it came from or, that horizon removed, onto
-// none. One landing guard is
-// driven directly instead: a peer taking a name between a postpone's plan and
+// none, and taken back by the reactivate where the item still waits. One
+// landing guard is driven directly instead: a peer taking a name between a postpone's plan and
 // its write is a race no CLI sequence can reach, and the guard is the reason
 // it can never become an overwrite.
 //
@@ -489,8 +489,47 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.deepStrictEqual(res.cancelled, []);
     assert.deepStrictEqual(res.roadmap_reverted, ['ordering']);
     assert.strictEqual('pulled_to' in readProject(dir).roadmap.items.ordering, false);
-    // Reactivation never re-joins — the revert is one-way.
-    engineOk(['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
-    assert.strictEqual('pulled_to' in readProject(dir).roadmap.items.ordering, false);
+  });
+
+  /** The project manifest staged in the last commit. */
+  const projectStaged = () => stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').includes('manifest.json');
+
+  it('a topic\'s reactivate takes back what its cancel put back, joined to the topic as the pull joined it, the cancel\'s record dropped (18.8.20)', () => {
+    engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
+    const row = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
+    assert.deepStrictEqual(row().roadmap_put_back, [{ item: 'ordering', topic: 'ordering' }]);
+    const res = engineOk(['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
+    assert.deepStrictEqual([res.roadmap_rejoined, 'roadmap_stayed' in res], [['ordering'], false]);
+    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'ordering' });
+    assert.deepStrictEqual(['roadmap_put_back' in row(), projectStaged()], [false, true]);
+    assert.strictEqual(runOk(dir, ['state']).items.find((i) => i.name === 'ordering').state, 'in-flight');
+  });
+
+  it('a unit\'s reactivate takes back every join its cancel deleted, each as it was — the unit\'s and the topic\'s (18.8.20)', () => {
+    engineOk(['workunit', 'cancel', 'mvp']);
+    const res = engineOk(['workunit', 'reactivate', 'mvp']);
+    assert.deepStrictEqual([...res.roadmap_rejoined].sort(), ['menus', 'ordering']);
+    const items = readProject(dir).roadmap.items;
+    assert.deepStrictEqual([items.menus.pulled_to, items.ordering.pulled_to], [{ work_unit: 'mvp' }, { work_unit: 'mvp', topic: 'ordering' }]);
+    assert.deepStrictEqual(['roadmap_put_back' in JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8')), projectStaged()], [false, true]);
+    assert.deepStrictEqual(runOk(dir, ['state']).totals, { items: 2, waiting: 0, in_flight: 2, shipped: 0, orphaned: 0 });
+    assert.match(refuses(dir, ['render', 'workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'menus']).error, /"menus" stayed nowhere/, 'an item taken back stayed nowhere');
+  });
+
+  it('an item other work took meanwhile, or archived, stays where it is through the reactivate, and its receipt says where (18.8.20)', () => {
+    engineOk(['workunit', 'cancel', 'mvp']);
+    createManifest(dir, 'beta', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    commitAll(dir, 'beta');
+    runOk(dir, ['pull-forward', 'ordering', '--into', 'beta']);
+    runOk(dir, ['archive', 'menus']);
+    const res = engineOk(['workunit', 'reactivate', 'mvp']);
+    assert.deepStrictEqual(['roadmap_rejoined' in res, [...res.roadmap_stayed].sort()], [false, ['menus', 'ordering']]);
+    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'beta', topic: 'ordering' });
+    assert.strictEqual(projectStaged(), false, 'nothing taken back, the project manifest untouched');
+    assert.match(output(dir, ['render', 'workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'ordering,menus']),
+      /^"Mvp" reactivated\. "Ordering" stays with "Beta", which took it meanwhile\. "Menus" stays archived\.$/m);
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
+    assert.match(refuses(dir, ['render', 'workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'loyalty']).error, /"loyalty" stayed nowhere — the reactivate takes back every item still waiting$/);
+    assert.match(refuses(dir, ['render', 'topic-receipt', 'mvp.discovery.ordering', '--verb', 'cancel', '--stayed', 'menus']).error, /--stayed names what a reactivate left where it stands — it takes --verb reactivate$/);
   });
 });
