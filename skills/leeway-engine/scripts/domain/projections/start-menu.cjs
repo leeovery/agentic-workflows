@@ -17,12 +17,10 @@
 // - Then p/product, always, with its sessions' count and last date once it
 //   has sessions, and the brownfield research while it is owed (18.2.13,
 //   8.12.13); s/start, into discovery, which finds the type (18.2.7);
-//   t/triage (18.2.9); r/roadmap, always; e/verdicts, only while verdicts
-//   wait (18.2.11); v/view, once a unit has closed (18.2.18), into the
-//   closed units; and m/manage (18.3.4), each a menu of its own
-//   (projections/manage.cjs). The frame adds h/help.
-// - Triage leads into the conversation, `continue`: the start skill holds
-//   its procedure until its own menu is drawn.
+//   t/triage (18.2.9, projections/triage.cjs); r/roadmap, always;
+//   e/verdicts, only while verdicts wait (18.2.11); v/view, once a unit
+//   has closed (18.2.18), into the closed units; and m/manage (18.3.4),
+//   each a menu of its own (projections/manage.cjs). The frame adds h/help.
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
@@ -48,9 +46,6 @@ const TYPE_ORDER = Object.freeze(['feature', 'bugfix', 'quick-fix', 'epic']);
 
 /** A unit's row's note while mail waits for its topic. */
 const MAIL_WAITING = 'mail waiting';
-
-/** A row leading into the conversation. @type {Next} */
-const CARRY_ON = Object.freeze({ kind: 'continue' });
 
 /** @param {string} skill @param {...string} args @returns {Next} */
 const handoff = (skill, ...args) => ({ kind: 'handoff', skill, args });
@@ -135,7 +130,7 @@ function startMenuScreen(read) {
       ...listed(read.units).map(unitRow),
       productRow(read),
       { key: 's', word: 'start', label: 'Start something new — describe it, and we\'ll find what kind of work it is', next: handoff('leeway-discovery', 'start', 'none') },
-      { key: 't', word: 'triage', label: 'Triage the inbox', next: CARRY_ON },
+      { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },
       { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('leeway-roadmap', 'open') },
       ...verdictRows(read.verdicts),
       ...(read.closed ? [{ key: 'v', word: 'view', label: 'View completed & cancelled work units', next: drawing('closed') }] : []),

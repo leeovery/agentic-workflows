@@ -312,9 +312,14 @@ function mapReceipt(change) {
   return confirmation(MAP_LINES[change.op](change));
 }
 
-/** The archived item's restore receipt. @param {string} title @returns {string} */
-function inboxRestoreReceipt(title) {
-  return confirmation(`Restored "${title}" to the inbox.`);
+/**
+ * The archived item's restore receipt, naming the unit whose build log the
+ * restore took its claim out of, where it took one.
+ * @param {string} title @param {string|null} unclaimedFrom @returns {string}
+ */
+function inboxRestoreReceipt(title, unclaimedFrom) {
+  const unclaimed = unclaimedFrom === null ? '' : `, its Resolved: line taken out of ${titlecase(unclaimedFrom)}'s build log`;
+  return confirmation(`Restored "${title}" to the inbox${unclaimed}.`);
 }
 
 /** The archived item's delete receipt. @param {string} title @returns {string} */

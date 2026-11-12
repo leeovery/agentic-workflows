@@ -2,7 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix, opened and closed in its own skill:
-// the opener carrying on in place into the quick-fix's skill (24.1.3), its
+// three quick-fix items picked in triage and worked as one, through
+// discovery into one quick-fix (19.S25), the opener carrying on in place
+// into the quick-fix's skill (24.1.3), its
 // fixes built by their builders and passed by their pairs (19.5.22), each
 // one's account its builder's, a builder's question parking its fix while
 // the next goes on, answered and built (19.5.25), a question Claude raised
@@ -24,7 +26,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  Sim, answerGate, carryOn, startUnit, writeTasks, finishClosed, fixBuilt,
+  Sim, answerGate, carryOn, writeTasks, finishClosed, fixBuilt, workTheSet, startThisWork, shapedInTheProduct, startRow, startMenu,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -33,10 +35,18 @@ describe('pipeline simulation: quick-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8)', async () => {
+  it('quick-fix: three items picked in triage and worked as one go through discovery into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8)', async () => {
     const wu = 'typo';
     const place = `${wu}.implementation`;
-    const started = startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
+    const items = ['flag', 'help', 'docs'].map((what) => sim.write(`.leeway/.inbox/quickfixes/2026-01-01--${what}-says-color.md`, `# The ${what} says --color\n`));
+    sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
+    const route = workTheSet(sim, items).text.match(/^Invoke `\/leeway-discovery start none "(.*)"`\.$/);
+    const seeds = route?.[1].split(',') ?? [];
+    assert.deepStrictEqual([...seeds].sort(), items.map((rel) => path.join(sim.dir, rel)).sort(), 'all three go to discovery as one piece of work');
+    const started = startThisWork(sim, {
+      type: 'quick-fix', name: wu, description: 'The --color flag is spelt --colour', reason: 'Three one-line fixes, each its own.',
+      shaped_by: [shapedInTheProduct(sim, wu)], seeds,
+    });
     assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', wu] });
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
     const handedOff = sim.handoffs.length;
@@ -81,6 +91,7 @@ describe('pipeline simulation: quick-fix', () => {
     const waiting = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view.waiting;
     const again = await sim.runAsync(['raise', place, '--answers', own], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does the changelog name the rename?' }));
     sim.run(['raise', 'answer', again.raise, '--pick', '1'], null, JSON.stringify({ why: 'A rename is news.' }));
+    startRow(sim, wu);
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const unclosed = sim.handoffs.slice(handedOff);
@@ -93,5 +104,6 @@ describe('pipeline simulation: quick-fix', () => {
     assert.deepStrictEqual(waiting.filter(({ kind }) => kind === 'raised').map(({ text }) => text), ['Does the changelog name the rename?'], 'the board draws it waiting after the /clear');
     assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[['1.1', '1.3', '1.2']], 'completed']);
+    assert.ok(!startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`), 'closed, it leaves the start menu');
   });
 });

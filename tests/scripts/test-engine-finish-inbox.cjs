@@ -5,8 +5,8 @@
 // domain/inbox.cjs's `liveResolved` and `closedBy`; 6.4.10, 18.6.4, 18.6.7):
 // no item a Resolved: line of the build's log claims left live (18.S24),
 // each claim read only on a line of its own, and the screen listing the
-// inbox items the unit closed, an item brought back after the close holding
-// finish again.
+// inbox items the unit closed, an item brought back after the close taking
+// its claim out of the log with it.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ const { finishHelpers } = require('./finish-world.cjs');
 /** @type {string} */
 let dir;
 useWorld((at) => { dir = at; });
-const { screen, refused, items } = finishHelpers(() => dir);
+const { screen, items } = finishHelpers(() => dir);
 
 describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
   /** Inbox items written and committed in one commit, each `[folder, file, title]`: their paths, absolute. @param {string[][]} specs */
@@ -44,7 +44,7 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
   /** The way on over the claimed items still live. @param {string[]} live */
   const claimed = (live) => `inbox-closed engine open — the build's log claims ${live.join(', ')} resolved, still in the inbox — close each the work resolved: inbox close ${UNIT} <path> …; where the work did not resolve one after all, take its Resolved: line out of the log`;
 
-  it('18.S24: holds finish open while an item a Resolved: line of the build\'s log claims is live, naming each and the close; the two the work resolved closed for the unit, one triage archived meanwhile, and one the log mentions without a claim left live — the screen then lists the unit\'s two closures, and none another unit or none closed; one brought back after the close holds finish again, the way on taking its claim out of the log, and finish stands once the claim is out', () => {
+  it('18.S24: holds finish open while an item a Resolved: line of the build\'s log claims is live, naming each and the close; the two the work resolved closed for the unit, one triage archived meanwhile, and one the log mentions without a claim left live — the screen then lists the unit\'s two closures, and none another unit or none closed; one brought back after the close takes its claim out of the log with it, so finish still stands, listing the one closure left', () => {
     const [declined, ...rest] = inbox(
       ['bugs', '2026-06-01--a-card-is-charged-twice.md', 'A Card Is Charged Twice'],
       ['bugs', '2026-06-02--a-refund-names-no-card.md', 'A Refund Names No Card'],
@@ -81,11 +81,13 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
       '    alone.',
       '',
     ].join('\n'));
-    ok(dir, ['inbox', 'restore', closed.closed[0]], { env: env() });
-    const held = [inboxItem(), refused(['render', 'finish', UNIT])];
-    logged(receipts, `Resolved: ${declined}`, '', prose);
+    const { unclaimed } = ok(dir, ['inbox', 'restore', closed.closed[0]], { env: env() });
 
-    assert.deepStrictEqual(held, [claimed([resolved[0]]), 'render finish: finish has items open since its close: inbox-closed — they are worked, and it is closed again']);
+    assert.deepStrictEqual([unclaimed, inboxItem(), fs.readFileSync(statePath(dir, layout.unit(UNIT, 'build', 'log.md')), 'utf8')], [
+      [{ path: resolved[0], unit: UNIT }],
+      'inbox-closed engine done',
+      `# The build\n\n${[receipts, `Resolved: ${declined}`, '', prose].join('\n')}\n`,
+    ]);
     assert.match(sectionOf(screen(), 'DISPLAY: finish'), /^Pay — finish\n\nCLOSED IN THE INBOX \(1\)\n  └─ Receipts By Mail /);
   });
 

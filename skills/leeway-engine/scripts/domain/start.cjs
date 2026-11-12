@@ -1,11 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the leeway detail — what the start skill's sub-views read
-// (projections/start.cjs): the inbox, live and archived, for triage. Pure
-// over the project's state: same files, same answer. The start menu reads
-// the project itself (start-menu.cjs), and manage and the closed units
-// theirs (projections/manage.cjs).
+// Domain ring: the inbox as its files hold it, live and archived — each
+// folder's items with their dates and titles, read from their file names
+// and their content — which triage reads (inbox-set.cjs). Pure over the
+// project's state: same files, same answer.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -34,8 +33,6 @@ const { statePath } = require('../kernel/state-root.cjs');
  */
 
 /** @typedef {InboxScan & {archived: InboxScan}} InboxDetail */
-
-/** @typedef {{inbox: InboxDetail}} StartDetail */
 
 /** An inbox item's title: its content's first markdown H1, or null. @param {string} content @returns {string|null} */
 function titleOf(content) {
@@ -113,13 +110,4 @@ function discoverInbox(cwd) {
   return { ...inbox, archived: scanInboxDir(statePath(cwd, ARCHIVED)) };
 }
 
-/**
- * The leeway detail for one project (the header's).
- * @param {string} cwd
- * @returns {StartDetail}
- */
-function startDetail(cwd) {
-  return { inbox: discoverInbox(cwd) };
-}
-
-module.exports = { startDetail, discoverInbox, titleOf };
+module.exports = { discoverInbox, titleOf };

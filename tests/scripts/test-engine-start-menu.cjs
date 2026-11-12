@@ -250,7 +250,7 @@ describe('the start menu (18.2.12)', () => {
       2: { kind: 'engine', argv: ['handoff', 'unit', FUMI] },
       p: { kind: 'handoff', skill: 'leeway-discovery', args: ['none', 'none'] },
       s: { kind: 'handoff', skill: 'leeway-discovery', args: ['start', 'none'] },
-      t: { kind: 'continue' },
+      t: { kind: 'engine', argv: ['render', 'triage'] },
       r: { kind: 'handoff', skill: 'leeway-roadmap', args: ['open'] },
       v: { kind: 'engine', argv: ['render', 'closed'] },
       m: { kind: 'engine', argv: ['render', 'manage'] },

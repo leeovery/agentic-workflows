@@ -33,11 +33,8 @@ const roadmapDomain = require('./domain/roadmap.cjs');
 const roadmapProjections = require('./domain/projections/roadmap.cjs');
 const presence = require('./domain/presence.cjs');
 const gateway = require('./gateway.cjs');
-const start = require('./domain/start.cjs');
-const inboxSet = require('./domain/inbox-set.cjs');
 const workunit = require('./domain/workunit-detail.cjs');
 const agentState = require('./domain/agent-state.cjs');
-const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
 const surfaces = require('./domain/projections/surfaces.cjs');
 
@@ -89,9 +86,6 @@ module.exports = {
     fmtAge: presence.fmtAge,
   },
   detail: {
-    startDetail: start.startDetail,
-    combinedInbox: inboxSet.combinedInbox,
-    workingSetDetail: inboxSet.workingSetDetail,
     phaseTargets: workunit.phaseTargets,
     WORK_UNIT_TYPES: workunit.WORK_UNIT_TYPES,
   },
@@ -103,11 +97,6 @@ module.exports = {
     roadmapProposalView: roadmapProjections.roadmapProposalView,
     roadmapPullSetView: roadmapProjections.roadmapPullSetView,
     roadmapHomeMenu: roadmapProjections.roadmapHomeMenu,
-    inboxPickupView: startProjections.inboxPickupView,
-    archivedView: startProjections.archivedView,
-    workingSetView: startProjections.workingSetView,
-    workingSetAddGate: startProjections.workingSetAddGate,
-    workingSetDropGate: startProjections.workingSetDropGate,
     revisitPhasesSection: workunitProjections.revisitPhasesSection,
   },
 };

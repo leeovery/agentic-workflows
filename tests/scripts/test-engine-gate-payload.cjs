@@ -70,6 +70,15 @@ function seedCancel(dir) {
   });
 }
 
+/** A roadmap of two items waiting on one horizon. @param {string} dir */
+function seedWaitingRoadmap(dir) {
+  const manifest = path.join(dir, '.leeway/manifest.json');
+  fs.writeFileSync(manifest, JSON.stringify({
+    ...JSON.parse(fs.readFileSync(manifest, 'utf8')),
+    roadmap: { horizons: ['next'], items: { menus: { horizon: 'next', summary: 'menus in sync', origin: 'harvest' }, loyalty: { horizon: 'next', summary: 'rewards', origin: 'harvest' } } },
+  }));
+}
+
 /** The cancel gate over that topic. */
 const CANCEL = ['render', 'cancel-gate', 'pay.discovery.data-export'];
 
@@ -123,9 +132,9 @@ describe('gate payload — the announce switch', () => {
   });
 
   it('a gateway view says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
-    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
-    const plain = runGateway(dir, 'leeway', ['archived']);
-    const announced = runGateway(dir, 'leeway', ['archived'], ANNOUNCED);
+    seedWaitingRoadmap(dir);
+    const plain = runGateway(dir, 'leeway-roadmap', ['view']);
+    const announced = runGateway(dir, 'leeway-roadmap', ['view'], ANNOUNCED);
 
     assert.ok(!plain.includes('=== GATE'), plain);
     assert.strictEqual(withoutGate(announced), plain);
@@ -277,21 +286,12 @@ describe('gate payload — a gateway menu', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a gateway\'s MENU states the gate the gateway names it, and its range row is typed rather than pressable', () => {
-    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
-    createFile(dir, '.leeway/.inbox/bugs/2026-03-20--bad-thing.md', '# Bad Thing\n\nContent.');
-    const out = runGateway(dir, 'leeway', ['inbox'], ANNOUNCED);
+    seedWaitingRoadmap(dir);
+    const { gate, typed } = gateOf(runGateway(dir, 'leeway-roadmap', ['pull-set'], ANNOUNCED));
 
-    assert.deepStrictEqual(gateOf(out), {
-      gate: 'inbox menu',
-      question: 'What would you like to do?',
-      statement: '',
-      options: [
-        { key: 'b', word: 'back', head: 'Return', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
-      ],
-      typed: [
-        { label: '1–2', description: 'Triage item(s) — archive, put on the roadmap, or start work (comma-separated for several)', detail: null },
-      ],
-    });
+    assert.deepStrictEqual([gate, typed], ['roadmap pull pick', [
+      { label: '1–2', description: 'Start work on item(s) (comma-separated for several)', detail: null },
+    ]]);
   });
 
   it('a held row states its holder apart from its tail, a recommended row its flag, and neither marker survives into the text', () => {
@@ -319,8 +319,6 @@ describe('gate payload — a gateway menu', () => {
 describe('gate payload — every gateway verb', () => {
   const SKILLS = path.resolve(__dirname, '../../skills');
   const ENGINE_GATEWAY = path.join(SKILLS, 'leeway-engine/scripts/gateway.cjs');
-  const SET_ITEM = '.leeway/.inbox/ideas/2026-06-01--user-id.md';
-  const BUG_ITEM = '.leeway/.inbox/bugs/2026-06-02--login-timeout.md';
 
   /** @typedef {{args: string[], gated: boolean, refused?: boolean}} GatewayCall */
 
@@ -337,11 +335,6 @@ describe('gate payload — every gateway verb', () => {
   const CALLS = {
     'leeway': {
       index: [refused()],
-      inbox: [gated('inbox')],
-      archived: [gated('archived')],
-      'working-set': [gated('working-set', SET_ITEM), gated('working-set', SET_ITEM, BUG_ITEM)],
-      'working-set-add-gate': [gated('working-set-add-gate', SET_ITEM)],
-      'working-set-drop-gate': [gated('working-set-drop-gate', SET_ITEM)],
     },
     'leeway-roadmap': {
       view: [gated('view')],
@@ -364,8 +357,8 @@ describe('gate payload — every gateway verb', () => {
   };
 
   /**
-   * One project holding every state the gateway menus draw from: an inbox
-   * and an archive, a roadmap with items waiting, an epic whose discussion a
+   * One project holding every state the gateway menus draw from: an
+   * archive, a roadmap with items waiting, an epic whose discussion a
    * peer holds while a message waits in its mailbox, and one not started
    * with a message waiting — beside a completed topic whose input moved, a
    * cancelled topic, a topic
@@ -387,9 +380,6 @@ describe('gate payload — every gateway verb', () => {
         },
       },
     }));
-    createFile(dir, SET_ITEM, '# Fix user_id in *auth* [draft]\n');
-    createFile(dir, BUG_ITEM, '# Login_timeout *spikes* [prod]\n');
-    createFile(dir, '.leeway/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart retry\n');
     createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
     createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later [v2]', summary: 'stored *value*' }]));
 
@@ -455,6 +445,8 @@ describe('gate payload — every gateway verb', () => {
   let responses;
   /** The epic's menu over the same world, which the engine draws. @type {string} */
   let epicMenu;
+  /** The archived items over the same world, which the engine draws. @type {string} */
+  let archived;
 
   before(async () => {
     dir = setupFixture();
@@ -475,6 +467,7 @@ describe('gate payload — every gateway verb', () => {
       .map(([g, out]) => [g, JSON.parse(out).sort()]));
     responses = new Map(calls.map(({ call }, i) => [call, answers[i]]));
     epicMenu = output(dir, EPIC_MENU, { env: ANNOUNCED });
+    archived = output(dir, ['render', 'archived'], { env: ANNOUNCED });
   });
   after(() => { cleanupFixture(dir); });
 
@@ -493,8 +486,8 @@ describe('gate payload — every gateway verb', () => {
     });
   }
 
-  it('the world reaches every row shape the menu builders draw, the epic\'s menu among the gateways\'', () => {
-    const gates = [...[...responses.values()].map(({ stdout }) => stdout), epicMenu].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
+  it('the world reaches every row shape the menu builders draw, the epic\'s menu and the archived items among the gateways\'', () => {
+    const gates = [...[...responses.values()].map(({ stdout }) => stdout), epicMenu, archived].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
     for (const [shape, drawn] of Object.entries(SHAPES)) {
       assert.ok(gates.some(drawn), `no menu drew ${shape}`);
     }
@@ -588,11 +581,11 @@ describe('gate payload — escaped text', () => {
     const archived = '.leeway/.inbox/.archived/ideas/2026-05-01--user-id.md';
     createFile(dir, archived, '# Fix user_id in *auth* [draft]\n');
 
-    const actions = gateOf(output(dir, ['render', 'archived-actions', '--path', archived], { env: ANNOUNCED }));
-    assert.strictEqual(actions.statement, 'Selected: Fix user_id in *auth* [draft] (idea, archived)');
+    const item = gateOf(output(dir, ['render', 'archived-item', '--path', archived], { env: ANNOUNCED }));
+    assert.strictEqual(item.statement, 'Selected: Fix user_id in *auth* [draft] (idea, archived)');
 
     const remove = gateOf(output(dir, ['render', 'archived-delete-gate', '--path', archived], { env: ANNOUNCED }));
-    assert.strictEqual(remove.statement, 'Permanently deleting "Fix user_id in *auth* [draft]" removes the file from the repo and cannot be undone.');
+    assert.strictEqual(remove.statement, 'Deleting "Fix user_id in *auth* [draft]" takes it out of the archive for good.');
   });
 
   it('a code span keeps its content as written', () => {

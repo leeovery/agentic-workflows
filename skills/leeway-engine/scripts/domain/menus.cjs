@@ -109,9 +109,9 @@ const START_HELP = Object.freeze({
 const MENUS = Object.freeze({
   'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', START_HELP, [NUMBERED, 'p', 's', 't', 'r', 'e', 'v', 'm']),
   'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit', {}, [NUMBERED, 'e', 's', 'd', BACK]),
-  triage: registered('triage', 'triage', 'triage', 'none'),
-  archived: registered('archived', 'archived items', 'the archived items', 'none'),
-  'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none'),
+  triage: registered('triage', 'triage', 'triage', 'none', {}, ['w', 'r', 'a', 'c', 'v', BACK]),
+  archived: registered('archived', 'archived items', 'the archived items', 'none', {}, [NUMBERED, BACK]),
+  'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none', {}, ['u', 'd', BACK]),
   roadmap: registered('roadmap', 'roadmap', 'the roadmap', 'roadmap'),
   manage: registered('manage', 'manage', 'manage', 'none', {}, [NUMBERED, BACK]),
   'manage-unit': registered('manage-unit', 'manage unit', 'managing the unit', 'none', {}, ['p', 'o', 'c', 'r', BACK]),

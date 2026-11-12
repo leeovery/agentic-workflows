@@ -1,8 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's roadmap scenarios: the inbox onto the roadmap,
-// an item archived and brought back; just-in-time birth, harvest, horizons and lifecycle by join; something put
+// The pipeline simulation's roadmap scenarios: the inbox onto the roadmap
+// from triage, an item archived and brought back; just-in-time birth,
+// harvest, horizons and lifecycle by join; something put
 // aside in the product's conversation; backlogging from a live
 // implementation item; a unit's cancel or absorb re-aiming its joins; an
 // epic pulled with an idea and a bug; and quick-fixes pulled alone. Every
@@ -21,12 +22,10 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit, completeUnit } = require('./engine-harness.cjs');
 const {
   Sim, sessionLog, arrive, handoff, enterEntry, discussed, startMenu, startPick, specEntry, literal,
-  shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap, answerGate,
+  shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap, answerGate, triagePick,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -45,7 +44,7 @@ describe('pipeline simulation: roadmap', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('inbox onto the roadmap: the notes travel with their items, a bug pulled alone pre-seeds a bugfix, an idea and a bug start with no hint and become a feature, an archived item keeps its note and its name and comes back with both', () => {
+  it('inbox onto the roadmap: triage\'s r puts what is picked on the horizon the person names, with no confirm (18.S29, 18.S79); the notes travel with their items, a bug pulled alone pre-seeds a bugfix, an idea and a bug start with no hint and become a feature, an archived item keeps its note and its name and comes back with both', () => {
     const inbox = {
       idea: sim.write('.leeway/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
       timeout: sim.write('.leeway/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
@@ -54,14 +53,11 @@ describe('pipeline simulation: roadmap', () => {
     };
     sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
 
-    // The working set takes any mix — work or the roadmap, never a blocker.
-    const set = LIB.detail.workingSetDetail(sim.dir, Object.values(inbox));
-    assert.strictEqual(set.set_type, 'none', 'an idea in the set leaves the type to discovery');
-    assert.match(LIB.project.workingSetView(set).menu, /`o\/roadmap`/);
-
-    // The roadmap row: the horizon once, one confirm over the very file the
-    // move takes — every item and its kind from its note's folder — then one
-    // transaction moving each note off the inbox.
+    // Triage's r over any mix: Claude asks the horizon, then one transaction,
+    // with no confirm, moves each note off the inbox — every item's kind its
+    // note's folder's.
+    triagePick(sim, Object.values(inbox));
+    assert.deepStrictEqual(answerGate(sim, 'triage', '--pick', 'r').next, { kind: 'continue' }, 'r carries on in the conversation, where Claude asks the horizon');
     const notes = [inbox.idea, inbox.timeout, inbox.chart, inbox.typo];
     const entries = [
       { name: 'saved-views', horizon: 'next', summary: 'operators save a filtered view', note: inbox.idea },
@@ -69,9 +65,7 @@ describe('pipeline simulation: roadmap', () => {
       { name: 'blank-chart', horizon: 'next', summary: 'the chart renders blank on an empty range', note: inbox.chart },
       { name: 'footer-typo', horizon: 'next', summary: 'the footer misspells the product', note: inbox.typo },
     ];
-    const batch = sim.write('.leeway/.cache/inbox-roadmap.json', entries);
-    const gate = sim.render(['inbox-roadmap-gate', '--file', batch], { expect: 'content' });
-    assert.match(gate, /MENU: inbox roadmap gate[\s\S]*\*\*Export Timeout\*\* \[bug\][\s\S]*The roadmap is created with them\./);
+    const batch = sim.write('.leeway/.cache/triage-roadmap.json', entries);
     const added = sim.run(['roadmap', 'add-batch', '--file', batch]);
     assert.deepStrictEqual(added.added.map((a) => a.kind), ['idea', 'bug', 'bug', 'quick-fix']);
     for (const note of notes) {
@@ -81,9 +75,8 @@ describe('pipeline simulation: roadmap', () => {
     assert.deepStrictEqual(state.items.find((i) => i.name === 'export-timeout').sources, ['.product/notes/2026-02-02--export-timeout.md']);
     assert.strictEqual(state.items.find((i) => i.name === 'export-timeout').origin, 'inbox:2026-02-02--export-timeout');
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Export Timeout\n.*large exports time out\n.*↳ Bug · waiting/);
-    // The gate refuses where the move would: the same file again names notes
-    // that have left the inbox and names already on the roadmap.
-    sim.refuses(['render', 'inbox-roadmap-gate', '--file', batch], /"saved-views" is already on the roadmap/);
+    // The same file again names notes that have left the inbox and names
+    // already on the roadmap.
     sim.refuses(['roadmap', 'add-batch', '--file', batch], /"saved-views" is already on the roadmap/);
 
     // An epic grows by topics: a bug is never pulled forward into one.

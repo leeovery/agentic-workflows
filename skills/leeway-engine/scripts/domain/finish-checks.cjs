@@ -51,7 +51,7 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { once } = require('./phase-checks.cjs');
 const { reviewAsked, quickFixBuild } = require('./derivations.cjs');
@@ -59,8 +59,7 @@ const { reviewRefusal } = require('./review-entry.cjs');
 const { reviewStanding, endedRefusal, notesStanding, recordedRounds } = require('./review-phase.cjs');
 const { readiness, unindexedRecords } = require('./knowledge/status.cjs');
 const { waitingAndFreed, askedOpen } = require('./questions.cjs');
-const { liveResolved } = require('./inbox.cjs');
-const { buildLogOf } = require('./build-entry.cjs');
+const { logClaims } = require('./inbox.cjs');
 
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
 /** @typedef {import('./review-phase.cjs').ReviewStanding} ReviewStanding */
@@ -120,10 +119,7 @@ const notesAnswered = (at) => notesLeft(at).length === 0;
 const notesWay = (at) => `${notesLeft(at).join(', ')} — each note for later is filed to the inbox or dropped before the close: quick-fix notes ${at.unit} --file <notes.json>`;
 
 /** The live inbox items the build's log claims resolved: read once a call. @param {Reading} at @returns {string[]} */
-const claimedLive = (at) => once(at, 'inbox', () => {
-  const log = statePath(at.cwd, buildLogOf(at.unit));
-  return fs.existsSync(log) ? liveResolved(at.cwd, fs.readFileSync(log, 'utf8')) : [];
-});
+const claimedLive = (at) => once(at, 'inbox', () => logClaims(at.cwd, at.unit));
 
 /** No item the build's log claims resolved is left live. @param {Reading} at */
 const inboxClosed = (at) => claimedLive(at).length === 0;
