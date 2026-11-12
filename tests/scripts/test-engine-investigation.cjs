@@ -1096,6 +1096,20 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual(run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
   });
 
+  it('the yes checks the decision point on the showing staged and opens no hold: a verdict still owed where the conclude ran as its step, and the count asking by the yes, the yes refuses, leaving no hold, and the next conclude is drawn afresh', async (t) => {
+    await departed();
+    let calls = 0;
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ gateAt) => (calls++ === 0 ? { step: 'automatic', gate: 'conclude gate', row: 'y', showing: '47e5a17f3cac2787' } : decisionPoint.learned(name, gateAt)));
+    const held = () => fs.existsSync(at(layout.cache(RIPE, 'investigation', RIPE, path.join('.showings', 'conclude-gate.json'))));
+
+    conclude();
+    const refusal = refused(['investigation', 'conclude', RIPE]);
+    const left = held();
+    const again = conclude(RIPE, null);
+
+    assert.deepStrictEqual([refusal, left, /^=== MENU: verdict /m.test(again), held()], [`investigation conclude: a verdict is still to ask — engine render conclude ${RIPE} asks each before the yes`, false, true, true]);
+  });
+
   it('a conclude set aside stays held at the investigation through a call the person changed meanwhile — its raise drawn, then its verdict asked first on the conclude\'s own screen: drawn again after the verdict, it shows on its hold, never drawn, and its answers are one event (S1)', async (t) => {
     const outcome = await setAside(t, async () => {
       await departed();

@@ -51,14 +51,15 @@
 //   gate shown, and `gate` refuses it, naming `raise answer`. Drawing one
 //   clears the gate shown, so only one shows at a time (6.6.10).
 // - A showing of a gate lasts from its drawing until a pick that leaves the
-//   gate answers it — a row, or a typed row that picks items — waiting for
-//   its answer, or set aside by a reply that answered no row: free text, or
-//   a typed row the person answers in words, a Comment or an Ask (6.6.2); a
-//   row whose next draws the gate again at its place, the wait's wait,
-//   leaves it open too (learned-gates.cjs). Drawn again while it lasts, the
-//   gate shown keeps the time the showing opened and the showing it was
-//   drawn on, so the showing is one event under one id however many replies
-//   it took, the first read (16.13.3); the time it was drawn is this draw's,
+//   gate answers it, waiting for its answer, or set aside by free text, which
+//   answers no row (6.6.2). At a learned gate every pick leaves it but a row
+//   whose next shows the gate again at its place — the Comment at the
+//   investigation's gates, the wait's wait (learned-gates.cjs); at any other,
+//   every pick but a typed row the person answers in words, a Comment or an
+//   Ask, which sets it aside. Drawn again while it lasts, the gate shown
+//   keeps the time the showing opened and the showing it was drawn on, so
+//   the showing is one event under one id however many replies it took, the
+//   first read (16.13.3); the time it was drawn is this draw's,
 //   so a press, or a proposal's yes (person-verbs.cjs), is told against the
 //   screen the person answered. A learned gate's showing is held at its
 //   place, its own record (showing-hold.cjs): the gate shown keeps the place,
@@ -88,7 +89,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { readAtGate } = require('./answer-reader.cjs');
 const { idFrom } = require('./ledger-ids.cjs');
-const { ENTRY_SEPARATOR, keepsShowing } = require('./learned-gates.cjs');
+const { ENTRY_SEPARATOR, learnedGate, keepsShowing } = require('./learned-gates.cjs');
 const { gateShown, gateStepped, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { endShowing } = require('./showing-hold.cjs');
 const { record } = require('./trust-log.cjs');
@@ -220,12 +221,14 @@ function openShowing(session, name) {
 /**
  * Whether the answer `picked` at the gate `shown` — a row's key, a typed
  * row's, or null for free text — is a pick that leaves the gate, ending its
- * showing: never free text, a typed row the person answers in words, or a
- * row whose next draws the gate again at its place.
+ * showing: never free text; at a learned gate, any row but one whose next
+ * shows the gate again at its place; at any other, any row but a typed row
+ * the person answers in words.
  * @param {ShownRecord} shown @param {string|null} picked
  */
 function leaves(shown, picked) {
-  return picked !== null && !shown.typed.some((t) => t.key === picked && t.prompt) && !keepsShowing(shown.gate, picked);
+  if (picked === null) return false;
+  return learnedGate(shown.gate) === null ? !shown.typed.some((t) => t.key === picked && t.prompt) : !keepsShowing(shown.gate, picked);
 }
 
 /** Forget the gate the conversation `session` was shown. @param {string} session */

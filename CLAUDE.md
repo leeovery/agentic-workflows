@@ -98,7 +98,8 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.leeway/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
 - `.leeway/{work_unit}/.state/` — per-unit analysis files
 - `.leeway/.state/` — the migrations ledger, `environment-setup.md`
-- `.leeway/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
+- `.leeway/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence, and in `.showings/` the learned gates' showings held there; `.cache/.session-labels/` the tmux label store
+- `.leeway/.cache/.showings/` — the import reprompt's showing held, at no place
 - `.leeway/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
 - `.leeway/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
 - `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes

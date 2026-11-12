@@ -68,12 +68,13 @@ function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
 
 /**
  * The decision point's step on the investigation's learned gate `gate`
- * (19.4.19), at the investigation's place, on the showing `key` tells.
- * @param {string} cwd @param {string} unit @param {string} gate @param {unknown} key
+ * (19.4.19), at the investigation's place, on the showing `key` tells — as
+ * a verb checks it where `check`, opening no hold.
+ * @param {string} cwd @param {string} unit @param {string} gate @param {unknown} key @param {{check?: boolean}} [how]
  * @returns {import('./learned-gates.cjs').GateStep}
  */
-function investigationStep(cwd, unit, gate, key) {
-  return decisionPoint.gateStep(gate, { cwd, place: { unit, phase: 'investigation', topic: unit }, key });
+function investigationStep(cwd, unit, gate, key, { check = false } = {}) {
+  return decisionPoint.gateStep(gate, { cwd, place: { unit, phase: 'investigation', topic: unit }, key, check });
 }
 
 /** A gate's screen, what the read passed over said ahead of it. @param {string[]} warnings @param {string} screen */

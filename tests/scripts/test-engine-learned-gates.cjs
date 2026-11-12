@@ -331,6 +331,40 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     assert.strictEqual(drawnBlind('wait for agents', showingOf(CARDS, ['a41'])), false, 'drawn afresh, the wait over one agent would run as a step');
   });
 
+  it('paths typed at the import reprompt answer it, ending its showing: the reprompt a refused re-land draws, on the paths it refused, is a showing of its own, and its answer an event of its own', () => {
+    const dir = project('mint');
+    /** The reprompt at no place over the paths `missing`. @param {string[]} missing */
+    const refusedOf = (missing) => ({ cwd: dir, place: NOWHERE, key: missing });
+
+    const showing = inConversation(dir, () => {
+      drawn('import reprompt', refusedOf(['/notes/sketch.png']));
+      answerGate(dir, 'import reprompt', { typed: 'provide-file-paths' });
+      drawn('import reprompt', refusedOf(['/notes/sketch-2.png']));
+      const again = lastShown(SESSION)?.showing;
+      answerGate(dir, 'import reprompt', { pick: 's' });
+      return again;
+    });
+
+    assert.deepStrictEqual([showing, showingAnswers()], [showingOf(NOWHERE, ['/notes/sketch-2.png']), [['provide-file-paths', 's'], 2]]);
+  });
+
+  it('a Comment at the conclude gate leaves its showing open, its next showing the gate again: the recap staged again after it shows on the showing first drawn, and its answers are one event', () => {
+    const dir = project('mint');
+    /** The conclude at pay's investigation, its recap staged at `stagedAt`. @param {string} stagedAt */
+    const staged = (stagedAt) => ({ cwd: dir, place: HUNT, key: stagedAt });
+
+    const showing = inConversation(dir, () => {
+      drawn('conclude gate', staged('2026-11-12T09:00:00.000Z'));
+      answerGate(dir, 'conclude gate', { typed: 'comment' });
+      drawn('conclude gate', staged('2026-11-12T09:05:00.000Z'));
+      const kept = lastShown(SESSION)?.showing;
+      answerGate(dir, 'conclude gate', { pick: 'y' });
+      return kept;
+    });
+
+    assert.deepStrictEqual([showing, showingAnswers()], [showingOf(HUNT, '2026-11-12T09:00:00.000Z'), [['comment', 'y'], 1]]);
+  });
+
   it('a showing set aside keeps its hold when a raise drawn meanwhile clears the gate shown: free text read as its usual answer tips its count quiet, yet the gate drawn after shows on its hold, and its answers are one event (S1)', () => {
     const dir = project('mint');
     logged(pressed(12, { start: Date.now() - DAY }));

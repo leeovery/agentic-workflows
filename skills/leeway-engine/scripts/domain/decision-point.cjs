@@ -45,17 +45,18 @@
 // surface that draws one asks it, at the gate's place — its unit, phase and
 // topic — with the key it draws the gate's showing from, and draws what it
 // answers (projections/surfaces.cjs). A showing held at the gate's place
-// (showing-hold.cjs) — waiting for its answer, set aside by a reply that
-// answered no row, or left open by a row that draws the gate again — shows
-// again on its hold and is never drawn again, the person having engaged
-// with it; a gate shown on a new showing opens its hold. Until the learned
-// gates are switched on (29.19.2), every gate shows. `learned` is what it
-// decides once switched, where no showing is held: in a build in step, the
-// gate shows, the position read from the unit at each gate so a switch
-// bites at once (3.3.3, 3.3.6); else — only the build has a position
-// (3.3.1) — as the gate's count stands for the project and the session's
-// model as of the time, at the person's threshold, its showing's blind ask
-// drawn. A gate off the list shows, and nothing is read for it.
+// (showing-hold.cjs) — waiting for its answer, set aside by free text, or
+// left open by a row that shows the gate again — shows again on its hold
+// and is never drawn again, the person having engaged with it. A surface's
+// draw that shows the gate on a new showing opens its hold; a verb's check
+// of the step reads the hold and opens none. Until the learned gates are
+// switched on (29.19.2), every gate shows. `learned` is what it decides
+// once switched, where no showing is held: in a build in step, the gate
+// shows, the position read from the unit at each gate so a switch bites at
+// once (3.3.3, 3.3.6); else — only the build has a position (3.3.1) — as
+// the gate's count stands for the project and the session's model as of the
+// time, at the person's threshold, its showing's blind ask drawn. A gate off
+// the list shows, and nothing is read for it.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -82,9 +83,10 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 /** @typedef {import('./learned-gates.cjs').GateStep} GateStep */
 /**
  * Where a gate comes: the command's folder; the gate's place — the unit,
- * phase and topic it comes at, each null where it comes at none; and the key
- * its surface draws the showing from, out of its own state.
- * @typedef {{cwd: string, place: import('./learned-gates.cjs').Place, key: unknown}} GateAt
+ * phase and topic it comes at, each null where it comes at none; the key its
+ * surface draws the showing from, out of its own state; and whether a verb
+ * checks the step rather than a surface drawing the gate, opening no hold.
+ * @typedef {{cwd: string, place: import('./learned-gates.cjs').Place, key: unknown, check?: boolean}} GateAt
  */
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
@@ -157,18 +159,18 @@ function gateStep(name, at) {
 
 /**
  * The gate `gate` at its place: shown on the showing held there; else
- * drawn on the showing its key tells, as `decides` steps it, its hold opened
- * where it shows.
+ * drawn on the showing its key tells, as `decides` steps it, a surface's
+ * draw opening its hold where it shows — a verb's check opens none.
  * @param {string} gate @param {GateAt} at @param {(showing: string, root: string) => GateStep} decides
  * @returns {GateStep}
  */
-function drawn(gate, { cwd, place, key }, decides) {
+function drawn(gate, { cwd, place, key, check = false }, decides) {
   const root = stateRoot(cwd);
   const held = heldShowing(root, gate, place);
   if (held !== null) return shows(gate, held.showing, { place, opened: held.opened });
   const showing = showingOf(place, key);
   const step = decides(showing, root);
-  return step.step === 'automatic' ? step : shows(gate, showing, { place, opened: holdShowing(root, gate, place, showing).opened });
+  return step.step === 'automatic' || check ? step : shows(gate, showing, { place, opened: holdShowing(root, gate, place, showing).opened });
 }
 
 /**

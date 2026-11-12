@@ -21,14 +21,15 @@
 //   it; nor the wait's wait, whose next draws the wait again while the agents
 //   run, so as a step it would never stop.
 // - A showing is one occurrence of a gate: drawn, then waiting, set aside
-//   and shown again, until a pick that leaves the gate answers it or it runs
-//   as a step. The wait's wait leaves it open: its next draws the wait again
-//   at its place, the same showing. Its digest (`showingOf`) hashes the
-//   gate's place — unit, phase and topic — with the key its surface draws it
-//   from out of its own state, the same on every redraw of one showing and
-//   different between showings. Its answer logs it
-//   (trust-events.cjs), so a replay draws a past showing again as it was
-//   drawn: `drawnBlind(gate, showing)`.
+//   by free text and shown again, until a pick answers it or it runs as a
+//   step. A row whose next shows the gate again at its place leaves it open
+//   — the Comment at the investigation's gates, the wait's wait — and any
+//   other pick answers it, the reprompt's paths in the person's words among
+//   them. Its digest (`showingOf`) hashes the gate's place — unit, phase and
+//   topic — with the key its surface draws it from out of its own state, the
+//   same on every redraw of one showing and different between showings. Its
+//   answer logs it (trust-events.cjs), so a replay draws a past showing
+//   again as it was drawn: `drawnBlind(gate, showing)`.
 // - A gate shows while its count asks (trust-counts.cjs): with no answers at
 //   all, and until the bound on leaving its usual answer, the row picked
 //   most often, falls below the person's threshold; once under, it runs as
@@ -82,11 +83,14 @@ const LEARNED = Object.freeze({
 // The share of a gate's showings asked blind once it runs as a step (16.20.2).
 const BLIND_ASK = 0.05;
 
-// Each learned gate's rows whose next draws the gate again at its place, so
-// a pick of one leaves its showing open.
+// Each learned gate's rows whose next shows the gate again at its place, so
+// a pick of one leaves its showing open; any other pick answers the gate.
 /** @type {Readonly<Record<string, readonly string[]>>} */
 const KEEPING = Object.freeze({
   'wait for agents': Object.freeze(['w']),
+  'plan gate': Object.freeze(['comment']),
+  'check-in gate': Object.freeze(['comment']),
+  'conclude gate': Object.freeze(['comment']),
 });
 
 // A showing's digest, in hex digits.

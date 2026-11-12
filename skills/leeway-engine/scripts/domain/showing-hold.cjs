@@ -9,8 +9,9 @@
 // so it outlives the conversation, and goes with the unit's cache at its
 // close (cache.cjs).
 //
-// The draw opens it (decision-point.cjs). While it stands the gate shows on
-// it and is never drawn again, and every answer to it is logged under it
+// A surface's draw opens it (decision-point.cjs); a verb's check of the
+// gate's step reads it and opens none. While it stands the gate shows on it
+// and is never drawn again, and every answer to it is logged under it
 // (gate.cjs). Only three things end it: the gate's own pick of a row that
 // leaves the gate (gate.cjs); a step, which never comes while it stands; and
 // the gate's surface finding the gate no longer due (decided.cjs). Nothing

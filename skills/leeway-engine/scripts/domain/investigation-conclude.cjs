@@ -322,10 +322,11 @@ function kept(cwd, bug, earlier) {
 
 /**
  * The decision point's step on the conclude gate, a learned one (19.4.19),
- * on the showing its recap staged at `stagedAt` tells.
- * @param {string} cwd @param {string} unit @param {string} stagedAt
+ * on the showing its recap staged at `stagedAt` tells — as the yes checks
+ * it where `check`, opening no hold.
+ * @param {string} cwd @param {string} unit @param {string} stagedAt @param {{check?: boolean}} [how]
  */
-const concludeStep = (cwd, unit, stagedAt) => investigationStep(cwd, unit, 'conclude gate', stagedAt);
+const concludeStep = (cwd, unit, stagedAt, how = {}) => investigationStep(cwd, unit, 'conclude gate', stagedAt, how);
 
 /**
  * `render conclude <bugfix> [--file <recap.json>]`: the conclude, Claude's
@@ -373,7 +374,7 @@ function concludeInvestigation(cwd, unit) {
     const { rootCause, fix } = closing(cwd, unit, 'investigation conclude', warnings);
     const staged = stagedFor(cwd, unit, rootCause, fix);
     const bug = stagedBug(cwd, unit, staged);
-    if (verdictOf(cwd, unit, staged.at, warnings) !== null && concludeStep(cwd, unit, staged.at).step !== 'automatic') {
+    if (verdictOf(cwd, unit, staged.at, warnings) !== null && concludeStep(cwd, unit, staged.at, { check: true }).step !== 'automatic') {
       throw new Error(`a verdict is still to ask — engine render conclude ${unit} asks each before the yes`);
     }
     const manifest = withWorkUnitLock(cwd, unit, () => {
