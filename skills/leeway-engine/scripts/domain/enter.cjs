@@ -20,7 +20,10 @@
 // with the line it opens its next write with (8.14.8) — or, for a row that
 // writes that line itself, the line written; what a read of the ledger said
 // on the way rides the response as warnings. The reading comes after the
-// question (2.10.3).
+// question (2.10.3). Between the row's reads and the log, the DATA names the
+// record of the person wherever its file stands (16.18.4, person.cjs) —
+// none while the person has kept nothing — never reading it, so no record
+// refuses an entry.
 //
 // A phase enters through its row of `ENTRIES`: its level — at a topic, or at
 // the work unit — whether the product's conversation enters through it too,
@@ -91,6 +94,7 @@ const { SPECIFICATION } = require('./spec-entry.cjs');
 const { IMPLEMENTATION } = require('./build-entry.cjs');
 const { REVIEW } = require('./review-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
+const { recordToRead } = require('./person.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
 
@@ -548,12 +552,22 @@ function enterThrough(entries, cwd, argv) {
   const commit = entering.started || entering.voided || departure !== null ? settle(cwd, entry, entering, held, departure) : {};
   held.arrive();
   beatQuietly(cwd, unit, phase, place);
-  const lines = [...reads, ...logLines(cwd, entry, entering)];
+  const lines = [...reads, ...personLines(), ...logLines(cwd, entry, entering)];
   const warnings = [...entering.notes, ...(commit.warnings ?? [])];
   return {
     response: { phase, unit, ...atTopic, entered: true, started: entering.started, ...commit, ...(warnings.length > 0 ? { warnings } : {}) },
     sections: entrySections(entry.questions(entering), lines),
   };
+}
+
+/**
+ * The DATA's line naming the record of the person, for what Claude picks
+ * (16.18.4), wherever its file stands; none where it has none.
+ * @returns {Line[]}
+ */
+function personLines() {
+  const record = recordToRead();
+  return record === null ? [] : [['person', record]];
 }
 
 /**

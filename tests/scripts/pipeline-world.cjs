@@ -132,12 +132,13 @@ class Sim {
   // waiting — whose sections are the screen the raise is drawn as, none
   // where it parks its task or proceeds; the entry, whose sections are what
   // the phase reads on arrival; a unit's move, whose sections are start
-  // this work's screen it stages; and the capture line, whose section is the
-  // one line it draws.
+  // this work's screen it stages; the capture line, whose section is the
+  // one line it draws; and Claude's proposal for the record of the person,
+  // whose sections are the screen it is proposed on.
   /** @param {string[]} args */
   static carriesSections([group, verb]) {
     return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && MAP_VERBS.includes(verb))
-      || (group === 'workunit' && verb === 'move') || (group === 'inbox' && verb === 'capture');
+      || (group === 'workunit' && verb === 'move') || (group === 'inbox' && verb === 'capture') || (group === 'person' && verb === 'propose');
   }
 
   /**

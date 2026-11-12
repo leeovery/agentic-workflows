@@ -260,7 +260,7 @@ describe('the answer (16.S75, 16.3.2)', () => {
     assert.deepStrictEqual([lastEntry().text, logText()], [LATER.text, '']);
   });
 
-  it('refuses, writing nothing, who moved whom on a pick — it moves no one — and a key that is no row, a fact with none saying so', async () => {
+  it('refuses, writing nothing, who moved whom on a pick — it moves no one — a key that is no row, a fact with none saying so, and "don\'t care", which leaves the call to Claude, who holds no lean on a fact', async () => {
     const rowed = (await raiseFact()).res.raise;
     const bare = (await raiseFact(BARE, { answers: asked.team })).res.raise;
     /** @param {string[]} args @param {unknown} given */
@@ -269,6 +269,7 @@ describe('the answer (16.S75, 16.3.2)', () => {
     assert.strictEqual(refused([rowed, '--pick', '1'], { why: WHY, who_moved_whom: 'none' }), 'raise answer: the answer has no field who_moved_whom — it holds why');
     assert.strictEqual(refused([rowed, '--pick', 'keep'], { why: WHY }), 'raise answer: the raise has no row keep — its rows: 1, 2');
     assert.strictEqual(refused([bare, '--pick', '1'], { why: WHY }), 'raise answer: the raise has no row 1 — its rows: none');
+    assert.strictEqual(refused([rowed, '--dont-care'], ''), 'raise answer: a fact is the person\'s to give — "don\'t care" leaves the call to me, and a fact holds no lean of mine to land');
     assert.deepStrictEqual([seals()[rowed].answered, seals()[bare].answered, logText()], [null, null, '']);
   });
 });

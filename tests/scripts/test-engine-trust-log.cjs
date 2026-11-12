@@ -63,7 +63,7 @@ const ANSWERS = Object.freeze([true, false, true, true, false, false, false, fal
 /** A well-formed event of every type, its own fields. */
 const SAMPLES = Object.freeze({
   gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null },
-  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocks_build: false, replaced_by: null, always: null },
+  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one' },
   verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
   'blind-draw': { entry: ENTRY, kind: 'look' },
@@ -149,16 +149,17 @@ describe('record (16.13.4)', () => {
     assert.ok(!fs.existsSync(logPath()));
   });
 
-  it('records an answer as it came — a row\'s key pressed, or typed with the mod off (6.S18), or free text, typed, naming no row and read as one later — and refuses an event whose fields contradict each other', () => {
+  it('records an answer as it came — a row\'s key pressed, or typed with the mod off (6.S18), or free text, typed, naming no row and read as one later, or the person\'s "don\'t care", typed, landing the sealed answer — and refuses an event whose fields contradict each other', () => {
     const dir = project('fumi');
     const typedKey = { ...SAMPLES.gate, via: 'typed', picked: 'b' };
     const freeText = { ...SAMPLES.gate, via: 'typed', picked: null, with_text: true, reading: null };
     const freeRaise = { ...SAMPLES.raise, answer: null, via: 'typed', with_text: true, reading: null };
     const notFollowed = { ...SAMPLES.raise, entry: null, answer: null, didnt_follow: true };
+    const dontCare = { ...SAMPLES.raise, answer: '1', via: 'typed', dont_care: true };
     const recorded = [
       ['gate', typedKey], ['gate', freeText], ['gate', { ...freeText, reading: 'b' }],
       ['raise', { ...SAMPLES.raise, via: 'typed' }], ['raise', freeRaise], ['raise', { ...freeRaise, reading: '2' }],
-      ['raise', notFollowed], ['raise', { ...notFollowed, via: 'typed', with_text: true }],
+      ['raise', notFollowed], ['raise', { ...notFollowed, via: 'typed', with_text: true }], ['raise', dontCare],
     ].map(([type, fields]) => record(/** @type {string} */ (type), /** @type {Record<string, unknown>} */ (fields), from(dir)));
     const disagree = (/** @type {string} */ type, /** @type {string} */ why) => `a ${type} event cannot be recorded: its fields disagree: ${why}`;
     /** @type {(type: string) => Record<string, string>} */
@@ -169,7 +170,8 @@ describe('record (16.13.4)', () => {
       row: disagree(type, 'an answer that is no free text names its row'),
     });
     const [gate, raise] = [why('gate'), why('raise')];
-    const unfollowed = disagree('raise', 'a raise not followed has no answer, no reading and no entry');
+    const unfollowed = disagree('raise', 'a raise not followed has no answer, no reading and no entry, and is no "don\'t care"');
+    const careless = disagree('raise', 'a "don\'t care" lands the sealed answer, typed, as no free text');
     const unlanded = disagree('raise', 'a raise answered has the ledger entry its answer landed as');
     /** @type {[string, Record<string, unknown>, string][]} */
     const refusals = [
@@ -189,6 +191,12 @@ describe('record (16.13.4)', () => {
       ['raise', { ...notFollowed, entry: ENTRY }, unfollowed],
       ['raise', { ...notFollowed, reading: '2' }, unfollowed],
       ['raise', { ...notFollowed, with_text: true }, raise.keyboard],
+      ['raise', { ...notFollowed, dont_care: true }, unfollowed],
+      ['raise', { ...dontCare, answer: '2' }, careless],
+      ['raise', { ...dontCare, via: 'pressed' }, careless],
+      ['raise', { ...dontCare, answer: null, with_text: true }, careless],
+      ['raise', { ...dontCare, reading: '1' }, careless],
+      ['raise', { ...dontCare, entry: null }, unlanded],
       ['reversal', { entry: ENTRY, reverses: ENTRY }, disagree('reversal', 'an entry cannot reverse itself')],
       ['correction', { entry: ENTRY, kind: null, verdict: null }, disagree('correction', 'a correction changes a kind or a verdict, one and not both')],
       ['correction', { entry: ENTRY, kind: 'look', verdict: 'loss' }, disagree('correction', 'a correction changes a kind or a verdict, one and not both')],

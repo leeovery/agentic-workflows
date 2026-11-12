@@ -406,6 +406,24 @@ describe('the answer', () => {
     ]));
   });
 
+  it('the record of the person is named between the reads and the log wherever its file stands — care entries alone, care entries that do not read, a newer release\'s — and never read, so no record refuses an entry; none while it has no file (E17, 16.18.4)', () => {
+    transcript('sess-1');
+    const record = path.join(config, 'person.md');
+    const first = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
+    assert.ok(!first.includes('person: '), 'a record with no file was named');
+    const records = [
+      `# The record of you\n\n## Care entries\n\n- Fumi: look · ${'Fumi'.padEnd(21, '0')} · 2026-01-01T00:00:00.000Z\n`,
+      '# The record of you\n\n## Care entries\n\n- Fumi: look\n',
+      '<!-- leeway: the record of you, version 9 -->\n\nAnything at all\n',
+    ];
+
+    for (const text of records) {
+      fs.writeFileSync(record, text);
+      const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding']));
+      assert.ok(sections.includes(`\naffected: \`${ENGINE} ledger affected ${EPIC} onboarding\`\nperson: ${record}\nlog: ${at(layout.topic(EPIC, 'onboarding', 'log.md'))}\n`), sections);
+    }
+  });
+
   it('a unit\'s one topic reads discovery\'s log and the unit\'s seeds (8.7.7)', () => {
     const { sections } = withFrozenClock(() => enter(['discussion', FEATURE]));
     assert.strictEqual(sections, data([

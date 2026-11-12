@@ -68,6 +68,7 @@ const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledge
 const { ASSET_USAGE, runAssetVerb } = require('./domain/asset.cjs');
 const { CARRY_VERB, CARRY_USAGE, carryRecord } = require('./domain/ledger-carry.cjs');
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
+const { PERSON_USAGE, runPersonVerb } = require('./domain/person-verbs.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
@@ -233,6 +234,7 @@ ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   ${LATE_CHECK_USAGE}
 ${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
+${PERSON_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--seed <path> …]
   workunit cancel <work-unit>
@@ -441,6 +443,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render manage
   render manage-unit <work-unit> [--from closed]
   render closed
+  render care [--added <kind> | --dropped <kind>]
+  render care-kind
+  render care-drop
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -542,6 +547,27 @@ function runVerdict(call, argv) {
   const [verb = '', ...rest] = argv;
   try {
     respond(call, runVerdictVerb(call.cwd, verb, rest));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// person — the record of the person (domain/person-verbs.cjs): `propose`
+// draws Claude's proposal of an entry and holds it in the conversation's
+// folder; `keep` and `drop` write the record on the person's answer as the
+// gate recorded it, the proposal held or a care entry picked on its
+// screens, under the record's own lock, writing nothing the state holds;
+// `discard` lets the proposal go on their no.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runPerson(call, argv) {
+  const [verb = '', ...rest] = argv;
+  try {
+    const { answer, screen } = runPersonVerb(call.cwd, verb, rest, call.stdin);
+    respond(call, answer);
+    respondSections(call, screen);
   } catch (err) {
     failJson(call, err);
   }
@@ -2459,6 +2485,7 @@ const COMMANDS = Object.freeze({
   'investigation-log': runInvestigationLog,
   investigation: runInvestigation,
   'quick-fix': runQuickFix,
+  person: runPerson,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2489,10 +2516,11 @@ const COMMANDS = Object.freeze({
 // as `enter` does beside its start; a conversation's folder is outside the
 // project; `gate` writes the trust log, under its own lock, and the
 // conversation's folder; `scratch` lays out and takes apart a reviewer's
-// worktree, outside the state; and the rest read: `layout guard` among them, run
-// before every file Claude writes, `brief guard`, before every dispatch of
-// an agent, `shell guard`, before every shell command, `checklist show`,
-// `migrate check`, `measures` and `board`.
+// worktree, outside the state; `person` writes the record of the person,
+// under its own lock, and the conversation's folder; and the rest read:
+// `layout guard` among them, run before every file Claude writes, `brief
+// guard`, before every dispatch of an agent, `shell guard`, before every
+// shell command, `checklist show`, `migrate check`, `measures` and `board`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2523,6 +2551,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   measures: '*',
   board: '*',
   scratch: '*',
+  person: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */

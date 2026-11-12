@@ -664,10 +664,10 @@ describe('engine writes take the writer lock', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers without trying the lock while a live holder has it — none but boot, the ledger, an asset link or spike, a raise\'s answer, an entry\'s start, a verify\'s record and a capture, in the project it lands in, take it anywhere', async (t) => {
+  it('every exempt command answers without trying the lock while a live holder has it — the record of the person\'s proposal and its yes among them — none but boot, the ledger, an asset link or spike, a raise\'s answer, an entry\'s start, a verify\'s record and a capture, in the project it lands in, take it anywhere', async (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
-    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'asset', 'raise', 'migrate check', 'verify', 'inbox capture'].sort(), table.sort(), 'a call below for every exempt entry, boot, the ledger and the assets aside (test-engine-asset.cjs), a raise after them, migrate check where a directive is installed (test-migration-directives.cjs), verify, which runs the product (test-engine-verify.cjs), and a capture, which takes the lock of the project it lands in (test-engine-inbox-capture.cjs)');
+    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'asset', 'raise', 'person', 'migrate check', 'verify', 'inbox capture'].sort(), table.sort(), 'a call below for every exempt entry, boot, the ledger and the assets aside (test-engine-asset.cjs), a raise and the record of the person after them, migrate check where a directive is installed (test-migration-directives.cjs), verify, which runs the product (test-engine-verify.cjs), and a capture, which takes the lock of the project it lands in (test-engine-inbox-capture.cjs)');
     assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');
@@ -686,6 +686,10 @@ describe('engine writes take the writer lock', () => {
     const call = { question: 'Who signs a user in?', rows: [row('1'), row('2')], lean: '1', why: 'One.', sort: 'several', mechanism: 'A provider.', product_wide: false };
     const { raise } = (await harness.okSectionsAsync(dir, ['raise', 'payments.discussion.auth-flow', '--answers', asked], { env, stdin: JSON.stringify(call) })).res;
     harness.output(dir, ['raise', 'show', raise], { env });
+    harness.okSections(dir, ['person', 'propose'], { env, stdin: JSON.stringify({ preference: 'Show the product first', why: 'People see it before it asks.', examples: ['The tour comes first.'] }) });
+    t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'person.md'), { force: true }));
+    harness.ok(dir, ['gate', 'record proposal', '--pick', 'y'], { env });
+    harness.ok(dir, ['person', 'keep'], { env });
     assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });

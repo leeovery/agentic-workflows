@@ -4,9 +4,11 @@
 // The person's answer to a raise (leeway-engine/scripts/domain/raise.cjs,
 // landed through domain/ledger-write.cjs, its press read as domain/gate.cjs
 // reads a gate's): `engine raise answer <id> (--pick <key> | --own |
-// --didnt-follow)` in the conversation that drew the raise — a row or the
-// person's own words landing as their decision at the raise's id, unchecked,
-// and its raise event in the trust log, one command writing both (16.S44);
+// --dont-care | --didnt-follow)` in the conversation that drew the raise — a
+// row or the person's own words landing as their decision at the raise's
+// id, unchecked, and its raise event in the trust log, one command writing
+// both (16.S44); their "don't care" landing Claude's lean as the builder's,
+// marked so, and cueing the drop of a care entry (16.S19, P6);
 // who moved whom the engine's alone; pressed or typed (6.6.4); "I don't
 // follow" logged in the trust log alone, the raise left open (F1); every
 // refusal writing nothing; an answer given again, after a kill at a step
@@ -37,6 +39,7 @@ const {
 const { useTempFolder, statePath, filesUnder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, askedWorld, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
+const { lines, history } = require('./trust-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -45,6 +48,7 @@ const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
+const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
 const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
 const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
@@ -262,6 +266,44 @@ describe('the kind (5.S27, 16.11.5)', () => {
     answer(id, ['--didnt-follow'], null);
 
     assert.deepStrictEqual(logged(), [raiseEvent(null, { answer: null, didnt_follow: true, kind: 'scope', label: LABEL })]);
+  });
+});
+
+describe('"don\'t care" (16.5.4, 16.S19, P6)', () => {
+  it('settles its own question alone: Claude\'s lean lands at the raise\'s id as the builder\'s — given dont-care, the lean row\'s answer, the other rows what it rules out, Claude\'s why, moving no one, unchecked — nothing on stdin; its raise event names the lean, typed, marked a "don\'t care", an agreement owed no verdict', async () => {
+    const id = await draw();
+
+    const res = answer(id, ['--dont-care'], null);
+
+    assert.deepStrictEqual(res, { ok: true, raise: id, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.deepStrictEqual(lastEntry(), entryOf(id, asked.where, { by: 'claude', why: CALL.why, sealed: null, given: 'dont-care' }));
+    assert.deepStrictEqual(entries().filter((e) => e.event === 'decided').map((e) => e.id), [id], 'it settled another question');
+    assert.deepStrictEqual(logged(), [raiseEvent(id, { dont_care: true })]);
+    assert.deepStrictEqual(ok(dir, ['verdict', 'queue'], { env: conversation() }).departures, []);
+  });
+
+  it('the third in a row on a kind under a care entry in this project cues the drop, naming the entry by the project\'s name now, its kind and the run; the second cues nothing, nor the third given again', async () => {
+    const here = { project: project(), name: projectName(dir) };
+    fs.writeFileSync(path.join(config(), 'person.md'), `# The record of you\n\n## Care entries\n\n- Fumi: scope · ${here.project} · 2025-12-01T00:00:00.000Z\n`);
+    const first = history({ project: here.project });
+    first.dontCare(1, 'scope');
+    fs.writeFileSync(path.join(config(), 'trust.jsonl'), lines(...first.events));
+    const second = await draw(asked.where, { env: LABELLED });
+    const third = await draw(asked.size, { env: LABELLED });
+
+    const answered = [answer(second, ['--dont-care'], null), answer(third, ['--dont-care'], null)].map((res) => res.care_drop ?? null);
+    const again = answer(third, ['--dont-care'], null);
+
+    assert.deepStrictEqual(answered, [null, { care: `${here.name}: scope`, kind: 'scope', dont_cares: 3 }]);
+    assert.deepStrictEqual([again.already, again.care_drop], [true, undefined]);
+  });
+
+  it('care entries that do not read refuse it before anything lands, naming the file', async () => {
+    const id = await draw();
+    const record = path.join(config(), 'person.md');
+    fs.writeFileSync(record, '# The record of you\n\n## Care entries\n\n- Fumi: look\n');
+
+    assert.ok(refusedAnswer([id, '--dont-care'], '').startsWith(`the record of the person, ${record}, does not read at line 5: `));
   });
 });
 
@@ -493,8 +535,8 @@ describe('the answer\'s refusals, writing nothing', () => {
     fs.writeFileSync(inFolder(RAISE_SHOWN), JSON.stringify({ ...seals(), [twin]: { ...seals()[id], id: twin } }));
     assert.strictEqual(refusedAnswer([id.slice(0, 8), '--pick', '1']), `raise answer: "${id.slice(0, 8)}" begins the ids of 2 raises this conversation drew — give more of the id`);
     assert.match(refusedAnswer([id, '--pick', '1'], { why: WHY }, { CLAUDE_CODE_SESSION_ID: undefined }), /^raise answer: no conversation to raise it in/);
-    const usage = 'Usage: engine raise answer <id> (--pick <key> | --own | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin)';
-    for (const args of [[], [id], ['--pick', '1'], [id, '--pick'], [id, '--pick', '--own'], [id, '--pick', '1', '--own'], [id, '--own', '1'], [id, '--choose', '1']]) {
+    const usage = 'Usage: engine raise answer <id> (--pick <key> | --own | --dont-care | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin)';
+    for (const args of [[], [id], ['--pick', '1'], [id, '--pick'], [id, '--pick', '--own'], [id, '--pick', '1', '--own'], [id, '--own', '1'], [id, '--dont-care', '1'], [id, '--choose', '1']]) {
       assert.strictEqual(refusedAnswer(args), usage, args.join(' '));
     }
   });
