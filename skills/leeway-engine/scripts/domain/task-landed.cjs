@@ -24,20 +24,21 @@
 // squashes a task cut from another's branch — read so only where no landing
 // of the line stands before that commit (`linesLanded`), the merges
 // straight past it on its line with it, what a merge brings in never its
-// work (R32); or the newest commit of its line a commit of another task's
-// line holds that a squash of that task's work over their merge base
-// landed, a chain landed whole landing every task in it — never through
-// copies, or a squash of that task's own work alone — where newer on its
-// line than its own landing's, else whichever landed first (`readLines`);
-// else, a task no record names, the commit its driver took it at, where its
-// line landed up to it — that commit alone where none of it is stamped
-// with the task (`driverPoints`) — read before any read of its tip; else,
-// the last fallback, its tip read whole over where it was cut
-// (`landedWhole`), never for a task whose line lies on the revision past
-// none of it — the one case where work taken back after a landing no verb
-// has read is not seen, as a phase squashed by hand as one commit leaves
-// it; else none, the task never landed. A task has landed where its work —
-// its branch's tip; a quick-fix's task's, its newest own commit on the
+// work (R32); or, for a task with a branch of its own — never a quick-fix's
+// fix, its fixes sharing one — the newest commit of its line a commit of
+// another task's line holds that a squash of that task's work over their
+// merge base landed, a chain landed whole landing every task in it — never
+// through copies, or a squash of that task's own work alone — where newer
+// on its line than its own landing's, else whichever landed first
+// (`readLines`); else, a task no record names, the commit its driver took
+// it at, where its line landed up to it — that commit alone where none of
+// it is stamped with the task (`driverPoints`) — read before any read of
+// its tip; else, the last fallback, its tip read whole over where it was
+// cut (`landedWhole`), never for a task whose line lies on the revision
+// past none of it — the one case where work taken back after a landing no
+// verb has read is not seen, as a phase squashed by hand as one commit
+// leaves it; else none, the task never landed. A task has landed where its
+// work — its branch's tip; a quick-fix's task's, its newest own commit on the
 // quick-fix's branch; its branch gone, its newest stamped commit anywhere —
 // holds no change past that point: merging it into the revision over the
 // point, or over their merge base where its branch holds the landing since
@@ -675,16 +676,17 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
    * header's, L): its tip at its recorded landing, where it has one, or a
    * newer landing of its line read past that (`linesLanded`), or of the
    * newest commit of its line that a commit of another task's line holds,
-   * landed by a squash of its work with every commit it holds
-   * (`squashesRead`) — a chain landed whole lands every task in it, however
-   * the later undid the earlier's work, which a rebase's copies or a squash
-   * of that task's own work alone never do — where that commit is newer on its line than the
-   * one its own landing reads, else whichever landed first (`newerOn`); a
-   * task whose work the tip holds landed at that work, as one laid on the
-   * tip reads the tip's own commits of its line, a fast-forward by hand
-   * leaving them; one with no work, or whose line lies on the tip past none
-   * of it (`laidOnTip`), has none but its record's. Every task asked read
-   * at once.
+   * for a task with a branch of its own, so never a quick-fix's fix, its
+   * fixes sharing one — landed by a squash of its work with every commit it
+   * holds (`squashesRead`) — a chain landed whole lands every task in it,
+   * however the later undid the earlier's work, which a rebase's copies or
+   * a squash of that task's own work alone never do — where that commit is
+   * newer on its line than the one its own landing reads, else whichever
+   * landed first (`newerOn`); a task whose work the tip holds landed at
+   * that work, as one laid on the tip reads the tip's own commits of its
+   * line, a fast-forward by hand leaving them; one with no work, or whose
+   * line lies on the tip past none of it (`laidOnTip`), has none but its
+   * record's. Every task asked read at once.
    * @param {string[]} ids
    */
   const readLines = (ids) => {
@@ -715,7 +717,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
       const { bySha } = graphOf(top);
       return (squashesRead.get(id) ?? []).map((point) => ({ id, point, held: lg.heldIn(bySha, /** @type {string} */ (point.tip)) }));
     });
-    for (const { id } of moving) {
+    for (const { id } of moving.filter((task) => tips().has(task.id))) {
       const line = [...(linesRead.get(id) ?? [])].reverse();
       const chained = holders.filter((holder) => holder.id !== id).map(({ point, held }) => {
         const sha = line.find((each) => held.has(each));

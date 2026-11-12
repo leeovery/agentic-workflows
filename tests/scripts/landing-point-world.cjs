@@ -10,7 +10,8 @@
 // merge's copies; or on GitHub's site, a squash of its pull request. Its
 // branch then changes one way, before or after a verb read that landing: a
 // file added, the file it added deleted, that file deleted and added back,
-// or the branch rewritten (F1). The verbs run as the person runs them,
+// the branch rewritten (F1), or rebased onto the default branch, its
+// commits dropped there as applied. The verbs run as the person runs them,
 // every way on followed as the engine words it, and each row holds the
 // default branch's tree, the task's record — who landed it last, its first
 // landing, its tip — and the verb run again answering already. A conflict's
@@ -55,6 +56,14 @@ const CHANGES = {
     paths: WORK, card: 'card\n', lands: false,
   },
   'its branch rewritten': { change: (at) => commitFiles(at, card.branch, BASE, { 'card.txt': 'card, rewritten\n', 'more.txt': 'more\n' }), paths: ['card.txt', 'more.txt'], card: 'card, rewritten\n', lands: true },
+  'its branch rebased onto the default branch, its commits dropped there as applied': {
+    change: (at) => {
+      const back = git(at, ['symbolic-ref', '--short', 'HEAD']).trim();
+      git(at, ['rebase', '-q', 'main', card.branch]);
+      git(at, ['switch', '-q', back]);
+    },
+    paths: WORK, card: 'card\n', lands: false,
+  },
 };
 
 /** A row: how 1.1 lands, how its branch then changes, and whether a verb read its landing first. @typedef {[string, string, boolean]} Row */
@@ -93,16 +102,17 @@ function landingPoints(title, rows, conflicts, { describe, it, afterEach }) {
     });
     const { mergedOnGithub } = side;
     /**
-     * Each way 1.1 lands, and whether a verb then took it — the engine, or a
-     * pull request opened — so its change is landed by `land phase` alone.
-     * @type {Record<string, {land: (at: string) => void, taken: boolean}>}
+     * Each way 1.1 lands; whether a verb then took it — the engine, or a
+     * pull request opened — so its change is landed by `land phase` alone;
+     * and who its record names as landing it, where no change lands since.
+     * @type {Record<string, {land: (at: string) => void, taken: boolean, by: 'engine'|'read'}>}
      */
     const LANDINGS = {
-      'the engine\'s own landing': { land: (at) => [openArgs(card), PHASE].forEach((args) => ok(at, args)), taken: true },
-      'a squash by hand': { land: (at) => side.squashedHere(at, card.branch), taken: false },
-      'a merge commit by hand': { land: (at) => side.mergedHere(at, card.branch), taken: false },
-      'a fast-forward by hand': { land: (at) => side.forwardedHere(at, card.branch), taken: false },
-      'a rebase merge by hand': { land: (at) => side.rebasedHere(at, card.branch), taken: false },
+      'the engine\'s own landing': { land: (at) => [openArgs(card), PHASE].forEach((args) => ok(at, args)), taken: true, by: 'engine' },
+      'a squash by hand': { land: (at) => side.squashedHere(at, card.branch), taken: false, by: 'read' },
+      'a merge commit by hand': { land: (at) => side.mergedHere(at, card.branch), taken: false, by: 'read' },
+      'a fast-forward by hand': { land: (at) => side.forwardedHere(at, card.branch), taken: false, by: 'read' },
+      'a rebase merge by hand': { land: (at) => side.rebasedHere(at, card.branch), taken: false, by: 'read' },
       ...(mergedOnGithub === undefined ? {} : {
         'a squash on GitHub\'s site': {
           land: (/** @type {string} */ at) => {
@@ -110,6 +120,7 @@ function landingPoints(title, rows, conflicts, { describe, it, afterEach }) {
             mergedOnGithub(at, card.branch, 'squash', true);
           },
           taken: true,
+          by: /** @type {const} */ ('read'),
         },
       }),
     };
@@ -135,7 +146,7 @@ function landingPoints(title, rows, conflicts, { describe, it, afterEach }) {
 
     describe(`the ${name} landing driver: ${title}`, () => {
       for (const [how, what, read] of rows.filter(([landed]) => landed in LANDINGS)) {
-        const { land, taken } = LANDINGS[how];
+        const { land, taken, by } = LANDINGS[how];
         const { change, paths, card: text, lands } = CHANGES[what];
         it(`1.1 landed by ${how}, then ${what}${read ? ', a verb having read its landing first' : ''}: the default branch holds its work as its branch does, its first landing ${how}, and the verb again answers already`, () => {
           const at = (dir = world());
@@ -150,7 +161,7 @@ function landingPoints(title, rows, conflicts, { describe, it, afterEach }) {
           const kept = taken && !lands;
 
           assert.deepStrictEqual([landedWork(at, before), recordOf(at), ok(at, verbs[verbs.length - 1]).already], [
-            [paths, text], { by: taken || lands ? 'engine' : 'read', first: landed, tip: kept ? stood : tip(at, card.branch) }, true,
+            [paths, text], { by: lands ? 'engine' : by, first: landed, tip: kept ? stood : tip(at, card.branch) }, true,
           ], answers.map(({ refusal }) => refusal).filter(Boolean).join('\n'));
         });
       }
