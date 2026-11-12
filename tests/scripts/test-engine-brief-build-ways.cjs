@@ -90,6 +90,7 @@ describe('the way on from a round (12.1.4, 12.14, 24.2.4)', () => {
     accountTaken(dir, UNIT, '1.2');
     writeState(dir, 'pay/build/tasks/1.2/addition.md', 'Show the amount.\n');
     ok(dir, ['task', 'add', UNIT, '1.2', '--file', statePath(dir, 'pay/build/tasks/1.2/addition.md'), '--by', 'person']);
+    issued(['builder', UNIT, '1.2']);
     briefedFor(2);
     reported(2, 'a', PASSED);
     reported(2, 'b', PASSED);
@@ -99,9 +100,8 @@ describe('the way on from a round (12.1.4, 12.14, 24.2.4)', () => {
     reviewerRefused(over(2));
   });
 
-  it('13.4.6, 12.14: a task its pair passed while a question waiting parks it owes no account: its builder\'s brief says it waits, nothing lands it, and its reviewer is given no way on', () => {
-    reported(1, 'a', PASSED);
-    reported(1, 'b', PASSED);
+  /** Task 1.2 parked on Q1, a question asked for it and raised to the person, written into the ledger. */
+  function parkedOnQ1() {
     const tags = { unit: UNIT, topic: null, phase: 'implementation', session: SESSION_ID };
     const { id: question } = appendEntry(statePath(dir), { event: 'asked', ...tags, by: 'claude', who_moved_whom: 'none', text: 'Does a receipt show the tax?', part_of: null, relies_on: [], cites: [], task: '1.2' }, []);
     const rows = [{ key: '1', name: 'Shown', text: 'The receipt shows the tax', notice: 'a line for tax' }, { key: '2', name: 'Folded', text: 'The total holds the tax', notice: 'no tax line' }];
@@ -109,6 +109,12 @@ describe('the way on from a round (12.1.4, 12.14, 24.2.4)', () => {
       event: 'parked', ...tags, question, replaces: null, reason: null, cause: null, relies_on: [], task: '1.2', went_ahead: null, number: 1,
       call: { question: 'Should a receipt show the tax?', rows, lean: '1', why: 'Customers ask.', sort: 'one', mechanism: 'A line.', product_wide: false }, rows_judged: [], why_asking: 'Every call asks.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: false,
     }, []);
+  }
+
+  it('13.4.6, 12.14: a task its pair passed while a question waiting parks it owes no account: its builder\'s brief says it waits, nothing lands it, and its reviewer is given no way on', () => {
+    reported(1, 'a', PASSED);
+    reported(1, 'b', PASSED);
+    parkedOnQ1();
 
     const { brief } = issued(['builder', UNIT, '1.2']);
 
@@ -116,6 +122,17 @@ describe('the way on from a round (12.1.4, 12.14, 24.2.4)', () => {
     assert.ok(!brief.includes('it has landed'), brief);
     for (const verb of [['land', 'open'], ['task', 'done']]) assert.match(refuses(dir, [...verb, UNIT, '1.2']).error, /waits on Q1, parked for the person/);
     reviewerRefused('round 1 of task 1.2 of pay passed — its review is over');
+  });
+
+  it('13.4.6: a task whose failed round the orchestrator settled, while a question waiting parks it, owes no account: its builder\'s brief says the review was settled and the task waits', () => {
+    reported(1, 'a');
+    reported(1, 'b');
+    writeState(dir, 'pay/build/tasks/1.2/round-1-settled.md', 'Settled.\n');
+    parkedOnQ1();
+
+    const { brief } = issued(['builder', UNIT, '1.2']);
+
+    assert.ok(brief.includes('The orchestrator settled the task\'s review in round 1, and it waits on Q1, a question for the person: write no account while it waits — the answer decides whether the task lands as it was settled, or changes.'), brief);
   });
 
   it('S2 (12.14): a task its pair passed, its account not taken, lands nowhere — land open, land chain and task done each refused, naming its builder\'s brief', () => {

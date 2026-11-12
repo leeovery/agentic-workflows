@@ -14,10 +14,10 @@
 // the person's answer after the lift leaving it there. A second change
 // while the pair re-reads is test-pipeline-simulation-build-reread.cjs's.
 //
-// Layer: simulation. World: this file's own, built once on the named world
-// `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
-// feature through its spec to ready to build's pick in auto — its one phase
-// written and started; a copy per scenario, which replays the engine calls
+// Layer: simulation. World: the named world `worlds.buildBegun`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick in auto, its one phase written and started; a copy per
+// scenario, which replays the engine calls
 // the build's prose makes, in order, the oracle (pipeline-oracle.cjs)
 // auditing the whole state after every mutation. A task parked by a
 // question asked is test-pipeline-simulation-build-park.cjs's.
@@ -30,7 +30,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, briefOf, answerGate, buildLoop, VERIFY_FILES, wentAheadBlind, pickedRow,
+  Sim, worlds, SPEC_TO_BUILD_UNIT, briefOf, answerGate, buildLoop, VERIFY_FILES, wentAheadBlind, pickedRow,
 } = require('./pipeline-world.cjs');
 
 const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
@@ -40,20 +40,11 @@ const CALL = Object.freeze({ question: 'Should a show print the entry\'s id?', l
 // In step, 1.1's builder while 1.2 holds the turn.
 const BEHIND = /task 1\.2 is in flight, and task 1\.1 goes on once it is done$/;
 
-/** A feature in auto, its one phase written and started. */
-const showingWorld = worldFrom('pipeline-build-held-', (sim) => {
-  buildEntry(sim, WU);
-  sim.run(['task', 'phase', WU, '1', '--title', 'Showing']);
-  sim.run(['brief', 'task-writer', WU, '1']);
-  writeTasks(sim, WU, 1, [{ title: 'Show an entry', scenarios: ['1.S1'] }, { title: 'Check the hash on show' }]);
-  startPhase(sim, WU, 1);
-}, worlds.specToBuild);
-
 describe('pipeline simulation: the build with a task held open on its blind question', () => {
   let sim;
   /** @type {ReturnType<typeof buildLoop>} */ let loop;
   beforeEach(() => {
-    sim = new Sim(showingWorld);
+    sim = new Sim(worlds.buildBegun);
     loop = buildLoop(sim, WU);
   });
   afterEach(() => {

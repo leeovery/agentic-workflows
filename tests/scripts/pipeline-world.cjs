@@ -388,12 +388,13 @@ function worldFrom(prefix, build, base = simWorld) {
   };
 }
 
-// A world several scenario files start from, named for what builds it:
-// built once per run by the first process to ask (run-worlds.cjs), then
-// copied for each sim made from it.
-/** @param {string} name @param {(sim: Sim) => void} build @returns {() => string} */
-function namedWorld(name, build) {
-  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, simWorld); }).dir,
+// A world several scenario files start from, named for what builds it on a
+// copy of `base` — the project every scenario starts from, or another named
+// world: built once per run by the first process to ask (run-worlds.cjs),
+// then copied for each sim made from it.
+/** @param {string} name @param {(sim: Sim) => void} build @param {() => string} [base] @returns {() => string} */
+function namedWorld(name, build, base = simWorld) {
+  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, base); }).dir,
     fs.mkdtempSync(path.join(os.tmpdir(), `pipeline-${name}-`)));
 }
 
@@ -1479,13 +1480,23 @@ function cutClosed(sim, wu) {
 // unit each builds, which a scenario starting from it names its own.
 const SPEC_TO_BUILD_UNIT = 'ledgerly';
 const CUT_CLOSED_UNIT = 'ledger';
+/** A feature, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, handed off into its build. */
+const specToBuildWorld = namedWorld('specToBuild', (sim) => {
+  startUnit(sim, 'feature', SPEC_TO_BUILD_UNIT, 'A ledger');
+  discussed(sim, SPEC_TO_BUILD_UNIT, SPEC_TO_BUILD_UNIT);
+  specToBuild(sim, SPEC_TO_BUILD_UNIT, [SPEC_TO_BUILD_UNIT], 'a');
+});
+
 const worlds = Object.freeze({
-  /** A feature, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, handed off into its build. */
-  specToBuild: namedWorld('specToBuild', (sim) => {
-    startUnit(sim, 'feature', SPEC_TO_BUILD_UNIT, 'A ledger');
-    discussed(sim, SPEC_TO_BUILD_UNIT, SPEC_TO_BUILD_UNIT);
-    specToBuild(sim, SPEC_TO_BUILD_UNIT, [SPEC_TO_BUILD_UNIT], 'a');
-  }),
+  specToBuild: specToBuildWorld,
+  /** SPEC_TO_BUILD_UNIT's build begun in auto: its one phase, Showing, written — 1.1 showing an entry, proving 1.S1, and 1.2 checking the hash on show — and started. */
+  buildBegun: namedWorld('buildBegun', (sim) => {
+    buildEntry(sim, SPEC_TO_BUILD_UNIT);
+    sim.run(['task', 'phase', SPEC_TO_BUILD_UNIT, '1', '--title', 'Showing']);
+    sim.run(['brief', 'task-writer', SPEC_TO_BUILD_UNIT, '1']);
+    writeTasks(sim, SPEC_TO_BUILD_UNIT, 1, [{ title: 'Show an entry', scenarios: ['1.S1'] }, { title: 'Check the hash on show' }]);
+    startPhase(sim, SPEC_TO_BUILD_UNIT, 1);
+  }, specToBuildWorld),
   /** The build the review phase reviews (`cutClosed`), CUT_CLOSED_UNIT's, in auto, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu. */
   cutClosed: namedWorld('cutClosed', (sim) => {
     cutClosed(sim, CUT_CLOSED_UNIT);

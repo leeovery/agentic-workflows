@@ -91,7 +91,7 @@ const { quickFixBranch } = require('./landing-names.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const {
-  taskFolder, settlementPath, taskRounds, pairPassed, changedUnder, changedRefusal,
+  taskFolder, settlementPath, taskRounds, pairPassed, endedWords, changedUnder, changedRefusal,
 } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -355,11 +355,12 @@ function reviewedTask(cwd, unit, given, said, ended) {
  * one sending the builder back in (13.11.3). None is owed while the task
  * changed under its last round (round-report.cjs): that round, its builder
  * building what changed for the pair to read again; nor while a question
- * waiting parks it: the questions it waits on, its answer deciding whether
- * the task lands as passed or changes. A round whose reports cannot be read
+ * waiting parks it: the questions it waits on, and the round that ended its
+ * review, passed or settled, its answer deciding whether the task lands as
+ * it stands or changes. A round whose reports cannot be read
  * yet ends nothing and judges no account: they are its reviewers' to answer.
  * @param {string} cwd @param {TaskRef} ref
- * @returns {{owed: {round: number, settlement: string|null}|null, faults: string|null, changed: number|null, waiting: string[]|null}}
+ * @returns {{owed: {round: number, settlement: string|null}|null, faults: string|null, changed: number|null, waiting: {on: string[], round: number, settled: boolean}|null}}
  */
 function accountOwed(cwd, ref) {
   /** @type {ReturnType<typeof accountOwed>} */
@@ -374,8 +375,8 @@ function accountOwed(cwd, ref) {
   const changed = changedUnder(cwd, ref, rounds);
   const last = rounds.at(-1);
   if (changed !== null || last === undefined || !pairPassed(last)) return { ...none, changed };
-  const waiting = parkedOf(cwd, ref.unit).get(shownTask(ref)) ?? null;
-  if (waiting !== null) return { ...none, waiting };
+  const on = parkedOf(cwd, ref.unit).get(shownTask(ref)) ?? null;
+  if (on !== null) return { ...none, waiting: { on, round: last.round, settled: !last.passes } };
   const owed = { round: last.round, settlement: last.settled ? fs.readFileSync(statePath(cwd, settlementPath(ref, last.round)), 'utf8').trim() : null };
   const file = statePath(cwd, accountPath(ref));
   if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) return { ...none, owed };
@@ -421,7 +422,7 @@ function takeAccount(cwd, unit, given) {
     refuse(`round ${last.round} of ${taskName(ref)} did not pass — an account is taken once every reviewer of a round passes the task, or the orchestrator settles it: engine task settle ${unit} ${shownTask(ref)} --file <why>`);
   }
   const changed = changedUnder(cwd, ref, rounds);
-  if (changed !== null) refuse(changedRefusal(ref, changed));
+  if (changed !== null) refuse(changedRefusal(cwd, ref, changed));
   const text = writtenAccount(cwd, ref, refuse);
   const settled = rounds.filter((round) => round.settled).map(({ round }) => round);
   refusing(said, () => {
@@ -487,8 +488,8 @@ function landingStage(cwd, ref) {
 }
 
 /**
- * Where a task whose last round passed goes, by how far it stands towards
- * landing (`landingStage`; 12.14, 13.4.5): its account taken, to its
+ * Where a task whose last round passed or was settled goes, by how far it
+ * stands towards landing (`landingStage`; 12.14, 13.4.5): its account taken, to its
  * landing, its summary drawn and then `land open` — a quick-fix's, which
  * has no landing summary, pushed to its pull request by `land open`, then
  * done; one written there that reads, to its taking, `task
@@ -497,31 +498,32 @@ function landingStage(cwd, ref) {
  * fix, fixed in the worktree that has its branch checked out — or, where
  * none has, in the one its builder lays out from that brief; a quick-fix's,
  * in the project's checkout on its one branch, where its builder lays out
- * none. Null where its
- * review is not over, its last round was settled rather than passed, or a
- * question parks it.
+ * none. Null where its review is not over, or a question parks it. Answers
+ * the round and how it ended, `passed` or `was settled`, beside the way.
  * @param {string} cwd @param {TaskRef} ref
- * @returns {{round: number, said: string, way: string}|null}
+ * @returns {{round: number, ended: string, said: string, way: string}|null}
  */
 function reviewOverWay(cwd, ref) {
   const { stage, last } = landingStage(cwd, ref);
-  if (stage === 'building' || last === undefined || !last.passes || parkedOf(cwd, ref.unit).has(shownTask(ref))) return null;
+  if (stage === 'building' || last === undefined || !pairPassed(last) || parkedOf(cwd, ref.unit).has(shownTask(ref))) return null;
   const task = `${ref.unit} ${shownTask(ref)}`;
-  const passed = `round ${last.round} of its review passed`;
+  const ended = endedWords(last);
+  const passed = `round ${last.round} of its review ${ended}`;
   const quickFix = ofQuickFix(cwd, ref.unit);
   if (stage === 'taken') {
     const land = quickFix ? `push it to ${ref.unit}'s pull request, engine land open ${task}, then end it, engine task done ${task}` : `show its landing, render task-landed ${task}, then land it, engine land open ${task}`;
-    return { round: last.round, said: `${passed}, its account taken`, way: land };
+    return { round: last.round, ended, said: `${passed}, its account taken`, way: land };
   }
-  if (accountOwed(cwd, ref).owed === null) return { round: last.round, said: `${passed}, its account written and not taken`, way: `take it, engine task account ${task}` };
+  if (accountOwed(cwd, ref).owed === null) return { round: last.round, ended, said: `${passed}, its account written and not taken`, way: `take it, engine task account ${task}` };
   const builder = `engine brief builder ${task}`;
   const read = `read its reports, ${last.reports.map(({ file }) => `\`${statePath(cwd, file)}\``).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix`;
   if (quickFix) {
-    return { round: last.round, said: `${passed}, its account not taken`, way: `${read}, and fix those in the project's checkout, on ${quickFixBranch(ref.unit)}, through the door; then send its builder its brief for its account, ${builder}` };
+    return { round: last.round, ended, said: `${passed}, its account not taken`, way: `${read}, and fix those in the project's checkout, on ${quickFixBranch(ref.unit)}, through the door; then send its builder its brief for its account, ${builder}` };
   }
   const tree = taskWorktree(codeRoot(cwd), ref);
   return {
     round: last.round,
+    ended,
     said: `${passed}, its account not taken`,
     way: tree === undefined
       ? `no worktree has its branch checked out, so send its builder its brief first, ${builder}, which lays one out and asks for its account; ${read}, and fix those in that worktree before its account is taken`
@@ -542,7 +544,7 @@ function refuseUnaccounted(cwd, ref, said) {
   refuseParked(cwd, ref, said);
   const rounds = refusing(said, () => taskRounds(cwd, ref));
   const changed = changedUnder(cwd, ref, rounds);
-  if (changed !== null) throw new Error(`${said}: ${changedRefusal(ref, changed)}`);
+  if (changed !== null) throw new Error(`${said}: ${changedRefusal(cwd, ref, changed)}`);
   if (takenFigures(cwd, ref)?.rounds === rounds.length && rounds.length > 0) return;
   throw new Error(`${said}: ${taskName(ref)} has no account taken of its review as it stands — once its builder writes it from its brief, engine brief builder ${ref.unit} ${shownTask(ref)}, take it: engine task account ${ref.unit} ${shownTask(ref)}`);
 }

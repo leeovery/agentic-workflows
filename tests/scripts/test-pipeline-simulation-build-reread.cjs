@@ -12,10 +12,10 @@
 // left, the build goes on with it rather than stopping on the question. A
 // task held and lifted once is test-pipeline-simulation-build-held.cjs's.
 //
-// Layer: simulation. World: this file's own, built once on the named world
-// `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
-// feature through its spec to ready to build's pick in auto — its one phase
-// written and started; a copy per scenario, which replays the engine calls
+// Layer: simulation. World: the named world `worlds.buildBegun`, built once
+// per run (pipeline-world.cjs) — a feature through its spec to ready to
+// build's pick in auto, its one phase written and started; a copy per
+// scenario, which replays the engine calls
 // the build's prose makes, in order, the oracle (pipeline-oracle.cjs)
 // auditing the whole state after every mutation.
 // ---------------------------------------------------------------------------
@@ -24,26 +24,17 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const {
-  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, landed, placeIn, buildLoop, wentAheadBlind, PASSED_REPORT,
+  Sim, worlds, SPEC_TO_BUILD_UNIT, landed, placeIn, buildLoop, wentAheadBlind, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 
 const WU = SPEC_TO_BUILD_UNIT;
 const CALL = Object.freeze({ question: 'Should a show print the entry\'s id?', lean: 'A show prints the id.', other: 'A show hides the id.' });
 
-/** A feature in auto, its one phase written and started. */
-const showingWorld = worldFrom('pipeline-build-reread-', (sim) => {
-  buildEntry(sim, WU);
-  sim.run(['task', 'phase', WU, '1', '--title', 'Showing']);
-  sim.run(['brief', 'task-writer', WU, '1']);
-  writeTasks(sim, WU, 1, [{ title: 'Show an entry', scenarios: ['1.S1'] }, { title: 'Check the hash on show' }]);
-  startPhase(sim, WU, 1);
-}, worlds.specToBuild);
-
 describe('pipeline simulation: the build with a held task changed again while its pair re-reads it', () => {
   let sim;
   /** @type {ReturnType<typeof buildLoop>} */ let loop;
   beforeEach(() => {
-    sim = new Sim(showingWorld);
+    sim = new Sim(worlds.buildBegun);
     loop = buildLoop(sim, WU);
   });
   afterEach(() => {

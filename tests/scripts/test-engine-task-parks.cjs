@@ -47,7 +47,7 @@ const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-const { recordReviewer, roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { recordReviewer, roundReportPath, settlementPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { freedAt } = require(path.join(SCRIPTS, 'domain/task-parks.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
@@ -237,15 +237,15 @@ describe('a blind question whose call went ahead holds its task open at its done
 
   /**
    * Claude's call on where a note opens raised for 2.3 in `target`, the
-   * decision point drawing blind, the trust log in `configDir`: it goes
-   * ahead while its blind question, Q1, waits.
-   * @param {string} target @param {string} configDir
+   * decision point drawing blind, the trust log in `configDir`, the raise
+   * given `more`: it goes ahead while its blind question, Q1, waits.
+   * @param {string} target @param {string} configDir @param {string[]} [more]
    */
-  async function wentAhead(target, configDir) {
+  async function wentAhead(target, configDir, more = []) {
     const blind = mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
     try {
       const env = { CLAUDE_CODE_SESSION_ID: SESSION, LEEWAY_CONFIG_DIR: configDir, ...labelling(CALL.question, 'behaviour', { hardToUndo: false }) };
-      const { res } = await okSectionsAsync(target, ['raise', BUILD, '--answers', made.where, '--parks', '2.3'], { env, stdin: JSON.stringify(CALL) });
+      const { res } = await okSectionsAsync(target, ['raise', BUILD, '--answers', made.where, ...more, '--parks', '2.3'], { env, stdin: JSON.stringify(CALL) });
       assert.deepStrictEqual([res.decision, res.task], ['blind', null], 'the call goes ahead, its question parking no task');
     } finally {
       blind.mock.restore();
@@ -312,6 +312,28 @@ describe('a blind question whose call went ahead holds its task open at its done
     passed(['a']);
 
     assert.deepStrictEqual([waiting(), ready()], [[['Q1', []]], ['2.2', '2.3', '2.4']]);
+  });
+
+  it('a round its pair failed that the orchestrator settled is the task\'s done point, as a pass is: the question parks the task, its account refused naming the question\'s raise', () => {
+    for (const letter of ['a', 'b']) {
+      recordReviewer(dir, TASK, 1, letter, SESSION);
+      writeState(dir, roundReportPath(TASK, 1, letter), '## Findings\n\n- bug: The note is lost.\n  Scenario: A note is written and read back.\n\nVerdict: fail\n');
+    }
+    writeState(dir, settlementPath(TASK, 1), 'The lost note is the next task\'s.\n');
+
+    assert.deepStrictEqual(waiting(), [['Q1', ['2.3']]]);
+    assert.strictEqual(refusedPristine(dir, ['task', 'account', UNIT, '2.3'], { env: conversation() }).error, `task account: ${HELD}`);
+  });
+
+  it('the person\'s answer lands though what the call relies on was replaced while the task was held: the park holding the task relies on nothing', async () => {
+    cleanupFixture(dir);
+    dir = world();
+    await wentAhead(dir, config(), ['--relies-on', made.size]);
+    passed();
+    written('replace', BUILD, ['--replaces', made.size, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], text: 'How large is a new note?' });
+
+    assert.strictEqual(answeredQ1('lean').receipt, 'Q1 answered · task 2.3 builds again as built · nothing waiting on you');
+    assert.deepStrictEqual(parks().at(-1).relies_on, []);
   });
 
   it('once its pair has passed the task, parks it: never ready, its account and its done refused naming the question\'s raise, moving and writing nothing, the other tasks going on', () => {

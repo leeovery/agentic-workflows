@@ -514,7 +514,7 @@ const {
 const { messageOf, ENGINE_RUN } = require('../kernel/call.cjs');
 const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const {
-  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
+  taskFolder, taskRounds, roundReportPath, roundUnderReview, unbuiltRefusal, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
 } = require('./round-report.cjs');
 const { workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
 const { freedAt } = require('./task-parks.cjs');
@@ -1862,7 +1862,8 @@ function drawAccountTo(filling) {
     owed, faults, changed, waiting,
   } = accountOwed(filling.cwd, ref);
   const lines = [`\`${statePath(filling.cwd, accountPath(ref))}\``];
-  if (waiting !== null) lines.push(`Your reviewers passed the task, and it waits on ${waiting.join(', ')}, a question for the person: write no account while it waits — the answer decides whether the task lands as they passed it, or changes.`);
+  if (waiting !== null && !waiting.settled) lines.push(`Your reviewers passed the task, and it waits on ${waiting.on.join(', ')}, a question for the person: write no account while it waits — the answer decides whether the task lands as they passed it, or changes.`);
+  if (waiting !== null && waiting.settled) lines.push(`The orchestrator settled the task's review in round ${waiting.round}, and it waits on ${waiting.on.join(', ')}, a question for the person: write no account while it waits — the answer decides whether the task lands as it was settled, or changes.`);
   if (changed !== null) lines.push(`The task changed after your reviewers passed it in round ${changed} — something was added to it, or one of its calls decided against its lean: build what changed, and your reviewers read the task again before its account is written.`);
   if (owed !== null && owed.settlement === null) lines.push(`Your reviewers passed the task in round ${owed.round}: it has landed, so write its account now.`);
   if (owed !== null && owed.settlement !== null) {
@@ -1979,15 +1980,20 @@ function drawChain(filling) {
 
 /**
  * Where the reviewer's report of the round under review goes; refused
- * where the last round passed, naming the way on by how far the task
- * stands towards landing (task-account.cjs, `reviewOverWay`).
+ * where the last round passed or was settled, naming the way on by how far
+ * the task stands towards landing (task-account.cjs, `reviewOverWay`), and
+ * for a round none of whose reviewers is briefed yet while a change waits
+ * on its builder's brief (round-report.cjs, `unbuiltRefusal`).
  * @param {Filling} filling
  */
 function drawRoundReportTo(filling) {
   const { ref } = taskOf(filling);
   const over = reviewOverWay(filling.cwd, ref);
-  if (over !== null) throw new Error(`round ${over.round} of ${taskName(ref)} passed — its review is over: ${over.way}`);
-  return reportPlace(filling, roundReportPath(ref, roundUnderReview(filling.cwd, ref), letterOf(filling)));
+  if (over !== null) throw new Error(`round ${over.round} of ${taskName(ref)} ${over.ended} — its review is over: ${over.way}`);
+  const round = roundUnderReview(filling.cwd, ref);
+  const unbuilt = unbuiltRefusal(filling.cwd, ref, round);
+  if (unbuilt !== null) throw new Error(unbuilt);
+  return reportPlace(filling, roundReportPath(ref, round, letterOf(filling)));
 }
 
 /** @param {Filling} filling */

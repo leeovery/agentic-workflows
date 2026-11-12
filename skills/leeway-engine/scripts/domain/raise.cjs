@@ -1968,8 +1968,9 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
  * written as the person's answer is about to land, so the answer frees the
  * task as it frees any park's, the ledger's line of it where the task went
  * back in flight (task-verbs.cjs, `stepTurn`): joining the question, about
- * the call, for its reason, `asked-blind`, relying on what the call relies
- * on, refused once it waits no longer.
+ * the call, for its reason, `asked-blind`, relying on nothing — a link it
+ * held to what the call relies on, replaced since, would refuse the answer —
+ * refused once it waits no longer.
  * @param {string} cwd @param {CallSeal} seal @param {string} task @param {string[]} warnings
  */
 function holdWritten(cwd, seal, task, warnings) {
@@ -1980,7 +1981,7 @@ function holdWritten(cwd, seal, task, warnings) {
     said: ANSWER_SAID,
     place: seal.place,
     lands: 'park',
-    linked: { question: null, replaces: replaces.entry, reason: ASKED_BLIND, cause: null, relies_on: seal.relies_on, task },
+    linked: { question: null, replaces: replaces.entry, reason: ASKED_BLIND, cause: null, relies_on: [], task },
     content: { ...sealed, went_ahead: null },
     id: null,
     logs: null,
