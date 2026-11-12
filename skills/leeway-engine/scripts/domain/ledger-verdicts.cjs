@@ -38,10 +38,12 @@
 //   entry (ledger-events.cjs) — but a blind question drawn on Claude's own
 //   call, which went ahead while it waited (16.17.6), proposes nothing: its
 //   reason `asked-blind`, the person's answer keeping the call is Claude's
-//   sealed answer, moving no one. The write verbs, and a raise's keep, hold
-//   every line to this as it is written (ledger-write.cjs, raise.cjs), so
-//   the ledger's line says it; a raise's other answers are moved by the
-//   lean they were given against (raise.cjs).
+//   sealed answer, moving no one, and their answer replacing it stands over
+//   the call, as a replacement for a changed mind does. The write verbs, and
+//   a raise's keep, hold every line to this as it is written
+//   (ledger-write.cjs, raise.cjs), so the ledger's line says it; a raise's
+//   other answers are moved by the lean they were given against
+//   (raise.cjs).
 // - A reversal (16.12.1) is the person's replacement this rule holds
 //   standing over a lean the entry it replaces held, wherever that entry
 //   stands: the write logs it in the trust log, naming the entry it
@@ -111,8 +113,8 @@ const KEEPING_BLIND = Object.freeze({
   why: 'the person keeping Claude\'s call, asked blind, gave Claude\'s sealed answer: there was no proposal to stand over',
 });
 
-/** The reasons a replacement disagrees with what it replaces, and what each of the others brings instead. */
-const DISAGREEING = Object.freeze(['changed-mind', 'was-wrong']);
+/** The reasons a replacement disagrees with what it replaces — a blind question's answer replacing Claude's call among them — and what each of the others brings instead. */
+const DISAGREEING = Object.freeze(['changed-mind', 'was-wrong', ASKED_BLIND]);
 const NEW_INFORMATION = Object.freeze({ 'new-fact': 'a new fact', 'other-topic': 'another topic\'s decision' });
 
 /**

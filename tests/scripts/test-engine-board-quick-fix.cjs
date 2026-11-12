@@ -135,16 +135,32 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     ]);
   });
 
+  /**
+   * A question parked on Claude's call in the quick-fix, proposing to
+   * replace it, as `how` has it.
+   * @param {{reason: string, task: string|null, went_ahead: string|null, blind: boolean}} how
+   */
+  const parkedOnTheCall = (how) => appendEntry(statePath(dir), {
+    event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
+    question: null, replaces: ledgerHelpers(() => dir).full(made.call), cause: null, relies_on: [], number: 1,
+    call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
+    ...how,
+  }, []);
+
   it('16.17.2: a call of Claude\'s a blind question waits on, gone ahead for its fix, is held back from Claude\'s calls while the question waits', () => {
     dir = working();
     atTheFixes();
-    appendEntry(statePath(dir), {
-      event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
-      question: null, replaces: ledgerHelpers(() => dir).full(made.call), reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: '1.1', number: 1,
-      call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: true,
-    }, []);
+    parkedOnTheCall({ reason: 'asked-blind', task: null, went_ahead: '1.1', blind: true });
 
     assert.deepStrictEqual(board().view.calls, []);
+  });
+
+  it('a question proposing to replace Claude\'s call, parking its fix, holds nothing back: the call stands among Claude\'s calls while it waits', () => {
+    dir = working();
+    atTheFixes();
+    parkedOnTheCall({ reason: 'was-wrong', task: '1.1', went_ahead: null, blind: false });
+
+    assert.deepStrictEqual(board().view.calls, [{ id: made.call, text: CALL_TEXT }]);
   });
 
   it('a fix\'s page names its phase the fixes and, with no account, shows its rounds reported whole as its reviews (20.5.6); a scenario of it opens at the quick-fix\'s one branch, as running the product proved it there, and one of a fix not yet started opens not proven', () => {

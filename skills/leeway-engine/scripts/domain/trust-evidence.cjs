@@ -28,8 +28,10 @@
 //     waits mid-build (16.17.6): no weight, the person's answer to the
 //     question its evidence, so the call is never counted beside it;
 //   - a reversal: a departure (16.10.10). It cancels the answer whose entry
-//     it reverses, an agreement or a call, and rewrites nothing: that
-//     answer's event stays as it was written (16.12.1, 16.12.2).
+//     it reverses, an agreement or a call — the person's keep of Claude's
+//     call gone ahead among them, its event naming the call it kept
+//     (raise.cjs) — and rewrites nothing: that answer's event stays as it
+//     was written (16.12.1, 16.12.2).
 // - Each answer's question: its kind and Claude's sort of it (16.11, 16.3.7),
 //   and the model whose call it was, as its event holds them — a reversal's
 //   those of the answer it reverses, wherever each was read, its own model

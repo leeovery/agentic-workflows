@@ -460,11 +460,11 @@ describe('the rule as the decision point gives it, once switched on (decision-po
 
   const BLIND = { decision: 'blind', reason: 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.' };
 
-  it('16.S52, 16.S23: a call the rule lets proceed — a quiet kind\'s — is drawn blind where its question\'s id draws under the share, the same id drawing alike every time; one whose id draws over it proceeds; and a call the rule asks is never drawn (16.17.3, 16.17.4, 16.6.4)', () => {
+  it('16.S52, 16.S23: a call the rule lets proceed — a quiet kind\'s — is drawn blind where its question\'s id draws under the share, the same id drawing alike every time; one whose id draws over it proceeds; and a call the rule asks, or sends to check, is never drawn (16.17.3, 16.17.4, 16.6.4, 16.3.1)', () => {
     const h = history();
     h.agree(30);
 
-    assert.deepStrictEqual([drawn(h, DRAWN), drawn(h, DRAWN), drawn(h, UNDRAWN).decision, drawn(history(), DRAWN).decision], [BLIND, BLIND, 'proceed', 'ask']);
+    assert.deepStrictEqual([drawn(h, DRAWN), drawn(h, DRAWN), drawn(h, UNDRAWN).decision, drawn(history(), DRAWN).decision, drawn(h, DRAWN, { label: CHECKABLE }).decision], [BLIND, BLIND, 'proceed', 'ask', 'check']);
   });
 
   it('a replacement the rule lets proceed is never drawn blind: it has no question\'s id to draw by, its rows Claude\'s proposals beside the decision as it stands', () => {

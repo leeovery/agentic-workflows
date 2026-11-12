@@ -21,10 +21,11 @@
 // as Claude wrote it, its rows in the order and the keys its seal holds —
 // the question's id's (raise.cjs, `inBlindOrder`) — Claude's answer held
 // in the seal alone until the person's is given (16.1.2), and every
-// surface reading the seal shows no lean until then (`leanShown`). Once answered, the reveal (16.17.7): what
-// the person picked, what Claude would have picked, and, on the question's
-// kind in the project, how often Claude has picked as the person did (P9),
-// a text display Claude carries on past.
+// surface reading the seal shows no lean until then (`leanShown`). Once
+// answered, the reveal (16.17.7): what the person picked, what Claude would
+// have picked, and, on the question's kind in the project, how often Claude
+// has picked as the person did (P9), a text display Claude carries on
+// past.
 // Every line above the rows is the menu's statement, so a surface drawing
 // the gate payload draws it all. Claude's words are escaped, so they read
 // as written, never as markup; the mechanism keeps its lines, each drawn

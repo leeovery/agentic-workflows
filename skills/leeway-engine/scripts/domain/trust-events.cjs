@@ -21,7 +21,9 @@
 //   the engine recommended, null where it recommended none; then the
 //   answer, as a raise's is.
 // - raise: a question raised to the person (16.9) — the ledger entry the
-//   answer landed as, the question's kind (16.11) and the label it was
+//   answer landed as, but for a keep of Claude's call gone ahead while a
+//   blind question waited, that call, the entry the person agreed with
+//   (16.17.6, raise.cjs); the question's kind (16.11) and the label it was
 //   composed from, Claude's sort of it as a call with one defensible answer
 //   or several (16.3.7), and the row of Claude's sealed answer; then the
 //   answer, and whether the person didn't follow, which leaves no answer,

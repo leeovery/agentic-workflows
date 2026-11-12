@@ -20,13 +20,14 @@
 //   nothing waiting on it: a blind question among them whose call went
 //   ahead for its task while it waits (16.17.6), which names that task and
 //   blocks it not, so every count of the questions waiting on the person
-//   holds it. While it waits, the call is held back from every list a board
-//   draws (`heldBack`), and the question is about the question the call
-//   answers, never the call. Whether a question is asked blind is its first
-//   park's, sealed with its call, so a task joining it parks on it blind as
-//   well. What it asks is Claude's call's
-//   question as sealed, or, where its question has been reworded since, its
-//   wording as it stands.
+//   holds it. While it waits, the call is held back from every list of the
+//   build's calls — a task's page, a quick-fix's board, the ledger's since
+//   and the review's calls decided for the person — each asking
+//   `heldBackIn`; and the question is about the question the call answers,
+//   never the call. Whether a question is asked blind is its first park's,
+//   sealed with its call, so a task joining it parks on it blind as well.
+//   What it asks is Claude's call's question as sealed, or, where its
+//   question has been reworded since, its wording as it stands.
 // - Its number: `Q{n}`, per unit, the next after the highest the unit's
 //   parks hold, live or not, so none is ever reused and a queued "Q2" never
 //   shifts when Q1 is answered; a task joining a question waiting takes its
@@ -514,8 +515,8 @@ function aboutOf(read, line, answers) {
 
 /**
  * The calls of Claude's a blind question drawn on each waits on, gone
- * ahead for its task (16.17.6), by full id: held back from every list a
- * board draws until the person has answered (16.17.2).
+ * ahead for its task (16.17.6), by full id: held back from every list of
+ * the build's calls until the person has answered (16.17.2).
  * @param {Folded} read @param {EntryAt} entryAt @param {string} unit @returns {Set<string>}
  */
 function heldBackIn(read, entryAt, unit) {

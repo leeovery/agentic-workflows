@@ -35,10 +35,11 @@
 //   from — the inbox's or the roadmap's, else none.
 // - CLAUDE'S CALLS are every current call of Claude's made in the
 //   quick-fix, but each a blind question waits on, held back until the
-//   person has answered (16.17.2, questions.cjs); REPLACES, for each current decision made there, the decision
-//   made in another unit its chain of replacements goes back to, past those
-//   made in the quick-fix, with its words, whose it was and the unit's
-//   title; both read in one read of the ledger.
+//   person has answered (16.17.2, questions.cjs); REPLACES, for each current
+//   decision made there, the decision made in another unit its chain of
+//   replacements goes back to, past those made in the quick-fix, with its
+//   words, whose it was and the unit's title; both read in one read of the
+//   ledger.
 // - THE RECORD is `summary.md`'s, each fix's under its title, once every
 //   fix has ended and one at least is done.
 // ---------------------------------------------------------------------------

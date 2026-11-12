@@ -124,7 +124,7 @@ const {
 } = require('./bug-proven.cjs');
 const {
   NOTES, isBuilderNote, reportNames, notesStanding, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
-  snapshotRound, dropSnapshot, treeChanges, setAsideHeld, unitCalls, reviewCallFault, forThePerson, inTheBuild,
+  snapshotRound, dropSnapshot, treeChanges, setAsideHeld, callsForThePerson, reviewCallFault, inTheBuild,
 } = require('./review-phase.cjs');
 const {
   roundReport, closingReport, reportScreen, reviewCallsScreen,
@@ -621,7 +621,7 @@ function scenarioWordings(cwd, unit, manifest) {
 
 /** The calls decided for the person across the unit, by kind, with the build's share; what the read warned of pushed to `warnings`. @param {string} cwd @param {string} unit @param {string[]} warnings */
 function callsCount(cwd, unit, warnings) {
-  const calls = readShown(stateRoot(cwd), warnings, (shower) => unitCalls(shower, unit)).filter(forThePerson);
+  const calls = readShown(stateRoot(cwd), warnings, (shower) => callsForThePerson(shower, unit));
   return { kinds: calls.map(({ kind }) => kind), build: calls.filter(inTheBuild).length };
 }
 
@@ -668,7 +668,7 @@ function reviewReportSurface(cwd, { dotpath: unit = '', round }) {
 function reviewCallsSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render review-calls', () => {
     const manifest = unitInProgress(cwd, unit);
-    const calls = readShown(stateRoot(cwd), [], (shower) => unitCalls(shower, unit)).filter(forThePerson);
+    const calls = readShown(stateRoot(cwd), [], (shower) => callsForThePerson(shower, unit));
     return reviewCallsScreen(unit, itemTitle(topicTitles(manifest), 'review', unit), calls);
   });
 }

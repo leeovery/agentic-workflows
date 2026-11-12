@@ -15,7 +15,9 @@
 //   each by where it shows (ledger-fold.cjs), so a later unit's
 //   replacement of an earlier unit's decision is new in both. Each shows
 //   with the files linked from it, so a call Claude spiked to settle shows
-//   how Claude found out (9.10.17).
+//   how Claude found out (9.10.17). A call a blind question waits on, gone
+//   ahead for its task, is held back until the person has answered
+//   (16.17.2, questions.cjs): never shown, so never marked seen.
 // - The mark is the machine's own: the ids of the calls a screen has shown
 //   on this machine, each topic's map and the spec's list alike, kept in the
 //   cache at `.cache/.marks/{unit}.json`. It sits outside the unit's own
@@ -48,6 +50,7 @@ const { isObject, writeJsonAtomic, withStateLockFile } = require('../kernel/mani
 const { claudesCall } = require('./ledger-events.cjs');
 const { standingOf, inPlace, showsIn } = require('./ledger-fold.cjs');
 const { isId } = require('./ledger-ids.cjs');
+const { heldBackIn } = require('./questions.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-fold.cjs').Standing} Standing */
@@ -121,18 +124,19 @@ function shownHere(root, unit, own, warnings) {
 /**
  * Claude's current calls `place` shows that no look on this machine has
  * shown, in the ledger's order: on a topic, those it shows on its map;
- * across a unit, those it shows anywhere. None on a unit or topic that is
- * not live.
- * @param {Folded} folded @param {Place} place @param {Set<string>} shown
+ * across a unit, those it shows anywhere, but each a blind question waits
+ * on (the header's). None on a unit or topic that is not live.
+ * @param {Shower} shower @param {Place} place @param {Set<string>} shown
  * @returns {string[]}
  */
-function callsSince(folded, { unit, topic }, shown) {
+function callsSince({ folded, entryAt }, { unit, topic }, shown) {
   const at = /** @type {string} */ (unit);
   if (folded.live(at, topic) !== null) return [];
+  const held = heldBackIn(folded, entryAt, at);
   /** @type {string[]} */
   const calls = [];
   for (const [id, facts] of folded.facts) {
-    if (facts.kind !== 'decision' || !claudesCall(facts) || shown.has(id)) continue;
+    if (facts.kind !== 'decision' || !claudesCall(facts) || shown.has(id) || held.has(id)) continue;
     if (showsIn(folded, id).some((place) => inPlace(place, at, topic))) calls.push(id);
   }
   return calls;
@@ -159,7 +163,7 @@ function answerOf({ folded, show, assets }, { unit, topic }, calls) {
  */
 function answerSince(shower, place, root, warnings) {
   const unit = /** @type {string} */ (place.unit);
-  return answerOf(shower, place, callsSince(shower.folded, place, shownHere(root, unit, marksOf(root, unit), warnings)));
+  return answerOf(shower, place, callsSince(shower, place, shownHere(root, unit, marksOf(root, unit), warnings)));
 }
 
 /**
@@ -171,7 +175,7 @@ function answerShown(shower, place, root, warnings) {
   const unit = /** @type {string} */ (place.unit);
   const calls = withMarkLock(root, unit, () => {
     const marks = marksOf(root, unit);
-    const shown = callsSince(shower.folded, place, shownHere(root, unit, marks, warnings));
+    const shown = callsSince(shower, place, shownHere(root, unit, marks, warnings));
     if (shown.length > 0) writeJsonAtomic(marksFile(root, unit), { shown: [...marks.shown, ...shown] });
     return shown;
   });

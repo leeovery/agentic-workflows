@@ -10,13 +10,15 @@
 // back while the seal keeps it, the draw logged once (16.S52, 16.S65); its
 // answer revealed beside Claude's, with how often Claude picked as the
 // person did on its kind, its raise event marked blind, and a differing
-// answer a departure waiting on its verdict (16.17.7, 16.S66); and
-// mid-build, a call cheap to undo going ahead for its task while its
-// question waits, naming the task and parking none, the call held back from
-// the boards' lists, the person's agreement keeping it and the task
-// standing as built, their disagreement replacing it for the task, which
-// is marked changed, and what relied on it affected (16.S53); where one
-// hard to undo, or made for no task, parks as any question does.
+// answer a departure waiting on its verdict (16.17.7, 16.S66), and the
+// person's "don't care" refused; and mid-build, a call cheap to undo going
+// ahead for its task while its question waits, naming the task and parking
+// none, the call held back from every list of the build's calls, the
+// person's agreement keeping it and the task standing as built — a later
+// reversal of the call cancelling the agreement — their disagreement
+// replacing it for the task, which is marked changed, and what relied on
+// it affected (16.S53); where one hard to undo, or made for no task, parks
+// as any question does.
 //
 // Layer: verb. World: an epic in discussion, questions asked at its topic;
 // and an epic beside it in its build, in auto, questions asked there and a
@@ -38,7 +40,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, okSections, refusedPristine, fixtureFrom, cleanupFixture, statePath } = require('./engine-harness.cjs');
+const { ok, okSections, output, refusedPristine, fixtureFrom, cleanupFixture, statePath } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest, readManifest, withEnv } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, SESSION_ID, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
@@ -52,6 +54,9 @@ const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
+const { alikeOn, countsOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { movedRefusal } = require(path.join(SCRIPTS, 'domain/ledger-verdicts.cjs'));
+const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { waitsOf } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 const { callsOf } = require(path.join(SCRIPTS, 'domain/build-screens.cjs'));
 const { recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
@@ -363,6 +368,39 @@ describe('mid-build (16.17.6, 12.13)', () => {
   /** Task 2.3's calls as its page lists them, by full id. */
   const callsOn = () => callsOf(dir, TASK).map(({ id }) => full(id));
 
+  /** Claude's calls across the build the ledger's `verb` lists, by full id. @param {'since'|'shown'} verb */
+  const sinceCalls = (verb) => ok(dir, ['ledger', verb, BUILT], { env: conversation() }).calls.map((/** @type {{id: string}} */ c) => full(c.id));
+
+  /** Whether the review's calls decided for the person list the call answered `text`. @param {string} text */
+  const reviewListed = (text) => output(dir, ['render', 'review-calls', BUILT], { env: conversation() }).includes(text);
+
+  /**
+   * The kind's answers as the reveal and the ask rule read them: how often
+   * Claude picked as the person did, and the project's own answers the
+   * kind counts at the conversation's model.
+   */
+  const onTheKind = () => withEnv({ LEEWAY_CONFIG_DIR: config() }, () => {
+    const model = loggedOf('raise')[0].model ?? null;
+    return [alikeOn(evidenceOf(statePath(dir)).answers, 'behaviour'), countsOf(statePath(dir), { model, now: Date.now() }).kinds.behaviour.own];
+  });
+
+  /**
+   * Each answer the conversation logged: its event's type, where it
+   * stands, and the entry of the reversal cancelling it, null for none.
+   */
+  const standings = () => {
+    const answers = withEnv({ LEEWAY_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir)).answers).filter(({ event }) => event.session === SESSION);
+    const entryOf = new Map(answers.map(({ event }) => [event.id, event.entry]));
+    return answers.map(({ event, standing, cancelled_by: by }) => [event.type, standing, by === null ? null : entryOf.get(by)]);
+  };
+
+  /**
+   * The person's reversal of the decision `id` — their mind changed to the
+   * main screen: its entry's full id.
+   * @param {string} id
+   */
+  const reversing = (id) => full(write('replace', BUILD, ['--replaces', id, '--reason', 'changed-mind'], { by: 'person', drops: [CURSOR.text], text: MAIN.text, why: 'Changed my mind.' }, conversation()).id);
+
   it('16.S53: a blind question on a call cheap to undo lets Claude\'s call go ahead for its task while the question waits — on that call, asked-blind, naming the task it went ahead for and parking none, relying on what the call relies on, its draw naming the call, which then counts for nothing — every count of the questions waiting holding it, about the question the call answers; while it waits the call is off the task\'s calls; drawn, it shows no lean and no keep row, the call\'s own row keeping it', async (t) => {
     drawingBlind(t);
     quietOn('behaviour');
@@ -394,7 +432,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.strictEqual(drawn.sections, blindScreen(drawn.res.raise, { header: 'Q1 · Mint' }));
   });
 
-  it('16.S53: the person\'s answer that is Claude\'s keeps its call for the task, asked-blind, moving no one — an agreement, revealed so, no departure, the task standing as built and never marked changed though its pair reads it — and the call stands, back on the task\'s calls, the question no longer waiting; answered again, said answered already with the call\'s own row', async (t) => {
+  it('16.S53: the person\'s answer that is Claude\'s keeps its call for the task, asked-blind, moving no one — an agreement, its raise event naming the call it agrees with, revealed so, no departure, the task standing as built and never marked changed though its pair reads it — and the call stands, back on the task\'s calls, the question no longer waiting; answered again, said answered already with the call\'s own row', async (t) => {
     drawingBlind(t);
     quietOn('behaviour');
     const { landed } = (await raisedInBuild()).res;
@@ -410,22 +448,26 @@ describe('mid-build (16.17.6, 12.13)', () => {
       by: 'person', who_moved_whom: 'none', entry: full(landed.id), reason: 'asked-blind', cause: null, why: WHY, sealed: CURSOR.text,
     });
     assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 stands as built · nothing waiting on you');
-    assert.deepStrictEqual(loggedOf('raise').map(({ entry, sealed, answer, blind }) => [entry, sealed, answer, blind]), [[full(res.id), '2', '2', true]]);
+    assert.deepStrictEqual(loggedOf('raise').map(({ entry, sealed, answer, blind }) => [entry, sealed, answer, blind]), [[full(landed.id), '2', '2', true]]);
     assert.match(sections, /^I'd have picked the same\. /m);
     assert.deepStrictEqual([queued(), ok(dir, ['raise', 'waiting', BUILT]).waiting, marked()], [[], [], null]);
     assert.deepStrictEqual(callsOn(), [full(landed.id)]);
     assert.deepStrictEqual([again.already, again.answer], [true, '2']);
   });
 
-  it('16.S53: the person\'s own words the reader reads as the call\'s own row keep the call as that row does', async (t) => {
+  it('16.S53: the person\'s own words the reader reads as the call\'s own row keep the call as that row does — revealed as said, the task standing as built and never marked changed though its pair reads it', async (t) => {
     drawingBlind(t);
     quietOn('behaviour');
     const { landed } = (await raisedInBuild()).res;
+    const raise = drawnQ1();
+    beingRead();
 
-    answered(drawnQ1(), ['--own'], { text: 'Where my cursor is, as you built it', why: WHY }, readAs('2'));
+    const { res, sections } = answered(raise, ['--own'], { text: 'Where my cursor is, as you built it', why: WHY }, readAs('2'));
 
     const { event, entry, reason } = entries().at(-1);
     assert.deepStrictEqual([event, entry, reason], ['kept', full(landed.id), 'asked-blind']);
+    assert.deepStrictEqual([res.receipt, marked()], ['Q1 answered · task 2.3 stands as built · nothing waiting on you', null]);
+    assert.match(readReveal(sections)[1], /^You said: Where my cursor is, as you built it\. I'd have picked the same\. /);
   });
 
   it('16.S53: the person\'s answer that is not Claude\'s replaces its call for the task, asked-blind, standing over it — a departure waiting on its verdict — the task, its pair reading round 1, marked changed against that round so the build reads it again, the receipt saying so, and what relied on the call affected (P12)', async (t) => {
@@ -442,10 +484,81 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.deepStrictEqual([replaced.event, replaced.by, replaced.who_moved_whom, replaced.replaces, replaced.reason, replaced.text, replaced.sealed, replaced.drops, replaced.task], [
       'replaced', 'person', 'person-moved-claude', full(landed.id), 'asked-blind', MAIN.text, CURSOR.text, [CURSOR.text], '2.3',
     ]);
+    assert.strictEqual(movedRefusal(replaced, 'decision', 'asked-blind', foldLedger(statePath(dir), ID_FACTS, []).get(full(landed.id))), null, 'the departure rule holds the replacement\'s line');
     assert.deepStrictEqual(marked(), { round: 1, n: 1 });
     assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 is built again on your answer · nothing waiting on you');
     assert.deepStrictEqual(queued(), [res.id]);
     assert.deepStrictEqual(ok(dir, ['ledger', 'affected', BUILT]).affected.map((/** @type {{id: string}} */ e) => e.id), [relying]);
+  });
+
+  it('16.12.2: the person\'s keep of Claude\'s call gone ahead, the call reversed by them later, is an agreement cancelled — the kind counting the reversal alone, and Claude\'s picks as the person\'s reading it so — as their agreement with any call is', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND }));
+    const { landed } = (await raisedInBuild()).res;
+    answered(drawnQ1(), ['--pick', '2']);
+
+    const kept = onTheKind();
+    const reversal = reversing(landed.id);
+
+    assert.deepStrictEqual(kept, [{ alike: 1, of: 1 }, 1]);
+    assert.deepStrictEqual(standings(), [['call', 'no-weight', reversal], ['raise', 'agreement', reversal], ['reversal', 'departure', null]]);
+    assert.deepStrictEqual(onTheKind(), [{ alike: 0, of: 1 }, 1]);
+  });
+
+  it('16.12.2: the person\'s pick of Claude\'s answer to a question parking its task, reversed by them later, is an agreement cancelled, the kind counting the reversal alone', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.' }));
+    await raisedInBuild();
+    const { res } = answered(drawnQ1(), ['--pick', '1']);
+
+    const kept = onTheKind();
+    const reversal = reversing(res.id);
+
+    assert.deepStrictEqual(kept, [{ alike: 1, of: 1 }, 1]);
+    assert.deepStrictEqual(standings(), [['raise', 'agreement', reversal], ['reversal', 'departure', null]]);
+    assert.deepStrictEqual(onTheKind(), [{ alike: 0, of: 1 }, 1]);
+  });
+
+  it('16.17.2: while its blind question waits, Claude\'s call gone ahead is held back from every list of the build\'s calls — the task\'s, the ledger\'s since, which never marks it seen, and the review\'s calls decided for the person — and listed on each once the person has answered', async (t) => {
+    drawingBlind(t);
+    quietOn('behaviour');
+    const { landed } = (await raisedInBuild()).res;
+
+    const waiting = [callsOn(), sinceCalls('shown'), reviewListed(CURSOR.text)];
+    answered(drawnQ1(), ['--pick', '2']);
+
+    assert.deepStrictEqual(waiting, [[], [full(made.mine)], false]);
+    assert.deepStrictEqual([callsOn(), sinceCalls('since'), reviewListed(CURSOR.text)], [[full(landed.id)], [full(landed.id)], true]);
+  });
+
+  it('a question proposing to replace Claude\'s call, parking its task, holds nothing back: the call stands on every list of the build\'s calls while it waits', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.' }));
+    const call = full(write('decide', BUILD, ['--answers', made.size, '--task', '2.3'], { ...MADE, text: 'Half the screen it opens on.', why: 'It fits the screen.' }).id);
+
+    const { res } = await raised(BUILD, ['--replaces', call, '--reason', 'was-wrong', '--parks', '2.3'], SHADOWED, conversation());
+
+    assert.deepStrictEqual([res.decision, res.task], ['ask', '2.3']);
+    assert.deepStrictEqual([callsOn(), sinceCalls('since'), reviewListed('Half the screen it opens on.')], [[call], [full(made.mine), call], true]);
+  });
+
+  it('a blind question whose call went ahead is about the question the call answers as worded now: reworded while it waits, the question waiting — and the entry its row opens — is its new wording', async (t) => {
+    drawingBlind(t);
+    quietOn('behaviour');
+    await raisedInBuild();
+
+    const reworded = write('replace', BUILD, ['--replaces', ASKED.where, '--reason', 'changed-mind'], { ...MADE, drops: ['a second screen'], text: 'Where does a new note open on another screen?' }).id;
+
+    assert.deepStrictEqual(ok(dir, ['raise', 'waiting', BUILT]).waiting.map((/** @type {{about: string}} */ q) => full(q.about)), [full(reworded)]);
+  });
+
+  it('the person\'s "don\'t care" on a blind question is refused, nothing landed and the question still waiting: it asks for their own answer, and leaving the call to Claude would land Claude\'s sealed answer and measure nothing', async (t) => {
+    drawingBlind(t);
+    quietOn('behaviour');
+    await raisedInBuild();
+    const raise = drawnQ1();
+
+    const { error } = refusedPristine(dir, ['raise', 'answer', raise, '--dont-care'], { env: conversation() });
+
+    assert.strictEqual(error, 'raise answer: a blind question asks for the person\'s own answer, mine held back — "don\'t care" leaves the call to me, which measures nothing; take their pick or their own words');
+    assert.deepStrictEqual([seals()?.[raise].answered, loggedOf('raise'), ok(dir, ['raise', 'waiting', BUILT]).waiting.map((/** @type {{question: string}} */ q) => q.question)], [null, [], ['Q1']]);
   });
 
   it('a blind question on a call hard to undo parks its task as any question does, its draw naming the park, nothing landed; drawn, it shows no lean', async (t) => {

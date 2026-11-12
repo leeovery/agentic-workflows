@@ -84,8 +84,8 @@
 //   question drawn on a call cheap to undo let the call land for its task
 //   while it waits (16.17.6) — the question then proposing to replace that
 //   call, `asked-blind`, and parking no task, so it blocks none — null for
-//   every other; its number in its unit, `Q{number}`, the engine's, minted as it
-//   parks and never reused, or, for a task joining a question already
+//   every other; its number in its unit, `Q{number}`, the engine's, minted
+//   as it parks and never reused, or, for a task joining a question already
 //   waiting, that question's (questions.cjs); and the call sealed, so it is
 //   raised as it was put whenever the person is ready, in whatever
 //   conversation: Claude's call as the raise took it, the rows the

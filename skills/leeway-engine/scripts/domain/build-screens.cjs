@@ -10,8 +10,9 @@
 // (task-account.cjs, round-report.cjs); the questions waiting, from the
 // ledger's projection (questions.cjs, 12.13.7); a task's calls, the
 // decisions of Claude's the ledger holds made for it in the build
-// (12.12.12), but each a blind question waits on (16.17.6); and what running the product proved of a task's scenarios of
-// the cut, at the tips of its branch (runs.cjs).
+// (12.12.12), but each a blind question waits on (16.17.6); and what
+// running the product proved of a task's scenarios of the cut, at the tips
+// of its branch (runs.cjs).
 //
 // - `build-headline <unit> --file <payload>`: the tasks started together,
 //   the payload `{"tasks": [{"task", "changes", "watch"}, …]}` saying what
