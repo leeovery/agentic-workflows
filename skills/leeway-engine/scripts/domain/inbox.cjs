@@ -364,7 +364,7 @@ function restoreItems(cwd, paths) {
   let unclaimed = [];
   const record = () => {
     unclaimed = unclaim(cwd, items, closures(cwd));
-    return [...new Set(unclaimed.map(({ unit }) => buildLogAt(unit))), ...dropClosures(cwd, items)];
+    return dropClosures(cwd, items);
   };
   const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, commitMessage('restore', items), record);
   return { restored: moved, ...(unclaimed.length === 0 ? {} : { unclaimed }), ...rest };

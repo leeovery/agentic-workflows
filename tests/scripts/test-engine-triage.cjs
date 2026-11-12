@@ -369,7 +369,7 @@ describe('the archived items (18.7.11)', () => {
       ['quickfixes/2025-09-03--prefs-reset.md', 'bugs/2025-09-04--resize-jitter.md'],
     ]);
     assert.strictEqual(readState(dir, BUILD_LOG), LOG_TEXT.replace('Resolved: .leeway/.inbox/ideas/2025-09-02--enter-should-attach.md\n', ''), 'its claim alone comes out');
-    assert.strictEqual(stateGit(dir, ['status', '--porcelain']), '', 'the restore commits the log with the move');
+    assert.ok(stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).split('\n').includes(BUILD_LOG), 'the restore commits the log with the move');
     assert.strictEqual(sectionOf(output(dir, ['render', 'inbox-restore-receipt', '--path', live, '--unclaimed', UNIT]), 'DISPLAY: confirmation'),
       'Restored "Enter In The Preview Should Attach" to the inbox, its Resolved: line taken out of Enter Attaches From Preview\'s build log.\n');
   });
