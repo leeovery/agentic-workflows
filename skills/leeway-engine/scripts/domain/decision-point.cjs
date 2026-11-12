@@ -11,7 +11,8 @@
 //
 // What it decides from (E1), as the raise gives it: the call; its label;
 // where it is made, and whether it blocks build work; whose the entry it
-// would replace is; Claude's mark that it always asks; whether it was sent
+// would replace is; the experiment still running that measures the question
+// it answers; Claude's mark that it always asks; whether it was sent
 // to check once already; the project; the model of the session making it;
 // the time; and the question's id, the same on every raise of it (E3), none
 // for a replacement.
@@ -33,10 +34,11 @@
 // the same way however often it is raised, and no tally is kept
 // (16.17.4). Claude never chooses which calls are drawn.
 //
-// Beside it, whether Claude offers to settle the rest of a topic once the
-// person has answered a raise there (16.8.1): until the ask rule is switched
-// on, no offer comes. Once switched, it is convergence.cjs's `offerDue`: the
-// topic's run of agreements, where it has come to the offer.
+// Beside it, whether Claude offers to settle the rest of a topic, asked once
+// the person has answered a raise there and by the offer's own render
+// (16.8.1): until the ask rule is switched on, no offer comes. Once
+// switched, it is convergence.cjs's `offerDue`: the topic's run of
+// agreements, where it has come to the offer.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');

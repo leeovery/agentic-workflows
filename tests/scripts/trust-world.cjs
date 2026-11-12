@@ -164,11 +164,12 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
   const label = (kind) => (kind === null ? null : labelled(kind));
   /**
    * A raise on `kind` answered `answer`, Claude's lean row 1, landed as
-   * `entry` — the person's "don't care", typed, where `dontCare`: its entry.
-   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, entry?: string}} [opts] @param {Where} [where]
+   * `entry` — the person's "don't care", typed, where `dontCare`; asked
+   * blind where `blind`: its entry.
+   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string}} [opts] @param {Where} [where]
    */
-  const raise = (kind, answer, { sort = 'several', dontCare = false, entry = newId() } = {}, where = {}) => /** @type {string} */ (log('raise', {
-    entry, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: false, replaced_by: null, always: null, blind: false,
+  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId() } = {}, where = {}) => /** @type {string} */ (log('raise', {
+    entry, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: false, replaced_by: null, always: null, blind,
   }, where).entry);
   const h = {
     events,
@@ -186,8 +187,15 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     },
     /** A raise Claude sorted `sort`, answered `answer`. @param {string} sort @param {string} answer @param {Kind} [kind] */
     sorted: (sort, answer, kind = 'behaviour') => raise(kind, answer, { sort }),
-    /** A raise on `kind` that landed as the ledger's `entry`, answered `answer`. @param {string} entry @param {string} answer @param {Kind} [kind] */
-    answered: (entry, answer, kind = 'behaviour') => raise(kind, answer, { entry }),
+    /**
+     * A raise on `kind` that landed as the ledger's `entry`, answered
+     * `answer` — the person's "don't care" where `dontCare`, asked blind
+     * where `blind`.
+     * @param {string} entry @param {string} answer @param {Kind} [kind] @param {{dontCare?: boolean, blind?: boolean}} [opts]
+     */
+    answered: (entry, answer, kind = 'behaviour', { dontCare = false, blind = false } = {}) => raise(kind, answer, { entry, dontCare, blind }),
+    /** The person's yes to the convergence offer on `topic` of `unit`. @param {string} unit @param {string} topic */
+    converged: (unit, topic) => log('convergence', { unit, topic }),
     /** Claude's call on `kind`, sorted `sort`, as `entry`: its entry. @param {string|null} sort @param {Kind} [kind] @param {Where} [where] @param {string} [entry] */
     call: (sort, kind = 'behaviour', where = {}, entry = newId()) => /** @type {string} */ (log('call', { entry, kind, label: label(kind), sort }, where).entry),
     /** The person's reversal of `entry`: its own. @param {string} entry @param {Where} [where] */

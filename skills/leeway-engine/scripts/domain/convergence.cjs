@@ -15,24 +15,28 @@
 //   starts again from the person's latest no to the offer, kept in the
 //   topic's cache (`convergence.json`) — so a new machine may offer once
 //   more — and from their latest yes, which the trust log holds.
-// - The offer is due once the run holds CONVERGENCE_RUN agreements and the
-//   topic holds an open question to settle (`offerDue`). The decision point
-//   asks it once the person answers a raise in a topic's discussion
+// - The offer is due once the run holds CONVERGENCE_RUN agreements, the
+//   topic holds an open question to settle, and every question open at the
+//   person's latest yes is closed, so no offer comes back while the
+//   settling it started goes on (`offerDue`). The decision point asks it
+//   once the person answers a raise in a topic's discussion
 //   (decision-point.cjs `convergenceDue`, raise.cjs); until the ask rule is
 //   switched on, it never offers.
 // - `render convergence <wu>.<topic> [--asked]` (16.8.2): the offer, the
 //   topic named by its key or the title a rename gave it, under discussion
-//   in a unit in progress; drawn where it is due, or on the person's word
-//   whatever the run, `--asked` (16.S28); refused where nothing is open.
-//   Its forecast is the ask rule's (ask-rule.cjs) on each open question as
-//   the counts stand now — each labelled from its wording alone, the calls
-//   put at once (labeller.cjs), one that fails coming to the person
-//   (16.19.8) — as a call sorted by its kind, `several`, since Claude has
-//   made none of them yet, made in the topic's discussion, blocking no
-//   build work and replacing nothing: those the rule lets proceed, or sends
-//   Claude to check, Claude would settle; the rest come to the person. No
-//   blind draw enters it: at settle time a point may still be drawn blind,
-//   which the offer's DATA says (projections/convergence.cjs).
+//   in a unit in progress; drawn where the decision point says it is due,
+//   or on the person's word whatever the run, `--asked` (16.S28); refused
+//   where nothing is open. Its forecast is the ask rule's (ask-rule.cjs) on
+//   each open question as the counts stand now — each labelled from its
+//   wording alone, the calls put at once (labeller.cjs), one that fails
+//   coming to the person (16.19.8) — as a call sorted by its kind,
+//   `several`, since Claude has made none of them yet, made in the topic's
+//   discussion, blocking no build work, replacing nothing, and measured by
+//   the experiment still running that measures it, if any (9.1.11): those
+//   the rule lets proceed, or sends Claude to check, Claude would settle;
+//   the rest come to the person. No blind draw enters it: at settle time a
+//   point may still be drawn blind, which the offer's DATA says
+//   (projections/convergence.cjs).
 // - `convergence accept <wu> <topic>`, the person's yes: stated intent,
 //   logged in the trust log as a `convergence` event (16.8.6, 16.13.4), its
 //   id drawn from the conversation and when the offer was shown, so a rerun
@@ -52,7 +56,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { idFrom, shortIds } = require('./ledger-ids.cjs');
 const { ID_FACTS, readFolded, mapOf } = require('./ledger-fold.cjs');
-const { liveness } = require('./ledger-units.cjs');
+const { liveness, manifestOf, measuredBy } = require('./ledger-units.cjs');
 const { itemOf, topicKey, topicTitle } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -68,8 +72,8 @@ const { offerScreen, OFFER_GATE } = require('./projections/convergence.cjs');
 
 /** @typedef {import('./event-fields.cjs').Kind} Kind */
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
-/** An open question on the topic: its id, its short form and its wording. @typedef {{id: string, short: string, text: string}} Open */
-/** The topic as it stands: the run of agreements, and its open questions. @typedef {{run: number, open: Open[]}} Standing */
+/** An open question on the topic: its id, its short form, its wording, and the experiment still running that measures it, null for none. @typedef {{id: string, short: string, text: string, measured: string|null}} Open */
+/** The topic as it stands: the run of agreements, its open questions, and whether one of them was open at the person's latest yes. @typedef {{run: number, open: Open[], settling: boolean}} Standing */
 /** What the rule forecasts for an open question: its short id, its kind, and whether Claude would settle it. @typedef {{short: string, kind: Kind|null, mine: boolean}} Forecast */
 
 const PHASE = 'discussion';
@@ -93,18 +97,19 @@ function declinedAt(cwd, unit, topic) {
 /** An event's time. @param {Record<string, unknown>} event */
 const timeOf = (event) => Date.parse(/** @type {string} */ (event.at));
 
+/** The latest of `times`, null where none is given. @param {(number|null)[]} times */
+function latest(...times) {
+  const given = /** @type {number[]} */ (times.filter((time) => time !== null));
+  return given.length === 0 ? null : Math.max(...given);
+}
+
 /**
- * When the topic's run started last: the person's latest no, kept in the
- * cache, or their latest yes, the trust log's `convergence` event; null
- * where neither was given.
- * @param {string} cwd @param {Record<string, unknown>[]} events the project's @param {string} unit @param {string} topic
- * @returns {number|null}
+ * When the person last said yes to the offer on the topic, the trust log's
+ * `convergence` event, null where they never did.
+ * @param {Record<string, unknown>[]} events the project's @param {string} unit @param {string} topic
  */
-function startedAt(cwd, events, unit, topic) {
-  const times = events.filter((event) => event.type === 'convergence' && event.unit === unit && event.topic === topic).map(timeOf);
-  const declined = declinedAt(cwd, unit, topic);
-  if (declined !== null) times.push(declined);
-  return times.length === 0 ? null : Math.max(...times);
+function acceptedAt(events, unit, topic) {
+  return latest(...events.filter((event) => event.type === 'convergence' && event.unit === unit && event.topic === topic).map(timeOf));
 }
 
 /**
@@ -130,8 +135,10 @@ function runIn(events, facts, unit, topic, since) {
 
 /**
  * The topic `topic` of `unit` as the trust log and the ledger stand: the
- * run, and the questions open on its map (5.8.5), each with its wording.
- * What the ledger's read said is pushed to `warnings`.
+ * run, the questions open on its map (5.8.5), each with its wording and the
+ * experiment measuring it, and whether one of them was first asked by the
+ * person's latest yes, so its settling goes on. What the ledger's read said
+ * is pushed to `warnings`.
  * @param {string} cwd @param {string} unit @param {string} topic @param {string[]} warnings
  * @returns {Standing}
  */
@@ -140,17 +147,29 @@ function topicStanding(cwd, unit, topic, warnings) {
   /** @type {Record<string, unknown>[]} */
   const events = [];
   readProjectEvents(root, (event) => events.push(event));
+  const yes = acceptedAt(events, unit, topic);
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(root, unit));
   return readFolded(root, ID_FACTS, warnings, (facts, entryAt) => {
     const shorts = shortIds(facts.keys());
-    const open = mapOf({ facts, live: liveness(root) }, unit, topic).filter(({ stands }) => stands === 'open').map(({ id }) => ({
-      id, short: /** @type {string} */ (shorts.get(id)), text: String(entryAt(/** @type {IdFacts} */ (facts.get(id)).place).text),
-    }));
-    return { run: runIn(events, facts, unit, topic, startedAt(cwd, events, unit, topic)), open };
+    const fact = (/** @type {string} */ id) => /** @type {IdFacts} */ (facts.get(id));
+    const ids = mapOf({ facts, live: liveness(root) }, unit, topic).filter(({ stands }) => stands === 'open').map(({ id }) => id);
+    const askedAt = (/** @type {string} */ id) => Date.parse(String(entryAt(fact(fact(id).root).place).at));
+    return {
+      run: runIn(events, facts, unit, topic, latest(yes, declinedAt(cwd, unit, topic))),
+      open: ids.map((id) => ({ id, short: /** @type {string} */ (shorts.get(id)), text: String(entryAt(fact(id).place).text), measured: measuredBy(manifest, facts, id) })),
+      // The ledger keeps whole seconds: a question asked in the yes's own second counts as open at it.
+      settling: yes !== null && ids.some((id) => askedAt(id) <= yes),
+    };
   });
 }
 
-/** Whether the offer is due as the topic stands: its run come to the offer, and something open to settle. @param {Standing} standing */
-const dueIn = ({ run, open }) => run >= CONVERGENCE_RUN && open.length > 0;
+/**
+ * Whether the offer is due as the topic stands: its run come to the offer,
+ * something open to settle, and no settling the person's yes started still
+ * going on.
+ * @param {Standing} standing
+ */
+const dueIn = ({ run, open, settling }) => run >= CONVERGENCE_RUN && open.length > 0 && !settling;
 
 /**
  * The agreements in a row in the topic where the offer is due on it, else
@@ -178,10 +197,10 @@ function forecastOf(cwd, unit, topic, open) {
   const project = { id: projectId(root), name: projectName(cwd) };
   const counts = countsOf(root, { model: modelOf(cwd), now: Date.now() });
   const labels = labelsAtOnce(open.map(({ text }) => questionText(text, [])));
-  return open.map(({ short }, i) => {
+  return open.map(({ short, measured }, i) => {
     const label = labels[i];
     const { decision } = rule({ sort: 'several' }, {
-      label, place: { unit, phase: PHASE, topic }, blocks_build: false, replaced_by: null, always: null, checked: false, project, counts, settings, care,
+      label, place: { unit, phase: PHASE, topic }, blocks_build: false, replaced_by: null, measured, always: null, checked: false, project, counts, settings, care,
     });
     return { short, kind: kindOf(label), mine: decision !== 'ask' };
   });
@@ -209,6 +228,17 @@ function topicOf(cwd, dotpath, said) {
 }
 
 /**
+ * The decision point's word on the offer on the topic `topic` of `unit`:
+ * its agreements in a row where due, else null.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ * @returns {number|null}
+ */
+function offerSaid(cwd, unit, topic) {
+  // Required here: switched on, the decision point reads `offerDue` from this module.
+  return require('./decision-point.cjs').convergenceDue(cwd, unit, topic);
+}
+
+/**
  * `render convergence <wu>.<topic> [--asked]` (the header's).
  * @param {string} cwd @param {{dotpath?: string, asked?: string}} args
  * @returns {string}
@@ -221,8 +251,8 @@ function convergenceSurface(cwd, { dotpath, asked }) {
   const warnings = [];
   const standing = topicStanding(cwd, unit, topic, warnings);
   if (standing.open.length === 0) throw new Error(`${said}: nothing is open on ${title} to settle`);
-  if (asked === undefined && !dueIn(standing)) {
-    throw new Error(`${said}: no offer is due on ${title} — ${standing.run} agreement${standing.run === 1 ? '' : 's'} in a row, and it comes after ${CONVERGENCE_RUN}; on the person's word, --asked`);
+  if (asked === undefined && offerSaid(cwd, unit, topic) === null) {
+    throw new Error(`${said}: no offer is due on ${title} — the decision point offers none at ${standing.run} agreement${standing.run === 1 ? '' : 's'} in a row; on the person's word, --asked`);
   }
   return offerScreen({ title, unit, topic, run: asked === undefined ? standing.run : null, forecast: forecastOf(cwd, unit, topic, standing.open), warnings });
 }

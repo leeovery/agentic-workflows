@@ -189,7 +189,7 @@ describe('what the decision point is given (E1)', () => {
     const given = decide.mock.calls.map((called) => called.arguments);
     const at = given.map(([, at]) => /** @type {import('../../skills/leeway-engine/scripts/domain/decision-point.cjs').At} */ (at));
     assert.ok(at.every(({ now }) => now >= before && now <= after), 'the time given is not the raise\'s');
-    const common = { checked: false, project: { root: statePath(dir), name: projectName(dir) } };
+    const common = { checked: false, measured: null, project: { root: statePath(dir), name: projectName(dir) } };
     const look = { labeller: LABELLER, answers: labelled('look').answers };
     const inBuild = { unit: BUILT, phase: 'implementation', topic: null };
     assert.deepStrictEqual(given.map(([call, { now: _now, ...rest }]) => [call, rest]), [

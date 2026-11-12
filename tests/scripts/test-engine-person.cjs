@@ -177,7 +177,7 @@ const screen = (out, sections) => sections.flatMap((name) => (name === 'TITLE' ?
 /** A call on look in the project at `dir` named `name`, as the decision point is given it, on a question never drawn blind. @param {string} dir @param {string} name */
 function lookAt(dir, name) {
   return ruled(/** @type {any} */ ({ sort: 'several' }), {
-    label: labelled('look'), place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, checked: false,
+    label: labelled('look'), place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false,
     project: { root: statePath(dir), name }, model: MODEL, now: FROZEN_MS, question: UNDRAWN,
   });
 }
