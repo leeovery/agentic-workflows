@@ -826,6 +826,8 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // blind question is drawn once in the trust log, with the kind its label
 // composes (16.17.5): one sealed in a conversation, naming its seal; one
 // parked, naming its first park — or, where its call went ahead, that call.
+// Each yes to the convergence offer names a topic of its unit's discussion
+// by its key (16.8.6).
 /** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
 function auditTrust(sim, label, ran = []) {
   const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
@@ -983,6 +985,11 @@ function auditTrust(sim, label, ran = []) {
   ];
   assert.deepStrictEqual(ofType('blind-draw').map((e) => [e.entry, e.kind]).sort(), drawnBlind.sort(),
     ctx('the trust log does not hold one draw for each blind question, with its kind, and no other'));
+  for (const e of ofType('convergence')) {
+    const unit = statePath(sim.dir, e.unit, 'manifest.json');
+    const discussed = fs.existsSync(unit) ? JSON.parse(fs.readFileSync(unit, 'utf8')).phases.discussion?.items ?? {} : {};
+    assert.ok(Object.hasOwn(discussed, e.topic), ctx(`the convergence ${e.id} names ${e.unit}.${e.topic}, no topic of its unit's discussion`));
+  }
   if (ran[0] === 'verdict' && ran[1] === 'give') {
     const [, , prefix, verdict, , point] = ran;
     const latest = ofType('verdict').at(-1);

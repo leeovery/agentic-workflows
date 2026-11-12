@@ -60,7 +60,7 @@ const HARD = labelled('behaviour', { hardToUndo: true });
  */
 function contextOf(h, more = {}) {
   return {
-    label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, always: null, checked: false,
+    label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false,
     project: MINT, counts: countsFrom(h.events, { project: PROJECT_ID, model: MODEL, now: FROZEN_MS }), settings: DEFAULTS, care: [],
     ...more,
   };
@@ -98,6 +98,7 @@ const LIVE = 'It means testing against a live server, so it always comes to you.
 const DESIGN = 'The root cause is a design problem, so it always comes to you.';
 const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
 const DANGER = 'An answer here could lose data or weaken security, so it always comes to you.';
+const MEASURED = 'Experiment E1, still running, measures this question, so it comes to you.';
 
 /** The rule asking, for `reason`. @param {string} reason */
 const asked = (reason) => ({ decision: 'ask', reason });
@@ -115,9 +116,9 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
     assert.deepStrictEqual([ruling(QUIET, { label: null }), ruling(QUIET, { label: null }, 'one')], [asked(UNLABELLED), asked(UNLABELLED)]);
   });
 
-  it('what always asks with no label to tell it gives its own reason with none: replacing an entry of the person\'s and Claude\'s mark each ask as such, and only a call neither holds asks for want of a label', () => {
-    assert.deepStrictEqual([{ replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, {}].map((more) => ruling(QUIET, { label: null, ...more })), [
-      asked(YOURS), asked(LIVE), asked(UNLABELLED),
+  it('what always asks with no label to tell it gives its own reason with none: replacing an entry of the person\'s, a question an experiment still running measures and Claude\'s mark each ask as such, and only a call none holds asks for want of a label (9.1.11)', () => {
+    assert.deepStrictEqual([{ replaced_by: /** @type {const} */ ('person') }, { measured: 'E1' }, { always: /** @type {const} */ ('live-server') }, {}].map((more) => ruling(QUIET, { label: null, ...more })), [
+      asked(YOURS), asked(MEASURED), asked(LIVE), asked(UNLABELLED),
     ]);
   });
 
@@ -129,15 +130,15 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
     ]);
   });
 
-  it('what always asks comes before the check, which settles a fact and never the person\'s consent: a question Claude could find out asks with its own reason, sent to check before or not, replacing an entry of the person\'s, under Claude\'s mark, as a danger question and under a care entry (16.5.1, 16.5.2, 16.5.7, 19.4.20, 19.4.22)', () => {
+  it('what always asks comes before the check, which settles a fact and never the person\'s consent: a question Claude could find out asks with its own reason, sent to check before or not, replacing an entry of the person\'s, measured by an experiment still running, under Claude\'s mark, as a danger question and under a care entry (16.5.1, 16.5.2, 16.5.7, 9.1.11, 19.4.20, 19.4.22)', () => {
     const always = [
-      { replaced_by: /** @type {const} */ ('person') }, { always: /** @type {const} */ ('live-server') }, { always: /** @type {const} */ ('design-problem') },
+      { replaced_by: /** @type {const} */ ('person') }, { measured: 'E1' }, { always: /** @type {const} */ ('live-server') }, { always: /** @type {const} */ ('design-problem') },
       { label: labelled('process', { yes: ['checkable', 'danger'] }) }, { care: [{ project: PROJECT_ID, kind: /** @type {const} */ ('behaviour') }] },
     ];
     const care = 'It\'s behaviour, and you\'ve asked that behaviour always comes to you in Mint.';
 
     assert.deepStrictEqual(always.flatMap((more) => [false, true].map((checked) => ruling(QUIET, { label: CHECKABLE, ...more, checked }))), [
-      YOURS, LIVE, DESIGN, DANGER, care,
+      YOURS, MEASURED, LIVE, DESIGN, DANGER, care,
     ].flatMap((reason) => [asked(reason), asked(reason)]));
   });
 
@@ -435,7 +436,7 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     fs.writeFileSync(logPath(), lines(...h.events));
     const call = /** @type {any} */ ({ sort: 'several' });
     const at = (/** @type {number} */ now) => ({
-      label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, always: null, checked: false, project: { root: statePath(dir), name: 'Mint' }, model: MODEL, now, question: UNDRAWN,
+      label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(dir), name: 'Mint' }, model: MODEL, now, question: UNDRAWN,
     });
     const decided = [ruled(call, at(FROZEN_MS)).decision, ruled(call, { ...at(FROZEN_MS), model: 'claude-sonnet-5' }).decision, ruled(call, at(twelfth + 500)).decision];
     fs.writeFileSync(path.join(folder(), 'config', 'config.json'), JSON.stringify({ trust: { threshold: 0.15 } }));
@@ -454,7 +455,7 @@ describe('the rule as the decision point gives it, once switched on (decision-po
   function drawn(h, question, { sort = 'several', label = BEHAVIOUR } = {}) {
     fs.mkdirSync(path.dirname(logPath()), { recursive: true });
     fs.writeFileSync(logPath(), lines(...h.events));
-    const at = { label, place: TOPIC, blocks_build: false, replaced_by: null, always: null, checked: false, project: { root: statePath(project('mint')), name: 'Mint' }, model: MODEL, now: FROZEN_MS, question };
+    const at = { label, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(project('mint')), name: 'Mint' }, model: MODEL, now: FROZEN_MS, question };
     return ruled(/** @type {any} */ ({ sort }), at);
   }
 

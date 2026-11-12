@@ -11,9 +11,11 @@
 //
 // It decides, in this order:
 // - Always ask, whatever the counts (16.5), where no label is needed to
-//   tell: replacing an entry the person decided, or kept since (16.5.7); and
-//   a question Claude marks as a design problem (19.4.22) or testing against
-//   a live server (19.4.20), a mark that can only make it ask.
+//   tell: replacing an entry the person decided, or kept since (16.5.7); a
+//   question an experiment still running measures, which only the person
+//   may close meanwhile (9.1.11); and a question Claude marks as a design
+//   problem (19.4.22) or testing against a live server (19.4.20), a mark
+//   that can only make it ask.
 // - With no label — the labeller's call failed, or no login serves it —
 //   ask (16.19.8).
 // - Always ask where the label tells: a danger question, read from the
@@ -61,6 +63,7 @@ const { HARD_TO_UNDO, ASK_AGAIN } = require('./trust-settings.cjs');
  * @property {{unit: string, phase: string, topic: string|null}} place where the call is made
  * @property {boolean} blocks_build made in the build for a task, which a question asked parks
  * @property {DecidedBy|null} replaced_by whose the entry the call would replace is — who decided it, or as the person's keep of it since was given, theirs or their "don't care" — null where it replaces none
+ * @property {string|null} measured the experiment still running that measures the question the call answers, null for none
  * @property {Always|null} always the mark it always asks by, null for none
  * @property {boolean} checked sent to check once already
  * @property {{id: string, name: string}} project the project the call is made in
@@ -126,12 +129,14 @@ function lineOf({ settings, blocks_build: blocks }, hard) {
 
 /**
  * Why the call asks before its label is read — replacing an entry of the
- * person's, under Claude's mark, or with no label — or null.
+ * person's, on a question an experiment still running measures, under
+ * Claude's mark, or with no label — or null.
  * @param {Context} context
  * @returns {string|null}
  */
-function asksUnread({ replaced_by: by, always, label }) {
+function asksUnread({ replaced_by: by, measured, always, label }) {
   if (by === 'person') return YOURS;
+  if (measured !== null) return `Experiment ${measured}, still running, measures this question, so it comes to you.`;
   if (always !== null) return ALWAYS[always];
   return label === null ? UNLABELLED : null;
 }
@@ -189,7 +194,8 @@ function byKind({ counts, project }, kind, { limit, said }) {
 
 /**
  * Whether the call goes to the person, and why: replacing an entry of the
- * person's, under Claude's mark, or with no label, ask; danger
+ * person's, on a question an experiment measures, under Claude's mark, or
+ * with no label, ask; danger
  * or a care entry, ask; a question Claude could find out, check, and ask
  * once sent to check; else as the count of one-answer calls stands for a
  * call sorted `one`, and as its kind's count stands for any other.

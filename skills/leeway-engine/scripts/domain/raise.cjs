@@ -316,6 +316,12 @@
 //   to raise again on. The seal is marked answered after the commit, with
 //   the answer the ledger holds, and keeps the first it was marked with:
 //   the ledger, not the seal, says whether a raise is answered.
+// - Once the person's answer to Claude's call lands in a topic's
+//   discussion — never a fact's, nor one answered already — the decision
+//   point is asked whether Claude offers to settle the rest of the topic
+//   (16.8.1, decision-point.cjs `convergenceDue`); where it is due, the
+//   response carries the cue: the unit, the topic and the agreements in a
+//   row there (convergence.cjs).
 // - "I don't follow" logs a raise event in the trust log alone — no entry,
 //   no answer, no reading (16.9.3, 16.12.3) — and counts it on the seal;
 //   the raise stays open, to be shown again. On a raise the ledger holds
@@ -340,7 +346,7 @@ const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, ASKED_BLIND, entryKind } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf, whoseDecision } = require('./ledger-fold.cjs');
-const { liveness, manifestOf } = require('./ledger-units.cjs');
+const { liveness, manifestOf, measuredBy } = require('./ledger-units.cjs');
 const { topicTitles, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
@@ -1087,10 +1093,11 @@ function subjectOf({ answers, replaces }) {
  * it is made and what it is about, whose the entry it would replace is,
  * the mark it always asks by, the task it is made for in the build, null
  * where none, the model of the session making the call, read once — the
- * model the call is decided under, sealed with it — and the question's id
- * a blind draw hashes, the same on every raise of it, none for a
- * replacement (`questionId`).
- * @typedef {{session: string, place: Place, target: Target, replacedBy: DecidedBy|null, always: Always|null, task: string|null, model: string|null, question: string|null}} Raising
+ * model the call is decided under, sealed with it — the question's id a
+ * blind draw hashes, the same on every raise of it, none for a replacement
+ * (`questionId`), and the experiment still running that measures the
+ * question it answers, none for a replacement (9.1.11).
+ * @typedef {{session: string, place: Place, target: Target, replacedBy: DecidedBy|null, always: Always|null, task: string|null, model: string|null, question: string|null, measured: string|null}} Raising
  */
 /**
  * What a raise asked seals beside its call: the rows the one-decision check
@@ -1159,11 +1166,11 @@ function checkedAs({ answers, replaces }, task) {
  * @returns {{decision: Decision, reason: string}}
  */
 function decided(cwd, raising, call, label) {
-  const { session, place, target, task, model } = raising;
+  const { session, place, target, task, model, measured } = raising;
   const checked = checkedAs(target, task);
   /** @type {At} */
   const at = {
-    label, place, ...decidedFrom(raising),
+    label, place, ...decidedFrom(raising), measured,
     checked: Object.hasOwn(readChecked(session), checked),
     project: { root: /** @type {string} */ (findStateRoot(cwd)), name: projectName(cwd) }, model, now: Date.now(), question: raising.question,
   };
@@ -1211,6 +1218,16 @@ function placedRaise(cwd, args, warnings, fact) {
  */
 function questionId(read, { answers }) {
   return answers === null ? null : factsOf(read, answers).root;
+}
+
+/**
+ * The experiment of the unit still running that measures the question a
+ * raise about `target` answers, null for none or for a replacement (9.1.11).
+ * @param {string} cwd @param {Place} place @param {Folded} read @param {Target} target @returns {string|null}
+ */
+function measuredOn(cwd, { unit }, read, { answers }) {
+  if (answers === null) return null;
+  return measuredBy(/** @type {Record<string, any>} */ (manifestOf(/** @type {string} */ (findStateRoot(cwd)), unit)), read.facts, answers);
 }
 
 /**
@@ -1457,7 +1474,7 @@ async function drawRaise(cwd, args, stdin) {
   const { parks, rest: unparked } = parksFlag(unfact);
   const { always, rest } = alwaysFlag(unparked, fact);
   const { place, target, replacedBy, short, read } = placedRaise(cwd, rest, warnings, fact);
-  const raising = { session, place, target, replacedBy, always, task: parks, model: modelOf(cwd), question: questionId(read, target) };
+  const raising = { session, place, target, replacedBy, always, task: parks, model: modelOf(cwd), question: questionId(read, target), measured: measuredOn(cwd, place, read, target) };
   const inBuild = checkBuildPlace(cwd, place, parks);
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
   const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
@@ -2019,6 +2036,20 @@ function dropCued(cwd, seal, recorded, care) {
 }
 
 /**
+ * The cue to offer to settle the rest of the topic, once the person's answer
+ * to Claude's call has landed in a topic's discussion (the header's): the
+ * unit, the topic and the agreements in a row there, where the decision
+ * point says the offer is due; none where the answer was answered already,
+ * or no offer is due.
+ * @param {string} cwd @param {Seal} seal @param {{already?: true}} recorded
+ */
+function convergenceCued(cwd, { fact, place: { unit, phase, topic } }, recorded) {
+  if (recorded.already || fact || phase !== 'discussion' || topic === null) return {};
+  const agreements = decisionPoint.convergenceDue(cwd, unit, topic);
+  return agreements === null ? {} : { convergence: { unit, topic, agreements } };
+}
+
+/**
  * The reveal of a blind raise answered (16.17.7): what the person gave,
  * whether it was Claude's sealed answer, and on the question's kind in the
  * project how often Claude picked as they did (`alikeOn`), read once the
@@ -2053,7 +2084,8 @@ function shownOnAnswer(cwd, seal, form, given, recorded) {
  * or that they didn't follow — and what a blind raise's answer shows
  * (`shownOnAnswer`). A "don't care" reads the care entries before anything
  * lands, so care entries that do not read refuse it with nothing
- * written.
+ * written. An answer to Claude's call in a topic's discussion cues the
+ * convergence offer where it is due (`convergenceCued`).
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  * @returns {{answered: Record<string, unknown>, reveal: string|null}}
  */
@@ -2065,7 +2097,7 @@ function answerRaise(cwd, args, stdin) {
   const care = form === 'dont-care' ? careEntries() : null;
   const given = answering(cwd, session, seal, form, key, stdin);
   const recorded = recordAnswer(cwd, session, seal, given);
-  const answered = care === null ? recorded : { ...recorded, ...dropCued(cwd, seal, recorded, care) };
+  const answered = { ...recorded, ...(care === null ? {} : dropCued(cwd, seal, recorded, care)), ...convergenceCued(cwd, seal, recorded) };
   return { answered, reveal: shownOnAnswer(cwd, seal, form, given, recorded) };
 }
 

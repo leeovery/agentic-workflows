@@ -87,6 +87,18 @@ function experimentWaits(manifest) {
 }
 
 /**
+ * The experiment of the unit still running that measures `question`, by
+ * any wording of it — the first entry of its chain, as the map matches it
+ * — null where none does.
+ * @param {Record<string, any>} manifest the unit's @param {Map<string, {root: string}>} facts the folded ledger's @param {string} question
+ * @returns {string|null}
+ */
+function measuredBy(manifest, facts, question) {
+  const root = facts.get(question)?.root;
+  return experimentWaits(manifest).find((wait) => wait.running && root !== undefined && facts.get(wait.question)?.root === root)?.experiment ?? null;
+}
+
+/**
  * Why an entry of `unit` on `topic` — null at the unit's level — is not
  * live, or null where it is.
  * @param {string} unit @param {string|null} topic @param {Record<string, any>|null} manifest the unit's
@@ -214,5 +226,5 @@ function changedUnits(root, before) {
 }
 
 module.exports = {
-  TOPIC_PHASES, hasItem, hasTopic, manifestOf, roadmapItemNamed, experimentWaits, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits,
+  TOPIC_PHASES, hasItem, hasTopic, manifestOf, roadmapItemNamed, experimentWaits, measuredBy, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits,
 };

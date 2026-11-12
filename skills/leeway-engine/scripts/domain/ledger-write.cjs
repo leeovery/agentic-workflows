@@ -177,7 +177,7 @@ const { appendEntry, carrying, commitLedger } = require('./ledger.cjs');
 const { HEADER, REASONS, ROADMAP, PRODUCT, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
-const { TOPIC_PHASES, hasItem, hasTopic, roadmapItemNamed, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
+const { TOPIC_PHASES, hasItem, hasTopic, roadmapItemNamed, manifestOf, measuredBy, liveness } = require('./ledger-units.cjs');
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
@@ -1120,11 +1120,9 @@ function checkUnmeasured({ said, write, at, content }, linked, read) {
   const handed = write.event === 'decided' && content.given !== 'own';
   if (field === undefined || content.by !== 'claude' || handed) return;
   const question = /** @type {string} */ (linked[field]);
-  const { root } = factsOf(read, question);
-  const measuring = experimentWaits(/** @type {Record<string, any>} */ (manifestOf(at.root, at.unit)))
-    .find((wait) => wait.running && read.facts.has(wait.question) && factsOf(read, wait.question).root === root);
-  if (measuring === undefined) return;
-  throw new Error(`${said}: ${shortId(question, read.facts.keys())} is measured by experiment ${measuring.experiment}, still running — Claude never closes a question its experiment measures; the person may, and once it ends the discussion writes the result`);
+  const measuring = measuredBy(/** @type {Record<string, any>} */ (manifestOf(at.root, at.unit)), read.facts, question);
+  if (measuring === null) return;
+  throw new Error(`${said}: ${shortId(question, read.facts.keys())} is measured by experiment ${measuring}, still running — Claude never closes a question its experiment measures; the person may, and once it ends the discussion writes the result`);
 }
 
 /**
