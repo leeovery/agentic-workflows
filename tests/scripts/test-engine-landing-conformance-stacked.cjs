@@ -10,10 +10,8 @@
 // branch in the submodule, lands after it as a phase — the project's
 // default branch pointing the submodule at the submodule's after each,
 // every landing under its task's subject (7.2.18), each repository holding
-// what its tasks changed. One deleting the phase below's file lands at
-// finish with the file gone from the default branch, its change read over
-// the phase below's head however that phase merged (S3). Those landing at
-// finish are
+// what its tasks changed. One deleting the phase below's file is
+// test-engine-landing-conformance.cjs's (S3); those landing at finish,
 // test-engine-landing-conformance-stacked-finish.cjs's; the walk itself is
 // test-engine-landing-conformance-nested.cjs's. A driver's
 // side (tests/drivers/{name}/landing.cjs) readies each repository and reads
@@ -28,7 +26,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { tip } = require('./engine-harness.cjs');
-const { NESTED_TASKS, openArgs, track, commitFiles, finishReady, nestedConformance } = require('./landing-world.cjs');
+const { NESTED_TASKS, openArgs, track, commitFiles, nestedConformance } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { rates, show } = NESTED_TASKS;
@@ -69,19 +67,6 @@ for (const { name } of listDrivers('landing')) {
         ['.gitignore', '.gitmodules', 'app.txt', 'ext', 'fix.txt', 'more.txt', 'rates.txt', 'show.txt'], ['ext-rates.txt', 'ext.txt'], ['lib-rates.txt', 'lib.txt'],
       ]);
       for (const [dir, into] of Object.values(repos(at))) assert.strictEqual(tip(dir, into), side.defaultTip(dir, into), `${dir}'s default branch here does not hold its landing`);
-    });
-
-    it('a fix phase stacked on phase 1 deleting the file phase 1 added lands at finish with the file gone from the default branch (S3)', () => {
-      const at = project();
-      const undo = track(at.dir, '3.1', 'fix', 'Drop show');
-      commitFiles(at.dir, undo.branch, show.branch, {}, { removed: ['show.txt'] });
-      for (const task of [rates, show, undo]) ok(at.dir, openArgs(task));
-      ok(at.dir, ['land', 'chain', 'pay', '1.2']);
-      ok(at.dir, ['land', 'phase', 'pay', '1']);
-      finishReady(at.dir);
-      ok(at.dir, ['land', 'finish', 'pay']);
-
-      assert.deepStrictEqual([side.holds(at.dir, 'main').filter((file) => file.endsWith('.txt')), tip(at.dir, 'main') === side.defaultTip(at.dir, 'main')], [['app.txt', 'rates.txt'], true]);
     });
   });
 }

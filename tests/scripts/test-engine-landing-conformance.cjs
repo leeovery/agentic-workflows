@@ -4,9 +4,10 @@
 // The landing conformance suite (7.3.1, 7.3.4): the contract every landing
 // driver meets, run through the `land` verbs against each shipped driver in
 // turn — a task's pull request, a stack in the order its tasks were merged
-// back, a phase merged, finish, a task whose branch moved on since it
-// opened refused at its phase's merge with the way back, its commits kept
-// on a branch, and nothing under `.leeway/` landed (4.S2). Once a phase
+// back, a phase merged, finish, a fix phase stacked on another deleting
+// its file landing at finish with the file gone (S3), a task whose branch
+// moved on since it opened refused at its phase's merge with the way back,
+// its commits kept on a branch, and nothing under `.leeway/` landed (4.S2). Once a phase
 // lands, the default branch here holds the landing, wherever the driver
 // lands it. After every test, the default branch holds nothing under
 // `.leeway/`. The local driver runs fully here (7.3.6, 7.S11), and the
@@ -133,6 +134,18 @@ for (const { name } of listDrivers('landing')) {
         { subject: 'fix(pay): Fix it', task: 'pay-4-1', paths: ['fixed.txt'] },
         { subject: 'fix(pay): Fix it again', task: 'pay-5-1', paths: ['again.txt'] },
       ]);
+      holdsTheLanding(at);
+    });
+
+    it('a fix phase stacked on phase 2 deleting the file phase 2 added lands at finish with the file gone from the default branch, its change read over phase 2\'s head however that phase merged (S3)', () => {
+      const at = project();
+      const undo = cutTask(at, '4.1', 'fix', 'Drop the rounding', rounding.branch, {}, { removed: ['round.txt'] });
+      for (const task of [rounding, undo]) ok(at, openArgs(task));
+      ok(at, ['land', 'phase', 'pay', '2']);
+      finishReady(at);
+      ok(at, ['land', 'finish', 'pay']);
+
+      assert.deepStrictEqual([side.landed(at).map(({ task, paths }) => [task, paths]), side.holds(at).includes('round.txt')], [[['pay-2-1', ['round.txt']], ['pay-4-1', ['round.txt']]], false]);
       holdsTheLanding(at);
     });
 

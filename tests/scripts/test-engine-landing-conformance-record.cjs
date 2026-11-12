@@ -77,7 +77,7 @@ for (const { name } of listDrivers('landing')) {
   const lastState = (at) => stateGit(at, ['log', '-1', '--format=%s']).trim();
 
   describe(`the ${name} landing driver's landing record (7.2.22)`, () => {
-    it('records each task a phase lands, by the engine, at the commit naming it, dated as that commit was made, the tip its branch landed at, committed to the state branch, and landed again, merging nothing, records nothing; its branch moved onto the landing after, a task stays landed; each verb within the git commands the driver names for it', () => {
+    it('records each task a phase lands, by the engine, at the commit naming it, dated as that commit was made, the tip its branch landed at, committed to the state branch, and landed again, merging nothing, records nothing; read by its record only on a revision whose first-parent line holds it, not landed on the commit before; its branch moved onto the landing after, a task stays landed; each verb within the git commands the driver names for it', () => {
       const at = project();
       /** @type {[string, 'open'|'phase'|'again'|'finish', number][]} */
       const ran = [];
@@ -93,6 +93,9 @@ for (const { name } of listDrivers('landing')) {
       counted('open 2.1', 'open', openArgs(rounding));
       const tips = [card, total].map(({ branch }) => tip(at, branch));
       counted('phase', 'phase', ['land', 'phase', UNIT, '1']);
+      const [repo] = projectRepos(at);
+      const read = unitLanded(at, UNIT, [repo], null);
+      const onLine = ['main~1', 'main'].map((rev) => read.on(repo, tip(at, rev)).task({ unit: UNIT, phase: 1, n: 1 }).landed);
       const state = stateGit(at, ['rev-parse', 'HEAD']).trim();
       const again = counted('phase again', 'again', ['land', 'phase', UNIT, '1']).already;
       const kept = [recorded(at), lastState(at), again, stateGit(at, ['rev-parse', 'HEAD']).trim()];
@@ -101,21 +104,11 @@ for (const { name } of listDrivers('landing')) {
       git(at, ['branch', '-f', card.branch, 'main']);
       const stays = unitLanded(at, UNIT, projectRepos(at), null).landed({ unit: UNIT, phase: 1, n: 1 });
 
-      assert.deepStrictEqual([...kept, stays], [{
+      assert.deepStrictEqual([...kept, stays, onLine], [{
         [`${UNIT}-1-2`]: ['engine', 'feat(pay): Show total', tips[1], true, true],
         [`${UNIT}-1-1`]: ['engine', 'feat(pay): Add card', tips[0], true, true],
-      }, `land(${UNIT}): record 1.2, 1.1 landed`, true, state, true]);
+      }, `land(${UNIT}): record 1.2, 1.1 landed`, true, state, true, [false, true]]);
       assert.deepStrictEqual(ran.filter(([, verb, count]) => count > side.gitCalls[verb]), [], `the git commands each verb ran: ${JSON.stringify(ran)}`);
-    });
-
-    it('a recorded landing is read only on a revision whose first-parent line holds it: the task not landed on the commit before it, landed on it', () => {
-      const at = project();
-      ok(at, openArgs(card));
-      ok(at, ['land', 'phase', UNIT, '1']);
-      const [repo] = projectRepos(at);
-      const read = unitLanded(at, UNIT, [repo], null);
-
-      assert.deepStrictEqual(['main~1', 'main'].map((rev) => read.on(repo, tip(at, rev)).task({ unit: UNIT, phase: 1, n: 1 }).landed), [false, true]);
     });
 
     it('a recorded task\'s branch rewritten past its landing, its last commit made again: changed after its landing, land finish lands its change and reads it landed after, the record moved to that landing by the engine at its branch\'s tip, its first landing kept (R29, R30)', () => {
