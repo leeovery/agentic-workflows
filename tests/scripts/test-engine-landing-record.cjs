@@ -8,13 +8,14 @@
 // commit already writing nothing; a task landing again taking its new
 // commit, tip, `by` and `at`, `first` kept, and the records of its other
 // repositories left as they are, each read back as its own alone; the
-// record kept through the unit's cancel and reactivate. Read back (task-landed.cjs), a recorded fix's commit up to
-// its recorded tip has landed, a later fix having undone its change, which
-// its change alone, with no pull request read, does not say; a recorded
-// task's commit past its recorded tip, taking a file back that the next
-// adds again, has landed with its work as read. Git layer:
-// the write called in process on a project world built once and copied
-// for each test.
+// record kept through the unit's cancel and reactivate. Read back
+// (task-landed.cjs), a recorded fix's commit up to its recorded tip has
+// landed, a later fix having undone its change, which its change alone,
+// with no pull request read, does not say; so has a recorded task's, its
+// branch reset to the default branch since; a recorded task's commit past
+// its recorded tip, taking a file back that the next adds again, has
+// landed with its work as read. Git layer: the write called in process on
+// a project world built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -136,6 +137,27 @@ describe('the landing record\'s write (7.2.22)', () => {
     const read = repoLanded(at, UNIT, 'refs/heads/main', { since: null, recorded: new Map([[`${UNIT}-1-1`, { commit: squash, tip: landed, first: squash, by: 'engine', at: '' }]]) });
 
     assert.deepStrictEqual([read.stands({ unit: UNIT, phase: 1, n: 1 }), read.landedCommit(dropped, `${UNIT}-1-1`)], ['landed', true]);
+  });
+
+  it('a recorded task whose commit a later one of its own undid, its branch then reset to the default branch holding its landing: landed, and that commit with it, its recorded tip holding it — never read off the branch as it now stands', () => {
+    const { at, commits: [one] } = project();
+    const branch = 'feat/pay-1.1-tip';
+    git(at, ['switch', '-q', '-c', branch, one]);
+    createFile(at, 'tip.txt', 'tip\n');
+    commitCode(at, `feat(pay): write the tip\n\n${TRAILER}: ${UNIT}-1-1`);
+    const undone = codeHead(at);
+    git(at, ['rm', '-q', 'tip.txt']);
+    createFile(at, 'note.txt', 'note\n');
+    commitCode(at, `feat(pay): note it instead\n\n${TRAILER}: ${UNIT}-1-1`);
+    const landed = codeHead(at);
+    git(at, ['switch', '-q', 'main']);
+    git(at, ['merge', '-q', '--squash', branch]);
+    commitCode(at, 'In my own words');
+    const squash = codeHead(at);
+    git(at, ['branch', '-q', '-f', branch, 'main']);
+    const read = repoLanded(at, UNIT, 'refs/heads/main', { since: null, recorded: new Map([[`${UNIT}-1-1`, { commit: squash, tip: landed, first: squash, by: 'engine', at: '' }]]) });
+
+    assert.deepStrictEqual([read.stands({ unit: UNIT, phase: 1, n: 1 }), read.landedCommit(undone, `${UNIT}-1-1`)], ['landed', true]);
   });
 
   it('keeps the record through the unit\'s cancel and reactivate', () => {
