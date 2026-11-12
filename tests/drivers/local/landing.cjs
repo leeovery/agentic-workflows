@@ -56,7 +56,7 @@ module.exports = {
   /** The environment every call runs under: the suite's own. */
   env: {},
   /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-record.cjs). */
-  gitCalls: { open: 44, phase: 48, again: 28, finish: 86 },
+  gitCalls: { open: 36, phase: 38, again: 23, finish: 76 },
   /** The world readied for the driver, once per process. @param {string} dir */
   prepare: (dir) => setLandingDriver(dir, 'local'),
   /** A repository nested in the world readied for the driver: nothing to ready. */
