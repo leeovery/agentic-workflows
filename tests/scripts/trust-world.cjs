@@ -11,14 +11,14 @@
 // verdicts' and the raises' (raise-world.cjs): the log's text and events, and
 // the project's id it keys them by (`trustLogHelpers`). And what the ask
 // rule's suites share (test-engine-trust-counts.cjs,
-// test-engine-ask-rule.cjs, test-engine-raise-rule.cjs) and convergence's
-// (test-engine-convergence.cjs): a history of the log's events built in
-// memory, each a second after the last, an answer naming the ledger entry
-// it landed as where a suite places it (`history`), and questions' ids the
-// blind draw reads each way. And what the suites holding a learned gate's
-// showing through its surface share: the gate a conversation was shown
-// (`shownIn`), and the answers logged at the gate's showings, each by the
-// event it is (`showingAnswers`).
+// test-engine-ask-rule.cjs, test-engine-raise-rule.cjs), convergence's
+// (test-engine-convergence.cjs) and the matrix's (test-engine-matrix.cjs): a
+// history of the log's events built in memory, each a second after the
+// last, an answer naming the ledger entry it landed as where a suite places
+// it (`history`), and questions' ids the blind draw reads each way. And what
+// the suites holding a learned gate's showing through its surface share: the
+// gate a conversation was shown (`shownIn`), and the answers logged at the
+// gate's showings, each by the event it is (`showingAnswers`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -190,11 +190,11 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
   /**
    * A raise on `kind` answered `answer`, Claude's lean row 1, landed as
    * `entry` — the person's "don't care", typed, where `dontCare`; asked
-   * blind where `blind`: its entry.
-   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string}} [opts] @param {Where} [where]
+   * blind where `blind`; blocking build work where `blocksBuild`: its entry.
+   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string, blocksBuild?: boolean}} [opts] @param {Where} [where]
    */
-  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId() } = {}, where = {}) => /** @type {string} */ (log('raise', {
-    entry, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: false, replaced_by: null, always: null, blind,
+  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId(), blocksBuild = false } = {}, where = {}) => /** @type {string} */ (log('raise', {
+    entry, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: blocksBuild, replaced_by: null, always: null, blind,
   }, where).entry);
   const h = {
     events,
@@ -202,6 +202,8 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     now: () => clock,
     /** `n` answers on `kind` taking Claude's lean. @param {number} n @param {Kind|null} [kind] @param {Where} [where] */
     agree: (n, kind = 'behaviour', where = {}) => Array.from({ length: n }, () => raise(kind, '1', {}, where)),
+    /** `n` answers on `kind` taking Claude's lean, each blocking build work. @param {number} n @param {Kind|null} [kind] */
+    blocking: (n, kind = 'behaviour') => Array.from({ length: n }, () => raise(kind, '1', { blocksBuild: true })),
     /** `n` of the person's "don't care" answers on `kind`. @param {number} n @param {Kind|null} [kind] @param {Where} [where] */
     dontCare: (n, kind = 'behaviour', where = {}) => Array.from({ length: n }, () => raise(kind, '1', { dontCare: true }, where)),
     /** A departure on `kind`, judged `verdict` where given: its entry. @param {string|null} [verdict] @param {Kind|null} [kind] @param {Where} [where] */

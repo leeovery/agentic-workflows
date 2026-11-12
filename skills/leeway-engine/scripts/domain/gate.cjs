@@ -46,6 +46,10 @@
 //   same way, by the menu it is declared as (raise.cjs).
 // - The recommended row is the engine's own, from the record, never the
 //   caller's word.
+// - A command that writes only on the person's answer — the record of the
+//   person (person-verbs.cjs), their settings (trust-verbs.cjs) — asks the
+//   record whether the gate last shown was answered with the row leading
+//   to it (`answeredTo`).
 // - A raise is no gate (16.9, raise.cjs). Its MENU is declared `raise — <id>`,
 //   and the one rule on that name keeps it out: it is never recorded as the
 //   gate shown, and `gate` refuses it, naming `raise answer`. Drawing one

@@ -131,7 +131,7 @@ describe('the menus\' registry', () => {
     const keyable = SCHEMA.events.gate.fields.find((/** @type {{name: string}} */ f) => f.name === 'gate').type;
     const gates = [...Object.values(MENUS).map(({ gate }) => gate), HELP_GATE];
 
-    assert.deepStrictEqual(gates, ['start menu', 'epic menu', 'triage', 'archived items', 'archived item', 'roadmap', 'manage', 'manage unit', 'closed units', 'verdicts', 'care entries', 'help']);
+    assert.deepStrictEqual(gates, ['start menu', 'epic menu', 'triage', 'archived items', 'archived item', 'roadmap', 'manage', 'manage unit', 'closed units', 'verdicts', 'care entries', 'matrix', 'help']);
     assert.deepStrictEqual(gates.filter((gate) => !keyable.test(gate)), []);
     assert.deepStrictEqual(Object.values(MENUS).filter(({ id }, i) => Object.keys(MENUS)[i] !== id), []);
   });
@@ -140,7 +140,7 @@ describe('the menus\' registry', () => {
     const arrivals = Object.fromEntries(Object.values(MENUS).map(({ id, arrival }) => [id, arrival]));
 
     assert.deepStrictEqual(arrivals, {
-      'start-menu': 'none', 'epic-menu': 'unit', triage: 'none', archived: 'none', 'archived-item': 'none', roadmap: 'roadmap', manage: 'none', 'manage-unit': 'none', closed: 'none', verdicts: 'none', care: 'none',
+      'start-menu': 'none', 'epic-menu': 'unit', triage: 'none', archived: 'none', 'archived-item': 'none', roadmap: 'roadmap', manage: 'none', 'manage-unit': 'none', closed: 'none', verdicts: 'none', care: 'none', matrix: 'none',
     });
   });
 
@@ -462,7 +462,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     const exists = fs.existsSync;
     t.mock.method(fs, 'existsSync', (/** @type {fs.PathLike} */ file) => !unwritten.includes(String(file)) && exists(file));
 
-    assert.strictEqual(refuses(dir, ['render', 'help', 'inbox']).error, 'there is no menu "inbox" — the menus: start-menu, epic-menu, triage, archived, archived-item, roadmap, manage, manage-unit, closed, verdicts, care');
+    assert.strictEqual(refuses(dir, ['render', 'help', 'inbox']).error, 'there is no menu "inbox" — the menus: start-menu, epic-menu, triage, archived, archived-item, roadmap, manage, manage-unit, closed, verdicts, care, matrix');
     assert.deepStrictEqual([refuses(dir, ['render', 'help', 'triage', '--file', 'pick.json']).error, refuses(dir, ['render', 'help', 'archived']).error], [
       'there is no help for triage yet — its help is triage.help.md, beside its projection',
       'there is no help for the archived items yet — its help is archived.help.md, beside its projection',

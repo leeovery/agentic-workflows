@@ -11,8 +11,10 @@
 // worked values, and the state walked in time order at the threshold a
 // question takes, each moment's changes together;
 // derived from the log each time, as of the clock passed in, never stored;
-// what the release ships of them; and a blind question's reveal's count
-// of a kind's last answers that took Claude's lean.
+// the tally the matrix shows beside the bound, and the weight a count's
+// prior carries in; what the release ships of them; and a blind
+// question's reveal's count of a kind's last answers that took Claude's
+// lean.
 //
 // Layer: unit. World: the events are built in memory, each a second after
 // the last, a day before the frozen clock (trust-world.cjs, `history`); the
@@ -35,7 +37,7 @@ const { readTrustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs')
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 const {
-  MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn,
+  MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn, tallyFrom, carriedWeight,
 } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const { evidenceIn } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 
@@ -315,6 +317,53 @@ describe('the merge with the person\'s other projects (16.14.3, 16.14.6)', () =>
     for (let i = 0; i < 4; i += 1) h.depart('loss', 'behaviour', { project: ELSEWHERE });
 
     assert.deepStrictEqual([behaviour(h, { now: old + DAY }), behaviour(h)], [{ losses: 2.5, clean: 7.5 }, { losses: 2, clean: 6 }]);
+  });
+});
+
+describe('the tally the matrix shows (17.1.2, 17.S8)', () => {
+  it('counts the project\'s own answers once each, whatever their weight: answered, the departures overturned, and those lost — judged a real loss, or not yet judged — as of the clock; a reversal in place of the answer it cancels; Claude\'s one-answer calls, standing or answered, and those overruled', () => {
+    const h = history();
+    h.agree(1, 'behaviour', { at: FROZEN_MS - SIX_MONTHS - DAY });
+    h.agree(2, 'behaviour', { at: FROZEN_MS - DAY });
+    h.depart('loss');
+    h.depart('fix');
+    const waiting = h.depart(null);
+    h.reverse(h.agree(1, 'look')[0]);
+    h.reverse(h.call('one', null));
+    h.call('one');
+    h.sorted('one', '1', 'scope');
+    const before = h.now();
+    h.verdict(waiting, 'nothing');
+
+    const tally = (/** @type {number} */ now) => tallyFrom(h.events, { project: HERE, model: MODEL, now });
+    assert.deepStrictEqual([tally(before), tally(FROZEN_MS)].map(({ kinds: { behaviour: b, look }, one }) => ({ behaviour: b, look, one })), [
+      { behaviour: { answered: 6, overturned: 3, lost: 2 }, look: { answered: 1, overturned: 1, lost: 1 }, one: { calls: 3, overruled: 1 } },
+      { behaviour: { answered: 6, overturned: 3, lost: 1 }, look: { answered: 1, overturned: 1, lost: 1 }, one: { calls: 3, overruled: 1 } },
+    ]);
+  });
+
+  it('leaves out what the counts never weigh: another project\'s answers, a model\'s the session does not read, one not followed, Claude\'s call standing, and a question with no label from every kind', () => {
+    const h = history();
+    h.agree(1);
+    h.agree(1, 'behaviour', { project: ELSEWHERE });
+    h.agree(1, 'behaviour', { model: UNLISTED });
+    h.unfollowed('several');
+    h.call('several');
+    h.agree(1, null);
+
+    const { kinds } = tallyFrom(h.events, { project: HERE, model: MODEL, now: FROZEN_MS });
+    assert.deepStrictEqual(KINDS.filter((kind) => kinds[kind].answered > 0).map((kind) => [kind, kinds[kind]]), [['behaviour', { answered: 1, overturned: 0, lost: 0 }]]);
+  });
+
+  it('carries in a count\'s prior, the person\'s other projects\' answers weighed, at most 10 answers\' weight, the project\'s own never', () => {
+    const h = history();
+    h.agree(2, 'look', { project: ELSEWHERE, at: FROZEN_MS - SIX_MONTHS - DAY });
+    h.agree(4, 'look', { project: ELSEWHERE, at: FROZEN_MS - DAY });
+    h.agree(13, 'scope', { project: ELSEWHERE });
+    h.agree(5, 'look');
+
+    const { kinds } = countsIn(h);
+    assert.deepStrictEqual([carriedWeight(kinds.look), carriedWeight(kinds.scope), carriedWeight(kinds.words)], [5, 10, 0]);
   });
 });
 

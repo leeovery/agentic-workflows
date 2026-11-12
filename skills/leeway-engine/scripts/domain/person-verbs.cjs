@@ -378,4 +378,4 @@ function careDropSurface(cwd) {
   return dropPick(here.name, kinds);
 }
 
-module.exports = { PERSON_USAGE, runPersonVerb, careSurface, careKindSurface, careDropSurface };
+module.exports = { PERSON_USAGE, hereOf, sessionOf, runPersonVerb, careSurface, careKindSurface, careDropSurface };

@@ -70,6 +70,7 @@ const { CARRY_VERB, CARRY_USAGE, carryRecord } = require('./domain/ledger-carry.
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { PERSON_USAGE, runPersonVerb } = require('./domain/person-verbs.cjs');
 const { CONVERGENCE_USAGE, runConvergenceVerb } = require('./domain/convergence.cjs');
+const { TRUST_USAGE, runTrustVerb } = require('./domain/trust-verbs.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
@@ -246,6 +247,7 @@ ${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
 ${PERSON_USAGE.replace(/^/gm, '  ')}
 ${CONVERGENCE_USAGE.replace(/^/gm, '  ')}
+${TRUST_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--seed <path> …]
   workunit cancel <work-unit>
@@ -459,6 +461,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render convergence <wu>.<topic> [--asked]
   render roadmap
   render roadmap-harvest --file <items.json>
+  render matrix
+  render matrix-replay --threshold <percent> | --build <percent>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -598,6 +602,25 @@ function runConvergence(call, argv) {
   const [verb = '', ...rest] = argv;
   try {
     respond(call, runConvergenceVerb(call.cwd, verb, rest));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// trust — the person's settings and corrections (domain/trust-verbs.cjs):
+// `threshold` and `build-threshold` write the settings file on the person's
+// yes on the replay, as the gate recorded it, holding no writer lock;
+// `correct` logs the person's correction of a kind or a verdict in the
+// trust log, under the writer lock runCli takes, writing nothing the state
+// holds.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runTrust(call, argv) {
+  const [verb = '', ...rest] = argv;
+  try {
+    respond(call, runTrustVerb(call.cwd, verb, rest));
   } catch (err) {
     failJson(call, err);
   }
@@ -2527,6 +2550,7 @@ const COMMANDS = Object.freeze({
   'quick-fix': runQuickFix,
   person: runPerson,
   convergence: runConvergence,
+  trust: runTrust,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2560,7 +2584,8 @@ const COMMANDS = Object.freeze({
 // worktree, outside the state; `person` writes the record of the person,
 // under its own lock, and the conversation's folder; `convergence` writes
 // the trust log, under its own lock, or the topic's cache, which the state
-// ignores; and the rest read:
+// ignores; `trust threshold` and `build-threshold` write the person's
+// settings file, outside the project; and the rest read:
 // `layout guard` among them, run before every file Claude writes, `brief
 // guard`, before every dispatch of an agent, `shell guard`, before every
 // shell command, `checklist show`, `migrate check`, `measures` and `board`.
@@ -2596,6 +2621,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   scratch: '*',
   person: '*',
   convergence: '*',
+  trust: ['threshold', 'build-threshold'],
 }));
 
 /** @param {string[]} argv @returns {boolean} */

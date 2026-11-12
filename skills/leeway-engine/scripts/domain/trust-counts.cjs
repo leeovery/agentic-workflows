@@ -63,6 +63,11 @@
 //   person did on its kind in the project: of the kind's latest answers,
 //   25 at most (P9) — the person's to a raise, blind or shown, and their
 //   reversals, none cancelled — those that took Claude's lean (`alikeOn`).
+// - The tally the matrix shows beside the bound (17.1.2): the project's own
+//   answers its counts weigh at all, each counted once whatever its weight
+//   — a kind's answered, overturned and lost as of the clock, and Claude's
+//   one-answer calls and those overruled; and the weight a count's prior
+//   carries in from the person's other projects, as the merge caps it.
 // - What ships is this procedure and its defaults, never anyone's counts
 //   (16.16.1). The defaults are 16.20.1's, held with the person's own
 //   settings over them (trust-settings.cjs).
@@ -391,6 +396,57 @@ function countsOf(root, { model, now }) {
 }
 
 /**
+ * A kind's answers as the matrix counts them (the header's): the person's,
+ * answered; the departures among them, overturned; and those lost, judged a
+ * real loss or not yet judged.
+ * @typedef {{answered: number, overturned: number, lost: number}} KindTally
+ */
+/** Claude's one-answer calls, standing or answered, and the overrules among them. @typedef {{calls: number, overruled: number}} OneTally */
+/** The tally on a project: each kind's, and the one-answer calls'. @typedef {{kinds: Record<Kind, KindTally>, one: OneTally}} Tally */
+
+/**
+ * The tally `events` hold for the project `project`, for the model `model`
+ * as of the time `now` (the header's): every answer of the project's own
+ * whose model `model` reads, counted once — a reversal in place of the
+ * answer it cancels. Pure.
+ * @param {Record<string, unknown>[]} events
+ * @param {{project: string|null, model: string|null, now: number}} clock
+ * @returns {Tally}
+ */
+function tallyFrom(events, { project, model, now }) {
+  const evidence = evidenceIn(events.filter(({ at }) => Date.parse(/** @type {string} */ (at)) <= now));
+  const ancestry = ancestryOf(model);
+  /** @type {Record<Kind, KindTally>} */
+  const kinds = /** @type {Record<Kind, KindTally>} */ (Object.fromEntries(KINDS.map((kind) => [kind, { answered: 0, overturned: 0, lost: 0 }])));
+  /** @type {OneTally} */
+  const one = { calls: 0, overruled: 0 };
+  for (const { event, standing, cancelled_by: cancelledBy, kind, sort, model: of } of evidence.answers) {
+    if (event.project !== project || cancelledBy !== null || modelWeight(of, ancestry) === 0) continue;
+    const departs = standing === 'departure';
+    if (kind !== null && (departs || standing === 'agreement')) {
+      const tally = kinds[kind];
+      tally.answered += 1;
+      if (departs) tally.overturned += 1;
+      if (departs && judgedAt(evidence.verdicts.get(/** @type {string} */ (event.entry)) ?? [], now) === LOSS) tally.lost += 1;
+    }
+    if (sort === 'one' && Object.hasOwn(ONE_ANSWER, standing)) {
+      one.calls += 1;
+      if (departs) one.overruled += 1;
+    }
+  }
+  return { kinds, one };
+}
+
+/**
+ * The weight `count`'s prior carries into the project: its other projects'
+ * answers, weighted, at most PRIOR_CAP answers' weight (16.14.3).
+ * @param {Count} count
+ */
+function carriedWeight({ changes }) {
+  return Math.min(PRIOR_CAP, changes.reduce((sum, { own, by }) => (own ? sum : sum + by), 0));
+}
+
+/**
  * The weights the project's own answers and its prior hold, merged: the
  * prior scaled to at most PRIOR_CAP answers' weight, then added.
  * @param {Map<Outcome, number>} own @param {Map<Outcome, number>} prior
@@ -470,4 +526,4 @@ function stateOf({ rule, changes }, threshold) {
   return { asks, bound: upperBound(split), ...split };
 }
 
-module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn };
+module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn, tallyFrom, carriedWeight };

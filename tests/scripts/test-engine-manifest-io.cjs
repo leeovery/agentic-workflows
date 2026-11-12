@@ -664,10 +664,10 @@ describe('engine writes take the writer lock', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers without trying the lock while a live holder has it — the record of the person\'s proposal and its yes, and their no to the convergence offer, among them — none but boot, the ledger, an asset link or spike, a raise\'s answer, an entry\'s start, a verify\'s record and a capture, in the project it lands in, take it anywhere', async (t) => {
+  it('every exempt command answers without trying the lock while a live holder has it — the record of the person\'s proposal and its yes, their no to the convergence offer, and the settings the person picked on their replays, among them — none but boot, the ledger, an asset link or spike, a raise\'s answer, an entry\'s start, a verify\'s record and a capture, in the project it lands in, take it anywhere', async (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
-    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'asset', 'raise', 'person', 'convergence', 'migrate check', 'verify', 'inbox capture'].sort(), table.sort(), 'a call below for every exempt entry, boot, the ledger and the assets aside (test-engine-asset.cjs), a raise, the record of the person and the convergence offer\'s no after them, migrate check where a directive is installed (test-migration-directives.cjs), verify, which runs the product (test-engine-verify.cjs), and a capture, which takes the lock of the project it lands in (test-engine-inbox-capture.cjs)');
+    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'asset', 'raise', 'person', 'convergence', 'trust threshold', 'trust build-threshold', 'migrate check', 'verify', 'inbox capture'].sort(), table.sort(), 'a call below for every exempt entry, boot, the ledger and the assets aside (test-engine-asset.cjs), a raise, the record of the person, the convergence offer\'s no and the settings the person picks after them, migrate check where a directive is installed (test-migration-directives.cjs), verify, which runs the product (test-engine-verify.cjs), and a capture, which takes the lock of the project it lands in (test-engine-inbox-capture.cjs)');
     assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');
@@ -693,6 +693,12 @@ describe('engine writes take the writer lock', () => {
     harness.output(dir, ['render', 'convergence', 'payments.auth-flow', '--asked'], { env });
     harness.ok(dir, ['gate', 'convergence offer', '--pick', 'n'], { env });
     harness.ok(dir, ['convergence', 'decline', 'payments', 'auth-flow'], { env });
+    t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'config.json'), { force: true }));
+    for (const [flag, verb, rate] of [['--threshold', 'threshold', '25'], ['--build', 'build-threshold', '30']]) {
+      harness.output(dir, ['render', 'matrix-replay', flag, rate], { env });
+      harness.ok(dir, ['gate', 'matrix replay', '--pick', 'y'], { env });
+      harness.ok(dir, ['trust', verb, rate], { env });
+    }
     assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });

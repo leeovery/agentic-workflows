@@ -7,15 +7,16 @@
 // file in the system config directory, `config.json`, under its `trust` key,
 // beside the knowledge base's: the threshold, a fraction, and its raise
 // mid-build where a question blocks build work, null until the person picks
-// one (16.4.7). It only reads: the person's pick from a replay writes them
-// (16.15). A settings file that does not read as JSON, or a `trust` key
-// holding no setting's value, is refused, naming the file; a key under it no
-// setting of this engine's names is another release's, and passed over.
+// one (16.4.7). The person's pick from a replay writes one (16.15,
+// trust-verbs.cjs), merged into the file beside the rest (system-config.cjs).
+// A settings file that does not read as JSON, or a `trust` key holding no
+// setting's value, is refused, naming the file; a key under it no setting of
+// this engine's names is another release's, passed over and kept.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { SETTINGS_FILE, systemConfigDir } = require('../kernel/system-config.cjs');
+const { SETTINGS_FILE, systemConfigDir, changeSettings } = require('../kernel/system-config.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 
@@ -104,7 +105,20 @@ function trustSettings() {
   return settings;
 }
 
+/**
+ * The person's setting `name` set to `value`, every other setting and key of
+ * the settings file kept. Refuses a value the setting cannot hold, and a
+ * settings file the rule cannot read, writing nothing.
+ * @param {keyof Settings} name @param {number} value
+ */
+function setTrustSetting(name, value) {
+  if (!SETTINGS[name].test(value)) throw new Error(`the ask rule's ${name} is ${SETTINGS[name].is}: ${JSON.stringify(value)}`);
+  // Read first, so a file the rule refuses is never written over.
+  trustSettings();
+  changeSettings(TRUST, { [name]: value });
+}
+
 module.exports = {
-  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL, REVEAL_LAST, DEFAULTS, trustSettings,
+  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL, REVEAL_LAST, DEFAULTS, trustSettings, setTrustSetting,
   CONVERGENCE_RUN,
 };

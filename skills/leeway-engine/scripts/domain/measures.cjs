@@ -50,6 +50,17 @@
 // review did later. A cancelled bugfix counts,
 // one moved to another type does not, and a reopened investigation's record
 // stands until it concludes again (bug-records.cjs).
+//
+// How a review's findings split across its lanes (17.1.3, P11), the
+// product's measure the matrix shows (17.2.1, projections/matrix.cjs): each
+// question a review asked on the project's ledger, still live, by what
+// settled it — apply, merged into what the record already held, a decision
+// or a finding (5.5.5); route, moved to another topic, or to the roadmap as
+// later; walked, answered by the person, their "your call" and "don't care"
+// among it, since each was asked them; decide, settled by Claude's own call.
+// A move routes it however it is answered after, as a merge applies it;
+// one still open is in no lane yet. A decision carried over by the
+// migration is read by who made it.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -57,13 +68,16 @@ const path = require('path');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { foldLedger, ID_FACTS } = require('./ledger-fold.cjs');
+const { foldLedger, ID_FACTS, factsOf, isLive, questionStands, answersOf } = require('./ledger-fold.cjs');
+const { decidedBy } = require('./ledger-events.cjs');
 const { readReport } = require('./round-report.cjs');
 const { recordedRounds } = require('./review-phase.cjs');
 const { byName, areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
+/** @typedef {import('./ledger-fold.cjs').Folded} Folded */
+/** A review's lane (16.2.2). @typedef {'apply'|'decide'|'walked'|'route'} Lane */
 /** @typedef {'serious'|'bug'|'nit'} Call */
 /** What a phase's reviews found: how many findings, and, where its reviews run in rounds, the findings by call, the rounds and those failed. @typedef {{phase: string, findings: number, calls?: Record<Call, number>, rounds?: number, failed?: number}} PhaseFindings */
 /** A round as the count reads it: its findings' calls, and whether it failed. @typedef {{calls: string[], failed: boolean}} CountedRound */
@@ -213,6 +227,43 @@ function measured(cwd, measure, projects) {
   };
 }
 
+// The lanes, in the order the matrix lists them.
+const LANES = Object.freeze(/** @type {Lane[]} */ (['apply', 'decide', 'walked', 'route']));
+// Who decided an answer the person was asked, as `decidedBy` names them.
+const ASKED = new Set(['person', 'your-call', 'dont-care']);
+
+/**
+ * The lane a review's finding went to (the header's), by its question's
+ * first entry; null while it is open.
+ * @param {Folded} folded @param {string} question
+ * @returns {Lane|null}
+ */
+function laneOf(folded, question) {
+  const stands = questionStands(folded, question);
+  if (stands === 'merged') return 'apply';
+  if (factsOf(folded, question).moves.some((move) => isLive(folded, move))) return 'route';
+  if (stands !== 'answered') return null;
+  const answer = factsOf(folded, answersOf(folded, question)[0]);
+  const by = decidedBy(answer);
+  return ASKED.has(by) || (by === 'carried' && answer.by === 'person') ? 'walked' : 'decide';
+}
+
+/**
+ * How the review findings on the folded ledger split across the lanes (the
+ * header's): each lane's count.
+ * @param {Folded} folded
+ * @returns {Record<Lane, number>}
+ */
+function findingsSplit(folded) {
+  const split = /** @type {Record<Lane, number>} */ (Object.fromEntries(LANES.map((lane) => [lane, 0])));
+  for (const [id, facts] of folded.facts) {
+    if (facts.event !== 'asked' || facts.by !== 'review' || !isLive(folded, id)) continue;
+    const lane = laneOf(folded, id);
+    if (lane !== null) split[lane] += 1;
+  }
+  return split;
+}
+
 /**
  * `measures findings|bugs [--project <path>]…`: the verb's answer, its
  * refusal opening on its command.
@@ -225,4 +276,4 @@ function runMeasuresVerb(cwd, positional, opts, lists) {
   return refusing(`measures ${measure}`, () => measured(cwd, measure, lists.project ?? []));
 }
 
-module.exports = { MEASURES_USAGE, runMeasuresVerb };
+module.exports = { MEASURES_USAGE, LANES, runMeasuresVerb, findingsSplit };
