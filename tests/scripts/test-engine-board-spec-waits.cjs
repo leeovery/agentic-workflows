@@ -86,21 +86,18 @@ describe('what waits on the person in a specification (20.9.1, 20.2.4, 20.16, D2
     assert.deepStrictEqual([standings(), page.reads, page.changed], [['yours', 'claude'], null, []]);
   });
 
-  it('D23: a finding asked as a question stands with whose its answer is as it stands decided: Claude\'s answer the person kept is theirs; one they left to Claude stays Claude\'s', () => {
+  it('D23: a finding asked as a question stands with whose its answer is as it stands decided: Claude\'s answer the person kept, where Claude proposed to replace it, is theirs', () => {
     const pass = lanedPass();
     const asked = askedAs(pass, 'Is a refund ever split?');
     const call = write('decide', AT_SPEC, ['--answers', asked], { ...MADE, given: 'own', text: 'Never split.', why: 'A refund returns the whole charge.' }).id;
-    /** The person's keep of Claude's answer, given `given`. @param {'own'|'dont-care'} given */
-    const kept = (given) => appendEntry(statePath(dir()), {
-      event: 'kept', unit: UNIT, topic: null, phase: 'specification', session: SESSION.CLAUDE_CODE_SESSION_ID,
-      by: 'person', who_moved_whom: 'none', entry: full(call), reason: 'asked-blind', cause: null, why: 'It reads right.', sealed: 'Never split.', given,
-    }, []);
     const standing = () => board(['--page', 'pass:1']).view.found[0].standing;
-    kept('dont-care');
-    const left = standing();
-    kept('own');
+    const claudes = standing();
+    appendEntry(statePath(dir()), {
+      event: 'kept', unit: UNIT, topic: null, phase: 'specification', session: SESSION.CLAUDE_CODE_SESSION_ID,
+      by: 'person', who_moved_whom: 'none', entry: full(call), reason: 'was-wrong', cause: null, why: 'It reads right.', sealed: 'Split when asked.', given: 'own',
+    }, []);
 
-    assert.deepStrictEqual([left, standing()], ['claude', 'yours']);
+    assert.deepStrictEqual([claudes, standing()], ['claude', 'yours']);
   });
 
   it('D23: a finding asked as a question stands with whoever answered the question it grew into — waiting while it is open once reworded, Claude\'s once Claude answers it, the person\'s once it is merged into their decision', () => {

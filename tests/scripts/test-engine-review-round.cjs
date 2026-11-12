@@ -173,22 +173,15 @@ describe('inbox file: a finding out of scope filed to the inbox (14.3.5, 6.1.15)
     assert.deepStrictEqual([filed(item).filed, filed(item).filed], [statePath(dir, '.inbox/ideas/2026-01-01--card-expiry-2.md'), statePath(dir, '.inbox/ideas/2026-01-01--card-expiry-3.md')]);
   });
 
-  it('a file-or-drop call is Claude\'s as it stands decided: one the person kept is theirs, refused, nothing written; one they left to Claude files', () => {
+  it('a file-or-drop call is Claude\'s as it stands decided: one the person kept, where Claude proposed to replace it, is theirs, refused, nothing written', () => {
     enter();
-    /** Claude's call `text` at the review, the person's keep of it given `given`: its id. @param {string} text @param {'own'|'dont-care'} given */
-    const keptCall = (text, given) => {
-      const call = reviewCall(text, 'Out of the change.');
-      appendEntry(statePath(dir), {
-        event: 'kept', unit: UNIT, topic: null, phase: 'review', session: SESSION_ID,
-        by: 'person', who_moved_whom: 'none', entry: ledgerHelpers(() => dir).full(call), reason: 'asked-blind', cause: null, why: 'It reads right.', sealed: text, given,
-      }, []);
-      return call;
-    };
-    const theirs = keptCall('Filed: card expiry.', 'own');
-    const left = keptCall('Filed: refund labels.', 'dont-care');
+    const call = reviewCall('Filed: card expiry.', 'Out of the change.');
+    appendEntry(statePath(dir), {
+      event: 'kept', unit: UNIT, topic: null, phase: 'review', session: SESSION_ID,
+      by: 'person', who_moved_whom: 'none', entry: ledgerHelpers(() => dir).full(call), reason: 'was-wrong', cause: null, why: 'It reads right.', sealed: 'Dropped: card expiry.', given: 'own',
+    }, []);
 
-    assert.strictEqual(refusedFiling({ kind: 'idea', text: '# Card expiry', call: theirs }), `inbox file: ${theirs} is the person's decision — a file-or-drop call is Claude's own, never offered (14.3.5)`);
-    assert.strictEqual(filed({ kind: 'idea', text: '# Refund labels', call: left }).filed, statePath(dir, '.inbox/ideas/2026-01-01--refund-labels.md'));
+    assert.strictEqual(refusedFiling({ kind: 'idea', text: '# Card expiry', call }), `inbox file: ${call} is the person's decision — a file-or-drop call is Claude's own, never offered (14.3.5)`);
   });
 
   it('refused, nothing written: a kind not the inbox\'s, a text with no title, a call not Claude\'s at the review, an item filed already, and a unit whose review phase cannot be entered', () => {

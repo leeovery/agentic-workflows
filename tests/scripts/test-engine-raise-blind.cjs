@@ -536,7 +536,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
       'replaced', 'person', 'person-moved-claude', full(landed.id), 'asked-blind', MAIN.text, CURSOR.text, [CURSOR.text], '2.3',
     ]);
     assert.strictEqual(movedRefusal(replaced, 'decision', 'asked-blind', foldLedger(statePath(dir), ID_FACTS, []).get(full(landed.id))), null, 'the departure rule holds the replacement\'s line');
-    assert.deepStrictEqual(marked(), { round: 1, n: 1 });
+    assert.deepStrictEqual(marked(), { round: 1, n: 1, passed_until: null });
     assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 is built again on your answer · nothing waiting on you');
     assert.deepStrictEqual(queued(), [res.id]);
     assert.deepStrictEqual(ok(dir, ['ledger', 'affected', BUILT]).affected.map((/** @type {{id: string}} */ e) => e.id), [relying]);

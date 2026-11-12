@@ -80,10 +80,14 @@
 // it while a blind question waited (16.17.6), only the person's answer
 // replacing the call, never their keep of it, in a pick or in their own
 // words — marks it, as it lands, with the round its pair was briefed for
-// then, reported or not, and the count of its changes,
-// `.cache/{unit}/build/tasks/{task}/changed.json`, `{"round": N, "n": K}`
-// (`markChanged`), beside the briefs' record it is read against — none
-// before any round is briefed, round 1 reading it.
+// then, reported or not, the count of its changes, and, where a change
+// lands on a task passed by its pair, moving its done point back, the
+// ledger's line count as it lands — the last line that change followed,
+// kept until another such change replaces it, null before any —
+// `.cache/{unit}/build/tasks/{task}/changed.json`, `{"round": N, "n": K,
+// "passed_until": L}` (`markChanged`, `passedUntil`), beside the briefs'
+// record it is read against — none before any round is briefed, round 1
+// reading it.
 // A change the builder's last brief did not go past (`pendingChange`) is
 // its brief's to carry, sent again before a fix round's (brief-records.cjs).
 // A round briefed and not yet reported whole (`roundStanding`) stands
@@ -119,8 +123,10 @@ const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone } = require('./list-items.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
+const { fileLineBytes } = require('../kernel/file-stream.cjs');
 const { layoutPlace } = require('./layout.cjs');
 const { shownTask, taskName, phaseName } = require('./task-id.cjs');
+const { LEDGER } = require('./ledger-events.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** A finding's call (13.4.1). @typedef {'serious'|'bug'|'nit'} Call */
@@ -574,16 +580,33 @@ function reportFaults(file, read = readReport) {
 function markChanged(cwd, ref) {
   const { round } = briefedOf(cwd, ref);
   if (round === 0) return null;
-  writeRecord(cwd, changedPath(ref), { round, n: changeCount(cwd, ref) + 1 });
+  const held = markOf(cwd, ref);
+  writeRecord(cwd, changedPath(ref), { round, n: held.n + 1, passed_until: passedWhole(cwd, ref) ? ledgerLines(cwd) : held.passed_until });
   return changedPath(ref);
 }
 
-/** The task's mark, `{round: 0, n: 0}` where it has none. @param {string} cwd @param {TaskRef} ref @returns {{round: number, n: number}} */
+/** The task's mark, `{round: 0, n: 0, passed_until: null}` where it has none. @param {string} cwd @param {TaskRef} ref @returns {{round: number, n: number, passed_until: number|null}} */
 function markOf(cwd, ref) {
   const file = statePath(cwd, changedPath(ref));
   const held = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
-  return { round: Number(held.round ?? 0), n: Number(held.n ?? 0) };
+  return { round: Number(held.round ?? 0), n: Number(held.n ?? 0), passed_until: held.passed_until ?? null };
 }
+
+/** How many lines the ledger holds, counted as its entries' places number them. @param {string} cwd */
+function ledgerLines(cwd) {
+  const file = statePath(cwd, LEDGER);
+  if (!fs.existsSync(file)) return 0;
+  let lines = 0;
+  for (const _line of fileLineBytes(file)) lines += 1;
+  return lines;
+}
+
+/**
+ * The last of the ledger's lines the latest change moving the task's done
+ * point back followed (the header's), null where none has.
+ * @param {string} cwd @param {TaskRef} ref @returns {number|null}
+ */
+const passedUntil = (cwd, ref) => markOf(cwd, ref).passed_until;
 
 /** The round the task's mark names, or 0 where it has none. @param {string} cwd @param {TaskRef} ref */
 const markedRound = (cwd, ref) => markOf(cwd, ref).round;
@@ -649,6 +672,6 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
 module.exports = {
   passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, changedPath, briefedPath, briefedOf, recordReviewer, recordBuilder, laidOutPath, laidOutOf, recordLaidOut,
   roundStanding, beingRead, readRefusal, pendingChange,
-  taskRounds, wholeRounds, pairPassed, taskPassed, passedWhole, markChanged, changedIn, changedUnder, changedRefusal, roundUnderReview, phaseReviewPath,
+  taskRounds, wholeRounds, pairPassed, taskPassed, passedWhole, passedUntil, markChanged, changedIn, changedUnder, changedRefusal, roundUnderReview, phaseReviewPath,
   phaseFolder, phaseReviewBegun, phaseReports, phaseRecords,
 };

@@ -1910,7 +1910,8 @@ function turnNow(cwd, unit) {
  * which a decision or a replacement lands for the first of them, and for
  * the tasks an answer against the lean marks changed — on a blind question
  * whose call went ahead, the person's replacement of the call landing for
- * the task it went ahead for, and marking it changed (`changedBy`); its
+ * the task it went ahead for, and marking it changed (`changedBy`), but
+ * where a close took the task off the question, which leaves it closed; its
  * event logs what the call was decided from, as sealed. Where that question
  * holds the task open with no park written naming it (questions.cjs,
  * `heldOpen`), the park is written first (`holdWritten`). The response adds
@@ -1930,6 +1931,7 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
   let waitedBefore = [];
   /** @type {string[]} */
   let parked = [];
+  let closed = false;
   const holding = questions.heldUnwritten(cwd, parks, warnings);
   if (holding !== null) holdWritten(cwd, /** @type {CallSeal} */ (seal), holding, warnings);
   const { landed, held } = landRaised(cwd, {
@@ -1944,6 +1946,7 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
     checkRead: (read) => {
       waitedBefore = questions.checkAnswerable(read, parks, subjectOf(seal), ANSWER_SAID);
       parked = questions.parkedOn(read, parks);
+      closed = wentAhead !== null && factsOf(read, /** @type {Parks} */ (parks).park).unparked_by.length > 0;
       checkRead(read);
     },
     mints: () => (Object.hasOwn(linked, 'task') ? { task: parked[0] ?? wentAhead } : {}),
@@ -1951,9 +1954,9 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
   if (held !== null) return { raise: seal.id, ...landed, ...answeredAlready(session, seal, held) };
   markAnswered(session, seal.id, answer);
   if (parks === null) return { raise: seal.id, ...landed };
-  const changed = changedBy(seal, lands, answer, parked);
+  const changed = closed ? [] : changedBy(seal, lands, answer, parked);
   for (const task of changed) markChanged(cwd, parseShownTask(seal.place.unit, task));
-  const ahead = wentAhead === null ? null : { task: wentAhead, changed: changed.length > 0, held: parked.includes(wentAhead) };
+  const ahead = wentAhead === null ? null : { task: wentAhead, changed: changed.length > 0, held: parked.includes(wentAhead), closed };
   const left = seal.blind && logged?.dont_care ? leanRow(/** @type {CallSeal} */ (seal).call).text : null;
   const receipt = questions.answeredReceipt(cwd, seal.place.unit, parks, waitedBefore, warnings, () => turnNow(cwd, seal.place.unit), (task) => beingRead(cwd, parseShownTask(seal.place.unit, task), session), { ahead, left });
   return { raise: seal.id, ...landed, receipt, ...(warnings.length > 0 ? { warnings } : {}) };

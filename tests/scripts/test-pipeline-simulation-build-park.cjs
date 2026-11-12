@@ -29,12 +29,7 @@
 // keeping one, the task standing as built, replacing another for the task,
 // the task built again on their answer and what relied on the call
 // affected (16.S53), and leaving the third to Claude, its call standing as
-// built, the builder's, nothing revealed. And a call of the other task's
-// going ahead so, the task held open once its pair passes it — its account
-// refused, the first task landing, the stop report putting the question,
-// the board showing the task waiting on it — until the person answers as
-// Claude did, the task building again as built, merging the chain's tip
-// back, and landing (16.17.6).
+// built, the builder's, nothing revealed.
 //
 // Layer: simulation. World: this file's own, built once on the named world
 // `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
@@ -42,7 +37,8 @@
 // written and started; a copy per scenario, which replays the engine calls
 // the build's prose makes, in order, the oracle (pipeline-oracle.cjs)
 // auditing the whole state after every mutation. A phase's fix round and
-// its nit are test-pipeline-simulation-build.cjs's.
+// its nit are test-pipeline-simulation-build.cjs's; a task held open on its
+// blind question, test-pipeline-simulation-build-held.cjs's.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -240,56 +236,4 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     assert.strictEqual(JSON.parse(sim.read(['ledger', 'affected', WU])).affected.length, 1, 'what relied on the replaced call is affected');
   });
 
-  it('16.17.6: a task whose builder\'s call went ahead while its blind question waits is held open once its pair passes it — its account refused, naming the question, the other task building and landing; nothing left, the stop report puts the question, the board showing the task waiting on it; the person answering as Claude did, the task builds again as built, its builder merging the chain\'s tip back and writing its account, and it lands', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
-    const question = 'Should a show print the hash it checked?';
-    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
-    const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
-    for (const task of ['1.1', '1.2']) sim.run(['task', 'start', WU, task]);
-    const showingBrief = loop.brief(['builder', WU, '1.1']);
-    const showing = loop.isolated('1.1');
-    loop.brief(['builder', WU, '1.2']);
-    const hashing = loop.isolated('1.2');
-
-    // 1.2's builder makes a call cheap to undo: it goes ahead while its
-    // blind question waits, parking nothing, and the task's pair passes it.
-    const asked = sim.run(['ledger', 'ask', `${WU}.implementation`, '--task', '1.2'], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: question })).id;
-    const drawn = await sim.runAsync(['raise', `${WU}.implementation`, '--answers', asked, '--parks', '1.2'], null, JSON.stringify({ ...leaningCall('A show prints the hash.', 'A show hides the hash.'), question }));
-    assert.deepStrictEqual([drawn.decision, drawn.task], ['blind', null], 'the call goes ahead, its question parking no task');
-    loop.committed(hashing, '1.2', { 'src/hash.js': 'export const hash = 1;\n' });
-    loop.pairRound('1.2');
-
-    // Held open at its done point: its account refused, naming the
-    // question; 1.1 goes on and lands.
-    sim.refuses(['task', 'account', WU, '1.2'], new RegExp(`task 1\\.2 of ${WU} waits on Q1, parked for the person`));
-    loop.committed(showing, '1.1', { ...VERIFY_FILES, 'src/show.js': 'export const show = 1;\n' });
-    loop.setUp(showing, showingBrief, '1.S1');
-    loop.pairRound('1.1');
-    loop.accounted('1.1', ['Passed.']);
-    loop.landedTask('1.1');
-
-    // Nothing left goes on: the stop report puts the question, and the
-    // board shows 1.2 waiting on it, its phase not yet in review.
-    assert.match(sim.render(['build-stop', WU], { expect: 'content' }), /Q1/);
-    const [phase] = sim.run(['board', conversation]).view.phases;
-    const held = phase.tasks.find((/** @type {{task: string}} */ line) => line.task === '1.2');
-    assert.deepStrictEqual([held.state, held.on, phase.state === 'in-review'], ['waits', ['Q1'], false]);
-
-    // The person answers as Claude did: the task builds again as built.
-    const seals = () => JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', conversation, RAISE_SHOWN), 'utf8'));
-    const { raise } = sim.run(['raise', 'draw', WU, 'Q1']);
-    const { key } = seals()[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === 'A show prints the hash.');
-    assert.strictEqual(sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' })).receipt,
-      'Q1 answered · task 1.2 builds again as built · nothing waiting on you');
-
-    // Its builder merges the chain's tip back, then writes its account,
-    // and the task lands.
-    const tip = taskBranch({ unit: WU, phase: 1, n: 1 }, 'feat', 'Show an entry');
-    assert.match(briefOf(sim, loop.brief(['builder', WU, '1.2'])), /# Where your branch stands\n\nYour phase's chain has moved on past your branch\./);
-    git(hashing, ['merge', '-q', '--no-ff', '--no-commit', tip]);
-    sim.runIn(hashing, ['commit', '--paths', 'src/show.js', '--task', WU, '1.2', '-m', `merge(${WU}): the chain's tip back`]);
-    loop.accounted('1.2', ['Passed.']);
-    loop.landedTask('1.2');
-    assert.strictEqual(sim.run(['task', 'show', WU, '1.2']).status, 'done');
-  });
 });

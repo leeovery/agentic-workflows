@@ -674,6 +674,9 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.deepStrictEqual(waitingNumbers(), ['Q2']);
   });
 
+  /** The ledger's line count. */
+  const ledgerLines = () => ledgerText().trim().split('\n').length;
+
   /** The mark a change left on `task`, or null where it left none. @param {string} task */
   const marked = (task) => (fs.existsSync(statePath(dir, `.cache/${UNIT}/build/tasks/${task}/changed.json`)) ? JSON.parse(fs.readFileSync(statePath(dir, `.cache/${UNIT}/build/tasks/${task}/changed.json`), 'utf8')) : null);
 
@@ -698,7 +701,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
 
     const receipts = [drawnAndPicked('Q1', CURSOR.key), drawnAndPicked('Q2', MAIN.key), drawnAndPicked('Q3', MAIN.key)].map((res) => res.receipt);
 
-    assert.deepStrictEqual(['2.3', '2.4', '2.5'].map(marked), [null, { round: 1, n: 1 }, null]);
+    assert.deepStrictEqual(['2.3', '2.4', '2.5'].map(marked), [null, { round: 1, n: 1, passed_until: null }, null]);
     assert.deepStrictEqual(receipts.slice(0, 2), [
       'Q1 answered · task 2.3 builds again once its pair has read round 1 · 2 waiting on you',
       'Q2 answered · task 2.4 builds again once its pair has read round 1 · 1 waiting on you',
@@ -711,9 +714,10 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     beingRead(['2.3', '2.4'], ['a', 'b']);
 
     answer(draw('Q1').res.raise, ['--pick', 'keep']);
+    const kept = ledgerLines();
     answer(draw('Q2').res.raise, ['--own'], { text: 'The work account.', why: 'Notes are for work.' });
 
-    assert.deepStrictEqual(['2.3', '2.4'].map(marked), [null, { round: 1, n: 1 }]);
+    assert.deepStrictEqual(['2.3', '2.4'].map(marked), [null, { round: 1, n: 1, passed_until: kept }]);
   });
 
   it('12.1.4: the person\'s own words mark each task their question parks, read as the lean though they are: the decision they land is not the lean row\'s own text', () => {
@@ -722,7 +726,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
 
     answer(draw('Q1').res.raise, ['--own'], { text: 'Where I am looking, as you lean', why: WHY }, { CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: CURSOR.key } }) });
 
-    assert.deepStrictEqual([lastEntry().who_moved_whom, marked('2.3')], ['none', { round: 1, n: 1 }]);
+    assert.deepStrictEqual([lastEntry().who_moved_whom, marked('2.3')], ['none', { round: 1, n: 1, passed_until: ledgerLines() }]);
   });
 
   it('12.1.4: an answer other than the lean, given while the pair reads round 2 after round 1 failed, marks the task against round 2, never the round last reported, and the receipt waits for round 2', () => {
@@ -732,7 +736,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
 
     const { receipt } = drawnAndPicked('Q1', MAIN.key);
 
-    assert.deepStrictEqual(marked('2.4'), { round: 2, n: 1 });
+    assert.deepStrictEqual(marked('2.4'), { round: 2, n: 1, passed_until: null });
     assert.strictEqual(receipt, 'Q1 answered · task 2.4 builds again once its pair has read round 2 · nothing waiting on you');
   });
 
@@ -785,7 +789,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     answer(raise, ['--didnt-follow'], null);
     const res = answer(raise, ['--pick', MAIN.key]);
 
-    assert.deepStrictEqual([lastEntry().task, res.receipt, marked('2.4')], ['2.4', 'Q1 answered · task 2.4 builds again once its pair has read round 1 · nothing waiting on you', { round: 1, n: 1 }]);
+    assert.deepStrictEqual([lastEntry().task, res.receipt, marked('2.4')], ['2.4', 'Q1 answered · task 2.4 builds again once its pair has read round 1 · nothing waiting on you', { round: 1, n: 1, passed_until: null }]);
     assert.deepStrictEqual(logged(), [
       raiseEvent(null, { answer: null, didnt_follow: true, blocks_build: false }),
       raiseEvent(full(res.id), { answer: MAIN.key, blocks_build: false }),

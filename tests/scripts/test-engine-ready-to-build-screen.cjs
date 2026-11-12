@@ -91,16 +91,13 @@ describe('the screen (11.8.8, 3.S18)', () => {
     assert.deepStrictEqual(rowKeys(out), ['a/auto', 's/step', 'r/review', 'Comment']);
   });
 
-  it('lists the calls at the spec as they stand decided: one the person kept is theirs, off the list; one they left to Claude stays, handed over', () => {
-    /** The person's keep of the call `id`, given `given`. @param {string} id @param {'own'|'dont-care'} given */
-    const kept = (id, given) => appendEntry(statePath(dir()), {
+  it('lists the calls at the spec as they stand decided: one the person kept, where Claude proposed to replace it, is theirs, off the list', () => {
+    appendEntry(statePath(dir()), {
       event: 'kept', unit: UNIT, topic: null, phase: 'specification', session: SESSION.CLAUDE_CODE_SESSION_ID,
-      by: 'person', who_moved_whom: 'none', entry: ledgerHelpers(dir).full(id), reason: 'asked-blind', cause: null, why: 'It reads right.', sealed: 'Claude\'s answer.', given,
+      by: 'person', who_moved_whom: 'none', entry: ledgerHelpers(dir).full(made.brand), reason: 'was-wrong', cause: null, why: 'It reads right.', sealed: 'Accepted.', given: 'own',
     }, []);
-    kept(made.brand, 'own');
-    kept(made.day, 'dont-care');
 
-    assert.match(sectionOf(screen(['--calls', '--page']), 'DISPLAY: ready to build'), /^CLAUDE'S CALLS \(1\)\n {2}1 unlabelled\n {2}└─ ◇ How soon is a refund sent\? +\[unlabelled · don't care\]\n {8}Within a day\.\n$/m);
+    assert.match(sectionOf(screen(['--calls', '--page']), 'DISPLAY: ready to build'), /^CLAUDE'S CALLS \(1\)\n {2}1 unlabelled\n {2}└─ ◇ How soon is a refund sent\? +\[unlabelled\]\n {8}Within a day\.\n$/m);
   });
 
   it('opens the calls from their row, keeping the review row the session can offer', () => {

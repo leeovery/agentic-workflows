@@ -138,7 +138,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     ]);
   });
 
-  it('16.17.6: refuses while a fix\'s blind question holds it open — its call gone ahead for it, its pair having passed it — naming the question, writing nothing', () => {
+  it('16.17.6: refuses while a fix\'s blind question holds it open — its call gone ahead for it, its pair having passed it — naming the question and its raise, writing nothing', () => {
     dir = world();
     record(1);
     record(2);
@@ -157,7 +157,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
 
     assert.deepStrictEqual([building, refused(['render', 'finish', UNIT])], [
       `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is in progress: ${ended}`,
-      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is parked on Q1: ${ended}`,
+      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is parked on Q1: ${ended}, a fix parked going on once the person answers its question through its raise: raise draw ${UNIT} Q1`,
     ]);
   });
 
