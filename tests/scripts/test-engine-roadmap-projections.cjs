@@ -1,23 +1,22 @@
 'use strict';
 
-// Roadmap projections — the pure gateway views over derived roadmap state
-// (projections/roadmap.cjs): the pull working set and the harvest proposal
-// overlay, a bug or a quick-fix row marked with its kind and an idea row
-// unmarked. The map view and gates are covered through their render surfaces
-// (test-engine-render-surfaces.cjs).
+// The roadmap's screens over derived roadmap state (projections/roadmap.cjs):
+// the roadmap's home as its projection composes it — each horizon's waiting
+// items, where each came from, the title cut short at the width, and its rows
+// (18.8.10) — and the Roadmap view's rows, a bug or a quick-fix marked with
+// its kind and an idea unmarked. The home as `render roadmap` draws it, and
+// the harvest's screen, are test-engine-roadmap-menu.cjs's; the view's gate
+// surfaces are test-engine-render-surfaces.cjs's.
 //
-// Layer: unit.
+// Layer: unit. The state is a value, the shape roadmapState answers, at the
+// hermetic 65 columns.
 
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const {
-  roadmapMapView,
-  roadmapProposalView,
-  roadmapPullSetView,
-} = require('../../skills/leeway-engine/scripts/domain/projections/roadmap.cjs');
+const { roadmapMapView, roadmapScreen } = require('../../skills/leeway-engine/scripts/domain/projections/roadmap.cjs');
 
 /** A derived-state fixture — the shape roadmapState returns. */
 function state(items, horizons = ['mvp', 'v1']) {
@@ -28,11 +27,11 @@ function state(items, horizons = ['mvp', 'v1']) {
     else if (i.state === 'shipped') totals.shipped++;
     else totals.orphaned++;
   }
-  return {
-    exists: true, horizons, items, totals,
-    active_session: null, session_logs: [], next_session_number: 1, imports: [],
-  };
+  return { exists: true, horizons, items, archived: [], totals, session_logs: [] };
 }
+
+/** A waiting item. @param {string} name @param {string|null} horizon @param {string} origin @param {string} [kind] */
+const waiting = (name, horizon, origin, kind = 'idea') => ({ name, horizon, summary: `${name} summary`, kind, origin, sources: [], state: 'waiting' });
 
 const ROWS = [
   { name: 'ordering', horizon: 'mvp', summary: 'customers order', kind: 'idea', origin: 'harvest', sources: [], state: 'in-flight', work_unit: 'mvp' },
@@ -46,90 +45,77 @@ const FIXES = [
   { name: 'typo', horizon: 'mvp', summary: 'the footer typo', kind: 'quick-fix', origin: 'park:mvp', sources: [], state: 'in-flight', work_unit: 'typo' },
 ];
 
-describe('roadmap projections: pull working set', () => {
-  it('numbers waiting items horizon-major, with the DATA tables resolving them and counting each horizon\'s waiting', () => {
-    const view = roadmapPullSetView(state(ROWS));
-    assert.deepStrictEqual(view.rows, [
-      { n: 1, name: 'menus', horizon: 'mvp', kind: 'idea' },
-      { n: 2, name: 'kds', horizon: 'mvp', kind: 'idea' },
-      { n: 3, name: 'loyalty', horizon: 'v1', kind: 'idea' },
+describe('the roadmap\'s home (18.8.10)', () => {
+  it('18.S35, 18.8.5: each horizon in the person\'s order with what waits on it, numbered across the horizons, one line each with its kind and where it came from, the column one across every horizon; an item in flight left out', () => {
+    const screen = roadmapScreen('Fumi', state([...ROWS, ...FIXES], ['v1', 'mvp']));
+
+    assert.deepStrictEqual([screen.title, screen.shows], ['Roadmap · Fumi', [
+      'v1 (1)',
+      '  └─ 1. Loyalty        idea · mvp',
+      '',
+      'mvp (3)',
+      '  ├─ 2. Menus          idea · discovery',
+      '  ├─ 3. Kds            idea · discovery',
+      '  └─ 4. Login Crash    bug · inbox',
+    ]]);
+  });
+
+  it('18.8.6, 18.8.8: w, n, m and a carry on in the conversation, p opens the product\'s conversation, and back draws the start menu; no converse row', () => {
+    const { rows, back, prompt } = roadmapScreen('Fumi', state(ROWS));
+    const carryOn = { kind: 'continue' };
+
+    assert.deepStrictEqual(rows.map(({ key, word, label, next }) => [key, word, label, next]), [
+      ['w', 'work', 'Work on items now — discovery finds what kind of work they are', carryOn],
+      ['n', 'new', 'Add an item — I\'ll ask what it is and which horizon', carryOn],
+      ['m', 'move', 'Move an item to another horizon you name', carryOn],
+      ['a', 'archive', 'Archive an item', carryOn],
+      ['p', 'product', 'Talk about the product as a whole', { kind: 'handoff', skill: 'leeway-discovery', args: ['none', 'none'] }],
     ]);
-    assert.match(view.data, /waiting_count: 3/);
-    assert.match(view.data, /ITEMS \(n {2}name {2}horizon {2}kind\):/);
-    assert.match(view.data, /  2  kds  mvp  idea/);
-    assert.match(view.data, /\nHORIZONS \(horizon {2}waiting\):\n {2}mvp {2}2\n {2}v1 {2}1$/, 'each horizon counts only its waiting items');
-    assert.match(view.display, /mvp\n  ├─ 1\. Menus — operators maintain\n  └─ 2\. Kds — orders reach the kitchen/);
-    assert.match(view.display, /v1\n  └─ 3\. Loyalty — rewards/);
-    assert.ok(!view.display.includes('Ordering'), 'joined items never offer themselves for a pull');
-    assert.match(view.menu, /`1–3`/);
-    assert.match(view.menu, /`b\/back`/);
+    assert.deepStrictEqual(back, { label: 'Back to the start menu', next: { kind: 'engine', argv: ['render', 'start-menu'] } });
+    assert.strictEqual(prompt, undefined);
   });
 
-  it('a bug row carries its kind as a [term] and in the DATA table; an idea row stays unmarked', () => {
-    const view = roadmapPullSetView(state([ROWS[1], FIXES[0]]));
-    assert.match(view.display, /├─ 1\. Menus — operators maintain\n  └─ 2\. Login Crash \[bug\] — sign-in crashes/);
-    assert.match(view.data, /  2  login-crash  mvp  bug/);
-    assert.deepStrictEqual(view.rows[1], { n: 2, name: 'login-crash', horizon: 'mvp', kind: 'bug' });
+  it('where an item came from: discovery for the product\'s conversation, the inbox, the roadmap\'s own n, else the unit it left', () => {
+    const items = [
+      waiting('a', 'mvp', 'harvest'),
+      waiting('b', 'mvp', 'park:product'),
+      waiting('c', 'mvp', 'inbox:2026-03-01--c'),
+      waiting('d', 'mvp', 'roadmap'),
+      waiting('e', 'mvp', 'park:checkout'),
+      waiting('f', 'mvp', 'postpone:launch'),
+      waiting('g', 'mvp', 'topic:saved-views/saved-views'),
+    ];
+    const origins = roadmapScreen('Fumi', state(items)).shows.slice(1).map((line) => line.split(' · ')[1]);
+
+    assert.deepStrictEqual(origins, ['discovery', 'discovery', 'inbox', 'roadmap', 'checkout', 'launch', 'saved-views']);
   });
 
-  it('wraps a long row at the display width, continuations under its text — the number and the kind mark kept', () => {
-    const long = {
-      name: 'export-timeout', horizon: 'v1', kind: 'bug', origin: 'harvest', sources: [], state: 'waiting',
-      summary: 'large exports of a whole year of orders time out before the file is ready to download',
-    };
-    assert.strictEqual(roadmapPullSetView(state([ROWS[1], long])).display, [
-      'mvp',
-      '  └─ 1. Menus — operators maintain',
-      '',
-      'v1',
-      '  └─ 2. Export Timeout [bug] — large exports of a whole year',
-      '        of orders time out before the file is ready to download',
-      '',
-    ].join('\n'));
+  it('a title that would run into the column is cut short with an ellipsis, the column held at the width less the widest tag', () => {
+    const long = 'storage-over-a-network-sftp-and-a-nas-and-every-cloud-drive';
+    const { shows } = roadmapScreen('Fumi', state([waiting(long, 'later', 'harvest', 'quick-fix'), waiting('a-lifetime-tier', 'later', 'harvest')], ['later']));
+
+    assert.deepStrictEqual(shows, [
+      'later (2)',
+      '  ├─ 1. Storage Over A Network Sftp And…    quick-fix · discovery',
+      '  └─ 2. A Lifetime Tier                     idea · discovery',
+    ]);
+    assert.strictEqual(shows[1].length, 65);
   });
 
-  it('an item waiting on no horizon trails under (no horizon), the DATA tables naming it so (18.8.20)', () => {
-    const view = roadmapPullSetView(state([ROWS[1], { ...ROWS[3], horizon: null }]));
-    assert.deepStrictEqual(view.rows[1], { n: 2, name: 'loyalty', horizon: '(no horizon)', kind: 'idea' });
-    assert.match(view.data, /\n {2}2 {2}loyalty {2}\(no horizon\) {2}idea\n/);
-    assert.match(view.data, /\n {2}\(no horizon\) {2}1$/);
-    assert.match(view.display, /\(no horizon\)\n {2}└─ 2\. Loyalty — rewards/);
+  it('18.8.20: an item put back on no horizon trails under "(no horizon)"', () => {
+    const { shows } = roadmapScreen('Fumi', state([waiting('menus', 'mvp', 'harvest'), waiting('exports', null, 'harvest')]));
+
+    assert.deepStrictEqual(shows.slice(-2), ['(no horizon)', '  └─ 2. Exports    idea · discovery']);
   });
 
-  it('a single waiting item takes the bare `1` option; none refuses', () => {
-    const one = roadmapPullSetView(state([ROWS[1]]));
-    assert.match(one.menu, /`1`/);
-    assert.ok(!one.menu.includes('1–'));
-    assert.throws(() => roadmapPullSetView(state([ROWS[0]])), /no waiting items/);
+  it('nothing waiting says so, and offers n and p alone — an item in flight is no longer on the roadmap', () => {
+    const screen = roadmapScreen('Fumi', state([ROWS[0]]));
+
+    assert.deepStrictEqual([screen.shows, screen.statement, screen.rows.map((row) => row.key)], [[], 'Nothing waits on the roadmap.', ['n', 'p']]);
   });
 });
 
-describe('roadmap projections: harvest proposal', () => {
-  it('groups proposed items by horizon — JIT horizons after the existing list — with the map below', () => {
-    const out = roadmapProposalView(state(ROWS), [
-      { name: 'gift-cards', horizon: 'v1', summary: 'stored value' },
-      { name: 'white-label', horizon: 'someday', summary: 'resell the platform' },
-    ]);
-    assert.match(out, /^Proposed Roadmap\n/);
-    assert.match(out, /New this session \(2\)/);
-    const v1 = out.indexOf('v1\n', out.indexOf('New this session'));
-    const someday = out.indexOf('someday\n');
-    assert.ok(v1 !== -1 && someday !== -1 && v1 < someday, 'existing horizons order first, JIT ones after');
-    assert.match(out, /Already on the roadmap \(4\)/);
-    assert.match(out, /placement\s+is\s+my\s+read/);
-  });
-
-  it('a first harvest (empty roadmap) renders proposed items alone', () => {
-    const out = roadmapProposalView(state([], []), [
-      { name: 'ordering', horizon: 'mvp', summary: 'customers order' },
-    ]);
-    assert.match(out, /Proposed items \(1\)/);
-    assert.ok(!out.includes('Already on the roadmap'));
-    assert.throws(() => roadmapProposalView(state([]), []), /proposed set is empty/);
-  });
-});
-
-describe('roadmap projections: map view', () => {
+describe('the Roadmap view', () => {
   it('renders the empty-born state and the breakdown header', () => {
     assert.match(roadmapMapView(state([])), /Roadmap \(0 items\)\n  \(empty\)\n/);
     assert.match(roadmapMapView(state(ROWS)), /Roadmap \(4 items — 1 in flight · 3 waiting\)/);
@@ -140,13 +126,5 @@ describe('roadmap projections: map view', () => {
     assert.match(out, /Login Crash\n.*sign-in crashes\n.*↳ Bug · waiting/);
     assert.match(out, /Typo\n.*↳ Quick-fix · in flight: typo/);
     assert.match(out, /Menus\n.*operators maintain\n.*↳ Waiting/);
-  });
-
-  it('a harvest proposal\'s rows are ideas, unmarked; an existing bug row beneath keeps its mark', () => {
-    const out = roadmapProposalView(state([FIXES[0]]), [
-      { name: 'gift-cards', horizon: 'v1', summary: 'stored value' },
-    ]);
-    assert.match(out, /Gift Cards\n.*stored value\n.*↳ Waiting/);
-    assert.match(out, /Login Crash\n.*sign-in crashes\n.*↳ Bug · waiting/);
   });
 });

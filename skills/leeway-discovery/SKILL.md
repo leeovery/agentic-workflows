@@ -1,7 +1,7 @@
 ---
 name: leeway-discovery
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway-roadmap/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 # Discovery
@@ -99,7 +99,7 @@ The DATA's `log` is the record everything here comes back to, and nothing talked
 - Something put on the roadmap → `roadmap add`; into the inbox → `inbox capture {kind}`, its text on stdin.
 - An inbox item the person has had fixed outside any unit → `inbox close none {path}`.
 - A move to another level → `enter discovery {home} --move`.
-- The session ended → `discovery-session close {home}`; at the product's, the roadmap items first → `gateway.cjs proposal`, `render roadmap-harvest-gate`, `roadmap add-batch`.
+- The session ended → `discovery-session close {home}`; at the product's, the roadmap items first → `render roadmap-harvest`, whose yes runs `roadmap add-batch`.
 - Earlier work → `knowledge query "{term}" …`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
@@ -143,7 +143,7 @@ For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summar
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:{home} --source {log}
 ```
 
-A name already on the roadmap takes another; say it in a line and carry on.
+A name already on the roadmap takes another. Say the line its response's `said` holds, and carry on.
 
 For the inbox, capture it per **[backlogging.md](../leeway-shared/references/backlogging.md)** at **D. Capture**, and carry on.
 

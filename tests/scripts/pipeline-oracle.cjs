@@ -53,6 +53,7 @@ const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/script
 const { epicMenuSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic-menu.cjs'));
 const { manageSurface, manageUnitSurface, closedSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/manage.cjs'));
 const { triageSurface, archivedSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/triage.cjs'));
+const { roadmapSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/roadmap.cjs'));
 const { unitHandoff } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/unit-handoff.cjs'));
 const { awaitsCut, buildRefusal } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
 const {
@@ -272,12 +273,13 @@ function auditState(dir, label) {
   // handoff takes as it stands.
   if (fs.existsSync(path.join(statePath(dir), '.git'))) auditStartMenu(dir, label);
 
-  // Manage, the closed units, triage and the archived items draw over
-  // whatever state the pipeline is in.
+  // Manage, the closed units, triage, the archived items and the roadmap
+  // draw over whatever state the pipeline is in.
   auditMenuDrawn(dir, () => manageSurface(dir), `${label} — manage`);
   auditMenuDrawn(dir, () => closedSurface(dir), `${label} — the closed units`);
   auditMenuDrawn(dir, () => triageSurface(dir, undefined), `${label} — triage`);
   auditMenuDrawn(dir, () => archivedSurface(dir), `${label} — the archived items`);
+  auditMenuDrawn(dir, () => roadmapSurface(dir), `${label} — the roadmap`);
 }
 
 // The ledger's projections, held to properties the events and the manifests

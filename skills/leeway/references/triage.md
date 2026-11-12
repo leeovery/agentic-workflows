@@ -28,9 +28,9 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render triage --file .leewa
 
 ## Putting It on the Roadmap
 
-`r/roadmap` puts what's picked on one horizon, the person's: the one they named with it, else load **[choosing-a-horizon.md](../../leeway-shared/references/choosing-a-horizon.md)** and follow its instructions as written.
+`r/roadmap` puts what's picked on one horizon, the person's. Each picked item's `{name}` is its file's name without its date and `.md`. The horizon is the one they named with it, else load **[choosing-a-horizon.md](../../leeway-shared/references/choosing-a-horizon.md)** with names = the picked items' names, comma-joined.
 
-Read each picked item, and write one entry for each to `.leeway/.cache/triage-roadmap.json`: `name`, its file's name without its date and `.md`; `summary`, one line in the product's terms; the horizon; and `note`, its path.
+Read each picked item, and write one entry for each to `.leeway/.cache/triage-roadmap.json`: its `name`; `summary`, one line in the product's terms; the horizon; and `note`, its path.
 
 ```json
 [{ "name": "{name}", "horizon": "{horizon}", "summary": "{summary}", "note": "{path}" }]

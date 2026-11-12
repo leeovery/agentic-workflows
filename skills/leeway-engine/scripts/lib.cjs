@@ -30,7 +30,6 @@ const conventions = require('./domain/conventions.cjs');
 const reads = require('./domain/reads.cjs');
 const derivations = require('./domain/derivations.cjs');
 const roadmapDomain = require('./domain/roadmap.cjs');
-const roadmapProjections = require('./domain/projections/roadmap.cjs');
 const presence = require('./domain/presence.cjs');
 const gateway = require('./gateway.cjs');
 const workunit = require('./domain/workunit-detail.cjs');
@@ -92,11 +91,6 @@ module.exports = {
   project: {
     titlecase: conventions.titlecase,
     actionsTable: surfaces.actionsTable,
-    roadmapTitle: roadmapProjections.roadmapTitle,
-    roadmapMapView: roadmapProjections.roadmapMapView,
-    roadmapProposalView: roadmapProjections.roadmapProposalView,
-    roadmapPullSetView: roadmapProjections.roadmapPullSetView,
-    roadmapHomeMenu: roadmapProjections.roadmapHomeMenu,
     revisitPhasesSection: workunitProjections.revisitPhasesSection,
   },
 };

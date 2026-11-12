@@ -141,20 +141,9 @@ describe('gateway: output sections', () => {
   });
 });
 
-// A MENU is a live gate at the call that returns it. The `!` insert runs as
-// the skill loads, before any step shows anything, so a gate it carried would
-// be one no step ever shows — every insert the skills declare is run over a
-// world holding active and closed work of every type.
-// Every menu a skill's gateway draws states a gate of its own, a key of the
-// trust log forever (16.11.9): the gateway names each from its table of
-// gates, and no name is any other menu's — another gateway's, or one an
-// engine render declares.
-describe('gateway: each menu states a gate of its own', () => {
-  const gateways = fs.readdirSync(SKILLS)
-    .map((skill) => path.join(SKILLS, skill, 'scripts', 'gateway.cjs'))
-    .filter((file) => fs.existsSync(file) && fs.readFileSync(file, 'utf8').includes('gateway.menuBlock('));
-  const names = gateways.flatMap((file) => Object.values(require(file).GATES ?? {}));
-
+// Every menu the engine draws states a gate of its own, a key of the trust
+// log forever (16.11.9).
+describe('each menu states a gate the trust log keys', () => {
   /** Every name an engine MENU declares, a templated one aside. @param {string} folder @returns {string[]} */
   const declared = (folder) => fs.readdirSync(folder, { withFileTypes: true }).flatMap((e) => {
     const at = path.join(folder, e.name);
@@ -163,25 +152,12 @@ describe('gateway: each menu states a gate of its own', () => {
     return [...fs.readFileSync(at, 'utf8').matchAll(/['`]MENU: ([^'`$]+?)(?: — [^'`]*)?['`]/g)].map((m) => m[1]);
   });
 
-  it('finds the gateways it guards', () => {
-    assert.ok(gateways.length > 0, 'no gateway draws a menu — the guard would pass vacuously');
-  });
-
-  it('every gateway names its menus from its table of gates', () => {
-    for (const file of gateways) {
-      assert.ok(require(file).GATES, `${path.relative(SKILLS, file)} exports no table of gates`);
-      assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /menuBlock\(\s*['"`]/, `${path.relative(SKILLS, file)} names a menu outside its table`);
-    }
-  });
-
-  it('no two menus share a name, none takes a name an engine render declares, and each, the engine\'s among them, is a name the trust log keys', () => {
+  it('each name an engine render declares is a name the trust log keys', () => {
     const engine = new Set(declared(path.join(SKILLS, 'leeway-engine/scripts')));
     const gate = SCHEMA.events.gate.fields.find((f) => f.name === 'gate');
 
     assert.ok(engine.size > 0, 'no engine render declares a menu — the guard would pass vacuously');
-    assert.deepStrictEqual(names.filter((name, i) => names.indexOf(name) !== i), []);
-    assert.deepStrictEqual(names.filter((name) => engine.has(name)), []);
-    assert.deepStrictEqual([...names, ...engine].filter((name) => !gate?.type.test(name)), []);
+    assert.deepStrictEqual([...engine].filter((name) => !gate?.type.test(name)), []);
   });
 });
 
@@ -260,90 +236,6 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
       const res = spawnSync('node', [script, ...argv.slice(2)], { cwd: dir, encoding: 'utf8' });
       assert.strictEqual(res.status, 0, res.stderr);
       assert.doesNotMatch(res.stdout, /^=== (MENU|DISPLAY|TITLE)/m);
-    });
-  }
-});
-
-// A menu's answer resolves from DATA, never from the menu's text: a pressed
-// row may send only its word, or its key where it has none. Every gateway
-// view whose menu an `ACTIONS` table routes is run over a world where each
-// offers its rows, and every row it offers must name an entry by both.
-describe('an ACTIONS table resolves every row its MENU offers', () => {
-  /** @param {string} dir */
-  function projectManifest(dir) {
-    createFile(dir, '.leeway/manifest.json', JSON.stringify({
-      roadmap: { horizons: ['mvp'], items: {
-        loyalty: { horizon: 'mvp', summary: 'repeat-customer rewards', origin: 'harvest' },
-        exports: { horizon: 'mvp', summary: 'data exports', origin: 'harvest', postponed_from: { work_unit: 'live-epic', topic: 'exports' } },
-      } },
-    }));
-    createManifest(dir, 'done-feature', { status: 'completed', phases: { discussion: { items: { 'done-feature': { status: 'completed' } } } } });
-    createFile(dir, '.leeway/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
-  }
-
-  // The epic holds a cancelled topic, a topic postponed to the roadmap and a
-  // plan blocked on a dependency, so each of its sub-views offers rows.
-  const WORLDS = {
-    live: (/** @type {string} */ dir) => {
-      projectManifest(dir);
-      createManifest(dir, 'live-epic', {
-        work_type: 'epic',
-        phases: {
-          discovery: { items: {
-            gone: { source: 'discovery', cancelled: true },
-            exports: { source: 'discovery', postponed: true },
-          } },
-          discussion: { items: {
-            auth: { status: 'in-progress' },
-            billing: { status: 'completed' },
-            payments: { status: 'completed' },
-            gone: { status: 'cancelled', previous_status: 'in-progress' },
-            exports: { status: 'postponed', previous_status: 'in-progress' },
-          } },
-          specification: { items: { billing: { status: 'completed', sources: { billing: { status: 'incorporated' } } } } },
-          planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
-        },
-      });
-    },
-  };
-
-  /** @type {[string, string[], keyof typeof WORLDS][]} */
-  const CALLS = [
-    ['leeway-roadmap', ['view'], 'live'],
-  ];
-
-  /** @param {string} out @param {string} marker @returns {string} */
-  function sectionOf(out, marker) {
-    const at = out.indexOf(`=== ${marker}`);
-    if (at === -1) return '';
-    const body = out.slice(out.indexOf('\n', at) + 1);
-    const end = body.search(/^=== /m);
-    return end === -1 ? body : body.slice(0, end);
-  }
-
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  for (const [skill, argv, world] of CALLS) {
-    it(`${skill} ${argv.join(' ')} over the ${world} world: every row resolves by its key and its word`, () => {
-      WORLDS[world](dir);
-      const res = spawnSync('node', [path.join(SKILLS, skill, 'scripts/gateway.cjs'), ...argv], { cwd: dir, encoding: 'utf8' });
-      assert.strictEqual(res.status, 0, res.stderr);
-      const heads = [...sectionOf(res.stdout, 'MENU').matchAll(/^\*\*`(?!◆ )([^`]+)`\*\*/gm)].map((m) => m[1]);
-      assert.ok(heads.length > 0, `the world offers no row — the check would pass vacuously:\n${res.stdout}`);
-      const lines = sectionOf(res.stdout, 'DATA').split('\n');
-      const start = lines.findIndex((l) => l.startsWith('ACTIONS (key  word  '));
-      assert.ok(start !== -1, `no ACTIONS table leading with key and word:\n${res.stdout}`);
-      const entries = [];
-      for (const line of lines.slice(start + 1)) {
-        if (!line.startsWith('  ')) break;
-        entries.push(line.trim().split('  '));
-      }
-      for (const head of heads) {
-        const [key, word = '—'] = head.split(/\/(.*)/s);
-        assert.ok(entries.some(([k, w]) => k === key && w === word), `row \`${head}\` names no ACTIONS entry by key "${key}" and word "${word}":\n${res.stdout}`);
-      }
     });
   }
 });

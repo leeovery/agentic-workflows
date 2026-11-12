@@ -30,7 +30,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
   beforeEach(() => { dir = setupGitFixture(); });
   afterEach(() => { cleanup(dir); });
 
-  it('JIT-births the node and the horizon, writes the item, self-commits scoped', () => {
+  it('JIT-births the node and the horizon, writes the item, self-commits scoped, and answers the line that reports it (18.8.11)', () => {
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
     writeSource(dir, '.product/sessions/session-001.md');
     const res = runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards', '--origin', 'park:mvp', '--source', '.product/sessions/session-001.md']);
@@ -39,6 +39,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.strictEqual(res.horizon_created, true);
     assert.deepStrictEqual(res.horizons, ['v1']);
     assert.strictEqual(res.item_total, 1);
+    assert.strictEqual(res.said, 'On the roadmap: "Loyalty" → v1.');
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: add loyalty (v1)');
     // Scoped: the unrelated file stays uncommitted.

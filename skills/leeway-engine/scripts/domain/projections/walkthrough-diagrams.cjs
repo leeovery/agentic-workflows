@@ -24,7 +24,7 @@ const { startMenuRead } = require('../start-menu.cjs');
 const { MENUS, menuBody, QUESTION, rowOf } = require('../menus.cjs');
 const { roadmapState } = require('../roadmap.cjs');
 const { startMenuScreen } = require('./start-menu.cjs');
-const { roadmapMapView } = require('./roadmap.cjs');
+const { roadmapScreen } = require('./roadmap.cjs');
 const { epicMenuScreen } = require('./epic-menu.cjs');
 const { illustrate, menu } = require('./surfaces.cjs');
 const { STATE_DIR_NAME, pinStateRoot } = require('../../kernel/state-root.cjs');
@@ -300,9 +300,13 @@ function startSample() {
   return asPlainText(`${screen.shows.join('\n')}\n\n${rows}`);
 }
 
-/** The roadmap after two of its launch items have been started as one epic. @returns {string} */
+/** The roadmap after two of its launch items have been started as one epic: what still waits, and the rows beneath. @returns {string} */
 function roadmapSample() {
-  return roadmapMapView(roadmapState(fixtureDir('roadmap'))).replace(/\n+$/, '');
+  const { shows, rows } = roadmapScreen('', roadmapState(fixtureDir('roadmap')));
+  // As the start sample's, the rows arrive under what the screen shows, the
+  // dot rule that frames a live gate dropped.
+  const drawn = illustrate(() => menu('', rows.map(rowOf), { question: QUESTION })).split('\n').slice(1).join('\n');
+  return asPlainText(`${shows.join('\n')}\n\n${drawn}`);
 }
 
 /** An epic's menu mid-discussion, nothing waiting: its heading, its tally and its decided topics, and the rows beneath. @returns {string} */

@@ -445,7 +445,7 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['leeway-discovery', 'leeway-engine', 'leeway-roadmap', 'leeway-help']);
+  const H1_KNOWN = new Set(['leeway-discovery', 'leeway-engine', 'leeway-help']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !isOurs(name)) continue; // only workflow backbones
@@ -1445,7 +1445,7 @@ function checkBootStops(files, stops = BOOT_STOPS) {
 // from no prose: the list below is theirs, held by hand.
 // ---------------------------------------------------------------------------
 
-const BACK_TO_START_MENUS = ['epic-menu', 'manage', 'closed'];
+const BACK_TO_START_MENUS = ['epic-menu', 'roadmap', 'manage', 'closed'];
 const START_MENU_LOAD = /Load \*\*\[start-menu\.md\]\((?:\.\.\/)+leeway\/references\/start-menu\.md\)\*\*/;
 
 /** The skill a file under `skills/` belongs to, by its folder. @param {string} file */
@@ -1535,7 +1535,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process', 'leeway-quick-fix-process', 'leeway-continue-epic']);
+const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process', 'leeway-quick-fix-process', 'leeway-continue-epic', 'leeway-roadmap']);
 
 function checkFooterlessLoads(files) {
   const out = [];
@@ -2681,7 +2681,7 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
     assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
 
     const missing = write(dir, 'skills/leeway-discovery/SKILL.md', ['---', 'name: leeway-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
-    const late = write(dir, 'skills/leeway-roadmap/SKILL.md', ['# Roadmap', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
+    const late = write(dir, 'skills/leeway-roadmap/SKILL.md', ['The roadmap.', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
     const inPlace = write(dir, 'skills/leeway-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
     const v = checkFrameworkLoad([missing, late, inPlace]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [

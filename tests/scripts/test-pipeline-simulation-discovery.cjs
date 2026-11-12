@@ -26,13 +26,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
-const { spawnSync } = require('child_process');
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, handoff, answerGate, typeAtGate, startPick, startNew, epicPick, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft,
+  Sim, startUnit, handoff, answerGate, typeAtGate, startPick, startNew, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -71,13 +69,12 @@ function inTheProduct(sim) {
   return res;
 }
 
-/** The handoff the roadmap's p makes (the roadmap skill's open_product), its row checked first, the roadmap opened from the start menu. @param {Sim} sim */
+/** The handoff the roadmap's p makes, the roadmap opened from the start menu. @param {Sim} sim */
 function roadmapsProduct(sim) {
   startPick(sim, 'r');
-  arrive(sim, 'roadmap');
-  const keys = LIB.project.roadmapHomeMenu(LIB.roadmap.roadmapState(sim.dir)).keys;
-  assert.ok(keys.some((k) => k.key === 'p' && k.action === 'open_product'), 'the roadmap offers the product\'s conversation as p');
-  handoff(sim, '/leeway-discovery none none');
+  roadmapMenu(sim);
+  const { next } = answerGate(sim, 'roadmap', '--pick', 'p');
+  handoff(sim, `/${next.skill} ${next.args.join(' ')}`);
 }
 
 /** A transcript Claude Code keeps for a conversation, in the sim's own projects folder. @param {Sim} sim @param {string} sessionId */
@@ -144,15 +141,12 @@ describe('pipeline simulation: discovery\'s entry', () => {
     answerGate(sim, 'import reprompt', '--pick', 's');
     assert.deepStrictEqual(sim.run(['asset', 'import', PRODUCT, shared]).imports, ['.product/assets/pricing.md']);
 
-    // The session's end proposes what it named as roadmap items, drawn over
-    // the roadmap, and the person's yes lands them.
+    // The session's end proposes what it named as roadmap items on one
+    // screen, and the person's yes lands them (18.S63).
     const items = sim.write('.leeway/.cache/product/discovery/product/roadmap-items.json',
       [{ name: 'licensing', horizon: 'later', summary: 'Teams buy seats', sources: [logOf(PRODUCT, 1)] }]);
-    const proposal = spawnSync(process.execPath, [path.join(ROOT, 'skills/leeway-roadmap/scripts/gateway.cjs'), 'proposal', '--file', items], { cwd: sim.dir, env: sim.env, encoding: 'utf8' });
-    assert.match(proposal.stdout, /^ {2}licensing horizon=later exists_on_roadmap=false /m);
-    sim.render(['roadmap-harvest-gate'], { expect: 'content' });
-    answerGate(sim, 'roadmap harvest gate', '--pick', 'y');
-    sim.run(['roadmap', 'add-batch', '--file', items]);
+    sim.render(['roadmap-harvest', '--file', items], { expect: 'content' });
+    sim.run(answerGate(sim, 'roadmap harvest gate', '--pick', 'y').next.argv);
     sim.run(['discovery-session', 'close', PRODUCT, '-m', 'discovery(product): end session 001']);
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.map((/** @type {{name: string, sources: string[]}} */ i) => [i.name, i.sources]), [['licensing', [logOf(PRODUCT, 1)]]]);
 

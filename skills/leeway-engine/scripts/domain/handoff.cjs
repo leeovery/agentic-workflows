@@ -20,7 +20,7 @@
 // completed, whose menu is its complete variant (18.4.23). The start,
 // `leeway`, takes nothing: where finish hands every other unit once it is
 // done, and where a feature's, bugfix's or quick-fix's cancel from inside
-// its session goes (18.4.20).
+// its session goes (18.4.20). The roadmap takes nothing either.
 //
 // Discovery is told how the conversation was come to: a work type, the
 // person starting a piece of work of that kind; `start`, a piece of work of
@@ -220,9 +220,9 @@ const TARGETS = {
     where: () => at('Start'),
   },
   'leeway-roadmap': {
-    usage: 'open',
-    counts: [1],
-    check: (cwd, [mode]) => assertOneOf('the mode', mode, ['open']),
+    usage: '',
+    counts: [0],
+    check: () => {},
     where: () => at('Roadmap'),
   },
   'leeway-continue-epic': {

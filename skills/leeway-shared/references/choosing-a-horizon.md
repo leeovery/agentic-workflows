@@ -4,7 +4,7 @@
 
 ---
 
-The caller needs a horizon for what it is about to land. Set `{horizon}` and return.
+The caller needs a horizon for what it is about to land, and names the items going on the roadmap, `{names}`: each item's name, comma-joined. Set `{horizon}` and return.
 
 ## The Horizon
 
@@ -19,12 +19,14 @@ node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state
 Render the pick over them (its numbering follows the `horizons` order):
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render horizon-pick
+node .claude/skills/leeway-engine/scripts/engine.cjs render horizon-pick --park {names}
 ```
 
 Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
+
+The answer goes to `gate`.
 
 **If the answer is a number:**
 

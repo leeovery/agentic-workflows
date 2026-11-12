@@ -106,12 +106,14 @@ describe('the gates lead to the verbs', () => {
     assert.deepStrictEqual(answered(gate, 'postpone gate', ['--typed', 'comment']), CONTINUE);
   });
 
-  it('the horizon pick addressed to a topic leads each horizon to its postpone gate, a new one carrying on; for a park every row carries on; unaddressed it leads nowhere', () => {
+  it('the horizon pick addressed to a topic leads each horizon to its postpone gate, a new one carrying on; for a park of one item or several every row carries on; naming nothing going on the roadmap it is refused', () => {
     const pick = ['horizon-pick', `${EPIC}.discovery.licence`];
     assert.deepStrictEqual(answered(pick, 'horizon pick', ['--pick', '2']), { kind: 'engine', argv: ['render', 'postpone-gate', `${EPIC}.discovery.licence`, '--horizon', 'later'] });
     assert.deepStrictEqual(answered(pick, 'horizon pick', ['--pick', 'n']), CONTINUE);
-    assert.deepStrictEqual([answered(['horizon-pick', '--park', 'streak-freeze'], 'horizon pick', ['--pick', '1']), answered(['horizon-pick', '--park', 'streak-freeze'], 'horizon pick', ['--pick', 'n'])], [CONTINUE, CONTINUE]);
-    assert.strictEqual(answered(['horizon-pick'], 'horizon pick', ['--pick', '1']), null);
+    for (const park of ['streak-freeze', 'streak-freeze,dark-mode']) {
+      assert.deepStrictEqual([answered(['horizon-pick', '--park', park], 'horizon pick', ['--pick', '1']), answered(['horizon-pick', '--park', park], 'horizon pick', ['--pick', 'n'])], [CONTINUE, CONTINUE]);
+    }
+    assert.match(refusedPristine(dir, ['render', 'horizon-pick']).error, /name what is going on the roadmap/);
     assert.match(refusedPristine(dir, ['render', 'horizon-pick', `${EPIC}.discussion.licence`]).error, /address must be <work_unit>\.discovery\.<topic>, got phase "discussion"$/);
   });
 

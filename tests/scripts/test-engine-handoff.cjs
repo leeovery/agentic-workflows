@@ -145,9 +145,8 @@ describe('engine handoff — the composed answer for every target', () => {
     assert.deepStrictEqual(payloadOf(carried(dir, ['/leeway'])), { skill: 'leeway', args: '', text: 'Invoke `/leeway`.', line: '→ Start' });
   });
 
-  it('the roadmap opens on its home', () => {
-    assert.strictEqual(inline(dir, ['leeway-roadmap', 'open']),
-      inlineAnswer('leeway-roadmap', 'open', '→ Roadmap'));
+  it('the roadmap opens on its home, named bare', () => {
+    assert.strictEqual(inline(dir, ['leeway-roadmap']), inlineAnswer('leeway-roadmap', '', '→ Roadmap'));
   });
 
   it('the epic menu names the epic alone', () => {
@@ -204,7 +203,7 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('the skill named as its slash command — a menu\'s stored route as it stands — answers as the bare name does', () => {
-    assert.strictEqual(inline(dir, ['/leeway-roadmap', 'open']), inline(dir, ['leeway-roadmap', 'open']));
+    assert.strictEqual(inline(dir, ['/leeway-roadmap']), inline(dir, ['leeway-roadmap']));
     assert.strictEqual(carried(dir, ['/leeway-continue-epic', 'fumi']), carried(dir, ['leeway-continue-epic', 'fumi']));
   });
 
@@ -427,8 +426,7 @@ describe('engine handoff — refusals', () => {
       [['leeway-discovery', 'feature'], /^Usage: engine handoff leeway-discovery <work-type\|start\|none> <none\|epic> \[<seeds\|none>\]$/],
       [['leeway-discovery', 'feature', 'none', 'none', 'extra'], /^Usage: engine handoff leeway-discovery /],
       [['leeway', 'fumi'], /^Usage: engine handoff leeway$/],
-      [['leeway-roadmap'], /^Usage: engine handoff leeway-roadmap open$/],
-      [['leeway-roadmap', 'open', 'extra'], /^Usage: engine handoff leeway-roadmap open$/],
+      [['leeway-roadmap', 'open'], /^Usage: engine handoff leeway-roadmap$/],
       [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
       [['leeway-continue-epic', 'fumi', 'discussion', 'completed'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
       [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
@@ -472,11 +470,6 @@ describe('engine handoff — refusals', () => {
     const quoted = '.leeway/.inbox/ideas/2026-01-04--a "b".md';
     createFile(dir, quoted, '# Quoted\n');
     refused(dir, ['leeway-discovery', 'feature', 'none', quoted], /^seeds travel quoted — a seed cannot hold a double quote/);
-  });
-
-  it('the roadmap takes open alone — its genesis and pull carry the live conversation and never hand off', () => {
-    refused(dir, ['leeway-roadmap', 'genesis'], /^the mode must be open — got "genesis"$/);
-    refused(dir, ['leeway-roadmap', 'pull'], /^the mode must be open — got "pull"$/);
   });
 
   it('the epic menu refuses a unit that is no epic, a completed feature among them, and one the project lacks', () => {

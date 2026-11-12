@@ -396,9 +396,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
-  render horizon-pick      [<wu.discovery.topic> | --park <name> | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]]
+  render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
-  render roadmap-harvest-gate
   render roadmap-parks-gate
   render query-failure-gate --file <payload.json>
   render brownfield-offer-gate
@@ -458,6 +457,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render archived [--file <pick.json>]
   render archived-item --path <archived path> [--file <pick.json>]
   render convergence <wu>.<topic> [--asked]
+  render roadmap
+  render roadmap-harvest --file <items.json>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;

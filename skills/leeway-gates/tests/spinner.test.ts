@@ -121,7 +121,7 @@ function world(
     async handsOffAs(engine: Engine, id: string) {
       await engine.session.end({ reason: 'clear', sessionId, resume: { id: sessionId } })
       sessionId = id
-      files.set(`${folderOf(id)}/sent.json`, JSON.stringify({ answer: 'Invoke `/leeway-roadmap open`.', line: '→ Roadmap' }))
+      files.set(`${folderOf(id)}/sent.json`, JSON.stringify({ answer: 'Invoke `/leeway-roadmap`.', line: '→ Roadmap' }))
     },
   }
 }
