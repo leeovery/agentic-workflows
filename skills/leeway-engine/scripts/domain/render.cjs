@@ -1106,18 +1106,19 @@ function postponeAddress(cwd, dotpath) {
 
 /**
  * The pick over the roadmap's horizons, naming none as its own (18.8.2),
- * each with how many wait there, and a new one, named in words. It names
- * what is going on the roadmap, and every row carries what answering it
- * leads to. With `--park <name>[,<name>…]` — the items Claude is putting on
- * the roadmap, one or several — it says so above the question (18.8.11),
- * and every row carries on with the horizon picked. Addressed to a topic
- * leaving for the roadmap, `<wu>.discovery.<topic>`, each horizon's row
- * leads to that topic's postpone gate, and a new horizon carries on. With
- * `--back <name> --from <what put it back> [--then <items>]`, it asks where
- * an item a cancel or a removal put back on no horizon goes (18.8.20): each
- * horizon's row moves it there, `roadmap move … --from`, the items still to
- * ask about carried on, whose answer leads on (topic-leave.cjs), and a
- * horizon named in words is moved the same way, as its DATA says.
+ * each with how many wait there, and a new one, named in words; every row
+ * carries what answering it leads to, and a pick naming none of the three
+ * below is refused. With `--park <name>[,<name>…]` — the items Claude is
+ * putting on the roadmap, one or several — it names them above the
+ * question (18.8.11), and every row carries on with the horizon picked.
+ * Addressed to a topic leaving for the roadmap, `<wu>.discovery.<topic>`,
+ * each horizon's row leads to that topic's postpone gate, and a new horizon
+ * carries on. With `--back <name> --from <what put it back> [--then
+ * <items>]`, it asks where an item a cancel or a removal put back on no
+ * horizon goes (18.8.20): each horizon's row moves it there, `roadmap move
+ * … --from`, the items still to ask about carried on, whose answer leads on
+ * (topic-leave.cjs), and a horizon named in words is moved the same way, as
+ * its DATA says.
  * @param {string} cwd @param {{dotpath?: string, park?: string, back?: string, from?: string, then?: string}} args @returns {string}
  */
 function horizonPick(cwd, { dotpath, park, back, from, then }) {

@@ -1,12 +1,13 @@
 'use strict';
 
 // The roadmap's screens over derived roadmap state (projections/roadmap.cjs):
-// the roadmap's home as its projection composes it — each horizon's waiting
-// items, where each came from, the title cut short at the width, and its rows
-// (18.8.10) — and the Roadmap view's rows, a bug or a quick-fix marked with
-// its kind and an idea unmarked. The home as `render roadmap` draws it, and
-// the harvest's screen, are test-engine-roadmap-menu.cjs's; the view's gate
-// surfaces are test-engine-render-surfaces.cjs's.
+// the roadmap's home as its projection lays it out — each horizon's waiting
+// items, where each came from, one column, and the title cut short at the
+// width (18.8.10) — and the Roadmap view's rows, a bug or a quick-fix marked
+// with its kind and an idea unmarked. The home's rows, where each leads and
+// the empty home, as `render roadmap` draws them, and the harvest's screen,
+// are test-engine-roadmap-menu.cjs's; the view's gate surfaces are
+// test-engine-render-surfaces.cjs's.
 //
 // Layer: unit. The state is a value, the shape roadmapState answers, at the
 // hermetic 65 columns.
@@ -60,21 +61,6 @@ describe('the roadmap\'s home (18.8.10)', () => {
     ]]);
   });
 
-  it('18.8.6, 18.8.8: w, n, m and a carry on in the conversation, p opens the product\'s conversation, and back draws the start menu; no converse row', () => {
-    const { rows, back, prompt } = roadmapScreen('Fumi', state(ROWS));
-    const carryOn = { kind: 'continue' };
-
-    assert.deepStrictEqual(rows.map(({ key, word, label, next }) => [key, word, label, next]), [
-      ['w', 'work', 'Work on items now — discovery finds what kind of work they are', carryOn],
-      ['n', 'new', 'Add an item — I\'ll ask what it is and which horizon', carryOn],
-      ['m', 'move', 'Move an item to another horizon you name', carryOn],
-      ['a', 'archive', 'Archive an item', carryOn],
-      ['p', 'product', 'Talk about the product as a whole', { kind: 'handoff', skill: 'leeway-discovery', args: ['none', 'none'] }],
-    ]);
-    assert.deepStrictEqual(back, { label: 'Back to the start menu', next: { kind: 'engine', argv: ['render', 'start-menu'] } });
-    assert.strictEqual(prompt, undefined);
-  });
-
   it('where an item came from: discovery for the product\'s conversation, the inbox, the roadmap\'s own n, else the unit it left', () => {
     const items = [
       waiting('a', 'mvp', 'harvest'),
@@ -108,11 +94,6 @@ describe('the roadmap\'s home (18.8.10)', () => {
     assert.deepStrictEqual(shows.slice(-2), ['(no horizon)', '  └─ 2. Exports    idea · discovery']);
   });
 
-  it('nothing waiting says so, and offers n and p alone — an item in flight is no longer on the roadmap', () => {
-    const screen = roadmapScreen('Fumi', state([ROWS[0]]));
-
-    assert.deepStrictEqual([screen.shows, screen.statement, screen.rows.map((row) => row.key)], [[], 'Nothing waits on the roadmap.', ['n', 'p']]);
-  });
 });
 
 describe('the Roadmap view', () => {

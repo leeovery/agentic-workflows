@@ -12,7 +12,7 @@ The person talks the product through, and the work takes shape before anything i
 
 - `$0` — **way_in**: how the conversation was come to. A work type — `epic`, `feature`, `bugfix` or `quick-fix` — is the person starting a piece of work of that kind; `start`, a piece of work of no kind yet; `none`, the conversation itself, the product's or the epic's.
 - `$1` — **home**: an epic, its own discovery; or `none`, the product's conversation.
-- `$2` — **seeds**: comma-joined, what new work starts from — each a live inbox path, or a waiting roadmap item, `roadmap:{item}` — or `none`; absent reads `none`.
+- `$2` — **seeds**: comma-joined, what the conversation is handed — in the product's conversation what new work starts from, each a live inbox path or a waiting roadmap item, `roadmap:{item}`; into an epic's discovery, waiting roadmap ideas joining it as topics — or `none`; absent reads `none`.
 
 `{home}` is where the conversation is working: `$1`, or `product` where `$1` is `none`. A move to another level changes it.
 
@@ -28,13 +28,15 @@ The engine holds the session closed: the person's yes at start this work created
 
 Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**. A conversation a move carried here is entered already, and entering again reads it as it stands.
 
+Where `$2` is not `none`, the entry takes it as `--seeds "{seeds}"`.
+
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs enter discovery {home}
+node .claude/skills/leeway-engine/scripts/engine.cjs enter discovery {home} [--seeds "{seeds}"]
 ```
 
 A refusal names the way on: say it in a line. Where another session holds the home, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn.
 
-Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; each inbox seed in `$2` in full; and for each `roadmap:{item}` seed, its row in `roadmap state`, the note among its sources in full, and the parts of the logs its other sources point at, and only those — and where the row carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
+Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
 
 Then open the conversation; never stop in silence once you have read.
 
@@ -42,6 +44,7 @@ Then open the conversation; never stop in silence once you have read.
 
 What you say is your own, and the way in decides what it opens on:
 - **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head.
+- **A roadmap idea to take in**, each `take in`, opens an epic's discovery on it: talk it through as a new topic of the map, taken in as **Changing the Map** says, `--from-roadmap {item}`.
 - **A work type or seeds**, in the product's conversation, open on that piece of work, whatever the history. A type is a hint to trust: confirm it lightly once the description fits, and reconsider only on a clear, strong signal. Seeds open on one sketch across them all and a question that pulls on its shape, but an inbox item that already names its cause and fix is confirmed in one line, not shaped again. With nothing to read, ask the person to describe the work the way it sits in their head, and invite any notes, screenshots or files that frame it.
 - **`start`** carries the product's conversation on with no announcement and asks what the person brings: talk about the product carries on from where its sessions had got to, and a piece of work goes to the type call.
 

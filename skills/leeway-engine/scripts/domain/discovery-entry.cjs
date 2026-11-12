@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: discovery's row of the entry (enter.cjs) — `enter discovery
-// <product|unit> [--move]`, at either of discovery's homes (8.2.7): the
+// <product|unit> [--move] [--seeds <seeds>]`, at either of discovery's
+// homes (8.2.7): the
 // product's conversation, `product`, which has no manifest of its own, and
 // an epic's discovery. Each is one conversation carried on from its row,
 // with no question before its reads (8.2.10, 8.6.7, 8.8.12); whether an
@@ -16,11 +17,13 @@
 // What it reads, as it found the home before writing anything:
 //   - the product's: its two latest logs in full, the roadmap, the product
 //     record with the code's findings, and whether the baseline's research
-//     is owed (8.2.10, 8.12.13);
+//     is owed (8.2.10, 8.12.13) — where it starts work from seeds, the seeds
+//     in place of the logs, and only those (18.8.15, seeds.cjs);
 //   - an epic's: its older logs by their closing lines, its two latest in
 //     full, the pointers its first log keeps into the product's sessions
 //     (8.14.3), its map, and the product record with what discovery found of
-//     the unit (8.6.7);
+//     the unit (8.6.7) — and, from seeds, each roadmap idea to take in
+//     (18.8.4);
 //   - either, where the open log was last written by another conversation:
 //     that conversation's transcript, to catch the log up from its last write
 //     onward, or one line that the transcript is gone (8.14.9) — none where
@@ -48,6 +51,7 @@ const { runningTranscript } = require('./conversation.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
 const { beyondLists } = require('./discovery-log.cjs');
+const { assertSeeds, seedReads } = require('./seeds.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -153,10 +157,14 @@ function catchUp({ cwd, unit, started }) {
     : `read ${transcript} from the log's last write onward, and add to the log what it is missing`)];
 }
 
-/** What the product's conversation reads (8.2.10). @param {Entering} at @returns {Line[]} */
+/**
+ * What the product's conversation reads (8.2.10): from seeds, the seeds in
+ * place of its latest logs (18.8.15).
+ * @param {Entering} at @returns {Line[]}
+ */
 function productReads(at) {
   return [
-    ...homeLogs(at.cwd, PRODUCT).slice(-RECENT).map(as('session log')),
+    ...(at.seeds === null ? homeLogs(at.cwd, PRODUCT).slice(-RECENT).map(as('session log')) : seedReads(at.cwd, PRODUCT, at.seeds)),
     as('roadmap')(`\`${ENGINE_COMMAND} roadmap state\``),
     as('product')(`\`${productCall()}\``),
     as('research owed')(researchOwed(at.manifest) ? 'yes' : 'no'),
@@ -164,7 +172,7 @@ function productReads(at) {
   ];
 }
 
-/** What an epic's discovery reads (8.6.7, 8.14.3). @param {Entering} at @returns {Line[]} */
+/** What an epic's discovery reads (8.6.7, 8.14.3), and each roadmap idea its seeds take in (18.8.4). @param {Entering} at @returns {Line[]} */
 function epicReads(at) {
   const logs = homeLogs(at.cwd, at.unit);
   return [
@@ -173,6 +181,7 @@ function epicReads(at) {
     ...shapedBy(logs[0]).map(as('shaped by')),
     as('map')(`\`${mapCall(at.unit)}\``),
     as('product')(`\`${productCall(at.unit)}\``),
+    ...(at.seeds === null ? [] : seedReads(at.cwd, at.unit, at.seeds)),
     ...catchUp(at),
   ];
 }
@@ -259,6 +268,7 @@ const DISCOVERY = Object.freeze({
   log: ({ cwd, unit }) => logAt(unit, /** @type {string} */ (activeSession(cwd, unit))),
   writesHeader: true,
   move: departure,
+  seeds: ({ cwd, unit }, seeds) => { assertSeeds(cwd, unit, seeds); },
 });
 
 module.exports = { DISCOVERY, POINTER, SHAPED_BY };

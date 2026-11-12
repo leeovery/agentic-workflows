@@ -20,7 +20,7 @@ Fetch the roadmap and emit its sections verbatim per their markers:
 node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap
 ```
 
-The answer goes to `gate`; follow its `next`. An item picked by its number, or asked about, is told by its summary, which the DATA gives. A `next` that draws the start menu, `render start-menu`, hands the conversation to the start menu: Load **[start-menu.md](../leeway/references/start-menu.md)** and follow its instructions as written. A `next` that moves into work goes through the handoff: Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/{skill} {args}`.
+The answer goes to `gate`; follow its `next`. The DATA names each number's item; one picked by its number, or asked about, is told from its row in `roadmap state`. A `next` that draws the start menu, `render start-menu`, hands the conversation to the start menu: Load **[start-menu.md](../leeway/references/start-menu.md)** and follow its instructions as written. A `next` that moves into work goes through the handoff: Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/{skill} {args}`.
 
 ## Working on Items
 
@@ -50,4 +50,4 @@ Renaming or rewording an item, bringing an archived one back onto a horizon, and
 
 ## Joining an Epic
 
-An item to join an epic in progress joins it as a new topic, through that epic's discovery: say so in a line, then Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none {epic}`.
+An idea to join an epic in progress joins it as a new topic, through that epic's discovery, which takes it in: say so in a line, then Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none {epic} "roadmap:{item}"`.

@@ -2,21 +2,25 @@
 
 // ---------------------------------------------------------------------------
 // The roadmap's menus (leeway-engine/scripts/domain/projections/roadmap.cjs,
-// 18.8): `render roadmap`, the roadmap's home — a DATA line for each waiting
-// item, its summary told from there when it is picked or asked about
-// (18.8.5), and the menu in the frame (18.8.10); where each row leads, through `gate roadmap`, followed
-// through the verb the conversation runs after it, each reported in one
-// line from its response or Claude's own (18.8.6, 18.8.12); its help; and
-// `render roadmap-harvest`, the end of a session of the product's
-// conversation, its yes landing the items and its refusals the batch's
-// (18.8.18). The screen's layout is test-engine-roadmap-projections.cjs's;
-// the frame and the help screen test-engine-menus.cjs's; the roadmap verbs'
-// own transactions test-engine-roadmap.cjs's.
+// 18.8): `render roadmap`, the roadmap's home — a DATA line naming each
+// waiting item by its number (18.8.5), the screen the projection composes,
+// and the menu in the frame (18.8.10); where each row leads, through `gate
+// roadmap`, followed through the verb the conversation runs after it, each
+// reported in one line from its response or Claude's own (18.8.6, 18.8.12);
+// its help; and `render roadmap-harvest`, the end of a session of the
+// product's conversation, its yes landing the items, a long name cut short,
+// and its refusals the batch's (18.8.18). The home's layout and rows are
+// test-engine-roadmap-projections.cjs's at the unit layer, drawn here only
+// as the render answers them; the frame and the help screen
+// test-engine-menus.cjs's; the roadmap verbs' own transactions
+// test-engine-roadmap.cjs's.
 //
-// Layer: verb. World: this file's own, its items put on the roadmap
-// through the verbs (roadmap-world.cjs's helpers) — one off the inbox with its note, one the product's
-// conversation proposed, one it parked, one a unit parked, one archived and
-// one in flight in an epic — built once and copied for each test.
+// Layer: verb. World: this file's own — one item off the inbox with its
+// note, one the product's conversation proposed, one it parked, one a unit
+// parked and one archived, each put on the roadmap through the verbs, and
+// one in flight in an epic, its join written to the manifest as start this
+// work writes it (roadmap-world.cjs's `joinedTo`) — built once and copied
+// for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,6 +37,8 @@ const { runOk, readProject, writeSource, joinedTo } = require('./roadmap-world.c
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
+const { roadmapState } = require(path.join(SCRIPTS, 'domain/roadmap.cjs'));
+const { roadmapScreen } = require(path.join(SCRIPTS, 'domain/projections/roadmap.cjs'));
 
 const SESSION = 'roadmap-session';
 const ENV = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION });
@@ -91,27 +97,14 @@ const statementOf = (screen) => screen.slice(1, screen.indexOf('')).join(' ');
 /** The roadmap's tree as drawn. @param {string} out */
 const treeOf = (out) => sectionOf(out, 'DISPLAY: roadmap').trimEnd().split('\n');
 
-const TREE = [
-  'next (1)',
-  '  └─ 1. Pinned Fumi      idea · inbox',
-  '',
-  'later (3)',
-  '  ├─ 2. Fumi Sync        idea · discovery',
-  '  ├─ 3. Lifetime Tier    idea · discovery',
-  '  └─ 4. Colour Drift     bug · checkout',
-];
 
 describe('the roadmap\'s home (18.8.10)', () => {
   it('18.S35: each waiting item on one line with its kind and where it came from, its summary in the DATA, and the rows work, new, move, archive, product, help and back — no converse row', () => {
     const { out, screen } = roadmap();
 
-    assert.deepStrictEqual(sectionOf(out, 'DATA').trimEnd().split('\n'), [
-      'item 1: pinned-fumi · next · a fumi stays above every window',
-      'item 2: fumi-sync · later · a hosted sync service',
-      'item 3: lifetime-tier · later · pay once, keep it',
-      'item 4: colour-drift · later · tag colours drift on restore',
-    ]);
-    assert.deepStrictEqual([sectionOf(out, 'TITLE'), treeOf(out)], [`# **\`■ Roadmap · ${projectName(dir)}\`**\n`, TREE]);
+    assert.deepStrictEqual(sectionOf(out, 'DATA').trimEnd().split('\n'), ['item 1: pinned-fumi', 'item 2: fumi-sync', 'item 3: lifetime-tier', 'item 4: colour-drift']);
+    assert.deepStrictEqual([sectionOf(out, 'TITLE'), treeOf(out)], [`# **\`■ Roadmap · ${projectName(dir)}\`**\n`, roadmapScreen(projectName(dir), roadmapState(dir)).shows]);
+    assert.deepStrictEqual(treeOf(out).filter((line) => !line.startsWith(' ')), ['next (1)', '', 'later (3)'], 'sign-in, in flight, and old-idea, archived, are off the home');
     assert.deepStrictEqual(screen, [
       '· · · · · · · · · · · ·',
       '◆ What would you like to do?',
@@ -140,14 +133,15 @@ describe('the roadmap\'s home (18.8.10)', () => {
     roadmap();
     assert.deepStrictEqual(picked('roadmap', 'n'), CARRY_ON);
     assert.strictEqual(runOk(dir, ['add', 'widgets', '--horizon', 'next', '--summary', 'a fumi on the desktop', '--origin', 'roadmap']).said, 'On the roadmap: "Widgets" → next.');
-    assert.deepStrictEqual(treeOf(roadmap().out).slice(0, 3), ['next (2)', '  ├─ 1. Pinned Fumi      idea · inbox', '  └─ 2. Widgets          idea · roadmap']);
+    assert.match(sectionOf(roadmap().out, 'DISPLAY: roadmap'), /^next \(2\)\n.*\n {2}└─ 2\. Widgets +idea · roadmap$/m);
   });
 
   it('18.S50, 18.8.12: m carries on, where Claude asks which item and which horizon; the move puts it on the horizon named', () => {
     roadmap();
     assert.deepStrictEqual(picked('roadmap', 'm'), CARRY_ON);
     runOk(dir, ['move', 'fumi-sync', '--horizon', 'next']);
-    assert.deepStrictEqual(treeOf(roadmap().out).slice(0, 4), ['next (2)', '  ├─ 1. Pinned Fumi      idea · inbox', '  └─ 2. Fumi Sync        idea · discovery', '']);
+    assert.deepStrictEqual(sectionOf(roadmap().out, 'DATA').trimEnd().split('\n').slice(0, 2), ['item 1: pinned-fumi', 'item 2: fumi-sync']);
+    assert.strictEqual(roadmapState(dir).items.find((/** @type {{name: string}} */ item) => item.name === 'fumi-sync')?.horizon, 'next');
   });
 
   it('18.8.13: a carries on, where Claude asks which item; archived, it is off the roadmap\'s home, and the numbers close up', () => {
@@ -155,8 +149,7 @@ describe('the roadmap\'s home (18.8.10)', () => {
     assert.deepStrictEqual(picked('roadmap', 'a'), CARRY_ON);
     runOk(dir, ['archive', 'lifetime-tier']);
     const { out } = roadmap();
-    assert.deepStrictEqual(treeOf(out).slice(3), ['later (2)', '  ├─ 2. Fumi Sync       idea · discovery', '  └─ 3. Colour Drift    bug · checkout']);
-    assert.strictEqual(sectionOf(out, 'DATA').trimEnd().split('\n').at(-1), 'item 3: colour-drift · later · tag colours drift on restore');
+    assert.deepStrictEqual(sectionOf(out, 'DATA').trimEnd().split('\n'), ['item 1: pinned-fumi', 'item 2: fumi-sync', 'item 3: colour-drift']);
   });
 
   it('nothing waiting says so, with n and p alone beside help and back', () => {
@@ -192,19 +185,19 @@ describe('the end of a session of the product\'s conversation (18.8.18)', () => 
   const proposed = (items) => writeState(dir, '.cache/product/discovery/product/roadmap-items.json', JSON.stringify(items));
 
   const FOUR = [
-    { name: 'import-from-apple-stickies', horizon: 'next', summary: 'bring notes over from Stickies', sources: [LOG] },
+    { name: 'import-from-apple-stickies-and-every-notes-application', horizon: 'next', summary: 'bring notes over from Stickies', sources: [LOG] },
     { name: 'fumi-on-iphone', horizon: 'later', summary: 'fumi on the phone', sources: [LOG] },
     { name: 'desktop-widgets', horizon: 'later', summary: 'fumi as widgets', sources: [LOG] },
     { name: 'shared-fumis', horizon: 'someday', summary: 'fumis between people', sources: [LOG] },
   ];
 
-  it('18.S63: the capabilities proposed show on one screen, each with its horizon, and the person\'s yes lands them — Keep shaping carries on', () => {
+  it('18.S63: the capabilities proposed show on one screen, each with its horizon, a long name cut short where it would run into it, and the person\'s yes lands them — Keep shaping carries on', () => {
     const file = proposed(FOUR);
     const { out, screen, rows } = drawn(['roadmap-harvest', '--file', file], 'roadmap harvest gate');
 
     assert.deepStrictEqual(sectionOf(out, 'DISPLAY: roadmap harvest').trimEnd().split('\n'), [
       'TO THE ROADMAP (4, from this conversation)',
-      '  ├─ Import From Apple Stickies                            [next]',
+      '  ├─ Import From Apple Stickies And Every Notes Applic…    [next]',
       '  ├─ Fumi On Iphone                                       [later]',
       '  ├─ Desktop Widgets                                      [later]',
       '  └─ Shared Fumis                                       [someday]',

@@ -55,11 +55,14 @@ describe('pipeline simulation: roadmap', () => {
     };
     sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
 
-    // Triage's r over any mix: Claude asks the horizon, then one transaction,
-    // with no confirm, moves each note off the inbox — every item's kind its
-    // note's folder's.
+    // Triage's r over any mix: Claude asks the horizon through the pick,
+    // naming the items, then one transaction, with no confirm, moves each
+    // note off the inbox — every item's kind its note's folder's.
+    sim.run(['roadmap', 'horizon', 'add', 'next']);
     triagePick(sim, Object.values(inbox));
     assert.deepStrictEqual(answerGate(sim, 'triage', '--pick', 'r').next, { kind: 'continue' }, 'r carries on in the conversation, where Claude asks the horizon');
+    assert.match(sim.render(['horizon-pick', '--park', 'saved-views,export-timeout,blank-chart,footer-typo'], { expect: 'content' }), /^Putting 4 items on the roadmap\.$/m);
+    assert.deepStrictEqual(answerGate(sim, 'horizon pick', '--pick', '1').next, { kind: 'continue' });
     const notes = [inbox.idea, inbox.timeout, inbox.chart, inbox.typo];
     const entries = [
       { name: 'saved-views', horizon: 'next', summary: 'operators save a filtered view', note: inbox.idea },
@@ -199,14 +202,15 @@ describe('pipeline simulation: roadmap', () => {
     });
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'table-booking').origin, 'park:mvp');
 
-    // A waiting item joins the epic in progress as a new topic through the
-    // epic's discovery (18.S34, 18.8.4): the roadmap hands into it, and the
-    // map changes there, in one composed transaction.
+    // A waiting idea joins the epic in progress as a new topic through the
+    // epic's discovery (18.S34, 18.8.4): the roadmap hands the item into it,
+    // the entry names it to take in, and the map takes it in there.
     roadmapMenu(sim);
-    handoff(sim, '/leeway-discovery none mvp');
-    sim.run(['enter', 'discovery', 'mvp']);
-    sim.run(['roadmap', 'pull-forward', 'menu-management', '--into', 'mvp']);
-    assert.strictEqual(sim.manifest('mvp').phases.discovery.items['menu-management'].source, 'roadmap');
+    handoff(sim, '/leeway-discovery none mvp "roadmap:menu-management"');
+    sim.run(['enter', 'discovery', 'mvp', '--seeds', 'roadmap:menu-management']);
+    const taken = /** @type {string} */ (sim.sections.match(/^take in: (.+)$/m)?.[1]);
+    sim.run(['topic', 'add', 'mvp', taken, '--summary', 'operators maintain the menu', '--brief', briefDraft(sim, 'mvp', taken), '--from-roadmap', taken]);
+    assert.strictEqual(sim.manifest('mvp').phases.discovery.items['menu-management'].source, 'roadmap:menu-management');
 
     enterEntry(sim, 'mvp', 'discussion', 'guest-ordering');
 
@@ -450,16 +454,16 @@ describe('pipeline simulation: roadmap', () => {
     sim.run(['roadmap', 'add', 'stale-copyright', '--horizon', 'polish', '--summary', 'the copyright year is stale', '--kind', 'quick-fix']);
     sim.run(['roadmap', 'add', 'dark-mode', '--horizon', 'polish', '--summary', 'a dark theme']);
 
-    /** Discovery's opener, at the product, as the handoff left it. @param {{text: string}} handedOff @param {string} seeds */
+    /** Discovery's opener, at the product, as the handoff left it, entered with its seeds. @param {{text: string}} handedOff @param {string} [seeds] */
     const opened = (handedOff, seeds) => {
-      assert.strictEqual(handedOff.text, `Invoke \`/leeway-discovery start none${seeds}\`.`);
-      assert.strictEqual(sim.run(['enter', 'discovery', 'product']).entered, true);
+      assert.strictEqual(handedOff.text, `Invoke \`/leeway-discovery start none${seeds === undefined ? '' : ` "${seeds}"`}\`.`);
+      assert.strictEqual(sim.run(['enter', 'discovery', 'product', ...(seeds === undefined ? [] : ['--seeds', seeds])]).entered, true);
       startMenu(sim);
     };
-    opened(startNew(sim), '');
-    opened(workTheSet(sim, [typo]), ` "${path.join(sim.dir, typo)}"`);
-    opened(workTheSet(sim, set), ` "${set.map((rel) => path.join(sim.dir, rel)).join(',')}"`);
-    opened(pullFromRoadmap(sim, ['stale-copyright']), ' "roadmap:stale-copyright"');
+    opened(startNew(sim));
+    opened(workTheSet(sim, [typo]), path.join(sim.dir, typo));
+    opened(workTheSet(sim, set), set.map((rel) => path.join(sim.dir, rel)).join(','));
+    opened(pullFromRoadmap(sim, ['stale-copyright']), 'roadmap:stale-copyright');
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.map((i) => [i.name, i.state]), [['stale-copyright', 'waiting'], ['dark-mode', 'waiting']], 'no unit joins an item before start this work');
 
     const started = startThisWork(sim, {

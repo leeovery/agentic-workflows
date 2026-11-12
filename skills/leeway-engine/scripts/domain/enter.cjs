@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the entry (CONVENTIONS, Entering) — `enter <phase> <unit>
-// [<topic>] [--take] [--move]`, the one call a phase is entered by. It
+// [<topic>] [--take] [--move] [--seeds <seeds>]`, the one call a phase is
+// entered by. It
 // refuses what cannot be entered, each refusal naming the way on: a unit
 // this project lacks or has closed, a phase its work type has no place for,
 // and what the phase's own row refuses. Where another live session holds the
@@ -55,7 +56,9 @@
 // A level move (`--move`, discovery's alone) leaves the place the
 // conversation works in as it enters the next, with no handoff (24.1.8): the
 // row's departure writes what leaving writes, and the move's commit takes it
-// with any start.
+// with any start. Seeds (`--seeds`, discovery's alone too) are what the
+// handoff into the phase carried, checked by the row before anything is
+// written, and read from (seeds.cjs).
 //
 // The refusals, the question and the reads take no lock, but a read of the
 // tracker, which takes the state's lock as every reader of it does
@@ -111,7 +114,7 @@ const { ontoEpic } = require('./topic-leave.cjs');
 /**
  * What a row reads from once it is entered: where the entry is, whether
  * this entry started it, and what a read of the ledger said on the way.
- * @typedef {Standing & {started: boolean, voided: boolean, notes: string[]}} Entering
+ * @typedef {Standing & {started: boolean, voided: boolean, notes: string[], seeds: string|null}} Entering
  */
 
 /**
@@ -135,7 +138,8 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * for a row that takes one, which keeps a log; what it closes as the
  * conversation arrives, before it reads, for a row that closes anything;
  * and the question it puts where something of its own holds it beyond its
- * place, drawn whole, for a row that has such a hold. A start that commits
+ * place, drawn whole, for a row that has such a hold; and, for a row that
+ * takes seeds, the check refusing what it cannot take. A start that commits
  * a write of its own through the tracker's verbs, which commit their own
  * (task-verbs.cjs), answers what that commit warned of. A row may hand a
  * unit to an arm of its own, where its work type is built by another rule
@@ -156,6 +160,7 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * @property {boolean} [writesHeader]
  * @property {(at: Standing) => Departure} [move]
  * @property {(at: Standing) => void} [closes]
+ * @property {(at: Standing, seeds: string) => void} [seeds]
  */
 
 /** The files in a state folder, sorted, as absolute paths; none where it is not there. @param {string} dir absolute */
@@ -372,6 +377,7 @@ const ENTRIES = Object.freeze({
 
 const TAKE = '--take';
 const MOVE = '--move';
+const SEEDS = '--seeds';
 const FLAGS = [TAKE, MOVE];
 
 /** The entry's usage, over the phases a table enters. @param {Readonly<Record<string, Entry>>} entries */
@@ -379,28 +385,34 @@ function enterUsage(entries) {
   const rows = Object.values(entries);
   const unit = rows.some((entry) => entry.product) ? `<work-unit|${PRODUCT}>` : '<work-unit>';
   const move = rows.some((entry) => entry.move) ? ` [${MOVE}]` : '';
-  return `enter <${Object.keys(entries).join('|')}> ${unit} [<topic>] [${TAKE}]${move}`;
+  const seeds = rows.some((entry) => entry.seeds) ? ` [${SEEDS} <seeds>]` : '';
+  return `enter <${Object.keys(entries).join('|')}> ${unit} [<topic>] [${TAKE}]${move}${seeds}`;
 }
 
 const ENTER_USAGE = enterUsage(ENTRIES);
 
 /**
- * The call's words and the flags trailing them, refused as a usage error
- * where it names no row, no unit, an empty topic, a flag but the entry's, a
- * flag twice, a move into a row that takes none, or an extra argument.
+ * The call's words, its seeds and the flags trailing them, refused as a
+ * usage error where it names no row, no unit, an empty topic, a flag but the
+ * entry's, a flag twice, no seeds after `--seeds`, a move or seeds into a
+ * row that takes none, or an extra argument.
  * @param {Readonly<Record<string, Entry>>} entries @param {string[]} argv
- * @returns {{phase: string, unit: string, named: string|undefined, take: boolean, move: boolean}}
+ * @returns {{phase: string, unit: string, named: string|undefined, take: boolean, move: boolean, seeds: string|null}}
  */
 function parseEntry(entries, argv) {
-  let end = argv.length;
-  while (end > 0 && FLAGS.includes(argv[end - 1])) end -= 1;
-  const flags = argv.slice(end);
-  const [phase, unit, named, ...extra] = argv.slice(0, end);
+  const at = argv.indexOf(SEEDS);
+  const seeds = at === -1 ? null : argv[at + 1] ?? '';
+  const words = at === -1 ? argv : [...argv.slice(0, at), ...argv.slice(at + 2)];
+  let end = words.length;
+  while (end > 0 && FLAGS.includes(words[end - 1])) end -= 1;
+  const flags = words.slice(end);
+  const [phase, unit, named, ...extra] = words.slice(0, end);
   const move = flags.includes(MOVE);
   const bad = !Object.hasOwn(entries, phase) || !unit || named === '' || named?.startsWith('--') || extra.length > 0
-    || new Set(flags).size !== flags.length || (move && !entries[phase].move);
+    || new Set(flags).size !== flags.length || (move && !entries[phase].move)
+    || words.includes(SEEDS) || seeds === '' || seeds?.startsWith('--') || (seeds !== null && !entries[phase].seeds);
   if (bad) throw new Error(`Usage: engine ${enterUsage(entries)}`);
-  return { phase, unit, named, take: flags.includes(TAKE), move };
+  return { phase, unit, named, take: flags.includes(TAKE), move, seeds };
 }
 
 /**
@@ -497,14 +509,15 @@ function settle(cwd, entry, at, held, departure) {
 
 /**
  * The ways on from a question the entry puts where its place is held:
- * proceeding is the entry again with `--take`, a move kept a move; leaving
+ * proceeding is the entry again with `--take`, a move kept a move and its
+ * seeds kept; leaving
  * it goes back to the epic's menu, a single-topic unit or the product's
  * conversation having none to hand off to.
- * @param {Standing} at @param {boolean} move @returns {HeldWays}
+ * @param {Standing} at @param {boolean} move @param {string|null} seeds @returns {HeldWays}
  */
-function waysOn({ phase, unit, topic, manifest }, move) {
+function waysOn({ phase, unit, topic, manifest }, move, seeds) {
   return {
-    take: ['enter', phase, unit, ...(topic === undefined ? [] : [topic]), TAKE, ...(move ? [MOVE] : [])],
+    take: ['enter', phase, unit, ...(topic === undefined ? [] : [topic]), TAKE, ...(move ? [MOVE] : []), ...(seeds === null ? [] : [SEEDS, seeds])],
     menu: manifest.work_type === 'epic' ? ontoEpic(unit) : null,
   };
 }
@@ -513,11 +526,11 @@ function waysOn({ phase, unit, topic, manifest }, move) {
  * The question put where the place is held, or null where it is not: the
  * row's own hold first, where it has one — the build's, the checkout's code
  * — then another live session at the place itself.
- * @param {Entry} entry @param {Standing} at @param {string} place @param {boolean} move
+ * @param {Entry} entry @param {Standing} at @param {string} place @param {boolean} move @param {string|null} seeds
  * @returns {string|null}
  */
-function heldQuestion(entry, at, place, move) {
-  const ways = waysOn(at, move);
+function heldQuestion(entry, at, place, move, seeds) {
+  const ways = waysOn(at, move, seeds);
   const own = entry.held?.(at, ways) ?? null;
   if (own !== null) return own;
   const hold = peerHold(at.cwd, at.unit, at.phase, place);
@@ -532,20 +545,21 @@ function heldQuestion(entry, at, place, move) {
  * @returns {{response: Record<string, unknown>, sections: string}}
  */
 function enterThrough(entries, cwd, argv) {
-  const { phase, unit, named, take, move } = parseEntry(entries, argv);
+  const { phase, unit, named, take, move, seeds } = parseEntry(entries, argv);
   const row = entries[phase];
   const at = standingOf(row, cwd, phase, unit, named);
   const entry = row.arm?.(at.manifest) ?? row;
   const standing = entry.standing(at);
   if (standing !== null) throw new Error(standing);
+  if (seeds !== null) /** @type {NonNullable<Entry['seeds']>} */ (entry.seeds)(at, seeds);
   const departure = move ? /** @type {NonNullable<Entry['move']>} */ (entry.move)(at) : null;
   const { topic } = at;
   const atTopic = topic === undefined ? {} : { topic };
   const place = topic ?? unit;
-  const stop = take ? null : heldQuestion(entry, at, place, move);
+  const stop = take ? null : heldQuestion(entry, at, place, move, seeds);
   if (stop !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: stop };
   /** @type {Entering} */
-  const entering = { ...at, started: entry.unstarted(at), voided: entry.voids?.(at) ?? false, notes: [] };
+  const entering = { ...at, started: entry.unstarted(at), voided: entry.voids?.(at) ?? false, notes: [], seeds };
   entry.closes?.(at);
   const reads = entry.reads(entering);
   const held = heldAt(cwd, phase, unit, place);

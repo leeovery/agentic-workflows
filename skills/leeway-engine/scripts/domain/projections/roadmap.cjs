@@ -12,8 +12,8 @@
 //   {origin}`, one left-aligned column across every horizon. An item put
 //   back on no horizon trails under "(no horizon)" (18.8.20); an item in
 //   flight has left the roadmap, and an archived one is off it (18.8.13).
-//   A DATA section gives each number's item, its horizon and its summary,
-//   which Claude says when an item is picked or asked about (18.8.5). Rows:
+//   A DATA section gives each number's item, its summary told from
+//   `roadmap state` when it is picked or asked about (18.8.5). Rows:
 //   w, m and a while anything waits, each carrying on in the conversation,
 //   where Claude asks which items; n, the same, asking what and which
 //   horizon; p into the product's conversation (18.8.7); b back to the start
@@ -277,10 +277,10 @@ function roadmapScreen(project, state) {
   };
 }
 
-/** Each waiting item's number, name, horizon and summary, as a DATA section, where any waits. @param {RoadmapState} state */
+/** Each waiting item's number and name, as a DATA section, where any waits. @param {RoadmapState} state */
 function itemData(state) {
-  const items = waitingGroups(state).flatMap(({ horizon, rows }) => rows.map((row) => `${row.name} · ${horizon} · ${row.summary}`));
-  return items.length === 0 ? '' : dataSection(items.map((item, i) => `item ${i + 1}: ${item}`));
+  const names = waitingGroups(state).flatMap(({ rows }) => rows.map((row) => row.name));
+  return names.length === 0 ? '' : dataSection(names.map((name, i) => `item ${i + 1}: ${name}`));
 }
 
 /** `render roadmap` (the header's). @param {string} cwd @returns {string} */
