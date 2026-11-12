@@ -8,7 +8,9 @@ require('./hermetic-env.cjs');
 // it, for a surface that draws the gate itself. Announced by the environment
 // and by nothing else — the first suite here is the proof that a session
 // without the announcement sees the bytes it always saw. A learned gate run
-// as an automatic step states none, and leaves no gate shown to answer.
+// as an automatic step states none, and leaves no gate shown to answer; the
+// import reprompt's showing, set aside, is held at no place for the paths it
+// names alone.
 
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
@@ -17,12 +19,14 @@ const os = require('os');
 const path = require('path');
 const { execFile, spawnSync } = require('child_process');
 
-const { output, refusedPristine } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine } = require('./engine-harness.cjs');
+const { shownIn, showingAnswers } = require('./trust-world.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { menuBlock } = require('../../skills/leeway-engine/scripts/gateway.cjs');
 const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
+const { showingOf } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
 
 const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
 
@@ -274,6 +278,41 @@ describe('gate payload — a learned gate run as an automatic step (E13)', () =>
     assert.match(out, /^Paths that could not be landed skipped \[auto\]\. Landing the rest\.\n$/m, 'the report says the rest lands');
     assert.strictEqual(refusedPristine(dir, ['gate', 'import reprompt', '--pick', 's'], { env }).error, 'gate: no gate has been shown in this conversation — render the gate, then answer it');
     assert.strictEqual(fs.existsSync(path.join(config, 'trust.jsonl')), false, 'nothing is logged');
+  });
+});
+
+describe('gate payload — the import reprompt\'s showing, held at no place (N1, N2)', () => {
+  let dir;
+  let config;
+  beforeEach(() => {
+    dir = setupFixture();
+    config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-gate-payload-config-'));
+  });
+  afterEach(() => {
+    cleanupFixture(dir);
+    fs.rmSync(config, { recursive: true, force: true });
+  });
+
+  it('set aside by free text, it shows on its hold in the next conversation over the same paths, the answer there the same event; a later reprompt over other paths, the first abandoned, is drawn afresh, its answer an event of its own', () => {
+    /** The conversation `session`, its trust log in the test's own config folder. @param {string} session */
+    const as = (session) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
+    /** The reprompt over `missing` drawn in `session`: the showing it was shown on. @param {string[]} missing @param {string} session */
+    const reprompt = (missing, session) => {
+      const file = createFile(dir, '.leeway/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing }));
+      output(dir, ['render', 'import-reprompt', '--file', file], { env: as(session) });
+      return shownIn(config, session).showing;
+    };
+    const aside = (/** @type {string} */ session) => ok(dir, ['gate', 'import reprompt', '--typed'], { env: as(session), stdin: 'Hang on, where did I save those?' });
+
+    reprompt(['/notes/sketch.png'], 'first');
+    aside('first');
+    const held = reprompt(['/notes/sketch.png'], 'next');
+    aside('next');
+    const afresh = reprompt(['/screens/tax-form.png'], 'next');
+    ok(dir, ['gate', 'import reprompt', '--pick', 's'], { env: as('next') });
+
+    const NOWHERE = { unit: null, phase: null, topic: null };
+    assert.deepStrictEqual([held, afresh, showingAnswers(config, 'import reprompt')], [showingOf(NOWHERE, ['/notes/sketch.png']), showingOf(NOWHERE, ['/screens/tax-form.png']), [[null, null, 's'], [0, 0, 1]]]);
   });
 });
 

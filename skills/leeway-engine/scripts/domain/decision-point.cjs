@@ -47,16 +47,18 @@
 // answers (projections/surfaces.cjs). A showing held at the gate's place
 // (showing-hold.cjs) — waiting for its answer, set aside by free text, or
 // left open by a row that shows the gate again — shows again on its hold
-// and is never drawn again, the person having engaged with it. A surface's
-// draw that shows the gate on a new showing opens its hold; a verb's check
-// of the step reads the hold and opens none. Until the learned gates are
-// switched on (29.19.2), every gate shows. `learned` is what it decides
-// once switched, where no showing is held: in a build in step, the gate
-// shows, the position read from the unit at each gate so a switch bites at
-// once (3.3.3, 3.3.6); else — only the build has a position (3.3.1) — as
-// the gate's count stands for the project and the session's model as of the
-// time, at the person's threshold, its showing's blind ask drawn. A gate off
-// the list shows, and nothing is read for it.
+// and is never drawn again, the person having engaged with it, while it is
+// of the subject the draw's key names (`heldFor`); one of a subject gone is
+// ended, and the gate drawn afresh. A surface's draw that shows the gate on
+// a new showing opens its hold; a verb's check of the step reads the hold
+// and opens none. Until the learned gates are switched on (29.19.2), every
+// gate shows. `learned` is what it decides once switched, where no showing
+// is held: in a build in step, the gate shows, the position read from the
+// unit at each gate so a switch bites at once (3.3.3, 3.3.6); else — only
+// the build has a position (3.3.1) — as the gate's count stands for the
+// project and the session's model as of the time, at the person's
+// threshold, its showing's blind ask drawn. A gate off the list shows, and
+// nothing is read for it.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -66,8 +68,8 @@ const { countsFrom, countsOf, gateCount, stateOf } = require('./trust-counts.cjs
 const { projectId, modelOf, readPersonEvents } = require('./trust-log.cjs');
 const { trustSettings, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
-const { learnedGate, showingOf, shows, stepOf } = require('./learned-gates.cjs');
-const { heldShowing, holdShowing } = require('./showing-hold.cjs');
+const { learnedGate, heldFor, showingOf, shows, stepOf } = require('./learned-gates.cjs');
+const { heldShowing, holdShowing, endShowing } = require('./showing-hold.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -158,19 +160,32 @@ function gateStep(name, at) {
 }
 
 /**
- * The gate `gate` at its place: shown on the showing held there; else
- * drawn on the showing its key tells, as `decides` steps it, a surface's
- * draw opening its hold where it shows — a verb's check opens none.
+ * The gate `gate` at its place: shown on the showing held there, while it is
+ * of the subject `key` names; else drawn on the showing its key tells, as
+ * `decides` steps it, a surface's draw opening its hold where it shows — a
+ * verb's check opens none.
  * @param {string} gate @param {GateAt} at @param {(showing: string, root: string) => GateStep} decides
  * @returns {GateStep}
  */
 function drawn(gate, { cwd, place, key, check = false }, decides) {
   const root = stateRoot(cwd);
-  const held = heldShowing(root, gate, place);
+  const held = standing(root, gate, place, key);
   if (held !== null) return shows(gate, held.showing, { place, opened: held.opened });
   const showing = showingOf(place, key);
   const step = decides(showing, root);
-  return step.step === 'automatic' || check ? step : shows(gate, showing, { place, opened: holdShowing(root, gate, place, showing).opened });
+  return step.step === 'automatic' || check ? step : shows(gate, showing, { place, opened: holdShowing(root, gate, place, showing, key).opened });
+}
+
+/**
+ * The showing of the gate `gate` held at `place` while it is still of the
+ * subject a draw on `key` names; one whose subject is gone ended, none then.
+ * @param {string} root @param {string} gate @param {import('./learned-gates.cjs').Place} place @param {unknown} key
+ */
+function standing(root, gate, place, key) {
+  const held = heldShowing(root, gate, place);
+  if (held === null || heldFor(gate, held.key, key)) return held;
+  endShowing(root, gate, place, held);
+  return null;
 }
 
 /**

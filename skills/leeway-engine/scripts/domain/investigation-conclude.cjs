@@ -25,7 +25,9 @@
 //   still running is what the move waits for.
 // - Claude's recap of the hunt, `{"hunt": "<one paragraph>", "fixes"?,
 //   "area"?}`, is staged in the topic's cache with `--file`, against the
-//   root cause and the fix as they stand, and when it was staged; the
+//   root cause and the fix as they stand, and when it was staged — the key
+//   the gate's showing is told by, kept by a recap staged again that only
+//   respells the area of the one it replaces (`restage`); the
 //   screen draws from it again without `--file`, refused where nothing is
 //   staged, or it was staged before the root cause or the fix changed. The
 //   screen shows the recap, the symptoms in the person's words from the
@@ -68,6 +70,7 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const { isDeepStrictEqual } = require('util');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, listWorkUnitManifests } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
@@ -81,7 +84,7 @@ const { validationFor } = require('./agent-state.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { recordedRounds, endsReview } = require('./review-phase.cjs');
-const { byName, bugRecords, areaSpellings } = require('./bug-records.cjs');
+const { byName, areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { huntOf, huntEntries, openInvestigation } = require('./investigation-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
@@ -321,6 +324,24 @@ function kept(cwd, bug, earlier) {
 }
 
 /**
+ * Stage `recap` for the conclude: at the time the recap it replaces was
+ * staged where it only respells that one's area, so the showing that time
+ * tells is one; else now.
+ * @param {string} cwd @param {string} unit @param {Omit<Staged, 'at'>} recap @returns {Staged}
+ */
+function restage(cwd, unit, recap) {
+  const file = stagedFile(cwd, unit);
+  const earlier = fs.existsSync(file) ? /** @type {Staged} */ (readPayload(cwd, file)) : null;
+  return stage(file, { at: earlier !== null && respells(earlier, recap) ? earlier.at : new Date().toISOString(), ...recap });
+}
+
+/** A recap as a respelling leaves it: its area by the spelling it is told by, and not when it was staged. @param {Partial<Staged>} recap */
+const spelt = (recap) => ({ ...recap, at: null, area: recap.area === undefined ? null : areaKey(recap.area) });
+
+/** Whether `recap` is the recap `earlier` staged, its area respelt at most. @param {Staged} earlier @param {Omit<Staged, 'at'>} recap */
+const respells = (earlier, recap) => isDeepStrictEqual(spelt(earlier), spelt(recap));
+
+/**
  * The decision point's step on the conclude gate, a learned one (19.4.19),
  * on the showing its recap staged at `stagedAt` tells — as the yes checks
  * it where `check`, opening no hold.
@@ -342,7 +363,7 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
       const { manifest, hunt, rootCause, fix } = closing(cwd, unit, 'render conclude', warnings);
       const staged = file === undefined
         ? stagedFor(cwd, unit, rootCause, fix)
-        : stage(stagedFile(cwd, unit), { at: new Date().toISOString(), ...recapOf(cwd, unit, file), root_cause: rootCause.id, fix: fix.id });
+        : restage(cwd, unit, { ...recapOf(cwd, unit, file), root_cause: rootCause.id, fix: fix.id });
       const step = concludeStep(cwd, unit, staged.at);
       return concludeScreen({
         unit,

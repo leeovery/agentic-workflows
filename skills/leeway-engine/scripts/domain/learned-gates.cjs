@@ -30,6 +30,11 @@
 //   same on every redraw of one showing and different between showings. Its
 //   answer logs it (trust-events.cjs), so a replay draws a past showing
 //   again as it was drawn: `drawnBlind(gate, showing)`.
+// - A showing held keeps its key, so a gate whose key names its subject
+//   tells a showing held of a subject gone (`heldFor`): the reprompt over
+//   other paths, the spawn gate for another experiment, the wait once none
+//   of the agents it waited on runs. The investigation's gates change their
+//   keys within one showing, so theirs stands until a pick answers it.
 // - A gate shows while its count asks (trust-counts.cjs): with no answers at
 //   all, and until the bound on leaving its usual answer, the row picked
 //   most often, falls below the person's threshold; once under, it runs as
@@ -93,6 +98,18 @@ const KEEPING = Object.freeze({
   'conclude gate': Object.freeze(['comment']),
 });
 
+/** Whether two keys are one. @param {unknown} held @param {unknown} key */
+const sameKey = (held, key) => JSON.stringify(held) === JSON.stringify(key);
+
+// Each learned gate whose key names its subject: whether a showing held on
+// the key `held` is still of the subject a draw on `key` names.
+/** @type {Readonly<Record<string, (held: unknown, key: unknown) => boolean>>} */
+const SUBJECT = Object.freeze({
+  'import reprompt': sameKey,
+  'experiment spawn gate': sameKey,
+  'wait for agents': (held, key) => /** @type {string[]} */ (held).some((agent) => /** @type {string[]} */ (key).includes(agent)),
+});
+
 // A showing's digest, in hex digits.
 const SHOWING_DIGITS = 16;
 
@@ -118,6 +135,15 @@ function reportOf(name, row) {
 /** Whether a pick of the gate `name`'s row `row` leaves its showing open. @param {string} name @param {string} row */
 function keepsShowing(name, row) {
   return KEEPING[name]?.includes(row) ?? false;
+}
+
+/**
+ * Whether the gate `name`'s showing held on the key `held` is still of the
+ * subject a draw on `key` names — always, for a gate whose key names none.
+ * @param {string} name @param {unknown} held @param {unknown} key
+ */
+function heldFor(name, held, key) {
+  return SUBJECT[name]?.(held, key) ?? true;
 }
 
 /** The SHA-1 of `value` as JSON. @param {unknown} value */
@@ -152,4 +178,4 @@ function stepOf(name, { asks, usual }, showing) {
   return { step: 'automatic', gate: name, row: usual, showing };
 }
 
-module.exports = { LEARNED, BLIND_ASK, ENTRY_SEPARATOR, learnedGate, reportOf, keepsShowing, showingOf, drawnBlind, shows, stepOf };
+module.exports = { LEARNED, BLIND_ASK, ENTRY_SEPARATOR, learnedGate, reportOf, keepsShowing, heldFor, showingOf, drawnBlind, shows, stepOf };
