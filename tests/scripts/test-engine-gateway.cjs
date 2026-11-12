@@ -4,13 +4,10 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { initRepo } = require('./engine-harness.cjs');
 
 const {
   runGateway,
@@ -159,85 +156,6 @@ describe('each menu states a gate the trust log keys', () => {
     assert.ok(engine.size > 0, 'no engine render declares a menu — the guard would pass vacuously');
     assert.deepStrictEqual([...engine].filter((name) => !gate?.type.test(name)), []);
   });
-});
-
-// A context-refresh recovery reads state and carries on with nothing shown;
-// the gate the flow resumes at is fetched by the step that shows it. Every
-// command a recovery names — a full `node .claude/skills/…` call, or an
-// `engine render` shorthand — is run over a project repo holding each phase's
-// item at the placeholder address, in the states a gate would be owed over:
-// several live experiments (the record pick), an agent in flight, and a
-// roadmap with waiting items.
-describe('a context-refresh recovery fetches no gate and draws nothing', () => {
-  const COMMAND = /node \.claude\/skills\/\S+(?: [^`\n]+)?|\bengine render [^`\n]+/g;
-  const recoveries = fs.readdirSync(SKILLS).flatMap((skill) => {
-    const file = path.join(SKILLS, skill, 'SKILL.md');
-    if (!fs.existsSync(file)) return [];
-    const text = fs.readFileSync(file, 'utf8');
-    const at = text.indexOf('\n## Resuming After Context Refresh\n');
-    if (at === -1) return [];
-    const section = text.slice(at, text.indexOf('\n---\n', at));
-    return [...section.matchAll(COMMAND)].map((m) => ({ skill, command: m[0].trim() }));
-  });
-
-  const ENGINE = path.join(SKILLS, 'leeway-engine/scripts/engine.cjs');
-
-  let dir;
-  beforeEach(() => {
-    dir = initRepo(setupFixture());
-    createFile(dir, '.leeway/manifest.json', JSON.stringify({
-      roadmap: {
-        horizons: ['mvp', 'v1'],
-        items: {
-          menus: { horizon: 'mvp', summary: 'operators maintain', origin: 'harvest' },
-          loyalty: { horizon: 'v1', summary: 'rewards', origin: 'park:wu' },
-        },
-      },
-    }));
-    createManifest(dir, 'wu', {
-      work_type: 'epic',
-      phases: {
-        experiment: { items: { t: { status: 'in-progress', experiments: {
-          E1: { slug: 'cold-start', status: 'running' },
-          E2: { slug: 'warm-cache', status: 'designed' },
-        } } } },
-        discussion: { items: { t: { status: 'in-progress' } } },
-        specification: { items: { t: { status: 'in-progress', finding_gate_mode: 'gated' } } },
-        planning: { items: { t: { status: 'in-progress' } } },
-        implementation: { items: { t: { status: 'in-progress' } } },
-      },
-    });
-    const res = spawnSync('node', [ENGINE, 'agent', 'dispatch', 'wu', 'discussion', 't', '--kind', 'review'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 0, res.stderr);
-  });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('finds the recoveries it guards', () => {
-    assert.ok(recoveries.length > 0, 'no recovery command found — the scan would pass vacuously');
-  });
-
-  it('the world holds what a gate would be owed over', () => {
-    const wait = spawnSync('node', [ENGINE, 'render', 'wait-agents', 'wu.t'], { cwd: dir, encoding: 'utf8' });
-    assert.match(wait.stdout, /^=== MENU: wait for agents/m, 'a wait is owed over the review in flight — the recovery read must not carry it');
-    const pick = spawnSync('node', [ENGINE, 'render', 'experiment-pick', 'wu.experiment.t'], { cwd: dir, encoding: 'utf8' });
-    assert.match(pick.stdout, /^=== MENU/m, 'a record pick is owed over this series — the recovery read must not carry it');
-    const scan = spawnSync('node', [ENGINE, 'agent', 'scan', 'wu', 'discussion', 't'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(JSON.parse(scan.stdout).in_flight.length, 1, 'an agent is in flight');
-  });
-
-  for (const { skill, command } of recoveries) {
-    it(`${skill}: \`${command}\` answers without a MENU, DISPLAY or TITLE section`, () => {
-      const argv = command
-        .replace(/^engine render /, 'node .claude/skills/leeway-engine/scripts/engine.cjs render ')
-        .replaceAll('{work_unit}', 'wu')
-        .replaceAll('{topic}', 't')
-        .split(' ');
-      const script = path.join(SKILLS, argv[1].replace('.claude/skills/', ''));
-      const res = spawnSync('node', [script, ...argv.slice(2)], { cwd: dir, encoding: 'utf8' });
-      assert.strictEqual(res.status, 0, res.stderr);
-      assert.doesNotMatch(res.stdout, /^=== (MENU|DISPLAY|TITLE)/m);
-    });
-  }
 });
 
 describe('lib: ring aggregation', () => {

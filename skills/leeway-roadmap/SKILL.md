@@ -12,18 +12,6 @@ The product's roadmap: what waits on each horizon, and the way on from it.
 
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
-## Resuming After Context Refresh
-
-Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
-
-1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside.
-2. **Read the state.** Run `node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state` and reason from its response.
-3. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
-
-Do not guess at progress or continue from memory. The engine's state is authoritative — your recollection is not.
-
----
-
 ## The Menu
 
 Fetch the roadmap and emit its sections verbatim per their markers:

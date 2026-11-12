@@ -422,11 +422,12 @@ function dropPosition(sessionId) {
 // with no phase carries nothing on, so it names neither; nor does a place
 // this project no longer has open — the work unit gone or closed, the item
 // closed, a topic on the map cancelled or postponed, a spec concluded — nor
-// one whose skill this project lacks. An epic's menu has the note name its
-// skill alone. A phase whose skill carries no recovery section of its own
-// has the note carry it whole (24.2.6), naming the engine calls it re-reads
-// beside its documents and the log its conversation keeps, where it keeps
-// one, which is caught up from the conversation's transcript (8.14.9):
+// one whose skill this project lacks. No skill carries a recovery section
+// of its own: the note carries it whole (24.2.6) — the skill and its
+// framework, then the engine calls the place re-reads beside its documents,
+// and the log its conversation keeps, where it keeps one, which is caught
+// up from the conversation's transcript (8.14.9). An epic's menu and the
+// roadmap name their skill alone, and an experiment its live records:
 // discussion's names the topic's record and its log (24.2.1–24.2.3), and a
 // bugfix investigation's the same, its log the investigation (19.4.3);
 // discovery's, at an epic, the unit's map and the open log, and at the
@@ -443,8 +444,7 @@ function dropPosition(sessionId) {
 // quick-fix's, in the quick-fix's own skill, what its arm reads, its change
 // and its fixes; and the
 // review phase's, of a unit whose build runs by its cut, what its entry
-// reads, its fix tasks in flight among it (review-entry.cjs). Every other
-// phase's note sends Claude to its skill's own steps, with its documents.
+// reads, its fix tasks in flight among it (review-entry.cjs).
 // ---------------------------------------------------------------------------
 
 /**
@@ -514,19 +514,10 @@ function productActive(cwd) {
 }
 
 /**
- * The log of the product's open session; none where no session is open.
- * @param {string} cwd @returns {string[]}
- */
-function productSessionLog(cwd) {
-  const active = productActive(cwd);
-  return active === null ? [] : sessionLog(statePath(cwd, PRODUCT_SESSIONS), active);
-}
-
-/**
  * What carries the work on at a position: the skill that runs it, and the
  * topic's documents, whether or not they exist — neither at a work unit's
- * menu; and, for a phase whose note carries its recovery whole, the engine
- * calls it re-reads and the log its conversation keeps, where it keeps one.
+ * menu; and, where the place has any, the engine calls it re-reads and the
+ * log its conversation keeps.
  * @typedef {{skill: string|null, documents: string[], whole?: {calls: string[], log: string|null, lines?: string[]}}} Work
  */
 
@@ -593,7 +584,7 @@ function workAt(cwd, position, manifest, sessionId) {
   if (skill === null) return { skill: null, documents: [] };
   if (phase === undefined) {
     if (name === PRODUCT) return discoveryWork(skill, [], sessionLog(statePath(cwd, PRODUCT_SESSIONS), productActive(cwd)));
-    if (name === ROADMAP) return { skill, documents: productSessionLog(cwd) };
+    if (name === ROADMAP) return { skill, documents: [] };
     return { skill, documents: [], whole: { calls: [], log: null } };
   }
   if (manifest === null) return { skill: null, documents: [] };
@@ -700,16 +691,6 @@ function closedReason(position, manifest) {
 }
 
 /**
- * The note naming where the conversation is working and what to re-read
- * there, in full, before anything else — the skill's own recovery steps.
- * @param {string} where @param {string} skillName @param {string} skill @param {string[]} files
- */
-function carryOnText(where, skillName, skill, files) {
-  const follow = `${COMPACTED} This conversation is working in ${where}. Follow the ${skillName} skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${skill} and its framework in full`;
-  return files.length > 0 ? [`${follow}, then re-read these in full:`, ...files.map((f) => `- ${f}`)].join('\n') : `${follow}.`;
-}
-
-/**
  * The lines a whole note gives the log its conversation keeps: caught up
  * from the conversation's transcript, or the transcript's loss said in one
  * line; and the line the conversation's next write to it opens with, where
@@ -731,10 +712,10 @@ function logLines(log, sessionId) {
 }
 
 /**
- * The note for a phase that carries its recovery whole: the skill and its
- * framework re-read, then its engine calls and its documents; what else the
- * phase holds open, a line each; its log, where it keeps one, caught up
- * (`logLines`); and the conversation carried on.
+ * The note: the skill and its framework re-read, then the place's engine
+ * calls and its documents; what else the phase holds open, a line each; its
+ * log, where it keeps one, caught up (`logLines`); and the conversation
+ * carried on.
  * @param {string} where @param {string} skill absolute @param {string[]} calls @param {string[]} files absolute
  * @param {string|null} log absolute @param {string} sessionId @param {string[]} [lines]
  */
@@ -788,9 +769,8 @@ function positionReads(cwd, sessionId) {
   const skill = absolute(skillFile(work.skill));
   if (!fs.existsSync(skill)) return nothing(`This conversation was working in ${where}, but this project has no ${work.skill} skill, so there is nothing to carry on from.`);
   const files = [...new Set(work.documents)].map(absolute).filter((f) => fs.existsSync(f));
-  const text = work.whole === undefined
-    ? carryOnText(where, work.skill, skill, files)
-    : wholeNote(where, skill, work.whole.calls, files, work.whole.log, sessionId, work.whole.lines);
+  const { calls, log, lines } = work.whole ?? { calls: [], log: null };
+  const text = wholeNote(where, skill, calls, files, log, sessionId, lines);
   return { session_id: sessionId, position, place, skill, files, text };
 }
 

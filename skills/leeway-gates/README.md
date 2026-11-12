@@ -194,13 +194,12 @@ summary, and the recent messages it keeps as they were, the person's waiting
 message among them — and the mod appends one message last: the engine's
 `conversation position` note. It says the conversation was just compacted and
 where it is working, the work unit named by its work type, then what to do
-before anything else. In discussion the note carries the recovery whole: the
-skill and its framework re-read in full, the topic's record and its log, the
-log caught up from the conversation's transcript, then carry on from where the
-conversation was, as if the break never happened. In a phase whose skill keeps
-its own "Resuming After Context Refresh" steps, it tells Claude to follow
-them — the skill and its framework re-read in full, then the topic's
-documents, each by its absolute path — and those steps end by carrying on.
+before anything else. The note carries the recovery whole, since no skill
+keeps steps of its own for it: the skill and its framework re-read in full,
+then what the place re-reads, each file by its absolute path — in discussion
+the topic's record and its log, the log caught up from the conversation's
+transcript — then carry on from where the conversation was, as if the break
+never happened.
 A `/compact` starts no turn of its own, so after one the mod sends a short
 continuation once the command is done — into the prompt box for Enter where
 the send is dropped — and Claude follows the note without the person typing
