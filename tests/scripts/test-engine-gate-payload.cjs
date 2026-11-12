@@ -259,18 +259,19 @@ describe('gate payload — a learned gate run as an automatic step (E13)', () =>
     fs.rmSync(config, { recursive: true, force: true });
   });
 
-  it('8.S22: the import prompt stepped by the decision point at no place, run as a step on skip, states no gate — its report in its menu\'s place — and the prompt shown before it is gone, so an answer to it refuses and nothing is logged', (t) => {
+  it('8.S22: the import prompt stepped by the decision point at no place, each showing told by the paths it names, run as a step on skip, states no gate — its report in its menu\'s place — and the prompt shown before it is gone, so an answer to it refuses and nothing is logged', (t) => {
     const env = { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
     const file = createFile(dir, '.leeway/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing: ['/notes/sketch.png'] }));
     const args = ['render', 'import-reprompt', '--file', file];
     const shown = gateOf(output(dir, args, { env }))?.gate;
-    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 's' }));
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', gate: 'import reprompt', row: 's', showing: '8484a1b6ea6ac909' }));
     const out = output(dir, args, { env });
 
-    assert.deepStrictEqual([shown, asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place])], ['import reprompt', [['import reprompt', { unit: null, phase: null, topic: null }]]]);
+    assert.deepStrictEqual([shown, asked.mock.calls.map(({ arguments: [name, { place, key }] }) => [name, place, key])], ['import reprompt', [['import reprompt', { unit: null, phase: null, topic: null }, ['/notes/sketch.png']]]]);
     assert.strictEqual(gateOf(out), null);
     assert.deepStrictEqual(markers(out).map((marker) => marker.split(' (')[0]), ['=== DISPLAY: missing imports', '=== DATA', '=== DISPLAY: automatic step']);
     assert.match(out, /^automatic step: import reprompt\nran: s\nnext: null\n/m);
+    assert.match(out, /^Paths that could not be landed skipped \[auto\]\. Landing the rest\.\n$/m, 'the report says the rest lands');
     assert.strictEqual(refusedPristine(dir, ['gate', 'import reprompt', '--pick', 's'], { env }).error, 'gate: no gate has been shown in this conversation — render the gate, then answer it');
     assert.strictEqual(fs.existsSync(path.join(config, 'trust.jsonl')), false, 'nothing is logged');
   });

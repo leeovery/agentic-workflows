@@ -10,8 +10,10 @@
 //   kept in the calling conversation's folder (conversation.cjs) as
 //   `gate-shown.json`: its name, its question, each row by its key with its
 //   word, its head, its tail and any detail beneath it, whether the engine
-//   recommended it and what answering it leads to, each typed row by its key with its label and what it leads
-//   to, the time it was shown, and its answer once given. The engine's
+//   recommended it and what answering it leads to; each typed row by its
+//   key with its label, whether the person answers it in words, and what it
+//   leads to; the time its showing was drawn, a learned gate's showing
+//   (learned-gates.cjs), and its answer once given. The engine's
 //   dispatch and a skill's gateway write it once the command has answered,
 //   never as the MENU is built; a command that states no gate, or fails,
 //   leaves the last one standing. Nothing is kept for a command Claude
@@ -48,6 +50,14 @@
 //   and the one rule on that name keeps it out: it is never recorded as the
 //   gate shown, and `gate` refuses it, naming `raise answer`. Drawing one
 //   clears the gate shown, so only one shows at a time (6.6.10).
+// - A showing of a gate lasts from its drawing until a pick answers it — a
+//   row, or a typed row that picks items — waiting for its answer, or set
+//   aside by a reply that answered no row: free text, or a typed row the
+//   person answers in words, a Comment or an Ask (6.6.2). Drawn again while
+//   it lasts, the gate shown keeps the showing's time and the showing it was
+//   drawn on, so the showing is one event under one id however many replies
+//   it took, the first read (16.13.3), and a learned gate's shows again
+//   (decision-point.cjs). The gate drawn after a pick is a new showing.
 // - A learned gate run as an automatic step (learned-gates.cjs) is no answer
 //   (E13): nothing is logged for it, it is never recorded as the gate shown,
 //   and the command clears the gate shown before it, as a raise's draw does,
@@ -57,8 +67,8 @@
 //   a gate already answered; each before the words are read. It writes no
 //   state: the trust log under the trust log's lock (trust-log.cjs), and
 //   the record, marked answered. The event's id is drawn from the
-//   conversation, the gate and when it was shown, so a rerun after a kill
-//   between the two logs the same event again, read once (16.13.3).
+//   conversation, the gate and when its showing was drawn, so a rerun after
+//   a kill between the two logs the same event again, read once (16.13.3).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -74,7 +84,7 @@ const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./projections/surfaces.cjs').ShownOption} ShownOption */
-/** @typedef {{key: string, label: string, next: Next|null}} ShownTypedRow */
+/** @typedef {{key: string, label: string, prompt: boolean, next: Next|null}} ShownTypedRow */
 /** @typedef {{at: string, picked: string|null, via: 'pressed'|'typed'}} Answered */
 /**
  * @typedef {object} ShownRecord
@@ -82,7 +92,8 @@ const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
  * @property {string} question
  * @property {ShownOption[]} options
  * @property {ShownTypedRow[]} typed
- * @property {string} at when it was shown
+ * @property {string} at when its showing was first drawn
+ * @property {string|null} showing a learned gate's showing, null for any other
  * @property {Answered|null} answered
  */
 /** A row picked, a typed row by its key, or free text: the person's words. @typedef {{pick: string} | {typed: string} | {words: string}} Answer */
@@ -117,7 +128,8 @@ function shownFile(session) {
 
 /**
  * Record the gate the command's MENU stated as the gate the calling
- * conversation was shown — or, where the MENU ran as an automatic step,
+ * conversation was shown, on the showing the conversation holds open where
+ * it holds one of that gate — or, where the MENU ran as an automatic step,
  * forget the one shown before it — run once the command is done. Never
  * throws.
  */
@@ -132,16 +144,19 @@ function recordGateShown() {
     return;
   }
   if (shown === null || isRaise(shown.gate)) return;
-  /** @type {ShownRecord} */
-  const kept = {
-    gate: nameOf(shown.gate),
-    question: shown.question,
-    options: shown.options,
-    typed: shown.typed.map(({ label, next }) => ({ key: typedKey(label), label, next })),
-    at: new Date().toISOString(),
-    answered: null,
-  };
+  const gate = nameOf(shown.gate);
   try {
+    const open = openShowing(session, gate);
+    /** @type {ShownRecord} */
+    const kept = {
+      gate,
+      question: shown.question,
+      options: shown.options,
+      typed: shown.typed.map(({ label, prompt, next }) => ({ key: typedKey(label), label, prompt, next })),
+      at: open?.at ?? new Date().toISOString(),
+      showing: open === null ? shown.showing : open.showing,
+      answered: null,
+    };
     const file = shownFile(session);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     writeJsonAtomic(file, kept);
@@ -172,6 +187,20 @@ function answeredTo(session, gates, argv, since) {
   const { picked } = shown.answered;
   const next = [...shown.options, ...shown.typed].find((row) => row.key === picked)?.next;
   return next?.kind === 'engine' && next.argv.join('\0') === argv.join('\0');
+}
+
+/**
+ * The gate `name`'s showing the conversation `session` holds open: the gate
+ * shown, waiting for its answer or set aside by a reply that answered no
+ * row; null where the gate shown is another, or a pick ended its showing.
+ * @param {string} session @param {string} name @returns {ShownRecord|null}
+ */
+function openShowing(session, name) {
+  const shown = lastShown(session);
+  if (shown === null || shown.gate !== name) return null;
+  if (shown.answered === null) return shown;
+  const { picked } = shown.answered;
+  return picked === null || shown.typed.some((t) => t.key === picked && t.prompt) ? shown : null;
 }
 
 /** Forget the gate the conversation `session` was shown. @param {string} session */
@@ -260,9 +289,9 @@ function answerGate(cwd, named, answer) {
   /** @type {string[]} */
   const warnings = [];
   const id = idFrom(session, name, shown.at);
-  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading }, { cwd, warnings, id });
+  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading, showing: shown.showing }, { cwd, warnings, id });
   writeJsonAtomic(file, { ...shown, answered: { at: new Date().toISOString(), picked, via } });
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed, lastShown, answeredTo };
+module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed, lastShown, answeredTo, openShowing };

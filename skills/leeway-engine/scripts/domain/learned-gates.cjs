@@ -16,36 +16,48 @@
 //   gate's key in the trust log for good (16.11.9), declared by one MENU, and
 //   one with an entry after it, `{name} — {entry}`, is that gate.
 // - A row that may run as a step has its report. A typed row — a Comment,
-//   paths in the person's words — never runs as one, and neither does the
-//   conclude's keep going, which would hold the investigation open with no
-//   one to end it.
+//   paths in the person's words — never runs as one; nor does the conclude's
+//   keep going, which would hold the investigation open with no one to end
+//   it; nor the wait's wait, whose next draws the wait again while the agents
+//   run, so as a step it would never stop.
+// - A showing is one occurrence of a gate: drawn, then waiting, set aside
+//   and shown again, until a pick answers it or it runs as a step. Its digest
+//   (`showingOf`) hashes the gate's place — unit, phase and topic — with the
+//   key its surface draws it from out of its own state, the same on every
+//   redraw of one showing and different between showings. Its answer logs it
+//   (trust-events.cjs), so a replay draws a past showing again as it was
+//   drawn: `drawnBlind(gate, showing)`.
 // - A gate shows while its count asks (trust-counts.cjs): with no answers at
 //   all, and until the bound on leaving its usual answer, the row picked
 //   most often, falls below the person's threshold; once under, it runs as
 //   a step on that row, until the bound rises a quarter above the threshold.
 //   It shows besides where its usual answer has no report, and on a blind
 //   ask, one showing in twenty (16.21.3), drawn from a hash of the gate's
-//   name, its unit, its topic and how many answers it holds (E3) — so a gate
-//   drawn again before its next answer draws alike, and the draw is the
-//   occurrence's, never the render's.
-// - Nothing here reads: the counts, the build's position and the time are the
-//   decision point's (decision-point.cjs), and a step drawn in the place of a
-//   gate's menu is the surfaces' (projections/surfaces.cjs).
+//   name and its showing (E3) — so a redraw draws alike, and the draw is the
+//   showing's, never the render's.
+// - Nothing here reads: the counts, the build's position, the showing open in
+//   the conversation and the time are the decision point's
+//   (decision-point.cjs), and a step drawn in the place of a gate's menu is
+//   the surfaces' (projections/surfaces.cjs).
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
 
 /** @typedef {import('./trust-counts.cjs').State} State */
-/** A learned gate shows, or runs as an automatic step on one of its rows. @typedef {{step: 'show'} | {step: 'automatic', row: string}} GateStep */
-/** What a gate's blind ask is drawn from, beside its name. @typedef {{unit: string|null, topic: string|null, answers: number}} Draw */
+/**
+ * A gate's step: shown, or run as an automatic step on one of its rows —
+ * each for the gate it was drawn for, on the showing it was drawn on, none
+ * for a gate off the list.
+ * @typedef {{step: 'show', gate: string, showing: string|null} | {step: 'automatic', gate: string, row: string, showing: string}} GateStep
+ */
+/** Where a gate comes: its unit, phase and topic, each null where it comes at none. @typedef {{unit: string|null, phase: string|null, topic: string|null}} Place */
 
 /** Each learned gate by its name: the report of each row that may run as an automatic step. @type {Readonly<Record<string, Readonly<Record<string, string>>>>} */
 const LEARNED = Object.freeze({
   'import reprompt': Object.freeze({
-    s: 'Paths that could not be landed skipped [auto]. Carrying on with what landed.',
+    s: 'Paths that could not be landed skipped [auto]. Landing the rest.',
   }),
   'wait for agents': Object.freeze({
-    w: 'Waiting for the running agents [auto]. Taking in what they find first.',
     g: 'Going on without the running agents [auto]. Their reports wait for the next opening.',
   }),
   'plan gate': Object.freeze({
@@ -66,10 +78,11 @@ const LEARNED = Object.freeze({
 // The share of a gate's showings asked blind once it runs as a step (16.20.2).
 const BLIND_ASK = 0.05;
 
+// A showing's digest, in hex digits.
+const SHOWING_DIGITS = 16;
+
 // Where a declared gate's name ends and its entry begins, as gate.cjs reads it.
 const ENTRY_SEPARATOR = ' — ';
-
-const SHOWS = /** @type {GateStep} */ (Object.freeze({ step: 'show' }));
 
 /**
  * The learned gate a MENU declares, by its name — `{name} — {entry}` is the
@@ -87,26 +100,36 @@ function reportOf(name, row) {
   return reports !== undefined && Object.hasOwn(reports, row) ? reports[row] : null;
 }
 
-/**
- * Whether the gate `name`, at its unit and topic with `answers` answers,
- * draws its blind ask (E3).
- * @param {string} name @param {Draw} draw
- */
-function drawnBlind(name, { unit, topic, answers }) {
-  const digest = crypto.createHash('sha1').update(JSON.stringify([name, unit, topic, answers])).digest();
-  return digest.readUInt32BE(0) / 2 ** 32 < BLIND_ASK;
-}
+/** The SHA-1 of `value` as JSON. @param {unknown} value */
+const digest = (value) => crypto.createHash('sha1').update(JSON.stringify(value)).digest();
 
 /**
- * Whether the learned gate `name` shows, or runs as an automatic step on its
- * usual row: as its count stands at the person's threshold, the row's report,
- * and its blind ask.
- * @param {string} name @param {State} state @param {Draw} draw
+ * The showing of a gate at `place` that its surface draws from `key`, its
+ * own state: a digest, the same for the same place and key.
+ * @param {Place} place @param {unknown} key @returns {string}
+ */
+function showingOf({ unit, phase, topic }, key) {
+  return digest([unit, phase, topic, key]).toString('hex').slice(0, SHOWING_DIGITS);
+}
+
+/** Whether the gate `name`'s showing `showing` draws its blind ask (E3). @param {string} name @param {string} showing */
+function drawnBlind(name, showing) {
+  return digest([name, showing]).readUInt32BE(0) / 2 ** 32 < BLIND_ASK;
+}
+
+/** The gate `gate` shown on its showing `showing`. @param {string} gate @param {string|null} showing @returns {GateStep} */
+const shows = (gate, showing) => ({ step: 'show', gate, showing });
+
+/**
+ * Whether the learned gate `name`, on its showing `showing`, shows or runs
+ * as an automatic step on its usual row: as its count stands at the person's
+ * threshold, the row's report, and its blind ask.
+ * @param {string} name @param {State} state @param {string} showing
  * @returns {GateStep}
  */
-function stepOf(name, { asks, usual }, draw) {
-  if (asks || typeof usual !== 'string' || reportOf(name, usual) === null || drawnBlind(name, draw)) return SHOWS;
-  return { step: 'automatic', row: usual };
+function stepOf(name, { asks, usual }, showing) {
+  if (asks || typeof usual !== 'string' || reportOf(name, usual) === null || drawnBlind(name, showing)) return shows(name, showing);
+  return { step: 'automatic', gate: name, row: usual, showing };
 }
 
-module.exports = { LEARNED, BLIND_ASK, SHOWS, learnedGate, reportOf, drawnBlind, stepOf };
+module.exports = { LEARNED, BLIND_ASK, learnedGate, reportOf, showingOf, drawnBlind, shows, stepOf };

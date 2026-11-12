@@ -62,7 +62,7 @@ const ANSWERS = Object.freeze([true, false, true, true, false, false, false, fal
 
 /** A well-formed event of every type, its own fields. */
 const SAMPLES = Object.freeze({
-  gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null },
+  gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: 'ec91f2a928f07b80' },
   raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one' },
   verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
@@ -136,6 +136,7 @@ describe('record (16.13.4)', () => {
       ['gate', { ...SAMPLES.gate, picked: SENTENCE }, notKey('gate', 'picked')],
       ['gate', { ...SAMPLES.gate, recommended: 'keep-the-old-one-and-add-a-view' }, notKey('gate', 'recommended')],
       ['gate', { ...SAMPLES.gate, via: 'typed', picked: null, with_text: true, reading: 'the second' }, notKey('gate', 'reading')],
+      ['gate', { ...SAMPLES.gate, showing: 'check the disk first' }, 'a gate event cannot be recorded: its showing is not a showing\'s digest: 16 hex digits, or null'],
       ['raise', { ...SAMPLES.raise, answer: 'use the existing table, it is fine' }, notKey('raise', 'answer')],
       ['raise', { ...SAMPLES.raise, sealed: 'option one' }, notKey('raise', 'sealed')],
       ['raise', { ...SAMPLES.raise, answer: null, via: 'typed', with_text: true, reading: 'the first one' }, notKey('raise', 'reading')],

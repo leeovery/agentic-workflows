@@ -180,12 +180,12 @@ describe('the spawn commits its record and hands the conversation on', () => {
     assert.deepStrictEqual(answered('lab', 'timing', 'l'), { kind: 'continue' });
   });
 
-  it('the now-or-later gate is a learned one, stepped by the decision point at the spawning topic: run as a step on yes, its report stands in its menu\'s place and its DATA carries the handoff into the laboratory (24.1.2)', (t) => {
+  it('the now-or-later gate is a learned one, stepped by the decision point at the spawning topic, each showing told by its experiment: run as a step on yes, its report stands in its menu\'s place and its DATA carries the handoff into the laboratory (24.1.2)', (t) => {
     spawn(dir, 'discussion', 'window-placement');
-    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 'y' }));
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', gate: 'experiment spawn gate', row: 'y', showing: '47e5a17f3cac2787' }));
     const out = output(dir, ['render', 'experiment-spawn-gate', 'lab.discussion.timing', '--id', 'E1'], { env: SESSION });
 
-    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place]), [['experiment spawn gate', { unit: 'lab', phase: 'discussion', topic: 'timing' }]]);
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place, key }] }) => [name, place, key]), [['experiment spawn gate', { unit: 'lab', phase: 'discussion', topic: 'timing' }, 'E1']]);
     assert.deepStrictEqual(out.split('\n').slice(1, 4), ['automatic step: experiment spawn gate', 'ran: y', 'next: {"kind":"handoff","skill":"leeway-experiment-process","args":["epic","lab","timing"]}']);
     assert.match(out, /^=== DISPLAY: automatic step .*\nExperiment worked now \[auto\]\. Opening the laboratory\.\n$/m);
   });

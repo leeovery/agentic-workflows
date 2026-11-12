@@ -614,6 +614,26 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     ]);
   });
 
+  it('each is stepped by the decision point at the investigation, its showing told by what it asks about — the plan by its order and what a revision changed, the check-in by the hypotheses it resolved — and run as a step on yes, its report in its menu\'s place', (t) => {
+    hunting();
+    const asked = t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ gate) => ({ step: 'automatic', gate, row: 'y', showing: '47e5a17f3cac2787' }));
+    const changed = 'E1 showed a kill alone empties it, so the reboot comes first';
+
+    const drawn = [
+      rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)]),
+      rendered(['investigation-plan', HUNT, '--file', payload('plan.json', { ...PLAN, changed }), '--revised']),
+      rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server' })]),
+    ];
+
+    const place = { unit: HUNT, phase: 'investigation', topic: HUNT };
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, at] }) => [name, at.place, at.key]), [
+      ['plan gate', place, [['H3', 'H2'], null]],
+      ['plan gate', place, [['H3', 'H2'], changed]],
+      ['check-in gate', place, ['H1']],
+    ]);
+    assert.deepStrictEqual(drawn.map((sections) => sections.match(/^automatic step: .+$/m)?.[0]), ['automatic step: plan gate', 'automatic step: plan gate', 'automatic step: check-in gate']);
+  });
+
   it('each gate refuses a place whose investigation is not open, and a call with no payload', () => {
     const file = payload('plan.json', PLAN);
     assert.deepStrictEqual([
@@ -1024,16 +1044,20 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.strictEqual(run(['investigation', 'conclude', RIPE]).unit, RIPE);
   });
 
-  it('16.10.11: stepped by the decision point at the investigation, the conclude run as a step on its yes asks no verdict there — its report stands in its menu\'s place, its DATA carrying the yes\'s next — and the yes concludes, the departure waiting in the verdict queue', async (t) => {
+  it('16.10.11: stepped by the decision point at the investigation, its showing told by when its recap was staged, the conclude run as a step on its yes asks no verdict there — its report stands in its menu\'s place, its DATA carrying the yes\'s next — and the yes, asking the decision point again on that showing, concludes, the departure waiting in the verdict queue', async (t) => {
     const changed = await departed();
-    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 'y' }));
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', gate: 'conclude gate', row: 'y', showing: '47e5a17f3cac2787' }));
 
     const sections = conclude();
+    const concluded = run(['investigation', 'conclude', RIPE]).unit;
 
-    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place]), [['conclude gate', { unit: RIPE, phase: 'investigation', topic: RIPE }]]);
+    const calls = asked.mock.calls.map(({ arguments: [name, { place, key }] }) => [name, place, key]);
+    assert.deepStrictEqual(calls.map(([name, place]) => [name, place]), [['conclude gate', { unit: RIPE, phase: 'investigation', topic: RIPE }], ['conclude gate', { unit: RIPE, phase: 'investigation', topic: RIPE }]]);
+    assert.match(String(calls[0][2]), /^\d{4}-\d\d-\d\dT/);
+    assert.strictEqual(calls[1][2], calls[0][2], 'the yes asks on the showing the conclude was drawn on');
     assert.doesNotMatch(sections, /YOUR VERDICT|^=== MENU/m);
     assert.deepStrictEqual(sections.slice(sections.indexOf('=== DATA')).split('\n').slice(1, 4), ['automatic step: conclude gate', 'ran: y', `next: {"kind":"engine","argv":["investigation","conclude","${RIPE}"]}`]);
-    assert.strictEqual(run(['investigation', 'conclude', RIPE]).unit, RIPE);
+    assert.strictEqual(concluded, RIPE);
     assert.deepStrictEqual(run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
   });
 });

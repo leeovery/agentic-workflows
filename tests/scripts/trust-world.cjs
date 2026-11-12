@@ -209,12 +209,13 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     /** @param {string} entry @param {{kind?: Kind|null, verdict?: string|null}} to */
     correct: (entry, { kind = null, verdict = null }) => log('correction', { entry, kind, verdict }),
     /**
-     * An answer at gate `name`: a row pressed, or free text read as `reading`.
-     * @param {string} name @param {{picked?: string, reading?: string|null}} answer @param {Where} [where]
+     * An answer at gate `name`: a row pressed, or free text read as `reading`,
+     * on the showing `showing`, none for a gate off the list.
+     * @param {string} name @param {{picked?: string, reading?: string|null, showing?: string|null}} answer @param {Where} [where]
      */
-    gate: (name, { picked, reading = null }, where = {}) => log('gate', picked === undefined
-      ? { gate: name, recommended: 'y', picked: null, via: 'typed', with_text: true, reading }
-      : { gate: name, recommended: 'y', picked, via: 'pressed', with_text: false, reading: null }, where),
+    gate: (name, { picked, reading = null, showing = null }, where = {}) => log('gate', picked === undefined
+      ? { gate: name, recommended: 'y', picked: null, via: 'typed', with_text: true, reading, showing }
+      : { gate: name, recommended: 'y', picked, via: 'pressed', with_text: false, reading: null, showing }, where),
     /** The other events of the log, which answer nothing. */
     others: () => {
       h.unfollowed('several');

@@ -241,13 +241,13 @@ describe('the wait for agents (9.7.8, 9.S63)', () => {
     assert.strictEqual(refusedPristine(dir(), ['render', 'wait-agents', `${UNIT}.ghost`]).error, 'render wait-agents: fumi has no topic "ghost"');
   });
 
-  it('9.S47, 3.S11: is a learned gate, stepped by the decision point at the topic\'s discussion — run as a step on its go, its report stands in its menu\'s place and its DATA carries the go\'s next — and none is asked while nothing runs', (t) => {
-    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', row: 'g' }));
+  it('9.S47, 3.S11: is a learned gate, stepped by the decision point at the topic\'s discussion, each showing told by the agents it waits on — run as a step on its go, its report stands in its menu\'s place and its DATA carries the go\'s next — and none is asked while nothing runs', (t) => {
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', gate: 'wait for agents', row: 'g', showing: '47e5a17f3cac2787' }));
     wait();
-    ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review'], { env: RUNNING });
+    const { id } = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review'], { env: RUNNING });
     const out = wait();
 
-    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place }] }) => [name, place]), [['wait for agents', { unit: UNIT, phase: 'discussion', topic: 'note-window' }]]);
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place, key }] }) => [name, place, key]), [['wait for agents', { unit: UNIT, phase: 'discussion', topic: 'note-window' }, [id]]]);
     assert.strictEqual(out.slice(out.indexOf('\n') + 1), [
       'automatic step: wait for agents',
       'ran: g',

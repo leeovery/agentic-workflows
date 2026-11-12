@@ -12,12 +12,14 @@
 // Drawn borders never frame content — markdown and fences re-flow with the
 // terminal; fixed-width borders cannot.
 // A learned process gate's MENU (learned-gates.cjs) is drawn with the step
-// the decision point gave it (decision-point.cjs, `gateStep`), and refused
-// without one; run as an automatic step, it draws in the menu's place a DATA
-// naming the row it ran and that row's `next`, and the row's one-line report
-// under a marker that does not stop (3.2.9, 6.6.14). Its gate is never shown,
-// the one shown before it goes (gate.cjs), and nothing goes to `gate` (E13).
-// Any other MENU is drawn as it is, its name looked up and nothing read.
+// the decision point gave it for that gate (decision-point.cjs, `gateStep`),
+// and refused without one or with another gate's; shown, the gate shown
+// keeps the showing it was drawn on; run as an automatic step, it draws in
+// the menu's place a DATA naming the row it ran and that row's `next`, and
+// the row's one-line report under a marker that does not stop (3.2.9,
+// 6.6.14). Its gate is never shown, the one shown before it goes (gate.cjs),
+// and nothing goes to `gate` (E13). Any other MENU is drawn as it is, its
+// name looked up and nothing read.
 // ---------------------------------------------------------------------------
 
 const { wrap } = require('../../kernel/render.cjs');
@@ -253,14 +255,15 @@ function drawLabel(label) {
  * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'invoke', skill: string, args: string[]} | {kind: 'continue'}} Next
  */
 
-/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>}} GateCollection */
+/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], prompts: Set<GateTyped>, next: Map<GateRow, Next>}} GateCollection */
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, recommended: boolean, next: Next|null}} ShownOption */
-/** @typedef {{label: string, next: Next|null}} ShownTyped */
+/** A typed row, and whether the person answers it in words — a Comment, an Ask — rather than picking items. @typedef {{label: string, prompt: boolean, next: Next|null}} ShownTyped */
 /**
  * The gate a MENU stated: its name as declared, its question, its rows and
- * what each leads to.
- * @typedef {{gate: string, question: string, options: ShownOption[], typed: ShownTyped[]}} GateShown
+ * what each leads to, and a learned gate's showing (learned-gates.cjs), null
+ * for any other.
+ * @typedef {{gate: string, question: string, options: ShownOption[], typed: ShownTyped[], showing: string|null}} GateShown
  */
 /** @typedef {import('../learned-gates.cjs').GateStep} GateStep */
 
@@ -296,7 +299,7 @@ function gateSurfaceAnnounced() {
  * @returns {void}
  */
 function openGate() {
-  collected = { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [], next: new Map() };
+  collected = { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [], prompts: new Set(), next: new Map() };
   shown = null;
   stepped = false;
 }
@@ -338,12 +341,14 @@ function illustrate(compose) {
  * The GATE block for the MENU about to be emitted — `''` where the gate
  * surface is unannounced, nothing was collected, or the menu composed
  * neither a frame nor a row — and the gate it states kept as the gate
- * shown. Taken once: a second menu in one response finds nothing, and a
- * response with no menu drops what it gathered at the next command.
+ * shown, on a learned gate's showing. Taken once: a second menu in one
+ * response finds nothing, and a response with no menu drops what it gathered
+ * at the next command.
  * @param {string} name  the gate's name, `MENU:` prefix already dropped
+ * @param {string|null} showing
  * @returns {string}
  */
-function gateBlock(name) {
+function gateBlock(name, showing) {
   const taken = collected;
   collected = null;
   if (taken === null || (taken.prose === null && taken.rows.size === 0)) return '';
@@ -354,7 +359,8 @@ function gateBlock(name) {
     gate: name,
     question,
     options: taken.options.map((o) => ({ key: o.key, word: o.word, head: o.head, tail: o.tail, detail: o.detail, recommended: o.recommended, next: nextOf(o) })),
-    typed: taken.typed.map((t) => ({ label: t.label, next: nextOf(t) })),
+    typed: taken.typed.map((t) => ({ label: t.label, prompt: taken.prompts.has(t), next: nextOf(t) })),
+    showing,
   };
   if (!gateSurfaceAnnounced()) return '';
   const payload = JSON.stringify({
@@ -409,17 +415,19 @@ function recordOption(line, key, word, { head, tail, cue, holder, recommended },
 }
 
 /**
- * Record one typed row — a natural reply or a span of numbers, never a press
- * — and what answering it leads to, where its composer declared that.
+ * Record one typed row — a natural reply, `prompt`, or a span of numbers,
+ * never a press — and what answering it leads to, where its composer
+ * declared that.
  * @param {string} line  the row as drawn
- * @param {string} label @param {string} description @param {Next} [next] @returns {void}
+ * @param {string} label @param {string} description @param {boolean} prompt @param {Next} [next] @returns {void}
  */
-function recordTyped(line, label, description, next) {
+function recordTyped(line, label, description, prompt, next) {
   if (collected === null) return;
   /** @type {GateTyped} */
   const typed = { label: stripMarkup(label), description: stripMarkup(description), detail: null };
   collected.rows.set(line, typed);
   collected.typed.push(typed);
+  if (prompt) collected.prompts.add(typed);
   if (next) collected.next.set(typed, next);
 }
 
@@ -475,13 +483,14 @@ function gateName(name) {
 /**
  * One `=== NAME (instruction) ===` demarcated section, a MENU carrying its
  * gate payload immediately above it where the gate surface announced, so a
- * surface drawing the gate never has to read the markdown back out.
- * @param {string} name @param {string} instruction @param {string} body
+ * surface drawing the gate never has to read the markdown back out — the
+ * gate shown on a learned gate's `showing`.
+ * @param {string} name @param {string} instruction @param {string} body @param {string|null} [showing]
  * @returns {string}
  */
-function sectionOf(name, instruction, body) {
+function sectionOf(name, instruction, body, showing = null) {
   const block = `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
-  return name.startsWith('MENU') ? gateBlock(gateName(name)) + block : block;
+  return name.startsWith('MENU') ? gateBlock(gateName(name), showing) + block : block;
 }
 
 // The help row is a menu's alone (18.9.4): a question typed at a gate or a
@@ -493,7 +502,7 @@ const HELP_ROW = /^\*\*`h\/help`\*\*/m;
  * MENU's marker is built but a menu's (`menuSection`), so every MENU states
  * the gate shown. A MENU here is a gate's or a raise's, and one drawing the
  * help row is refused; a learned gate's is drawn as its step says, and
- * refused without one.
+ * refused without one, or with one for another gate.
  * @param {string} name @param {string} instruction @param {string} body
  * @param {GateStep} [step] the decision point's, on a learned gate
  * @returns {string}
@@ -503,10 +512,12 @@ function section(name, instruction, body, step) {
     throw new Error(`${gateName(name)}: a gate or a raise carries no h/help row — a question typed at it sets it aside (18.9.4); only a menu draws help`);
   }
   const learned = name.startsWith('MENU') ? learnedGate(gateName(name)) : null;
-  if (learned !== null && step === undefined) {
-    throw new Error(`${gateName(name)}: a learned gate is drawn as the decision point steps it — decision-point.cjs gateStep`);
+  if (learned === null) return sectionOf(name, instruction, body);
+  if (step?.gate !== learned) {
+    const given = step === undefined ? '' : `, not as ${step.gate}'s`;
+    throw new Error(`${gateName(name)}: a learned gate is drawn as the decision point steps it${given} — decision-point.cjs gateStep`);
   }
-  return learned !== null && step?.step === 'automatic' ? automaticStep(learned, step.row) : sectionOf(name, instruction, body);
+  return step.step === 'automatic' ? automaticStep(learned, step.row) : sectionOf(name, instruction, body, step.showing);
 }
 
 /**
@@ -784,7 +795,7 @@ function bareOption(key, word, { next } = {}) {
  */
 function promptOption(label, description, { next } = {}) {
   const line = `**${label}** → ${description}`;
-  recordTyped(line, label, description, next);
+  recordTyped(line, label, description, true, next);
   return line;
 }
 
@@ -798,7 +809,7 @@ function promptOption(label, description, { next } = {}) {
  */
 function rangeOption(first, last, label, { next } = {}) {
   const line = `**\`${first}–${last}\`** → ${label}`;
-  recordTyped(line, `${first}–${last}`, label, next);
+  recordTyped(line, `${first}–${last}`, label, false, next);
   return line;
 }
 

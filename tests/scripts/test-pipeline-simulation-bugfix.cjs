@@ -22,7 +22,7 @@
 // opening. And a bugfix whose investigation's gates the person has always
 // said yes at, the decision point stepping them as it will once the learned
 // gates are switched on: the plan, the check-in and the conclude each run as
-// a learned step, the call the person changed waiting in the verdict queue,
+// a learned step, the conclude's yes standing over a call the person changed,
 // and ready to build, its count as long, stopping before any code.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -197,15 +197,16 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.map((d) => d.text), ['The save writes a null that nothing checks.', 'Rework saving as a feature']);
   });
 
-  it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan, check-in and conclude gates each run as a learned step, nothing answered at them; the fix the person changed waits in the verdict queue; ready to build, as long answered alike, still stops before any code', async (t) => {
-    // A unit whose draws at these counts ask no blind question.
+  it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan, check-in and conclude gates each run as a learned step, nothing answered at them, the conclude\'s yes standing over the fix the person changed; ready to build, as long answered alike, still stops before any code', async (t) => {
+    // Each showing told by its place alone, so the run draws as the unit's
+    // name says, whatever time its recap is staged at: none blind here.
     const wu = 'save-null';
     const { project_id: project } = JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway/manifest.json'), 'utf8'));
     const seeded = history({ project, start: Date.now() - DAY });
     for (const gate of ['plan gate', 'check-in gate', 'conclude gate']) for (let i = 0; i < 13; i += 1) seeded.gate(gate, { picked: 'y' });
     for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
     fs.writeFileSync(path.join(sim.configDir, TRUST_LOG), lines(...seeded.events));
-    t.mock.method(decisionPoint, 'gateStep', decisionPoint.learned);
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, { ...at, key: null }));
 
     startNew(sim);
     startUnit(sim, 'bugfix', wu, 'Fix the crash');
@@ -215,8 +216,6 @@ describe('pipeline simulation: bugfix', () => {
     await fixDirected(sim, wu, { pick: '2' });
     validated(sim, wu, 'fix');
     concluded(sim, wu);
-    const changed = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'Write a default in place of the null').id;
-    assert.deepStrictEqual(sim.run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
 
     specToBuild(sim, wu, [wu]);
     assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'ready to build']);

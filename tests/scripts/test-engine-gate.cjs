@@ -15,8 +15,10 @@
 // did with the send's own record — typed otherwise and always with the mod
 // off (6.6.3, 6.6.4); what the row leads to returned and never performed
 // (6.6.2); a rerun after a kill read once; each refusal logging nothing, a
-// raise's among them; and the mod's record of a press read as the mod
-// writes it, each literal read off its source.
+// raise's among them; a showing set aside and shown again one showing, its
+// answers one event, and a learned gate's showing on it; and the mod's
+// record of a press read as the mod writes it, each literal read off its
+// source.
 //
 // Layer: verb, the gateway's record and the source guard beside it. World:
 // the project from the fixture library, read and never written — a feature
@@ -44,6 +46,7 @@ const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
 const {
   openGate, gateShown, illustrate, section, menu, cmdOption, promptOption, rangeOption, MENU_INSTRUCTION,
 } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
+const { showingOf, shows } = require(path.join(SCRIPTS, 'domain/learned-gates.cjs'));
 const { recordGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { readTrustLog } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { renderSurface } = require(path.join(SCRIPTS, 'domain/render.cjs'));
@@ -173,7 +176,8 @@ describe('the gate shown (3.S6)', () => {
       gate: 'migration gate',
       question: 'Ready to continue?',
       options: [{ key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null, recommended: false, next: null }],
-      typed: [{ key: 'ask', label: 'Ask', next: null }],
+      typed: [{ key: 'ask', label: 'Ask', prompt: true, next: null }],
+      showing: null,
       answered: null,
     });
     assert.ok(Date.parse(at) >= before && Date.parse(at) <= after, at);
@@ -254,6 +258,7 @@ describe('the gate shown (3.S6)', () => {
       question: 'Go on?',
       options: [{ key: 'y', word: 'yes', head: 'Go', tail: null, detail: null, recommended: false, next: null }],
       typed: [],
+      showing: null,
     });
   });
 
@@ -268,14 +273,14 @@ describe('the gate shown (3.S6)', () => {
     assert.deepStrictEqual(building.map((file) => path.relative(SKILLS, file)), []);
   });
 
-  it('a typed row is keyed by its label\'s words, lowercase, joined by hyphens', () => {
+  it('a typed row is keyed by its label\'s words, lowercase, joined by hyphens, and marked where the person answers it in words rather than picking items', () => {
     showMenu('shaped gate', () => [
       cmdOption('y', 'yes', 'Go'),
       promptOption('Tell me what to change', 'what to revise'),
       rangeOption(1, 4, 'Start work on item(s)'),
     ]);
 
-    assert.deepStrictEqual(shown().typed.map((/** @type {{key: string}} */ t) => t.key), ['tell-me-what-to-change', '1-4']);
+    assert.deepStrictEqual(shown().typed.map((/** @type {{key: string, prompt: boolean}} */ t) => [t.key, t.prompt]), [['tell-me-what-to-change', true], ['1-4', false]]);
   });
 
   it('a skill\'s gateway records the gate its MENU states, as the engine\'s dispatch does', () => {
@@ -431,6 +436,53 @@ describe('gate (6.6, 6.S18)', () => {
     const read = [];
     inConversation(() => readTrustLog((event) => read.push(event.picked)));
     assert.deepStrictEqual([again === first, next === first, read], [true, false, ['y', 'b']]);
+  });
+
+  it('a showing set aside — by free text or a prompt row — and shown again is one showing: it keeps the time it was first shown, its answers there are logged under one id, read once, the first reply counting; a pick ends it, and the gate shown after is a new showing, its answer a new event (16.13.3, 6.6.2)', () => {
+    render(['migration-gate']);
+    const { at } = shown();
+    answer(['migration gate', '--typed'], {}, WORDS);
+    render(['migration-gate']);
+    const afterWords = shown().at;
+    answer(['migration gate', '--typed', 'ask']);
+    render(['migration-gate']);
+    const afterAsk = shown().at;
+    answer(['migration gate', '--pick', 'y']);
+    render(['migration-gate']);
+    const afterPick = shown().at;
+    answer(['migration gate', '--pick', 'y']);
+
+    const [first, ...rest] = events().map((event) => event.id);
+    /** @type {unknown[]} */
+    const read = [];
+    inConversation(() => readTrustLog((event) => read.push([event.picked, event.with_text])));
+    assert.deepStrictEqual([afterWords === at, afterAsk === at, afterPick === at], [true, true, false]);
+    assert.deepStrictEqual(rest.map((id) => id === first), [true, true, false]);
+    assert.deepStrictEqual(read, [[null, true], ['y', false]]);
+  });
+
+  it('a typed row that picks items is an answer: the gate shown after it is a new showing', () => {
+    const rows = () => [cmdOption('y', 'yes', 'Go'), rangeOption(1, 4, 'Start work on item(s)')];
+    showMenu('shaped gate', rows);
+    const { at } = shown();
+    answer(['shaped gate', '--typed', '1-4']);
+    showMenu('shaped gate', rows);
+
+    assert.notStrictEqual(shown().at, at);
+  });
+
+  it('a learned gate\'s answer logs the showing it was drawn on, so a replay draws its blind ask again; any other gate\'s logs none', () => {
+    const showing = showingOf({ unit: 'pay', phase: 'investigation', topic: 'pay' }, ['H1']);
+    inConversation(() => {
+      openGate();
+      section('MENU: plan gate', MENU_INSTRUCTION, menu('', [cmdOption('y', 'yes', 'Approve the plan')], { question: 'Approve this plan?' }), shows('plan gate', showing));
+      recordGateShown();
+    });
+    answer(['plan gate', '--pick', 'y']);
+    render(['migration-gate']);
+    answer(['migration gate', '--pick', 'y']);
+
+    assert.deepStrictEqual(events().map((event) => [event.gate, event.showing]), [['plan gate', showing], ['migration gate', null]]);
   });
 
   it('a gate before the project has state is answered like any other, its event naming no project (16.13.5)', () => {

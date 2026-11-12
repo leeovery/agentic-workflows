@@ -644,7 +644,7 @@ function waitAgentsSurface(cwd, { dotpath }) {
   if (itemOf(manifest, PHASE, topic) === undefined) throw new Error(`render wait-agents: ${unit} has no discussion of "${topic}"`);
   const running = runningAgents(cwd, unit, PHASE, topic);
   if (running.length === 0) return '';
-  const step = decisionPoint.gateStep('wait for agents', { cwd, place: { unit, phase: PHASE, topic } });
+  const step = decisionPoint.gateStep('wait for agents', { cwd, place: { unit, phase: PHASE, topic }, key: running.map(({ id }) => id) });
   return waitAgents(unit, topic, topicTitle(manifest, topic), running.map(({ kind }) => kind), step);
 }
 

@@ -19,7 +19,9 @@
 //
 // - gate: an answer at a gate, by the gate's name (16.11.9), and the row
 //   the engine recommended, null where it recommended none; then the
-//   answer, as a raise's is.
+//   answer, as a raise's is; and the showing it answered, a learned gate's
+//   digest (learned-gates.cjs), so a replay draws its blind ask again —
+//   null at any other gate.
 // - raise: a question raised to the person (16.9) — the ledger entry the
 //   answer landed as, but for a keep of Claude's call gone ahead while a
 //   blind question waited, that call, the entry the person agreed with
@@ -121,6 +123,8 @@ const KIND = nullable(oneOf(...KINDS));
 // A gate's name, as the engine's menus name their gates: a few lowercase words.
 const GATE = type('a gate\'s name: up to five lowercase words, 40 characters at most', (v) => typeof v === 'string' && v.length <= 40
   && /^[a-z0-9]+(?:-[a-z0-9]+)*(?: [a-z0-9]+(?:-[a-z0-9]+)*){0,4}$/.test(v));
+// A learned gate's showing: its digest (learned-gates.cjs).
+const SHOWING = type('a showing\'s digest: 16 hex digits', (v) => typeof v === 'string' && /^[0-9a-f]{16}$/.test(v));
 // A work unit's or a topic's name.
 const SLUG = type('a slug', (v) => typeof v === 'string' && KEBAB_SLUG_PATTERN.test(v));
 // A Claude Code session's id.
@@ -163,6 +167,7 @@ const SCHEMA = {
       field('recommended', nullable(KEY)),
       field('picked', nullable(KEY)),
       ...HOW_ANSWERED,
+      field('showing', nullable(SHOWING)),
     ]),
     raise: event([
       field('entry', nullable(ID)),

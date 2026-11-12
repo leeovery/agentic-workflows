@@ -18,7 +18,9 @@
 //
 // Each gate is a learned one (learned-gates.cjs), drawn as the decision
 // point steps it at the investigation's place (`investigationStep`, the
-// conclude's too: investigation-conclude.cjs).
+// conclude's too: investigation-conclude.cjs), its showing told by what it
+// asks about: the plan's order and what a revision changed, the check-in's
+// hypotheses resolved.
 //
 // Each refuses, opening on its command: a place whose investigation cannot
 // take work or has not started (`openInvestigation`), a payload that cannot
@@ -66,12 +68,12 @@ function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
 
 /**
  * The decision point's step on the investigation's learned gate `gate`
- * (19.4.19), at the investigation's place.
- * @param {string} cwd @param {string} unit @param {string} gate
+ * (19.4.19), at the investigation's place, on the showing `key` tells.
+ * @param {string} cwd @param {string} unit @param {string} gate @param {unknown} key
  * @returns {import('./learned-gates.cjs').GateStep}
  */
-function investigationStep(cwd, unit, gate) {
-  return decisionPoint.gateStep(gate, { cwd, place: { unit, phase: 'investigation', topic: unit } });
+function investigationStep(cwd, unit, gate, key) {
+  return decisionPoint.gateStep(gate, { cwd, place: { unit, phase: 'investigation', topic: unit }, key });
 }
 
 /** A gate's screen, what the read passed over said ahead of it. @param {string[]} warnings @param {string} screen */
@@ -105,12 +107,13 @@ function investigationPlanSurface(cwd, args) {
     if (settled !== undefined) throw new Error(`the plan orders ${settled.name}, which the log holds settled — a plan orders the hypotheses still open`);
     const left = open.find((hypothesis) => !order.includes(hypothesis));
     if (left !== undefined) throw new Error(`the plan leaves out ${left.name}, which the log holds open — order every open hypothesis, or log it ruled out`);
+    const changed = revised ? lineOf(plan.changed, 'what the finding changed') : null;
     return warned(warnings, planScreen({
       title,
       order: order.map((hypothesis, at) => ({ hypothesis, check: lineOf(rows[at].check, `the plan's order[${at}] check`) })),
       settled: hunt.hypotheses.filter(({ state }) => state !== 'suspected'),
-      changed: revised ? lineOf(plan.changed, 'what the finding changed') : null,
-    }, investigationStep(cwd, unit, 'plan gate')));
+      changed,
+    }, investigationStep(cwd, unit, 'plan gate', [order.map(({ name }) => name), changed])));
   });
 }
 
@@ -124,7 +127,7 @@ function investigationCheckInSurface(cwd, args) {
     const open = namedHypotheses(hunt.hypotheses, names, 'the check-in').find(({ state }) => state === 'suspected');
     if (open !== undefined) throw new Error(`the check-in names ${open.name}, which the log holds open — log where it stands first: engine investigation-log hypothesis ${unit} ${open.name} --state <state>`);
     const view = { title, hypotheses: hunt.hypotheses, resolved: names, experiments: hunt.experiments, next: lineOf(checkIn.next, 'what is checked next') };
-    return warned(warnings, checkInScreen(view, investigationStep(cwd, unit, 'check-in gate')));
+    return warned(warnings, checkInScreen(view, investigationStep(cwd, unit, 'check-in gate', names)));
   });
 }
 
