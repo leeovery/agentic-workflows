@@ -10,7 +10,9 @@
 // Claude did — the task building again as built, merging the chain's tip
 // back, and landing. In step: the other task started while it is held keeps
 // its turn — its briefs going on, the held task coming back behind it — once
-// the person answers, and once a change to the held task lifts the hold.
+// the person answers, and once a change to the held task lifts the hold,
+// the person's answer after the lift leaving it there. A second change
+// while the pair re-reads is test-pipeline-simulation-build-reread.cjs's.
 //
 // Layer: simulation. World: this file's own, built once on the named world
 // `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
@@ -25,22 +27,18 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, briefOf, answerGate, buildLoop, VERIFY_FILES,
+  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, briefOf, answerGate, buildLoop, VERIFY_FILES, wentAheadBlind, pickedRow,
 } = require('./pipeline-world.cjs');
-const { leaningCall } = require('./ledger-world.cjs');
-const { labelAnswers } = require('./labels.cjs');
 
 const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
-const decisionPoint = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/decision-point.cjs'));
-const { RAISE_SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
 
 const WU = SPEC_TO_BUILD_UNIT;
-const QUESTION = 'Should a show print the entry\'s id?';
-const LEAN = 'A show prints the id.';
+const CALL = Object.freeze({ question: 'Should a show print the entry\'s id?', lean: 'A show prints the id.', other: 'A show hides the id.' });
+// In step, 1.1's builder while 1.2 holds the turn.
+const BEHIND = /task 1\.2 is in flight, and task 1\.1 goes on once it is done$/;
 
 /** A feature in auto, its one phase written and started. */
 const showingWorld = worldFrom('pipeline-build-held-', (sim) => {
@@ -64,31 +62,20 @@ describe('pipeline simulation: the build with a task held open on its blind ques
   });
 
   /**
-   * The decision point drawing blind for test `t`, the question labelled
-   * behaviour, cheap to undo; `task` started and its builder's call on it
-   * going ahead while its question, Q1, waits: the task's worktree and its
-   * builder's brief.
-   * @param {import('node:test').TestContext} t @param {string} task
+   * `task` started, its builder briefed in a worktree of its own, and its
+   * builder's call going ahead while its blind question, Q1, waits: the
+   * worktree. @param {import('node:test').TestContext} t @param {string} task
    */
   async function wentAhead(t, task) {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
-    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [QUESTION]: labelAnswers('behaviour'), '': 'no-login' }) };
     sim.run(['task', 'start', WU, task]);
-    const brief = loop.brief(['builder', WU, task]);
+    loop.brief(['builder', WU, task]);
     const tree = loop.isolated(task);
-    const asked = sim.run(['ledger', 'ask', `${WU}.implementation`, '--task', task], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: QUESTION })).id;
-    const drawn = await sim.runAsync(['raise', `${WU}.implementation`, '--answers', asked, '--parks', task], null, JSON.stringify({ ...leaningCall(LEAN, 'A show hides the id.'), question: QUESTION }));
-    assert.deepStrictEqual([drawn.decision, drawn.task], ['blind', null], 'the call goes ahead, its question parking no task');
-    return { tree, brief };
+    await wentAheadBlind(t, sim, WU, task, CALL);
+    return tree;
   }
 
-  /** The person's answer to Q1 that is Claude's, its row wherever its question's id put it: the receipt. */
-  function answeredAsClaude() {
-    const seals = () => JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, RAISE_SHOWN), 'utf8'));
-    const { raise } = sim.run(['raise', 'draw', WU, 'Q1']);
-    const { key } = seals()[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === LEAN);
-    return sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' })).receipt;
-  }
+  /** The person's answer to Q1 that is Claude's: the receipt. */
+  const answeredAsClaude = () => pickedRow(sim, WU, 'Q1', CALL.lean);
 
   /**
    * In step: 1.1's call going ahead, its pair passing it, so it is held;
@@ -97,7 +84,7 @@ describe('pipeline simulation: the build with a task held open on its blind ques
    */
   async function heldInStep(t) {
     sim.run(['workunit', 'position', WU, 'step']);
-    const { tree } = await wentAhead(t, '1.1');
+    const tree = await wentAhead(t, '1.1');
     loop.committed(tree, '1.1', { 'src/show.js': 'export const show = 1;\n' });
     loop.pairRound('1.1');
     sim.run(['task', 'start', WU, '1.2']);
@@ -107,7 +94,7 @@ describe('pipeline simulation: the build with a task held open on its blind ques
 
   /** In step, 1.2 in flight with 1.1 freed behind it: 1.1's builder refused until 1.2 is done, 1.2's pair reading it and 1.2 landing through its gate, then 1.1 back in flight, its builder's brief issued. */
   function behindTheOther() {
-    sim.refuses(['brief', 'builder', WU, '1.1'], /task 1\.2 is in flight, and task 1\.1 goes on once it is done$/);
+    sim.refuses(['brief', 'builder', WU, '1.1'], BEHIND);
     loop.pairRound('1.2');
     loop.accounted('1.2', ['Passed.']);
     sim.render(['task-landed', WU, '1.2'], { expect: 'content' });
@@ -122,7 +109,7 @@ describe('pipeline simulation: the build with a task held open on its blind ques
     sim.run(['task', 'start', WU, '1.1']);
     const showingBrief = loop.brief(['builder', WU, '1.1']);
     const showing = loop.isolated('1.1');
-    const { tree: hashing } = await wentAhead(t, '1.2');
+    const hashing = await wentAhead(t, '1.2');
     loop.committed(hashing, '1.2', { 'src/hash.js': 'export const hash = 1;\n' });
     loop.pairRound('1.2');
 
@@ -163,11 +150,14 @@ describe('pipeline simulation: the build with a task held open on its blind ques
     assert.match(behindTheOther(), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
   });
 
-  it('16.17.6: in step, something added to the held task lifts its hold, freeing it behind the one started while it was held — that task\'s briefs going on, the held task coming back once it is done, to build what changed', async (t) => {
+  it('16.17.6: in step, something added to the held task lifts its hold, freeing it behind the one started while it was held — that task\'s briefs going on, the held task coming back once it is done, to build what changed; the person\'s answer after the lift leaving it there', async (t) => {
     await heldInStep(t);
 
     sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, 'An entry is shown by its id.\n'), '--by', 'orchestrator']);
+    sim.refuses(['brief', 'builder', WU, '1.1'], BEHIND);
+    const receipt = answeredAsClaude();
 
+    assert.strictEqual(receipt, 'Q1 answered · task 1.1 stands as built · nothing waiting on you');
     assert.match(behindTheOther(), /The task changed after your reviewers passed it in round 1/);
   });
 });

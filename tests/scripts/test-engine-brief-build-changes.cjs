@@ -114,6 +114,34 @@ describe('a change to a task under review (12.1.4)', () => {
     assert.strictEqual(refuses(dir, ['task', 'account', UNIT, '1.2']).error, `task account: ${changedAfter(2)}`);
   });
 
+  it('12.1.4: a second change, landing once round 2\'s pair was briefed for the first and before either reports, is unread by round 2 — round 2 still briefed to its other reviewer, the task\'s account, its done and its landing refused, and after round 2 passes too, until a round briefed after the second change passes', () => {
+    briefedFor(1);
+    reported(1, 'a', PASSED);
+    reported(1, 'b', PASSED);
+    added('The receipt is printed.');
+    const reread = 'brief-build-reread';
+    /** @type {string|undefined} */
+    let second;
+    try {
+      placeIn(reviewing('a', reread), reread);
+      added('The receipt names the amount.');
+      second = placeIn(reviewing('b', reread), reread);
+    } finally {
+      fs.rmSync(conversationDir(reread), { recursive: true, force: true });
+    }
+    const refused = [['task', 'account'], ['task', 'done'], ['land', 'open'], ['land', 'chain']].map((verb) => refuses(dir, [...verb, UNIT, '1.2']).error);
+
+    assert.strictEqual(second, pathDrawn('pay/build/tasks/1.2/round-2-b.md'));
+    assert.deepStrictEqual(refused, ['task account', 'task done', 'land', 'land'].map((said) => `${said}: ${changedAfter(1)}`));
+    reported(2, 'a', PASSED);
+    reported(2, 'b', PASSED);
+    assert.strictEqual(refuses(dir, ['task', 'account', UNIT, '1.2']).error, `task account: ${changedAfter(2)}`);
+    briefedFor(3);
+    reported(3, 'a', PASSED);
+    reported(3, 'b', PASSED);
+    assert.ok(issued(['builder', UNIT, '1.2']).brief.includes('Your reviewers passed the task in round 3: it has landed, so write its account now.'));
+  });
+
   it('N2 (6.5.10, 12.1.4): a round that fails while something is added during it — the fix brief refused until the builder\'s brief goes again past the change, carrying the task as it stands, then holding nothing but the round\'s reports; a second change, while round 2 is read, refuses round 2\'s fix brief until the builder\'s brief goes again', () => {
     issued(['builder', UNIT, '1.2']);
     briefedFor(1);

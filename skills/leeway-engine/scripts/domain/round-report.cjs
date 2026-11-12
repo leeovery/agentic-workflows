@@ -96,12 +96,15 @@
 // another conversation or not at all; or its report not reading, which goes
 // back to its reviewer. It is being read (`beingRead`) only while one is
 // reading: its builder waits for the round's reports, and every other state
-// names its way on (`readRefusal`). Once the round the mark names is the
-// task's last reported (`changedIn`), the task changed under it, and where
+// names its way on (`readRefusal`). A change is read only by a round
+// briefed after it (`unreadBy`): while the mark names the last round read
+// or one after it, the task changed in that round (`changedIn`), and where
 // it passed (`changedUnder`), its pair reads it again in the round after
-// and its account waits for that round (task-account.cjs); once a round
-// briefed after the change is reported, the mark names a round before the
-// last, and nothing has.
+// and its account waits for that round (task-account.cjs) — so a second
+// change landing while the pair reads a round briefed for the first marks
+// that round, and holds the task changed until a round past it is read;
+// once a round briefed after the latest change is reported, the mark names
+// a round before the last, and nothing has.
 // A report that does not read is replaced by briefing its reviewer again,
 // which every refusal of it names. A phase's review is
 // reported beside its consolidation, `build/phases/phase-{N}/
@@ -618,14 +621,22 @@ const changeCount = (cwd, ref) => markOf(cwd, ref).n;
 const pendingChange = (cwd, ref) => changeCount(cwd, ref) > briefedOf(cwd, ref).change;
 
 /**
- * The round the task changed in (the header's): its last, where the mark
- * names it, the change landing after its pair was briefed; else null.
+ * Whether the task's latest change is unread by its round `round` (the
+ * header's): the mark naming that round or one after it, the change
+ * landing once its pair was briefed for it.
+ * @param {string} cwd @param {TaskRef} ref @param {number} round
+ */
+const unreadBy = (cwd, ref, round) => markedRound(cwd, ref) >= round;
+
+/**
+ * The round the task changed in (the header's): its last, where its latest
+ * change is unread by it (`unreadBy`); else null.
  * @param {string} cwd @param {TaskRef} ref @param {readonly Round[]} rounds the task's
  * @returns {number|null}
  */
 function changedIn(cwd, ref, rounds) {
   const last = rounds.at(-1);
-  return last !== undefined && markedRound(cwd, ref) === last.round ? last.round : null;
+  return last !== undefined && unreadBy(cwd, ref, last.round) ? last.round : null;
 }
 
 /**
@@ -665,7 +676,7 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
   const last = lastReported(held);
   if (last === 0) return 1;
   if (!reportedWhole(cwd, ref, held, last, letters)) return last;
-  if (readRound(cwd, ref, last, held, letters).passes && markedRound(cwd, ref) !== last) throw new Error(`round ${last} of ${taskName(ref)} passed — its review is over`);
+  if (readRound(cwd, ref, last, held, letters).passes && !unreadBy(cwd, ref, last)) throw new Error(`round ${last} of ${taskName(ref)} passed — its review is over`);
   return last + 1;
 }
 

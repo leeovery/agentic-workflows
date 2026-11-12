@@ -7,8 +7,10 @@
 // none, the fix held once its pair passes it; the next fix started in the
 // checkout, its work not yet committed. The next fix keeps the checkout —
 // committing its work, the held fix waiting behind it — once the person
-// answers, and once a change to the held fix lifts the hold. A fix parked
-// by a question asked is test-pipeline-simulation-quick-fix-parked.cjs's.
+// answers, and once a change to the held fix lifts the hold. And the held
+// fix changed again while its pair re-reads the first change keeps the
+// checkout, a change read only by a round briefed after it (12.1.4). A fix
+// parked by a question asked is test-pipeline-simulation-quick-fix-parked.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -20,21 +22,12 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
 const {
-  Sim, startUnit, writeTasks, landed, placeIn, PASSED_REPORT,
+  Sim, startUnit, writeTasks, landed, placeIn, wentAheadBlind, pickedRow, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
-const { leaningCall } = require('./ledger-world.cjs');
-const { labelAnswers } = require('./labels.cjs');
-
-const decisionPoint = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/decision-point.cjs'));
-const { RAISE_SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
 
 const WU = 'typo';
-const PLACE = `${WU}.implementation`;
-const QUESTION = 'Does --color stay as an alias?';
-const LEAN = 'Yes.';
+const CALL = Object.freeze({ question: 'Does --color stay as an alias?', lean: 'Yes.', other: 'No.' });
 const BEHIND = /^brief: typo builds in its one checkout, one task at a time — task 1\.2 is in flight, and task 1\.1 goes on once task 1\.2 is done or closed, or a question parks it$/;
 
 describe('pipeline simulation: quick-fix with a fix held open on its blind question', () => {
@@ -45,30 +38,36 @@ describe('pipeline simulation: quick-fix with a fix held open on its blind quest
   /** Fix `title` written: its task. @param {string} title */
   const written = (title) => writeTasks(sim, WU, 1, [{ title, type: 'fix', reference: 'none', scenarios: [`Given the ${title.split(' ')[2]}, when it is read, then it names --colour.`] }])[0];
 
+  /** `file` written and committed under `fix`, then pushed to the quick-fix's pull request. @param {string} fix @param {string} file @param {string} text */
+  function pushed(fix, file, text) {
+    sim.write(file, text);
+    sim.run(['commit', '--paths', file, '--task', WU, fix, '-m', `fix(${WU}): task ${fix}`]);
+    sim.run(['land', 'open', WU, fix]);
+  }
+
+  /** Something added to `fix` by the orchestrator. @param {string} fix @param {string} text */
+  const added = (fix, text) => sim.run(['task', 'add', WU, fix, '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, `${text}\n`), '--by', 'orchestrator']);
+
   /**
-   * The decision point drawing blind for test `t`, the question labelled
-   * behaviour, cheap to undo; the flag's fix built and committed, its
-   * builder's call going ahead while its question, Q1, waits, and its pair
-   * passing it, so it is held; then the help's fix started in the checkout,
-   * its work not yet committed: the two fixes.
-   * @param {import('node:test').TestContext} t
+   * The flag's fix built and pushed, its builder's call going ahead while
+   * its blind question, Q1, waits, and its pair passing it, so it is held:
+   * the fix. @param {import('node:test').TestContext} t
    */
-  async function heldWithHelpStarted(t) {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
-    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [QUESTION]: labelAnswers('behaviour'), '': 'no-login' }) };
+  async function heldFlag(t) {
     startUnit(sim, 'quick-fix', WU, 'The --color flag is spelt --colour');
     sim.run(['enter', 'implementation', WU]);
     const flag = written('Spell the flag --colour');
     sim.run(['task', 'start', WU, flag]);
     sim.run(['brief', 'builder', WU, flag]);
-    sim.write('src/flag.js', '--colour\n');
-    sim.run(['commit', '--paths', 'src/flag.js', '--task', WU, flag, '-m', `fix(${WU}): spell the flag --colour`]);
-    sim.run(['land', 'open', WU, flag]);
-    const asked = sim.run(['ledger', 'ask', PLACE, '--task', flag], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: QUESTION })).id;
-    const drawn = await sim.runAsync(['raise', PLACE, '--answers', asked, '--parks', flag], null, JSON.stringify({ ...leaningCall(LEAN, 'No.'), question: QUESTION }));
-    assert.deepStrictEqual([drawn.decision, drawn.task], ['blind', null], 'the call goes ahead, its question parking no fix');
+    pushed(flag, 'src/flag.js', '--colour\n');
+    await wentAheadBlind(t, sim, WU, flag, CALL);
     for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', WU, flag, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+    return flag;
+  }
 
+  /** The flag's fix held, then the help's started in the checkout, its work not yet committed: the two fixes. @param {import('node:test').TestContext} t */
+  async function heldWithHelpStarted(t) {
+    const flag = await heldFlag(t);
     const help = written('Spell the help --colour');
     sim.run(['task', 'start', WU, help]);
     sim.run(['brief', 'builder', WU, help]);
@@ -85,19 +84,27 @@ describe('pipeline simulation: quick-fix with a fix held open on its blind quest
   it('16.17.6: the person\'s answer frees the held fix behind the one started in the checkout while it was held — that fix committing its work, the held fix waiting until it is done', async (t) => {
     const fixes = await heldWithHelpStarted(t);
 
-    const { raise } = sim.run(['raise', 'draw', WU, 'Q1']);
-    const seals = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, RAISE_SHOWN), 'utf8'));
-    const { key } = seals[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === LEAN);
-    assert.strictEqual(sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'Old scripts pass it.' })).receipt,
-      'Q1 answered · task 1.1 builds again as built once task 1.2 is done or closed, or a question parks it · nothing waiting on you');
+    assert.strictEqual(pickedRow(sim, WU, 'Q1', CALL.lean), 'Q1 answered · task 1.1 builds again as built once task 1.2 is done or closed, or a question parks it · nothing waiting on you');
     helpKeepsTheCheckout(fixes);
   });
 
   it('16.17.6: something added to the held fix lifts its hold, freeing it behind the one started in the checkout while it was held — that fix committing its work, the held fix waiting until it is done', async (t) => {
     const fixes = await heldWithHelpStarted(t);
 
-    sim.run(['task', 'add', WU, fixes.flag, '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, 'Keep --color as an alias.\n'), '--by', 'orchestrator']);
+    added(fixes.flag, 'Keep --color as an alias.');
 
     helpKeepsTheCheckout(fixes);
+  });
+
+  it('12.1.4, 16.17.6: the held fix changed again while its pair re-reads the first change keeps the checkout: the next fix\'s start refused', async (t) => {
+    const flag = await heldFlag(t);
+    added(flag, 'Keep --color as an alias.');
+    sim.run(['brief', 'builder', WU, flag]);
+    pushed(flag, 'src/alias.js', '--color\n');
+    sim.run(['brief', 'reviewer', WU, flag, '--letter', 'a']);
+
+    added(flag, 'Warn when --color is used.');
+
+    sim.refuses(['task', 'start', WU, written('Spell the help --colour')], /task 1\.1 is in flight, and task 1\.2 starts once it is done or closed, or a question parks it$/);
   });
 });

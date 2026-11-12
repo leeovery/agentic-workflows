@@ -41,6 +41,9 @@ const { worldOfTheRun } = require('./run-worlds.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
+const decisionPoint = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/decision-point.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').Next} Next */
 
@@ -1721,6 +1724,33 @@ function finishClosed(sim, wu) {
   sim.run(['checklist', 'close', 'finish', wu]);
 }
 
+// A builder's call on `task` going ahead while its blind question waits
+// (16.17.6): the decision point drawing blind for the test `t`, the
+// stand-in labelling the question behaviour, cheap to undo, and the call,
+// Claude leaning to `lean` over `other`, raised parking none.
+/**
+ * @param {import('node:test').TestContext} t @param {Sim} sim @param {string} wu @param {string} task
+ * @param {{question: string, lean: string, other: string}} call
+ */
+async function wentAheadBlind(t, sim, wu, task, { question, lean, other }) {
+  t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
+  sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
+  const asked = sim.run(['ledger', 'ask', `${wu}.implementation`, '--task', task], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: question })).id;
+  const drawn = await sim.runAsync(['raise', `${wu}.implementation`, '--answers', asked, '--parks', task], null, JSON.stringify({ ...leaningCall(lean, other), question }));
+  assert.deepStrictEqual([drawn.decision, drawn.task], ['blind', null], 'the call goes ahead, its question parking no task');
+}
+
+// The person's answer to the question `question` of `wu`: a pick of the
+// row whose answer is `text`, wherever its question's id put it. Answers
+// the receipt.
+/** @param {Sim} sim @param {string} wu @param {string} question @param {string} text @returns {string} */
+function pickedRow(sim, wu, question, text) {
+  const { raise } = sim.run(['raise', 'draw', wu, question]);
+  const seals = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, RAISE_SHOWN), 'utf8'));
+  const { key } = seals[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === text);
+  return sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' })).receipt;
+}
+
 // Finish (14.5): its checklist closed where `closed` does not say it is
 // already, its gate drawn, and the person's yes at it run. Answers the
 // phases each landing landed, and where the yes goes next.
@@ -1735,5 +1765,5 @@ function finished(sim, wu, { closed = false } = {}) {
 module.exports = {
   Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
-  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

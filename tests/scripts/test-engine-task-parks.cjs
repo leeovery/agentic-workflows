@@ -13,10 +13,15 @@
 // taken off it; and a blind question whose call went ahead for its task
 // parking that task once its pair has passed it, never before, the
 // person's answer freeing it — as built, on their answer, or waiting on
-// another question still — and the rule off changing nothing (16.17.6).
-// The account's refusal is test-engine-task-account.cjs's.
+// another question still — a change to it lifting the hold, freeing it as
+// of the change until a round briefed after the change passes it, a close
+// taking it off the question for good, and the rule off changing nothing
+// (16.17.6). The account's refusal is test-engine-task-account.cjs's.
 //
-// Layer: verb. World: the ledger suites' unit with questions asked in its
+// Layer: verb. Budget: 18 s — the hold's tests drive the task through its
+// pair's rounds, its changes and the person's answers, each a state commit,
+// once for every way the hold begins and ends.
+// World: the ledger suites' unit with questions asked in its
 // build and phase 2 written in the tracker — 2.1 closed, 2.2 to 2.4 open —
 // built once and copied for each test; each test keeps its conversations
 // and the trust log in a config folder of its own. The separate call is the
@@ -91,7 +96,8 @@ const config = useTempFolder('task-parks-config-');
 /** @type {string} */
 let dir;
 
-beforeEach(() => {
+/** Each test of the describe calling it on a copy of the suite's world. */
+const onTheWorld = () => beforeEach(() => {
   dir = world();
 });
 
@@ -130,6 +136,8 @@ function reopened(task) {
 }
 
 describe('a raise parks a task the tracker holds, not yet ended', () => {
+  onTheWorld();
+
   it('refuses, writing and sealing nothing, a task the tracker lacks and one ended', async () => {
     const before = { tree: treeSnapshot(dir), head: head(dir) };
     const refused = async (/** @type {string} */ task) => (await refusesAsync(dir, ['raise', BUILD, '--answers', made.where, '--parks', task], { env: conversation(), stdin: JSON.stringify(CALL) })).error;
@@ -141,6 +149,8 @@ describe('a raise parks a task the tracker holds, not yet ended', () => {
 });
 
 describe('a task a question waiting parks waits on it', () => {
+  onTheWorld();
+
   it('task ready leaves it out, and answers it again once the question is answered', async () => {
     await park(made.where, '2.3');
 
@@ -163,6 +173,8 @@ describe('a task a question waiting parks waits on it', () => {
 });
 
 describe('a task parked is raised to the person (20.4.9, P5)', () => {
+  onTheWorld();
+
   it('a raise parking a task takes its builder\'s stop off it, in flight in the conversation, another task\'s stop standing', async () => {
     for (const task of ['2.2', '2.3']) {
       taskVerb('start', task);
@@ -176,6 +188,8 @@ describe('a task parked is raised to the person (20.4.9, P5)', () => {
 });
 
 describe('task close takes the task off its questions', () => {
+  onTheWorld();
+
   it('whatever waits on it: one line naming the parks, tagged where they were made — off one question parking another task too, and one left parking none, which still waits — so raise waiting, a screen and a receipt never name it again', async () => {
     const q1 = (await park(made.where, '2.3', REVIEW)).id;
     await park(made.where, '2.4');
@@ -244,15 +258,14 @@ describe('a blind question whose call went ahead holds its task open at its done
   });
 
   beforeEach(() => {
-    cleanupFixture(dir);
     dir = copyWorld(ahead, fs.mkdtempSync(path.join(os.tmpdir(), 'task-parks-ahead-')));
   });
 
-  /** Task 2.3's pair briefed for round 1 in the conversation and reporting, each of `letters`, passing it: its done point once both have. @param {string[]} [letters] */
-  function passed(letters = ['a', 'b']) {
+  /** Task 2.3's pair briefed for round `round` in the conversation and reporting, each of `letters`, passing it: its done point once both have. @param {string[]} [letters] @param {number} [round] */
+  function passed(letters = ['a', 'b'], round = 1) {
     for (const letter of letters) {
-      recordReviewer(dir, TASK, 1, letter, SESSION);
-      writeState(dir, roundReportPath(TASK, 1, letter), '## Findings\n\nNone.\n\nVerdict: pass\n');
+      recordReviewer(dir, TASK, round, letter, SESSION);
+      writeState(dir, roundReportPath(TASK, round, letter), '## Findings\n\nNone.\n\nVerdict: pass\n');
     }
   }
 
@@ -364,6 +377,33 @@ describe('a blind question whose call went ahead holds its task open at its done
     assert.deepStrictEqual([waiting(), ready(), freedAt(dir, UNIT).get('2.3')], [[['Q1', []]], ['2.2', '2.3', '2.4'], before + 0.5]);
   });
 
+  it('a change landing once the pair passed the task again after an earlier one lifts the hold anew: the task freed just past the last ledger line before that change', () => {
+    passed();
+    added();
+    written('ask', BUILD, [], { ...MADE, text: 'How wide is a new note?' });
+    passed(['a', 'b'], 2);
+    const held = waiting();
+    const before = lines().length;
+
+    added();
+
+    assert.deepStrictEqual([held, waiting(), freedAt(dir, UNIT).get('2.3')], [[['Q1', ['2.3']]], [['Q1', []]], before + 0.5]);
+  });
+
+  it('a second change, landing while the pair reads the round briefed for the first, one report of it in, is read only by a round briefed after it: the question holds the task through none of it, round 2 passing or not, until round 3 passes', () => {
+    passed();
+    added();
+    passed(['a'], 2);
+
+    added();
+    const midRound = [waiting(), ready()];
+    passed(['b'], 2);
+    const roundTwo = waiting();
+    passed(['a', 'b'], 3);
+
+    assert.deepStrictEqual([midRound, roundTwo, waiting()], [[[['Q1', []]], ['2.2', '2.3', '2.4']], [['Q1', []]], [['Q1', ['2.3']]]]);
+  });
+
   it('something added before its pair passed it lifts nothing: the task was never held, so never read as freed', () => {
     recordReviewer(dir, TASK, 1, 'a', SESSION);
     added();
@@ -433,6 +473,8 @@ describe('a blind question whose call went ahead holds its task open at its done
 });
 
 describe('a call raised for a task with the rule off (16.17.6)', () => {
+  onTheWorld();
+
   it('changes nothing: the call asks, parking its task outright, never going ahead, and its answer frees it as any question\'s does, writing no park besides', async () => {
     const res = (await okSectionsAsync(dir, ['raise', BUILD, '--answers', made.where, '--parks', '2.3'], { env: labelledAs(CALL, 'behaviour', { hardToUndo: false }), stdin: JSON.stringify(CALL) })).res;
     for (const letter of ['a', 'b']) {

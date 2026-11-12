@@ -235,5 +235,4 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     assert.doesNotMatch(sim.sections, /blind question revealed/, 'a "don\'t care" reveals nothing');
     assert.strictEqual(JSON.parse(sim.read(['ledger', 'affected', WU])).affected.length, 1, 'what relied on the replaced call is affected');
   });
-
 });
