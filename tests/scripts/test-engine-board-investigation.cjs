@@ -245,7 +245,7 @@ describe('This session in an investigation (20.12.1)', () => {
       project: view.project,
       started: STARTED,
       standing: 'validating-root-cause',
-      waiting: [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean_first: null }],
+      waiting: [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }],
       decided: [],
       symptoms: ['sessions.json is overwritten with an empty index', 'Every saved scrollback file is removed'],
       hypotheses: [
@@ -322,7 +322,7 @@ describe('This session in an investigation (20.12.1)', () => {
       lists: { hypotheses: ['H1 intended', 'H2 ruled-out', 'H3 suspected'], validations: ['root-cause done', 'fix after'] },
       root: true,
       standing: 'fix-waits',
-      waiting: [{ kind: 'raise', id: fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean_first: true }],
+      waiting: [{ kind: 'raise', id: fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'first' }],
       fix: {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
@@ -341,7 +341,24 @@ describe('This session in an investigation (20.12.1)', () => {
     atTheHunt();
     const { view } = board();
 
-    assert.deepStrictEqual([view.waiting[0].lean_first, view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean), view.standing], [false, [false, true], 'validating-root-cause']);
+    assert.deepStrictEqual([view.waiting[0].lean, view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean), view.standing], ['marked', [false, true], 'validating-root-cause']);
+  });
+
+  it('16.17.2: a fix direction asked blind says how many options it sets out and nothing of where Claude\'s lean stands — held back on its wait, none of its options nor their pages the lean — until the person has answered', async () => {
+    takenIn(dispatched('root-cause-validation', []).id);
+    const fix = await raised(FIX_CALL, made.fix);
+    const shown = path.join(config, 'conversations', 'sess-1', 'raise-shown.json');
+    const seals = JSON.parse(fs.readFileSync(shown, 'utf8'));
+    fs.writeFileSync(shown, JSON.stringify({ ...seals, [fix]: { ...seals[fix], blind: true } }));
+    atTheHunt();
+    const { view } = board();
+    const pages = ['1', '2'].map((key) => board(['--page', `option:${key}`]).view.state);
+
+    assert.deepStrictEqual([view.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, fix)), view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean), pages], [
+      [{ kind: 'raise', id: fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'held' }],
+      [false, false],
+      ['option', 'option'],
+    ]);
   });
 
   it('once picked, the fix is the fix direction\'s and never DECIDED, its question logged or not; the fix validation not yet sent, nothing validates; sent, it is what the investigation does', async () => {
@@ -424,7 +441,7 @@ describe('each decision where its chain stands now', () => {
     assert.deepStrictEqual([waiting.validations[1].state, waitingFar], ['running', 'fix picked, not yet confirmed']);
     assert.deepStrictEqual([waiting.standing, waiting.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)), waiting.fix_direction], [
       'validating-fix',
-      [{ kind: 'raise', id: raise, text: REPLACE_CALL.question, page: null, raised_by: 'fix', options: 3, lean_first: true }],
+      [{ kind: 'raise', id: raise, text: REPLACE_CALL.question, page: null, raised_by: 'fix', options: 3, lean: 'first' }],
       {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
@@ -543,7 +560,7 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
 
     assert.deepStrictEqual([investigating.state, investigating.doing, validating.state, validating.doing], ['running', 'investigating', 'running', 'validating']);
     assert.deepStrictEqual({ ...tab, waiting: tab.waiting.map((/** @type {string} */ line) => line.split(' ')[0]) }, { now: 'investigation', state: 'waits', words: '3 hypotheses', waiting: ['raise'] });
-    assert.deepStrictEqual(listed.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)), [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean_first: null }]);
+    assert.deepStrictEqual(listed.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)), [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }]);
   });
 
   it('20.15.1: the tab\'s LATELY holds the hunt\'s moments, each when its record dates it: each experiment by its name and title and the root cause written at the entries they rest on, the fix direction picked at the person\'s pick, the investigation concluded at its stamp; a hypothesis confirmed or ruled out, which nothing dates, is none', async () => {

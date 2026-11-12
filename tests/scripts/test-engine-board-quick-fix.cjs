@@ -20,15 +20,16 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { writeState, cleanupFixture, layout, git, FROZEN_AT } = require('./engine-harness.cjs');
+const { writeState, cleanupFixture, layout, git, FROZEN_AT, statePath } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { ledgerReadHelpers } = require('./ledger-world.cjs');
+const { ledgerReadHelpers, ledgerHelpers } = require('./ledger-world.cjs');
 const { UNIT, PLACE, DESCRIPTION, FLAG, HELP, BRANCH } = require('./quick-fix-world.cjs');
 const { place } = require('./board-world.cjs');
-const { RULED, CALL_TEXT, made, working, fix, quickFixBoard } = require('./quick-fix-board-world.cjs');
+const { SESSION, RULED, CALL_TEXT, CALL, made, working, fix, quickFixBoard } = require('./quick-fix-board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { phaseViewOf } = require(path.join(SCRIPTS, 'domain/board.cjs'));
 const { roundReportPath, settlementPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { WORK_TYPE_PIPELINES, EPIC_PHASES } = require(path.join(SCRIPTS, 'kernel/manifest-schema.cjs'));
@@ -132,6 +133,18 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
         { id: made.ruled, text: RULED, by: 'person', unit_title: 'Restore' },
       ],
     ]);
+  });
+
+  it('16.17.2: a call of Claude\'s a blind question waits on, gone ahead for its fix, is held back from Claude\'s calls while the question waits', () => {
+    dir = working();
+    atTheFixes();
+    appendEntry(statePath(dir), {
+      event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
+      question: null, replaces: ledgerHelpers(() => dir).full(made.call), reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: '1.1', number: 1,
+      call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: true,
+    }, []);
+
+    assert.deepStrictEqual(board().view.calls, []);
   });
 
   it('a fix\'s page names its phase the fixes and, with no account, shows its rounds reported whole as its reviews (20.5.6); a scenario of it opens at the quick-fix\'s one branch, as running the product proved it there, and one of a fix not yet started opens not proven', () => {

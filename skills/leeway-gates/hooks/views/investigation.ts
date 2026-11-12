@@ -26,7 +26,7 @@ export type RaiseWait = {
   page: string | null
   raised_by: 'root-cause' | 'fix' | 'fix-direction' | null
   options: number | null
-  lean_first: boolean | null
+  lean: 'first' | 'marked' | 'held' | null
 }
 type Validation = { validation: 'root-cause' | 'fix'; effort: string | null; state: 'after' | 'not-started' | 'running' | 'lost' | 'done'; since: string | null; found: number }
 type Option = { key: string; name: string; lean: boolean }
@@ -93,8 +93,15 @@ function saidOf(wait: RaiseWait): string {
   return RAISED[wait.raised_by]
 }
 
-/** The fix direction's wait by its options: Claude's lean first where it is the first row, else marked. */
-const whichFix = (options: number, leanFirst: boolean | null) => `Which fix: ${counted(options, 'option')}, Claude's lean ${leanFirst === false ? 'marked' : 'first'}`
+/** Where Claude's lean stands among the fix direction's options, as its wait says it: nothing where a blind question holds it back. */
+const LEAN_SAID: Readonly<Record<'first' | 'marked' | 'held', string>> = {
+  first: ", Claude's lean first",
+  marked: ", Claude's lean marked",
+  held: '',
+}
+
+/** The fix direction's wait by its options, and where Claude's lean stands among them. */
+const whichFix = (options: number, lean: 'first' | 'marked' | 'held' | null) => `Which fix: ${counted(options, 'option')}${LEAN_SAID[lean ?? 'held']}`
 
 /**
  * A raise waiting in the investigation, on its view and on the unit's tab:
@@ -103,7 +110,7 @@ const whichFix = (options: number, leanFirst: boolean | null) => `Which fix: ${c
  */
 export function raiseLines(wait: RaiseWait, key: string): Line[] {
   const said = saidOf(wait)
-  const asked = wait.options === null ? wait.text : whichFix(wait.options, wait.lean_first)
+  const asked = wait.options === null ? wait.text : whichFix(wait.options, wait.lean)
 
   return [
     { key, mark: { text: `${MARK.needs} `, color: COLOUR.needs }, wraps: true, parts: [{ text: asked, color: COLOUR.body }] },

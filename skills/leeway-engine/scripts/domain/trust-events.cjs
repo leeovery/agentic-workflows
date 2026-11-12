@@ -36,7 +36,9 @@
 //   raised (16.4.7);
 //   whose the decision it would replace was — who decided it, or the person
 //   where they kept it since — null for a question's answer (16.5.7); and
-//   Claude's mark that it always asks, null for none (19.4.20, 19.4.22).
+//   Claude's mark that it always asks, null for none (19.4.20, 19.4.22);
+//   and whether it was asked blind, Claude's answer held back (16.17.2), so
+//   an answer given cold reads as one on its own, wherever its draw names.
 //   Whether it was sent to check first is not logged: a call whose label
 //   says Claude could find it out never proceeds — the rule sends it to
 //   check, or asks — so a replay never counts it as one it would skip, and
@@ -171,6 +173,7 @@ const SCHEMA = {
       field('blocks_build', FLAG),
       field('replaced_by', nullable(oneOf(...DECIDED_BY))),
       field('always', nullable(ALWAYS_MARK)),
+      field('blind', FLAG),
     ]),
     call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT)]),
     verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),

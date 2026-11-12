@@ -18,9 +18,10 @@
 // its comment takes the answer in the person's own words.
 // A blind question (16.17.2) draws the question cold: no lean, no row
 // recommended and no WHY I'M ASKING, the mechanism behind its toggle drawn
-// as Claude wrote it, Claude's answer held in the seal alone until the
-// person's is given (16.1.2) — and every surface reading the seal shows no
-// lean until then (`leanShown`). Once answered, the reveal (16.17.7): what
+// as Claude wrote it, its rows in the order and the keys its seal holds —
+// the question's id's (raise.cjs, `inBlindOrder`) — Claude's answer held
+// in the seal alone until the person's is given (16.1.2), and every
+// surface reading the seal shows no lean until then (`leanShown`). Once answered, the reveal (16.17.7): what
 // the person picked, what Claude would have picked, and, on the question's
 // kind in the project, how often Claude has picked as the person did (P9),
 // a text display Claude carries on past.
@@ -158,14 +159,12 @@ function raiseScreen(seal, { technical = false, titles }) {
 }
 
 /**
- * What the person answered and Claude's answer as the reveal says each: a
- * sentence's object, its first letter lowered where it opens a plain word,
- * ending on a full stop.
+ * What the person answered and Claude's answer as the reveal says each, as
+ * written — a name opening it keeps its capital — ending on a full stop.
  * @param {string} text
  */
 function revealed(text) {
-  const lowered = /^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text;
-  return /[.!?]$/.test(lowered) ? lowered : `${lowered}.`;
+  return /[.!?]$/.test(text) ? text : `${text}.`;
 }
 
 /**

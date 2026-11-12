@@ -13,7 +13,8 @@
 // where it is made, and whether it blocks build work; whose the entry it
 // would replace is; Claude's mark that it always asks; whether it was sent
 // to check once already; the project; the model of the session making it;
-// the time; and the question's id, the same on every raise of it (E3).
+// the time; and the question's id, the same on every raise of it (E3), none
+// for a replacement.
 //
 // Until the ask rule is switched on (29.19.2), every call asks (29.5.2),
 // with the rule's own reason. `ruled` is what it decides once switched: the
@@ -21,14 +22,16 @@
 // the model as of the time (trust-counts.cjs), the person's settings
 // (trust-settings.cjs) and their care entries, from the record of the
 // person (person.cjs); and where the rule lets the call proceed — a quiet
-// kind's, or a one-answer call's (16.3.7) — a blind question drawn at the
-// share (16.17.3, 16.17.9): the question's id turned into a number, the
-// first 32 bits of its SHA-1 as a fraction, as the measured replay drew
-// (trust/replay_rule.py), drawing blind under the share — the wider share
-// while the call's count holds few answers of the project's own at the
-// session's model (trust-settings.cjs) — so the same question draws the
-// same way however often it is raised, and no tally is kept (16.17.4).
-// Claude never chooses which calls are drawn.
+// kind's, or a one-answer call's (16.3.7) — on a question, never a
+// replacement, which sets out Claude's proposals beside the decision as it
+// stands, so its rows tell where Claude leans, a blind question drawn at
+// the share (16.17.3, 16.17.9): the question's id turned into a number,
+// the first 32 bits of its SHA-1 as a fraction, as the measured replay
+// drew (trust/replay_rule.py), drawing blind under the share — the wider
+// share while the call's count holds few answers of the project's own at
+// the session's model (trust-settings.cjs) — so the same question draws
+// the same way however often it is raised, and no tally is kept
+// (16.17.4). Claude never chooses which calls are drawn.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -43,8 +46,9 @@ const { careEntries } = require('./person.cjs');
 /** @typedef {import('./trust-counts.cjs').Counts} Counts */
 /**
  * Where and when a call is decided, beside the call itself, and the id its
- * blind draw hashes: the question's, the same on every raise of it.
- * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number, question: string}} At
+ * blind draw hashes: the question's, the same on every raise of it; none
+ * for a replacement, which is never drawn blind.
+ * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number, question: string|null}} At
  */
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
@@ -83,15 +87,15 @@ function blindShare({ sort }, label, counts) {
  * The ask rule's decision on the call: over the counts the trust log holds
  * on the project, for the session's model as of the time, the person's
  * settings, and their care entries, which the record of the person holds,
- * each project's by its id (person.cjs); where it lets the call proceed,
- * asked blind where its question's id draws so.
+ * each project's by its id (person.cjs); where it lets a question's call
+ * proceed, asked blind where the question's id draws so.
  * @param {import('./raise.cjs').Call} call @param {At} at
  * @returns {{decision: Decision, reason: string}}
  */
 function ruled(call, { project: { root, name }, model, now, question, ...at }) {
   const counts = countsOf(root, { model, now });
   const ruling = rule(call, { ...at, project: { id: projectId(root), name }, counts, settings: trustSettings(), care: careEntries() });
-  if (ruling.decision !== 'proceed') return ruling;
+  if (ruling.decision !== 'proceed' || question === null) return ruling;
   return drawOf(question) < blindShare(call, /** @type {import('./labeller.cjs').Label} */ (at.label), counts) ? { decision: 'blind', reason: BLIND } : ruling;
 }
 

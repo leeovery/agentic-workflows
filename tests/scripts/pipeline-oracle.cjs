@@ -798,9 +798,9 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // blocking build work where that park held a task, never as the parks stood
 // at the answer, the decision it would replace whose it was as it parked,
 // the person's where a keep of theirs stood on it, and the park's mark —
-// but a blind question whose call went ahead while it waits, its row
-// holding the answer of the call it would replace, as that call was
-// decided: blocking build work where it was made for a task, replacing
+// but a blind question whose call went ahead while it waits — on that
+// call, asked-blind, naming the task the call was made for — as that call
+// was decided: blocking build work where it was made for a task, replacing
 // nothing (16.17.6) — and every park of a question holds its first park's; elsewhere blocking
 // no build work, the decision it would replace whose it was as the answer
 // landed, and the one a command just pressed, which lands no line, read off
@@ -887,8 +887,13 @@ function auditTrust(sim, label, ran = []) {
   const aboutTheSame = (a, b) => (a.question === null ? b.replaces === a.replaces : b.question !== null && firstWording(b.question) === firstWording(a.question));
   /** The first park of the question a park is one of: the earliest of its unit under its number, about the same thing. @type {(p: Record<string, any>) => Record<string, any>} */
   const firstParkOf = (p) => entries.find((q) => q.event === 'parked' && q.unit === p.unit && q.number === p.number && aboutTheSame(q, p));
-  /** Whether a park is a blind question whose call went ahead (16.17.6): a row of its call holds the answer of the decision it would replace, that call. @type {(p: Record<string, any>) => boolean} */
-  const wentAhead = (p) => p.blind && p.replaces !== null && p.call.rows.some((/** @type {{text: string}} */ row) => row.text === byId.get(p.replaces).text);
+  /** Whether a park is a blind question whose call went ahead (16.17.6): it names the task the call went ahead for. @type {(p: Record<string, any>) => boolean} */
+  const wentAhead = (p) => p.went_ahead !== null;
+  for (const park of entries.filter((p) => p.event === 'parked' && wentAhead(p))) {
+    const call = byId.get(park.replaces);
+    assert.deepStrictEqual([call.by, call.task, park.reason, park.task, park.blind], ['claude', park.went_ahead, 'asked-blind', null, true],
+      ctx(`the park ${park.id} is no blind question on Claude's call gone ahead for the task it names, parking none`));
+  }
   /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked: a blind question's whose call went ahead, as that call was. @type {(first: Record<string, any>) => Record<string, unknown>} */
   const parkDecidedFrom = (first) => (wentAhead(first)
     ? { blocks_build: byId.get(first.replaces).task !== null, replaced_by: null, always: first.always }

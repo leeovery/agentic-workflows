@@ -455,9 +455,10 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * list holds it (WaitingLine), with what raised it — the validation whose
  * finding it was surfaced as, by the entry it validates, else the fix
  * direction, else null — and for the fix direction's how many options it
- * sets out and whether Claude's lean is the first; every other wait, the
- * conclude among them, with none.
- * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, options: number|null, lean_first: boolean|null}} HuntWait
+ * sets out and where Claude's lean stands among them: the first, marked
+ * further down, or held back, a blind question's, until the person has
+ * answered; every other wait, the conclude among them, with none.
+ * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, options: number|null, lean: 'first'|'marked'|'held'|null}} HuntWait
  */
 /**
  * A validation of the investigation (20.12.1): which, the effort its agent

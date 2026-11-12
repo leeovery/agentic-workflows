@@ -234,7 +234,7 @@ function parkedLine(own = {}) {
   const task = Object.hasOwn(own, 'task') ? own.task : '2.3';
   return {
     v: 1, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
-    question: made.where, replaces: null, reason: null, cause: null, relies_on: [], task, number: 1,
+    question: made.where, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number: 1,
     call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, blind: false, ...own,
   };
 }
@@ -249,7 +249,7 @@ function parkedLine(own = {}) {
 function parked(number, task, own = {}) {
   const { id } = appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
-    question: made.where, replaces: null, reason: null, cause: null, relies_on: [], task, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null,
+    question: made.where, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null,
     blocks_build: task !== null, replaced_by: null, always: null, blind: false, ...own,
   }, []);
   return /** @type {string} */ (id);
@@ -391,7 +391,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     assert.deepStrictEqual(waiting().map((/** @type {{question: string, id: string, parks: string[]}} */ q) => [q.question, q.id, q.parks]), [['Q1', short(first), ['2.3', '2.5']]]);
     const { res, sections } = draw('Q1');
     assert.strictEqual(sections, screen(res.raise, 'Q1', 'task 2.3 and 1 more'));
-    assert.deepStrictEqual(seals()?.[res.raise].parks, { park: first, number: 1, tasks: ['2.3', '2.5'] });
+    assert.deepStrictEqual(seals()?.[res.raise].parks, { park: first, number: 1, tasks: ['2.3', '2.5'], went_ahead: null });
     assert.strictEqual(answer(res.raise, ['--pick', '1']).receipt, 'Q1 answered · their tasks build again · nothing waiting on you');
     assert.strictEqual(lastEntry().task, '2.3');
   });
@@ -593,7 +593,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     assert.deepStrictEqual(sealed, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'implementation', topic: null },
       answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, reason: EVERY_CALL_ASKS, blind: false,
-      answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'] },
+      answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'], went_ahead: null },
     });
 
     const afresh = okSections(dir, ['raise', 'draw', UNIT, park.slice(0, 8)], { env: cleared() });

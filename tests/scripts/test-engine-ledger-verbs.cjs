@@ -194,11 +194,13 @@ describe('refusals', () => {
     refused('decide', NOTE, ['--answers', decision], content, new RegExp(`^ledger decide --answers names ${decision}, a decision — it must name a question$`));
   });
 
-  it('refuses a reason outside the four (5.6.2)', () => {
+  it('refuses a reason outside the four (5.6.2) — the blind question\'s on Claude\'s call gone ahead among them, the engine\'s alone (16.17.6)', () => {
     const question = ask().id;
     const decision = decide(question).id;
     refused('replace', NOTE, ['--replaces', decision, '--reason', 'a-whim'], { ...MADE, drops: [], text: 'Framed.', why: 'Why not.' },
       /^ledger replace: --reason is one of new-fact, other-topic, changed-mind, was-wrong — not "a-whim"$/);
+    refused('replace', NOTE, ['--replaces', decision, '--reason', 'asked-blind'], { ...MADE, drops: [], text: 'Framed.', why: 'Why not.' },
+      /^ledger replace: --reason is one of new-fact, other-topic, changed-mind, was-wrong — not "asked-blind"$/);
     refused('replace', NOTE, ['--replaces', decision], { ...MADE, drops: [], text: 'Framed.', why: 'Why not.' }, /^ledger replace needs --reason <new-fact\|other-topic\|changed-mind\|was-wrong>/);
   });
 

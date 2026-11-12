@@ -77,7 +77,7 @@ function raiseHelpers(dir, config, call) {
    */
   const raiseEvent = (entry, own = {}) => ({
     v: 1, type: 'raise', project: project(), model: null, session: SESSION,
-    entry, kind: null, label: null, sort: call.sort, sealed: call.lean, answer: call.lean, via: 'typed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, ...own,
+    entry, kind: null, label: null, sort: call.sort, sealed: call.lean, answer: call.lean, via: 'typed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false, ...own,
   });
 
   /**

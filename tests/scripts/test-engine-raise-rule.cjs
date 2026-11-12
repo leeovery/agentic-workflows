@@ -173,7 +173,7 @@ const logEvents = () => logText().split('\n').slice(0, -1).map((line) => JSON.pa
 const cleanFor = (kind, model) => stateOf(countsFrom(logEvents(), { project: project(), model, now: Date.now() }).kinds[kind], 0.2).clean;
 
 describe('what the decision point is given (E1)', () => {
-  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — the time, and the id a blind draw hashes, the question\'s or the decision a replacement would replace (E3); and every call still asks, as before the rule is switched on', async (t) => {
+  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — the time, and the id a blind draw hashes, the question\'s, none on a replacement, which is never drawn blind (E3); and every call still asks, as before the rule is switched on', async (t) => {
     const decide = t.mock.method(decisionPoint, 'decide');
     const claude = path.join(config(), 'claude');
     const transcript = path.join(claude, 'projects', '-Users-me-fumi', `${SESSION}.jsonl`);
@@ -194,7 +194,7 @@ describe('what the decision point is given (E1)', () => {
     const inBuild = { unit: BUILT, phase: 'implementation', topic: null };
     assert.deepStrictEqual(given.map(([call, { now: _now, ...rest }]) => [call, rest]), [
       [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL, question: full(made.note) }],
-      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null, question: full(made.yours) }],
+      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null, question: null }],
       [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null, question: full(made.size) }],
     ]);
     assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.parked, taskless.res.parked, taskless.res.task], ['ask', EVERY_CALL_ASKS, 'ask', 'Q1', 'Q2', null]);

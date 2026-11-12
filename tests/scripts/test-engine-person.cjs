@@ -36,7 +36,7 @@ const path = require('path');
 
 const { ok, okSections, output, refuses, screenOf, statePath, withFrozenClock, FROZEN_MS } = require('./engine-harness.cjs');
 const { filesUnder } = require('./discovery-test-utils.cjs');
-const { idOf, PROJECT_ID, SESSION, DAY, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
+const { idOf, PROJECT_ID, SESSION, DAY, MODEL, UNDRAWN, lines, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -174,11 +174,11 @@ function logHolding(events) {
 /** A screen as read: its title, then each section's lines. @param {string} out @param {string[]} sections */
 const screen = (out, sections) => sections.flatMap((name) => (name === 'TITLE' ? screenOf(out, name).map((line) => line.replace(/^# /, '')) : screenOf(out, name)));
 
-/** A call on look in the project at `dir` named `name`, as the decision point is given it. @param {string} dir @param {string} name */
+/** A call on look in the project at `dir` named `name`, as the decision point is given it, on a question never drawn blind. @param {string} dir @param {string} name */
 function lookAt(dir, name) {
   return ruled(/** @type {any} */ ({ sort: 'several' }), {
     label: labelled('look'), place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, checked: false,
-    project: { root: statePath(dir), name }, model: MODEL, now: FROZEN_MS,
+    project: { root: statePath(dir), name }, model: MODEL, now: FROZEN_MS, question: UNDRAWN,
   });
 }
 

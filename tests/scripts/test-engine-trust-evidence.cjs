@@ -45,7 +45,7 @@ const { logPath, logText, project } = useTrustWorld('trust-evidence-');
 // A raise's fields, Claude's sealed answer row 1: answered with it, with
 // another row, in the person's own words — read as no row, as row 1 or as
 // row 2 — or not followed.
-const RAISE = Object.freeze({ kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null });
+const RAISE = Object.freeze({ kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false });
 const AGREES = Object.freeze({ ...RAISE, answer: '1' });
 const DEPARTS = Object.freeze({ ...RAISE, answer: '2' });
 const OWN_WORDS = Object.freeze({ ...RAISE, answer: null, via: 'typed', with_text: true });

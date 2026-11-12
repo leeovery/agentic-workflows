@@ -41,7 +41,10 @@
 // - replaced: what an entry is replaced by (5.6.2) — the entry it replaces,
 //   one of the four reasons, the entry that caused the change (5.3.8), what
 //   it drops (5.6.6), and the new content, in the shape of what it replaces:
-//   a question, a finding or a decision (5.3.6).
+//   a question, a finding or a decision (5.3.6). The person's answer to a
+//   blind question drawn on Claude's own call, which went ahead while the
+//   question waited (16.17.6), replaces that call for a fifth reason, the
+//   engine's alone, `asked-blind`, where it is not Claude's answer.
 // - still-holds: an entry confirmed after a replacement it relied on.
 // - moved: a question moved to another topic (5.3.3), or to the roadmap
 //   as later, `roadmap:{item}` (9.5.4).
@@ -61,8 +64,8 @@
 //   still holds (ledger-affected.cjs) — and a departure owed a verdict
 //   (16.10.1). But the person's answer to a blind question drawn on
 //   Claude's own call, which went ahead while it waited (16.17.6), keeps
-//   that call where it is Claude's answer, sealed in it: moving no one, an
-//   agreement owed none.
+//   that call where it is Claude's answer, sealed in it, for that question's
+//   reason, `asked-blind`: moving no one, an agreement owed none.
 // - asset: a file linked from an entry (9.10.5–9.10.7, 9.10.16):
 //   the entry and the file's path from the state root; the status the link
 //   gives it, canonical or reference; and the lift, the path in the project
@@ -77,7 +80,11 @@
 //   the cause — and what its answer relies on; the task it parks, as screens
 //   show it, null where a call made in the build outside any task asks — the
 //   task writer's, the consolidation agent's or the phase review's — parking
-//   none; its number in its unit, `Q{number}`, the engine's, minted as it
+//   none; the task Claude's call went ahead for, `went_ahead`, where a blind
+//   question drawn on a call cheap to undo let the call land for its task
+//   while it waits (16.17.6) — the question then proposing to replace that
+//   call, `asked-blind`, and parking no task, so it blocks none — null for
+//   every other; its number in its unit, `Q{number}`, the engine's, minted as it
 //   parks and never reused, or, for a task joining a question already
 //   waiting, that question's (questions.cjs); and the call sealed, so it is
 //   raised as it was put whenever the person is ready, in whatever
@@ -152,6 +159,10 @@ const LEDGER = '.ledger.jsonl';
 const PEOPLE = ['person', 'claude'];
 const MOVED = ['none', 'claude-moved-person', 'person-moved-claude'];
 const REASONS = ['new-fact', 'other-topic', 'changed-mind', 'was-wrong'];
+// The reason of a blind question drawn on Claude's own call, which went
+// ahead while it waits (16.17.6): the engine's alone, never given by hand.
+const ASKED_BLIND = 'asked-blind';
+const LANDED_REASONS = Object.freeze([...REASONS, ASKED_BLIND]);
 const GIVEN = ['own', 'your-call', 'dont-care', 'carried'];
 // Who decided an answer, as `decidedBy` reads it from its line: its maker
 // where it was their own, else how it was given.
@@ -269,17 +280,25 @@ const PARKED_CALL_FIELDS = Object.freeze({ ...CALL_FIELDS, lean: nullable(KEY), 
  * Why a parked question's fields disagree, or null where they keep together:
  * it answers a question or proposes a replacement, one and not both; the
  * reason and the cause are a replacement's alone, its reason given; a fact
- * answers a question, and has no lean, why or sort, while a call has all
- * three and leans to a row it holds.
+ * answers a question, and has no lean, why or sort, and is never blind,
+ * while a call has all three and leans to a row it holds; and a blind
+ * question on Claude's call gone ahead (`went_ahead`) proposes to replace
+ * that call, asked blind, parking no task, and is the only park of that
+ * reason.
  * @param {Record<string, any>} parked
  * @returns {string|null}
  */
-function parkHolds({ question, replaces, reason, cause, call }) {
+function parkHolds({ question, replaces, reason, cause, task, went_ahead: wentAhead, call, blind }) {
   if ((question === null) === (replaces === null)) return 'a parked question answers a question or proposes a replacement, one and not both';
   if ((replaces === null) !== (reason === null)) return 'a replacement proposed gives its reason, and only a replacement does';
   if (cause !== null && replaces === null) return 'only a replacement proposed has a cause';
+  if ((wentAhead !== null) !== (reason === ASKED_BLIND)) return `a blind question on Claude's call gone ahead names the task it went ahead for, its reason ${ASKED_BLIND}, and only it does`;
+  if (wentAhead !== null && (task !== null || !blind)) return 'a blind question on Claude\'s call gone ahead is asked blind and parks no task';
   const leans = [call.lean, call.why, call.sort].filter((given) => given !== null).length;
-  if (leans === 0) return replaces === null ? null : 'a fact parked answers a question, never proposes a replacement';
+  if (leans === 0) {
+    if (blind) return 'a fact parked is never blind: it has no answer of Claude\'s to hold back';
+    return replaces === null ? null : 'a fact parked answers a question, never proposes a replacement';
+  }
   if (leans < 3) return 'its call has a lean, a why and a sort, or, a fact, none of them';
   return call.rows.some((/** @type {{key: string}} */ row) => row.key === call.lean) ? null : `its call leans to ${call.lean}, a row it does not hold`;
 }
@@ -305,7 +324,7 @@ const SCHEMA = {
     replaced: event([
       ...made(PEOPLE),
       field('replaces', ID),
-      field('reason', oneOf(...REASONS)),
+      field('reason', oneOf(...LANDED_REASONS)),
       field('cause', nullable(ID)),
       field('drops', listOf(TEXT)),
       field('of', oneOf(...Object.keys(CONTENT))),
@@ -317,7 +336,7 @@ const SCHEMA = {
     kept: event([
       ...made(['person'], ['person-moved-claude', 'none']),
       field('entry', ID),
-      field('reason', oneOf(...REASONS)),
+      field('reason', oneOf(...LANDED_REASONS)),
       field('cause', nullable(ID)),
       field('why', TEXT),
       field('sealed', TEXT),
@@ -330,10 +349,11 @@ const SCHEMA = {
     parked: event([
       field('question', nullable(ID)),
       field('replaces', nullable(ID)),
-      field('reason', nullable(oneOf(...REASONS))),
+      field('reason', nullable(oneOf(...LANDED_REASONS))),
       field('cause', nullable(ID)),
       field('relies_on', listOf(ID)),
       field('task', nullable(TASK)),
+      field('went_ahead', nullable(TASK)),
       field('number', COUNT),
       field('call', shaped(`a call, {${Object.keys(PARKED_CALL_FIELDS).join(', ')}}`, PARKED_CALL_FIELDS)),
       field('rows_judged', listOf(KEY)),
@@ -498,5 +518,5 @@ function parseEntry(line, number, schema = SCHEMA) {
 }
 
 module.exports = {
-  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, DECIDED_BY, ROADMAP, PRODUCT, ASSET_STATUSES, ROW_FIELDS, CALL_FIELDS, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
+  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, ASKED_BLIND, DECIDED_BY, ROADMAP, PRODUCT, ASSET_STATUSES, ROW_FIELDS, CALL_FIELDS, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
 };

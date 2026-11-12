@@ -24,8 +24,11 @@
 // the phase review's brief names the mutation run, and the review phase
 // entered in the same conversation (24.S7). And, the decision point forced
 // to draw blind, a builder's calls cheap to undo going ahead for its task
-// while their questions wait, parking none; the person, ready, keeping one
-// and replacing the other, what relied on it affected (16.S53).
+// while their questions wait, naming it and parking none, each drawn with
+// its rows in the order its question's id gives them; the person, ready,
+// keeping one, the task standing as built, and replacing the other for the
+// task, the task built again on their answer and what relied on the call
+// affected (16.S53).
 //
 // Layer: simulation. World: this file's own, built once on the named world
 // `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
@@ -52,6 +55,7 @@ const { labelAnswers } = require('./labels.cjs');
 const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
 const { manageUnitScreen } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/projections/manage.cjs'));
 const decisionPoint = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/decision-point.cjs'));
+const { RAISE_SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
 
 const WU = SPEC_TO_BUILD_UNIT;
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
@@ -192,7 +196,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     }, 'the agents run as defined');
   });
 
-  it('16.S53, 16.17.6: blind questions mid-build — the decision point forced to draw them — on calls cheap to undo let the builder\'s calls go ahead for its task while the questions wait, parking none; the person, ready, keeps one call and replaces the other, so what relied on it is affected', async (t) => {
+  it('16.S53, 16.17.6: blind questions mid-build — the decision point forced to draw them — on calls cheap to undo let the builder\'s calls go ahead for its task while the questions wait, naming it and parking none; the person, ready, keeps one call, the task standing as built, and replaces the other for the task, the task built again on their answer and what relied on the call affected', async (t) => {
     t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
     const asks = { id: 'Should a show print the entry\'s id?', hash: 'Should a show print the entry\'s hash?' };
     sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [asks.id]: labelAnswers('behaviour'), [asks.hash]: labelAnswers('look'), '': 'no-login' }) };
@@ -212,11 +216,17 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     sim.run(['ledger', 'decide', `${WU}.implementation`, '--answers', sized, '--relies-on', hash, '--task', '1.1'], null, JSON.stringify({ ...made, text: 'Eight characters.', why: 'Short hashes read well.' }));
     sim.read(['raise', 'waiting', WU]);
 
-    for (const [question, key] of [['Q1', '1'], ['Q2', '2']]) {
-      const drawn = sim.run(['raise', 'draw', WU, question]);
-      sim.run(['raise', 'answer', drawn.raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' }));
-    }
-    assert.match(sim.sections, /^=== DISPLAY: blind question revealed /, 'the answer reveals Claude\'s');
+    const seals = () => JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, RAISE_SHOWN), 'utf8'));
+    /** The person's answer to the question `question`: a pick of the row whose answer is `text`, wherever its question's id put it. @param {string} question @param {string} text */
+    const picked = (question, text) => {
+      const { raise } = sim.run(['raise', 'draw', WU, question]);
+      const { key } = seals()[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === text);
+      const { receipt } = sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' }));
+      assert.match(sim.sections, /^=== DISPLAY: blind question revealed /, 'the answer reveals Claude\'s');
+      return receipt;
+    };
+    assert.match(picked('Q1', 'A show prints the id.'), /^Q1 answered · task 1\.1 stands as built · /);
+    assert.match(picked('Q2', 'A show hides the hash.'), /^Q2 answered · task 1\.1 is built again on your answer · /);
     assert.strictEqual(JSON.parse(sim.read(['ledger', 'affected', WU])).affected.length, 1, 'what relied on the replaced call is affected');
   });
 });

@@ -449,7 +449,7 @@ describe('the rule as the decision point gives it, once switched on (decision-po
    * How `ruled` decides a call sorted `sort` labelled `label` in Mint, its
    * log holding `h`'s events, on the question `question`, as of the frozen
    * clock.
-   * @param {History} h @param {string} question @param {{sort?: 'one'|'several', label?: import('./labels.cjs').Label|null}} [call]
+   * @param {History} h @param {string|null} question @param {{sort?: 'one'|'several', label?: import('./labels.cjs').Label|null}} [call]
    */
   function drawn(h, question, { sort = 'several', label = BEHAVIOUR } = {}) {
     fs.mkdirSync(path.dirname(logPath()), { recursive: true });
@@ -467,11 +467,21 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     assert.deepStrictEqual([drawn(h, DRAWN), drawn(h, DRAWN), drawn(h, UNDRAWN).decision, drawn(history(), DRAWN).decision], [BLIND, BLIND, 'proceed', 'ask']);
   });
 
-  it('16.17.9: a kind holding fewer than 20 answers of the project\'s own at the session\'s model draws one in five of its calls — those of other projects and of an older model not counted, and an answer a reversal cancels counted once, as its reversal — and from 20 on, one in ten', () => {
+  it('a replacement the rule lets proceed is never drawn blind: it has no question\'s id to draw by, its rows Claude\'s proposals beside the decision as it stands', () => {
+    const h = history();
+    h.agree(30);
+
+    assert.deepStrictEqual(drawn(h, null).decision, 'proceed');
+  });
+
+  it('16.17.9: a kind holding fewer than 20 answers of the project\'s own at the session\'s model draws one in five of its calls — those of other projects and of an older model not counted, nor Claude\'s own calls and the raises the person didn\'t follow, and an answer a reversal cancels counted once, as its reversal — and from 20 on, one in ten', () => {
     const wide = history();
     wide.agree(18);
     wide.agree(10, 'behaviour', { project: ELSEWHERE });
     wide.agree(10, 'behaviour', { model: PREDECESSOR });
+    wide.call('several');
+    wide.call('several');
+    wide.unfollowed('several');
     wide.reverse(wide.agree(1)[0]);
     const narrow = history();
     narrow.agree(20);
@@ -479,9 +489,10 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     assert.deepStrictEqual([drawn(wide, NARROW).decision, drawn(wide, UNDRAWN).decision, drawn(narrow, NARROW).decision, drawn(narrow, DRAWN).decision], ['blind', 'proceed', 'proceed', 'blind']);
   });
 
-  it('16.17.9: a one-answer call proceeding draws by its own count the same way: one in five while it holds fewer than 20 of the project\'s own calls and answers, one in ten from 20 on, whatever its kind holds (16.3.7)', () => {
+  it('16.17.9: a one-answer call proceeding draws by its own count the same way: one in five while it holds fewer than 20 of the project\'s own calls and answers — a raise the person didn\'t follow none of them — one in ten from 20 on, whatever its kind holds (16.3.7)', () => {
     const few = history();
     for (let i = 0; i < 19; i += 1) few.call('one');
+    few.unfollowed('one');
     few.agree(30);
     const many = history();
     for (let i = 0; i < 20; i += 1) many.call('one');

@@ -63,7 +63,7 @@ const ANSWERS = Object.freeze([true, false, true, true, false, false, false, fal
 /** A well-formed event of every type, its own fields. */
 const SAMPLES = Object.freeze({
   gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null },
-  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null },
+  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one' },
   verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
   'blind-draw': { entry: ENTRY, kind: 'look' },
