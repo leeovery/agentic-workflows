@@ -28,8 +28,9 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  git, gitPath, tryGit, shortSha, literally, commitPathspec, commitStaged, operationInProgress, mergeInProgress, commitMerge,
+  git, GitError, tryGit, shortSha, literally, commitPathspec, commitStaged, operationInProgress, mergeInProgress, commitMerge,
 } = require('../kernel/git.cjs');
+const { repoFacts } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -130,7 +131,9 @@ function commitStateTail(cwd, paths, message, warnings, opts = {}) {
  * @param {string} cwd project root, or a nested repo's
  */
 function commitLockPath(cwd) {
-  return gitPath(cwd, 'leeway-commit.lock');
+  const facts = repoFacts(cwd);
+  if (facts === null) throw new GitError(`${cwd} is not inside a git repository`);
+  return facts.commitLock;
 }
 
 /** Why a tree with the state branch checked out takes no code commit, after the tree's name. */
@@ -138,7 +141,7 @@ const STATE_BRANCH_HELD = `has the state branch ${STATE_BRANCH} checked out — 
 
 /** Whether a tree has the state branch checked out. @param {string} cwd */
 function onStateBranch(cwd) {
-  return tryGit(cwd, ['symbolic-ref', '-q', 'HEAD'])?.trim() === `refs/heads/${STATE_BRANCH}`;
+  return repoFacts(cwd)?.branch === STATE_BRANCH;
 }
 
 /**

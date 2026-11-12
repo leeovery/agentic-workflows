@@ -33,7 +33,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { isolatedGit } = require('../kernel/isolated-git.cjs');
+const { isolatedGit, repoFacts } = require('../kernel/isolated-git.cjs');
 const { operationInProgress } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { placeOf, topPath } = require('../kernel/repos.cjs');
@@ -119,7 +119,7 @@ function textsAcrossBranches(git, rel) {
   const oids = [...new Set(listed.split('\n').map((entry) => entry.split(' ')).filter(([, type]) => type === 'blob').map(([oid]) => oid))];
   if (oids.length === 0) return [];
   /** @type {import('./state-merge-blobs.cjs').BlobContext} */
-  const ctx = { git, scratch: path.join(git.run(['rev-parse', '--absolute-git-dir']).trim(), TRACE_SCRATCH), blobs: new Map() };
+  const ctx = { git, scratch: path.join(/** @type {import('../kernel/isolated-git.cjs').RepoFacts} */ (repoFacts(git.cwd)).gitDir, TRACE_SCRATCH), blobs: new Map() };
   readBlobs(ctx, oids.map((oid) => [oid, Infinity]));
   return oids.map((oid) => /** @type {Buffer} */ (/** @type {import('./state-merge-blobs.cjs').Blob} */ (ctx.blobs.get(oid)).bytes).toString('utf8'));
 }

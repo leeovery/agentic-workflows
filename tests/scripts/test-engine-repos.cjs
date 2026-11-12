@@ -60,7 +60,7 @@ describe('projectRepos: the repos a project holds', () => {
     assert.deepStrictEqual(repos.map((repo) => repo.submodules), [['vendor/sdk'], [], [], [], []]);
   });
 
-  it('walks once in a verb, each call given its own copy, and again once git has written', () => {
+  it('walks once in a verb, each call given its own copy, each folder\'s facts asked once, and again once git has written', () => {
     nestedRepo(dir, 'api');
 
     const { result, commands } = traced(() => withVerbReads(() => {
@@ -74,6 +74,8 @@ describe('projectRepos: the repos a project holds', () => {
 
     assert.deepStrictEqual(result.map((repos) => repos.map((repo) => [repo.dir, repo.heldOut])), [[['', []], ['api', []]], [['', ['tools']], ['api', []], ['tools', []]]]);
     assert.strictEqual(commands.filter((command) => command.startsWith('ls-files --stage')).length, 5, 'a walk lists each repo\'s index once');
+    assert.strictEqual(commands.filter((command) => command.startsWith('rev-parse')).length, 7,
+      'a walk asks the facts of each folder it reads once — the root, the state worktree and each nested repo: three, then four');
   });
 
   it('walks each folder a verb walks from on its own — a task\'s worktree, then the main checkout', () => {

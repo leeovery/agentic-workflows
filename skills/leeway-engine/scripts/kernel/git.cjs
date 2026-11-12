@@ -19,9 +19,11 @@
 // Mechanism only: it knows nothing about work units or the inbox. Every call
 // spawns `git` with an explicit cwd — the project root, or a repo nested in
 // the project (kernel/repos) — asked through the verb's reads, which keep a
-// read's answer for the verb (kernel/git-reads). Failures throw loud with
-// git's own stderr; a clean scope is not a failure — `commitPathspec`
-// reports it as `null` so callers can treat an empty pause as fine.
+// read's answer for the verb (kernel/git-reads). Where an operation's
+// marker is and the ref HEAD names it takes from the repository's facts
+// (kernel/isolated-git, `repoFacts`). Failures throw loud with git's own
+// stderr; a clean scope is not a failure — `commitPathspec` reports it as
+// `null` so callers can treat an empty pause as fine.
 //
 // Index-mutating operations (add, commit) retry on `index.lock`
 // contention — another process (a concurrent session, the user) holding
@@ -34,6 +36,13 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { sleepSync } = require('./process.cjs');
 const { asked } = require('./git-reads.cjs');
+
+/**
+ * The repository's facts at `cwd` (kernel/isolated-git, which runs its git
+ * through this module, so is read when asked).
+ * @param {string} cwd @returns {import('./isolated-git.cjs').RepoFacts|null}
+ */
+const repoFacts = (cwd) => require('./isolated-git.cjs').repoFacts(cwd);
 
 const INDEX_RETRY_MS = 100;
 const INDEX_BUDGET_MS = 5000;
@@ -245,7 +254,7 @@ function deletedAtHead(cwd, spec) {
  * @returns {boolean}
  */
 function onBranch(cwd) {
-  return tryGit(cwd, ['symbolic-ref', '-q', 'HEAD']) !== null;
+  return (repoFacts(cwd)?.head ?? null) !== null;
 }
 
 /**
@@ -415,15 +424,15 @@ const OPERATION_MARKERS = [
 /**
  * The operation git is in the middle of, as `{operation, marker}`, or null —
  * as it is for a folder in no repository, where git holds nothing open. The
- * markers are the work tree's own, so a linked worktree reads its own.
+ * markers are the work tree's own, so a linked worktree reads its own; where
+ * each is is the repository's fact, and whether it is there is read now.
  * @param {string} cwd project root
  * @returns {{operation: string, marker: string}|null}
  */
 function operationInProgress(cwd) {
-  const markers = tryGit(cwd, ['rev-parse', ...OPERATION_MARKERS.flatMap(([marker]) => ['--git-path', marker])]);
-  if (markers === null) return null;
-  const paths = markers.trim().split('\n');
-  const open = OPERATION_MARKERS.find((_, i) => fs.existsSync(path.resolve(cwd, paths[i])));
+  const facts = repoFacts(cwd);
+  if (facts === null) return null;
+  const open = OPERATION_MARKERS.find(([marker]) => fs.existsSync(facts.markers[marker]));
   return open ? { operation: open[1], marker: open[0] } : null;
 }
 
@@ -525,8 +534,8 @@ function addRefused(cwd, spec, nested = []) {
  * @returns {string|null}
  */
 function headTree(cwd) {
-  const branch = (tryGit(cwd, ['symbolic-ref', '-q', 'HEAD']) || '').trim();
-  if (branch !== '' && !git(cwd, ['for-each-ref', '--format=%(refname)', branch]).split('\n').includes(branch)) return null;
+  const branch = repoFacts(cwd)?.head ?? null;
+  if (branch !== null && !git(cwd, ['for-each-ref', '--format=%(refname)', branch]).split('\n').includes(branch)) return null;
   return git(cwd, ['rev-parse', '--verify', 'HEAD^{tree}']).trim();
 }
 
@@ -704,7 +713,7 @@ function diffWithUntracked(cwd, base, args, exclude) {
 }
 
 module.exports = {
-  READ_BUDGET_BYTES, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
+  READ_BUDGET_BYTES, OPERATION_MARKERS, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, mergeInProgress, unmergedPast, commitMerge,
 };
