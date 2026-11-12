@@ -27,7 +27,7 @@ const {
   UNIT_PHASES, unitItems, discoveryUnitExists, promotedRefusal,
   cancelPlan, postponePlan, briefFile, topicDir, topicKey, noTopicRefusal, topicTitles, goesBy,
 } = require('./derivations.cjs');
-const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
+const { revertJoins, recordPutBack, retakeJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
 const { closeInFlight } = require('./agent-state.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -110,6 +110,8 @@ function postponedRefusal(phase, topic) {
  * @property {'discovery'} phase  the topic's unit
  * @property {'reactivated'} status
  * @property {RestoredItem[]} restored  the phase items the reactivate restored — empty for a never-started topic
+ * @property {string[]} [roadmap_rejoined]  the roadmap items its cancel put back, taken back
+ * @property {string[]} [roadmap_stayed]  those other work took meanwhile, or archived, left where they are
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (the commit)
@@ -401,17 +403,24 @@ function restoreItems(items, hold) {
 }
 
 /**
- * Abandon the plan's records — the register keeps a row per record, each
- * carrying the cancellation as its reason, so no live record survives the
- * cancel that took it.
- * @param {Record<string, any>} series
+ * What a cancel ends of a topic's experiments (18.4.22), whether it takes
+ * the topic or the whole unit: every evidence wait its conversations hold
+ * released, each of `ids` — its open records — ended abandoned with `reason`,
+ * the register keeping its row, and the series settled. So no live record
+ * survives the cancel, and a reactivate finds them abandoned. Mutates the
+ * loaded manifest.
+ * @param {Record<string, any>} manifest @param {string} topic
  * @param {string[]} ids @param {string} reason
+ * @returns {WaitRelease[]}
  */
-function abandonRecords(series, ids, reason) {
-  for (const id of ids) {
-    series.experiments[id].status = 'abandoned';
-    series.experiments[id].reason = reason;
+function abandonExperiments(manifest, topic, ids, reason) {
+  const released = releaseExperimentWaits(manifest, topic);
+  const series = itemOf(manifest, 'experiment', topic);
+  if (series) {
+    for (const id of ids) Object.assign(series.experiments[id], { status: 'abandoned', reason });
+    settleItemStatus(series);
   }
+  return released;
 }
 
 /**
@@ -463,12 +472,7 @@ function cancelDiscoveryUnit(manifest, topic) {
     throw new Error(`"${topic}" has nothing to cancel — no live item under its name and no map row`);
   }
 
-  const released_waits = releaseExperimentWaits(manifest, topic);
-  const series = itemOf(manifest, 'experiment', topic);
-  if (series) {
-    abandonRecords(series, plan.records, 'topic cancelled');
-    settleItemStatus(series);
-  }
+  const released_waits = abandonExperiments(manifest, topic, plan.records, 'topic cancelled');
   const cancelled = stashItems(plan.items, 'cancelled');
   if (mapItem) {
     mapItem.cancelled = true;
@@ -504,10 +508,10 @@ function cancelUnderLock(cwd, workUnit, cancel) {
 
 /**
  * Cancel a topic — the Discovery unit under the name — in one locked write,
- * its waiting mail moved to the inbox as ideas under the same lock (10.1.6),
- * then release the calling session's own heartbeat on each
- * item taken, run the roadmap's cancel-revert hop, and commit the manifest
- * write. Any other phase is refused: there is no phase-level cancel.
+ * the roadmap's cancel-revert hop run and its waiting mail moved to the
+ * inbox as ideas under the same lock (18.8.20, 10.1.6), then release the
+ * calling session's own heartbeat on each item taken, and commit the
+ * manifest write. Any other phase is refused: there is no phase-level cancel.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase  `discovery`
@@ -516,10 +520,21 @@ function cancelUnderLock(cwd, workUnit, cancel) {
  */
 function cancelTopic(cwd, workUnit, phase, said) {
   assertUnitStage('cancel', phase);
-  const { mail, topic, ...taken } = cancelUnderLock(cwd, workUnit, (manifest) => {
+  const { mail, topic, reverted, gone, ...taken } = cancelUnderLock(cwd, workUnit, (manifest) => {
     assertBeforeSpec(cwd, manifest, 'cancel');
     const topic = topicKey(manifest, said);
-    return { ...cancelDiscoveryUnit(manifest, topic), topic };
+    const outcome = cancelDiscoveryUnit(manifest, topic);
+    // The cancel-revert hop: a topic whose cancellation leaves its map
+    // lifecycle cancelled hands any roadmap item joined to it back to
+    // waiting (sources/origin intact) — the un-pull path — the joins
+    // recorded on its map row for its reactivate. The project manifest
+    // rides this transaction's commit when a revert landed.
+    const hop = computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled'
+      ? revertJoins(cwd, workUnit, { topic })
+      : { reverted: [], joins: [], horizon_gone: [] };
+    const row = itemOf(manifest, 'discovery', topic);
+    if (row) recordPutBack(row, hop.joins);
+    return { ...outcome, topic, reverted: hop.reverted, gone: hop.horizon_gone };
   });
 
   /** @type {string[]} */
@@ -527,14 +542,6 @@ function cancelTopic(cwd, workUnit, phase, said) {
   const closedAgents = closeHeldAgents(cwd, workUnit, topic, taken.cancelled, warnings);
 
   for (const { phase: p } of taken.cancelled) clearOwnQuietly(cwd, workUnit, p, topic);
-
-  // The cancel-revert hop: a topic whose cancellation leaves its map
-  // lifecycle cancelled hands any roadmap item joined to it back to
-  // waiting (sources/origin intact) — the un-pull path. The project
-  // manifest rides this transaction's commit when a revert landed.
-  const { reverted, horizon_gone: gone } = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle === 'cancelled'
-    ? revertJoins(cwd, workUnit, { topic })
-    : { reverted: [], horizon_gone: [] };
 
   // A cancel writes the work-unit manifest, the topic's waiting mail moved
   // to the inbox, and the project manifest when a roadmap join reverted, and
@@ -604,8 +611,8 @@ function reactivateDiscoveryUnit(manifest, topic) {
 
 /**
  * Reactivate a cancelled topic — the unit the cancel took — in one locked
- * write, and commit the manifest write. No roadmap re-join: the revert is
- * one-way.
+ * write, the roadmap items its cancel put back taken back where they still
+ * wait (18.8.20), and commit the manifest write.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase  `discovery`
@@ -614,20 +621,25 @@ function reactivateDiscoveryUnit(manifest, topic) {
  */
 function reactivateTopic(cwd, workUnit, phase, said) {
   assertUnitStage('reactivate', phase);
-  const { topic, ...returned } = withWorkUnitLock(cwd, workUnit, () => {
+  const { topic, rejoined, stayed, ...returned } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     assertBeforeSpec(cwd, manifest, 'change');
     const topic = topicKey(manifest, said);
     const outcome = reactivateDiscoveryUnit(manifest, topic);
+    const row = itemOf(manifest, 'discovery', topic);
+    const retaken = row ? retakeJoins(cwd, workUnit, row) : { rejoined: [], stayed: [] };
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { ...outcome, topic };
+    return { ...outcome, ...retaken, topic };
   });
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, `${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (discovery)`, warnings);
+  const specs = [`${workUnit}/manifest.json`, ...(rejoined.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
+  const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): reactivate ${topic} (discovery)`, warnings);
   /** @type {TopicReactivateResult} */
   const result = { topic, phase: 'discovery', status: 'reactivated', ...returned, committed: outcome.committed, warnings };
+  if (rejoined.length > 0) result.roadmap_rejoined = rejoined;
+  if (stayed.length > 0) result.roadmap_stayed = stayed;
   noteCommitOutcome(result, outcome);
   return result;
 }
@@ -784,4 +796,4 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
   });
 }
 
-module.exports = { startTopic, parkMessageItem, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, releaseExperimentWaits, assertLegalTopicName };
+module.exports = { startTopic, parkMessageItem, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, releaseExperimentWaits, abandonExperiments, assertLegalTopicName };

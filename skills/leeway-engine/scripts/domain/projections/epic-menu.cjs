@@ -322,4 +322,4 @@ function epicMenuSurface(cwd, unit) {
   return drawMenu(cwd, MENU, { arg: manifest.name }, epicMenuScreen(cwd, manifest, epicWaits(cwd, manifest, handedSession())));
 }
 
-module.exports = { epicWaits, epicMenuScreen, epicMenuSurface };
+module.exports = { epicMenuScreen, epicMenuSurface };

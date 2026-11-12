@@ -54,13 +54,13 @@ function heldStatement({ unit, phase, place, title, ageSeconds }, hold = '') {
  * it to that session — back to the epic's menu where there is one, else
  * carrying on, which ends the turn — or proceed, taking it over through
  * `take`.
- * @param {HeldPlace & {take: string[], menu: {skill: string, args: string[]}|null}} held
+ * @param {HeldPlace & {take: string[], menu: Next|null}} held
  * @returns {string}
  */
 function heldGate({ take, menu: back, ...held }) {
   const leave = back === null
     ? cmdOption('n', 'no', { head: 'Leave it to that session', recommended: true }, { next: { kind: 'continue' } })
-    : cmdOption('n', 'no', { head: 'Leave it to that session', tail: 'back to the epic menu', recommended: true }, { next: { kind: 'handoff', ...back } });
+    : cmdOption('n', 'no', { head: 'Leave it to that session', tail: 'back to the epic menu', recommended: true }, { next: back });
   return section('MENU: held topic gate', MENU_INSTRUCTION, menu(
     heldStatement(held),
     [leave, cmdOption('y', 'yes', 'Proceed anyway', { next: { kind: 'engine', argv: take } })],

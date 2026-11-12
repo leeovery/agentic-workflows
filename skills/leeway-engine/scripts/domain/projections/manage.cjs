@@ -235,4 +235,4 @@ function absorbConfirmSurface(cwd, { dotpath, into, topic, summary, description 
   ], { question: 'Absorb it?' }));
 }
 
-module.exports = { manageScreen, closedScreen, manageUnitScreen, manageSurface, closedSurface, manageUnitSurface, absorbTargetSurface, absorbConfirmSurface };
+module.exports = { manageScreen, manageUnitScreen, manageSurface, closedSurface, manageUnitSurface, absorbTargetSurface, absorbConfirmSurface };

@@ -46,6 +46,7 @@ const { isLive, checkCandidates, stageSwept } = require('./approve-map.cjs');
 const { takenRel, callId, sweepPath, readSweep, sweepTaken, sweepApplies } = require('./sweep.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { refusing } = require('./staged-payload.cjs');
+const { ontoEpic } = require('./topic-leave.cjs');
 
 const SWEEP_USAGE = 'sweep take <work-unit>';
 
@@ -137,7 +138,7 @@ function sendMessages(cwd, unit, report) {
 /** What comes after the take. @param {string} unit @param {boolean} candidates @param {Record<string, any>} manifest as the sends left it */
 function nextAfterTake(unit, candidates, manifest) {
   if (candidates) return { kind: 'engine', argv: ['render', 'approve-map', unit, '--sweep'] };
-  return topicsSettled(manifest) ? { kind: 'continue' } : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit] };
+  return topicsSettled(manifest) ? { kind: 'continue' } : ontoEpic(unit);
 }
 
 /**

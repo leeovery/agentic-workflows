@@ -29,13 +29,13 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { addBatchTo, arrivingEntry, discoveryItems } = require('./discovery-map.cjs');
-const { revertJoins } = require('./roadmap.cjs');
+const { revertJoins, recordPutBack, retakeJoins } = require('./roadmap.cjs');
 const { moveUnitMailToInbox } = require('./mail.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { todayStamp } = require('./dates.cjs');
-const { computeNextPhase, unitOpenRecords, itemOf, settleItemStatus } = require('./derivations.cjs');
+const { computeNextPhase, unitOpenRecords } = require('./derivations.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
-const { releaseExperimentWaits } = require('./transitions.cjs');
+const { abandonExperiments } = require('./transitions.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -62,6 +62,8 @@ function assertLegalStatus(status) {
  * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone] cancel: those of them whose horizon was removed meanwhile, now on none
  * @property {string[]} [inbox] cancel: each waiting message's idea in the inbox, absolute
  * @property {{topic: string, ids: string[]}[]} [abandoned] cancel: each topic's experiment records it ended abandoned
+ * @property {string[]} [roadmap_rejoined] reactivate: the roadmap items its cancel put back, taken back
+ * @property {string[]} [roadmap_stayed] reactivate: those other work took meanwhile, or archived, left where they are
  */
 
 /**
@@ -111,42 +113,32 @@ function completeWorkUnit(cwd, workUnit, { message }) {
   return result;
 }
 
-/** Why a cancelled unit's open experiments ended. */
-const UNIT_CANCELLED = 'work unit cancelled';
-
 /**
- * End every open experiment record of the unit abandoned, the cancel its
- * reason, each topic's evidence waits on them released, as a topic's cancel
- * ends its own (18.4.22) — so a reactivate finds them abandoned. Mutates the
- * loaded manifest.
+ * End every open experiment record of the unit as a topic's cancel ends its
+ * own, the unit's cancel the reason (18.4.22). Mutates the loaded manifest.
  * @param {Record<string, any>} manifest @returns {{topic: string, ids: string[]}[]}
  */
 function abandonUnitExperiments(manifest) {
   const open = unitOpenRecords(manifest);
-  for (const { topic, ids } of open) {
-    const series = /** @type {Record<string, any>} */ (itemOf(manifest, 'experiment', topic));
-    releaseExperimentWaits(manifest, topic);
-    for (const id of ids) Object.assign(series.experiments[id], { status: 'abandoned', reason: UNIT_CANCELLED });
-    settleItemStatus(series);
-  }
+  for (const { topic, ids } of open) abandonExperiments(manifest, topic, ids, 'work unit cancelled');
   return open;
 }
 
 /**
  * Cancel a work unit: `status: cancelled`, its open experiments ended
- * abandoned and each of its topics' waiting mail moved to the inbox as
- * ideas under the same lock (18.4.22, 10.1.6), remove its
+ * abandoned, every roadmap item joined to it put back with the joins
+ * recorded on it, and each of its topics' waiting mail moved to the inbox
+ * as ideas under the same lock (18.4.22, 18.8.20, 10.1.6), remove its
  * knowledge-base chunks (warn-don't-block), commit scoped to the work unit
- * and the ideas. Refuses an
- * already-cancelled unit; a completed unit must go through reactivate first —
- * cancellation is only offered on active work.
+ * and the ideas. Refuses an already-cancelled unit; a completed unit must go
+ * through reactivate first — cancellation is only offered on active work.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @returns {WorkUnitLifecycleResult}
  */
 function cancelWorkUnit(cwd, workUnit) {
   assertLegalStatus('cancelled');
-  const { mail, abandoned } = withWorkUnitLock(cwd, workUnit, () => {
+  const { mail, abandoned, reverted, gone } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     if (manifest.status === 'cancelled') {
       throw new Error(`work unit "${workUnit}" is already cancelled`);
@@ -156,19 +148,19 @@ function cancelWorkUnit(cwd, workUnit) {
     }
     manifest.status = 'cancelled';
     const ended = abandonUnitExperiments(manifest);
+    // The cancel-revert hop, whole-unit form: every roadmap item joined to
+    // the unit returns to waiting, the joins recorded on the unit for its
+    // reactivate. The project manifest rides this commit when a revert landed.
+    const hop = revertJoins(cwd, workUnit);
+    recordPutBack(manifest, hop.joins);
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { mail: moveUnitMailToInbox(cwd, manifest), abandoned: ended };
+    return { mail: moveUnitMailToInbox(cwd, manifest), abandoned: ended, reverted: hop.reverted, gone: hop.horizon_gone };
   });
 
   /** @type {string[]} */
   const warnings = [];
   syncKnowledge(cwd, [{ remove: { workUnit } }], warnings);
-
-  // The cancel-revert hop, whole-unit form: every roadmap item joined to
-  // the unit returns to waiting (the delivery attempt is over; the record
-  // stays). The project manifest rides this commit when a revert landed.
-  const { reverted, horizon_gone: gone } = revertJoins(cwd, workUnit);
 
   purgeWorkUnitCache(cwd, workUnit);
   const specs = [workUnit, ...mail.map(({ idea }) => idea)];
@@ -203,8 +195,9 @@ function reindexWorkUnit(cwd, workUnit, warnings, opts) {
 
 /**
  * Reactivate a completed or cancelled work unit: `status: in-progress`, a
- * stale `completed_at` cleared, commit scoped to the work unit. A finished
- * pipeline (derived next phase `done`) is no bar. Cancellation removed
+ * stale `completed_at` cleared, the roadmap items its cancel put back taken
+ * back where they still wait (18.8.20), commit scoped to the work unit. A
+ * finished pipeline (derived next phase `done`) is no bar. Cancellation removed
  * the unit's knowledge-base chunks, so reactivating from `cancelled`
  * re-indexes them (warn-don't-block); completed units retained their chunks —
  * no knowledge-base action.
@@ -214,7 +207,7 @@ function reindexWorkUnit(cwd, workUnit, warnings, opts) {
  */
 function reactivateWorkUnit(cwd, workUnit) {
   assertLegalStatus('in-progress');
-  const { previous } = withWorkUnitLock(cwd, workUnit, () => {
+  const { previous, rejoined, stayed } = withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.status === 'in-progress') {
       throw new Error(`work unit "${workUnit}" is already in-progress`);
@@ -225,9 +218,10 @@ function reactivateWorkUnit(cwd, workUnit) {
     const from = loaded.status;
     loaded.status = 'in-progress';
     if ('completed_at' in loaded) delete loaded.completed_at;
+    const retaken = retakeJoins(cwd, workUnit, loaded);
 
     saveWorkUnitManifest(cwd, workUnit, loaded);
-    return { previous: from };
+    return { previous: from, ...retaken };
   });
 
   /** @type {string[]} */
@@ -236,9 +230,12 @@ function reactivateWorkUnit(cwd, workUnit) {
     reindexWorkUnit(cwd, workUnit, warnings);
   }
 
-  const outcome = commitStateTail(cwd, workUnit, `workflow(${workUnit}): reactivate work unit`, warnings);
+  const specs = rejoined.length > 0 ? [workUnit, 'manifest.json'] : workUnit;
+  const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): reactivate work unit`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed: outcome.committed, warnings };
+  if (rejoined.length > 0) result.roadmap_rejoined = rejoined;
+  if (stayed.length > 0) result.roadmap_stayed = stayed;
   noteCommitOutcome(result, outcome);
   return result;
 }

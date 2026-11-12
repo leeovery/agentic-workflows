@@ -242,7 +242,7 @@ function investigationStanding({ topic = '', manifest }) {
 function discoveryStanding({ cwd, unit, manifest }) {
   if (unit === PRODUCT) return null;
   if (manifest.work_type !== 'epic') {
-    return `${unit} is a ${manifest.work_type} — its discovery ended at start this work, and reopening its decision goes through manage on the start menu`;
+    return `${unit} is a ${manifest.work_type} — its discovery ended at start this work: carry on its work where it stands, from the start menu`;
   }
   return pastSpecRefusal(cwd, manifest, 'newWork');
 }

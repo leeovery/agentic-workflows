@@ -700,7 +700,7 @@ function codeHeld({ cwd }, { take, menu }) {
   const holders = heldCodeSessions(cwd);
   if (holders.length === 0) return null;
   return codeGate(holders, {
-    back: menu === null ? { kind: 'continue' } : { kind: 'handoff', ...menu },
+    back: menu ?? { kind: 'continue' },
     take: { kind: 'engine', argv: take },
   });
 }

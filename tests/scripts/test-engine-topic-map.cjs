@@ -349,7 +349,7 @@ describe('topic remove (8.8.6, 8.8.16, 8.10.11)', () => {
 
     assert.deepStrictEqual(res, {
       ok: true, work_unit: UNIT, op: 'remove', name: 'mailed-topic', title: 'Mailed Topic', lifecycle: 'fresh', map_total: 5,
-      inbox: [statePath(dir, idea)], roadmap_returned: [], committed: head(statePath(dir)).slice(0, 7),
+      inbox: [statePath(dir, idea)], roadmap_returned: [], committed: head(statePath(dir)).slice(0, 7), next: { kind: 'continue' },
     });
     const manifest = readManifest(dir, UNIT);
     assert.deepStrictEqual([Object.keys(manifest.phases.discovery.items).includes('mailed-topic'), 'mailed-topic' in manifest.phases.discussion.items], [false, false]);

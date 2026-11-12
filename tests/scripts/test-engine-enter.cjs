@@ -582,8 +582,8 @@ describe('what a move carries, read by the skill a topic opens in (19.5.16, R26)
 });
 
 describe('discovery: what cannot be entered (8.6.5, 8.2.11)', () => {
-  it('a feature, a bugfix or a quick-fix, whose discovery ended at start this work: manage is the way back (8.S12)', () => {
-    const ended = 'its discovery ended at start this work, and reopening its decision goes through manage on the start menu';
+  it('a feature, a bugfix or a quick-fix, whose discovery ended at start this work: its work carries on from the start menu', () => {
+    const ended = 'its discovery ended at start this work: carry on its work where it stands, from the start menu';
     assert.deepStrictEqual([FEATURE, 'crash', 'tweak'].map((unit) => refused(['discovery', unit])), [
       `${FEATURE} is a feature — ${ended}`, `crash is a bugfix — ${ended}`, `tweak is a quick-fix — ${ended}`,
     ]);

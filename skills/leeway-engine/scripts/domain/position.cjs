@@ -10,9 +10,9 @@
 //
 // Every place records itself on arrival, through the calls that label it,
 // labels on or off: a phase's entry (`enter`, or `session label {wu}
-// {phase} {topic}` inside a phase not yet entered through it),
-// `session label {wu}` at a work unit's menu, `session label
-// roadmap|product` at the project-level places — a place this project lacks
+// {phase} {topic}` inside a phase not yet entered through it), the epic's
+// menu's render, `session label roadmap|product` at the project-level
+// places — a place this project lacks
 // is refused before anything is labelled or recorded. Inside a unit's build
 // the position holds every task in flight there (4.11.14, 24.2.4) — at its
 // implementation, or at its review phase, whose fix tasks the same loop

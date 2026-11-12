@@ -470,8 +470,7 @@ describe('conversation position', () => {
     });
   });
 
-  it('a linear unit\'s menu carries nothing on: nothing to carry on from, the position named', () => {
-    install('leeway-continue-linear');
+  it('a unit that is no epic, at no phase, carries nothing on: it has no menu of its own, the position named', () => {
     workUnit('ledger', 'feature');
     ok(['session', 'label', 'ledger']);
     assert.deepStrictEqual(reads(), {

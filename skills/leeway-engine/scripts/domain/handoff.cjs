@@ -318,4 +318,4 @@ function handoffSections(handoff) {
   ].join('');
 }
 
-module.exports = { resolveHandoff, handoffSections, phaseSkill, QUICK_FIX_SKILL, enteredAtUnit, HANDOFF_TARGETS, TOPIC_HANDOFF_USAGE, topicHandoff };
+module.exports = { resolveHandoff, handoffSections, phaseSkill, QUICK_FIX_SKILL, HANDOFF_TARGETS, TOPIC_HANDOFF_USAGE, topicHandoff };

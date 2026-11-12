@@ -8,7 +8,7 @@ Every work unit is in one of three states. It is **in-progress** by default whil
 
 Closing a work unit — completing it, cancelling it, or absorbing it into an epic — also clears its scratch working files: the per-phase working notes the system keeps only so an interrupted session can pick up where it left off. Finished work keeps its real artifacts and its history; the scaffolding goes.
 
-Cancelling is not a one-way door. A cancelled work unit can be **reactivated** back to in-progress from manage — restoring its material to the knowledge base, since it is live thinking again; an experiment its cancel ended stays abandoned. Any working files it needs are simply rebuilt as you go. A completed unit stays as it finished: manage lists it with nothing to do to it.
+Cancelling is not a one-way door. A cancelled work unit can be **reactivated** back to in-progress from manage — restoring its material to the knowledge base, since it is live thinking again, and taking back each roadmap item its cancel returned that still waits there; an experiment its cancel ended stays abandoned. Any working files it needs are simply rebuilt as you go. A completed unit stays as it finished: manage lists it with nothing to do to it.
 
 ## Pivot: a feature that grew
 
@@ -24,7 +24,7 @@ Inside an epic, individual topics have their own lifecycle, separate from the ep
 
 Later work protects earlier work. Once the epic's spec is written its map is closed, and no topic is cancelled — a decision that must change is settled in the phase the epic is in, and abandoning the whole effort is the epic's own cancel. The confirmation before every cancel names exactly what it takes, and nothing more is ever taken.
 
-**Reactivating** a topic restores what the cancel took — its prior statuses (a topic that had never been started comes back never started), its place in the order (unless another topic has since taken that number, in which case the next sequencing pass seats it), and, if it had completed thinking work, that work's place in the knowledge base. Two things do not come back, because they were never the cancel's to hold: an experiment the cancel ended stays abandoned on the register, and a roadmap item the cancel handed back to waiting stays waiting until it is pulled again. This topic-level control exists only for epics, because only an epic has topics distinct from the work unit itself; for every other type, cancelling the topic and cancelling the work unit are the same thing.
+**Reactivating** a topic restores what the cancel took — its prior statuses (a topic that had never been started comes back never started), its place in the order (unless another topic has since taken that number, in which case the next sequencing pass seats it), and, if it had completed thinking work, that work's place in the knowledge base. A roadmap item the cancel handed back to waiting comes back with the topic, unless other work took it meanwhile or it was archived, and the confirmation says where it stays. An experiment the cancel ended does not come back: it stays abandoned on the register. This topic-level control exists only for epics, because only an epic has topics distinct from the work unit itself; for every other type, cancelling the topic and cancelling the work unit are the same thing.
 
 ## Postponing a topic to the roadmap
 

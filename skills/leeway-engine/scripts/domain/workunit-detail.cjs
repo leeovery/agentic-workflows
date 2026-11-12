@@ -103,4 +103,4 @@ function phaseTargets(cwd, manifest, nextPhase) {
   };
 }
 
-module.exports = { WORK_UNIT_TYPES, typeConfig, phaseTargets };
+module.exports = { WORK_UNIT_TYPES, phaseTargets };

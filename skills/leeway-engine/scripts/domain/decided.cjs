@@ -127,6 +127,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
 const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, refusing, stands } = require('./staged-payload.cjs');
+const { ontoEpic } = require('./topic-leave.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./topic-map.cjs').Row} Row */
@@ -652,7 +653,7 @@ function waitAgentsSurface(cwd, { dotpath }) {
 function nextAfter(manifest, unit) {
   return topicsSettled(manifest)
     ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['epic', unit] }
-    : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit] };
+    : ontoEpic(unit);
 }
 
 /**

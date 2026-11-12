@@ -105,6 +105,7 @@ const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
+const { ontoMenu } = require('./topic-leave.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -251,10 +252,6 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
   });
 }
 
-/** Where the work goes once the unit is finished (24.1.2, 14.6.2): an epic's menu, its complete variant (18.4.23); else the start menu. @param {Record<string, any>} manifest @returns {Next} */
-function nextAfterFinish(manifest) {
-  return manifest.work_type === 'epic' ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [manifest.name] } : { kind: 'handoff', skill: 'leeway', args: [] };
-}
 
 /** The yes's refusal while the screen still has a verdict to ask. */
 const VERDICT_OWED = 'a verdict is still to ask — render finish asks each before the yes';
@@ -329,7 +326,7 @@ function finishYes(cwd, unit) {
   const completed = completeWorkUnit(cwd, unit, { message: `finish(${unit}): completed` });
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
   /** @type {Record<string, unknown>} */
-  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: nextAfterFinish(manifest) };
+  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: ontoMenu(unit, manifest.work_type) };
   if (completed.note !== undefined) result.note = completed.note;
   if (said.length > 0) result.warnings = said;
   return result;

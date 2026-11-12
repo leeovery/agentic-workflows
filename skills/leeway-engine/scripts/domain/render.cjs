@@ -40,7 +40,7 @@ const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, addNameRefusal, DEFAULT_KIND } = require('./roadmap.cjs');
-const { cancelledFrom } = require('./topic-leave.cjs');
+const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
 const {
   roadmapMapView,
   roadmapAddGate,
@@ -51,7 +51,6 @@ const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { lastShown } = require('./gate.cjs');
-const { labLeaveNext } = require('./topic-leave.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
@@ -310,7 +309,7 @@ function resolveExperiment(cwd, dotpath, surface) {
   const rows = Object.entries(experiments)
     .map(([id, r]) => ({ id, ...(r && typeof r === 'object' ? r : {}) }))
     .sort((a, b) => compareExperimentIds(a.id, b.id));
-  return { workUnit, topic, title: topicTitle(manifest, topic), rows, leave: labLeaveNext(workUnit, manifest.work_type) };
+  return { workUnit, topic, title: topicTitle(manifest, topic), rows, leave: ontoMenu(workUnit, manifest.work_type) };
 }
 
 /** The series' live top-level records, id order. @param {import('./projections/experiment.cjs').SeriesRow[]} rows */
@@ -800,7 +799,28 @@ function inboxCount(surface, verb, inbox) {
   return Number(inbox);
 }
 
-/** @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string}} args @returns {string} */
+/**
+ * Where each roadmap item a reactivate left stands (18.8.20), as `--stayed
+ * <items>` carries them from its `roadmap_stayed`, comma-joined — none where
+ * it is not given; refused for another verb, and for an item still waiting
+ * or with the unit reactivated, which the reactivate took back.
+ * @param {string} cwd @param {string} surface @param {string} unit @param {string|undefined} verb @param {string|undefined} stayed
+ * @returns {import('./projections/transactions.cjs').Stayed[]}
+ */
+function stayedItems(cwd, surface, unit, verb, stayed) {
+  if (stayed === undefined) return [];
+  if (verb !== 'reactivate') throw new Error(`render ${surface}: --stayed names what a reactivate left where it stands — it takes --verb reactivate`);
+  const state = roadmapState(cwd);
+  return stayed.split(',').map((name) => {
+    if (state.archived.some((row) => row.name === name)) return { name, archived: true };
+    const row = state.items.find((r) => r.name === name);
+    if (row === undefined) return { name };
+    if (row.work_unit === undefined || row.work_unit === unit) throw new Error(`render ${surface}: "${name}" stayed nowhere — the reactivate takes back every item still waiting`);
+    return { name, work_unit: row.work_unit };
+  });
+}
+
+/** @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string, stayed?: string}} args @returns {string} */
 function workunitReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'workunit-receipt');
   const verb = args.verb;
@@ -808,6 +828,7 @@ function workunitReceiptSurface(cwd, args) {
     throw new Error(`render workunit-receipt: --verb must be cancel, reactivate, or pivot, got "${verb}"`);
   }
   const inbox = inboxCount('workunit-receipt', verb, args.inbox);
+  const stayed = stayedItems(cwd, 'workunit-receipt', workUnit, verb, args.stayed);
   if (verb === 'pivot') {
     if (manifest.work_type !== 'epic') {
       throw new Error(`render workunit-receipt: "${workUnit}" is not an epic — nothing to receipt for a pivot`);
@@ -819,6 +840,7 @@ function workunitReceiptSurface(cwd, args) {
     warn: args.warn === '1',
     inbox,
     kept: verb === 'cancel' ? keptAside(cwd, workUnit).map(keptWords) : [],
+    stayed,
   });
 }
 
@@ -849,13 +871,14 @@ function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
  * The topic receipts: `cancel`, `reactivate`, `postpone` and `restore`
  * address the unit, `<wu>.discovery.<topic>`, and read its state after the
  * verb ran.
- * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string}} args @returns {string}
+ * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string, stayed?: string}} args @returns {string}
  */
 function topicReceiptSurface(cwd, args) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
   const verb = args.verb;
   const warn = args.warn === '1';
   const inbox = inboxCount('topic-receipt', verb, args.inbox);
+  const stayed = stayedItems(cwd, 'topic-receipt', workUnit, verb, args.stayed);
   const name = itemTitle(topicTitles(manifest), phase, topic);
   if (verb === 'postpone') {
     assertDiscoveryUnitAddress(manifest, phase, topic, verb);
@@ -884,7 +907,7 @@ function topicReceiptSurface(cwd, args) {
   if (cancelled) {
     throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
   }
-  return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
+  return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic), stayed });
 }
 
 /** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, renamed?: string, warn?: string}} args @returns {string} */
@@ -1124,14 +1147,17 @@ function postponeAddress(cwd, dotpath) {
  * named in words, carries on. With `--park <name>`, it asks where an item
  * Claude is putting on the roadmap goes, saying so above the question
  * (18.8.11), and every row carries on with the horizon picked. With
- * `--back <name> --from <what was cancelled>`, it asks where an item a
- * cancel put back on no horizon goes (18.8.20): each horizon's row moves it
- * there, `roadmap move … --from`, whose answer leads on (topic-leave.cjs),
- * and a horizon named in words is moved the same way, as its DATA says.
- * @param {string} cwd @param {{dotpath?: string, park?: string, back?: string, from?: string}} args @returns {string}
+ * `--back <name> --from <what put it back> [--then <items>]`, it asks
+ * where an item a cancel or a removal put back on no horizon goes
+ * (18.8.20): each horizon's row moves it there, `roadmap move … --from`,
+ * the items still to ask about carried on, whose answer leads on
+ * (topic-leave.cjs), and a horizon named in words is moved the same way,
+ * as its DATA says.
+ * @param {string} cwd @param {{dotpath?: string, park?: string, back?: string, from?: string, then?: string}} args @returns {string}
  */
-function horizonPick(cwd, { dotpath, park, back, from }) {
-  if (back !== undefined) return horizonBack(cwd, back, from);
+function horizonPick(cwd, { dotpath, park, back, from, then }) {
+  if (back !== undefined) return horizonBack(cwd, back, from, then);
+  if (then !== undefined) throw new Error('render horizon-pick: --then carries the items still to ask about after --back');
   if (park !== undefined && dotpath !== undefined) throw new Error('render horizon-pick: --park names the item being put on the roadmap, and takes no address');
   const postponing = dotpath === undefined ? null : postponeAddress(cwd, dotpath);
   const state = roadmapState(cwd);
@@ -1163,19 +1189,20 @@ function horizonRows(state, nextOf) {
 }
 
 /**
- * `render horizon-pick --back <name> --from <what was cancelled>` (the
- * pick's): refused for an item not waiting on no horizon.
- * @param {string} cwd @param {string} name @param {string|undefined} from @returns {string}
+ * `render horizon-pick --back <name> --from <what put it back> [--then
+ * <items>]` (the pick's): refused for an item not waiting on no horizon.
+ * @param {string} cwd @param {string} name @param {string|undefined} from @param {string|undefined} then @returns {string}
  */
-function horizonBack(cwd, name, from) {
-  if (from === undefined) throw new Error('render horizon-pick: --back takes --from, what was cancelled — <work_unit>, or <work_unit>.discovery.<topic>');
-  cancelledFrom(from);
+function horizonBack(cwd, name, from, then) {
+  if (from === undefined) throw new Error('render horizon-pick: --back takes --from, what put it back — <work_unit>, or <work_unit>.discovery.<topic>');
+  putBackBy(from);
+  const carried = ['--from', from, ...thenArgs(stillToAsk(then))];
   const state = roadmapState(cwd);
   const row = state.items.find((r) => r.name === name);
   if (row === undefined || row.horizon !== null || row.state !== 'waiting') throw new Error(`render horizon-pick: "${name}" is no roadmap item waiting on no horizon`);
   /** @param {string} horizon @returns {import('./projections/surfaces.cjs').Next} */
-  const moved = (horizon) => ({ kind: 'engine', argv: ['roadmap', 'move', name, '--horizon', horizon, '--from', from] });
-  return dataSection([`a horizon named in words: engine roadmap move ${name} --horizon "<the horizon>" --from ${from}, then follow its next`])
+  const moved = (horizon) => ({ kind: 'engine', argv: ['roadmap', 'move', name, '--horizon', horizon, ...carried] });
+  return dataSection([`a horizon named in words: engine roadmap move ${name} --horizon "<the horizon>" ${carried.join(' ')}, then follow its next`])
     + section('MENU: horizon pick', MENU_INSTRUCTION, menu(
       `"${titlecase(name)}" is back on the roadmap, and the horizon it came from has been removed.`,
       [...horizonRows(state, moved), cmdOption('n', 'new', 'A new horizon — name it', { next: { kind: 'continue' } })],

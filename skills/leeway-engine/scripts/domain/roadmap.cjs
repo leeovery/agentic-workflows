@@ -27,11 +27,12 @@
 // the work unit is authoritative — re-bucketing or archiving a pulled item is
 // refused here (the delivery decision is the work's: an idea bound to an epic
 // topic goes back to waiting when that topic is cancelled or postponed, any
-// other join only when its whole work unit is cancelled). Horizon-level
-// restructuring (rename/reorder/merge/split) stays open at any join state: it
-// relabels the release, it never un-commits work (decision 28). A horizon
-// removed while an item from it is in flight leaves that item to come back
-// on no horizon, for the person to place (18.8.20).
+// other join only when its whole work unit is cancelled; the cancel records
+// the joins it deleted, and a reactivate takes back each item still waiting,
+// 18.8.20). Horizon-level restructuring (rename/reorder/merge/split) stays
+// open at any join state: it relabels the release, it never un-commits work
+// (decision 28). A horizon removed while an item from it is in flight leaves
+// that item to come back on no horizon, for the person to place (18.8.20).
 //
 // Every mutation is one transaction under the project-manifest lock plus its
 // own pathspec-confined tail commit of the project manifest: no
@@ -1339,8 +1340,17 @@ function reaimJoins(cwd, unit, from, to) {
  */
 
 /**
+ * @typedef {object} PutBack  a join the cancel-revert hop deleted, as the
+ *   cancel records it for a reactivate to take back (18.8.20): the item, and
+ *   the topic it was joined to, where it was joined to one
+ * @property {string} item
+ * @property {string} [topic]
+ */
+
+/**
  * @typedef {object} Reverted  what the cancel-revert hop put back
  * @property {string[]} reverted  every item back to waiting
+ * @property {PutBack[]} joins  the joins it deleted
  * @property {HorizonGone[]} horizon_gone  those whose horizon was removed meanwhile
  */
 
@@ -1360,7 +1370,7 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
   return withProjectLock(cwd, () => {
     const manifest = readProjectManifest(cwd);
     /** @type {Reverted} */
-    const out = { reverted: [], horizon_gone: [] };
+    const out = { reverted: [], joins: [], horizon_gone: [] };
     if (!hasRoadmapNode(manifest)) return out;
     const rm = manifest.roadmap;
     const horizons = Array.isArray(rm.horizons) ? rm.horizons : [];
@@ -1372,12 +1382,66 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
       if (topic !== undefined && join.topic !== topic) continue;
       delete item.pulled_to;
       out.reverted.push(name);
+      out.joins.push(typeof join.topic === 'string' ? { item: name, topic: join.topic } : { item: name });
       if (!horizons.includes(item.horizon)) {
         out.horizon_gone.push({ name, horizon: typeof item.horizon === 'string' ? item.horizon : null });
         delete item.horizon;
       }
     }
     if (out.reverted.length > 0) writeProjectManifestAtomic(cwd, manifest);
+    return out;
+  });
+}
+
+/**
+ * @typedef {object} Retaken  what a reactivate took back of its cancel's put-back
+ * @property {string[]} rejoined  the items joined to the work again
+ * @property {string[]} stayed    those another piece of work took meanwhile, or archived, or renamed away
+ */
+
+/**
+ * Record on `holder` — the unit cancelled, or the map row of the topic
+ * cancelled — the joins its cancel deleted, as `roadmap_put_back`, for its
+ * reactivate to take back; none where it deleted none. Mutates the loaded
+ * manifest.
+ * @param {Record<string, any>} holder @param {PutBack[]} joins
+ */
+function recordPutBack(holder, joins) {
+  if (joins.length > 0) holder.roadmap_put_back = joins;
+  else delete holder.roadmap_put_back;
+}
+
+/**
+ * Take back what a cancel put back (18.8.20), the reactivate's project-side
+ * write: the joins its cancel recorded on `holder` taken off it, and each
+ * item still waiting on the roadmap joined to `workUnit` again as it was,
+ * as a pull forward joins one; any other stays where it is. Under the
+ * project lock, **no commit** — the reactivate stages the project manifest
+ * alongside its own write, and saves `holder`'s. Nothing taken back writes
+ * nothing.
+ * @param {string} cwd @param {string} workUnit @param {Record<string, any>} holder
+ * @returns {Retaken}
+ */
+function retakeJoins(cwd, workUnit, holder) {
+  /** @type {PutBack[]} */
+  const joins = holder.roadmap_put_back ?? [];
+  delete holder.roadmap_put_back;
+  if (joins.length === 0) return { rejoined: [], stayed: [] };
+  return withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    const items = roadmapItems(manifest);
+    /** @type {Retaken} */
+    const out = { rejoined: [], stayed: [] };
+    for (const { item: name, topic } of joins) {
+      const item = items[name];
+      if (!item || typeof item !== 'object' || !itemWaiting(item)) {
+        out.stayed.push(name);
+        continue;
+      }
+      item.pulled_to = topic === undefined ? { work_unit: workUnit } : { work_unit: workUnit, topic };
+      out.rejoined.push(name);
+    }
+    if (out.rejoined.length > 0) writeProjectManifestAtomic(cwd, manifest);
     return out;
   });
 }
@@ -1579,6 +1643,8 @@ module.exports = {
   joinTakenIn,
   reaimJoins,
   revertJoins,
+  recordPutBack,
+  retakeJoins,
   carrySources,
   landingOf,
   reaimAbsorbed,

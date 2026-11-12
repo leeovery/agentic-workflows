@@ -32,7 +32,7 @@ useWorld((at) => { dir = at; });
 const { screen, refused } = finishHelpers(() => dir);
 
 describe('finish yes (14.5.1, 24.1.2)', () => {
-  it('lands every phase still standing and completes the unit, committed, a feature handed to the start menu, reading the tracker as often as land finish alone and it as often as finish\'s checklist — refused while its review phase goes on, and while finish\'s checklist is open', () => {
+  it('24.S5: lands every phase still standing and completes the unit, committed, a feature handed to the start menu, reading the tracker as often as land finish alone and it as often as finish\'s checklist — refused while its review phase goes on, and while finish\'s checklist is open', () => {
     const reviewing = refused(['finish', 'yes', UNIT]);
     reviewPassed();
     const open = refused(['finish', 'yes', UNIT]);
