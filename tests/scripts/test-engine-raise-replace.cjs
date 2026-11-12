@@ -11,7 +11,7 @@
 // decision as it stands, `ledger replace`'s checks run before anything is
 // drawn or sealed, each decision's raise sealed on its own (16.5.7,
 // 29.5.2); each answer — a proposal picked, the person's own words, `keep`,
-// "I don't follow" — with its ledger line, its raise event, who moved whom
+// "I don't follow", "don't care" — with its ledger line, its raise event, who moved whom
 // (5.3.10) and the verdict queue, read through this machine's trust log
 // (domain/trust-evidence.cjs), and refused, recording nothing, on a raise
 // with no such row or a decision replaced since the draw; a keep changing
@@ -280,14 +280,14 @@ describe('the answer\'s refusals, recording nothing', () => {
     assert.deepStrictEqual([logged(), /** @type {Record<string, any>} */ (seals())[id].answered], [[], null]);
   });
 
-  it('a decision replaced since the draw: keep and a pick each refused, naming the decision, what replaced it, and the way on, raising again on what is current', async () => {
+  it('a decision replaced since the draw: keep, a pick and a "don\'t care" each refused, naming the decision, what replaced it, and the way on, raising again on what is current', async () => {
     const id = await draw();
     const { write } = ledgerHelpers(() => dir);
     const since = write('replace', NOTE, ['--replaces', made.opens, '--reason', 'changed-mind'], { ...MADE, drops: [KEPT], text: 'Beside the last note', why: 'Notes gather.' }).id;
     const said = `raise answer: the raise proposes replacing ${made.opens}, which ${since} replaced — the current one is ${since} — nothing recorded: raise it again on what is current, where it still calls for a change, and the person's answer stays in the conversation`;
 
-    for (const how of [['--pick', 'keep'], ['--pick', '1']]) {
-      assert.strictEqual(refusedPristine(dir, ['raise', 'answer', id, ...how], { env: conversation(), stdin: JSON.stringify({ why: WHY }) }).error, said);
+    for (const [how, stdin] of [[['--pick', 'keep'], JSON.stringify({ why: WHY })], [['--pick', '1'], JSON.stringify({ why: WHY })], [['--dont-care'], '']]) {
+      assert.strictEqual(refusedPristine(dir, ['raise', 'answer', id, ...how], { env: conversation(), stdin }).error, said, how.join(' '));
     }
     assert.deepStrictEqual([logged(), /** @type {Record<string, any>} */ (seals())[id].answered], [[], null]);
   });
@@ -304,6 +304,16 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.deepStrictEqual(logged(), [raiseEvent(id)]);
     assert.deepStrictEqual(queue(), []);
     assert.ok(copy(NOTE_COPY)?.includes(MAIN.text), 'the record\'s copy does not hold the answer that replaced the decision');
+  });
+
+  it('the person\'s "don\'t care": Claude\'s replacement landing at the raise\'s id as the builder\'s, given dont-care, dropping the answer as it stood — its raise event a "don\'t care", an agreement, nothing in the queue', async () => {
+    const id = await draw();
+
+    answer(id, ['--dont-care'], null);
+
+    assert.deepStrictEqual(lastEntry(), replacementOf(id, { by: 'claude', why: CALL.why, sealed: null, given: 'dont-care' }));
+    assert.deepStrictEqual(logged(), [raiseEvent(id, { dont_care: true })]);
+    assert.deepStrictEqual(queue(), []);
   });
 
   it('another proposal picked stands over the lean: a departure waiting with the lean beside it, still no reversal; what relied on the decision is affected', async () => {

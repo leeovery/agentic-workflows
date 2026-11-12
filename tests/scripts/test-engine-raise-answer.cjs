@@ -282,9 +282,9 @@ describe('"don\'t care" (16.5.4, 16.S19, P6)', () => {
     assert.deepStrictEqual(ok(dir, ['verdict', 'queue'], { env: conversation() }).departures, []);
   });
 
-  it('the third in a row on a kind under a care entry in this project cues the drop, naming the entry by the project\'s name now, its kind and the run; the second cues nothing', async () => {
+  it('the third in a row on a kind under a care entry in this project cues the drop, naming the entry by the project\'s name now, its kind and the run; the second cues nothing, nor the third given again', async () => {
     const here = { project: project(), name: projectName(dir) };
-    fs.writeFileSync(path.join(config(), 'person.md'), `# The record of you\n\n## Care entries\n\n- Fumi: scope · ${here.project}\n`);
+    fs.writeFileSync(path.join(config(), 'person.md'), `# The record of you\n\n## Care entries\n\n- Fumi: scope · ${here.project} · 2025-12-01T00:00:00.000Z\n`);
     const first = history({ project: here.project });
     first.dontCare(1, 'scope');
     fs.writeFileSync(path.join(config(), 'trust.jsonl'), lines(...first.events));
@@ -292,11 +292,13 @@ describe('"don\'t care" (16.5.4, 16.S19, P6)', () => {
     const third = await draw(asked.size, { env: LABELLED });
 
     const answered = [answer(second, ['--dont-care'], null), answer(third, ['--dont-care'], null)].map((res) => res.care_drop ?? null);
+    const again = answer(third, ['--dont-care'], null);
 
     assert.deepStrictEqual(answered, [null, { care: `${here.name}: scope`, kind: 'scope', dont_cares: 3 }]);
+    assert.deepStrictEqual([again.already, again.care_drop], [true, undefined]);
   });
 
-  it('a record of the person that does not read refuses it before anything lands, naming the file', async () => {
+  it('care entries that do not read refuse it before anything lands, naming the file', async () => {
     const id = await draw();
     const record = path.join(config(), 'person.md');
     fs.writeFileSync(record, '# The record of you\n\n## Care entries\n\n- Fumi: look\n');

@@ -688,6 +688,7 @@ describe('engine writes take the writer lock', () => {
     harness.output(dir, ['raise', 'show', raise], { env });
     harness.okSections(dir, ['person', 'propose'], { env, stdin: JSON.stringify({ preference: 'Show the product first', why: 'People see it before it asks.', examples: ['The tour comes first.'] }) });
     t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'person.md'), { force: true }));
+    harness.ok(dir, ['gate', 'record proposal', '--pick', 'y'], { env });
     harness.ok(dir, ['person', 'keep'], { env });
     assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');

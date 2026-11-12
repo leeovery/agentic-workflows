@@ -5,6 +5,10 @@
 // 16.5.6) — Claude's proposal of an entry, held for the person's yes, the
 // yes that writes it (person.cjs), and the care entries' screens.
 //
+// - Nothing is written to the record without the person's answer, as the
+//   conversation recorded it at the gate last shown (gate.cjs): its row,
+//   the one leading to the very command that writes (16.13.2, 16.18.2).
+//   A write that finds any other answer, or none, refuses, writing nothing.
 // - `person propose [--drop]`: Claude's proposal on stdin — a preference in
 //   its words, or a care entry by its kind in this project, with Claude's
 //   why and its examples, each one line — to keep in the record, or, with
@@ -17,15 +21,18 @@
 //   danger among them, which always asks; a preference named as the
 //   record's care entries are — a preference or a care entry the record
 //   holds already, one to drop that it does not hold, a care entry outside a
-//   project, and a conversation with no session to hold it in.
-// - `person keep` and `person drop`: the person's yes on the proposal
-//   screen — the proposal held, kept or dropped as it proposes, checked
-//   again under the record's lock, then let go. Each refuses with no
-//   proposal held, or one proposing the other.
-// - `person keep --care <kind>` and `person drop --care <kind>`: the
-//   person's own pick on the care entries' screens — a care entry on the
-//   kind added in this project, or dropped from it (16.5.6) — leading to the
-//   care entries' screen with the line reporting it.
+//   project, a record a newer release wrote, and a conversation with no
+//   session to hold it in.
+// - `person keep` and `person drop`: the proposal held, kept or dropped as
+//   it proposes, on the person's yes on its screen — the screen drawn for
+//   it, shown no earlier than it was proposed — checked again under the
+//   record's lock, then let go. Each refuses with no proposal held, one
+//   proposing the other, and no yes. `person discard`, the person's no: the
+//   proposal let go, nothing written.
+// - `person keep --care <kind>` and `person drop --care <kind>`: a care
+//   entry on the kind added in this project, or dropped from it (16.5.6), on
+//   the person's pick of the row leading here on the care entries' screens;
+//   then the care entries' screen with the line reporting it.
 // - `render care [--added <kind> | --dropped <kind>]`: the care entries'
 //   screen, in the menus' frame (projections/care.cjs), the line reporting
 //   the entry just added or dropped above it — the dropped kind's count
@@ -48,12 +55,15 @@ const { handedSession } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { type, LINE, listOf } = require('./event-fields.cjs');
 const { conversationDir } = require('./conversation.cjs');
+const { lastShown } = require('./gate.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { projectId, modelOf } = require('./trust-log.cjs');
 const { countsOf, stateOf } = require('./trust-counts.cjs');
 const { trustSettings } = require('./trust-settings.cjs');
 const { PROPOSAL } = require('./user-files.cjs');
-const { CARE_KINDS, readRecord, changeRecord, careIn } = require('./person.cjs');
+const {
+  CARE, CARE_KINDS, readRecord, checkWritable, changeRecord, careOf, careIn, holdsPreference, withPreference, withoutPreference, withCare,
+} = require('./person.cjs');
 const { MENUS, drawMenu } = require('./menus.cjs');
 const { proposalScreen } = require('./projections/person.cjs');
 const { careScreen, kindPick, dropPick, addedLine, droppedLine } = require('./projections/care.cjs');
@@ -63,25 +73,34 @@ const { careScreen, kindPick, dropPick, addedLine, droppedLine } = require('./pr
 /** @typedef {import('./person.cjs').PersonRecord} PersonRecord */
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
+/** A care entry as a proposal or a pick names it, before it is added. @typedef {Omit<Care, 'added'>} CareNamed */
+
 /**
  * A proposal as the conversation holds it: the version of its shape, when
  * it was proposed, whether it drops the entry, the entry — a preference's
  * words, or a care entry, the other null — and Claude's why and examples.
- * @typedef {{v: number, at: string, drop: boolean, preference: string|null, care: Care|null, why: string, examples: string[]}} Proposal
+ * @typedef {{v: number, at: string, drop: boolean, preference: string|null, care: CareNamed|null, why: string, examples: string[]}} Proposal
  */
+
+/** An entry to keep or drop: a preference, with its why and examples to keep it, or a care entry. @typedef {{drop: boolean, preference: string|null, care: CareNamed|null, why?: string, examples?: string[]}} Entry */
 
 /** This project: its state root, its id, and its name now. @typedef {{root: string, id: string, name: string}} Here */
 
 /** What a verb answers, and the screen it draws, '' for none. @typedef {{answer: Record<string, unknown>, screen: string}} Answered */
 
 const PROPOSAL_VERSION = 1;
-const CARE_SECTION = 'Care entries';
 const PROPOSE_USAGE = 'person propose [--drop]   (a preference or a care entry\'s kind, Claude\'s why and examples as JSON on stdin)';
 const KEEP_USAGE = 'person keep [--care <kind>]';
 const DROP_USAGE = 'person drop [--care <kind>]';
+const DISCARD_USAGE = 'person discard';
 
 /** The person verbs' usage, a line each. */
-const PERSON_USAGE = [PROPOSE_USAGE, KEEP_USAGE, DROP_USAGE].join('\n');
+const PERSON_USAGE = [PROPOSE_USAGE, KEEP_USAGE, DROP_USAGE, DISCARD_USAGE].join('\n');
+
+// The gates whose answer writes the record: the proposal's screen, by what
+// it proposes, and the care entries' screens.
+const PROPOSAL_GATE = Object.freeze({ keep: 'record proposal', drop: 'record drop' });
+const CARE_GATES = Object.freeze(['care entries', 'care kind', 'care drop']);
 
 // One line, as the record holds it: nothing to trim at either end.
 const SAID = type('one line of text, no space at either end', (v) => LINE.test(v) && /** @type {string} */ (v).trim() === v);
@@ -100,13 +119,28 @@ function careKind(said, kind) {
 }
 
 /** The kinds under a care entry here, in the order kept. @param {PersonRecord} record @param {Here} here */
-const kindsHere = (record, here) => careIn(record, here.id).map(({ kind }) => kind);
+const kindsHere = (record, here) => careIn(careOf(record), here.id).map(({ kind }) => kind);
 
 /** The conversation's session, refused, in the words of `said`, where none was handed over. @param {string} said */
 function sessionOf(said) {
   const session = handedSession();
-  if (session === null) throw new Error(`${said}: no conversation to hold the proposal in — Claude Code hands every command it runs a session id, and this one has none`);
+  if (session === null) throw new Error(`${said}: no conversation to answer in — Claude Code hands every command it runs a session id, and this one has none`);
   return session;
+}
+
+/**
+ * Whether the person's answer at the gate last shown in the conversation
+ * `session` leads to the command `argv`: one of `gates`, shown no earlier
+ * than `since` where given, and answered with the row whose next it is.
+ * @param {string} session @param {readonly string[]} gates @param {string[]} argv @param {string|null} since
+ */
+function answeredTo(session, gates, argv, since) {
+  const shown = lastShown(session);
+  if (shown === null || !gates.includes(shown.gate) || shown.answered === null) return false;
+  if (since !== null && Date.parse(shown.at) < Date.parse(since)) return false;
+  const { picked } = shown.answered;
+  const next = [...shown.options, ...shown.typed].find((row) => row.key === picked)?.next;
+  return next?.kind === 'engine' && next.argv.join('\0') === argv.join('\0');
 }
 
 /** Where the conversation `session` holds its proposal. @param {string} session */
@@ -127,7 +161,7 @@ function proposalOn(stdin) {
   const { preference = null, care = null, why, examples } = given;
   if ((preference === null) === (care === null)) throw new Error(`${said}: the proposal names a preference or a care entry's kind, one and not both`);
   if (preference !== null && !SAID.test(preference)) throw new Error(`${said}: the proposal's preference is not ${SAID.is}`);
-  if (preference === CARE_SECTION) throw new Error(`${said}: "${CARE_SECTION}" is the record's section of care entries, never a preference's words`);
+  if (preference === CARE) throw new Error(`${said}: "${CARE}" is the record's section of care entries, never a preference's words`);
   if (!SAID.test(why)) throw new Error(`${said}: the proposal's why is not ${SAID.is}`);
   if (!EXAMPLES.test(examples)) throw new Error(`${said}: the proposal's examples are not ${EXAMPLES.is}`);
   return {
@@ -135,19 +169,16 @@ function proposalOn(stdin) {
   };
 }
 
-/** Whether the record holds the preference `words`. @param {PersonRecord} record @param {string} words */
-const holdsPreference = ({ preferences }, words) => preferences.some(({ preference }) => preference === words);
+/** Whether the record holds the care entry `care`. @param {PersonRecord} record @param {CareNamed} care */
+const holdsCare = (record, { project, kind }) => careIn(careOf(record), project).some((entry) => entry.kind === kind);
 
-/** Whether the record holds the care entry `care`. @param {PersonRecord} record @param {{project: string, kind: Kind}} care */
-const holdsCare = (record, { project, kind }) => careIn(record, project).some((entry) => entry.kind === kind);
-
-/** The entry a proposal names, as the screens name it. @param {{preference: string|null, care: Care|null}} entry */
+/** The entry a proposal names, as the screens name it. @param {{preference: string|null, care: CareNamed|null}} entry */
 const entryNamed = ({ preference, care }) => (care === null ? /** @type {string} */ (preference) : `${care.name}: ${care.kind}`);
 
 /**
  * Refuse, in the words of `said`, an entry the record holds already, to be
  * kept, or one it does not hold, to be dropped.
- * @param {string} said @param {PersonRecord} record @param {{drop: boolean, preference: string|null, care: Care|null}} entry
+ * @param {string} said @param {PersonRecord} record @param {Entry} entry
  */
 function checkStanding(said, record, entry) {
   const holds = entry.care === null ? holdsPreference(record, /** @type {string} */ (entry.preference)) : holdsCare(record, entry.care);
@@ -166,7 +197,7 @@ function propose(cwd, args, stdin) {
   const drop = args.length === 1;
   const session = sessionOf(said);
   const { preference, kind, why, examples } = proposalOn(stdin());
-  /** @type {Care|null} */
+  /** @type {CareNamed|null} */
   let care = null;
   if (kind !== null) {
     const here = hereOf(cwd);
@@ -174,7 +205,9 @@ function propose(cwd, args, stdin) {
   }
   /** @type {Proposal} */
   const proposal = { v: PROPOSAL_VERSION, at: new Date().toISOString(), drop, preference, care, why, examples };
-  checkStanding(said, readRecord(), proposal);
+  const record = readRecord();
+  checkWritable(record);
+  checkStanding(said, record, proposal);
   const file = heldPath(session);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   writeJsonAtomic(file, proposal);
@@ -183,37 +216,35 @@ function propose(cwd, args, stdin) {
 
 /**
  * The proposal the conversation `session` holds, refused, in the words of
- * `said`, where none is held or it proposes the other way.
- * @param {string} said @param {string} session @param {boolean} drop
+ * `said`, where none is held.
+ * @param {string} said @param {string} session
  * @returns {Proposal}
  */
-function heldProposal(said, session, drop) {
+function heldProposal(said, session) {
   const file = heldPath(session);
-  if (!fs.existsSync(file)) throw new Error(`${said}: no proposal is held in this conversation — person propose draws one, and the person's yes on it ${drop ? 'drops' : 'keeps'} it`);
-  const held = /** @type {Proposal} */ (JSON.parse(fs.readFileSync(file, 'utf8')));
-  if (held.drop !== drop) throw new Error(`${said}: the proposal held ${held.drop ? 'drops' : 'keeps'} "${entryNamed(held)}" — its yes is person ${held.drop ? 'drop' : 'keep'}`);
-  return held;
+  if (!fs.existsSync(file)) throw new Error(`${said}: no proposal is held in this conversation — person propose draws one, for the person's answer`);
+  return /** @type {Proposal} */ (JSON.parse(fs.readFileSync(file, 'utf8')));
 }
 
 /**
- * The record with the entry kept in it — a preference after the rest, a
- * care entry after the rest — or dropped from it.
- * @param {PersonRecord} record @param {{drop: boolean, preference: string|null, care: Care|null, why?: string, examples?: string[]}} entry
+ * The record with the entry kept in it — a preference written as the engine
+ * writes one, a care entry after the rest, added now — or dropped from it.
+ * @param {PersonRecord} record @param {Entry} entry
  * @returns {PersonRecord}
  */
 function changed(record, { drop, preference, care, why = '', examples = [] }) {
-  if (care !== null) {
-    const others = record.care.filter((entry) => entry.project !== care.project || entry.kind !== care.kind);
-    return { ...record, care: drop ? others : [...record.care, care] };
+  if (care === null) {
+    const words = /** @type {string} */ (preference);
+    return drop ? withoutPreference(record, words) : withPreference(record, { preference: words, why, examples });
   }
-  const others = record.preferences.filter((entry) => entry.preference !== preference);
-  return { ...record, preferences: drop ? others : [...record.preferences, { preference: /** @type {string} */ (preference), why, examples }] };
+  const others = careOf(record).filter((entry) => entry.project !== care.project || entry.kind !== care.kind);
+  return withCare(record, drop ? others : [...careOf(record), { ...care, added: new Date().toISOString() }]);
 }
 
 /**
  * The entry kept in, or dropped from, the record under its lock, checked
  * again there, in the words of `said`; its name, as the screens name it.
- * @param {string} said @param {{drop: boolean, preference: string|null, care: Care|null, why?: string, examples?: string[]}} entry
+ * @param {string} said @param {Entry} entry
  */
 function write(said, entry) {
   return changeRecord((record) => {
@@ -229,11 +260,32 @@ function write(said, entry) {
  * @returns {Answered}
  */
 function yesTo(drop) {
-  const said = `person ${drop ? 'drop' : 'keep'}`;
+  const verb = drop ? 'drop' : 'keep';
+  const said = `person ${verb}`;
   const session = sessionOf(said);
-  const named = write(said, heldProposal(said, session, drop));
+  const held = heldProposal(said, session);
+  if (held.drop !== drop) throw new Error(`${said}: the proposal held ${held.drop ? 'drops' : 'keeps'} "${entryNamed(held)}" — its yes is person ${held.drop ? 'drop' : 'keep'}`);
+  if (!answeredTo(session, [PROPOSAL_GATE[verb]], ['person', verb], held.at)) {
+    throw new Error(`${said}: the person has not said yes to "${entryNamed(held)}" — only their y/yes on its screen ${drop ? 'drops' : 'keeps'} it, and nothing is written`);
+  }
+  const named = write(said, held);
   fs.rmSync(heldPath(session), { force: true });
   return { answer: { [drop ? 'dropped' : 'kept']: named }, screen: '' };
+}
+
+/**
+ * `person discard`: the person's no — the proposal held let go, nothing
+ * written.
+ * @param {string} _cwd @param {string[]} args
+ * @returns {Answered}
+ */
+function discard(_cwd, args) {
+  if (args.length > 0) throw new Error(`Usage: engine ${DISCARD_USAGE}`);
+  const said = 'person discard';
+  const session = sessionOf(said);
+  const held = heldProposal(said, session);
+  fs.rmSync(heldPath(session), { force: true });
+  return { answer: { discarded: entryNamed(held) }, screen: '' };
 }
 
 /**
@@ -243,12 +295,18 @@ function yesTo(drop) {
  * @returns {Answered}
  */
 function cared(cwd, drop, kind) {
-  const said = `person ${drop ? 'drop' : 'keep'} --care`;
+  const verb = drop ? 'drop' : 'keep';
+  const said = `person ${verb} --care`;
+  const picked = careKind(said, kind);
+  const session = sessionOf(said);
   const here = hereOf(cwd);
-  const care = { project: here.id, name: here.name, kind: careKind(said, kind) };
+  const care = { project: here.id, name: here.name, kind: picked };
+  if (!answeredTo(session, CARE_GATES, ['person', verb, '--care', picked], null)) {
+    throw new Error(`${said}: the person has not picked "${entryNamed({ preference: null, care })}" to ${drop ? 'drop' : 'add'} — only their pick on the care entries' screens, render care, leads here, and nothing is written`);
+  }
   const named = write(said, { drop, preference: null, care });
   /** @type {Next} */
-  const next = { kind: 'engine', argv: ['render', 'care', drop ? '--dropped' : '--added', care.kind] };
+  const next = { kind: 'engine', argv: ['render', 'care', drop ? '--dropped' : '--added', picked] };
   return { answer: { [drop ? 'dropped' : 'kept']: named, next }, screen: '' };
 }
 
@@ -264,10 +322,11 @@ const answer = (drop) => (cwd, args) => {
 };
 
 /** @type {Readonly<Record<string, (cwd: string, args: string[], stdin: () => string) => Answered>>} */
-const VERBS = Object.freeze({ propose, keep: answer(false), drop: answer(true) });
+const VERBS = Object.freeze({ propose, keep: answer(false), drop: answer(true), discard });
 
 /**
- * `person <propose|keep|drop>`: the verb's answer, and the screen it draws.
+ * `person <propose|keep|drop|discard>`: the verb's answer, and the screen
+ * it draws.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
  * @returns {Answered}
  */

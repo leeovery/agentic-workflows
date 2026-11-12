@@ -406,21 +406,22 @@ describe('the answer', () => {
     ]));
   });
 
-  it('the record of the person, once it holds a preference, is named between the reads and the log — none while it holds care entries alone — and one that does not read refuses the entry, writing nothing (E17, 16.18.4)', () => {
+  it('the record of the person is named between the reads and the log wherever its file stands — care entries alone, care entries that do not read, a newer release\'s — and never read, so no record refuses an entry; none while it has no file (E17, 16.18.4)', () => {
     transcript('sess-1');
     const record = path.join(config, 'person.md');
-    fs.writeFileSync(record, `# The record of you\n\n## Care entries\n\n- Fumi: look · ${'Fumi'.padEnd(21, '0')}\n`);
-    const careAlone = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
-    fs.writeFileSync(record, '# The record of you\n\n## Show the product first\n\nWhy: people see it before it asks.\n\nExamples:\n- The tour first\n');
+    const first = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
+    assert.ok(!first.includes('person: '), 'a record with no file was named');
+    const records = [
+      `# The record of you\n\n## Care entries\n\n- Fumi: look · ${'Fumi'.padEnd(21, '0')} · 2026-01-01T00:00:00.000Z\n`,
+      '# The record of you\n\n## Care entries\n\n- Fumi: look\n',
+      '<!-- leeway: the record of you, version 9 -->\n\nAnything at all\n',
+    ];
 
-    const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding']));
-
-    assert.ok(!careAlone.includes('person: '), 'care entries alone named the record');
-    assert.ok(sections.includes(`\naffected: \`${ENGINE} ledger affected ${EPIC} onboarding\`\nperson: ${record}\nlog: ${at(layout.topic(EPIC, 'onboarding', 'log.md'))}\n`), sections);
-    fs.writeFileSync(record, '# The record of you\n\n## Show the product first\n');
-    const { error } = refusedPristine(dir, ['enter', 'discussion', EPIC, 'licence'], { env: env() });
-    assert.ok(error.startsWith(`the record of the person, ${record}, does not read at line 3: "Show the product first" says no Why:`), error);
-    assert.deepStrictEqual(position(), { name: EPIC, phase: 'discussion', topic: 'onboarding' });
+    for (const text of records) {
+      fs.writeFileSync(record, text);
+      const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding']));
+      assert.ok(sections.includes(`\naffected: \`${ENGINE} ledger affected ${EPIC} onboarding\`\nperson: ${record}\nlog: ${at(layout.topic(EPIC, 'onboarding', 'log.md'))}\n`), sections);
+    }
   });
 
   it('a unit\'s one topic reads discovery\'s log and the unit\'s seeds (8.7.7)', () => {

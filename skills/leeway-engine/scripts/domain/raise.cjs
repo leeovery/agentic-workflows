@@ -1804,8 +1804,8 @@ function dropCued(cwd, seal, recorded, care) {
  * --didnt-follow)`: the person's answer to a raise this conversation drew
  * — a row, `keep` on a replacement, their own words, their "don't care",
  * or that they didn't follow. A "don't care" reads the care entries before
- * anything lands, so a record of the person that does not read refuses it
- * with nothing written.
+ * anything lands, so care entries that do not read refuse it with nothing
+ * written.
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  */
 function answerRaise(cwd, args, stdin) {

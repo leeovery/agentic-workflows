@@ -11,7 +11,8 @@
 // never whether it asks (16.18.4); a care entry is the one way the record
 // changes whether it asks (16.5.2); a care entry dropped leaves its kind to
 // the counts, which kept counting while it stood (16.5.5). Then `y/yes`,
-// leading to `person keep` or `person drop`, `n/no`, and a Comment.
+// leading to `person keep` or `person drop`; `n/no`, to `person discard`,
+// which lets the proposal go; and a Comment, carrying on.
 // ---------------------------------------------------------------------------
 
 const { wrap } = require('../../kernel/render.cjs');
@@ -23,6 +24,7 @@ const { section, menu, cmdOption, promptOption, emitAs, MENU_INSTRUCTION } = req
 
 const HEAD = 'FOR THE RECORD OF YOU';
 const CARRY_ON = /** @type {Next} */ (Object.freeze({ kind: 'continue' }));
+const DISCARD = /** @type {Next} */ (Object.freeze({ kind: 'engine', argv: ['person', 'discard'] }));
 
 /** A kind as a sentence opens on it. @param {string} kind */
 const opening = (kind) => kind.charAt(0).toUpperCase() + kind.slice(1);
@@ -84,7 +86,7 @@ function proposalScreen(proposal) {
   return section(`DISPLAY: ${gate}`, emitAs('text'), shown.join('\n'))
     + section(`MENU: ${gate}`, MENU_INSTRUCTION, menu(wrap(statement, width).join('\n'), [
       cmdOption('y', 'yes', yes.label, { next: { kind: 'engine', argv: yes.argv } }),
-      cmdOption('n', 'no', no, { next: CARRY_ON }),
+      cmdOption('n', 'no', no, { next: DISCARD }),
       promptOption('Comment', comment, { next: CARRY_ON }),
     ], { question }));
 }

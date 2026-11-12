@@ -555,9 +555,10 @@ function runVerdict(call, argv) {
 // ---------------------------------------------------------------------------
 // person — the record of the person (domain/person-verbs.cjs): `propose`
 // draws Claude's proposal of an entry and holds it in the conversation's
-// folder; `keep` and `drop` write the record on the person's yes, the
-// proposal held or a care entry picked on its screens, under the record's
-// own lock, writing nothing the state holds.
+// folder; `keep` and `drop` write the record on the person's answer as the
+// gate recorded it, the proposal held or a care entry picked on its
+// screens, under the record's own lock, writing nothing the state holds;
+// `discard` lets the proposal go on their no.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -2516,10 +2517,10 @@ const COMMANDS = Object.freeze({
 // project; `gate` writes the trust log, under its own lock, and the
 // conversation's folder; `scratch` lays out and takes apart a reviewer's
 // worktree, outside the state; `person` writes the record of the person,
-// under its own lock, and the conversation's folder; and the rest read: `layout guard` among them, run
-// before every file Claude writes, `brief guard`, before every dispatch of
-// an agent, `shell guard`, before every shell command, `checklist show`,
-// `migrate check`, `measures` and `board`.
+// under its own lock, and the conversation's folder; and the rest read:
+// `layout guard` among them, run before every file Claude writes, `brief
+// guard`, before every dispatch of an agent, `shell guard`, before every
+// shell command, `checklist show`, `migrate check`, `measures` and `board`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
