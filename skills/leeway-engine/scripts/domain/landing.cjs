@@ -793,7 +793,7 @@ function refuseUnpassed(cwd, ref) {
     throw new Error(`land: round ${last.round} of task ${shown} did not pass — a task chains into its phase's stack once every reviewer of a round passes it, or once the orchestrator settles it: task settle ${ref.unit} ${shown} --file <why>`);
   }
   const changed = changedUnder(cwd, ref, rounds);
-  if (changed !== null) throw new Error(`land: ${changedRefusal(ref, changed)}`);
+  if (changed !== null) throw new Error(`land: ${changedRefusal(cwd, ref, changed)}`);
   account().refuseUnaccounted(cwd, ref, 'land');
 }
 

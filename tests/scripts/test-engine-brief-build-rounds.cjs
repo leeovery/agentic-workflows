@@ -4,8 +4,9 @@
 // Where a reviewer's report goes (leeway-engine/scripts/domain/
 // brief-records.cjs, round-report.cjs; 13.5.9): a task's reviewer's file of
 // the round under review, read from the reports on disk so it holds across
-// a `/clear`, a settled round followed by another, a report that does not
-// read replaced, refused once written or once the review passed — naming
+// a `/clear`, a report that does not read replaced, refused once written or
+// once the review passed or was settled — a settled round followed by
+// another only once something changed and its builder built it — naming
 // the way on by how far the task stands towards landing: while the account
 // is owed, the builder's brief laying out a worktree and the round's
 // reports to read for their notes for later and nits; once written, its
@@ -44,6 +45,8 @@ const {
   reported,
   over,
   reviewerRefused,
+  briefedFor,
+  added,
 } = require('./brief-build-world.cjs');
 
 const { recordLaidOut } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
@@ -100,10 +103,15 @@ describe('where a reviewer\'s report goes (13.5.9)', () => {
     assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-2-a.md'));
   });
 
-  it('13.4.6: a round the orchestrator settled is followed by another, its direction reviewed again', () => {
+  it('13.4.6, 13.4.8: a round the orchestrator settled ends the task\'s review as a pass does — a reviewer briefed after it refused with the review-over way; something added after it, built by its builder, and its pair is briefed for the round after', () => {
+    briefedFor(1);
     reported(1, 'a');
     reported(1, 'b');
     writeState(dir, 'pay/build/tasks/1.2/round-1-settled.md', 'Settled.\n');
+    reviewerRefused(over(1, 'was settled'));
+
+    added('The receipt names the amount.');
+    issued(['builder', UNIT, '1.2']);
 
     assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-2-a.md'));
   });

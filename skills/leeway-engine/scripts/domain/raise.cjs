@@ -1910,8 +1910,11 @@ function turnNow(cwd, unit) {
  * which a decision or a replacement lands for the first of them, and for
  * the tasks an answer against the lean marks changed — on a blind question
  * whose call went ahead, the person's replacement of the call landing for
- * the task it went ahead for, and marking it changed (`changedBy`); its
- * event logs what the call was decided from, as sealed. The response adds
+ * the task it went ahead for, and marking it changed (`changedBy`), but
+ * where a close took the task off the question, which leaves it closed; its
+ * event logs what the call was decided from, as sealed. Where that question
+ * holds the task open with no park written naming it (questions.cjs,
+ * `heldOpen`), the park is written first (`holdWritten`). The response adds
  * the receipt of what the answer freed, or did to the task the call went
  * ahead for. Where the ledger held the line already, the seal
  * is marked with the answer it holds, and the response says the raise was
@@ -1928,6 +1931,9 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
   let waitedBefore = [];
   /** @type {string[]} */
   let parked = [];
+  let closed = false;
+  const holding = questions.heldUnwritten(cwd, parks, warnings);
+  if (holding !== null) holdWritten(cwd, /** @type {CallSeal} */ (seal), holding, warnings);
   const { landed, held } = landRaised(cwd, {
     said: ANSWER_SAID,
     place: seal.place,
@@ -1940,6 +1946,7 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
     checkRead: (read) => {
       waitedBefore = questions.checkAnswerable(read, parks, subjectOf(seal), ANSWER_SAID);
       parked = questions.parkedOn(read, parks);
+      closed = wentAhead !== null && factsOf(read, /** @type {Parks} */ (parks).park).unparked_by.length > 0;
       checkRead(read);
     },
     mints: () => (Object.hasOwn(linked, 'task') ? { task: parked[0] ?? wentAhead } : {}),
@@ -1947,12 +1954,40 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
   if (held !== null) return { raise: seal.id, ...landed, ...answeredAlready(session, seal, held) };
   markAnswered(session, seal.id, answer);
   if (parks === null) return { raise: seal.id, ...landed };
-  const changed = changedBy(seal, lands, answer, parked);
+  const changed = closed ? [] : changedBy(seal, lands, answer, parked);
   for (const task of changed) markChanged(cwd, parseShownTask(seal.place.unit, task));
-  const ahead = wentAhead === null ? null : { task: wentAhead, changed: changed.length > 0 };
+  const ahead = wentAhead === null ? null : { task: wentAhead, changed: changed.length > 0, held: parked.includes(wentAhead), closed };
   const left = seal.blind && logged?.dont_care ? leanRow(/** @type {CallSeal} */ (seal).call).text : null;
   const receipt = questions.answeredReceipt(cwd, seal.place.unit, parks, waitedBefore, warnings, () => turnNow(cwd, seal.place.unit), (task) => beingRead(cwd, parseShownTask(seal.place.unit, task), session), { ahead, left });
   return { raise: seal.id, ...landed, receipt, ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/**
+ * The park holding open the task Claude's call went ahead for, its blind
+ * question waiting at the task's done point (questions.cjs, `heldOpen`),
+ * written as the person's answer is about to land, so the answer frees the
+ * task as it frees any park's, the ledger's line of it where the task went
+ * back in flight (task-verbs.cjs, `stepTurn`): joining the question, about
+ * the call, for its reason, `asked-blind`, relying on nothing — a link it
+ * held to what the call relies on, replaced since, would refuse the answer —
+ * refused once it waits no longer.
+ * @param {string} cwd @param {CallSeal} seal @param {string} task @param {string[]} warnings
+ */
+function holdWritten(cwd, seal, task, warnings) {
+  const parks = /** @type {Parks} */ (seal.parks);
+  const replaces = /** @type {Replacing} */ (seal.replaces);
+  const sealed = { call: seal.call, rows_judged: seal.rows_judged, why_asking: seal.reason, label: seal.label, model: seal.model, blind: seal.blind, blocks_build: seal.blocks_build, replaced_by: seal.replaced_by, always: seal.always };
+  landRaised(cwd, {
+    said: ANSWER_SAID,
+    place: seal.place,
+    lands: 'park',
+    linked: { question: null, replaces: replaces.entry, reason: ASKED_BLIND, cause: null, relies_on: [], task },
+    content: { ...sealed, went_ahead: null },
+    id: null,
+    logs: null,
+    checkRead: (read) => questions.checkStillWaiting(read, parks, ANSWER_SAID),
+    mints: (read, entryAt) => questions.parkedUnder(read, entryAt, seal.place.unit, { replaces: replaces.entry }, sealed),
+  }, warnings);
 }
 
 /**

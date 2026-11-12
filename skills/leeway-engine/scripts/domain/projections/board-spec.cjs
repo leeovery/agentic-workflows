@@ -55,7 +55,7 @@ const { specPath, specReading, SPEC_FILE } = require('../spec-sections.cjs');
 const { reportedPasses, passesInFlight } = require('../agent-state.cjs');
 const { waitingGaps, sectionsToReview, changedSince, changedBetween, askedBy, gapsIn, raisedBy } = require('../spec-passes.cjs');
 const { findingText } = require('../spec-report.cjs');
-const { factsOf, currentsOf, answersOf, questionStands } = require('../ledger-fold.cjs');
+const { currentsOf, answersOf, questionStands, decidedNow } = require('../ledger-fold.cjs');
 const { withUnitEntries } = require('../unit-entries.cjs');
 const { readShown } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
@@ -125,13 +125,14 @@ function raisedWaiting(folded, unit, reported) {
 /**
  * Where a question a finding was asked as stands with the person, through
  * every question it grew into: waiting while one is open, else theirs where
- * they answered one, else Claude's.
+ * an answer of one stands theirs (ledger-fold.cjs, `decidedNow`), else
+ * Claude's.
  * @param {Entries['folded']} folded @param {string} entry @returns {FindingStanding}
  */
 function askedStanding(folded, entry) {
   const questions = currentsOf(folded, entry);
   if (questions.some((question) => questionStands(folded, question) === 'open')) return 'waits';
-  return questions.flatMap((question) => answersOf(folded, question)).some((answer) => factsOf(folded, answer).by === 'person') ? 'yours' : 'claude';
+  return questions.flatMap((question) => answersOf(folded, question)).some((answer) => decidedNow(folded, answer).by === 'person') ? 'yours' : 'claude';
 }
 
 /**

@@ -912,6 +912,11 @@ function auditTrust(sim, label, ran = []) {
     assert.deepStrictEqual([call.by, call.task, park.reason, park.task, park.blind], ['claude', park.went_ahead, 'asked-blind', null, true],
       ctx(`the park ${park.id} is no blind question on Claude's call gone ahead for the task it names, parking none`));
   }
+  for (const park of entries.filter((p) => p.event === 'parked' && p.reason === 'asked-blind' && p.task !== null)) {
+    const next = entries[entries.indexOf(park) + 1];
+    assert.deepStrictEqual([firstParkOf(park).went_ahead, next === undefined ? null : answered(next)?.decision ?? null], [park.task, park.replaces],
+      ctx(`the park ${park.id} holding task ${park.task} open is not its question's call gone ahead for it, answered at once`));
+  }
   /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked: a blind question's whose call went ahead, as that call was. @type {(first: Record<string, any>) => Record<string, unknown>} */
   const parkDecidedFrom = (first) => (wentAhead(first)
     ? { blocks_build: byId.get(first.replaces).task !== null, replaced_by: null, always: first.always }

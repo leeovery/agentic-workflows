@@ -318,12 +318,13 @@ const placeIn = (res, session = SESSION_ID) => /# Where your report goes\n\n(.*)
 const reported = (round, letter, text = REPORT) => writeState(dir, `pay/build/tasks/1.2/round-${round}-${letter}.md`, text);
 
 /**
- * Why a reviewer of task 1.2 is refused once round `round` passed, its
- * account not taken and no worktree having its branch out: the way on, its
- * builder's brief laying one out, where its reports are read for their
- * notes for later and nits. @param {number} round
+ * Why a reviewer of task 1.2 is refused once round `round` passed, or was
+ * settled where `ended` says so, its account not taken and no worktree
+ * having its branch out: the way on, its builder's brief laying one out,
+ * where its reports are read for their notes for later and nits.
+ * @param {number} round @param {'passed'|'was settled'} [ended]
  */
-const over = (round) => `round ${round} of task 1.2 of pay passed — its review is over: no worktree has its branch checked out, so send its builder its brief first, engine brief builder pay 1.2, which lays one out and asks for its account; read its reports, ${['a', 'b'].map((letter) => pathDrawn(`pay/build/tasks/1.2/round-${round}-${letter}.md`)).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix, and fix those in that worktree before its account is taken`;
+const over = (round, ended = 'passed') => `round ${round} of task 1.2 of pay ${ended} — its review is over: no worktree has its branch checked out, so send its builder its brief first, engine brief builder pay 1.2, which lays one out and asks for its account; read its reports, ${['a', 'b'].map((letter) => pathDrawn(`pay/build/tasks/1.2/round-${round}-${letter}.md`)).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix, and fix those in that worktree before its account is taken`;
 
 /** A reviewer's brief for task 1.2 refused, in the words `expected`, the state as it was and no brief stored. @param {string} expected */
 function reviewerRefused(expected) {
@@ -366,8 +367,14 @@ const stillReading = (letter) => `reviewer ${letter}, briefed in this conversati
 /** The way on for a reviewer of task 1.2 an earlier conversation briefed. @param {string} letter */
 const briefedEarlier = (letter) => `reviewer ${letter} was briefed in an earlier conversation, or not at all: brief it for the round, engine brief reviewer pay 1.2 --letter ${letter}`;
 
-/** Why task 1.2 changed after round `round` passed, as the account and the chain refuse it. @param {number} round */
+/** Why task 1.2 changed after round `round` passed, as the account and the chain refuse it, its builder briefed on the change. @param {number} round */
 const changedAfter = (round) => `task 1.2 of pay changed after round ${round} passed — something was added to it, or a call of it decided against its lean — so its pair reads it again first: engine brief reviewer pay 1.2 --letter <letter>, each reviewer of round ${round + 1}`;
+
+/** Why task 1.2 changed after round `round` passed while its builder is still to be briefed on the change, which round `next` reads. @param {number} round @param {number} next */
+const changedUnbuilt = (round, next) => `task 1.2 of pay changed after round ${round} passed — something was added to it, or a call of it decided against its lean — so its builder builds it first, engine brief builder pay 1.2, then its pair reads it in round ${next}`;
+
+/** Why a reviewer of task 1.2 is refused for round `round` while a change waits on its builder's brief. @param {number} round */
+const unbuilt = (round) => `task 1.2 of pay changed since its builder's last brief — something was added to it, or one of its calls decided against its lean — so its builder builds it before its pair reads it: send its builder its brief first, engine brief builder pay 1.2, then each reviewer of round ${round}`;
 
 /** The fix brief `id` of round 1 of task 1.2, its reports alone: a's failing, b's passing. @param {string} id */
 const fixOfRound1 = (id) => `Brief ${id} — the fix round's, for pay task 1.2\n\n${filledTemplate('fix', { reports: `# Reviewer A's report\n\n${REPORT}\n\n# Reviewer B's report\n\n${PASSED}` })}`;
@@ -428,6 +435,8 @@ module.exports = {
   stillReading,
   briefedEarlier,
   changedAfter,
+  changedUnbuilt,
+  unbuilt,
   fixOfRound1,
   ADDED,
   fixRefused,

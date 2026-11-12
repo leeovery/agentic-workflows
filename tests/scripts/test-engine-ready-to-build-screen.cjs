@@ -4,16 +4,16 @@
 // Ready to build's screen (leeway-engine/scripts/domain/ready-to-build.cjs,
 // its screen domain/projections/ready-to-build.cjs): `engine render
 // ready-to-build <unit> [--page] [--calls]`, an epic's screen as 11.8.8
-// draws it — Claude's calls at the spec counted by kind, the outline, the
-// phase cut read from the manifest (11.S31), auto first and recommended
-// (3.S18), the review row only where the session can publish a page
-// (11.S22, 11.S27), and, while the page is open, its foot counting the
-// review by the marks last stored (11.11.7); a verdict asked of each call
-// the person changed among the spec's gap answers before the gate
-// (16.10.11); no construction, finding, re-loop or sign-off gate left to
-// raise before it (11.S12); and the units that never come to it — an old
-// spec's items, a unit the spec's entry refuses. Every refusal writes and
-// commits nothing.
+// draws it — Claude's calls at the spec as they stand decided, counted by
+// kind, the outline, the phase cut read from the manifest (11.S31), auto
+// first and recommended (3.S18), the review row only where the session can
+// publish a page (11.S22, 11.S27), and, while the page is open, its foot
+// counting the review by the marks last stored (11.11.7); a verdict asked
+// of each call the person changed among the spec's gap answers before the
+// gate (16.10.11); no construction, finding, re-loop or sign-off gate left
+// to raise before it (11.S12); and the units that never come to it — an
+// old spec's items, a unit the spec's entry refuses. Every refusal writes
+// and commits nothing.
 //
 // Layer: verb. World: the ready to build world closed
 // (ready-to-build-world.cjs), copied for each test.
@@ -26,10 +26,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const { ok, sectionOf, statePath, layout, readState, readManifest, commitAll } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { MADE } = require('./ledger-world.cjs');
+const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const { NB, unwrap } = require('./render-surfaces-world.cjs');
 const { renderSurface } = require('../../skills/leeway-engine/scripts/domain/render.cjs');
-const { UNIT, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, write, answered, written, cut, closeReady, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
+const { appendEntry } = require('../../skills/leeway-engine/scripts/domain/ledger.cjs');
+const { UNIT, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, made, write, answered, written, cut, closeReady, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(closed);
 const { screen, rowKeys, pick, refused, publish, readBack } = readyHelpers(dir);
@@ -88,6 +89,15 @@ describe('the screen (11.8.8, 3.S18)', () => {
 
     assert.match(sectionOf(out, 'DISPLAY: ready to build'), /^CLAUDE'S CALLS \(2\)\n {2}1 behaviour · 1 unlabelled\n {2}├─ ◇ What of an unknown brand\? +\[behaviour\]\n {2}│ {5}Refused\.\n {2}└─ ◇ How soon is a refund sent\? +\[unlabelled\]\n {8}Within a day\.\n$/m);
     assert.deepStrictEqual(rowKeys(out), ['a/auto', 's/step', 'r/review', 'Comment']);
+  });
+
+  it('lists the calls at the spec as they stand decided: one the person kept, where Claude proposed to replace it, is theirs, off the list', () => {
+    appendEntry(statePath(dir()), {
+      event: 'kept', unit: UNIT, topic: null, phase: 'specification', session: SESSION.CLAUDE_CODE_SESSION_ID,
+      by: 'person', who_moved_whom: 'none', entry: ledgerHelpers(dir).full(made.brand), reason: 'was-wrong', cause: null, why: 'It reads right.', sealed: 'Accepted.', given: 'own',
+    }, []);
+
+    assert.match(sectionOf(screen(['--calls', '--page']), 'DISPLAY: ready to build'), /^CLAUDE'S CALLS \(1\)\n {2}1 unlabelled\n {2}└─ ◇ How soon is a refund sent\? +\[unlabelled\]\n {8}Within a day\.\n$/m);
   });
 
   it('opens the calls from their row, keeping the review row the session can offer', () => {

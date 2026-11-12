@@ -44,9 +44,11 @@
 // recorded, `summary.md` gone with the last, in its close's own commit
 // (`takeOutRecord`, fix-end.cjs), and the knowledge base brought in line —
 // a move's close alone, since a fix holding work never closes.
-// The close stands on every fix ended, done or closed, and each fix done
-// passed by its pair, as its rounds' reports say (`pairVerdict`), and
-// recorded (`recordedFixes`).
+// The close stands on every fix ended, done or closed — one a question
+// parks named parked on it, its way on the question's raise, a fix its
+// blind question holds open among them (questions.cjs, `heldOpen`) — and
+// each fix done passed by its pair, as its rounds' reports say
+// (`pairVerdict`), and recorded (`recordedFixes`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -62,6 +64,7 @@ const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs')
 const { trackedPhase, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { headingLevels, fencedLines, unclosedFence } = require('./spec-sections.cjs');
 const { committed } = require('./task-account.cjs');
+const { parkedOf } = require('./task-parks.cjs');
 const { taskRounds, pairPassed, changedUnder } = require('./round-report.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { summaryFile, SUMMARY_PHASE } = require('./knowledge/artifacts.cjs');
@@ -308,22 +311,34 @@ function pairVerdict(cwd, ref) {
 }
 
 /**
+ * Why the close waits on the fixes not ended `open`: each and where it
+ * stands — parked on the questions parking it, where any do — and the way
+ * on, each such question's raise among it.
+ * @param {string} cwd @param {string} unit @param {TaskDetail[]} open
+ */
+function unendedWords(cwd, unit, open) {
+  const parked = parkedOf(cwd, unit);
+  const names = (/** @type {TaskRef} */ ref) => parked.get(shownTask(ref)) ?? [];
+  const standing = open.map(({ ref, status }) => `${shownTask(ref)} is ${names(ref).length > 0 ? `parked on ${names(ref).join(', ')}` : STATUS_WORDS[status]}`).join(', ');
+  const draws = [...new Set(open.flatMap(({ ref }) => names(ref)))].map((name) => `raise draw ${unit} ${name}`);
+  const parkedWay = draws.length === 0 ? '' : `, a fix parked going on once the person answers its question through its raise: ${draws.join(', ')}`;
+  return `${unit} closes once each of its fixes has ended — ${standing}: each is done once it is committed, in ${unit}'s pull request and passed by its pair, or closed with its reason${parkedWay}`;
+}
+
+/**
  * The quick-fix's fixes done, each with its record written, read from a
  * copy of the tracker's store, so the board asking whether the close draws
- * never waits on a writer — refused while a fix is not ended, one done has
- * no round its pair passed, as a fix marked done in the tracker by hand
- * leaves it (19.5.22), or one done has no record, naming each and the way
- * on.
+ * never waits on a writer — refused while a fix is not ended
+ * (`unendedWords`), one done has no round its pair passed, as a fix marked
+ * done in the tracker by hand leaves it (19.5.22), or one done has no
+ * record, naming each and the way on.
  * @param {string} cwd @param {Record<string, any>} manifest the unit's @returns {TaskDetail[]}
  */
 function recordedFixes(cwd, manifest) {
   const unit = manifest.name;
   const [fixes] = copiedTasks(cwd, unit, [FIXES_PHASE.number]);
   const open = fixes.filter(({ status }) => !ENDED.includes(status));
-  if (open.length > 0) {
-    const standing = open.map(({ ref, status }) => `${shownTask(ref)} is ${STATUS_WORDS[status]}`).join(', ');
-    throw new Error(`${unit} closes once each of its fixes has ended — ${standing}: each is done once it is committed, in ${unit}'s pull request and passed by its pair, or closed with its reason`);
-  }
+  if (open.length > 0) throw new Error(unendedWords(cwd, unit, open));
   const done = fixes.filter(({ status }) => status === 'done');
   const unpassed = done.filter(({ ref }) => pairVerdict(cwd, ref) === null).map(({ ref }) => shownTask(ref));
   if (unpassed.length > 0) {

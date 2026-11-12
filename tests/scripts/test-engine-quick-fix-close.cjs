@@ -8,7 +8,8 @@
 // asked in its conversation still open, after a /clear as before it, named
 // with the raise that asks it again (19.5.25), and the records indexed open
 // while the store lacks summary.md as it stands; `engine render finish
-// <qf>`, the close — refused while a fix has not ended, one done has no
+// <qf>`, the close — refused while a fix has not ended, one its blind
+// question holds open named parked on it (16.17.6), one done has no
 // record or none its pair passed, and while a question asked in its
 // conversation stands open; what running the product proved of each fix,
 // its runs made through `verify setup` and `verify run` on the quick-fix's
@@ -37,9 +38,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, callAsync, okSectionsAsync, refusedPristine, sectionOf, layout, writeState, readManifest, fixtureFrom, cleanupFixture, keywordOnlyKnowledge, createFile,
+  ok, callAsync, okSectionsAsync, refusedPristine, sectionOf, layout, writeState, readManifest, fixtureFrom, cleanupFixture, keywordOnlyKnowledge, createFile, statePath,
 } = require('./engine-harness.cjs');
-const { ledgerReadHelpers } = require('./ledger-world.cjs');
+const { ledgerReadHelpers, ledgerHelpers } = require('./ledger-world.cjs');
 const {
   UNIT, PLACE, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, fixDone, recordFile, checklistClosed, asGone, entered,
 } = require('./quick-fix-world.cjs');
@@ -49,6 +50,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { closeScreen } = require(path.join(SCRIPTS, 'domain/projections/finish.cjs'));
 const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
 const CRITERION = 'Given the help, when it is read, then it names --colour.';
@@ -133,6 +135,29 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
       `land: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
       `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
       `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
+    ]);
+  });
+
+  it('16.17.6: refuses while a fix\'s blind question holds it open — its call gone ahead for it, its pair having passed it — naming the question and its raise, writing nothing', () => {
+    dir = world();
+    record(1);
+    record(2);
+    createFix(dir, 3, DOCS, as());
+    run(['task', 'start', UNIT, '1.3']);
+    const { ask, decide } = ledgerReadHelpers(() => dir);
+    const call = decide(PLACE, ask(PLACE, 'Do the docs name --color?'), 'They name --colour alone.', ['--task', '1.3'], { by: 'claude' });
+    appendEntry(statePath(dir), {
+      event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: 'sess-1', number: 1,
+      question: null, replaces: ledgerHelpers(() => dir).full(call), reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: '1.3',
+      call: RAISED, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: true,
+    }, []);
+    const building = refused(['render', 'finish', UNIT]);
+    for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n');
+    const ended = `each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`;
+
+    assert.deepStrictEqual([building, refused(['render', 'finish', UNIT])], [
+      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is in progress: ${ended}`,
+      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is parked on Q1: ${ended}, a fix parked going on once the person answers its question through its raise: raise draw ${UNIT} Q1`,
     ]);
   });
 

@@ -207,7 +207,7 @@ describe('the events and their schemas', () => {
     assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
-  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, and a mark a question always asks by, or none; a task taken off its questions names the task and the parks', () => {
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none — the park holding that task open asked-blind too, parking it, naming none gone ahead; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, and a mark a question always asks by, or none; a task taken off its questions names the task and the parks', () => {
     const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
     const fact = { ...park, call: { ...park.call, rows: [], lean: null, why: null, sort: null } };
     const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3', parks: [newId()] };
@@ -223,8 +223,11 @@ describe('the events and their schemas', () => {
     assert.deepStrictEqual(validEvent(decidedFrom), decidedFrom);
     const ahead = { ...replacing, reason: 'asked-blind', task: null, went_ahead: '2.3', blind: true };
     assert.deepStrictEqual(validEvent(ahead), ahead);
-    const goneAhead = /a blind question on Claude's call gone ahead names the task it went ahead for, its reason asked-blind, and only it does/;
-    const askedBlind = /a blind question on Claude's call gone ahead is asked blind and parks no task/;
+    const held = { ...ahead, task: '2.3', went_ahead: null };
+    assert.deepStrictEqual(validEvent(held), held);
+    const goneAhead = /a blind question on Claude's call gone ahead proposes to replace it for its reason, asked-blind/;
+    const askedBlind = /a park for asked-blind is asked blind: Claude's call gone ahead, or the task it went ahead for held open/;
+    const parksOne = /a blind question on Claude's call gone ahead names the task it went ahead for and parks none; the park holding that task open parks it, naming none gone ahead/;
     const cases = [
       [{ ...park, replaces: newId(), reason: 'was-wrong' }, /a parked question answers a question or proposes a replacement, one and not both/],
       [{ ...park, question: null }, /a parked question answers a question or proposes a replacement, one and not both/],
@@ -245,9 +248,10 @@ describe('the events and their schemas', () => {
       [{ ...fact, question: null, replaces: newId(), reason: 'was-wrong' }, /a fact parked answers a question, never proposes a replacement/],
       [{ ...fact, blind: true }, /a fact parked is never blind: it has no answer of Claude's to hold back/],
       [{ ...replacing, went_ahead: '2.3', task: null, blind: true }, goneAhead],
-      [{ ...ahead, went_ahead: null }, goneAhead],
-      [{ ...ahead, task: '2.3' }, askedBlind],
+      [{ ...ahead, went_ahead: null }, parksOne],
+      [{ ...ahead, task: '2.3' }, parksOne],
       [{ ...ahead, blind: false }, askedBlind],
+      [{ ...held, blind: false }, askedBlind],
       [{ ...ahead, went_ahead: '2' }, /its went_ahead is not a task, as screens show it: \{phase\}\.\{n\}, or null/],
       [{ ...unparked, task: null }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
       [{ ...unparked, parks: [] }, /a task taken off its questions names the parks it is taken off/],

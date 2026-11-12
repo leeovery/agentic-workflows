@@ -41,6 +41,9 @@ const { worldOfTheRun } = require('./run-worlds.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
+const decisionPoint = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/decision-point.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').Next} Next */
 
@@ -385,12 +388,13 @@ function worldFrom(prefix, build, base = simWorld) {
   };
 }
 
-// A world several scenario files start from, named for what builds it:
-// built once per run by the first process to ask (run-worlds.cjs), then
-// copied for each sim made from it.
-/** @param {string} name @param {(sim: Sim) => void} build @returns {() => string} */
-function namedWorld(name, build) {
-  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, simWorld); }).dir,
+// A world several scenario files start from, named for what builds it on a
+// copy of `base` — the project every scenario starts from, or another named
+// world: built once per run by the first process to ask (run-worlds.cjs),
+// then copied for each sim made from it.
+/** @param {string} name @param {(sim: Sim) => void} build @param {() => string} [base] @returns {() => string} */
+function namedWorld(name, build, base = simWorld) {
+  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, base); }).dir,
     fs.mkdtempSync(path.join(os.tmpdir(), `pipeline-${name}-`)));
 }
 
@@ -1476,13 +1480,23 @@ function cutClosed(sim, wu) {
 // unit each builds, which a scenario starting from it names its own.
 const SPEC_TO_BUILD_UNIT = 'ledgerly';
 const CUT_CLOSED_UNIT = 'ledger';
+/** A feature, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, handed off into its build. */
+const specToBuildWorld = namedWorld('specToBuild', (sim) => {
+  startUnit(sim, 'feature', SPEC_TO_BUILD_UNIT, 'A ledger');
+  discussed(sim, SPEC_TO_BUILD_UNIT, SPEC_TO_BUILD_UNIT);
+  specToBuild(sim, SPEC_TO_BUILD_UNIT, [SPEC_TO_BUILD_UNIT], 'a');
+});
+
 const worlds = Object.freeze({
-  /** A feature, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, handed off into its build. */
-  specToBuild: namedWorld('specToBuild', (sim) => {
-    startUnit(sim, 'feature', SPEC_TO_BUILD_UNIT, 'A ledger');
-    discussed(sim, SPEC_TO_BUILD_UNIT, SPEC_TO_BUILD_UNIT);
-    specToBuild(sim, SPEC_TO_BUILD_UNIT, [SPEC_TO_BUILD_UNIT], 'a');
-  }),
+  specToBuild: specToBuildWorld,
+  /** SPEC_TO_BUILD_UNIT's build begun in auto: its one phase, Showing, written — 1.1 showing an entry, proving 1.S1, and 1.2 checking the hash on show — and started. */
+  buildBegun: namedWorld('buildBegun', (sim) => {
+    buildEntry(sim, SPEC_TO_BUILD_UNIT);
+    sim.run(['task', 'phase', SPEC_TO_BUILD_UNIT, '1', '--title', 'Showing']);
+    sim.run(['brief', 'task-writer', SPEC_TO_BUILD_UNIT, '1']);
+    writeTasks(sim, SPEC_TO_BUILD_UNIT, 1, [{ title: 'Show an entry', scenarios: ['1.S1'] }, { title: 'Check the hash on show' }]);
+    startPhase(sim, SPEC_TO_BUILD_UNIT, 1);
+  }, specToBuildWorld),
   /** The build the review phase reviews (`cutClosed`), CUT_CLOSED_UNIT's, in auto, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu. */
   cutClosed: namedWorld('cutClosed', (sim) => {
     cutClosed(sim, CUT_CLOSED_UNIT);
@@ -1721,6 +1735,33 @@ function finishClosed(sim, wu) {
   sim.run(['checklist', 'close', 'finish', wu]);
 }
 
+// A builder's call on `task` going ahead while its blind question waits
+// (16.17.6): the decision point drawing blind for the test `t`, the
+// stand-in labelling the question behaviour, cheap to undo, and the call,
+// Claude leaning to `lean` over `other`, raised parking none.
+/**
+ * @param {import('node:test').TestContext} t @param {Sim} sim @param {string} wu @param {string} task
+ * @param {{question: string, lean: string, other: string}} call
+ */
+async function wentAheadBlind(t, sim, wu, task, { question, lean, other }) {
+  t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
+  sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
+  const asked = sim.run(['ledger', 'ask', `${wu}.implementation`, '--task', task], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: question })).id;
+  const drawn = await sim.runAsync(['raise', `${wu}.implementation`, '--answers', asked, '--parks', task], null, JSON.stringify({ ...leaningCall(lean, other), question }));
+  assert.deepStrictEqual([drawn.decision, drawn.task], ['blind', null], 'the call goes ahead, its question parking no task');
+}
+
+// The person's answer to the question `question` of `wu`: a pick of the
+// row whose answer is `text`, wherever its question's id put it. Answers
+// the receipt.
+/** @param {Sim} sim @param {string} wu @param {string} question @param {string} text @returns {string} */
+function pickedRow(sim, wu, question, text) {
+  const { raise } = sim.run(['raise', 'draw', wu, question]);
+  const seals = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, RAISE_SHOWN), 'utf8'));
+  const { key } = seals[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === text);
+  return sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' })).receipt;
+}
+
 // Finish (14.5): its checklist closed where `closed` does not say it is
 // already, its gate drawn, and the person's yes at it run. Answers the
 // phases each landing landed, and where the yes goes next.
@@ -1735,5 +1776,5 @@ function finished(sim, wu, { closed = false } = {}) {
 module.exports = {
   Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
-  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };
