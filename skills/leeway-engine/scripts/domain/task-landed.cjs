@@ -27,7 +27,9 @@
 // with it that its branch no longer holds, its reflog saying the branch
 // once stood there, landed, and none it holds did — is the stated edge
 // (`rewritten`, F1), which `open`, `phase` and `finish` refuse before
-// anything moves, naming the commit to put the branch back to.
+// anything moves, naming the commit that landed and the way on that keeps
+// the branch's work (landing.cjs) — the landing by hand then unrecorded,
+// the record's first landing the engine's.
 //
 // A task has landed in a repository once the revision it lands on held its
 // change, however it got there — the engine's squash, or a merge by hand by

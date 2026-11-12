@@ -89,6 +89,8 @@ module.exports = {
   },
   /** A task's branch squashed by hand onto the default branch `into` under the person's own message, no landing of it opened. */
   squashedHere: squashedOwn,
+  /** A task's branch merged by hand onto the default branch `into` by a merge commit, no landing of it opened. */
+  mergedHere: mergeCommit,
   /** A task's branch squashed by hand under git's own squash message — here, the default branch landing it having nowhere else to be brought from. @param {string} dir @param {string} branch */
   byHandUnpulled: (dir, branch) => onMain(dir, [['merge', '-q', '--squash', branch], ['commit', '-q', '--no-edit']]),
   /** The ways of those, and others, that keep the branch's own commits on the default branch here. */

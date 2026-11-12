@@ -168,6 +168,8 @@ module.exports = {
   picked: (dir, commit, into = 'main') => pushedFrom(dir, into, [['cherry-pick', commit]]),
   /** A task's branch squashed by hand onto the default branch `into` here, under the person's own message, and pushed to GitHub, no pull request of it opened. @param {string} dir @param {string} branch @param {string} [into] */
   squashedHere: (dir, branch, into = 'main') => pushedFrom(dir, into, [['merge', '-q', '--squash', branch], ['commit', '-q', '-m', 'Spell it the British way']]),
+  /** A task's branch merged by hand onto the default branch `into` here by a merge commit, and pushed to GitHub, no pull request of it opened. @param {string} dir @param {string} branch @param {string} [into] */
+  mergedHere: (dir, branch, into = 'main') => pushedFrom(dir, into, [['merge', '-q', '--no-ff', '-m', `Merge ${branch}`, branch]]),
   /** The ways a person lands a phase by hand on GitHub's site, main here pulled after. */
   phaseByHand: {
     /** Squashed under GitHub's own squash message. @param {string} dir @param {number} phase */

@@ -62,7 +62,8 @@
 // in the completion's commit (`finishMerge`). `open`, `phase` and `finish`
 // refuse, before anything moves, a task landed by hand whose branch was
 // rewritten after it before any verb read it (task-landed.cjs,
-// `rewritten`), naming the commit to put the branch back to.
+// `rewritten`), naming the commit that landed and the way on that keeps
+// the branch's work.
 //
 // Where a task stands against its landing is decided there once, for every
 // driver and however the task landed (R29): from the commit the driver took
@@ -892,9 +893,10 @@ const didWith = (did) => (answer) => {
  * Refuse, before anything moves, a task of `refs` whose branch in one
  * repository was rewritten after its work landed by hand on the default
  * branch here, at `into`, no verb having recorded it (the stated edge,
- * task-landed.cjs `rewritten`), naming the commit that landed, which the
- * branch is put back to — the one refusal of it every land verb acting on
- * a task's landing makes.
+ * task-landed.cjs `rewritten`), naming the commit that landed and the way
+ * on, which keeps the branch's work: that commit merged in over it, then
+ * the default branch, and the task opened — the one refusal of it every
+ * land verb acting on a task's landing makes.
  * @param {LandingContext} ctx @param {string} into @param {TaskRef[]} refs
  */
 function refuseRewritten(ctx, into, refs) {
@@ -903,7 +905,10 @@ function refuseRewritten(ctx, into, refs) {
     const off = read.rewritten(ref);
     if (off === null) continue;
     const landing = off.landing === null ? '' : ` (${lg.short(off.landing)})`;
-    throw new Error(`land: task ${shownTask(ref)}'s branch ${off.branch} was rewritten after its work landed on ${ctx.into}${landing}: its commit ${lg.short(off.sha)} landed, and the branch no longer holds it — put the branch back where it landed, git branch -f ${off.branch} ${lg.short(off.sha)}, and run this again; work past that goes on top of it`);
+    const shown = shownTask(ref);
+    throw new Error(`land: task ${shown}'s branch ${off.branch} was rewritten after its work landed on ${ctx.into}${landing}: its commit ${lg.short(off.sha)} landed, and the branch no longer holds it — `
+      + `on ${off.branch}, merge that commit in keeping the branch's work, as \`git merge -s ours ${lg.short(off.sha)}\` does, then merge ${ctx.into} into it, as \`git merge ${lg.quoted(ctx.into)}\` does, settling any conflict the branch's way, `
+      + `and open the task with \`land open ${ctx.unit} ${shown}\``);
   }
 }
 
