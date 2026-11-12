@@ -595,13 +595,16 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * `boxHolds` reads it. `files` holds every file by its path, the folders of
  * the conversations among them: those `marked` by the engine at the start and
  * the gates `kept` for them, by session id, in the system config directory
- * under the person's home; `marks` is the engine marking one later.
+ * under the person's home; `marks` is the engine marking one later. Every
+ * drawing beneath the mod draws `BENEATH`, unless `stubsBeneath: false`
+ * leaves each to what Claude Code draws there.
  *
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
  * @param stdout what the engine wrote
  * @param options the process's environment, the surfaces attached, whether the box, a submission and a clear take, the
- *   clock a slow disk writes on, what holds a read up, the conversations marked, and the gates kept
+ *   clock a slow disk writes on, what holds a read up, the conversations marked, the gates kept, and whether the
+ *   drawings beneath the mod are stubbed
  */
 function world(
   engine: Engine,
@@ -619,6 +622,7 @@ function world(
     lag?: (read: 'transcript' | 'kept' | 'mark') => Promise<void>
     marked?: readonly string[]
     kept?: Readonly<Record<string, unknown>>
+    stubsBeneath?: boolean
   } = {},
 ) {
   const {
@@ -633,6 +637,7 @@ function world(
     lag,
     marked = [],
     kept = {},
+    stubsBeneath = true,
   } = options
 
   const calls: string[] = []
@@ -696,7 +701,9 @@ function world(
     return { value: text }
   })
 
-  on('ui.render', () => BENEATH)
+  if (stubsBeneath) {
+    on('ui.render', () => BENEATH)
+  }
   on('ui.message', () => ({}))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', ($, e) => ({ text: e.answer }))
@@ -2299,6 +2306,7 @@ describe('register', () => {
   test('the workflows board\'s banner takes the band\'s last line, beneath the gate, whose menu lays out whole in the rows it leaves', async ($, on) => {
     const { clock } = world($, on, announced({ options: LONG }), {
       marked: ['s0'],
+      stubsBeneath: false,
     })
 
     boardAnswered(on)

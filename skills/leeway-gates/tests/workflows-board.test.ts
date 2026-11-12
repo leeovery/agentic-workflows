@@ -87,7 +87,8 @@ const refusal = (error: string): Reply => ({ exitCode: 1, stdout: '', stderr: `$
  * the pane Claude Code was left to move, and `files` what the mod
  * wrote, by path, beside what was there before it (`kept`), and the
  * discussion kept as each send was made (`atSend`); a send is dropped,
- * fails or is held open as told.
+ * fails or is held open as told. The band beneath the mod draws `BENEATH`,
+ * unless `stubsBeneath: false` leaves it to what Claude Code draws there.
  */
 function world(
   on: On,
@@ -98,9 +99,10 @@ function world(
     open?: readonly string[]
     replies?: (args: readonly string[]) => Reply
     kept?: Readonly<Record<string, string>>
+    stubsBeneath?: boolean
   } = {},
 ) {
-  const { env = ANNOUNCED, surfaces = ['terminal'], marked = ['s0', 's1'] } = options
+  const { env = ANNOUNCED, surfaces = ['terminal'], marked = ['s0', 's1'], stubsBeneath = true } = options
   const clock = mock.clock(on, { now: Date.parse('2026-10-21T10:00:00.000Z') })
   const boards: { id: string; args: readonly string[] }[] = []
   const opened: unknown[] = []
@@ -166,11 +168,13 @@ function world(
     return next(e)
   })
 
-  on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
-    beneath.push(e.props.maxRows)
+  if (stubsBeneath) {
+    on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+      beneath.push(e.props.maxRows)
 
-    return BENEATH
-  })
+      return BENEATH
+    })
+  }
 
   on('ui.render', { component: 'Pane' }, () => NO_PANE)
 
@@ -386,12 +390,11 @@ describe('the banner', () => {
     expect(shown).toEqual(['◐ Pay · feature', '⚑ Pay · feature', '✓ Pay · feature', 'Pay · feature'])
   })
 
-  test('takes the band\'s last line, directly above the prompt, beneath what the band draws in the rows it leaves', async ($, on) => {
-    const { clock, beneath } = world(on)
+  test('takes the band\'s last line, directly above the prompt, beneath what the band draws', async ($, on) => {
+    const { clock } = world(on, { stubsBeneath: false })
     const ui = await mounted($, clock)
 
-    expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { flexDirection: 'column' }, children: [BENEATH, { props: { key: 'banner' } }] })
-    expect(beneath.at(-1)).toBe(23)
+    expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { flexDirection: 'column' }, children: [{ type: 'engine' }, { props: { key: 'banner' } }] })
   })
 
   test('is cut from its right end where the band is too narrow, its buttons kept', async ($, on) => {
