@@ -21,10 +21,11 @@
 // own commit between its own, or past its last, and a later task cut from
 // it, rebased together, their branches kept, each drawn from its own run,
 // the person's own copy the earlier's work (`ownersOf`), each task's last
-// commit searched for once and drawn again from the record that read
-// writes, searching nothing, a task not landed beside them, the person's own
-// commit past its last; of such tasks fast-forwarded onto main, the person's
-// own commit on main before them and on the earlier's branch below its
+// commit searched for once, and again with the last commit of a task not
+// landed beside them, cut before them, the person's own commit past its
+// last, and drawn again from the record that read writes, searching
+// nothing, the recorded tasks' tips never read whole; of such tasks
+// fast-forwarded onto main, the person's own commit on main before them and on the earlier's branch below its
 // first commit in neither part, no task's work (R32); of a task merged by
 // a merge commit, then the person's own on its branch merged by another,
 // one part through both; of two tasks squashed under both their names, the
@@ -196,7 +197,7 @@ describe('land: the review\'s change of work landed by hand on the local driver 
     assert.deepStrictEqual(changeRead(dir, 4, ranges), [[from, earlierLast], [earlierLast, laterLast]]);
   });
 
-  it('a task of its commit and the person\'s own past it, and a later task cut from its branch, rebased onto main by hand together, their branches kept: the earlier drawn through the person\'s own copy past its last commit, its landing\'s run reaching on through its work; the later from that copy — each task\'s last commit searched for once, as reading where they landed searches, and the earlier\'s tip past it once more, for the record that read writes; the same drawn again from that record, searching nothing, a task not landed beside them, the person\'s own commit past its last', () => {
+  it('a task of its commit and the person\'s own past it, and a later task cut from its branch, rebased onto main by hand together, their branches kept: the earlier drawn through the person\'s own copy past its last commit, its landing\'s run reaching on through its work; the later from that copy — each task\'s last commit searched for once, as reading where they landed searches, and again with the last commit of a task not landed beside them, cut before them, the person\'s own commit past its last, and the earlier\'s tip past it once more, for the record that read writes; the same drawn again from that record, searching nothing, the recorded tasks\' tips never read whole', () => {
     const dir = project();
     const { branch } = cutTask(dir, '4.1', 'feat', 'Part 1', 'main', { 'part-1.txt': '1\n' });
     commitFiles(dir, branch, branch, { 'mine.txt': 'mine\n' }, { message: 'my own words past it' });
@@ -204,13 +205,13 @@ describe('land: the review\'s change of work landed by hand on the local driver 
     const from = tip(dir, 'main');
     datedAt(new Date(Date.now() + 60_000).toISOString(), () => onMain(dir, () => MERGED_BY_HAND['a rebase'](dir, later.branch)));
     const [mine, laterLast] = [tip(dir, 'main~1'), tip(dir, 'main')];
-    const open = cutTask(dir, '4.3', 'feat', 'Part 3', 'main', { 'part-3.txt': '3\n' });
+    const open = cutTask(dir, '4.3', 'feat', 'Part 3', from, { 'part-3.txt': '3\n' });
     commitFiles(dir, open.branch, open.branch, { 'mine-3.txt': 'mine\n' }, { message: 'my own words past part 3' });
 
     const [, searched] = searching(() => bothLandings(dir));
     const drawn = [[from, mine], [mine, laterLast]];
 
-    assert.deepStrictEqual([searching(() => changeRead(dir, 4, ranges)), searching(() => changeRead(dir, 4, ranges))], [[drawn, searched + 1], [drawn, 0]]);
+    assert.deepStrictEqual([searching(() => changeRead(dir, 4, ranges)), searching(() => changeRead(dir, 4, ranges))], [[drawn, searched + 2], [drawn, 0]]);
   });
 
   it('a task of its commit, the person\'s own between and its commit again, and a later task cut from its branch, fast-forwarded onto main by hand, the person\'s own commit on main before it and on its branch below its first: each drawn from its own run — the earlier from its first commit through the person\'s own between, the later from the earlier\'s last — the person\'s own on main and below the task\'s first in neither, no task\'s work (R32)', () => {

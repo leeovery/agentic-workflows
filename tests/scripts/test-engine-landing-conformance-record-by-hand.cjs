@@ -8,10 +8,14 @@
 // is the read's: a verb landing another phase, which brings the default
 // branch here up to that landing, records it by its read at the commit that
 // landed, never at its branch's tip, and the next verb landing its phase
-// lands that commit. A phase squashed by hand under the person's own
-// message, its task then changed, lands that change by the engine with its
-// first landing kept the person's squash, the review's change drawing the
-// task's part from before it. Conformance layer: the landing world
+// lands that commit; its branch rewritten instead, that verb records it so
+// from the commit its driver took; landed so under its default message,
+// which names it, `land phase` brings that landing here and lands the
+// commit, the record at the engine's merge, the newest commit naming it.
+// A phase squashed by hand under the person's own message, its task then
+// changed, lands that change by the engine with its first landing kept the
+// person's squash, the review's change drawing the task's part from before
+// it. Conformance layer: the landing world
 // (landing-world.cjs), built once per driver and copied for each test.
 // ---------------------------------------------------------------------------
 
@@ -24,7 +28,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { git, tip, withEnv, fixtureFrom, cleanupFixture, readManifest } = harness;
-const { UNIT, TASKS, openArgs, own, commitFiles, buildLanding } = require('./landing-world.cjs');
+const { UNIT, BASE, TASKS, openArgs, own, commitFiles, buildLanding } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { changeOf } = require('../../skills/leeway-engine/scripts/domain/review-change.cjs');
 const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
@@ -69,6 +73,30 @@ for (const { name } of listDrivers('landing')) {
       const merged = own(ok(at, ['land', 'phase', UNIT, '1'])).merged;
 
       assert.deepStrictEqual([by, recorded, merged, side.holds(at).includes('card-more.txt')], ['read', landed, ['1.1'], true]);
+    });
+
+    it('a task landed by hand, the default branch here not brought to it, then its branch rewritten: a verb landing another phase records it by its read at the commit that landed, from the commit its driver took', () => {
+      const at = (dir = world());
+      ok(at, openArgs(card));
+      ok(at, openArgs(rounding));
+      const landed = tip(at, card.branch);
+      side.byHandUnpulled(at, card.branch);
+      commitFiles(at, card.branch, BASE, { 'card.txt': 'card, rewritten\n' });
+      ok(at, ['land', 'phase', UNIT, '2']);
+      const { by, tip: recorded } = cardRecord(at);
+
+      assert.deepStrictEqual([by, recorded], ['read', landed]);
+    });
+
+    it('a task landed by hand under its default message, which names it, the default branch here not brought to it, then a commit of its own past it: land phase brings that landing here and lands the commit, the record at the engine\'s merge, the newest commit naming it', () => {
+      const at = (dir = world());
+      ok(at, openArgs(card));
+      side.byHandUnpulled(at, card.branch);
+      commitFiles(at, card.branch, card.branch, { 'card-more.txt': 'more\n' });
+      ok(at, ['land', 'phase', UNIT, '1']);
+      const { by, commit } = cardRecord(at);
+
+      assert.deepStrictEqual([by, commit], ['engine', tip(at, 'main')]);
     });
 
     it('a phase squashed by hand under the person\'s own message, its task then changed: land phase lands the change by the engine, its first landing kept the person\'s squash, and the review\'s change draws its part from before that squash', () => {

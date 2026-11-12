@@ -7,8 +7,8 @@
 // the state branch under a subject naming the tasks; one recorded at that
 // commit already writing nothing; a task landing again taking its new
 // commit, tip, `by` and `at`, `first` kept, and the records of its other
-// repositories left as they are; the record kept through the unit's cancel
-// and reactivate. Read back (task-landed.cjs), a recorded fix's commit up to
+// repositories left as they are, each read back as its own alone; the
+// record kept through the unit's cancel and reactivate. Read back (task-landed.cjs), a recorded fix's commit up to
 // its recorded tip has landed, a later fix having undone its change, which
 // its change alone, with no pull request read, does not say; a recorded
 // task's commit past its recorded tip, taking a file back that the next
@@ -25,7 +25,7 @@ const path = require('path');
 
 const { ok, git, head, lastMessage, readManifest, createFile, commitCode, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { recordLandings } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-record.cjs'));
+const { recordLandings, recordsIn } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-record.cjs'));
 const { repoLanded } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/task-landed.cjs'));
 const { TRAILER } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/commit-task.cjs'));
 const { quickFixBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
@@ -84,15 +84,17 @@ describe('the landing record\'s write (7.2.22)', () => {
     assert.deepStrictEqual([recordLandings(at, UNIT, [landing(at, 1, two, one, 'read')], []), head(at), readManifest(at, UNIT).landings[`${UNIT}-1-1`]['.'].by], [false, before, 'engine']);
   });
 
-  it('a task landing again takes its new commit, tip, by and at, first kept, its record in another repository left as it is (R30)', () => {
+  it('a task landing again takes its new commit, tip, by and at, first kept, its record in another repository left as it is and read back as that repository\'s alone, a task recorded only here none there (R30)', () => {
     const { at, commits: [one, two, three] } = project();
-    recordLandings(at, UNIT, [landing(at, 1, one, one, 'engine'), landing(at, 1, one, one, 'engine', 'ext')], []);
+    recordLandings(at, UNIT, [landing(at, 1, one, one, 'engine'), landing(at, 1, one, one, 'engine', 'ext'), landing(at, 2, two, two, 'engine')], []);
     recordLandings(at, UNIT, [landing(at, 1, three, two, 'read')], []);
+    const manifest = readManifest(at, UNIT);
+    const ext = { commit: one, tip: one, first: one, by: 'engine', at: timeOf(at, one) };
 
-    assert.deepStrictEqual(readManifest(at, UNIT).landings[`${UNIT}-1-1`], {
+    assert.deepStrictEqual([manifest.landings[`${UNIT}-1-1`], [...recordsIn(manifest, 'ext')]], [{
       '.': { commit: three, tip: two, first: one, by: 'read', at: timeOf(at, three) },
-      ext: { commit: one, tip: one, first: one, by: 'engine', at: timeOf(at, one) },
-    });
+      ext,
+    }, [[`${UNIT}-1-1`, ext]]]);
   });
 
   it('a recorded fix\'s commit has landed though a later fix on the quick-fix\'s branch undid its change, the branch squashed onto main under the person\'s own message; read by its change alone, with no pull request read, it has not', () => {

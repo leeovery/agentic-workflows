@@ -32,7 +32,9 @@
 // request's squash, the first commit on main past where its branch was
 // cut, never main's later work. Only content decides a landing (R28): a
 // task of two commits, one alone cherry-picked onto main, its copy carrying
-// the door's stamp, has not landed; both picked, it has. A task's last commit is
+// the door's stamp, has not landed; both picked, it has; a task cut from
+// another's branch, its own work alone squashed onto main as one commit, has
+// landed, the task below it not. A task's last commit is
 // its own work branch's where that stands — never one only another task's
 // branch cut on it holds, nor, the branch holding none, one the reflog
 // keeps. A task has landed where its branch's tip has (R29): squashed
@@ -43,7 +45,12 @@
 // commit the other task's work; and two or six tasks taken at the person's
 // own commit past theirs, landed so, then changed by a commit of their own
 // and the person's own past it, main moving on past each task's own file,
-// none landed and each changed, cost the git commands two do. A commit
+// none landed and each changed, cost the git commands two do. A task
+// squashed by hand into the person's own commit beside work of theirs, then
+// its last commit amended with no change, has landed at its tip — never its
+// branch rewritten past its landing (F1); one recorded at its squash, main
+// then merged back into its branch, its file changed in that merge, has
+// changed after its landing. A commit
 // standing for a task whole holds the person's own commit no branch holds
 // as the task's work: that commit not on main, the task has not landed so.
 // The person's own commit on a landed task's branch is that task's work,
@@ -736,6 +743,20 @@ describe('repoLanded: only content decides a landing, the door\'s stamp never na
 
     assert.deepStrictEqual(reads, [false, false, true]);
   });
+
+  it('a task cut from another\'s branch, its own work alone squashed onto main by hand as one commit: landed, and the task below it, whose work main lacks, not — a chain lands whole only by a squash of its whole work', () => {
+    const dir = repo(laidWorld);
+    git(dir, ['switch', '-q', '-c', branchOf(6), 'main']);
+    stamped(dir, 6, 'six.txt');
+    git(dir, ['switch', '-q', '-c', branchOf(7)]);
+    stamped(dir, 7, 'seven.txt');
+    stamped(dir, 7, 'seven-more.txt');
+    git(dir, ['switch', '-q', 'main']);
+    git(dir, ['checkout', branchOf(7), '--', 'seven.txt', 'seven-more.txt']);
+    committed(dir, ['In my own words']);
+
+    assert.deepStrictEqual(landed(dir, [6, 7]).landed, [false, true]);
+  });
 });
 
 describe('repoLanded: a task\'s last commit, its work branch standing (7.2.22)', () => {
@@ -793,6 +814,43 @@ describe('repoLanded: a task landed where its branch\'s tip has (R29, 12.14)', (
 
     assert.deepStrictEqual(reads, reads.map(({ read }) => ({ read: read.map(() => [false, 'changed']), commands: reads[0].commands })));
   });
+
+  it('a task of two commits squashed by hand into the person\'s own commit beside work of their own, then its last commit amended with no change: landed at its branch\'s tip, a commit its branch holds landed too — never its branch rewritten past its landing (F1)', () => {
+    const dir = repo(laidWorld);
+    const branch = branchOf(6);
+    git(dir, ['switch', '-q', '-c', branch, 'main']);
+    stamped(dir, 6, 'six.txt');
+    stamped(dir, 6, 'six-more.txt');
+    git(dir, ['switch', '-q', 'main']);
+    git(dir, ['merge', '-q', '--squash', branch]);
+    committed(dir, ['In my own words'], { 'mine.txt': 'mine\n' });
+    git(dir, ['switch', '-q', branch]);
+    git(dir, ['commit', '-q', '--amend', '-m', 'feat(pay): part 6, reworded', '-m', stampOf(6)]);
+    git(dir, ['switch', '-q', 'main']);
+    const ref = { unit: UNIT, phase: 1, n: 6 };
+    const read = repoLanded(dir, UNIT, MAIN, { since: null });
+
+    assert.deepStrictEqual([read.stands(ref), read.rewritten(ref)], ['landed', null]);
+  });
+
+  it('a task recorded at its squash under the person\'s own message, main then moved on and merged back into its branch, its file changed in that merge as a conflict settled there leaves it: changed after its landing — a merge\'s own change is change to land', () => {
+    const dir = repo(laidWorld);
+    const branch = branchOf(6);
+    git(dir, ['switch', '-q', '-c', branch, 'main']);
+    stamped(dir, 6, 'six.txt');
+    const landed = git(dir, ['rev-parse', 'HEAD']).trim();
+    git(dir, ['switch', '-q', 'main']);
+    squashed(dir, branch, ['In my own words']);
+    const squash = git(dir, ['rev-parse', 'HEAD']).trim();
+    committed(dir, ['main moves on'], { 'other.txt': 'other\n' });
+    git(dir, ['switch', '-q', branch]);
+    git(dir, ['merge', '-q', '--no-ff', '--no-commit', 'main']);
+    committed(dir, ['merge main back'], { 'six.txt': 'six, settled in the merge\n' });
+    git(dir, ['switch', '-q', 'main']);
+    const recorded = new Map([[`${UNIT}-1-6`, { commit: squash, tip: landed, first: squash, by: /** @type {const} */ ('engine'), at: '' }]]);
+
+    assert.strictEqual(repoLanded(dir, UNIT, MAIN, { since: null, recorded }).stands({ unit: UNIT, phase: 1, n: 6 }), 'changed');
+  });
 });
 
 describe('repoLanded: the tasks whose work a branch holds past main, not landed (R31)', () => {
@@ -822,7 +880,7 @@ describe('repoLanded: the person\'s own commit inside a task\'s branch, below it
     assert.deepStrictEqual([read.landedCommit(at(`${branchOf(6)}~1`), `${UNIT}-1-6`), read.landedCommit(at('undo'), `${UNIT}-1-5`)], [true, false]);
   });
 
-  it('a task whose commit undoes the person\'s own commit past another task\'s, that task\'s work (R32), its branch cut there, the other task\'s branch at that commit: the other task\'s commit alone cherry-picked onto main and its own branch squashed there, the chain landed whole — it has landed, its commit read alone too, and the other task with it, however the later undid the earlier\'s work (the ancestor rule)', () => {
+  it('a task whose commit undoes the person\'s own commit past another task\'s, that task\'s work (R32), its branch cut there, the other task\'s branch at that commit: the other task\'s commit alone cherry-picked onto main and its own branch squashed there, the chain landed whole — it has landed, its commit read alone too, and the other task with it, however the later undid the earlier\'s work (the chain read)', () => {
     const dir = repo(tipsWorld, 'own-work');
     const undo = git(dir, ['rev-parse', branchOf(10)]).trim();
 
