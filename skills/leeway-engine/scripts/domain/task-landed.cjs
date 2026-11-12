@@ -14,18 +14,20 @@
 // branch; its branch gone, its newest stamped commit anywhere — holds a
 // commit that neither its recorded tip nor the default branch holds, and
 // carries a change the default branch lacks (`changedSince`), so an amend,
-// a rebase with no change or the default branch merged back stays landed;
+// a rebase with no change or the default branch merged back stays landed —
+// that change read, and landed again, over its tip at its landing
+// (`landingBase`, `landedTip`), past it once its branch holds the landing;
 // its landings are its record's first and last, and its record's commit is
 // its work alone (R32). Everything below reads a task no record names —
 // landed by hand and not yet read, or by the engine before the record —
 // once, at the first verb acting on its landing, which records each such
 // task it was asked of that it finds landed (`found`); a read for display
-// records nothing. A task landed by hand whose branch was rewritten past
-// the revision before any verb read it — a commit stamped with it that its
-// branch no longer holds, its reflog saying the branch once stood there,
-// landed, and none it holds did — is the stated edge (`rewritten`, F1),
-// which `open`, `phase` and `finish` refuse before anything moves,
-// naming the commit to put the branch back to.
+// records nothing. A task no driver took, landed by hand, whose branch was
+// rewritten past the revision before any verb read it — a commit stamped
+// with it that its branch no longer holds, its reflog saying the branch
+// once stood there, landed, and none it holds did — is the stated edge
+// (`rewritten`, F1), which `open`, `phase` and `finish` refuse before
+// anything moves, naming the commit to put the branch back to.
 //
 // A task has landed in a repository once the revision it lands on held its
 // change, however it got there — the engine's squash, or a merge by hand by
@@ -363,21 +365,47 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     }
     return recordedAt;
   };
+  /**
+   * Where a task's work stands, as its change after its landing is read:
+   * its branch's tip — a quick-fix's task's, its newest own commit on the
+   * quick-fix's branch; its branch gone, its newest stamped commit anywhere.
+   * @param {string} id
+   */
+  const workTip = (id) => tips().get(id) ?? own(id)?.sha ?? stamps().get(id)?.sha;
+  /** @type {Set<string>|undefined} */
+  let heldTips;
+  /** Whether git still holds the recorded tip `kept`: every recorded tip asked at once, at the first. @param {string} kept */
+  const tipHeld = (kept) => (heldTips ??= lg.commitsIn(root, [...recorded.values()].map(({ tip: each }) => each))).has(kept);
+  /**
+   * The commit a task's change after its landing is read over and lands
+   * over again, its work at `at` — its tip at its landing: a recorded
+   * task's recorded tip, where git holds it; else the commit its driver
+   * took it at, which landed (`unrecorded`). Null — its change then read
+   * and landed over its merge base with the default branch — where `at`
+   * holds that landing, the default branch merged into its branch since or
+   * its work rebased onto it, so their merge base is past it and holds what
+   * the person settled there; where git no longer holds a recorded tip, as
+   * an expired reflog leaves it; and for a task with no landing.
+   * @param {string} id @param {string} at
+   */
+  const landingBase = (id, at) => {
+    const record = recordOf(id);
+    const landed = record ?? unrecorded(id, taken);
+    if (landed === null || (record !== null && !tipHeld(record.tip))) return null;
+    return lg.isAncestor(root, landed.commit, at) ? null : landed.tip;
+  };
   /** @type {Map<string, boolean>|undefined} */
   let movedOn;
   /**
    * Whether a recorded task has changed after its landing (R29), the one
-   * rule: its branch's tip — a quick-fix's task's, its newest own commit on
-   * the quick-fix's branch; its branch gone, its newest stamped commit
-   * anywhere — holds a commit neither its recorded tip nor the default
-   * branch holds, and carries a change the default branch lacks: merging
-   * it there over the recorded tip changes something, a conflict among
-   * them (`lg.holdChanges`). A branch amended, rebased with no change, or
-   * with the default branch merged back, stays landed at any revision
-   * read. Every recorded task read at once, at the first asked; the change
-   * read only of those whose branch moved past the recorded tip. A
-   * recorded tip git no longer holds, as an expired reflog leaves it, holds
-   * nothing, the change read over the branch's merge base instead.
+   * rule: its work (`workTip`) holds a commit neither its recorded tip nor
+   * the default branch holds, and carries a change the default branch
+   * lacks: merging it there over its tip at its landing, or past it
+   * (`landingBase`), changes something, a conflict among them
+   * (`lg.holdChanges`). A branch amended, rebased with no change, or with
+   * the default branch merged back, stays landed at any revision read.
+   * Every recorded task read at once, at the first asked; the change read
+   * only of those whose branch moved past the recorded tip.
    * @param {string} id
    */
   const changedSince = (id) => {
@@ -385,13 +413,12 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
       movedOn = new Map();
       const asked = [...recorded.keys()].flatMap((task) => {
         const record = recordOf(task);
-        const at = tips().get(task) ?? own(task)?.sha ?? stamps().get(task)?.sha;
-        return record === null || at === undefined || at === record.tip ? [] : [{ task, at, from: record.tip }];
+        const at = workTip(task);
+        return record === null || at === undefined || at === record.tip ? [] : [{ task, at, from: record.tip, base: landingBase(task, at) }];
       });
       if (asked.length > 0) {
         const into = trunk();
-        const present = lg.commitsIn(root, asked.map(({ from }) => from));
-        const shas = [...asked.map(({ at }) => at), ...present];
+        const shas = [...asked.map(({ at }) => at), ...asked.flatMap(({ from }) => (tipHeld(from) ? [from] : []))];
         const listed = into === tip ? pastOf(shas) : new Map(lg.commitPaths(root, [...new Set(shas), '--not', into], key).map((commit) => [commit.sha, commit]));
         const moved = asked.filter(({ at, from }) => {
           const before = lg.heldIn(listed, from);
@@ -399,7 +426,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
         });
         if (moved.length > 0) {
           const [tree] = lg.treesOf(root, [into]);
-          const held = lg.holdChanges(root, moved.map(({ at, from }) => ({ ours: into, tree, theirs: at, ...(present.has(from) ? { base: from } : {}) })));
+          const held = lg.holdChanges(root, moved.map(({ at, base }) => ({ ours: into, tree, theirs: at, ...(base === null ? {} : { base }) })));
           moved.forEach(({ task }, n) => movedOn?.set(task, !held[n]));
         }
       }
@@ -1000,6 +1027,19 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     return wholeLanded(id, at) ? 'changed' : 'unlanded';
   };
   /**
+   * Where a task changed after its landing landed — its tip then
+   * (`landingBase`) — the base its change lands over again, as its change
+   * was read over, so a landing again lands just that change, what it takes
+   * back of its own work among it (R29); null for a task not changed after
+   * its landing, or one whose change lands over its merge base.
+   * @param {TaskRef} ref @returns {string|null}
+   */
+  const landedTip = (ref) => {
+    const id = taskId(ref);
+    const at = workTip(id);
+    return at !== undefined && stands(ref) === 'changed' ? landingBase(id, at) : null;
+  };
+  /**
    * Where an unrecorded task landed on the tip, for a verb acting on its
    * landing to record (landing-record.cjs): its landing and the tip that
    * landed — its branch's tip where that has landed, else the commit its
@@ -1039,11 +1079,13 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
   const earlier = (ref, took) => unrecorded(taskId(ref), took)?.commit ?? naming(taskId(ref)).at(-1)?.sha ?? null;
   /**
    * Where the task's branch here was rewritten after its work landed by
-   * hand, no verb having recorded it (the stated edge, F1): the newest
-   * commit stamped with it anywhere the repository holds it that its
-   * branch's tip does not hold, landed as a last commit lands
-   * (`landedBy`), with its landing; null for a task recorded, landed, or
-   * with no branch here, where no commit its branch dropped landed, where
+   * hand, no verb having recorded it and no driver having taken it (the
+   * stated edge, F1): the newest commit stamped with it anywhere the
+   * repository holds it that its branch's tip does not hold, landed as a
+   * last commit lands (`landedBy`), with its landing; null for a task
+   * recorded, landed, or with no branch here, where no commit its branch
+   * dropped landed, where its driver took it at a commit that landed — its
+   * branch's work past that its change after its landing (`stands`) — where
    * its branch holds nothing past the revision, where a commit stamped
    * with it that its branch holds landed too — its copies landed by a
    * rebase, its branch never rewritten — or where its branch never stood
@@ -1061,7 +1103,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     const off = stamped.find(({ sha }) => !held.has(sha));
     if (off === undefined || read(id).landed) return null;
     const how = landedBy(off, id);
-    if (!how.landed || lg.isAncestor(root, at, tip) || stamped.some((commit) => held.has(commit.sha) && landedBy(commit, id).landed)) return null;
+    if (!how.landed || lg.isAncestor(root, at, tip) || stamped.some((commit) => held.has(commit.sha) && landedBy(commit, id).landed) || stands(ref) === 'changed') return null;
     const branch = /** @type {string} */ (work.names().get(id));
     if (!lg.heldOnce(root, branch, off.sha)) return null;
     const landing = 'at' in how ? how.at : lineOf().broughtIn.get('held' in how ? how.held : how.named) ?? null;
@@ -1083,6 +1125,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     task: (/** @type {TaskRef} */ ref) => read(taskId(ref)),
     landedCommit,
     landedAs,
+    landedTip,
     stands,
     heldPast,
     marking,

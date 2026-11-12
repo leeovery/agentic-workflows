@@ -77,7 +77,7 @@ for (const { name } of listDrivers('landing')) {
       delete manifest.landings;
       writeState(at, `${UNIT}/manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`);
       commitAll(at, 'no record');
-      const changed = commitFiles(at, chain.later.branch, chain.later.branch, { 'note-more.txt': 'more\n' });
+      commitFiles(at, chain.later.branch, chain.later.branch, { 'note-more.txt': 'more\n' });
       const first = own(ok(at, ['land', 'phase', UNIT, '1']));
       const records = [`${UNIT}-1-4`, `${UNIT}-1-5`].map((id) => readManifest(at, UNIT).landings[id]['.']);
       const again = ok(at, ['land', 'phase', UNIT, '1']).already;
@@ -87,7 +87,7 @@ for (const { name } of listDrivers('landing')) {
         records.map(({ by, commit, first: landed, tip: landedTip }) => ({ by, commit, first: landed, tip: landedTip })), again,
       ], [['1.5'], ['note-more.txt', 'note.txt'], [
         { by: 'read', commit: landings[0], first: landings[0], tip: tip(at, chain.earlier.branch) },
-        { by: 'engine', commit: tip(at, 'main'), first: landings[1], tip: changed },
+        { by: 'engine', commit: tip(at, 'main'), first: landings[1], tip: tip(at, chain.later.branch) },
       ], true]);
     });
 

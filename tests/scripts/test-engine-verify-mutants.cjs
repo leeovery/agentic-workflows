@@ -17,9 +17,10 @@
 // project's, a survivor on none of the changed files refused — the person's
 // own commits on a task's branch past its first commit the phase's work,
 // fast-forwarded onto main or not, as the one read of what has landed reads
-// whose work a commit is (R32), never the person's own on main or below a
-// task's first commit, its commits read alike whatever clock dated them —
-// writing
+// whose work a commit is (R32), a squash by hand its task's record names
+// that task's wherever the phase's tip holds it, never the person's own on
+// main or below a task's first commit, its commits read alike whatever
+// clock dated them — writing
 // nothing but the survivors, left in the unit's cache under the tips it ran
 // at (15.S9, 15.6.3, 15.6.6, 7.2.17).
 //
@@ -35,7 +36,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, setEnvironment, layout, datedAt,
+  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, setEnvironment, layout, datedAt, accountTaken,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, setupArgs, world } = require('./verify-world.cjs');
 
@@ -151,6 +152,31 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
       { path: 'src/note.js', lines: [[1, 1]] },
       { path: 'src/pin.js', lines: [[1, 2]] },
       { path: 'src/tail.js', lines: [[1, 1]] },
+    ]);
+  });
+
+  it('a task squashed by hand under the person\'s own message, main merged back into a later task\'s branch cut before it, and that task\'s open recording the squash by its read: the squash is its task\'s work as its record reads it, its lines handed to the tool at the phase\'s tip (R32)', () => {
+    git(dir, ['checkout', '-q', '-b', branchOf(1)]);
+    commitWith(dir, { 'src/card.js': 'const card = 2;\n' }, 'Leeway-Task: pay-1-1');
+    git(dir, ['checkout', '-q', '-b', branchOf(2), 'main']);
+    commitWith(dir, { 'src/total.js': 'total\n' }, 'Leeway-Task: pay-1-2');
+    git(dir, ['checkout', '-q', 'main']);
+    for (const task of ['1.1', '1.2']) accountTaken(dir, UNIT, task);
+    ok(dir, ['land', 'open', UNIT, '1.1']);
+    git(dir, ['merge', '-q', '--squash', branchOf(1)]);
+    commitCode(dir, 'Spell it the British way');
+    git(dir, ['branch', '-q', '-D', branchOf(1)]);
+    git(dir, ['checkout', '-q', branchOf(2)]);
+    git(dir, ['merge', '-q', '--no-edit', 'main']);
+    git(dir, ['checkout', '-q', 'main']);
+    ok(dir, ['land', 'open', UNIT, '1.2']);
+    surviving([]);
+
+    ok(dir, ['verify', 'mutants', UNIT, '1']);
+
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(steer(dir), 'changed.json'), 'utf8')), [
+      { path: 'src/card.js', lines: [[1, 1]] },
+      { path: 'src/total.js', lines: [[1, 1]] },
     ]);
   });
 

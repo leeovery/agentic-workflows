@@ -34,10 +34,10 @@
 // (state-merge-rules.cjs): either says it landed.
 // ---------------------------------------------------------------------------
 
-const { git } = require('../kernel/git.cjs');
 const { LANDINGS } = require('../kernel/manifest-schema.cjs');
 const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { commitStateTail } = require('./commit.cjs');
+const { committedAt } = require('./landing-git.cjs');
 const { parseTaskId, shownTask } = require('./task-id.cjs');
 
 /** A task's landing in one repository, as the record holds it. @typedef {{commit: string, tip: string, first: string, by: 'engine'|'read', at: string}} LandingRecord */
@@ -45,8 +45,9 @@ const { parseTaskId, shownTask } = require('./task-id.cjs');
 /**
  * A landing to record: the task by its internal id, the repository by its
  * folder (`repoName`) and its root, the commit that landed it and the tip
- * that landed, and who landed it.
- * @typedef {{id: string, repo: string, root: string, commit: string, tip: string, by: 'engine'|'read'}} Landing
+ * that landed, who landed it, and when that commit was committed, ISO,
+ * where the caller read it already.
+ * @typedef {{id: string, repo: string, root: string, commit: string, tip: string, by: 'engine'|'read', at?: string}} Landing
  */
 
 /**
@@ -59,36 +60,28 @@ function recordsIn(manifest, repo) {
   return new Map(Object.entries(all).flatMap(([id, byRepo]) => (byRepo?.[repo] ? [[id, /** @type {LandingRecord} */ (byRepo[repo])]] : [])));
 }
 
-/** Each commit's committer time, ISO, in the repository at `root`, in one call. @param {string} root @param {string[]} shas @returns {Map<string, string>} */
-function timesOf(root, shas) {
-  const lines = git(root, ['log', '--no-show-signature', '--no-walk=unsorted', '--format=%H %cI', ...new Set(shas)]).trim().split('\n').filter(Boolean);
-  return new Map(lines.map((line) => {
-    const [sha, at] = line.split(' ');
-    return [sha, new Date(at).toISOString()];
-  }));
-}
-
 /**
  * `found` written on the unit's manifest under its lock — each landing a
  * record names already, at that commit, left as it is; one of a task
  * recorded at another commit taking its place, `first` kept — for the
  * caller's own state commit of the unit to carry: whether anything was
- * written.
+ * written. A landing's time is read only where it carries none.
  * @param {string} cwd @param {string} unit @param {Landing[]} found
  * @returns {boolean}
  */
 function writeLandings(cwd, unit, found) {
   if (found.length === 0) return false;
-  const times = new Map([...new Set(found.map(({ root }) => root))].flatMap((root) => [...timesOf(root, found.filter((landing) => landing.root === root).map(({ commit }) => commit))].map(([sha, at]) => [`${root} ${sha}`, at])));
+  const untimed = found.filter(({ at }) => at === undefined);
+  const times = new Map([...new Set(untimed.map(({ root }) => root))].flatMap((root) => [...committedAt(root, untimed.filter((landing) => landing.root === root).map(({ commit }) => commit))].map(([sha, at]) => [`${root} ${sha}`, at])));
   return withWorkUnitLock(cwd, unit, () => {
     const manifest = loadWorkUnitManifest(cwd, unit);
     /** @type {Record<string, Record<string, LandingRecord>>} */
     const landings = { ...(manifest[LANDINGS] ?? {}) };
     let changed = false;
-    for (const { id, repo, root, commit, tip, by } of found) {
+    for (const { id, repo, root, commit, tip, by, at } of found) {
       const held = landings[id]?.[repo];
       if (held?.commit === commit) continue;
-      landings[id] = { ...landings[id], [repo]: { commit, tip, first: held?.first ?? commit, by, at: /** @type {string} */ (times.get(`${root} ${commit}`)) } };
+      landings[id] = { ...landings[id], [repo]: { commit, tip, first: held?.first ?? commit, by, at: at ?? /** @type {string} */ (times.get(`${root} ${commit}`)) } };
       changed = true;
     }
     if (changed) saveWorkUnitManifest(cwd, unit, { ...manifest, [LANDINGS]: landings });

@@ -16,7 +16,9 @@
 // default branch here checked out with changes to files the merge changes
 // refused before anything merges, other changes carried across; the default
 // branch here left where the person's work, a failed fetch or git itself
-// stops it, warned once with the way to bring it up, the merge standing; the
+// stops it, warned once with the way to bring it up, the merge standing, and
+// a fetch failing before the merge alone leaving a task merged by hand that
+// the merge brings here recorded by its read (7.2.22); the
 // stand-in gh at the driver's floors, failing closed, merging a stack all or
 // none, and slow, where a test arms it, to work out whether a pull request
 // pushed to can merge; and the live run refusing without the person's word
@@ -46,6 +48,19 @@ const { git, tip } = harness;
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('github-landing-stops-', side.prepare);
 
+/**
+ * Each fetch from GitHub of the clone at `dir` refused while the shell test
+ * `refusing` holds — always, by default: the folder holding the stand-in
+ * ssh refusing it, beside the project, for the test to remove.
+ * @param {string} dir @param {string} [refusing]
+ */
+function refuseFetches(dir, refusing = 'true') {
+  const bin = fs.mkdtempSync(path.join(dir, '..', 'no-fetch-'));
+  fs.writeFileSync(path.join(bin, 'ssh'), `#!/bin/sh\ncase "$*" in *git-upload-pack*) if ${refusing}; then echo 'the test refuses fetching' >&2; exit 1; fi ;; esac\nexec "${path.join(__dirname, 'ssh')}" "$@"\n`, { mode: 0o755 });
+  git(dir, ['config', 'core.sshCommand', path.join(bin, 'ssh')]);
+  return bin;
+}
+
 describe('the default branch here, once a phase merges', () => {
   it('holding a commit GitHub\'s does not: every phase finish merges stands, and the answer warns once that it was not moved', () => {
     const dir = project();
@@ -65,15 +80,30 @@ describe('the default branch here, once a phase merges', () => {
   it('its fetch failing: the merge stands, and the answer warns, in git\'s words, that it was not brought up', () => {
     const dir = project();
     ok(dir, openArgs(card));
-    const bin = fs.mkdtempSync(path.join(dir, '..', 'no-fetch-'));
-    fs.writeFileSync(path.join(bin, 'ssh'), `#!/bin/sh\ncase "$*" in *git-upload-pack*) echo 'the test refuses fetching' >&2; exit 1 ;; esac\nexec "${path.join(__dirname, 'ssh')}" "$@"\n`, { mode: 0o755 });
-    git(dir, ['config', 'core.sshCommand', path.join(bin, 'ssh')]);
+    const bin = refuseFetches(dir);
     const ours = tip(dir, 'main');
     try {
       const { warnings } = ok(dir, ['land', 'phase', 'pay', '1']);
 
       assert.match(warnings[0], /^main here was not brought up to the merge, as origin\/main could not be fetched \(git fetch failed: the test refuses fetching .*\) — fetch it, and fast-forward main to it$/);
       assert.deepStrictEqual([warnings.length, tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [1, ours, ['pay-1-1']]);
+    } finally {
+      fs.rmSync(bin, { recursive: true, force: true });
+    }
+  });
+
+  it('its fetch failing before the merge and not after: a task merged by hand on GitHub and not pulled, which the merge brings here, recorded by its read at its landing', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    ok(dir, openArgs(rounding));
+    side.byHandUnpulled(dir, card.branch);
+    const landing = tipOnGithub(dir, 'main');
+    const bin = refuseFetches(dir, `[ "$(git --git-dir='${bareOf(dir)}' rev-parse main)" = ${landing} ]`);
+    try {
+      ok(dir, ['land', 'phase', 'pay', '2']);
+      const { by, commit } = harness.readManifest(dir, 'pay').landings['pay-1-1']['.'];
+
+      assert.deepStrictEqual([by, commit, tip(dir, 'main')], ['read', landing, tipOnGithub(dir, 'main')]);
     } finally {
       fs.rmSync(bin, { recursive: true, force: true });
     }

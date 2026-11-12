@@ -712,24 +712,28 @@ function pointersAgain(ctx, onto, head) {
  * Land each task of a phase merged that waits for its next merge
  * (`stacksOf`) — changed after its landing, or opened since — as GitHub's
  * driver lands each pull request of a stack merged in part (7.2.23, R30):
- * its branch as it stands merged onto the default branch over their merge
- * base, as a pull request squash-merges, each submodule's pointer as a
- * phase's first landing settles it (`pointersAgain`) — so git never merges
- * two moves of one — one commit a task under the message the seam gives it
- * (the context's `message`), oldest first, the default branch alone moved
- * to the last: the phase's branch stays at its landing, so a later change
- * of any task it landed is read off it again. Refused, nothing moved, where
- * a task never landed is not where it opened (`refuseMoved`), a task's
- * branch holds another task's work not landed (the context's
- * `refuseHeld`), a task's branch is gone, naming where to make it again,
- * its change conflicts there, naming the paths and the way on, or the
- * default branch is out with changes in the way.
+ * its branch as it stands merged onto the default branch — one changed
+ * after its landing over its tip at that landing, the base its change was
+ * read over (the context's `landedOn`, `landedTip`), so just that change
+ * lands, what it takes back of its own work among it; one opened since over
+ * their merge base, as a pull request squash-merges — each submodule's
+ * pointer as a phase's first landing settles it (`pointersAgain`) — so git
+ * never merges two moves of one — one commit a task under the message the
+ * seam gives it (the context's `message`), oldest first, the default
+ * branch alone moved to the last: the phase's branch stays at its landing,
+ * so a later change of any task it landed is read off it again. Refused,
+ * nothing moved, where a task never landed is not where it opened
+ * (`refuseMoved`), a task's branch holds another task's work not landed
+ * (the context's `refuseHeld`), a task's branch is gone, naming where to
+ * make it again, its change conflicts there, naming the paths and the way
+ * on, or the default branch is out with changes in the way.
  * @param {LandingContext} ctx @param {Map<string, string>} refs @param {number} phase @param {Waiting[]} waiting
  */
 function landAlone(ctx, refs, phase, waiting) {
   const { root, into } = ctx;
   const intoTip = /** @type {string} */ (refs.get(into));
   refuseMoved(ctx, refs, waiting.map(({ ref }) => ref));
+  const read = ctx.landedOn(intoTip);
   const signed = lg.signs(root);
   let at = intoTip;
   /** @type {string[]} */
@@ -741,7 +745,7 @@ function landAlone(ctx, refs, phase, waiting) {
     if (own === null) throw new Error(`land: ${since} branch is gone — ${remake({ ref, message: ctx.message(ref) }, remadeAt(ctx, ref, changed, intoTip))} and land again`);
     const head = /** @type {string} */ (refs.get(own));
     ctx.refuseHeld({ ref, branch: own }, head, intoTip);
-    const base = lg.mergeBase(root, at, head);
+    const base = (changed ? read.landedTip(ref) : null) ?? lg.mergeBase(root, at, head);
     const pointers = pointersAgain(ctx, at, head);
     const merged = lg.mergeTree(root, pointers === null ? base : lg.pointedLike(root, base, head, ctx.gitlinks), at, head);
     if ('conflicts' in merged) {

@@ -14,7 +14,9 @@
 // by hand on GitHub's site, as the site's button does — squashed, with a
 // merge commit or rebased — pulling main here after it or not, a merge
 // commit pulled keeping its own commits here; cherry-picks a commit onto
-// the default branch here, pushing it to GitHub; and deletes a branch, on
+// the default branch here, pushing it to GitHub, and squashes a task's
+// branch onto it here under their own words, pushing it, no pull request
+// of it opened; and deletes a branch, on
 // GitHub and here. A quick-fix is open in a repository while a pull
 // request of its branch is open there. A person lands a phase by hand on
 // GitHub's site too, each of its pull requests, bottom first, merged onto
@@ -87,6 +89,19 @@ function mergedOnGithub(dir, branch, method, pulled, into = 'main') {
 }
 
 /**
+ * Git calls made by hand with the default branch `into` checked out here,
+ * then pushed to GitHub, the checkout put back on the branch it was on.
+ * @param {string} dir @param {string} into @param {string[][]} calls
+ */
+function pushedFrom(dir, into, calls) {
+  const back = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
+  git(dir, ['switch', '-q', into]);
+  for (const args of calls) git(dir, args);
+  git(dir, ['push', '-q', 'origin', into]);
+  git(dir, ['switch', '-q', back]);
+}
+
+/**
  * A branch deleted on GitHub, as `gh pr merge --delete-branch` leaves it,
  * and here, the checkout first put on the default branch `into` where it
  * has the branch out.
@@ -101,8 +116,8 @@ function deleted(dir, branch, into = 'main') {
 module.exports = {
   /** The environment every call runs under. */
   env: GH_ENV,
-  /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-calls.cjs). */
-  gitCalls: { open: 53, phase: 95, again: 31, finish: 99 },
+  /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-record.cjs). */
+  gitCalls: { open: 50, phase: 94, again: 30, finish: 97 },
   /** The world readied for the driver, once per process. @param {string} dir */
   prepare: (dir) => {
     setLandingDriver(dir, 'github');
@@ -150,13 +165,9 @@ module.exports = {
   deleted,
   mergedOnGithub,
   /** A commit cherry-picked by hand onto the default branch `into` here and pushed to GitHub. @param {string} dir @param {string} commit @param {string} [into] */
-  picked: (dir, commit, into = 'main') => {
-    const back = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
-    git(dir, ['switch', '-q', into]);
-    git(dir, ['cherry-pick', commit]);
-    git(dir, ['push', '-q', 'origin', into]);
-    git(dir, ['switch', '-q', back]);
-  },
+  picked: (dir, commit, into = 'main') => pushedFrom(dir, into, [['cherry-pick', commit]]),
+  /** A task's branch squashed by hand onto the default branch `into` here, under the person's own message, and pushed to GitHub, no pull request of it opened. @param {string} dir @param {string} branch @param {string} [into] */
+  squashedHere: (dir, branch, into = 'main') => pushedFrom(dir, into, [['merge', '-q', '--squash', branch], ['commit', '-q', '-m', 'Spell it the British way']]),
   /** The ways a person lands a phase by hand on GitHub's site, main here pulled after. */
   phaseByHand: {
     /** Squashed under GitHub's own squash message. @param {string} dir @param {number} phase */

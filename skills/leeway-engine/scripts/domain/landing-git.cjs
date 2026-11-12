@@ -451,8 +451,11 @@ function stampedPast(root, rev, other, key, since = null) {
 /** The time git dates a commit made now in the repository at `root`, in milliseconds: its committer's, as the clock or `GIT_COMMITTER_DATE` gives it. @param {string} root */
 const committerTime = (root) => Number(git(root, ['var', 'GIT_COMMITTER_IDENT']).trim().split(' ').at(-2)) * 1000;
 
-/** A local branch's full name where `rev` names one, else `rev` as it is: a full ref, a commit, or a remote's branch. @param {string} root @param {string} rev */
-const revOf = (root, rev) => (rev.startsWith('refs/') || tryGit(root, ['show-ref', '--verify', '--quiet', `${HEADS}${rev}`]) === null ? rev : `${HEADS}${rev}`);
+/** A commit's whole name, SHA-1 or SHA-256. */
+const FULL_NAME = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
+/** A local branch's full name where `rev` names one, else `rev` as it is: a full ref, a commit, or a remote's branch — a full ref or a commit's whole name taken as it is unread. @param {string} root @param {string} rev */
+const revOf = (root, rev) => (rev.startsWith('refs/') || FULL_NAME.test(rev) || tryGit(root, ['show-ref', '--verify', '--quiet', `${HEADS}${rev}`]) === null ? rev : `${HEADS}${rev}`);
 
 /**
  * Whether `tip` holds the change of `commit` already: merging it there —
@@ -792,6 +795,15 @@ function timedCommit(line) {
 /** The commit `sha` and the time it was committed. @param {string} root @param {string} sha @returns {TimedCommit} */
 const timedOf = (root, sha) => timedCommit(git(root, ['log', '-1', '--format=%H %ct', sha, '--']).trim());
 
+/** Each commit's committer time, ISO, in one call. @param {string} root @param {string[]} shas @returns {Map<string, string>} */
+function committedAt(root, shas) {
+  const lines = git(root, ['log', '--no-walk=unsorted', '--format=%H %cI', ...new Set(shas)]).trim().split('\n').filter(Boolean);
+  return new Map(lines.map((line) => {
+    const [sha, at] = line.split(' ');
+    return [sha, new Date(at).toISOString()];
+  }));
+}
+
 /**
  * Whether the revision `rev` holds a commit the trailer `key` stamps with a
  * task of the unit's, committed at or after the time `since` names where it
@@ -833,15 +845,17 @@ function tasksMarkedOn(root, on, unit, key, since) {
 
 /**
  * The commits on `to`'s first-parent line past `from`, newest first, each
- * with the unit's tasks it names by its `Task:` lines, by their internal
- * ids: a landing's name, as the engine's own writes one (landing-names.cjs).
+ * with the time it was committed, ISO, and the unit's tasks it names by its
+ * `Task:` lines, by their internal ids: a landing's name, as the engine's
+ * own writes one (landing-names.cjs).
  * @param {string} root @param {string} unit @param {string} from @param {string} to
- * @returns {{sha: string, ids: string[]}[]}
+ * @returns {{sha: string, at: string, ids: string[]}[]}
  */
 function namedPast(root, unit, from, to) {
-  return git(root, ['log', '-z', '--first-parent', '--format=%H%n%B', `${from}..${to}`, '--']).split('\0').filter(Boolean).map((entry) => {
+  return git(root, ['log', '-z', '--first-parent', '--format=%H %cI%n%B', `${from}..${to}`, '--']).split('\0').filter(Boolean).map((entry) => {
     const end = entry.indexOf('\n');
-    return { sha: entry.slice(0, end), ids: names.tasksOfMessage(unit, entry.slice(end + 1)).map(taskId) };
+    const [sha, at] = entry.slice(0, end).split(' ');
+    return { sha, at: new Date(at).toISOString(), ids: names.tasksOfMessage(unit, entry.slice(end + 1)).map(taskId) };
   });
 }
 
@@ -1886,7 +1900,7 @@ function landingBranch(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, heldOnce, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, belowOwn, copiesOf, standings, lastStamped, stampedAnywhere, timedOf, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
+  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, heldOnce, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, belowOwn, copiesOf, standings, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, landingBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,

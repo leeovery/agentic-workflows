@@ -16,8 +16,11 @@
 // Only content decides a landing (R28): a task of two commits, its first
 // cherry-picked onto main by hand, its copy carrying the door's stamp, has
 // not landed — its stack open — until `land phase` merges its pull request;
-// one changed after its pull request merged is test-landing-again.cjs's
-// (7.2.23). A task's last
+// a task of one commit cherry-picked so, its pull request open beneath
+// another's, has landed and has not changed since, so `land phase` merges
+// the stack bringing neither pull request up to main (R29); one changed
+// after its pull request merged is test-landing-again.cjs's (7.2.23). A
+// task's last
 // commit is its branch's tip: one moved since it opened, kept aside and put
 // back as the refusal says, then merged by GitHub's default button, pulled
 // or not, has landed, the commit kept aside a task of its own; one whose
@@ -123,6 +126,21 @@ describe('a feature\'s task read by its content alone, the door\'s stamp never n
     const merged = own(ok(dir, ['land', 'phase', 'pay', '4']));
 
     assert.deepStrictEqual([before, [merged.merged, merged.pull_requests], git(bareOf(dir), ['show', 'main:b.txt']), stackMerged(dir, 4)], [[false, 'open'], [['4.1'], [1]], 'b\n', 'done']);
+  });
+
+  it('a task of one commit cherry-picked onto main by hand, its pull request open beneath a later task\'s: landed, never changed after its landing — land phase merges the stack, bringing neither pull request up to main', () => {
+    const dir = project();
+    const first = cutTask(dir, '4.1', 'feat', 'Add a', 'main', { 'a.txt': 'a\n' }, { message: 'feat(pay): add a\n\nLeeway-Task: pay-4-1' });
+    const second = cutTask(dir, '4.2', 'feat', 'Add b', first.branch, { 'b.txt': 'b\n' }, { message: 'feat(pay): add b\n\nLeeway-Task: pay-4-2' });
+    for (const task of [first, second]) ok(dir, openArgs(task));
+    side.picked(dir, git(dir, ['rev-parse', first.branch]).trim());
+    const heads = [first, second].map(({ branch }) => git(bareOf(dir), ['rev-parse', branch]).trim());
+    phaseReviewed(dir, 4, 'auto');
+    const merged = own(ok(dir, ['land', 'phase', 'pay', '4']));
+
+    assert.deepStrictEqual([merged.merged, [first, second].map(({ branch }) => git(bareOf(dir), ['rev-parse', branch]).trim()), git(bareOf(dir), ['show', 'main:b.txt'])], [
+      ['4.1', '4.2'], heads, 'b\n',
+    ]);
   });
 });
 

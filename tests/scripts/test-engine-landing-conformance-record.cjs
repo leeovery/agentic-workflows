@@ -4,18 +4,24 @@
 // The landing record through the `land` verbs (landing-record.cjs, 7.2.22),
 // against each shipped driver in turn: a phase landed records each task it
 // lands, by the engine, at the commit on the default branch naming it, the
-// tip its branch landed at, `first` its landing, committed to the state
-// branch, and landed again, merging nothing, records nothing; a task
-// recorded stays landed, its branch moved onto its landing after, and is
-// read by its record only on a revision whose first-parent
-// line holds that landing. A recorded task's branch rewritten past its
+// tip its branch landed at, `first` its landing, dated as that commit was
+// made, committed to the state branch, and landed again, merging nothing,
+// records nothing; a task recorded stays landed, its branch moved onto its
+// landing after, and is read by its record only on a revision whose
+// first-parent line holds that landing. Each verb runs no more git commands than the
+// driver's side names for it — opening each task, landing the phase,
+// landing it again and finishing — the settle reusing the verb's own
+// reads, git's own transport children left out, which a git release may
+// add or drop. A recorded task's branch rewritten past its
 // landing is changed after it, and land finish lands its change and reads
 // it landed after, the record moved to that landing, `first` kept (R29,
 // R30). A read for display records nothing. A verb that refuses, and a
 // record that fails, are
 // test-engine-landing-conformance-record-refusals.cjs's; a recorded task's
 // branch moved with no change of its own,
-// test-engine-landing-conformance-record-moved.cjs's; a task landed by
+// test-engine-land-local-record-moved.cjs's; one changed after its landing,
+// landed again over its tip then,
+// test-engine-landing-conformance-record-changed.cjs's; a task landed by
 // hand, test-engine-landing-conformance-record-by-hand.cjs's; a chain
 // whose later task rewrites the earlier's lines,
 // test-engine-landing-conformance-record-chain.cjs's.
@@ -31,16 +37,19 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { git, tip, fixtureFrom, cleanupFixture, readManifest, stateGit, statePath } = harness;
+const { git, tip, fixtureFrom, cleanupFixture, readManifest, stateGit, statePath, traced } = harness;
 const { UNIT, TASKS, TRACKER, openArgs, own, commitFiles, buildLanding, mergeBack, finishReady } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
 const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
 
-const { card, total } = TASKS;
+const { card, total, rounding } = TASKS;
+
+/** What git runs of its own to carry a fetch or a push, never the engine's command. */
+const TRANSPORT = /^(upload-pack|receive-pack|pack-objects|unpack-objects|index-pack|rev-list --objects) /;
 
 for (const { name } of listDrivers('landing')) {
-  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void}} */
+  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void, byHand: Record<string, (dir: string, branch: string) => void>, gitCalls: Record<'open'|'phase'|'again'|'finish', number>}} */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const as = { env: side.env };
   const ok = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.ok(at, args, as);
@@ -58,31 +67,45 @@ for (const { name } of listDrivers('landing')) {
     dir = world();
     return dir;
   };
-  /** The unit's landing records, each task's in the project's repository as `[by, the landing's subject — a host's pull request's number aside — its tip, first is its commit]`. @param {string} at */
+  /** The unit's landing records, each task's in the project's repository as `[by, the landing's subject — a host's pull request's number aside — its tip, first is its commit, it is dated at its commit's committer time]`. @param {string} at */
   const recorded = (at) => Object.fromEntries(Object.entries(readManifest(at, UNIT).landings ?? {}).map(([id, byRepo]) => {
-    const { commit, tip: landedTip, first, by } = /** @type {any} */ (byRepo)['.'];
-    return [id, [by, git(at, ['log', '-1', '--format=%s', commit]).trim().replace(/ \(#\d+\)$/, ''), landedTip, first === commit]];
+    const { commit, tip: landedTip, first, by, at: when } = /** @type {any} */ (byRepo)['.'];
+    const [subject, committed] = git(at, ['log', '-1', '--format=%s%n%cI', commit]).trim().split('\n');
+    return [id, [by, subject.replace(/ \(#\d+\)$/, ''), landedTip, first === commit, when === new Date(committed).toISOString()]];
   }));
   /** The state branch's newest commit's subject. @param {string} at */
   const lastState = (at) => stateGit(at, ['log', '-1', '--format=%s']).trim();
 
   describe(`the ${name} landing driver's landing record (7.2.22)`, () => {
-    it('records each task a phase lands, by the engine, at the commit naming it, the tip its branch landed at, committed to the state branch, and landed again, merging nothing, records nothing; its branch moved onto the landing after, a task stays landed', () => {
+    it('records each task a phase lands, by the engine, at the commit naming it, dated as that commit was made, the tip its branch landed at, committed to the state branch, and landed again, merging nothing, records nothing; its branch moved onto the landing after, a task stays landed; each verb within the git commands the driver names for it', () => {
       const at = project();
-      ok(at, openArgs(total));
+      /** @type {[string, 'open'|'phase'|'again'|'finish', number][]} */
+      const ran = [];
+      /** What `args` answers, the git commands it ran counted against `verb`'s ceiling. @param {string} call @param {'open'|'phase'|'again'|'finish'} verb @param {string[]} args */
+      const counted = (call, verb, args) => {
+        const { result, commands } = traced(() => ok(at, args));
+        ran.push([call, verb, commands.filter((command) => !TRANSPORT.test(command)).length]);
+        return result;
+      };
+      counted('open 1.2', 'open', openArgs(total));
       mergeBack(at, card.branch, total.branch);
-      ok(at, openArgs(card));
+      counted('open 1.1', 'open', openArgs(card));
+      counted('open 2.1', 'open', openArgs(rounding));
       const tips = [card, total].map(({ branch }) => tip(at, branch));
-      ok(at, ['land', 'phase', UNIT, '1']);
+      counted('phase', 'phase', ['land', 'phase', UNIT, '1']);
       const state = stateGit(at, ['rev-parse', 'HEAD']).trim();
-      const again = ok(at, ['land', 'phase', UNIT, '1']).already;
+      const again = counted('phase again', 'again', ['land', 'phase', UNIT, '1']).already;
+      const kept = [recorded(at), lastState(at), again, stateGit(at, ['rev-parse', 'HEAD']).trim()];
+      finishReady(at);
+      counted('finish', 'finish', ['land', 'finish', UNIT]);
       git(at, ['branch', '-f', card.branch, 'main']);
       const stays = unitLanded(at, UNIT, projectRepos(at), null).landed({ unit: UNIT, phase: 1, n: 1 });
 
-      assert.deepStrictEqual([recorded(at), lastState(at), again, stateGit(at, ['rev-parse', 'HEAD']).trim(), stays], [{
-        [`${UNIT}-1-2`]: ['engine', 'feat(pay): Show total', tips[1], true],
-        [`${UNIT}-1-1`]: ['engine', 'feat(pay): Add card', tips[0], true],
+      assert.deepStrictEqual([...kept, stays], [{
+        [`${UNIT}-1-2`]: ['engine', 'feat(pay): Show total', tips[1], true, true],
+        [`${UNIT}-1-1`]: ['engine', 'feat(pay): Add card', tips[0], true, true],
       }, `land(${UNIT}): record 1.2, 1.1 landed`, true, state, true]);
+      assert.deepStrictEqual(ran.filter(([, verb, count]) => count > side.gitCalls[verb]), [], `the git commands each verb ran: ${JSON.stringify(ran)}`);
     });
 
     it('a recorded landing is read only on a revision whose first-parent line holds it: the task not landed on the commit before it, landed on it', () => {
@@ -95,20 +118,20 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual(['main~1', 'main'].map((rev) => read.on(repo, tip(at, rev)).task({ unit: UNIT, phase: 1, n: 1 }).landed), [false, true]);
     });
 
-    it('a recorded task\'s branch rewritten past its landing, its last commit made again: changed after its landing, land finish lands its change and reads it landed after, the record moved to that landing by the engine, its first landing kept (R29, R30)', () => {
+    it('a recorded task\'s branch rewritten past its landing, its last commit made again: changed after its landing, land finish lands its change and reads it landed after, the record moved to that landing by the engine at its branch\'s tip, its first landing kept (R29, R30)', () => {
       const at = project();
       ok(at, openArgs(card));
       ok(at, ['land', 'phase', UNIT, '1']);
       const subject = recorded(at)[`${UNIT}-1-1`][1];
       const first = readManifest(at, UNIT).landings[`${UNIT}-1-1`]['.'].commit;
-      const remade = commitFiles(at, card.branch, `${card.branch}^`, { ...card.files, 'card-more.txt': 'more\n' });
+      commitFiles(at, card.branch, `${card.branch}^`, { ...card.files, 'card-more.txt': 'more\n' });
       const landed = () => unitLanded(at, UNIT, projectRepos(at), null).landed({ unit: UNIT, phase: 1, n: 1 });
       const before = landed();
       finishReady(at);
       const finished = own(ok(at, ['land', 'finish', UNIT]));
 
       assert.deepStrictEqual([before, finished.phases.map((/** @type {{merged: string[]}} */ { merged }) => merged), git(at, ['show', 'main:card-more.txt']), recorded(at)[`${UNIT}-1-1`], readManifest(at, UNIT).landings[`${UNIT}-1-1`]['.'].first, landed()], [
-        false, [['1.1']], 'more\n', ['engine', subject, remade, false], first, true,
+        false, [['1.1']], 'more\n', ['engine', subject, tip(at, card.branch), false, true], first, true,
       ]);
     });
 

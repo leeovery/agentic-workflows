@@ -3,9 +3,11 @@
 // ---------------------------------------------------------------------------
 // The local landing driver (leeway-engine/scripts/drivers/landing/local/
 // driver.cjs) and a task changed after the engine landed its phase
-// (7.2.23): not landed, `land phase` lands its change onto main over their
-// merge base, as a pull request squash-merges — refused where it conflicts,
-// the way on to merge main into its branch, followed; refused, its branch
+// (7.2.23): not landed, `land phase` lands its change onto main over its
+// tip at that landing (R29) — refused where it conflicts with what main
+// gained since, the way on to merge main into its branch, followed, its
+// change then landing over their merge base, past that landing, as it
+// does where git no longer holds its recorded tip; refused, its branch
 // gone, naming where to make it again — and `land finish` lands an earlier
 // task of a phase so changed. A change landed again moves main alone, the
 // phase's branch staying at its landing, so each later change of any task
@@ -26,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, git, tip } = require('./engine-harness.cjs');
+const { ok, git, tip, readManifest, commitOnState, statePath, layout } = require('./engine-harness.cjs');
 const { openArgs, own, cutTask, commitFiles, useLandingWorld, refusedMoving, alreadyMoving, finishReady, landedHere, heldOn, mergedInto } = require('./landing-world.cjs');
 
 const project = useLandingWorld('engine-land-local-again-');
@@ -45,25 +47,26 @@ function phaseOfTwo(dir) {
 }
 
 describe('land: a task changed after its phase landed, on the local driver (7.2.23)', () => {
-  for (const how of ['on top of its branch', 'its last commit made again']) {
-    it(`${how}: not landed, land phase refused on its conflict with main, naming the way on; main merged into its branch, land phase lands its change, and answers it merged after`, () => {
-      const dir = project();
-      const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' });
-      ok(dir, openArgs(task));
-      ok(dir, ['land', 'phase', 'pay', '4']);
-      commitFiles(dir, task.branch, how === 'on top of its branch' ? task.branch : `${task.branch}^`, { 'tip.txt': 'tip, changed\n' });
-      const before = landedHere(dir, '4.1');
-      const refusal = refusedMoving(dir, ['land', 'phase', 'pay', '4']);
-      mergedInto(dir, task.branch);
-      const landed = own(ok(dir, ['land', 'phase', 'pay', '4']));
+  it('changed on top of its branch where main changed its line since: not landed, land phase refused on its conflict with main, naming the way on; main merged into its branch, land phase lands its change, and answers it merged after', () => {
+    const dir = project();
+    const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' });
+    ok(dir, openArgs(task));
+    ok(dir, ['land', 'phase', 'pay', '4']);
+    const later = cutTask(dir, '5.1', 'fix', 'Keep the tip', 'main', { 'tip.txt': 'tip, kept\n' });
+    ok(dir, openArgs(later));
+    ok(dir, ['land', 'phase', 'pay', '5']);
+    commitFiles(dir, task.branch, task.branch, { 'tip.txt': 'tip, changed\n' });
+    const before = landedHere(dir, '4.1');
+    const refusal = refusedMoving(dir, ['land', 'phase', 'pay', '4']);
+    mergedInto(dir, task.branch);
+    const landed = own(ok(dir, ['land', 'phase', 'pay', '4']));
 
-      assert.deepStrictEqual([before, refusal, landed.merged, heldOn(dir, 'tip.txt'), landedHere(dir, '4.1'), alreadyMoving(dir, ['land', 'phase', 'pay', '4']).repos], [
-        false,
-        `land: task 4.1 changed since phase 4 landed on main, and its change conflicts with main at tip.txt, so nothing moved — merge main into ${task.branch}, settling the conflict, and land again`,
-        ['4.1'], 'tip, changed\n', true, [],
-      ]);
-    });
-  }
+    assert.deepStrictEqual([before, refusal, landed.merged, heldOn(dir, 'tip.txt'), landedHere(dir, '4.1'), alreadyMoving(dir, ['land', 'phase', 'pay', '4']).repos], [
+      false,
+      `land: task 4.1 changed since phase 4 landed on main, and its change conflicts with main at tip.txt, so nothing moved — merge main into ${task.branch}, settling the conflict, and land again`,
+      ['4.1'], 'tip, changed\n', true, [],
+    ]);
+  });
 
   it('the earlier of two tasks its phase landed, changed on top of its branch: land finish lands its change alone, under the message it landed under, the later task\'s work kept', () => {
     const dir = project();
@@ -105,6 +108,21 @@ describe('land: a task changed after its phase landed, on the local driver (7.2.
     assert.deepStrictEqual([landed.merged, landed.landed_empty, mainLog(dir, 2), heldOn(dir, 'shared.txt')], [
       ['4.1', '4.2'], [{ task: '4.2', why: 'its change was on main already' }], ['feat(pay): Add note', 'feat(pay): Add tip'], 'shared\n',
     ]);
+  });
+
+  it('its recorded tip gone from git, as an expired reflog leaves it, then changed on top of its branch: land phase lands its change over their merge base', () => {
+    const dir = project();
+    const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' });
+    ok(dir, openArgs(task));
+    ok(dir, ['land', 'phase', 'pay', '4']);
+    const manifest = readManifest(dir, 'pay');
+    const landing = manifest.landings['pay-4-1']['.'];
+    const landings = { ...manifest.landings, 'pay-4-1': { '.': { ...landing, tip: '0'.repeat(40) } } };
+    commitOnState(statePath(dir), { [layout.manifest('pay')]: `${JSON.stringify({ ...manifest, landings }, null, 2)}\n` }, 'state: the recorded tip gone');
+    commitFiles(dir, task.branch, task.branch, { 'tip-more.txt': 'more\n' });
+    const landed = own(ok(dir, ['land', 'phase', 'pay', '4']));
+
+    assert.deepStrictEqual([landed.merged, heldOn(dir, 'tip-more.txt')], [['4.1'], 'more\n']);
   });
 
   it('its branch gone, the change kept in the reflog: land phase refused, nothing moved, naming where to make it again', () => {

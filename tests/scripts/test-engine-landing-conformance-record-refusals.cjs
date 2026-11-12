@@ -5,17 +5,21 @@
 // (landing-record.cjs, 7.2.22), against each shipped driver in turn. A
 // refusal records nothing where nothing moved, as every refusal leaves the
 // state as it found it; one after a merge records what that merge landed,
-// by the engine, and nothing its read found landed by hand. A task landed
-// by hand whose branch is rewritten past the default branch before any verb
-// read it is refused by `land open`, `land phase` and `land finish` alike,
-// before anything moves, naming the commit that landed and the way back to
-// it; put back, it is recorded by its read at that landing and that commit
-// (F1). One rewritten before it landed, then given a commit, was never
-// rewritten past its landing, and lands that commit. A
-// record not written after a merge leaves the verb's answer
-// standing, a warning beside it, and the next verb acting on the landing
-// records the task by its read. Conformance layer: the landing world
-// (landing-world.cjs), built once per driver and copied for each test.
+// by the engine, and nothing its read found landed by hand. A task no
+// driver took, landed by hand, whose branch is rewritten past the default
+// branch before any verb read it is refused by `land open`, `land phase`
+// and `land finish` alike, before anything moves, naming the commit that
+// landed and the way back to it, while another phase lands; put back, it is
+// recorded by its read at that landing and that commit (F1). One the driver
+// took, squashed by hand, its branch then rebased onto the default branch
+// and given a fix, changed after its landing, lands the fix, its first
+// landing the squash (N1). One no driver took, rewritten before it landed,
+// then given a commit and the default branch merged back, was never
+// rewritten past its landing: it opens, and lands that commit. A record not
+// written after a merge leaves the verb's answer standing, a warning beside
+// it, and the next verb acting on the landing records the task by its read.
+// Conformance layer: the landing world (landing-world.cjs), built once per
+// driver and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -28,7 +32,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { tip, git, fixtureFrom, cleanupFixture, readManifest, stateGit } = harness;
-const { UNIT, BASE, TASKS, openArgs, own, cutTask, commitFiles, buildLanding, finishReady } = require('./landing-world.cjs');
+const { UNIT, BASE, TASKS, openArgs, own, cutTask, commitFiles, mergeBack, buildLanding, finishReady } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
 const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
@@ -36,7 +40,12 @@ const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/ta
 const { card, rounding } = TASKS;
 
 for (const { name } of listDrivers('landing')) {
-  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void, holds: (dir: string) => string[], byHand: Record<string, (dir: string, branch: string) => void>}} */
+  /**
+   * @type {{
+   *   env: Record<string, string|undefined>, prepare: (dir: string) => void, holds: (dir: string) => string[],
+   *   byHand: Record<string, (dir: string, branch: string) => void>, squashedHere: (dir: string, branch: string) => void,
+   * }}
+   */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const as = { env: side.env };
   const ok = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.ok(at, args, as);
@@ -77,33 +86,52 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual([recordedBy(at), lastState(at)], [{ [`${UNIT}-1-1`]: 'engine' }, `land(${UNIT}): record 1.1 landed`]);
     });
 
-    it('a task landed by hand, then its branch rewritten past the default branch before any verb read it: land open, land phase and land finish each refuse before anything moves, naming the commit that landed and the way back to it; put back, land open answers already, recording it by its read at that landing and that commit (F1)', () => {
+    it('a task no driver took, landed by hand, then its branch rewritten past the default branch before any verb read it: land open, land phase and land finish each refuse before anything moves, naming the commit that landed and the way back to it, and land phase lands another phase all the same; put back, land open answers already, recording it by its read at that landing and that commit (F1)', () => {
       const at = (dir = world());
-      ok(at, openArgs(card));
+      ok(at, openArgs(rounding));
       const landed = tip(at, card.branch);
-      Object.values(side.byHand)[0](at, card.branch);
+      side.squashedHere(at, card.branch);
       const landing = tip(at, 'main');
       commitFiles(at, card.branch, BASE, { 'card.txt': 'card, rewritten\n' });
       const refusals = [openArgs(card), ['land', 'phase', UNIT, '1']].map((args) => refused(at, args));
+      const stood = [tip(at, 'main')];
+      const other = own(ok(at, ['land', 'phase', UNIT, '2'])).merged;
+      const otherLanded = tip(at, 'main');
       finishReady(at);
       refusals.push(refused(at, ['land', 'finish', UNIT]));
-      const stood = tip(at, 'main');
+      stood.push(tip(at, 'main'));
       git(at, ['branch', '-f', card.branch, landed]);
       const again = ok(at, openArgs(card));
       const { by, commit, tip: recorded } = readManifest(at, UNIT).landings[`${UNIT}-1-1`]['.'];
 
-      assert.deepStrictEqual([refusals, stood, again.already, [by, commit, recorded]], [
+      assert.deepStrictEqual([refusals, stood, other, again.already, [by, commit, recorded]], [
         Array(3).fill(`land: task 1.1's branch ${card.branch} was rewritten after its work landed on main (${landing.slice(0, 7)}): its commit ${landed.slice(0, 7)} landed, and the branch no longer holds it — put the branch back where it landed, git branch -f ${card.branch} ${landed.slice(0, 7)}, and run this again; work past that goes on top of it`),
-        landing, true, ['read', landing, landed],
+        [landing, otherLanded], ['2.1'], true, ['read', landing, landed],
       ]);
     });
 
-    it('a task rewritten before it landed by hand — its commit reworded — then given a commit: no rewrite past its landing, land phase lands that commit (F1)', () => {
+    it('a task the driver took, squashed by hand, its branch then rebased onto the default branch — its commit dropped there as applied — and given a fix: changed after its landing, never rewritten past it, land phase lands the fix, its first landing the squash (N1)', () => {
       const at = (dir = world());
-      commitFiles(at, card.branch, `${card.branch}^`, card.files, { message: workMessage('Add the card, reworded', parseShownTask(UNIT, '1.1')) });
       ok(at, openArgs(card));
       Object.values(side.byHand)[0](at, card.branch);
+      const landing = tip(at, 'main');
+      const back = git(at, ['symbolic-ref', '--short', 'HEAD']).trim();
+      git(at, ['rebase', '-q', 'main', card.branch]);
+      git(at, ['switch', '-q', back]);
+      commitFiles(at, card.branch, card.branch, { 'card-fix.txt': 'fixed\n' });
+      const merged = own(ok(at, ['land', 'phase', UNIT, '1'])).merged;
+      const { first, tip: recorded } = readManifest(at, UNIT).landings[`${UNIT}-1-1`]['.'];
+
+      assert.deepStrictEqual([merged, side.holds(at).includes('card-fix.txt'), first, recorded], [['1.1'], true, landing, tip(at, card.branch)]);
+    });
+
+    it('a task no driver took, rewritten before it landed by hand — its commit reworded — then given a commit and the default branch merged back: no rewrite past its landing, land open opens it and land phase lands that commit (F1)', () => {
+      const at = (dir = world());
+      commitFiles(at, card.branch, `${card.branch}^`, card.files, { message: workMessage('Add the card, reworded', parseShownTask(UNIT, '1.1')) });
+      side.squashedHere(at, card.branch);
       commitFiles(at, card.branch, card.branch, { 'card-more.txt': 'more\n' });
+      mergeBack(at, card.branch, 'main');
+      ok(at, openArgs(card));
 
       assert.deepStrictEqual([own(ok(at, ['land', 'phase', UNIT, '1'])).merged, side.holds(at).includes('card-more.txt')], [['1.1'], true]);
     });

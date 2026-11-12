@@ -10,8 +10,9 @@
 // the middle of a merge. A person merges a quick-fix's branch by hand in
 // their own terminal, squashed, with a merge commit or fast-forwarded — the
 // last two keeping its own commits — and a task's branch squashed under
-// git's own message; cherry-picks a commit onto the default
-// branch there; and deletes a branch. A quick-fix is
+// git's own message, or, no landing of it opened, under their own;
+// cherry-picks a commit onto the default branch there; and deletes a
+// branch. A quick-fix is
 // open in a repository while its opening's ref is there. A person lands a
 // phase's branch by hand in their terminal too: squashed under git's own
 // squash message or their own, or with a merge commit; its tasks' own
@@ -45,14 +46,17 @@ function lastTaskBranch(dir, phase) {
   return tasks.reduce((last, task) => (task.n > last.n ? task : last)).branch;
 }
 
+/** Squashed, under the person's own message. @param {string} dir @param {string} branch @param {string} [into] */
+const squashedOwn = (dir, branch, into) => onMain(dir, [['merge', '-q', '--squash', branch], ['commit', '-q', '-m', 'Spell it the British way']], into);
+
 /** Merged in with a merge commit. @param {string} dir @param {string} branch @param {string} [into] */
 const mergeCommit = (dir, branch, into) => onMain(dir, [['merge', '-q', '--no-ff', '-m', `Merge ${branch}`, branch]], into);
 
 module.exports = {
   /** The environment every call runs under: the suite's own. */
   env: {},
-  /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-calls.cjs). */
-  gitCalls: { open: 47, phase: 50, again: 29, finish: 89 },
+  /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-record.cjs). */
+  gitCalls: { open: 44, phase: 48, again: 28, finish: 86 },
   /** The world readied for the driver, once per process. @param {string} dir */
   prepare: (dir) => setLandingDriver(dir, 'local'),
   /** A repository nested in the world readied for the driver: nothing to ready. */
@@ -80,10 +84,11 @@ module.exports = {
   },
   /** The ways a person merges a quick-fix's branch onto the default branch `into` in their own terminal, the checkout put back where it was. */
   byHand: {
-    /** Squashed, under the person's own message. @param {string} dir @param {string} branch @param {string} [into] */
-    'a squash of its branch': (dir, branch, into) => onMain(dir, [['merge', '-q', '--squash', branch], ['commit', '-q', '-m', 'Spell it the British way']], into),
+    'a squash of its branch': squashedOwn,
     'a merge commit of its branch': mergeCommit,
   },
+  /** A task's branch squashed by hand onto the default branch `into` under the person's own message, no landing of it opened. */
+  squashedHere: squashedOwn,
   /** A task's branch squashed by hand under git's own squash message — here, the default branch landing it having nowhere else to be brought from. @param {string} dir @param {string} branch */
   byHandUnpulled: (dir, branch) => onMain(dir, [['merge', '-q', '--squash', branch], ['commit', '-q', '--no-edit']]),
   /** The ways of those, and others, that keep the branch's own commits on the default branch here. */

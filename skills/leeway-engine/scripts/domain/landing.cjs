@@ -1595,16 +1595,17 @@ function quickFixClose(read) {
  * there found it (`earlier`, R30), so a task changed after it landed by
  * hand keeps that landing.
  * @param {Repo} repo
- * @param {{range: {sha: string, ids: string[]}[], merged: Set<string>, recorded: Map<string, import('./landing-record.cjs').LandingRecord>, work: ReturnType<typeof workIn>, first: () => RepoLanded, took: () => Map<string, string>}} read
+ * @param {{range: {sha: string, at: string, ids: string[]}[], merged: Set<string>, recorded: Map<string, import('./landing-record.cjs').LandingRecord>, work: ReturnType<typeof workIn>, first: () => RepoLanded, took: () => Map<string, string>}} read
  * @returns {import('./landing-record.cjs').Landing[]}
  */
 function engineLandings(repo, { range, merged, recorded, work, first, took }) {
   return [...merged].flatMap((id) => {
-    const commit = range.find(({ ids }) => ids.includes(id))?.sha;
-    if (commit === undefined) return [];
+    const named = range.find(({ ids }) => ids.includes(id));
+    if (named === undefined) return [];
+    const { sha: commit, at } = named;
     const landing = { id, repo: repoName(repo), root: repo.path, commit, tip: work.tips().get(id) ?? work.stamps().get(id)?.sha ?? commit, by: /** @type {const} */ ('engine') };
     const earlier = recorded.has(id) ? null : first().earlier(parseTaskId(id), took);
-    return earlier === null || earlier === commit ? [landing] : [{ ...landing, commit: earlier }, landing];
+    return earlier === null || earlier === commit ? [{ ...landing, at }] : [{ ...landing, commit: earlier }, { ...landing, at }];
   });
 }
 
