@@ -480,6 +480,14 @@ describe('Claude\'s proposal and the person\'s yes (16.18.2, 16.18.3, 16.S54)', 
     assert.strictEqual(refusedPerson(fumi, ['keep']), `person keep: the person has not said yes to "${SHOW_FIRST.preference}" — only their y/yes on its screen keeps it, and nothing is written`);
   });
 
+  it('a proposal worded again on the person\'s comment is kept on their yes to its screen drawn again', () => {
+    const fumi = project('fumi');
+    propose(fumi, { ...SHOW_FIRST, preference: 'Show the product first' });
+    ok(fumi, ['gate', 'record proposal', '--typed', 'comment'], { env: ENV });
+
+    assert.deepStrictEqual(kept(fumi, SHOW_FIRST), { ok: true, kept: SHOW_FIRST.preference });
+  });
+
   it('the yes checks the record again under its lock: an entry kept since the proposal is refused, the record left as it was', () => {
     const fumi = project('fumi');
     propose(fumi, SHOW_FIRST);

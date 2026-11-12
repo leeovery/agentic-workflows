@@ -274,18 +274,18 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     assert.deepStrictEqual(steps, ['show', 'show', 'automatic']);
   });
 
-  it('a showing set aside by a Comment shows again however its surface draws it now, and the gate shown keeps the time and the showing it was first drawn on (S2)', () => {
+  it('a showing set aside by a Comment shows again however its surface draws it now, and the gate shown keeps the time its showing opened and the showing it was first drawn on (S2)', () => {
     const dir = project('mint');
     logged(pressed(20, { start: Date.now() - DAY }));
     const first = [['H1', 'H2', 'H3', 'H4'], null];
 
     const [steps, kept] = inConversation(dir, () => {
       const blind = drawn('plan gate', { cwd: dir, place: HUNT, key: first });
-      const { at } = /** @type {{at: string}} */ (lastShown(SESSION));
+      const { opened } = /** @type {{opened: string}} */ (lastShown(SESSION));
       answerGate(dir, 'plan gate', { typed: 'comment' });
       const reordered = drawn('plan gate', planned(dir, ['H4', 'H1', 'H2', 'H3']));
-      const shown = /** @type {{at: string, showing: string}} */ (lastShown(SESSION));
-      return [[blind.step, reordered.step], [shown.at === at, shown.showing]];
+      const shown = /** @type {{opened: string, showing: string}} */ (lastShown(SESSION));
+      return [[blind.step, reordered.step], [shown.opened === opened, shown.showing]];
     });
 
     assert.deepStrictEqual([steps, kept], [['show', 'show'], [true, showingOf(HUNT, first)]]);

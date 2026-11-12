@@ -12,8 +12,8 @@
 //   word, its head, its tail and any detail beneath it, whether the engine
 //   recommended it and what answering it leads to; each typed row by its
 //   key with its label, whether the person answers it in words, and what it
-//   leads to; the time its showing was drawn, a learned gate's showing
-//   (learned-gates.cjs), and its answer once given. The engine's
+//   leads to; the time it was drawn and the time its showing opened, a
+//   learned gate's showing (learned-gates.cjs), and its answer once given. The engine's
 //   dispatch and a skill's gateway write it once the command has answered,
 //   never as the MENU is built; a command that states no gate, or fails,
 //   leaves the last one standing. Nothing is kept for a command Claude
@@ -54,10 +54,13 @@
 //   row, or a typed row that picks items — waiting for its answer, or set
 //   aside by a reply that answered no row: free text, or a typed row the
 //   person answers in words, a Comment or an Ask (6.6.2). Drawn again while
-//   it lasts, the gate shown keeps the showing's time and the showing it was
-//   drawn on, so the showing is one event under one id however many replies
-//   it took, the first read (16.13.3), and a learned gate's shows again
-//   (decision-point.cjs). The gate drawn after a pick is a new showing.
+//   it lasts, the gate shown keeps the time the showing opened and the
+//   showing it was drawn on, so the showing is one event under one id however
+//   many replies it took, the first read (16.13.3), and a learned gate's
+//   shows again (decision-point.cjs); the time it was drawn is this draw's,
+//   so a press, or a proposal's yes (person-verbs.cjs), is told against the
+//   screen the person answered. The gate drawn after a pick is a new
+//   showing.
 // - A learned gate run as an automatic step (learned-gates.cjs) is no answer
 //   (E13): nothing is logged for it, it is never recorded as the gate shown,
 //   and the command clears the gate shown before it, as a raise's draw does,
@@ -67,7 +70,7 @@
 //   a gate already answered; each before the words are read. It writes no
 //   state: the trust log under the trust log's lock (trust-log.cjs), and
 //   the record, marked answered. The event's id is drawn from the
-//   conversation, the gate and when its showing was drawn, so a rerun after
+//   conversation, the gate and when its showing opened, so a rerun after
 //   a kill between the two logs the same event again, read once (16.13.3).
 // ---------------------------------------------------------------------------
 
@@ -92,7 +95,8 @@ const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
  * @property {string} question
  * @property {ShownOption[]} options
  * @property {ShownTypedRow[]} typed
- * @property {string} at when its showing was first drawn
+ * @property {string} at when it was drawn
+ * @property {string} opened when its showing was first drawn
  * @property {string|null} showing a learned gate's showing, null for any other
  * @property {Answered|null} answered
  */
@@ -147,13 +151,15 @@ function recordGateShown() {
   const gate = nameOf(shown.gate);
   try {
     const open = openShowing(session, gate);
+    const at = new Date().toISOString();
     /** @type {ShownRecord} */
     const kept = {
       gate,
       question: shown.question,
       options: shown.options,
       typed: shown.typed.map(({ label, prompt, next }) => ({ key: typedKey(label), label, prompt, next })),
-      at: open?.at ?? new Date().toISOString(),
+      at,
+      opened: open?.opened ?? at,
       showing: open === null ? shown.showing : open.showing,
       answered: null,
     };
@@ -288,7 +294,7 @@ function answerGate(cwd, named, answer) {
   const reading = 'words' in answer ? readAtGate(shown.question, shown.options, answer.words) : null;
   /** @type {string[]} */
   const warnings = [];
-  const id = idFrom(session, name, shown.at);
+  const id = idFrom(session, name, shown.opened);
   record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading, showing: shown.showing }, { cwd, warnings, id });
   writeJsonAtomic(file, { ...shown, answered: { at: new Date().toISOString(), picked, via } });
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };

@@ -166,12 +166,12 @@ const ownFields = ({ gate, recommended, picked, via, with_text: withText, readin
 const inConversation = (fn) => withEnv(conversation(), fn);
 
 describe('the gate shown (3.S6)', () => {
-  it('a render records the gate its MENU states for the conversation: its name, its question, each row with its word, its head, its tail and detail, whether the engine recommends it and what it leads to, each typed row by its key, and when it was shown', () => {
+  it('a render records the gate its MENU states for the conversation: its name, its question, each row with its word, its head, its tail and detail, whether the engine recommends it and what it leads to, each typed row by its key, and when it was shown, its showing opening then', () => {
     const before = Date.now();
     render(['migration-gate']);
     const after = Date.now();
 
-    const { at, ...record } = shown();
+    const { at, opened, ...record } = shown();
     assert.deepStrictEqual(record, {
       gate: 'migration gate',
       question: 'Ready to continue?',
@@ -181,6 +181,7 @@ describe('the gate shown (3.S6)', () => {
       answered: null,
     });
     assert.ok(Date.parse(at) >= before && Date.parse(at) <= after, at);
+    assert.strictEqual(opened, at);
   });
 
   it('is recorded whether or not the gate mod announced itself, which adds only the GATE block to what the render says', () => {
@@ -438,25 +439,25 @@ describe('gate (6.6, 6.S18)', () => {
     assert.deepStrictEqual([again === first, next === first, read], [true, false, ['y', 'b']]);
   });
 
-  it('a showing set aside — by free text or a prompt row — and shown again is one showing: it keeps the time it was first shown, its answers there are logged under one id, read once, the first reply counting; a pick ends it, and the gate shown after is a new showing, its answer a new event (16.13.3, 6.6.2)', () => {
+  it('a showing set aside — by free text or a prompt row — and shown again is one showing: it keeps the time it opened, each draw its own time, its answers there are logged under one id, read once, the first reply counting; a pick ends it, and the gate shown after is a new showing, its answer a new event (16.13.3, 6.6.2)', () => {
     render(['migration-gate']);
-    const { at } = shown();
+    const opening = shown();
     answer(['migration gate', '--typed'], {}, WORDS);
     render(['migration-gate']);
-    const afterWords = shown().at;
+    const afterWords = shown();
     answer(['migration gate', '--typed', 'ask']);
     render(['migration-gate']);
-    const afterAsk = shown().at;
+    const afterAsk = shown();
     answer(['migration gate', '--pick', 'y']);
     render(['migration-gate']);
-    const afterPick = shown().at;
+    const afterPick = shown();
     answer(['migration gate', '--pick', 'y']);
 
     const [first, ...rest] = events().map((event) => event.id);
     /** @type {unknown[]} */
     const read = [];
     inConversation(() => readTrustLog((event) => read.push([event.picked, event.with_text])));
-    assert.deepStrictEqual([afterWords === at, afterAsk === at, afterPick === at], [true, true, false]);
+    assert.deepStrictEqual([afterWords, afterAsk, afterPick].map(({ at, opened }) => [opened === opening.opened, at === opening.at]), [[true, false], [true, false], [false, false]]);
     assert.deepStrictEqual(rest.map((id) => id === first), [true, true, false]);
     assert.deepStrictEqual(read, [[null, true], ['y', false]]);
   });
@@ -464,11 +465,11 @@ describe('gate (6.6, 6.S18)', () => {
   it('a typed row that picks items is an answer: the gate shown after it is a new showing', () => {
     const rows = () => [cmdOption('y', 'yes', 'Go'), rangeOption(1, 4, 'Start work on item(s)')];
     showMenu('shaped gate', rows);
-    const { at } = shown();
+    const { opened } = shown();
     answer(['shaped gate', '--typed', '1-4']);
     showMenu('shaped gate', rows);
 
-    assert.notStrictEqual(shown().at, at);
+    assert.notStrictEqual(shown().opened, opened);
   });
 
   it('a learned gate\'s answer logs the showing it was drawn on, so a replay draws its blind ask again; any other gate\'s logs none', () => {
