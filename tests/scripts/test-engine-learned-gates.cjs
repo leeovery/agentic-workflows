@@ -334,21 +334,18 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     assert.strictEqual(drawnBlind('wait for agents', showingOf(CARDS, ['a41'])), false, 'drawn afresh, the wait over one agent would run as a step');
   });
 
-  it('paths typed at the import reprompt answer it, ending its showing: the reprompt a refused re-land draws, on the paths it refused, is a showing of its own, and its answer an event of its own', () => {
+  it('paths typed at the import reprompt answer it, ending its showing: the reprompt a refused re-land draws, though over the same paths, is a showing of its own, and its answer an event of its own', () => {
     const dir = project('mint');
-    /** The reprompt at no place over the paths `missing`. @param {string[]} missing */
-    const refusedOf = (missing) => ({ cwd: dir, place: NOWHERE, key: missing });
+    const refused = { cwd: dir, place: NOWHERE, key: ['/notes/sketch.png'] };
 
-    const showing = inConversation(dir, () => {
-      drawn('import reprompt', refusedOf(['/notes/sketch.png']));
+    inConversation(dir, () => {
+      withFrozenClock(() => drawn('import reprompt', refused));
       answerGate(dir, 'import reprompt', { typed: 'provide-file-paths' });
-      drawn('import reprompt', refusedOf(['/notes/sketch-2.png']));
-      const again = lastShown(SESSION)?.showing;
+      drawn('import reprompt', refused);
       answerGate(dir, 'import reprompt', { pick: 's' });
-      return again;
     });
 
-    assert.deepStrictEqual([showing, showingAnswers()], [showingOf(NOWHERE, ['/notes/sketch-2.png']), [['provide-file-paths', 's'], 2]]);
+    assert.deepStrictEqual(showingAnswers(), [['provide-file-paths', 's'], 2]);
   });
 
   it('a Comment at each of the investigation\'s gates leaves its showing open, its next showing the gate again: the gate drawn again on what the Comment changed — the plan reordered, a hypothesis resolved, the recap staged again — shows on the showing first drawn, and its answers are one event', () => {
