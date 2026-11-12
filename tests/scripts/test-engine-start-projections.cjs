@@ -2,12 +2,10 @@
 
 // ---------------------------------------------------------------------------
 // The start skill's projections (leeway-engine/scripts/domain/projections/
-// start.cjs, read through start.cjs, inbox-set.cjs and workunit-manage.cjs):
-// the inbox pickup, the archived store, the working set and its gates,
-// manage's list and a unit's manage view, the absorb target menu, the
-// brownfield offer's answer, and the completed and cancelled lists — each a golden of
-// the screen whole, its gate payload held to the menu it states
-// (gate-audit.cjs).
+// start.cjs, read through start.cjs and inbox-set.cjs): the inbox pickup,
+// the archived store, the working set and its gates, and the completed and
+// cancelled action menu — each a golden of the screen whole, its gate
+// payload held to the menu it states (gate-audit.cjs).
 //
 // Layer: verb, each projection called in process over the state the start
 // reads. World: the project world (`setupFixture`), copied for each test,
@@ -28,13 +26,8 @@ const {
   workingSetView,
   workingSetAddGate,
   workingSetDropGate,
-  manageListView,
-  manageUnitView,
-  absorbTargetMenu,
-  completedView,
 } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
 const { combinedInbox, workingSetDetail } = require('../../skills/leeway-engine/scripts/domain/inbox-set.cjs');
-const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
 
 const renderSurface = auditingRender(require('../../skills/leeway-engine/scripts/domain/render.cjs').renderSurface);
@@ -46,40 +39,6 @@ const NB = (n) => '\u00a0'.repeat(n);
 // Golden tests: byte-exact expected strings for the leeway overview
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
-
-// Set the brownfield offer's answer on the project manifest (preserving the
-// registry the manifest helpers may have written).
-function writeBrownfieldOffer(dir, answer) {
-  const fs = require('fs');
-  const path = require('path');
-  const p = path.join(dir, '.leeway', 'manifest.json');
-  const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
-  fs.writeFileSync(p, JSON.stringify({ ...existing, brownfield_offer: answer }, null, 2));
-}
-
-/** All four type sections populated, plus inbox and completed/cancelled. */
-function fullFixture(dir) {
-  createManifest(dir, 'dark-mode', {
-    phases: { discussion: { items: { 'dark-mode': { status: 'in-progress' } } } },
-  });
-  createManifest(dir, 'auth-flow', {
-    phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
-  });
-  createManifest(dir, 'login-crash', { work_type: 'bugfix' });
-  createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
-  createManifest(dir, 'quiz-competition-v1', {
-    work_type: 'epic',
-    phases: {
-      discussion: { items: { 'kitchen-hardware': { status: 'completed' }, 'menu-admin': { status: 'in-progress' } } },
-    },
-  });
-  createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-  createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
-  createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-  createFile(dir, '.leeway/.inbox/ideas/2026-06-02--dark-launch.md', '# Dark Launch\n');
-  createFile(dir, '.leeway/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
-  return startDetail(dir);
-}
 
 const DOTS = '· · · · · · · · · · · ·';
 
@@ -362,174 +321,7 @@ describe('start projections: working set', () => {
   });
 });
 
-describe('start projections: manage list', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('numbers continuously across type sections, matching the overview', () => {
-    const v = manageListView(fullFixture(dir));
-    assert.strictEqual(v.data, [
-      'unit_count: 5',
-      'UNITS (n  work_type  work_unit):',
-      '  1  feature  auth-flow',
-      '  2  feature  dark-mode',
-      '  3  bugfix  login-crash',
-      '  4  quick-fix  rename-api',
-      '  5  epic  quiz-competition-v1',
-    ].join('\n'));
-    assert.strictEqual(v.menu, [
-      DOTS,
-      '**`◆ Which work unit?`**',
-      '',
-      '**`1`**      → Auth Flow — *feature*',
-      '**`2`**      → Dark Mode — *feature*',
-      '**`3`**      → Login Crash — *bugfix*',
-      '**`4`**      → Rename Api — *quick-fix*',
-      '**`5`**      → Quiz Competition V1 — *epic*',
-      '**`b/back`** → Return',
-    ].join('\n'));
-    assert.strictEqual(v.display, undefined, 'the menu is the list — no display beside it');
-  });
-});
-
-describe('start projections: the brownfield offer\'s answer (8.S44, 8.12.1)', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('changes nothing manage offers: nothing asks whether to use the workflows, and no answer gates a way into work', () => {
-    fullFixture(dir);
-    const unanswered = manageListView(startDetail(dir)).menu;
-    for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
-      writeBrownfieldOffer(dir, answer);
-      assert.deepStrictEqual(manageListView(startDetail(dir)).menu, unanswered, answer);
-    }
-  });
-});
-
-describe('start projections: manage unit', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('bare feature: pivot only, no absorb without a discussion or epic target', () => {
-    createManifest(dir, 'auth-flow', {});
-    const md = manageDetail(dir, 'auth-flow');
-    const v = manageUnitView(md);
-    assert.strictEqual(v.data, [
-      'work_unit: auth-flow',
-      'work_type: feature',
-      'status: in-progress',
-      'has_build: false',
-      'has_spec: false',
-      'has_discussion: false',
-      'absorb_available: false',
-      'available_epics: (none)',
-      'ACTIONS (key  word  action):',
-      '  p  pivot  pivot',
-      '  c  cancel  cancel',
-      '  b  back  back',
-    ].join('\n'));
-    assert.strictEqual(v.menu, [
-      DOTS,
-      '**Auth Flow** (feature)',
-      '',
-      '**`◆ What would you like to do?`**',
-      '',
-      '**`p/pivot`**  → Convert to epic (enables multiple topics)',
-      '**`c/cancel`** → Mark as cancelled',
-      '**`b/back`**   → Return',
-      '**Ask**      → Ask a question about this work unit',
-    ].join('\n'));
-    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
-  });
-
-  it('absorbable feature: absorb option; the target menu renders via its builder', () => {
-    createManifest(dir, 'auth-flow', {
-      phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
-    });
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    createManifest(dir, 'v2', { work_type: 'epic' });
-    const md = manageDetail(dir, 'auth-flow');
-    const v = manageUnitView(md);
-    assert.ok(/\*\*`a\/absorb`\*\* +→ Merge into an existing epic/.test(v.menu));
-    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
-    assert.strictEqual(absorbTargetMenu(md), [
-      "=== MENU: absorb target (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      '· · · · · · · · · · · ·',
-      '**`◆ Which epic should absorb it?`**',
-      '',
-      '**`1`**      → V1',
-      '**`2`**      → V2',
-      '',
-      '**`b/back`** → Return',
-      '',
-    ].join('\n'));
-  });
-
-  it('a quick-fix offers no done: its close completes it (19.5.14)', () => {
-    createManifest(dir, 'hotfix', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
-    const v = manageUnitView(manageDetail(dir, 'hotfix'));
-    assert.ok(v.data.endsWith([
-      'ACTIONS (key  word  action):',
-      '  c  cancel  cancel',
-      '  b  back  back',
-    ].join('\n')), v.data);
-    assert.ok(!v.menu.includes('d/done'), v.menu);
-    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
-  });
-
-  it('a build by its cut offers its phases and tasks, and no done: finish completes it (12.12.11)', () => {
-    createManifest(dir, 'ledger', { build: { position: 'auto' }, cut: { phases: [{ name: 'One', scenarios: [], sections: [], relies_on: [] }] } });
-    const v = manageUnitView(manageDetail(dir, 'ledger'));
-    assert.ok(v.data.includes('\nhas_build: true\n'));
-    assert.ok(v.data.endsWith([
-      'ACTIONS (key  word  action):',
-      '  p  pivot  pivot',
-      '  v  view-build  view_build',
-      '  c  cancel  cancel',
-      '  b  back  back',
-    ].join('\n')), 'every row the menu offers resolves by its key or its word');
-    assert.match(v.menu, /^\*\*`v\/view-build`\*\* +→ View the build's phases and tasks$/m);
-  });
-
-  it('manageDetail is null for a missing work unit', () => {
-    assert.strictEqual(manageDetail(dir, 'ghost'), null);
-  });
-
-  it('the absorb-target surface renders its menu and refuses when its guards fail', () => {
-    createManifest(dir, 'auth-flow', {
-      phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
-    });
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    assert.ok(renderSurface(dir, 'absorb-target', { dotpath: 'auth-flow' }).includes('MENU: absorb target'));
-    assert.throws(() => renderSurface(dir, 'absorb-target', { dotpath: 'v1' }), /not absorbable/);
-    assert.throws(() => renderSurface(dir, 'absorb-target', { dotpath: 'ghost' }), /not found/);
-  });
-
-  it('the absorb confirm gate renders its consent and refuses out of place', () => {
-    createManifest(dir, 'auth-flow', {
-      phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
-    });
-    createManifest(dir, 'v1', { work_type: 'epic' });
-
-    assert.strictEqual(renderSurface(dir, 'absorb-confirm-gate', { dotpath: 'auth-flow' }), [
-      "=== MENU: absorb confirm gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      '· · · · · · · · · · · ·',
-      '**`◆ Proceed?`**',
-      '',
-      '**`y/yes`**',
-      '**`n/no`**',
-      '',
-    ].join('\n'));
-
-    assert.throws(() => renderSurface(dir, 'absorb-confirm-gate', { dotpath: 'v1' }), /not absorbable/);
-    assert.throws(() => renderSurface(dir, 'absorb-confirm-gate', { dotpath: 'ghost' }), /not found/);
-  });
-});
-
-describe('start projections: completed & cancelled', () => {
+describe('start projections: the completed and cancelled action menu', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -538,38 +330,7 @@ describe('start projections: completed & cancelled', () => {
     createManifest(d, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(d, 'done-cc', { work_type: 'cross-cutting', status: 'completed', phases: { specification: { items: { 'done-cc': { status: 'completed' } } } } });
     createManifest(d, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
-    return startDetail(d);
   }
-
-  it('the menu is the list — completed then cancelled, numbered continuously, each closing phase its tail', () => {
-    const v = completedView(closedFixture(dir));
-    assert.strictEqual(v.data, [
-      'completed_count: 2',
-      'cancelled_count: 1',
-      'UNITS (n  status  work_type  work_unit  last_phase):',
-      '  1  completed  cross-cutting  done-cc  specification',
-      '  2  completed  feature  done-feat  review',
-      '  3  cancelled  bugfix  dropped  none',
-    ].join('\n'));
-    assert.strictEqual(v.display, undefined, 'no display beside the list');
-    assert.strictEqual(v.menu, [
-      DOTS,
-      '**`◆ Which work unit?`**',
-      '',
-      '**`1`**      → Done Cc — *completed after specification*',
-      '**`2`**      → Done Feat — *completed after review*',
-      '**`3`**      → Dropped — *cancelled during none*',
-      '**`b/back`** → Return',
-    ].join('\n'));
-  });
-
-  it('with nothing closed renders the empty display and no menu', () => {
-    createManifest(dir, 'auth-flow', {});
-    const v = completedView(startDetail(dir));
-    assert.strictEqual(v.display, 'No completed or cancelled work units found.\n');
-    assert.strictEqual(v.menu, undefined);
-    assert.deepStrictEqual(v.rows, []);
-  });
 
   it('the action menu renders over the selected unit, and refuses one the list never holds', () => {
     const { renderSurface } = require('../../skills/leeway-engine/scripts/domain/render.cjs');

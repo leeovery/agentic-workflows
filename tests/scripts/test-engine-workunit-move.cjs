@@ -259,7 +259,7 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     moved(QF, 'feature');
     ok(dir, ['enter', 'discussion', QF], { env: env() });
     writeState(dir, layout.unit(QF, 'topics', QF, 'log.md'), '# Typo\n');
-    ok(dir, ['workunit', 'absorb', QF, '--into', EPIC, '--topic', 'colour'], { env: env() });
+    ok(dir, ['workunit', 'absorb', QF, '--into', EPIC, '--topic', 'colour', '--summary', 'The colour of a typo'], { env: env() });
     const other = okSections(dir, ['enter', 'discussion', EPIC, 'fee-model'], { env: env() }).sections;
 
     assert.deepStrictEqual(earlierReads(other), []);

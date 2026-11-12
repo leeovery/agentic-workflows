@@ -57,7 +57,7 @@ describe('a place set aside (5.8.17)', () => {
     fs.mkdirSync(statePath(dir(), 'mint/topics/mint'), { recursive: true });
     fs.writeFileSync(statePath(dir(), 'mint/topics/mint/log.md'), '# Mint\n');
 
-    ok(dir(), ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes'], { env: SESSION });
+    ok(dir(), ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes', '--summary', 'Mint\'s notes'], { env: SESSION });
     assert.strictEqual(copy(MINT_COPY), null);
     assert.match(/** @type {string} */ (copy(layout.knowledge('records', UNIT, 'mint-notes.md'))), /A framed panel\./);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);

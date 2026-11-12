@@ -18,10 +18,11 @@
 //   has sessions, and the brownfield research while it is owed (18.2.13,
 //   8.12.13); s/start, into discovery, which finds the type (18.2.7);
 //   t/triage (18.2.9); r/roadmap, always; e/verdicts, only while verdicts
-//   wait (18.2.11); v/view, once a unit has closed (18.2.18); and m/manage.
-//   The frame adds h/help.
-// - Triage, the view and manage lead into the conversation, `continue`: the
-//   start skill holds each one's procedure until its own menu is drawn.
+//   wait (18.2.11); v/view, once a unit has closed (18.2.18), into the
+//   closed units; and m/manage (18.3.4), each a menu of its own
+//   (projections/manage.cjs). The frame adds h/help.
+// - Triage leads into the conversation, `continue`: the start skill holds
+//   its procedure until its own menu is drawn.
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
@@ -53,6 +54,9 @@ const CARRY_ON = Object.freeze({ kind: 'continue' });
 
 /** @param {string} skill @param {...string} args @returns {Next} */
 const handoff = (skill, ...args) => ({ kind: 'handoff', skill, args });
+
+/** A row drawing another screen. @param {string} surface @returns {Next} */
+const drawing = (surface) => ({ kind: 'engine', argv: ['render', surface] });
 
 /** Where a unit's type lists it (the header's). @param {string} type */
 const typeRank = (type) => Math.max(0, TYPE_ORDER.indexOf(type));
@@ -117,7 +121,7 @@ function productRow({ product: { sessions, last }, researchOwed }) {
 function verdictRows(n) {
   if (n === 0) return [];
   const label = n === 1 ? 'Give the verdict waiting on a call you changed' : `Give the ${n} verdicts waiting on calls you changed`;
-  return [{ key: 'e', word: 'verdicts', label, next: { kind: 'engine', argv: ['render', 'verdicts'] } }];
+  return [{ key: 'e', word: 'verdicts', label, next: drawing('verdicts') }];
 }
 
 /**
@@ -134,8 +138,8 @@ function startMenuScreen(read) {
       { key: 't', word: 'triage', label: 'Triage the inbox', next: CARRY_ON },
       { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('leeway-roadmap', 'open') },
       ...verdictRows(read.verdicts),
-      ...(read.closed ? [{ key: 'v', word: 'view', label: 'View completed & cancelled work units', next: CARRY_ON }] : []),
-      { key: 'm', word: 'manage', label: 'Manage work units', next: CARRY_ON },
+      ...(read.closed ? [{ key: 'v', word: 'view', label: 'View completed & cancelled work units', next: drawing('closed') }] : []),
+      { key: 'm', word: 'manage', label: 'Manage work units', next: drawing('manage') },
     ],
   };
 }
@@ -151,4 +155,4 @@ function startMenuSurface(cwd) {
   return warned + drawMenu(cwd, MENUS['start-menu'], {}, startMenuScreen(read));
 }
 
-module.exports = { startMenuScreen, startMenuSurface };
+module.exports = { typeRank, startMenuScreen, startMenuSurface };

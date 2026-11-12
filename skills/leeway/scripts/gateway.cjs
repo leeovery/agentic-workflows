@@ -8,9 +8,6 @@
 //   gateway.cjs inbox                 → inbox pickup snapshot (no MENU when the inbox is empty)
 //   gateway.cjs archived              → archived store snapshot
 //   gateway.cjs working-set {path} …  → working-set snapshot (add/drop gates via their own verbs)
-//   gateway.cjs manage                → manage selection snapshot
-//   gateway.cjs manage {work_unit}    → action-menu snapshot (absorb/plan gates via render surfaces)
-//   gateway.cjs completed             → completed & cancelled snapshot
 // ---------------------------------------------------------------------------
 
 const engine = require('../../leeway-engine/scripts/lib.cjs');
@@ -21,9 +18,6 @@ const GATES = Object.freeze({
   inbox: 'inbox menu',
   archived: 'archived pick',
   workingSet: 'working set menu',
-  manage: 'manage pick',
-  manageUnit: 'manage actions',
-  completed: 'completed pick',
 });
 
 function discover(cwd) {
@@ -112,38 +106,10 @@ function workingSetGate(builder) {
   };
 }
 
-// manage → the selection snapshot; manage {work_unit} → the unit's action-menu
-// snapshot; the absorb-target / plan-topic gates are render surfaces.
-function manageView(workUnit) {
-  if (workUnit === undefined) {
-    const v = engine.project.manageListView(discover(process.cwd()));
-    return [
-      engine.gateway.dataBlock(v.data),
-      engine.gateway.titleBlock('Manage'),
-      engine.gateway.menuBlock(GATES.manage, v.menu),
-    ].join('\n');
-  }
-  const md = engine.detail.manageDetail(process.cwd(), workUnit);
-  if (!md) {
-    return engine.gateway.dataBlock({ work_unit: workUnit, error: 'no work unit with this name' });
-  }
-  const v = engine.project.manageUnitView(md);
-  return [
-    engine.gateway.dataBlock(v.data),
-    engine.gateway.menuBlock(GATES.manageUnit, v.menu),
-  ].join('\n');
-}
-
-// The completed & cancelled snapshot: the closed units as a numbered pick
-// menu — or, with nothing closed, the display that says so.
-function completedView() {
-  return pickSnapshot(engine.project.completedView(discover(process.cwd())), 'Completed & Cancelled', GATES.completed);
-}
-
 if (require.main === module) {
   engine.gateway.runGateway({
     index: () => {
-      process.stderr.write('Error: a verb is required\nUsage: gateway.cjs <inbox|archived|working-set|working-set-add-gate|working-set-drop-gate|manage|completed> [args…]\n');
+      process.stderr.write('Error: a verb is required\nUsage: gateway.cjs <inbox|archived|working-set|working-set-add-gate|working-set-drop-gate> [args…]\n');
       return process.exit(1);
     },
     inbox: inboxView,
@@ -151,8 +117,6 @@ if (require.main === module) {
     'working-set': workingSetView,
     'working-set-add-gate': workingSetGate(engine.project.workingSetAddGate),
     'working-set-drop-gate': workingSetGate(engine.project.workingSetDropGate),
-    manage: manageView,
-    completed: completedView,
   });
 }
 

@@ -25,8 +25,8 @@ const { displayWidth } = require('../kernel/terminal.cjs');
 const { titlecase, tag } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, absorbConfirmGate, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
+const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
@@ -40,6 +40,7 @@ const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, addNameRefusal, DEFAULT_KIND } = require('./roadmap.cjs');
+const { cancelledFrom } = require('./topic-leave.cjs');
 const {
   roadmapMapView,
   roadmapAddGate,
@@ -55,7 +56,7 @@ const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_T
 const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
   computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
-  UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
+  UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan, unitOpenRecords,
   postponePlan, postponeTarget, postponedItem, openExperiments, roadmapItems,
   topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
 } = require('./derivations.cjs');
@@ -72,8 +73,6 @@ const { reviewReportSurface, reviewCallsSurface } = require('./review-round.cjs'
 const { reviewTreeSurface } = require('./review-tree.cjs');
 const { finishSurface } = require('./finish.cjs');
 const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
-const { manageDetail } = require('./workunit-manage.cjs');
-const { absorbedMaterial } = require('./workunit-absorb.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
@@ -84,6 +83,7 @@ const { helpSurface } = require('./projections/help.cjs');
 const { verdictsSurface } = require('./verdict.cjs');
 const { startMenuSurface } = require('./projections/start-menu.cjs');
 const { epicMenuSurface } = require('./projections/epic-menu.cjs');
+const { manageSurface, manageUnitSurface, closedSurface, absorbTargetSurface, absorbConfirmSurface } = require('./projections/manage.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -617,18 +617,29 @@ function discoveryCancelStatement(manifest, topic) {
     return `Cancelling **${name}** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.`;
   }
   const parts = [`Cancelling **${name}** marks its ${listJoin(plan.items.map(({ phase, item }) => `${phase} [${item.status}]`))} cancelled — it can be reactivated later.`];
-  const experiments = openExperiments(plan.records);
-  if (experiments.length > 0) {
-    const one = experiments.length === 1;
-    parts.push(`${experiments.length} open experiment${one ? '' : 's'} (${experiments.join(', ')}) end${one ? 's' : ''} abandoned on the register.`);
-  }
+  if (plan.records.length > 0) parts.push(abandonedLine([{ name: null, experiments: openExperiments(plan.records) }]));
   return parts.join(' ');
 }
 
 /**
+ * What a cancel ends on the register, said one way for a topic's cancel and
+ * a unit's: its open experiments, a split counted with its parent
+ * (`openExperiments`), each topic's named by its title where the cancel
+ * spans several.
+ * @param {{name: string|null, experiments: string[]}[]} byTopic
+ * @returns {string}
+ */
+function abandonedLine(byTopic) {
+  const count = byTopic.reduce((n, { experiments }) => n + experiments.length, 0);
+  const one = count === 1;
+  const named = byTopic.map(({ name, experiments }) => (name === null ? experiments.join(', ') : `${name}: ${experiments.join(', ')}`)).join('; ');
+  return `${count} open experiment${one ? '' : 's'} (${named}) end${one ? 's' : ''} abandoned on the register.`;
+}
+
+/**
  * The cancel confirm over one unit — `<wu>.discovery.<topic>` of an epic, or
- * a unit by its bare name — fetched by the epic menu and by a session
- * cancelling its own topic or its unit.
+ * a unit by its bare name — fetched by the epic menu, by a session
+ * cancelling its own topic or its unit, and by manage.
  * The statement names exactly what the cancel takes and stays context; the
  * short question takes the glyph. Yes runs the cancel, `topic cancel` or
  * `workunit cancel`; no carries on. A locked or already-cancelled unit
@@ -663,9 +674,11 @@ function epicUnitCancel(cwd, dotpath) {
 }
 
 /**
- * A unit by its bare name under the cancel gate: the whole unit called off —
- * a single-topic unit's its one topic, an epic's asked for in a session of
- * the unit, its spec, build or review (18.4.20).
+ * A unit by its bare name under the cancel gate: the whole unit called off
+ * where it stands — a single-topic unit's its one topic, an epic's asked for
+ * in a session of the unit, its spec, build or review (18.4.20), or through
+ * manage (18.3.4) — each open experiment record of its ending abandoned
+ * (18.4.22), an epic's named by their topics.
  * @param {string} cwd @param {string} dotpath
  * @returns {{statement: string, cancel: string[]}}
  */
@@ -674,10 +687,11 @@ function workUnitCancel(cwd, dotpath) {
   if (manifest.status !== 'in-progress') {
     throw new Error(`render cancel-gate: "${workUnit}" is ${manifest.status} — only work in progress is cancelled`);
   }
-  return {
-    statement: `Cancelling **${titlecase(workUnit)}** calls off the whole ${typeLabel.toLowerCase()} — it stops where it stands, and can be reactivated later.`,
-    cancel: ['workunit', 'cancel', workUnit],
-  };
+  const parts = [`Cancelling **${titlecase(workUnit)}** calls off the whole ${typeLabel.toLowerCase()} — it stops where it stands, and can be reactivated later.`];
+  const open = unitOpenRecords(manifest);
+  const epic = manifest.work_type === 'epic';
+  if (open.length > 0) parts.push(abandonedLine(open.map(({ topic, ids }) => ({ name: epic ? topicTitle(manifest, topic) : null, experiments: openExperiments(ids) }))));
+  return { statement: parts.join(' '), cancel: ['workunit', 'cancel', workUnit] };
 }
 
 /**
@@ -872,35 +886,6 @@ function topicReceiptSurface(cwd, args) {
   return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
 }
 
-/**
- * The pre-confirm absorb summary — every fact is the feature's own manifest
- * state, read here so the display can never disagree with what the
- * transaction will move. Experiments count top-level records only.
- * @param {string} cwd @param {{dotpath: string, into?: string, topic?: string}} args @returns {string}
- */
-function absorbSummarySurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-summary');
-  if (manifest.work_type !== 'feature') {
-    throw new Error(`render absorb-summary: "${workUnit}" is not a feature — only features absorb into epics`);
-  }
-  if (!isFilled(args.into)) throw new Error('render absorb-summary: --into is required — the target epic');
-  if (!isFilled(args.topic)) throw new Error('render absorb-summary: --topic is required — the landing topic name');
-  const discussion = itemOf(manifest, 'discussion', workUnit);
-  if (!discussion || typeof discussion !== 'object' || typeof discussion.status !== 'string') {
-    throw new Error(`render absorb-summary: feature "${workUnit}" has no discussion — nothing to absorb`);
-  }
-  const series = itemOf(manifest, 'experiment', workUnit);
-  const experiments = series && typeof series === 'object'
-    ? Object.keys(series.experiments || {}).filter((id) => isParentExperimentId(id)).length
-    : 0;
-  return absorbSummary(workUnit, /** @type {string} */ (args.into), /** @type {string} */ (args.topic), {
-    discussion: discussion.status,
-    experiments,
-    seeds: Array.isArray(manifest.seeds) ? manifest.seeds.length : 0,
-    ...absorbedMaterial(cwd, workUnit),
-  });
-}
-
 /** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, renamed?: string, warn?: string}} args @returns {string} */
 function absorbReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
@@ -973,33 +958,6 @@ function pivotContinuation(cwd, args) {
     throw new Error(`render pivot-continuation: "${workUnit}" is not an epic — the pivot has not run`);
   }
   return pivotContinuationMenu(workUnit);
-}
-
-// ---------------------------------------------------------------------------
-// Manage-flow gates — scoped selections the manage sub-flows fetch at their
-// own gate, computed fresh from the same detail the manage snapshot reads.
-// ---------------------------------------------------------------------------
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function absorbTarget(cwd, args) {
-  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-target');
-  const md = manageDetail(cwd, workUnit);
-  if (!md) throw new Error(`render absorb-target: work unit "${workUnit}" not found`);
-  if (!md.absorb_available) {
-    throw new Error(`render absorb-target: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
-  }
-  return absorbTargetMenu(md);
-}
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function absorbConfirmGateSurface(cwd, args) {
-  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-confirm-gate');
-  const md = manageDetail(cwd, workUnit);
-  if (!md) throw new Error(`render absorb-confirm-gate: work unit "${workUnit}" not found`);
-  if (!md.absorb_available) {
-    throw new Error(`render absorb-confirm-gate: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
-  }
-  return absorbConfirmGate();
 }
 
 // ---------------------------------------------------------------------------
@@ -1164,10 +1122,15 @@ function postponeAddress(cwd, dotpath) {
  * each horizon's row leads to that topic's postpone gate; a new horizon,
  * named in words, carries on. With `--park <name>`, it asks where an item
  * Claude is putting on the roadmap goes, saying so above the question
- * (18.8.11), and every row carries on with the horizon picked.
- * @param {string} cwd @param {{dotpath?: string, park?: string}} args @returns {string}
+ * (18.8.11), and every row carries on with the horizon picked. With
+ * `--back <name> --from <what was cancelled>`, it asks where an item a
+ * cancel put back on no horizon goes (18.8.20): each horizon's row moves it
+ * there, `roadmap move … --from`, whose answer leads on (topic-leave.cjs),
+ * and a horizon named in words is moved the same way, as its DATA says.
+ * @param {string} cwd @param {{dotpath?: string, park?: string, back?: string, from?: string}} args @returns {string}
  */
-function horizonPick(cwd, { dotpath, park }) {
+function horizonPick(cwd, { dotpath, park, back, from }) {
+  if (back !== undefined) return horizonBack(cwd, back, from);
   if (park !== undefined && dotpath !== undefined) throw new Error('render horizon-pick: --park names the item being put on the roadmap, and takes no address');
   const postponing = dotpath === undefined ? null : postponeAddress(cwd, dotpath);
   const state = roadmapState(cwd);
@@ -1179,14 +1142,44 @@ function horizonPick(cwd, { dotpath, park }) {
   }
   /** @type {import('./projections/surfaces.cjs').Next|undefined} */
   const carryOn = postponing === null && park === undefined ? undefined : { kind: 'continue' };
-  const options = state.horizons.map((horizon, i) => {
-    const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
-    const next = postponing === null ? carryOn : { kind: /** @type {const} */ ('engine'), argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] };
-    return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` }, { next });
-  });
+  const options = horizonRows(state, (horizon) => (postponing === null ? carryOn : { kind: 'engine', argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] }));
   options.push(cmdOption('n', 'new', 'A new horizon — name it', carryOn === undefined ? {} : { next: carryOn }));
   const putting = park === undefined ? '' : `Putting "${titlecase(park)}" on the roadmap.`;
   return section('MENU: horizon pick', MENU_INSTRUCTION, menu(putting, options, { question: 'Which horizon?' }));
+}
+
+/**
+ * A row for each of the roadmap's horizons, with how many wait there.
+ * @param {{horizons: string[], items: {horizon: string|null, state: string}[]}} state
+ * @param {(horizon: string) => import('./projections/surfaces.cjs').Next|undefined} nextOf
+ */
+function horizonRows(state, nextOf) {
+  return state.horizons.map((horizon, i) => {
+    const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
+    const next = nextOf(horizon);
+    return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` }, next === undefined ? {} : { next });
+  });
+}
+
+/**
+ * `render horizon-pick --back <name> --from <what was cancelled>` (the
+ * pick's): refused for an item not waiting on no horizon.
+ * @param {string} cwd @param {string} name @param {string|undefined} from @returns {string}
+ */
+function horizonBack(cwd, name, from) {
+  if (from === undefined) throw new Error('render horizon-pick: --back takes --from, what was cancelled — <work_unit>, or <work_unit>.discovery.<topic>');
+  cancelledFrom(from);
+  const state = roadmapState(cwd);
+  const row = state.items.find((r) => r.name === name);
+  if (row === undefined || row.horizon !== null || row.state !== 'waiting') throw new Error(`render horizon-pick: "${name}" is no roadmap item waiting on no horizon`);
+  /** @param {string} horizon @returns {import('./projections/surfaces.cjs').Next} */
+  const moved = (horizon) => ({ kind: 'engine', argv: ['roadmap', 'move', name, '--horizon', horizon, '--from', from] });
+  return dataSection([`a horizon named in words: engine roadmap move ${name} --horizon "<the horizon>" --from ${from}, then follow its next`])
+    + section('MENU: horizon pick', MENU_INSTRUCTION, menu(
+      `"${titlecase(name)}" is back on the roadmap, and the horizon it came from has been removed.`,
+      [...horizonRows(state, moved), cmdOption('n', 'new', 'A new horizon — name it', { next: { kind: 'continue' } })],
+      { question: 'Which horizon?' },
+    ));
 }
 
 // ` (new)` for a horizon an existing map does not hold yet; a never-born map
@@ -1491,13 +1484,12 @@ const SURFACES = {
   'postpone-gate': postponeGate,
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
-  'absorb-summary': absorbSummarySurface,
   'absorb-receipt': absorbReceiptSurface,
   'absorb-continuation': absorbContinuationSurface,
   'import-reprompt': importRepromptSurface,
   'pivot-continuation': pivotContinuation,
-  'absorb-target': absorbTarget,
-  'absorb-confirm-gate': absorbConfirmGateSurface,
+  'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
+  'absorb-confirm-gate': absorbConfirmSurface,
   'archived-actions': archivedActionsSurface,
   'archived-delete-gate': archivedDeleteGateSurface,
   'inbox-content': inboxContentSurface,
@@ -1560,6 +1552,9 @@ const SURFACES = {
   'verdicts': (cwd, { unit }) => verdictsSurface(cwd, unit ?? null),
   'start-menu': (cwd) => startMenuSurface(cwd),
   'epic-menu': (cwd, { dotpath }) => epicMenuSurface(cwd, dotpath),
+  manage: (cwd) => manageSurface(cwd),
+  'manage-unit': (cwd, { dotpath, from }) => manageUnitSurface(cwd, dotpath, from),
+  closed: (cwd) => closedSurface(cwd),
 };
 
 /**

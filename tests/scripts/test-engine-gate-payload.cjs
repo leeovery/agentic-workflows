@@ -123,9 +123,9 @@ describe('gate payload — the announce switch', () => {
   });
 
   it('a gateway view says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
-    seedHeldEpic(dir);
-    const plain = runGateway(dir, 'leeway', ['manage']);
-    const announced = runGateway(dir, 'leeway', ['manage'], ANNOUNCED);
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    const plain = runGateway(dir, 'leeway', ['archived']);
+    const announced = runGateway(dir, 'leeway', ['archived'], ANNOUNCED);
 
     assert.ok(!plain.includes('=== GATE'), plain);
     assert.strictEqual(withoutGate(announced), plain);
@@ -180,10 +180,11 @@ describe('gate payload — a render surface', () => {
 
   it('a bare key row states no label — its word is the key the person presses, never a head', () => {
     createManifest(dir, 'auth', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+    createFile(dir, '.leeway/auth/topics/auth/log.md', '# Discussion — auth\n');
     createManifest(dir, 'v1', { work_type: 'epic' });
-    const gate = gateOf(output(dir, ['render', 'absorb-confirm-gate', 'auth'], { env: ANNOUNCED }));
+    const gate = gateOf(output(dir, ['render', 'absorb-confirm-gate', 'auth', '--into', 'v1', '--topic', 'auth', '--summary', 'Signing in'], { env: ANNOUNCED }));
 
-    assert.strictEqual(gate.question, 'Proceed?');
+    assert.strictEqual(gate.question, 'Absorb it?');
     assert.deepStrictEqual(gate.options, [
       { key: 'y', word: 'yes', head: '', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
       { key: 'n', word: 'no', head: '', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
@@ -341,8 +342,6 @@ describe('gate payload — every gateway verb', () => {
       'working-set': [gated('working-set', SET_ITEM), gated('working-set', SET_ITEM, BUG_ITEM)],
       'working-set-add-gate': [gated('working-set-add-gate', SET_ITEM)],
       'working-set-drop-gate': [gated('working-set-drop-gate', SET_ITEM)],
-      manage: [gated('manage'), gated('manage', 'checkout')],
-      completed: [gated('completed')],
     },
     'leeway-roadmap': {
       view: [gated('view')],

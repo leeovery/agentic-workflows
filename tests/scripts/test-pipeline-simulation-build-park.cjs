@@ -46,6 +46,7 @@ const {
 const { leaningCall } = require('./ledger-world.cjs');
 
 const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
+const { manageUnitScreen } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/projections/manage.cjs'));
 
 const WU = SPEC_TO_BUILD_UNIT;
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
@@ -71,7 +72,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     sim.destroy();
   });
 
-  it('13.S16, 12.S44, 12.1.4, 24.S7: two tasks side by side — a stopped builder sent back in with what the task lacked, a decision replaced at the build\'s place parking the other task, the stop report, the person answering against the lean so the task\'s pair reads it again — and on into the review phase with no handoff', async () => {
+  it('13.S16, 12.S44, 12.1.4, 24.S7, 18.S68: two tasks side by side — a stopped builder sent back in with what the task lacked, a decision replaced at the build\'s place parking the other task, the stop report, the person answering against the lean so the task\'s pair reads it again — and on into the review phase with no handoff', async () => {
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
     const handedOff = sim.handoffs.length;
     const ready = sim.run(['task', 'ready', WU]).tasks.map((/** @type {{task: string}} */ t) => t.task);
@@ -135,6 +136,8 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
       'Q1 answered · task 1.2 builds again · nothing waiting on you');
     const replaced = fs.readFileSync(path.join(sim.dir, '.leeway/.ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line)).filter((event) => event.event === 'replaced');
     assert.deepStrictEqual(replaced.map((event) => [event.phase, event.replaces.startsWith(decision.id)]), [['implementation', true]], 'the replacement lands at the build\'s place');
+    assert.deepStrictEqual([sim.manifest(WU).phases.discussion.items[WU].status, manageUnitScreen(sim.dir, sim.manifest(WU)).rows.map(({ key }) => key)], ['completed', ['c']],
+      '18.S68: the decision settled in the build, the feature never back to its discussion, and manage offers it cancel alone');
     sim.read(['ledger', 'affected', WU]);
     const back = briefOf(sim, loop.brief(['builder', WU, '1.2']));
     assert.match(back, /The task changed after your reviewers passed it in round 1/);

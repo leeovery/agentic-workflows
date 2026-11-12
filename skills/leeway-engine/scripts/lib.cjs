@@ -36,7 +36,6 @@ const gateway = require('./gateway.cjs');
 const start = require('./domain/start.cjs');
 const inboxSet = require('./domain/inbox-set.cjs');
 const workunit = require('./domain/workunit-detail.cjs');
-const workunitManage = require('./domain/workunit-manage.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
@@ -93,7 +92,6 @@ module.exports = {
     startDetail: start.startDetail,
     combinedInbox: inboxSet.combinedInbox,
     workingSetDetail: inboxSet.workingSetDetail,
-    manageDetail: workunitManage.manageDetail,
     phaseTargets: workunit.phaseTargets,
     WORK_UNIT_TYPES: workunit.WORK_UNIT_TYPES,
   },
@@ -110,9 +108,6 @@ module.exports = {
     workingSetView: startProjections.workingSetView,
     workingSetAddGate: startProjections.workingSetAddGate,
     workingSetDropGate: startProjections.workingSetDropGate,
-    manageListView: startProjections.manageListView,
-    manageUnitView: startProjections.manageUnitView,
-    completedView: startProjections.completedView,
     revisitPhasesSection: workunitProjections.revisitPhasesSection,
   },
 };

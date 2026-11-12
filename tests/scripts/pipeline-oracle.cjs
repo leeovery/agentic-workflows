@@ -51,6 +51,7 @@ const { MENUS, menuBody } = require(path.join(ROOT, 'skills/leeway-engine/script
 const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
 const { epicMenuSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic-menu.cjs'));
+const { manageSurface, manageUnitSurface, closedSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/manage.cjs'));
 const { unitHandoff } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/unit-handoff.cjs'));
 const { awaitsCut, buildRefusal } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
 const {
@@ -261,6 +262,7 @@ function auditState(dir, label) {
     // An epic's menu draws over whatever state the pipeline is in, but a
     // cancelled epic's, which it refuses.
     if (manifest.work_type === 'epic' && manifest.status !== 'cancelled') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
+    auditMenuDrawn(dir, () => manageUnitSurface(dir, wu), `${label} — ${wu} in manage`);
   }
 
   // The start menu renders whatever state the pipeline is in once boot has
@@ -268,6 +270,10 @@ function auditState(dir, label) {
   // states its gate beside it; every route it builds into a skill is one the
   // handoff takes as it stands.
   if (fs.existsSync(path.join(statePath(dir), '.git'))) auditStartMenu(dir, label);
+
+  // Manage and the closed units draw over whatever state the pipeline is in.
+  auditMenuDrawn(dir, () => manageSurface(dir), `${label} — manage`);
+  auditMenuDrawn(dir, () => closedSurface(dir), `${label} — the closed units`);
 }
 
 // The ledger's projections, held to properties the events and the manifests

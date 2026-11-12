@@ -1,124 +1,33 @@
-# Manage Work Unit
+# Managing a Unit
 
-*Reference for **[leeway](../SKILL.md)***
+*Reference for **[start-menu.md](start-menu.md)***
 
 ---
 
-Manage an in-progress work unit's lifecycle.
-
-## A. Select
-
-Render the manage selection snapshot:
+A unit in manage is drawn with what can be done to it as it stands, opened from manage or from the closed units. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a pick that carries on in the conversation, or a `next` that runs a lifecycle verb, is below. Once it is done — and on the cancel confirm's no — draw again the list the unit was opened from, `render closed` where it was drawn with `--from closed`, else `render manage`, emit its sections verbatim per their markers, and carry on there as the start menu's screens do:
 
 ```bash
-node .claude/skills/leeway/scripts/gateway.cjs manage
+node .claude/skills/leeway-engine/scripts/engine.cjs render {list:[manage|closed]}
 ```
 
-The output is one snapshot in three demarcated sections:
+## Pivot
 
-- **DATA** — reasoning surface: `unit_count` and the `UNITS` table — one line per work unit, `n  work_type  work_unit`, numbering matching the overview. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the menu.
-- **MENU** — the work units as a numbered pick list, then the back row. Emit verbatim per its marker.
-
-Emit the TITLE section, then the MENU section, each verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-#### If user chose `b/back`
-
-→ Return to caller.
-
-#### If user chose a number
-
-Store the selected work unit's `UNITS` row — its name and work type.
-
-→ Proceed to **B. Action Menu**.
-
-## B. Action Menu
-
-Render the selected work unit's manage snapshot:
+`p/pivot` carries on here: load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. Once it has pivoted, fetch the receipt and emit its sections verbatim per their markers, `--warn` where the pivot's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/leeway/scripts/gateway.cjs manage {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot [--warn]
 ```
 
-The response carries demarcated sections:
+## Absorb
 
-- **DATA** — reasoning surface: lifecycle flags (`has_build`, `absorb_available`, …), `available_epics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
-- **MENU** — the action menu, offering exactly the actions this work unit's state allows. Emit verbatim per its marker at this section's gate below.
+`o/absorb` draws the pick of an epic. A number picked names the epic in the pick's DATA, `{epic}`: load **[absorb-into-epic.md](absorb-into-epic.md)** with work_unit = `{work_unit}` and epic = `{epic}`.
 
-> *Output the next fenced block as markdown (not a code block):*
+## Cancel and Reactivate
 
-```
-> Lifecycle actions for this work unit. Cancel abandons it, pivot converts a feature to an epic when the scope grows beyond a single topic, absorb merges a feature's discussion into an existing epic.
-```
-
-Emit the MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-A branch below can only be chosen when the menu offered its option.
-
-#### If user chose `p/pivot`
-
-→ Load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
-
-On return, fetch and emit the `MENU: pivot continuation` section verbatim per its marker:
+`c/cancel` draws the cancel's confirm, whose yes runs `workunit cancel {work_unit}`; `r/reactivate` runs `workunit reactivate {work_unit}`. Once either has run, fetch its receipt and emit its sections verbatim per their markers — `--warn` where the response's `warnings` is non-empty, and for a cancel `--inbox {n}` where its `inbox` lists the waiting messages it moved:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render pivot-continuation {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb {verb:[cancel|reactivate]} [--warn] [--inbox {n}]
 ```
 
-**STOP.** Wait for user response.
-
-**If user chose `c/continue`:**
-
-Invoke `/leeway-continue-epic {selected.name}`.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
-
-**If user chose `b/back`:**
-
-→ Return to caller.
-
-#### If user chose `a/absorb`
-
-→ Load **[absorb-into-epic.md](absorb-into-epic.md)** and follow its instructions as written.
-
-→ Return to caller.
-
-#### If user chose `v/view-build`
-
-Fetch the build's phases and tasks and emit its sections verbatim per their markers:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render build-progress {selected.name}
-```
-
-→ Return to **B. Action Menu**.
-
-#### If user chose `c/cancel`
-
-Run the cancel transaction — one command sets `status: cancelled`, removes the work unit's chunks from the knowledge base, and commits:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs workunit cancel {selected.name}
-```
-
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty, and `--inbox {n}` when its `inbox` lists the waiting messages the cancel moved, `{n}` their count:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel [--warn] [--inbox {n}]
-```
-
-→ Return to caller.
-
-#### If user chose `b/back`
-
-→ Return to caller.
-
-#### If user asked a question
-
-Answer the question. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
-
-→ Return to **B. Action Menu**.
+Then follow the cancel's `next`.

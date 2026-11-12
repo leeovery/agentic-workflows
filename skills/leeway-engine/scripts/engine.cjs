@@ -113,7 +113,7 @@ const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { leaveNext, unitLeaveNext } = require('./domain/topic-leave.cjs');
+const { leaveNext, cancelNext, cancelledFrom } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -237,8 +237,8 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
                   [--seed <path> …]
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
-  workunit pivot <work-unit>
-  workunit absorb <feature> --into <epic> --topic <name>
+  workunit pivot <work-unit> --summary <text> [--description <text>]
+  workunit absorb <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
   workunit move <work-unit> --to feature|bugfix --file <payload.json>
   ${POSITION_USAGE}
   discovery-session close <work-unit|product> -m <message>
@@ -329,7 +329,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   roadmap add-batch --file <items.json>
   roadmap edit <name> --summary <text>
   roadmap rename <old> <new>
-  roadmap move <name> --horizon <h>
+  roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic>]
   roadmap archive <name>
   roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
@@ -365,18 +365,17 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render phase-completed   <wu> --phase <phase>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
-  render cancel-gate       <wu.discovery.name>
+  render cancel-gate       <wu.discovery.name> | <wu>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
   render workunit-receipt  <wu> --verb cancel|reactivate|pivot [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
-  render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved seeds,assets,spikes] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render pivot-continuation <wu>
   render absorb-target     <feature>
-  render absorb-confirm-gate <feature>
+  render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
   render inbox-content     --path <inbox path>[,<inbox path>…]
@@ -386,7 +385,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
-  render horizon-pick      [<wu.discovery.topic> | --park <name>]
+  render horizon-pick      [<wu.discovery.topic> | --park <name> | --back <name> --from <wu>|<wu>.discovery.<topic>]
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
   render inbox-roadmap-gate --file <entries.json>
   render roadmap-harvest-gate
@@ -439,6 +438,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render verdicts [--unit <unit>]
   render start-menu
   render epic-menu <epic>
+  render manage
+  render manage-unit <work-unit> [--from closed]
+  render closed
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -554,10 +556,12 @@ function runVerdict(call, argv) {
 // knowledge-base sync (warn-don't-block), scoped git commit, with an
 // engine-owned message; a unit completes at finish's yes. A cancel answers
 // its `next` from where the calling conversation sits (topic-leave.cjs).
-// pivot flips a feature to an epic — both manifests, the map registration,
-// the re-index — as one transaction with an engine-owned message. absorb merges
-// a feature into an epic as a new topic and deletes the feature — validated
-// completely before anything moves, one multi-pathspec commit at the end.
+// pivot flips a feature to an epic — both manifests, the map registration
+// with the topic's summary and description, the re-index — as one
+// transaction with an engine-owned message. absorb merges a feature into an
+// epic as a new topic, its summary and description carried, and deletes the
+// feature — validated completely before anything moves, one multi-pathspec
+// commit at the end.
 // move stages a quick-fix's or a bugfix's move to another type and draws
 // start this work's screen from it, its yes start this work's.
 // ---------------------------------------------------------------------------
@@ -577,23 +581,29 @@ function runWorkunit(call, argv) {
         sessionLogFile: opts['session-log-file'],
         seeds: lists.seed || [],
       }));
-    } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
+    } else if (command === 'cancel' || command === 'reactivate') {
       const [workUnit, ...extra] = rest;
       if (!workUnit || extra.length > 0) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
       if (command === 'cancel') {
-        respond(call, { ...cancelWorkUnit(call.cwd, workUnit), next: unitLeaveNext(workUnit) });
+        respond(call, { ...cancelWorkUnit(call.cwd, workUnit), next: cancelNext(call.cwd, workUnit) });
         return;
       }
-      respond(call, (command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit)(call.cwd, workUnit));
+      respond(call, reactivateWorkUnit(call.cwd, workUnit));
+    } else if (command === 'pivot') {
+      const { opts, positional } = parseArgs(rest);
+      if (positional.length !== 1 || opts.summary === undefined) {
+        throw new Error('Usage: engine workunit pivot <work-unit> --summary <text> [--description <text>]');
+      }
+      respond(call, pivotWorkUnit(call.cwd, positional[0], { summary: opts.summary, description: opts.description }));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
-      if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
-        throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
+      if (!feature || positional.length !== 1 || !opts.into || !opts.topic || opts.summary === undefined) {
+        throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name> --summary <text> [--description <text>]');
       }
-      respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic }));
+      respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic, summary: opts.summary, description: opts.description }));
     } else if (command === 'move') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit] = positional;
@@ -1034,7 +1044,7 @@ function runTopic(call, argv) {
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
-      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.topic) });
+      respond(call, { ...cancelled, next: cancelNext(call.cwd, `${workUnit}.discovery.${cancelled.topic}`) });
       return;
     }
     respond(call, UNIT_VERBS[/** @type {keyof typeof UNIT_VERBS} */ (command)](call.cwd, workUnit, phase, topic));
@@ -1635,8 +1645,13 @@ function runRoadmap(call, argv) {
       if (positional.length !== 2) throw new Error('Usage: engine roadmap rename <old> <new>');
       respond(call, roadmap.renameRoadmapItem(cwd, positional[0], positional[1]));
     } else if (command === 'move') {
-      if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h>');
-      respond(call, roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
+      if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic>]');
+      if (opts.from === undefined) {
+        respond(call, roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
+      } else {
+        cancelledFrom(opts.from);
+        respond(call, { ...roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon), next: cancelNext(cwd, opts.from) });
+      }
     } else if (command === 'archive') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap archive <name>');
       respond(call, roadmap.archiveRoadmapItem(cwd, positional[0]));

@@ -25,7 +25,7 @@ const path = require('path');
 const { git, stateGit, output, unreadableKnowledge, indexedFiles, hasStore, commitAll, fixtureFrom, layout } = require('./engine-harness.cjs');
 const { holdsWriterLock } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 const {
-  ABSORB, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
+  ABSORB, WORDS, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
 } = require('./absorb-world.cjs');
 
 /** Each record copy written and indexed, so the store holds chunks a transaction can remove. */
@@ -46,7 +46,7 @@ describe('engine workunit absorb — happy path', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('render absorb-summary derives the pre-confirm display from the feature manifest — top-level experiments only', () => {
+  it('render absorb-confirm-gate derives the summary over its confirm from the feature manifest — top-level experiments only', () => {
     const feature = featureManifest();
     feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: {
       E1: { slug: 'x', status: 'concluded', verdict: 'held' },
@@ -54,7 +54,7 @@ describe('engine workunit absorb — happy path', () => {
       E2: { slug: 'z', status: 'running' },
     } } } };
     fix = setupFixture({ feature });
-    const out = output(fix.project, ['render', 'absorb-summary', 'auth-flow', '--into', 'payments', '--topic', 'auth']);
+    const out = output(fix.project, ['render', 'absorb-confirm-gate', 'auth-flow', '--into', 'payments', '--topic', 'auth', ...WORDS]);
     assert.match(out, /DISPLAY: absorb summary/);
     assert.match(out, /Feature: {6}Auth Flow/);
     assert.match(out, /Target: {7}Payments/);
@@ -64,8 +64,8 @@ describe('engine workunit absorb — happy path', () => {
     assert.match(out, /Seed: {9}1 file\(s\) \(origin\)/);
     assert.match(out, /• Move experiment series to epic/);
     assert.match(out, /• Remove feature work unit and directory/);
-    assert.match(engineFails(fix, ['render', 'absorb-summary', 'payments', '--into', 'payments', '--topic', 'auth']).error,
-      /"payments" is not a feature/);
+    assert.match(engineFails(fix, ['render', 'absorb-confirm-gate', 'payments', '--into', 'payments', '--topic', 'auth', ...WORDS]).error,
+      /work unit "payments" is not a feature/);
   });
 
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', (t) => {
@@ -127,7 +127,8 @@ describe('engine workunit absorb — happy path', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
 
     // Epic manifest: statuses mirrored, entries carry their ORIGINAL
-    // timestamps (and seed provenance), map item lands backfill-shaped.
+    // timestamps (and seed provenance), the map item carrying the topic's
+    // words drafted (18.3.7).
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'completed' } });
     assert.strictEqual(res.experiment, undefined, 'a feature with no series reports none');
@@ -138,7 +139,7 @@ describe('engine workunit absorb — happy path', () => {
       { path: 'seeds/roadmap.md', source: 'inbox:idea', seeded_at: '2026-05-01T08:00:00Z' },
       { path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' },
     ]);
-    assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery' });
+    assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery', summary: 'Signing in', description: 'How a person signs in, and stays signed in.' });
 
     // Registration removed; the epic's stays.
     const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
@@ -176,7 +177,7 @@ describe('engine workunit absorb — happy path', () => {
 
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'in-progress' } });
-    assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery' });
+    assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery', summary: 'Signing in', description: 'How a person signs in, and stays signed in.' });
     assert.deepStrictEqual(indexedFiles(fix.project), [EPIC_FILE]);
   });
 
@@ -286,7 +287,7 @@ describe('engine workunit absorb — happy path', () => {
 
     // The holder-named discussion item lands at the topic name for the
     // wait's release join — same-name absorb keeps it.
-    engine(fix, ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth-flow']);
+    engine(fix, ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth-flow', ...WORDS]);
 
     assert.deepStrictEqual(readManifest(fix, 'payments').phases.discussion.items['auth-flow'],
       { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] },
@@ -478,7 +479,7 @@ describe('engine workunit absorb — the topic folder, the assets and the spikes
 
   it('the consent screen names everything the absorb moves — the brief, the waiting mail, the assets but a dot-named one, the spikes', () => {
     fix = copyFixture(materialWorld);
-    const summary = output(fix.project, ['render', 'absorb-summary', 'auth-flow', '--into', 'payments', '--topic', 'auth']);
+    const summary = output(fix.project, ['render', 'absorb-confirm-gate', 'auth-flow', '--into', 'payments', '--topic', 'auth', ...WORDS]);
 
     assert.match(summary, /Mail: {9}1 message\(s\) waiting\n {2}Experiments: {2}1 experiment\(s\)\n {2}Seed: {9}1 file\(s\) \(origin\)\n {2}Assets: {7}2 file\(s\)\n {2}Spikes: {7}2 spike\(s\)\n/);
     assert.ok(summary.includes([
@@ -738,12 +739,12 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
 
   it('refuses self-absorption, unknown units, and wrong work types', () => {
     fix = setupFixture();
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'auth-flow', '--topic', 'auth'], /cannot absorb "auth-flow" into itself/);
-    refusedPristine(['workunit', 'absorb', 'ghost', '--into', 'payments', '--topic', 'auth'], /manifest not found/);
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'ghost', '--topic', 'auth'], /manifest not found/);
-    refusedPristine(['workunit', 'absorb', 'payments', '--into', 'payments', '--topic', 'auth'], /cannot absorb "payments" into itself/);
-    refusedPristine(['workunit', 'absorb', 'payments', '--into', 'auth-flow', '--topic', 'auth'], /not a feature \(work_type: epic\)/);
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'auth-flow2', '--topic', 'auth'], /manifest not found/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'auth-flow', '--topic', 'auth', ...WORDS], /cannot absorb "auth-flow" into itself/);
+    refusedPristine(['workunit', 'absorb', 'ghost', '--into', 'payments', '--topic', 'auth', ...WORDS], /manifest not found/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'ghost', '--topic', 'auth', ...WORDS], /manifest not found/);
+    refusedPristine(['workunit', 'absorb', 'payments', '--into', 'payments', '--topic', 'auth', ...WORDS], /cannot absorb "payments" into itself/);
+    refusedPristine(['workunit', 'absorb', 'payments', '--into', 'auth-flow', '--topic', 'auth', ...WORDS], /not a feature \(work_type: epic\)/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'auth-flow2', '--topic', 'auth', ...WORDS], /manifest not found/);
   });
 
   it('refuses a feature target that is not an epic and an epic that is not in-progress', () => {
@@ -774,14 +775,14 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     // The map's own rule, so the row the absorb lands is never refused
     // once the material has moved.
     for (const name of ['bad.name', 'auth ', 'Auth']) {
-      refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', name], /is not a topic name — a lowercase slug/);
+      refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', name, ...WORDS], /is not a topic name — a lowercase slug/);
     }
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'fee-model'], /already on payments's discovery map/);
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'billing'], /"fee-model" on the map goes by "billing"/);
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'dead-idea'], /was dismissed from payments's discovery map/);
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'session-model'], /discussion topic "session-model" already exists/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'fee-model', ...WORDS], /already on payments's discovery map/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'billing', ...WORDS], /^"fee-model" on payments's discovery map goes by "billing" — pick a different name$/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'dead-idea', ...WORDS], /was dismissed from payments's discovery map/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'session-model', ...WORDS], /discussion topic "session-model" already exists/);
     // The topic folder moves whole, so nothing it holds merges into a folder there.
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'on-disk'], /\.leeway\/payments\/topics\/on-disk already exists — pick a different name/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'on-disk', ...WORDS], /\.leeway\/payments\/topics\/on-disk already exists — pick a different name/);
   });
 
   it('refuses an experiment series already at the topic in the epic', () => {
@@ -866,8 +867,10 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /not valid JSON/);
   });
 
-  it('rejects missing flags and extra positionals', () => {
+  it('rejects missing flags and extra positionals, and a topic with no summary', () => {
     fix = setupFixture();
+    assert.match(engineFails(fix, ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth']).error, /Usage: engine workunit absorb <feature> --into <epic> --topic <name> --summary <text>/);
+    refusedPristine([...ABSORB.slice(0, 7), '--summary', ''], /^workunit absorb: the topic needs its summary — --summary, its one line drafted from its record and its log$/);
     assert.match(engineFails(fix, ['workunit', 'absorb', 'auth-flow', '--into', 'payments']).error, /Usage: engine workunit absorb/);
     assert.match(engineFails(fix, ['workunit', 'absorb', 'auth-flow', '--topic', 'auth']).error, /Usage: engine workunit absorb/);
     assert.match(engineFails(fix, ['workunit', 'absorb']).error, /Usage: engine workunit absorb/);

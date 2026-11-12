@@ -1,15 +1,18 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's work-unit lifecycle: complete, reactivate,
-// cancel and reactivate; a feature pivoted to an epic; a feature absorbed
-// into an epic; shared files re-homed by absorb; and the guards
-// holding mid-pipeline.
+// The pipeline simulation's work-unit lifecycle, through manage as the start
+// skill runs it (manage-work-unit.md): a cancel through its confirm and the
+// unit brought back from the closed units, a completed unit with nothing to
+// do to it; a feature pivoted to an epic; a feature absorbed into an epic,
+// its epic picked and the absorb confirmed; shared files re-homed by absorb;
+// and the guards holding mid-pipeline. A decision changed mid-build (18.S68)
+// is test-pipeline-simulation-build-park.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
-// the skill prose makes, in prose order, and the oracle
-// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// the skill prose makes, in prose order, and the oracle (pipeline-oracle.cjs)
+// audits the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -19,38 +22,94 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { stateGit, sectionOf, completeUnit, startItem } = require('./engine-harness.cjs');
-const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn, epicRow } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn, epicRow, startMenu, answerGate } = require('./pipeline-world.cjs');
+
+const { SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
+
+/** @typedef {import('./pipeline-world.cjs').Sim} SimT */
+/** @typedef {{kind: string, argv?: string[]}} Next */
+
+// A screen the start skill draws, and the rows of the gate it states, each
+// with where it leads.
+/** @param {SimT} sim @param {string[]} argv @returns {{out: string, rows: Record<string, Next>}} */
+function drawn(sim, argv) {
+  const out = sim.render(argv, { expect: 'content' });
+  const { options } = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, SHOWN), 'utf8'));
+  return { out, rows: Object.fromEntries(options.map((/** @type {{key: string, next: Next}} */ { key, next }) => [key, next])) };
+}
+
+// A row picked at the gate drawn, and the screen its next draws.
+/** @param {SimT} sim @param {string} gate @param {string} key */
+function picked(sim, gate, key) {
+  const { next } = answerGate(sim, gate, '--pick', key);
+  assert.strictEqual(next.argv?.[0], 'render', `${gate}'s ${key} draws another screen`);
+  return drawn(sim, next.argv.slice(1));
+}
+
+// The unit's row on a list of units picked, its own screen in manage drawn.
+/** @param {SimT} sim @param {string} gate @param {{rows: Record<string, Next>}} list @param {string} wu */
+function unitPicked(sim, gate, { rows }, wu) {
+  const key = Object.keys(rows).find((k) => rows[k].argv?.[1] === 'manage-unit' && rows[k].argv?.[2] === wu);
+  assert.ok(key, `${gate} lists ${wu}`);
+  return picked(sim, gate, key);
+}
+
+// A unit in manage, from the start menu's m (start-menu.md): manage drawn,
+// the unit picked. Answers the unit's screen.
+/** @param {SimT} sim @param {string} wu */
+function managed(sim, wu) {
+  assert.ok(startMenu(sim).some(({ key }) => key === 'm'), 'the start menu offers manage');
+  return unitPicked(sim, 'manage', picked(sim, 'start menu', 'm'), wu);
+}
+
+// A unit among the closed units, from the start menu's v. Answers the
+// unit's screen in manage.
+/** @param {SimT} sim @param {string} wu */
+function closedPicked(sim, wu) {
+  assert.ok(startMenu(sim).some(({ key }) => key === 'v'), 'the start menu offers the closed units once a unit has closed');
+  return unitPicked(sim, 'closed units', picked(sim, 'start menu', 'v'), wu);
+}
+
+// A lifecycle row's verb run as its next names it.
+/** @param {SimT} sim @param {Next} next */
+const ran = (sim, next) => sim.run(/** @type {string[]} */ (next.argv));
+
+// The pivot as manage-work-unit.md runs it (pivot-to-epic.md): p carries on,
+// the topic's words drafted, the verb run, and its receipt.
+/** @param {SimT} sim @param {string} wu */
+function pivoted(sim, wu) {
+  assert.deepStrictEqual(managed(sim, wu).rows.p, { kind: 'continue' }, 'pivot carries on in the conversation');
+  answerGate(sim, 'manage unit', '--pick', 'p');
+  const res = sim.run(['workunit', 'pivot', wu, '--summary', 'Outgrew a feature', '--description', 'The work grew past one topic.']);
+  assert.match(sim.render(['workunit-receipt', wu, '--verb', 'pivot'], { expect: 'content' }), /is an epic now, its discussion the first topic on its map\./);
+  return res;
+}
 
 describe('pipeline simulation: workunit', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('work-unit lifecycle: complete → reactivate → cancel → reactivate', () => {
+  it('8.8.8, 18.3.4, 18.3.6: the lifecycle through manage — cancel through its confirm, the unit brought back from the closed units; once complete, nothing to do to it there', () => {
     const wu = 'flip';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Lifecycle', '--session-log-file', log]);
     discussed(sim, wu, wu);
 
+    assert.ok(managed(sim, wu).rows.c, 'manage offers the unit in progress its cancel');
+    assert.match(picked(sim, 'manage unit', 'c').out, /Cancelling \*\*Flip\*\* calls off the whole feature/);
+    assert.deepStrictEqual(ran(sim, answerGate(sim, 'cancel gate', '--pick', 'y').next).next, { kind: 'continue' }, 'nothing waits on a horizon, so the cancel goes on in manage');
+    assert.strictEqual(sim.manifest(wu).status, 'cancelled');
+    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'cancel'], { expect: 'content' }), /marked as cancelled/);
+
+    assert.deepStrictEqual(Object.keys(closedPicked(sim, wu).rows), ['r', 'h', 'b'], 'a cancelled unit is brought back from the closed units');
+    ran(sim, answerGate(sim, 'manage unit', '--pick', 'r').next);
+    assert.strictEqual(sim.manifest(wu).status, 'in-progress');
+    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' }), /reactivated/);
+
     completeUnit(sim.dir, wu);
     assert.ok(sim.manifest(wu).completed_at, 'complete stamps completed_at');
-    assert.throws(() => completeUnit(sim.dir, wu), /already completed/);
-    // The completed & cancelled view's route back in: a number resolves to
-    // the unit, its action menu renders over it, r/reactivate runs.
-    assert.match(sim.render(['completed-actions', wu], { expect: 'content' }),
-      /\*\*Flip\*\* \(completed\)[\s\S]*What would you like to do\?/);
-    sim.run(['workunit', 'reactivate', wu]);
-    sim.refuses(['render', 'completed-actions', wu],
-      /"flip" is not completed or cancelled \(status: in-progress\)/);
-    assert.strictEqual(sim.manifest(wu).completed_at, undefined, 'reactivate clears the stamp');
-    sim.run(['workunit', 'cancel', wu]);
-    assert.strictEqual(sim.manifest(wu).status, 'cancelled');
-    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'cancel', '--warn'], { expect: 'content' }),
-      /marked as cancelled/, 'cancel receipt renders from the cancelled state');
-    sim.run(['workunit', 'reactivate', wu]);
-    assert.strictEqual(sim.manifest(wu).status, 'in-progress');
-    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' }),
-      /reactivated/, 'reactivate receipt renders from the restored state');
+    assert.deepStrictEqual(Object.keys(closedPicked(sim, wu).rows), ['h', 'b'], 'a completed unit offers nothing to do to it until its reopen is built');
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {
@@ -61,15 +120,14 @@ describe('pipeline simulation: workunit', () => {
     sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
 
-    sim.run(['workunit', 'pivot', wu]);
+    pivoted(sim, wu);
     assert.strictEqual(sim.manifest(wu).work_type, 'epic');
     const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args])).view;
     const page = board(['--tab', 'unit', '--unit', wu]);
     const row = board(['--tab', 'all']).units.find((/** @type {{unit: string}} */ { unit }) => unit === wu);
     assert.deepStrictEqual([page.kind, page.now, row.phase], ['epic', { phase: 'discussion', since: sim.manifest(wu).phases.discovery.approved_at }, 'discussion'],
       'S1, 18.3.5: the pivot approves the map it lands, so the epic stands past its discovery on its page and in All work, its discovery closed at the pivot');
-    assert.match(sim.render(['pivot-continuation', wu], { expect: 'content' }),
-      /MENU: pivot continuation/, 'the manage flow can fetch the continuation menu post-pivot');
+    assert.deepStrictEqual(Object.keys(managed(sim, wu).rows), ['c', 'h', 'b'], '18.3.5: manage offers the epic a pivot made cancel alone');
 
     // The pivoted epic's map and phases still derive; the topic is decided
     // as any epic topic is, and, the epic's last, the yes goes into its spec.
@@ -82,7 +140,7 @@ describe('pipeline simulation: workunit', () => {
     enterEntry(sim, wu, 'discussion', wu);
     sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    sim.run(['workunit', 'pivot', wu]);
+    pivoted(sim, wu);
     sim.run(['enter', 'discovery', wu]);
     const brief = sim.write('.leeway/.cache/briefs/extra.md', '# Extra\n\nWhat it is.\n');
     const map = sim.write('.leeway/.cache/scratch/approve-map.json', { topics: [{ name: wu }, { name: 'extra', summary: 'An extra point', brief }], parks: [] });
@@ -124,55 +182,57 @@ describe('pipeline simulation: workunit', () => {
     const landed = sim.run(['topic', 'send', feat, feat, '--from', feat, '--content', scratch, '--slug', 'rollback-owner']);
     assert.strictEqual(landed.message_path, path.join(sim.dir, `.leeway/${feat}/topics/${feat}/mail/001-rollback-owner.md`));
 
-    // The manage flow's absorb gates render from the pre-absorb state.
-    assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
-      /MENU: absorb confirm gate/, 'the proceed consent renders for an absorbable feature');
-    assert.match(sim.render(['absorb-summary', feat, '--into', epic, '--topic', 'stray-topic'], { expect: 'content' }),
-      /Experiments: {2}1 experiment\(s\)/, 'the pre-confirm summary derives from the feature manifest — top-level records only');
-
-    const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
+    // Manage's absorb (absorb-into-epic.md): the epic picked, the topic
+    // named as the feature and its words drafted, the confirm over what
+    // moves, and its yes.
+    assert.ok(managed(sim, feat).rows.o, 'manage offers the feature before its spec its absorb');
+    assert.match(picked(sim, 'manage unit', 'o').out, new RegExp(`epic 1: ${epic}`));
+    assert.deepStrictEqual(answerGate(sim, 'absorb target', '--pick', '1').next, { kind: 'continue' });
+    const words = ['--summary', 'Cutting over', '--description', 'Who runs a cutover, and what it costs.'];
+    assert.match(drawn(sim, ['absorb-confirm-gate', feat, '--into', epic, '--topic', feat, ...words]).out, /Experiments: {2}1 experiment\(s\)/,
+      'the summary over the confirm derives from the feature manifest — top-level records only');
+    const absorbed = ran(sim, answerGate(sim, 'absorb confirm gate', '--pick', 'y').next);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway', feat)), 'feature directory removed');
-    assert.deepStrictEqual(absorbed.mail_moved, { path: path.join(sim.dir, `.leeway/${epic}/topics/stray-topic/mail`), count: 1 });
-    assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, 'stray-topic']).files,
-      [path.join(sim.dir, `.leeway/${epic}/topics/stray-topic/mail/001-rollback-owner.md`)],
+    assert.deepStrictEqual(absorbed.mail_moved, { path: path.join(sim.dir, `.leeway/${epic}/topics/${feat}/mail`), count: 1 });
+    assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, feat]).files,
+      [path.join(sim.dir, `.leeway/${epic}/topics/${feat}/mail/001-rollback-owner.md`)],
       'the waiting message waits on the epic topic — its session raises it');
-    assert.match(epicRow(sim, epic, 'Stray Topic') ?? '', /mail waiting/, 'the epic\'s menu cues the waiting message');
+    assert.match(epicRow(sim, epic, 'Stray') ?? '', /mail waiting/, 'the epic\'s menu cues the waiting message');
     const m = sim.manifest(epic);
-    assert.ok(m.phases.discovery.items['stray-topic'], 'absorbed topic lands on the map');
-    assert.strictEqual(m.phases.discussion.items['stray-topic'].status, 'in-progress');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', 'stray-topic', 'log.md')),
+    assert.deepStrictEqual(m.phases.discovery.items[feat], { source: 'discovery', summary: 'Cutting over', description: 'Who runs a cutover, and what it costs.' },
+      '18.3.7: the topic lands on the map with the words drafted');
+    assert.strictEqual(m.phases.discussion.items[feat].status, 'in-progress');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', feat, 'log.md')),
       'the discussion\'s log moved into the epic');
 
     // The series audits whole at its epic identity — item, record, wait,
     // directory — and its register renders at the epic address.
-    const series = m.phases.experiment.items['stray-topic'];
+    const series = m.phases.experiment.items[feat];
     assert.deepStrictEqual([series.status, series.experiments.E1.slug, series.experiments.E1.status], ['in-progress', 'cutover-cost', 'conceived'],
       'the series travels whole — records and derived status intact');
-    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].awaiting_experiments, ['E1'], 'the evidence wait rides the moved discussion item');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', 'stray-topic', 'experiments', 'E1-cutover-cost', 'problem.md')),
+    assert.deepStrictEqual(m.phases.discussion.items[feat].awaiting_experiments, ['E1'], 'the evidence wait rides the moved discussion item');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', feat, 'experiments', 'E1-cutover-cost', 'problem.md')),
       'the record directory moved under the topic name');
-    assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),
+    assert.match(sim.render(['experiment-register', `${epic}.experiment.${feat}`], { expect: 'content' }),
       /E1 cutover-cost/, 'the register renders the moved series at the epic address');
 
     // The feature's lines are the epic topic's: its decision current there,
     // its question moved to the roadmap still later, and the question its
     // experiment measures held from Claude's answer while it runs.
     const read = (/** @type {string[]} */ args) => JSON.parse(sim.read(['ledger', ...args]));
-    const shown = () => ({ record: read(['record', epic, 'stray-topic']), map: read(['map', epic, 'stray-topic']) });
+    const shown = () => ({ record: read(['record', epic, feat]), map: read(['map', epic, feat]) });
     const absorbedReads = shown();
     assert.deepStrictEqual(absorbedReads.record.decisions.map((/** @type {{id: string, assets: {path: string}[]}} */ d) => [d.id, d.assets.map((a) => a.path)]),
       [[owned, [`${epic}/assets/runbook.png`]]], 'the feature\'s decision is current at the epic topic, linking its file where it went');
     const rows = new Map(absorbedReads.map.questions.map((/** @type {{id: string}} */ q) => [q.id, q]));
     assert.deepStrictEqual([rows.get(owner).stands, rows.get(rollback).stands, rows.get(rollback).moved_to], ['answered', 'later', 'roadmap:rollback'],
       'the move the feature made holds at the epic topic');
-    const epicAt = `${epic}.discussion.stray-topic`;
+    const epicAt = `${epic}.discussion.${feat}`;
     sim.refuses(['ledger', 'decide', epicAt, '--answers', cost], /is measured by experiment E1, still running/, null,
       JSON.stringify({ ...made, text: 'A day.', why: 'A guess.' }));
 
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic', '--experiments', '1'], { expect: 'content' }),
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', feat, '--experiments', '1'], { expect: 'content' }),
       /• Experiments: 1 moved/, 'absorb receipt renders from the epic post-state and names the moved series');
-    assert.match(sim.render(['absorb-continuation', epic, '--feature', feat], { expect: 'content' }),
-      /MENU: absorb continuation/, 'the continuation menu renders from the post-absorb state');
 
     // A feature made again under the absorbed one's name holds none of it,
     // and the epic topic keeps it all.
@@ -185,11 +245,11 @@ describe('pipeline simulation: workunit', () => {
     // The release edge survives the move: walking E1 to its verdict at the
     // epic address releases the wait, and the epic topic answers the
     // question it measured.
-    for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, epic, 'stray-topic', 'E1']);
-    const settled = sim.run(['experiment', 'conclude', epic, 'stray-topic', 'E1', '--verdict', 'cutover costs a week — staged rollout adopted']);
+    for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, epic, feat, 'E1']);
+    const settled = sim.run(['experiment', 'conclude', epic, feat, 'E1', '--verdict', 'cutover costs a week — staged rollout adopted']);
     assert.deepStrictEqual(settled.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     const costed = sim.run(['ledger', 'decide', epicAt, '--answers', cost], null, JSON.stringify({ ...made, text: 'A week, staged.', why: 'E1 measured it.' })).id;
-    assert.deepStrictEqual(read(['record', epic, 'stray-topic']).decisions.map((/** @type {{id: string}} */ d) => d.id), [owned, costed]);
+    assert.deepStrictEqual(read(['record', epic, feat]).decisions.map((/** @type {{id: string}} */ d) => d.id), [owned, costed]);
   });
 
   it('shared files: a discussion lands them in its assets, absorb re-homes them over a collision', () => {
@@ -218,7 +278,7 @@ describe('pipeline simulation: workunit', () => {
     // Absorb re-homes the material: the collision suffixes, and the links the
     // rename broke are rewritten in the documents absorb moved.
     const topic = 'ledger-work';
-    const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic]);
+    const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic, '--summary', 'The ledger\'s work']);
     assert.deepStrictEqual(absorbed.renamed_assets, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
     const read = (rel) => fs.readFileSync(path.join(sim.dir, rel), 'utf8');
     assert.match(read(`.leeway/${epic}/topics/${topic}/log.md`), /\.\.\/\.\.\/assets\/dockset-05-2\.png/);
@@ -308,3 +368,4 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
   });
 });
+

@@ -6,10 +6,9 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
-const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createFile } = require('./discovery-test-utils.cjs');
 const { discover } = require('../../skills/leeway/scripts/gateway.cjs');
 
 const ADAPTER = path.join(__dirname, '../../skills/leeway/scripts/gateway.cjs');
@@ -18,65 +17,6 @@ describe('leeway discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
-
-  /** @param {{work_units: {name: string}[]}} group */
-  const names = (group) => group.work_units.map(({ name }) => name);
-
-  it('lists nothing when no work units exist', () => {
-    const r = discover(dir);
-    assert.deepStrictEqual([r.epics, r.features, r.bugfixes, r.quick_fixes].map(names), [[], [], [], []]);
-    assert.deepStrictEqual([r.completed, r.cancelled], [[], []]);
-  });
-
-  it('groups the units in progress by type, the closed ones apart', () => {
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    createManifest(dir, 'dark-mode', { work_type: 'feature' });
-    createManifest(dir, 'login-crash', { work_type: 'bugfix' });
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix' });
-    createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed', phases: { review: { items: { a: { status: 'completed' } } } } });
-    createManifest(dir, 'old', { work_type: 'feature', status: 'completed' });
-    const r = discover(dir);
-    assert.deepStrictEqual([r.epics, r.features, r.bugfixes, r.quick_fixes].map(names), [['v1'], ['dark-mode'], ['login-crash'], ['rename-api']]);
-    assert.deepStrictEqual(r.features.work_units[0], { name: 'dark-mode', work_type: 'feature' });
-  });
-
-  it('an epic stays listed with one topic reviewed and others mid-pipeline, and a feature in review is never filtered out', () => {
-    createManifest(dir, 'mint', {
-      work_type: 'epic',
-      phases: {
-        planning: {
-          items: {
-            'cli-presentation': { status: 'completed' },
-            'mint-release-tool': { status: 'completed' },
-            'commit-command': { status: 'completed' },
-          },
-        },
-        implementation: { items: { 'cli-presentation': { status: 'completed' } } },
-        review: { items: { 'cli-presentation': { status: 'completed' } } },
-      },
-    });
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'completed' } } },
-        planning: { items: { auth: { status: 'completed' } } },
-        implementation: { items: { auth: { status: 'completed' } } },
-        review: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.deepStrictEqual([names(r.epics), names(r.features)], [['mint'], ['auth']]);
-  });
-
-  it('lists the completed and the cancelled units apart, each with the phase it closed in', () => {
-    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    createManifest(dir, 'cancelled-bug', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { 'cancelled-bug': { status: 'completed' } } } } });
-    createManifest(dir, 'active-feat', { work_type: 'feature', phases: { discussion: { items: { 'active-feat': { status: 'in-progress' } } } } });
-    const r = discover(dir);
-    assert.deepStrictEqual(r.completed, [{ name: 'done-feat', work_type: 'feature', status: 'completed', last_phase: 'review' }]);
-    assert.deepStrictEqual(r.cancelled, [{ name: 'cancelled-bug', work_type: 'bugfix', status: 'cancelled', last_phase: 'investigation' }]);
-  });
 
   it('discovers inbox quickfixes', () => {
     createFile(dir, '.leeway/.inbox/quickfixes/2026-03-28--replace-interface.md', '# Replace Interface\n\nContent.');
@@ -193,15 +133,11 @@ describe('leeway sub-view sections', () => {
     }
   });
 
-  it('a pick sub-view lists its rows in the menu alone — TITLE then MENU, the display only when there is nothing to pick', () => {
+  it('a pick sub-view lists its rows in the menu alone — TITLE then MENU', () => {
     createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
-    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
-    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
 
     for (const [args, title, gate, firstRow] of /** @type {[string[], string, string, string][]} */ ([
       [['archived'], 'Archived', 'archived pick', '**`1`**      → Old Idea — *idea, 2026-05-01*'],
-      [['manage'], 'Manage', 'manage pick', '**`1`**      → Auth Flow — *feature*'],
-      [['completed'], 'Completed & Cancelled', 'completed pick', '**`1`**      → Done Feat — *completed after review*'],
     ])) {
       const out = run(args);
       assert.ok(out.includes(`=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===\n# **\`■ ${title}\`**\n\n=== MENU: ${gate} (emit verbatim as markdown (not a code block)) ===\n`), `${args[0]}: ${out}`);
@@ -209,10 +145,6 @@ describe('leeway sub-view sections', () => {
       assert.ok(out.includes(`\n${firstRow}\n`), `${args[0]}: ${out}`);
     }
 
-    fs.rmSync(path.join(dir, '.leeway', 'done-feat'), { recursive: true });
-    const empty = run(['completed']);
-    assert.ok(empty.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\nNo completed or cancelled work units found.\n'), empty);
-    assert.ok(!empty.includes('=== MENU'), empty);
   });
 
   it('an empty inbox answers its display and no gate — the flow returns without a pick', () => {
@@ -226,7 +158,7 @@ describe('leeway sub-view sections', () => {
   it('a call naming no verb is refused with the usage, every verb in it', () => {
     const res = spawnSync('node', [ADAPTER], { cwd: dir, encoding: 'utf8' });
     assert.deepStrictEqual([res.status, res.stdout, res.stderr], [1, '',
-      'Error: a verb is required\nUsage: gateway.cjs <inbox|archived|working-set|working-set-add-gate|working-set-drop-gate|manage|completed> [args…]\n']);
+      'Error: a verb is required\nUsage: gateway.cjs <inbox|archived|working-set|working-set-add-gate|working-set-drop-gate> [args…]\n']);
   });
 
   it('the inbox offers the archived items once one is archived, and only then', () => {

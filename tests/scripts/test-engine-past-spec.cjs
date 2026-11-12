@@ -35,7 +35,6 @@ const assert = require('node:assert');
 const { ok, refusedPristine, readManifest, readState, statePath, writeState, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { pastItsSpec } = require('../../skills/leeway-engine/scripts/domain/spec-standing.cjs');
-const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
 
 /** A map row. @param {number} order */
 const row = (order) => ({ order, summary: `Topic ${order}`, source: 'discovery' });
@@ -123,23 +122,19 @@ describe('every door the spec closes refuses, writing nothing, with the way on f
 
   it('a feature past its spec absorbed, carrying on as work of its own, and an epic past its spec taking a feature in', () => {
     assert.deepStrictEqual([
-      refusedPristine(dir, ['workunit', 'absorb', 'atlas', '--into', 'open', '--topic', 'atlas']).error,
-      refusedPristine(dir, ['workunit', 'absorb', 'loose', '--into', 'fumi', '--topic', 'loose']).error,
+      refusedPristine(dir, ['workunit', 'absorb', 'atlas', '--into', 'open', '--topic', 'atlas', '--summary', 'The map']).error,
+      refusedPristine(dir, ['workunit', 'absorb', 'loose', '--into', 'fumi', '--topic', 'loose', '--summary', 'Loose ends']).error,
     ], [past.ownWork('atlas'), past.absorbInto('fumi')]);
   });
 
   it('a feature past its spec pivoted to an epic: it carries on as work of its own', () => {
-    assert.strictEqual(refusedPristine(dir, ['workunit', 'pivot', 'atlas']).error, past.ownWork('atlas'));
+    assert.strictEqual(refusedPristine(dir, ['workunit', 'pivot', 'atlas', '--summary', 'The map']).error, past.ownWork('atlas'));
   });
 
   it('approve the map, new work as a topic\'s landing is', () => {
     assert.strictEqual(refusedPristine(dir, ['render', 'approve-map', 'fumi']).error, `render approve-map: ${past.newWork('fumi')}`);
   });
 
-  it('manage offers no absorb for a feature past its spec, nor an epic past its spec as the target', () => {
-    const [atlas, loose] = [manageDetail(dir, 'atlas'), manageDetail(dir, 'loose')];
-    assert.deepStrictEqual([atlas?.has_spec, atlas?.absorb_available, loose?.available_epics], [true, false, ['open']]);
-  });
 });
 
 describe('what the spec leaves open', () => {

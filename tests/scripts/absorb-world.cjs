@@ -17,8 +17,11 @@ const os = require('os');
 const path = require('path');
 const { git, stateGit, okSections, refuses, keywordOnlyKnowledge, commitAll, setupFixtureAt } = require('./engine-harness.cjs');
 
+/** The topic's words Claude drafts for its map row (18.3.7). */
+const WORDS = Object.freeze(['--summary', 'Signing in', '--description', 'How a person signs in, and stays signed in.']);
+
 /** The absorb the suites run: the feature into the epic, as the topic auth. */
-const ABSORB = Object.freeze(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth']);
+const ABSORB = Object.freeze(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth', ...WORDS]);
 
 /** A file at `rel` under `dir`, its folders made. @param {string} dir @param {string} rel @param {string} content */
 function writeFile(dir, rel, content) {
@@ -159,6 +162,6 @@ function treeSnapshot(fix) {
 }
 
 module.exports = {
-  ABSORB, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, removeFixture,
+  ABSORB, WORDS, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, removeFixture,
   engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
 };

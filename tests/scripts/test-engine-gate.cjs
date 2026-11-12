@@ -37,7 +37,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { ok, output, refuses, initRepo, cleanupFixture } = require('./engine-harness.cjs');
-const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout, filesUnder } = require('./discovery-test-utils.cjs');
+const { setupFixture, createManifest, createFile, statePath, useTempFolder, withEnv, layout, filesUnder } = require('./discovery-test-utils.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
 const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
@@ -280,13 +280,14 @@ describe('the gate shown (3.S6)', () => {
 
   it('a skill\'s gateway records the gate its MENU states, as the engine\'s dispatch does', () => {
     const script = path.join(SKILLS, 'leeway/scripts/gateway.cjs');
-    const res = spawnSync('node', [script, 'manage'], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...conversation() } });
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    const res = spawnSync('node', [script, 'archived'], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...conversation() } });
     assert.strictEqual(res.status, 0, res.stderr);
 
     const { gate, question, options: [first] } = shown();
-    assert.deepStrictEqual([gate, question], ['manage pick', 'Which work unit?']);
+    assert.deepStrictEqual([gate, question], ['archived pick', 'Which item?']);
     assert.deepStrictEqual(events(), [], 'nothing is logged until the gate is answered');
-    assert.strictEqual(answer(['manage pick', '--pick', first.key]).picked, first.key);
+    assert.strictEqual(answer(['archived pick', '--pick', first.key]).picked, first.key);
   });
 });
 

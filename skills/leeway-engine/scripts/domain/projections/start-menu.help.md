@@ -6,7 +6,7 @@ s → Start begins something new: describe it, and the kind of work is settled a
 t → Triage works through the inbox, the things you noted down to come back to: work on them now, put them on the roadmap, or archive them.
 r → The roadmap holds what you've shaped but not yet committed to build, by horizon.
 e → Verdicts appears while a call you changed waits for your word on what Claude's answer would have cost.
-v → View lists completed and cancelled work, and brings a piece of it back.
-m → Manage pivots a piece of work into an epic, folds it into one, or cancels it.
+v → View lists completed and cancelled work, each opening in manage.
+m → Manage pivots a feature into an epic, folds it into one, cancels a piece of work, or brings a cancelled one back.
 
 Ask → Ask anything about how Leeway works

@@ -178,7 +178,7 @@ describe('pipeline simulation: feature', () => {
     const person = { by: 'person', who_moved_whom: 'none' };
     const point = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'Who may see a filter shared with a team?' })).id;
 
-    sim.run(['workunit', 'pivot', wu]);
+    sim.run(['workunit', 'pivot', wu, '--summary', 'Filters saved and shared', '--description', 'A filter kept by name, for its owner and those it is shared with.']);
     const added = sim.run(['topic', 'add', wu, 'sharing', '--summary', 'Who sees a shared filter', '--brief', briefDraft(sim, wu, 'sharing')]);
     const message = sim.write(`.leeway/.cache/${wu}/discussion/${wu}/message-team-sight.md`, 'Who sees a shared filter\n\nSharing needs decisions of its own.\n');
     const sent = sim.run(['topic', 'send', wu, 'sharing', '--from', wu, '--content', message, '--slug', 'team-sight']);

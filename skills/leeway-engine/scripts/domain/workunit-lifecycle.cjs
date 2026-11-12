@@ -28,13 +28,14 @@ const {
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { addBatchTo, discoveryItems } = require('./discovery-map.cjs');
+const { addBatchTo, arrivingEntry, discoveryItems } = require('./discovery-map.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { moveUnitMailToInbox } = require('./mail.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { todayStamp } = require('./dates.cjs');
-const { computeNextPhase } = require('./derivations.cjs');
+const { computeNextPhase, unitOpenRecords, itemOf, settleItemStatus } = require('./derivations.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
+const { releaseExperimentWaits } = require('./transitions.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -60,6 +61,7 @@ function assertLegalStatus(status) {
  * @property {string[]} [roadmap_reverted] cancel: roadmap items handed back to waiting by the cancel-revert hop
  * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone] cancel: those of them whose horizon was removed meanwhile, now on none
  * @property {string[]} [inbox] cancel: each waiting message's idea in the inbox, absolute
+ * @property {{topic: string, ids: string[]}[]} [abandoned] cancel: each topic's experiment records it ended abandoned
  */
 
 /**
@@ -109,9 +111,31 @@ function completeWorkUnit(cwd, workUnit, { message }) {
   return result;
 }
 
+/** Why a cancelled unit's open experiments ended. */
+const UNIT_CANCELLED = 'work unit cancelled';
+
 /**
- * Cancel a work unit: `status: cancelled`, each of its topics' waiting mail
- * moved to the inbox as ideas under the same lock (10.1.6), remove its
+ * End every open experiment record of the unit abandoned, the cancel its
+ * reason, each topic's evidence waits on them released, as a topic's cancel
+ * ends its own (18.4.22) — so a reactivate finds them abandoned. Mutates the
+ * loaded manifest.
+ * @param {Record<string, any>} manifest @returns {{topic: string, ids: string[]}[]}
+ */
+function abandonUnitExperiments(manifest) {
+  const open = unitOpenRecords(manifest);
+  for (const { topic, ids } of open) {
+    const series = /** @type {Record<string, any>} */ (itemOf(manifest, 'experiment', topic));
+    releaseExperimentWaits(manifest, topic);
+    for (const id of ids) Object.assign(series.experiments[id], { status: 'abandoned', reason: UNIT_CANCELLED });
+    settleItemStatus(series);
+  }
+  return open;
+}
+
+/**
+ * Cancel a work unit: `status: cancelled`, its open experiments ended
+ * abandoned and each of its topics' waiting mail moved to the inbox as
+ * ideas under the same lock (18.4.22, 10.1.6), remove its
  * knowledge-base chunks (warn-don't-block), commit scoped to the work unit
  * and the ideas. Refuses an
  * already-cancelled unit; a completed unit must go through reactivate first —
@@ -122,7 +146,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
  */
 function cancelWorkUnit(cwd, workUnit) {
   assertLegalStatus('cancelled');
-  const mail = withWorkUnitLock(cwd, workUnit, () => {
+  const { mail, abandoned } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     if (manifest.status === 'cancelled') {
       throw new Error(`work unit "${workUnit}" is already cancelled`);
@@ -131,9 +155,10 @@ function cancelWorkUnit(cwd, workUnit) {
       throw new Error(`work unit "${workUnit}" is completed — reactivate it first`);
     }
     manifest.status = 'cancelled';
+    const ended = abandonUnitExperiments(manifest);
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return moveUnitMailToInbox(cwd, manifest);
+    return { mail: moveUnitMailToInbox(cwd, manifest), abandoned: ended };
   });
 
   /** @type {string[]} */
@@ -153,6 +178,7 @@ function cancelWorkUnit(cwd, workUnit) {
   const result = { work_unit: workUnit, status: 'cancelled', inbox: mail.map(({ idea }) => statePath(cwd, idea)), committed: outcome.committed, warnings };
   if (reverted.length > 0) result.roadmap_reverted = reverted;
   if (gone.length > 0) result.roadmap_horizon_gone = gone;
+  if (abandoned.length > 0) result.abandoned = abandoned;
   noteCommitOutcome(result, outcome);
   return result;
 }
@@ -229,18 +255,20 @@ function reactivateWorkUnit(cwd, workUnit) {
 /**
  * Pivot a feature to an epic: flip `work_type` in the work-unit manifest AND
  * the project manifest's registration; in the same save, the feature's single
- * topic (topic name = work unit name) on the discovery map with backfill
- * semantics (summary-backfill drafts summary/description on the next epic
- * entry), first in its order, and the map approved at the pivot
+ * topic (topic name = work unit name) on the discovery map with the summary
+ * and description Claude drafted from its record and its log (18.3.7), first
+ * in its order, and the map approved at the pivot
  * (`phases.discovery.approved_at`, 18.3.5), as approve-map's yes orders and
  * approves a map; re-index the unit so chunk metadata carries the new work_type
  * (warn-don't-block), and commit both manifests. Only an in-progress feature
  * before its spec pivots, its topic gone past it (4.11.2).
  * @param {string} cwd project root
  * @param {string} workUnit
+ * @param {{summary?: string, description?: string}} topic  its map row's words
  * @returns {WorkUnitPivotResult}
  */
-function pivotWorkUnit(cwd, workUnit) {
+function pivotWorkUnit(cwd, workUnit, topic) {
+  const entry = arrivingEntry(workUnit, topic, 'workunit pivot');
   withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.work_type !== 'feature') {
@@ -263,10 +291,8 @@ function pivotWorkUnit(cwd, workUnit) {
     readProjectManifest(cwd);
 
     loaded.work_type = 'epic';
-    addBatchTo(loaded, [{ name: workUnit, summary: '' }], null);
-    const item = discoveryItems(loaded)[workUnit];
-    delete item.summary;
-    item.order = 1;
+    addBatchTo(loaded, [entry], null);
+    discoveryItems(loaded)[workUnit].order = 1;
     loaded.phases.discovery.approved_at = new Date().toISOString();
     saveWorkUnitManifest(cwd, workUnit, loaded);
   });

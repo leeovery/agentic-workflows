@@ -40,8 +40,9 @@
 // ledger and the mailbox under it, so no entry or message lands between the
 // check and the write. A topic's lifecycle is computed at render time with
 // the join every map consumer uses (computeTopicLifecycle), never stored.
-// Pivot, absorb and the pull forward land their topic through `addItem`,
-// inside transactions of their own, which commit.
+// The pull forward lands its topic through `addItem`, and pivot and absorb
+// theirs through `addBatchTo`, inside transactions of their own, which
+// commit.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -256,31 +257,25 @@ function committed(cwd, paths, message, result, warnings) {
 }
 
 /**
- * Land a topic on the map inside a transaction of the caller's — pivot,
- * absorb, the pull forward — writing `{source, summary[, description][,
- * prior]}` and committing nothing. `backfill` lands it with neither summary
- * nor description, for a topic arriving with its work done, its next epic
- * entry drafting them; it excludes both. Refuses a name that names no topic,
- * a topic on the map, and one struck from it unless `reAdd`.
+ * Land a topic on the map inside a transaction of the caller's — the pull
+ * forward — writing `{source, summary[, description][, prior]}` and
+ * committing nothing. Refuses a topic with no summary, a name that names no
+ * topic, a topic on the map, and one struck from it unless `reAdd`.
  * @param {string} cwd @param {string} workUnit @param {string} name
- * @param {{source?: string, summary?: string, description?: string, prior?: {work_unit: string, topic: string}, reAdd?: boolean, backfill?: boolean}} [fields]
+ * @param {{source?: string, summary?: string, description?: string, prior?: {work_unit: string, topic: string}, reAdd?: boolean}} [fields]
  * @returns {MapChange}
  */
-function addItem(cwd, workUnit, name, { source = 'discovery', summary, description, prior, reAdd = false, backfill = false } = {}) {
-  if (backfill && (summary !== undefined || description !== undefined)) {
-    throw new Error('backfill lands the topic without a summary or description — drop one or the other');
-  }
-  if (!backfill && summary === undefined) throw new Error('a topic needs its summary');
+function addItem(cwd, workUnit, name, { source = 'discovery', summary, description, prior, reAdd = false } = {}) {
+  if (summary === undefined) throw new Error('a topic needs its summary');
   const misnamed = topicNameRefusal(name);
   if (misnamed !== null) throw new Error(misnamed);
   const priorRef = prior === undefined ? undefined : validatePrior(prior);
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     assertMapOpen(cwd, manifest, null);
-    const [readded] = addBatchTo(manifest, [{ name, summary: summary ?? '', ...(description === undefined ? {} : { description }), re_add: reAdd }], null,
+    const [readded] = addBatchTo(manifest, [{ name, summary, ...(description === undefined ? {} : { description }), re_add: reAdd }], null,
       { source, reAdd: 'add it back only at the person\'s ask — re-run with --force-dismissed' });
     const item = mapItem(manifest, name);
-    if (backfill) delete item.summary;
     if (priorRef !== undefined) item.prior = priorRef;
     saveWorkUnitManifest(cwd, workUnit, manifest);
     /** @type {MapChange} */
@@ -388,6 +383,20 @@ function addBatchTo(manifest, entries, said, { source = 'discovery', reAdd = 'ad
   }
   if (readded.length > 0) discovery.dismissed = dismissed.filter((n) => !readded.includes(n));
   return readded;
+}
+
+/**
+ * A topic arriving on the map with its work done — a pivot's or an
+ * absorb's — as its batch entry, carrying the summary and description
+ * Claude drafted from its record and its log (18.3.7): refused, in the
+ * words of `said`, with no summary, or a description given empty.
+ * @param {string} name @param {{summary?: string, description?: string}} fields @param {string} said
+ * @returns {BatchEntry}
+ */
+function arrivingEntry(name, { summary, description }, said) {
+  if (typeof summary !== 'string' || summary.trim() === '') throw new Error(`${said}: the topic needs its summary — --summary, its one line drafted from its record and its log`);
+  if (description !== undefined && description.trim() === '') throw new Error(`${said}: --description is empty — give the topic's description, or leave the flag out`);
+  return { name, summary, ...(description === undefined ? {} : { description }) };
 }
 
 /**
@@ -844,7 +853,7 @@ function sequenceMap(cwd, workUnit, orders) {
 }
 
 module.exports = {
-  sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, topicNameRefusal,
+  sequenceMap, addItem, arrivingEntry, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, topicNameRefusal,
   checkTopics, placeTopics, installBriefs, landedPaths, dismiss,
   addBatchTo, checkBatchEntries, draftIn, writeBrief, discoveryItems, roadmapRefusal, twinRefusal, entryTakeIn,
 };

@@ -666,7 +666,7 @@ describe('engine CLI: the re-aim — absorb moves a join, never orphans it', () 
     commitAll(dir, 'feature fixture');
     joinedTo(dir, 'loyalty-feat', 'loyalty');
 
-    const res = engineOk(['workunit', 'absorb', 'loyalty-feat', '--into', 'mvp', '--topic', 'loyalty']);
+    const res = engineOk(['workunit', 'absorb', 'loyalty-feat', '--into', 'mvp', '--topic', 'loyalty', '--summary', 'Repeat-customer rewards']);
     assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty']);
     assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.pulled_to, { work_unit: 'mvp', topic: 'loyalty' });
     const state = runOk(dir, ['state']);
