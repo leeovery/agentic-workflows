@@ -178,6 +178,7 @@ describe('the gate shown (3.S6)', () => {
       options: [{ key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null, recommended: false, next: null }],
       typed: [{ key: 'ask', label: 'Ask', prompt: true, next: null }],
       showing: null,
+      place: null,
       answered: null,
     });
     assert.ok(Date.parse(at) >= before && Date.parse(at) <= after, at);
@@ -260,6 +261,7 @@ describe('the gate shown (3.S6)', () => {
       options: [{ key: 'y', word: 'yes', head: 'Go', tail: null, detail: null, recommended: false, next: null }],
       typed: [],
       showing: null,
+      hold: null,
     });
   });
 

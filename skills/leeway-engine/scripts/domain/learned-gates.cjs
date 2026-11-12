@@ -21,10 +21,12 @@
 //   it; nor the wait's wait, whose next draws the wait again while the agents
 //   run, so as a step it would never stop.
 // - A showing is one occurrence of a gate: drawn, then waiting, set aside
-//   and shown again, until a pick answers it or it runs as a step. Its digest
-//   (`showingOf`) hashes the gate's place — unit, phase and topic — with the
-//   key its surface draws it from out of its own state, the same on every
-//   redraw of one showing and different between showings. Its answer logs it
+//   and shown again, until a pick that leaves the gate answers it or it runs
+//   as a step. The wait's wait leaves it open: its next draws the wait again
+//   at its place, the same showing. Its digest (`showingOf`) hashes the
+//   gate's place — unit, phase and topic — with the key its surface draws it
+//   from out of its own state, the same on every redraw of one showing and
+//   different between showings. Its answer logs it
 //   (trust-events.cjs), so a replay draws a past showing again as it was
 //   drawn: `drawnBlind(gate, showing)`.
 // - A gate shows while its count asks (trust-counts.cjs): with no answers at
@@ -35,8 +37,8 @@
 //   ask, one showing in twenty (16.21.3), drawn from a hash of the gate's
 //   name and its showing (E3) — so a redraw draws alike, and the draw is the
 //   showing's, never the render's.
-// - Nothing here reads: the counts, the build's position, the showing open in
-//   the conversation and the time are the decision point's
+// - Nothing here reads: the counts, the build's position, the showing held at
+//   the gate's place (showing-hold.cjs) and the time are the decision point's
 //   (decision-point.cjs), and a step drawn in the place of a gate's menu is
 //   the surfaces' (projections/surfaces.cjs).
 // ---------------------------------------------------------------------------
@@ -44,13 +46,15 @@
 const crypto = require('crypto');
 
 /** @typedef {import('./trust-counts.cjs').State} State */
+/** Where a gate comes: its unit, phase and topic, each null where it comes at none. @typedef {{unit: string|null, phase: string|null, topic: string|null}} Place */
+/** A showing held at its gate's place (showing-hold.cjs): the place, and when it opened. @typedef {{place: Place, opened: string}} Hold */
 /**
  * A gate's step: shown, or run as an automatic step on one of its rows —
  * each for the gate it was drawn for, on the showing it was drawn on, none
- * for a gate off the list.
- * @typedef {{step: 'show', gate: string, showing: string|null} | {step: 'automatic', gate: string, row: string, showing: string}} GateStep
+ * for a gate off the list; shown, with the showing's hold, none where the
+ * decision point holds none.
+ * @typedef {{step: 'show', gate: string, showing: string|null, hold: Hold|null} | {step: 'automatic', gate: string, row: string, showing: string}} GateStep
  */
-/** Where a gate comes: its unit, phase and topic, each null where it comes at none. @typedef {{unit: string|null, phase: string|null, topic: string|null}} Place */
 
 /** Each learned gate by its name: the report of each row that may run as an automatic step. @type {Readonly<Record<string, Readonly<Record<string, string>>>>} */
 const LEARNED = Object.freeze({
@@ -78,10 +82,17 @@ const LEARNED = Object.freeze({
 // The share of a gate's showings asked blind once it runs as a step (16.20.2).
 const BLIND_ASK = 0.05;
 
+// Each learned gate's rows whose next draws the gate again at its place, so
+// a pick of one leaves its showing open.
+/** @type {Readonly<Record<string, readonly string[]>>} */
+const KEEPING = Object.freeze({
+  'wait for agents': Object.freeze(['w']),
+});
+
 // A showing's digest, in hex digits.
 const SHOWING_DIGITS = 16;
 
-// Where a declared gate's name ends and its entry begins, as gate.cjs reads it.
+// Where a declared gate's name ends and its entry begins.
 const ENTRY_SEPARATOR = ' — ';
 
 /**
@@ -98,6 +109,11 @@ function learnedGate(declared) {
 function reportOf(name, row) {
   const reports = LEARNED[name];
   return reports !== undefined && Object.hasOwn(reports, row) ? reports[row] : null;
+}
+
+/** Whether a pick of the gate `name`'s row `row` leaves its showing open. @param {string} name @param {string} row */
+function keepsShowing(name, row) {
+  return KEEPING[name]?.includes(row) ?? false;
 }
 
 /** The SHA-1 of `value` as JSON. @param {unknown} value */
@@ -117,8 +133,8 @@ function drawnBlind(name, showing) {
   return digest([name, showing]).readUInt32BE(0) / 2 ** 32 < BLIND_ASK;
 }
 
-/** The gate `gate` shown on its showing `showing`. @param {string} gate @param {string|null} showing @returns {GateStep} */
-const shows = (gate, showing) => ({ step: 'show', gate, showing });
+/** The gate `gate` shown on its showing `showing`, held by `hold`. @param {string} gate @param {string|null} showing @param {Hold|null} [hold] @returns {GateStep} */
+const shows = (gate, showing, hold = null) => ({ step: 'show', gate, showing, hold });
 
 /**
  * Whether the learned gate `name`, on its showing `showing`, shows or runs
@@ -132,4 +148,4 @@ function stepOf(name, { asks, usual }, showing) {
   return { step: 'automatic', gate: name, row: usual, showing };
 }
 
-module.exports = { LEARNED, BLIND_ASK, learnedGate, reportOf, showingOf, drawnBlind, shows, stepOf };
+module.exports = { LEARNED, BLIND_ASK, ENTRY_SEPARATOR, learnedGate, reportOf, keepsShowing, showingOf, drawnBlind, shows, stepOf };

@@ -166,6 +166,7 @@ describe('the frame (E1, 18.9.1, 18.9.4, 23.2.1)', () => {
       ],
       typed: [{ label: 'Pick', prompt: true, next: { kind: 'continue' } }],
       showing: null,
+      hold: null,
     });
   });
 
@@ -396,6 +397,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
       options: [{ key: 'b', word: 'back', head: 'Back to triage', tail: null, detail: null, recommended: false, next: { kind: 'engine', argv: ['render', 'triage'] } }],
       typed: [{ label: 'Ask', prompt: true, next: { kind: 'continue' } }],
       showing: null,
+      hold: null,
     });
   });
 

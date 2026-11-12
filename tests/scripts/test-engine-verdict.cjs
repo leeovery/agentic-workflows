@@ -498,6 +498,7 @@ describe('the verdict page (16.10.6, 16.10.7, 16.10.12, 18.4.2)', () => {
       ],
       typed: [],
       showing: null,
+      hold: null,
     });
   });
 

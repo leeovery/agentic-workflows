@@ -127,6 +127,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
 const decisionPoint = require('./decision-point.cjs');
+const { endShowing } = require('./showing-hold.cjs');
 const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, refusing, stands } = require('./staged-payload.cjs');
 const { ontoEpic } = require('./topic-leave.cjs');
 
@@ -165,6 +166,8 @@ const { ontoEpic } = require('./topic-leave.cjs');
  */
 
 const PHASE = 'discussion';
+// The learned gate over the topic's agents still running as it closes.
+const WAIT = 'wait for agents';
 const DECIDED_USAGE = [
   'decided yes <work-unit> <topic>',
   'decided strike <work-unit> <topic> <n> [--page]',
@@ -634,17 +637,23 @@ function decidedStrikeSurface(cwd, { dotpath, page }) {
 
 /**
  * `render wait-agents <unit>.<topic>`: the wait for the topic's agents still
- * running, or nothing where none is — a learned gate, drawn as the decision
- * point steps it at the topic's discussion.
+ * running — a learned gate, drawn as the decision point steps it at the
+ * topic's discussion — or, where none is, nothing, the wait no longer due
+ * and its showing's hold ended.
  * @param {string} cwd @param {{dotpath?: string}} args
  * @returns {string}
  */
 function waitAgentsSurface(cwd, { dotpath }) {
-  const { unit, topic, manifest } = topicAddress(stateRoot(cwd), dotpath, 'wait-agents');
+  const root = stateRoot(cwd);
+  const { unit, topic, manifest } = topicAddress(root, dotpath, 'wait-agents');
   if (itemOf(manifest, PHASE, topic) === undefined) throw new Error(`render wait-agents: ${unit} has no discussion of "${topic}"`);
+  const place = { unit, phase: PHASE, topic };
   const running = runningAgents(cwd, unit, PHASE, topic);
-  if (running.length === 0) return '';
-  const step = decisionPoint.gateStep('wait for agents', { cwd, place: { unit, phase: PHASE, topic }, key: running.map(({ id }) => id) });
+  if (running.length === 0) {
+    endShowing(root, WAIT, place);
+    return '';
+  }
+  const step = decisionPoint.gateStep(WAIT, { cwd, place, key: running.map(({ id }) => id) });
   return waitAgents(unit, topic, topicTitle(manifest, topic), running.map(({ kind }) => kind), step);
 }
 

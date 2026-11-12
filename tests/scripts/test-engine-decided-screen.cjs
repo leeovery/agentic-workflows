@@ -12,7 +12,8 @@
 // changed none (16.S34), then the decided gate (9.S21); a payload the map
 // or the record refuses staging nothing; `engine decided strike|unstrike`
 // and `render decided-strike` (P8); and the wait for the topic's agents
-// still running (9.S63), a learned gate (9.S47).
+// still running (9.S63), a learned gate (9.S47), its showing held at the
+// topic until no agent is left.
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs).
 // ---------------------------------------------------------------------------
@@ -28,6 +29,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerHelpers } = require('./ledger-world.cjs');
 const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
+const { showingOf } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, screen, staged, answer, run, reverse } = decidedHelpers(dir);
@@ -239,6 +241,25 @@ describe('the wait for agents (9.7.8, 9.S63)', () => {
 
   it('refuses a topic the unit lacks', () => {
     assert.strictEqual(refusedPristine(dir(), ['render', 'wait-agents', `${UNIT}.ghost`]).error, 'render wait-agents: fumi has no topic "ghost"');
+  });
+
+  it('holds its showing at the topic while its agents run, its wait leaving it open, and lets it go once none is left, so the next batch\'s wait is a showing of its own (N1)', () => {
+    const place = { unit: UNIT, phase: 'discussion', topic: 'note-window' };
+    const cache = (/** @type {string[]} */ ...names) => statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', ...names);
+    const held = () => (fs.existsSync(cache('.showings', 'wait-for-agents.json')) ? JSON.parse(fs.readFileSync(cache('.showings', 'wait-for-agents.json'), 'utf8')).showing : null);
+    const dispatched = (/** @type {string} */ kind) => ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', kind], { env: RUNNING }).id;
+
+    const first = dispatched('deep-dive');
+    wait();
+    answer('wait for agents', 'w');
+    const waited = held();
+    fs.writeFileSync(cache(`${first}.md`), 'Found.\n');
+    const none = wait();
+    const after = held();
+    const second = dispatched('review');
+    wait();
+
+    assert.deepStrictEqual([waited, none, after, held()], [showingOf(place, [first]), '', null, showingOf(place, [second])]);
   });
 
   it('9.S47, 3.S11: is a learned gate, stepped by the decision point at the topic\'s discussion, each showing told by the agents it waits on — run as a step on its go, its report stands in its menu\'s place and its DATA carries the go\'s next — and none is asked while nothing runs', (t) => {

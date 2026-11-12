@@ -20,7 +20,8 @@
 // on and the code; and its close (domain/investigation-conclude.cjs), the
 // conclude gate, `render conclude`, a verdict owed asked first — none where
 // the gate runs as an automatic step, each waiting in the verdict queue
-// (16.10.11) — and its yes,
+// (16.10.11), and a conclude set aside held at the investigation through the
+// raises and the verdicts asked meanwhile — and its yes,
 // `investigation conclude`, standing only once the root cause and the fix
 // rest on current entries, both validated since, nothing of the person's
 // open and no mail waiting, which completes the item, stamps its close,
@@ -57,6 +58,8 @@ const { ledgerHelpers } = require('./ledger-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 const { huntIn } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
 const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
+const { TRUST_LOG } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
+const { history, lines, DAY } = require('./trust-world.cjs');
 
 const BUG = 'crash';
 const HUNT = 'hunt';
@@ -1014,6 +1017,11 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
 
   /** A call the person changed in the investigation, answering against Claude's lean: its decision's short id. */
   async function departed() {
+    return raised('2');
+  }
+
+  /** A call raised in the investigation, the person picking `pick` where Claude leans to 1: its decision's short id. @param {string} pick */
+  async function raised(pick) {
     const asked = wrote('ask', [], { ...CLAUDE, text: 'Should restore say what it lost?' });
     const call = {
       question: 'Should restore say what it lost?',
@@ -1024,7 +1032,34 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
       lean: '1', why: 'Restore is quiet today.', sort: 'one', mechanism: 'Restore prints one line.', product_wide: false,
     };
     const { res } = await okSectionsAsync(dir, ['raise', RIPE_AT, '--answers', asked], { env: env(), stdin: JSON.stringify(call) });
-    return ok(dir, ['raise', 'answer', res.raise, '--pick', '2'], { env: env(), stdin: JSON.stringify({ why: 'The person wants to know.' }) }).id;
+    return ok(dir, ['raise', 'answer', res.raise, '--pick', pick], { env: env(), stdin: JSON.stringify({ why: 'The person wants to know.' }) }).id;
+  }
+
+  /**
+   * The conclude learned, its count asking with 12 yeses, drawn on a showing
+   * set aside by free text read as its yes — so its count is quiet — and
+   * `meanwhile` run before it is drawn again: whether each draw showed its
+   * gate, whether the last kept the showing's opening, and the answers then
+   * logged on its showing, by the row each picked, and how many ids they are
+   * logged under.
+   * @param {import('node:test').TestContext} t @param {() => Promise<string>} meanwhile what is run, and the conclude drawn again
+   */
+  async function setAside(t, meanwhile) {
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
+    const h = history({ project: JSON.parse(readState(dir, layout.projectManifest)).project_id, start: Date.now() - DAY });
+    for (let i = 0; i < 12; i += 1) h.gate('conclude gate', { picked: 'y' });
+    fs.writeFileSync(path.join(config, TRUST_LOG), lines(...h.events));
+    const shownGate = () => JSON.parse(fs.readFileSync(path.join(config, 'conversations', 'sess-1', 'gate-shown.json'), 'utf8'));
+    const gated = (/** @type {string} */ out) => /^=== MENU: conclude gate /m.test(out);
+
+    const first = gated(conclude());
+    const { opened } = shownGate();
+    ok(dir, ['gate', 'conclude gate', '--typed'], { env: { ...env(), CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'y' } }) }, stdin: 'Yes, that is the bug.' });
+    const again = gated(await meanwhile());
+    const kept = shownGate().opened === opened;
+    run(['gate', 'conclude gate', '--pick', 'y']);
+    const answers = fs.readFileSync(path.join(config, TRUST_LOG), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter((e) => e.gate === 'conclude gate' && e.showing !== null);
+    return [[first, again, kept], answers.map((e) => e.picked), new Set(answers.map((e) => e.id)).size];
   }
 
   it('16.10.5: a call the person changed in the investigation is asked its verdict first, at the conclusion, and the yes waits for it; none changed, none asked', async () => {
@@ -1059,5 +1094,26 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual(sections.slice(sections.indexOf('=== DATA')).split('\n').slice(1, 4), ['automatic step: conclude gate', 'ran: y', `next: {"kind":"engine","argv":["investigation","conclude","${RIPE}"]}`]);
     assert.strictEqual(concluded, RIPE);
     assert.deepStrictEqual(run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
+  });
+
+  it('a conclude set aside stays held at the investigation through a call the person changed meanwhile — its raise drawn, then its verdict asked first on the conclude\'s own screen: drawn again after the verdict, it shows on its hold, never drawn, and its answers are one event (S1)', async (t) => {
+    const outcome = await setAside(t, async () => {
+      await departed();
+      const verdict = conclude(RIPE, null);
+      assert.match(verdict, /^=== MENU: verdict /m);
+      run(run(['gate', 'verdict', '--pick', 'n']).next.argv);
+      return conclude(RIPE, null);
+    });
+
+    assert.deepStrictEqual(outcome, [[true, true, true], [null, 'y'], 1]);
+  });
+
+  it('a conclude set aside stays held at the investigation through a raise drawn and answered meanwhile, and the recap staged again: drawn again, it shows on its hold, never drawn, and its answers are one event (S1)', async (t) => {
+    const outcome = await setAside(t, async () => {
+      await raised('1');
+      return conclude(RIPE, { hunt: 'Three hypotheses; the save trusted an empty capture at shutdown.' });
+    });
+
+    assert.deepStrictEqual(outcome, [[true, true, true], [null, 'y'], 1]);
   });
 });

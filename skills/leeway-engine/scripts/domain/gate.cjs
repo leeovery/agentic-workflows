@@ -50,17 +50,23 @@
 //   and the one rule on that name keeps it out: it is never recorded as the
 //   gate shown, and `gate` refuses it, naming `raise answer`. Drawing one
 //   clears the gate shown, so only one shows at a time (6.6.10).
-// - A showing of a gate lasts from its drawing until a pick answers it — a
-//   row, or a typed row that picks items — waiting for its answer, or set
-//   aside by a reply that answered no row: free text, or a typed row the
-//   person answers in words, a Comment or an Ask (6.6.2). Drawn again while
-//   it lasts, the gate shown keeps the time the showing opened and the
-//   showing it was drawn on, so the showing is one event under one id however
-//   many replies it took, the first read (16.13.3), and a learned gate's
-//   shows again (decision-point.cjs); the time it was drawn is this draw's,
+// - A showing of a gate lasts from its drawing until a pick that leaves the
+//   gate answers it — a row, or a typed row that picks items — waiting for
+//   its answer, or set aside by a reply that answered no row: free text, or
+//   a typed row the person answers in words, a Comment or an Ask (6.6.2); a
+//   row whose next draws the gate again at its place, the wait's wait,
+//   leaves it open too (learned-gates.cjs). Drawn again while it lasts, the
+//   gate shown keeps the time the showing opened and the showing it was
+//   drawn on, so the showing is one event under one id however many replies
+//   it took, the first read (16.13.3); the time it was drawn is this draw's,
 //   so a press, or a proposal's yes (person-verbs.cjs), is told against the
-//   screen the person answered. The gate drawn after a pick is a new
-//   showing.
+//   screen the person answered. A learned gate's showing is held at its
+//   place, its own record (showing-hold.cjs): the gate shown keeps the place,
+//   and a pick that leaves the gate ends the hold — the showing that opened
+//   then alone — so another gate, a raise or a new conversation never ends
+//   it, and its event's id is drawn from the showing, never the
+//   conversation. Any other gate's lasts while the conversation's gate shown
+//   is that gate's. The gate drawn after a pick is a new showing.
 // - A learned gate run as an automatic step (learned-gates.cjs) is no answer
 //   (E13): nothing is logged for it, it is never recorded as the gate shown,
 //   and the command clears the gate shown before it, as a raise's draw does,
@@ -69,9 +75,10 @@
 //   another gate's name, a key the gate lacks, free text with no words, and
 //   a gate already answered; each before the words are read. It writes no
 //   state: the trust log under the trust log's lock (trust-log.cjs), and
-//   the record, marked answered. The event's id is drawn from the
-//   conversation, the gate and when its showing opened, so a rerun after
-//   a kill between the two logs the same event again, read once (16.13.3).
+//   the record, marked answered, a learned gate's hold ended before it.
+//   The event's id is drawn from the gate and when its showing opened, with
+//   the conversation, or a learned gate's showing, so a rerun after a kill
+//   between the two logs the same event again, read once (16.13.3).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -81,9 +88,12 @@ const { handedSession } = require('../kernel/process.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { readAtGate } = require('./answer-reader.cjs');
 const { idFrom } = require('./ledger-ids.cjs');
+const { ENTRY_SEPARATOR, keepsShowing } = require('./learned-gates.cjs');
 const { gateShown, gateStepped, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
+const { endShowing } = require('./showing-hold.cjs');
 const { record } = require('./trust-log.cjs');
 const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./projections/surfaces.cjs').ShownOption} ShownOption */
@@ -98,11 +108,11 @@ const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
  * @property {string} at when it was drawn
  * @property {string} opened when its showing was first drawn
  * @property {string|null} showing a learned gate's showing, null for any other
+ * @property {import('./learned-gates.cjs').Place|null} place where a learned gate's showing is held, null for any other
  * @property {Answered|null} answered
  */
 /** A row picked, a typed row by its key, or free text: the person's words. @typedef {{pick: string} | {typed: string} | {words: string}} Answer */
 
-const ENTRY_SEPARATOR = ' — ';
 const RAISE = 'raise';
 
 /** The gate a MENU declares, by its name: what comes before its first ` — `. @param {string} declared */
@@ -132,10 +142,10 @@ function shownFile(session) {
 
 /**
  * Record the gate the command's MENU stated as the gate the calling
- * conversation was shown, on the showing the conversation holds open where
- * it holds one of that gate — or, where the MENU ran as an automatic step,
- * forget the one shown before it — run once the command is done. Never
- * throws.
+ * conversation was shown — a learned gate's on its hold, any other's on the
+ * showing the conversation holds open where it holds one of that gate — or,
+ * where the MENU ran as an automatic step, forget the one shown before it —
+ * run once the command is done. Never throws.
  */
 function recordGateShown() {
   const shown = gateShown();
@@ -150,7 +160,6 @@ function recordGateShown() {
   if (shown === null || isRaise(shown.gate)) return;
   const gate = nameOf(shown.gate);
   try {
-    const open = openShowing(session, gate);
     const at = new Date().toISOString();
     /** @type {ShownRecord} */
     const kept = {
@@ -159,8 +168,9 @@ function recordGateShown() {
       options: shown.options,
       typed: shown.typed.map(({ label, prompt, next }) => ({ key: typedKey(label), label, prompt, next })),
       at,
-      opened: open?.opened ?? at,
-      showing: open === null ? shown.showing : open.showing,
+      opened: shown.hold?.opened ?? openShowing(session, gate)?.opened ?? at,
+      showing: shown.showing,
+      place: shown.hold?.place ?? null,
       answered: null,
     };
     const file = shownFile(session);
@@ -197,16 +207,25 @@ function answeredTo(session, gates, argv, since) {
 
 /**
  * The gate `name`'s showing the conversation `session` holds open: the gate
- * shown, waiting for its answer or set aside by a reply that answered no
- * row; null where the gate shown is another, or a pick ended its showing.
+ * shown, waiting for its answer or answered with no pick that leaves it;
+ * null where the gate shown is another, or a pick ended its showing.
  * @param {string} session @param {string} name @returns {ShownRecord|null}
  */
 function openShowing(session, name) {
   const shown = lastShown(session);
   if (shown === null || shown.gate !== name) return null;
-  if (shown.answered === null) return shown;
-  const { picked } = shown.answered;
-  return picked === null || shown.typed.some((t) => t.key === picked && t.prompt) ? shown : null;
+  return shown.answered === null || !leaves(shown, shown.answered.picked) ? shown : null;
+}
+
+/**
+ * Whether the answer `picked` at the gate `shown` — a row's key, a typed
+ * row's, or null for free text — is a pick that leaves the gate, ending its
+ * showing: never free text, a typed row the person answers in words, or a
+ * row whose next draws the gate again at its place.
+ * @param {ShownRecord} shown @param {string|null} picked
+ */
+function leaves(shown, picked) {
+  return picked !== null && !shown.typed.some((t) => t.key === picked && t.prompt) && !keepsShowing(shown.gate, picked);
 }
 
 /** Forget the gate the conversation `session` was shown. @param {string} session */
@@ -243,6 +262,16 @@ function rowAnswered(shown, answer) {
   const row = shown.typed.find((t) => t.key === answer.typed);
   if (row) return row;
   throw new Error(`gate: "${shown.gate}" has no typed row ${answer.typed} — its typed rows: ${shown.typed.map((t) => t.key).join(', ') || 'none'}`);
+}
+
+/**
+ * The id the answer at the gate `shown` is logged under: drawn from the gate
+ * and when its showing opened, with a learned gate's showing — held at its
+ * place, so the same in every conversation — or any other's conversation.
+ * @param {string} session @param {ShownRecord} shown
+ */
+function eventId(session, shown) {
+  return shown.place === null ? idFrom(session, shown.gate, shown.opened) : idFrom(shown.gate, /** @type {string} */ (shown.showing), shown.opened);
 }
 
 /**
@@ -294,10 +323,10 @@ function answerGate(cwd, named, answer) {
   const reading = 'words' in answer ? readAtGate(shown.question, shown.options, answer.words) : null;
   /** @type {string[]} */
   const warnings = [];
-  const id = idFrom(session, name, shown.opened);
-  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading, showing: shown.showing }, { cwd, warnings, id });
+  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading, showing: shown.showing }, { cwd, warnings, id: eventId(session, shown) });
+  if (shown.place !== null && leaves(shown, picked)) endShowing(stateRoot(cwd), name, shown.place, { showing: /** @type {string} */ (shown.showing), opened: shown.opened });
   writeJsonAtomic(file, { ...shown, answered: { at: new Date().toISOString(), picked, via } });
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed, lastShown, answeredTo, openShowing };
+module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed, lastShown, answeredTo };

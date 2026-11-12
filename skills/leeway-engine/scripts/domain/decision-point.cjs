@@ -44,13 +44,15 @@
 // shows, or runs as an automatic step on one of its rows (3.2.7). Every
 // surface that draws one asks it, at the gate's place — its unit, phase and
 // topic — with the key it draws the gate's showing from, and draws what it
-// answers (projections/surfaces.cjs). Until the learned gates are switched
-// on (29.19.2), every gate shows. `learned` is what it decides once
-// switched: in a build in step, the gate shows, the position read from the
-// unit at each gate so a switch bites at once (3.3.3, 3.3.6); a showing the
-// conversation holds open — waiting for its answer, or set aside by a reply
-// that answered no row (gate.cjs) — shows again and is never drawn again,
-// the person having engaged with it; else — only the build has a position
+// answers (projections/surfaces.cjs). A showing held at the gate's place
+// (showing-hold.cjs) — waiting for its answer, set aside by a reply that
+// answered no row, or left open by a row that draws the gate again — shows
+// again on its hold and is never drawn again, the person having engaged
+// with it; a gate shown on a new showing opens its hold. Until the learned
+// gates are switched on (29.19.2), every gate shows. `learned` is what it
+// decides once switched, where no showing is held: in a build in step, the
+// gate shows, the position read from the unit at each gate so a switch
+// bites at once (3.3.3, 3.3.6); else — only the build has a position
 // (3.3.1) — as the gate's count stands for the project and the session's
 // model as of the time, at the person's threshold, its showing's blind ask
 // drawn. A gate off the list shows, and nothing is read for it.
@@ -64,11 +66,10 @@ const { projectId, modelOf, readPersonEvents } = require('./trust-log.cjs');
 const { trustSettings, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
 const { learnedGate, showingOf, shows, stepOf } = require('./learned-gates.cjs');
-const { openShowing } = require('./gate.cjs');
+const { heldShowing, holdShowing } = require('./showing-hold.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { handedSession } = require('../kernel/process.cjs');
 
 /** @typedef {import('./ask-rule.cjs').Ruling | 'blind'} Decision */
 /** @typedef {import('./trust-counts.cjs').Counts} Counts */
@@ -150,8 +151,24 @@ function convergenceDue(_cwd, _unit, _topic) {
  * @param {string} name @param {GateAt} at
  * @returns {GateStep}
  */
-function gateStep(name, { place, key }) {
-  return shows(name, showingOf(place, key));
+function gateStep(name, at) {
+  return drawn(name, at, (showing) => shows(name, showing));
+}
+
+/**
+ * The gate `gate` at its place: shown on the showing held there; else
+ * drawn on the showing its key tells, as `decides` steps it, its hold opened
+ * where it shows.
+ * @param {string} gate @param {GateAt} at @param {(showing: string, root: string) => GateStep} decides
+ * @returns {GateStep}
+ */
+function drawn(gate, { cwd, place, key }, decides) {
+  const root = stateRoot(cwd);
+  const held = heldShowing(root, gate, place);
+  if (held !== null) return shows(gate, held.showing, { place, opened: held.opened });
+  const showing = showingOf(place, key);
+  const step = decides(showing, root);
+  return step.step === 'automatic' ? step : shows(gate, showing, { place, opened: holdShowing(root, gate, place, showing).opened });
 }
 
 /**
@@ -164,27 +181,28 @@ function inStep(root, { unit, phase }) {
   return unit !== null && phase !== null && BUILD_PHASES.includes(phase) && manifestOf(root, unit)?.build?.position === 'step';
 }
 
-/** Whether the conversation holds the gate `gate`'s showing open. @param {string} gate */
-function heldOpen(gate) {
-  const session = handedSession();
-  return session !== null && openShowing(session, gate) !== null;
-}
-
 /**
- * The learned gates' step on the gate `name`: shown in a build in step, and
- * where the conversation holds its showing open; else as its count stands
- * on the project for the session's model as of now, at the person's
- * threshold, its showing's blind ask drawn. A gate off the list shows,
- * reading nothing.
+ * The learned gates' step on the gate `name`: shown on the showing held at
+ * its place, and in a build in step; else as its count stands on the
+ * project for the session's model as of now, at the person's threshold, its
+ * showing's blind ask drawn. A gate off the list shows, reading nothing.
  * @param {string} name @param {GateAt} at
  * @returns {GateStep}
  */
-function learned(name, { cwd, place, key }) {
+function learned(name, at) {
   const gate = learnedGate(name);
   if (gate === null) return shows(name, null);
-  const showing = showingOf(place, key);
-  const root = stateRoot(cwd);
-  if (inStep(root, place) || heldOpen(gate)) return shows(gate, showing);
+  return drawn(gate, at, (showing, root) => (inStep(root, at.place) ? shows(gate, showing) : counted(gate, at.cwd, root, showing)));
+}
+
+/**
+ * The learned gate `gate`'s step on its showing `showing`, as its count
+ * stands on the project for the session's model as of now, at the person's
+ * threshold.
+ * @param {string} gate @param {string} cwd @param {string} root @param {string} showing
+ * @returns {GateStep}
+ */
+function counted(gate, cwd, root, showing) {
   /** @type {Record<string, unknown>[]} */
   const answers = [];
   readPersonEvents(root, (event) => {
