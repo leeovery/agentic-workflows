@@ -15,8 +15,8 @@
 //   resets.
 // - The archived items, the latest to leave first (18.7.11): one an
 //   `inbox close` recorded, closed by the unit whose work resolved it,
-//   named by its title — its name where the unit is gone — or closed with
-//   no unit (18.6.10), on the day it closed; any other archived on the day
+//   named as the start menu names a unit, or closed with no unit
+//   (18.6.10), on the day it closed; any other archived on the day
 //   the state branch took it into the archive, a day unknown while that is
 //   uncommitted.
 // ---------------------------------------------------------------------------
@@ -28,8 +28,6 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { discoverInbox, titleOf } = require('./start.cjs');
 const { parseInboxPath, closures, ARCHIVED, FOLDER_KIND } = require('./inbox.cjs');
-const { manifestOf } = require('./ledger-units.cjs');
-const { topicTitle } = require('./derivations.cjs');
 
 /**
  * @typedef {object} PickupItem
@@ -129,12 +127,6 @@ function archiveDays(cwd) {
   return days;
 }
 
-/** A unit's title, read from its manifest; its name where the unit is gone. @param {string} cwd @param {string} unit */
-function unitTitle(cwd, unit) {
-  const manifest = manifestOf(stateRoot(cwd), unit);
-  return manifest === null ? titlecase(unit) : topicTitle(manifest, unit);
-}
-
 /** An archived item's place in the state, as the record and git name it. @param {PickupItem} item */
 const archivedRel = ({ folder, path: file }) => `${folder}/${path.basename(file)}`;
 
@@ -152,7 +144,7 @@ function archivedItems(cwd) {
   const leftOf = (item) => {
     const closure = record[archivedRel(item)];
     if (closure === undefined) return { closed: false, by: null, on: days.get(`${ARCHIVED}/${archivedRel(item)}`) ?? null };
-    return { closed: true, by: closure.unit === null ? null : unitTitle(cwd, closure.unit), on: closure.at.slice(0, 10) };
+    return { closed: true, by: closure.unit === null ? null : titlecase(closure.unit), on: closure.at.slice(0, 10) };
   };
   return items
     .map((item) => ({ ...item, left: leftOf(item) }))
@@ -210,4 +202,4 @@ function deletedItemTitle(cwd, given) {
   return titleOf(content) || parsed.slug;
 }
 
-module.exports = { combinedInbox, inboxByKind, storeItem, archivedItems, archivedItem, liveItem, deletedItemTitle };
+module.exports = { inboxByKind, storeItem, archivedItems, archivedItem, liveItem, deletedItemTitle };

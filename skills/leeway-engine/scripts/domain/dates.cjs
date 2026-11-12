@@ -34,7 +34,7 @@ function daysSince(stamp) {
   return Math.max(0, Math.round((Date.parse(todayStamp()) - Date.parse(stamp)) / DAY_MS));
 }
 
-const MONTHS =['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** A date stamp as a screen shows it: `2026-10-16` as `16 Oct`. @param {string} stamp `YYYY-MM-DD` */
 function dayMonth(stamp) {

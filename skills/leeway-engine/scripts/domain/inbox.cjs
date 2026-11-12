@@ -36,11 +36,15 @@
 // `inbox_closed: {"{folder}/{file}": {unit, at}}` — the unit that resolved
 // it, or null for one the person had fixed straight away (P4) — the files
 // and the record one commit. `restore` and `delete` drop an item's record:
-// a restored item is live again, and a deleted one is gone. Finish reads
+// a restored item is live again, and a deleted one is gone. A restore also
+// takes the item's `Resolved:` line out of the build's log of the unit that
+// closed it, in the same commit, answering each as `unclaimed`, so its
+// finish no longer claims an item brought back (18.6.7). Finish reads
 // the record for the closures its screen lists (`closedBy`), triage's
 // archived items for who closed each (`closures`), and the
 // build's log for the items its `Resolved: {path}` lines claim the work
-// resolved, still live (`liveResolved`, 6.4.10).
+// resolved, still live (`liveResolved`, a unit's own log `logClaims`,
+// 6.4.10).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -348,15 +352,22 @@ function closeItems(cwd, unit, paths) {
 
 /**
  * Restore archived items back to their live folders, each one's record of
- * its close dropped. One commit for the set.
+ * its close dropped and its claim taken out of its closer's build log. One
+ * commit for the set.
  * @param {string} cwd project root
  * @param {string[]} paths archived inbox paths
- * @returns {{restored: string[], committed: string|null}}
+ * @returns {{restored: string[], unclaimed?: Unclaimed[], committed: string|null}}
  */
 function restoreItems(cwd, paths) {
   const items = parseInboxPaths(cwd, paths, { archived: true });
-  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, commitMessage('restore', items), () => dropClosures(cwd, items));
-  return { restored: moved, ...rest };
+  /** @type {Unclaimed[]} */
+  let unclaimed = [];
+  const record = () => {
+    unclaimed = unclaim(cwd, items, closures(cwd));
+    return [...new Set(unclaimed.map(({ unit }) => buildLogAt(unit))), ...dropClosures(cwd, items)];
+  };
+  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, commitMessage('restore', items), record);
+  return { restored: moved, ...(unclaimed.length === 0 ? {} : { unclaimed }), ...rest };
 }
 
 /**
@@ -417,6 +428,39 @@ const NAMED_ITEM = new RegExp(`(?<![\\w.-])\\.inbox/(${FOLDERS.join('|')})/([\\w
 function liveResolved(cwd, text) {
   const claimed = [...text.matchAll(RESOLVED_LINE)].flatMap(([, claim]) => [...claim.matchAll(NAMED_ITEM)]);
   return [...new Set(claimed.map(([, folder, file]) => statePath(cwd, INBOX, folder, file)))].filter((file) => fs.existsSync(file));
+}
+
+/** A unit's build log, state-relative. Required here: the build's entry reaches this module. @param {string} unit @returns {string} */
+const buildLogAt = (unit) => require('./build-entry.cjs').buildLogOf(unit);
+
+/** The live items the unit's build log claims resolved; none where it has no log. @param {string} cwd @param {string} unit @returns {string[]} */
+function logClaims(cwd, unit) {
+  const log = statePath(cwd, buildLogAt(unit));
+  return fs.existsSync(log) ? liveResolved(cwd, fs.readFileSync(log, 'utf8')) : [];
+}
+
+/** Whether a line of a build's log is a claim naming the item. @param {string} line @param {InboxItem} item */
+const claimsItem = (line, item) => line.startsWith('Resolved:') && [...line.matchAll(NAMED_ITEM)].some(([, folder, file]) => folder === item.folder && file === item.file);
+
+/** An item restored whose claim came out of a build's log: its live path, and the unit. @typedef {{path: string, unit: string}} Unclaimed */
+
+/**
+ * Each item's claim taken out of the build's log of the unit the record says
+ * closed it, where the log claims it (the header's).
+ * @param {string} cwd @param {InboxItem[]} items @param {Record<string, Closure>} held
+ * @returns {Unclaimed[]}
+ */
+function unclaim(cwd, items, held) {
+  return items.flatMap((item) => {
+    const unit = held[closedKey(item)]?.unit;
+    const log = typeof unit === 'string' ? statePath(cwd, buildLogAt(unit)) : null;
+    if (log === null || !fs.existsSync(log)) return [];
+    const lines = fs.readFileSync(log, 'utf8').split('\n');
+    const kept = lines.filter((line) => !claimsItem(line, item));
+    if (kept.length === lines.length) return [];
+    fs.writeFileSync(log, kept.join('\n'));
+    return [{ path: statePath(cwd, INBOX, item.folder, item.file), unit: /** @type {string} */ (unit) }];
+  });
 }
 
 // Every folder an item's name is taken in: the inbox is one namespace across
@@ -494,6 +538,7 @@ module.exports = {
   closures,
   closedBy,
   liveResolved,
+  logClaims,
   freeItemPath,
   KIND_FOLDER,
   parseInboxPath,

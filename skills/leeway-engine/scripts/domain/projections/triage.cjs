@@ -7,7 +7,8 @@
 //
 // - `render triage [--file <pick.json>]`: "Triage · {Project}", the inbox
 //   by kind — IDEAS, BUGS, QUICK-FIXES — each item numbered across the
-//   kinds, with its age (inbox-set.cjs, 18.7.3), and a DATA section giving
+//   kinds, with its age, the ages one right-aligned column across the
+//   kinds (inbox-set.cjs, 18.7.3, 18.7.12), and a DATA section giving
 //   each number's path. With nothing picked it asks which items: Pick, a
 //   prompt row leading into the conversation, where the person names them
 //   by number (18.7.12). Claude's payload, `{picked, fits}`, each a list of
@@ -21,16 +22,21 @@
 //   payload is refused where it is no such pick: an item not live, or named
 //   twice, or nothing picked.
 // - `render archived`: "Triage · Archived", the archived items, the latest
-//   to leave first, numbered as triage's are, each "{kind}, archived {day}", "closed by {Unit}" or
-//   "closed {day}" (18.7.11, 18.6.10), opening the item; b/back to triage.
+//   to leave first, numbered as triage's are, each "{kind}, archived
+//   {day}", "closed by {Unit}" or "closed {day}" (18.7.11, 18.6.10),
+//   opening the item; b/back to triage. An empty archive says so.
 // - `render archived-item --path <path>`: the item under the rule, how it
 //   left, then u/unarchive (`inbox restore`) and d/delete (its confirm);
 //   b/back to the archived items.
 // - `render archived-delete-gate --path <path>`: the delete's confirm, a
 //   gate: its yes `inbox delete`, its no the item again.
+//
+// Each of the three takes `--file <pick.json>`, the pick standing in triage
+// when v was chosen, and carries it to the screen each row and back draws,
+// so triage drawn again from them shows the pick.
 // ---------------------------------------------------------------------------
 
-const { renderTree } = require('../../kernel/render.cjs');
+const { renderTree, TAG_GAP } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { dayMonth, daysSince } = require('../dates.cjs');
 const { projectName } = require('../state-checks.cjs');
@@ -58,26 +64,46 @@ const CARRY_ON = Object.freeze({ kind: 'continue' });
 /** @param {...string} argv @returns {Next} */
 const engine = (...argv) => ({ kind: 'engine', argv });
 
-const BACK_TO_TRIAGE = Object.freeze({ label: 'Back to triage', next: engine('render', 'triage') });
+/** The pick standing in triage, carried down the archived items' screens so each back finds it. @param {string|undefined} file @returns {string[]} */
+const carried = (file) => (file === undefined ? [] : ['--file', file]);
 
-/** An item's age, as its row reads it. @param {string} date `YYYY-MM-DD` */
+/** An item's age, as its row reads it: the months never reaching twelve before the year turns. @param {string} date `YYYY-MM-DD` */
 function ageOf(date) {
   const days = daysSince(date);
   if (days === 0) return 'today';
   if (days < 14) return counted(days, 'day');
   if (days < 63) return counted(Math.floor(days / 7), 'week');
-  if (days < 365) return counted(Math.floor(days / 30), 'month');
+  if (days < 365) return counted(Math.min(11, Math.floor(days / 30)), 'month');
   return counted(Math.floor(days / 365), 'year');
 }
 
+/** A tree's row that opens an item, rather than carrying its title on. */
+const OPENS_ITEM = /^\s*[├└]─ /;
+
+/** Items by number as a tree, their titles wrapped to `width`. @param {PickupItem[]} items @param {number} width */
+const treeLines = (items, width) => renderTree(items.map((item) => ({ title: `${item.n}. ${item.title}` })), { width, wrapTitles: true }).trimEnd().split('\n');
+
+/** A list under its heading, each item by its number. @param {string} heading @param {PickupItem[]} items */
+const listUnder = (heading, items) => [`${heading} (${items.length})`, ...treeLines(items, TREE_WIDTH)];
+
 /**
- * A list under its heading, each item by its number, with its tag where it
- * has one.
- * @param {string} heading @param {PickupItem[]} items @param {(item: PickupItem) => string|undefined} tagOf
+ * Each kind's list under its heading, the items' ages one right-aligned
+ * column across every list (18.7.12).
+ * @param {{folder: string, items: PickupItem[]}[]} kinds
  */
-function listUnder(heading, items, tagOf) {
-  const tree = renderTree(items.map((item) => ({ title: `${item.n}. ${item.title}`, tag: tagOf(item) })), { width: TREE_WIDTH, wrapTitles: true });
-  return [`${heading} (${items.length})`, ...tree.trimEnd().split('\n')];
+function inboxLines(kinds) {
+  const shown = kinds.filter(({ items }) => items.length > 0);
+  if (shown.length === 0) return [];
+  /** @param {PickupItem} item */
+  const ageTag = (item) => `[${ageOf(item.date)}]`;
+  const reserve = TAG_GAP + Math.max(...shown.flatMap(({ items }) => items.map((item) => ageTag(item).length)));
+  const lists = shown.map(({ folder, items }) => {
+    let opened = 0;
+    const rows = treeLines(items, TREE_WIDTH - reserve).map((text) => ({ text, age: OPENS_ITEM.test(text) ? ageTag(items[opened++]) : '' }));
+    return { heading: `${HEADINGS[folder]} (${items.length})`, rows };
+  });
+  const end = Math.max(...lists.flatMap(({ rows }) => rows.filter(({ age }) => age !== '').map(({ text, age }) => text.length + TAG_GAP + age.length)));
+  return apart(lists.map(({ heading, rows }) => [heading, ...rows.map(({ text, age }) => (age === '' ? text : text.padEnd(end - age.length) + age))]));
 }
 
 /** Each listed item's number and path, as a DATA section, where any is listed. @param {PickupItem[]} items */
@@ -109,13 +135,10 @@ function pickOf(cwd, file, items) {
   });
 }
 
-/** What the inbox shows, by kind. @param {{folder: string, items: PickupItem[]}[]} kinds */
-const inboxLines = (kinds) => apart(kinds.filter(({ items }) => items.length > 0).map(({ folder, items }) => listUnder(HEADINGS[folder], items, (item) => ageOf(item.date))));
-
 /** What is picked, and what fits with it where Claude names any. @param {Pick} pick */
 function pickLines({ picked, fits }) {
   const them = picked.length === 1 ? 'IT' : 'THEM';
-  return apart([listUnder('PICKED', picked, () => undefined), ...(fits.length === 0 ? [] : [listUnder(`FITS WITH ${them}, BY MY READ`, fits, () => undefined)])]);
+  return apart([listUnder('PICKED', picked), ...(fits.length === 0 ? [] : [listUnder(`FITS WITH ${them}, BY MY READ`, fits)])]);
 }
 
 /**
@@ -136,12 +159,13 @@ function pickedRows(picked) {
 
 /**
  * Triage's screen (the header's).
- * @param {string} project @param {{folder: string, items: PickupItem[]}[]} kinds @param {boolean} archived @param {Pick|null} pick
+ * @param {string} project @param {{folder: string, items: PickupItem[]}[]} kinds @param {boolean} archived
+ * @param {Pick|null} pick @param {string|undefined} [file] the pick's payload
  * @returns {MenuScreen}
  */
-function triageScreen(project, kinds, archived, pick) {
+function triageScreen(project, kinds, archived, pick, file) {
   const any = kinds.some(({ items }) => items.length > 0);
-  const view = archived ? [{ key: 'v', word: 'view', label: 'View the archived items, to restore or delete one', next: engine('render', 'archived') }] : [];
+  const view = archived ? [{ key: 'v', word: 'view', label: 'View the archived items, to restore or delete one', next: engine('render', 'archived', ...carried(file)) }] : [];
   const back = { label: 'Back to the start menu, nothing changed', next: engine('render', 'start-menu') };
   const title = `Triage · ${project}`;
   if (pick !== null) {
@@ -159,7 +183,7 @@ function triageSurface(cwd, file) {
   const { kinds, archived } = inboxByKind(cwd);
   const items = kinds.flatMap((kind) => kind.items);
   const pick = file === undefined ? null : pickOf(cwd, file, items);
-  return numbered(items) + drawMenu(cwd, MENUS.triage, { flags: { file } }, triageScreen(projectName(cwd), kinds, archived > 0, pick));
+  return numbered(items) + drawMenu(cwd, MENUS.triage, { flags: { file } }, triageScreen(projectName(cwd), kinds, archived > 0, pick, file));
 }
 
 /** How an archived item left the inbox, as its row and its statement say it. @param {ArchivedItem} item */
@@ -169,29 +193,28 @@ function leftWords({ left: { closed, by, on } }) {
   return by === null ? `closed${day}` : `closed by ${by}`;
 }
 
-/** The archived items' screen (the header's). @param {ArchivedItem[]} items @returns {MenuScreen} */
-function archivedScreen(items) {
+/** The archived items' screen (the header's). @param {ArchivedItem[]} items @param {string|undefined} file @returns {MenuScreen} */
+function archivedScreen(items, file) {
   return {
     title: 'Triage · Archived',
     shows: [],
-    ...(items.length === 0 ? { statement: 'Nothing is archived.' } : {}),
-    question: 'Which item?',
-    rows: items.map((item) => ({ key: item.n, label: { head: escapeMarkdown(item.title), tail: `${item.type}, ${leftWords(item)}` }, next: engine('render', 'archived-item', '--path', item.path) })),
-    back: BACK_TO_TRIAGE,
+    ...(items.length === 0 ? { statement: 'Nothing is archived.' } : { question: 'Which item?' }),
+    rows: items.map((item) => ({ key: item.n, label: { head: escapeMarkdown(item.title), tail: `${item.type}, ${leftWords(item)}` }, next: engine('render', 'archived-item', '--path', item.path, ...carried(file)) })),
+    back: { label: 'Back to triage', next: engine('render', 'triage', ...carried(file)) },
   };
 }
 
-/** An archived item's screen (the header's). @param {ArchivedItem} item @returns {MenuScreen} */
-function archivedItemScreen(item) {
+/** An archived item's screen (the header's). @param {ArchivedItem} item @param {string|undefined} file @returns {MenuScreen} */
+function archivedItemScreen(item, file) {
   return {
     shows: [],
     statement: `Selected: ${escapeMarkdown(item.title)} (${item.type}, ${leftWords(item)})`,
     question: 'What would you like to do with it?',
     rows: [
       { key: 'u', word: 'unarchive', label: 'Restore it to the inbox', next: engine('inbox', 'restore', item.path) },
-      { key: 'd', word: 'delete', label: 'Delete it for good — it can\'t be brought back', next: engine('render', 'archived-delete-gate', '--path', item.path) },
+      { key: 'd', word: 'delete', label: 'Delete it for good — it can\'t be brought back', next: engine('render', 'archived-delete-gate', '--path', item.path, ...carried(file)) },
     ],
-    back: { label: 'Back to the archived items', next: engine('render', 'archived') },
+    back: { label: 'Back to the archived items', next: engine('render', 'archived', ...carried(file)) },
   };
 }
 
@@ -203,24 +226,24 @@ function archivedNamed(cwd, given, surface) {
   });
 }
 
-/** `render archived`. @param {string} cwd @returns {string} */
-function archivedSurface(cwd) {
+/** `render archived [--file <pick.json>]`. @param {string} cwd @param {string|undefined} file @returns {string} */
+function archivedSurface(cwd, file) {
   const items = archivedItems(cwd);
-  return numbered(items) + drawMenu(cwd, MENUS.archived, {}, archivedScreen(items));
+  return numbered(items) + drawMenu(cwd, MENUS.archived, { flags: { file } }, archivedScreen(items, file));
 }
 
-/** `render archived-item --path <path>`. @param {string} cwd @param {string|undefined} given @returns {string} */
-const archivedItemSurface = (cwd, given) => drawMenu(cwd, MENUS['archived-item'], { flags: { path: given } }, archivedItemScreen(archivedNamed(cwd, given, 'archived-item')));
+/** `render archived-item --path <path> [--file <pick.json>]`. @param {string} cwd @param {string|undefined} given @param {string|undefined} file @returns {string} */
+const archivedItemSurface = (cwd, given, file) => drawMenu(cwd, MENUS['archived-item'], { flags: { path: given, file } }, archivedItemScreen(archivedNamed(cwd, given, 'archived-item'), file));
 
 /**
- * `render archived-delete-gate --path <path>` (the header's).
- * @param {string} cwd @param {string|undefined} given @returns {string}
+ * `render archived-delete-gate --path <path> [--file <pick.json>]` (the header's).
+ * @param {string} cwd @param {string|undefined} given @param {string|undefined} file @returns {string}
  */
-function archivedDeleteGateSurface(cwd, given) {
+function archivedDeleteGateSurface(cwd, given, file) {
   const item = archivedNamed(cwd, given, 'archived-delete-gate');
   return section('MENU: archived delete gate', MENU_INSTRUCTION, menu(`Deleting "${escapeMarkdown(item.title)}" takes it out of the archive for good.`, [
     cmdOption('y', 'yes', 'Delete it for good', { next: engine('inbox', 'delete', item.path) }),
-    cmdOption('n', 'no', 'Keep it in the archive', { next: engine('render', 'archived-item', '--path', item.path) }),
+    cmdOption('n', 'no', 'Keep it in the archive', { next: engine('render', 'archived-item', '--path', item.path, ...carried(file)) }),
   ], { question: 'Delete it?' }));
 }
 

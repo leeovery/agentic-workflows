@@ -387,8 +387,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render pivot-continuation <wu>
   render absorb-target     <feature>
   render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
-  render archived-delete-gate --path <archived path>
-  render inbox-restore-receipt --path <live path>
+  render archived-delete-gate --path <archived path> [--file <pick.json>]
+  render inbox-restore-receipt --path <live path> [--unclaimed <wu>]
   render inbox-delete-receipt --path <archived path>
   render completed-actions <wu>
   render revisit-phases    <wu>
@@ -453,8 +453,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render care-kind
   render care-drop
   render triage [--file <pick.json>]
-  render archived
-  render archived-item --path <archived path>
+  render archived [--file <pick.json>]
+  render archived-item --path <archived path> [--file <pick.json>]
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;

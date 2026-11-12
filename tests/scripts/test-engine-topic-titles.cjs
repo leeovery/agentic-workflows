@@ -300,6 +300,7 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a work unit, or the project': [
       'board.cjs › unitAt › unit',
+      'inbox-set.cjs › archivedItems › closure.unit',
       'projections/board-quick-fix.cjs › ledgerAt › unit',
       'mail.cjs › sendReportOf › unit',
       'mail.cjs › topicSender › unit',
@@ -321,6 +322,7 @@ describe('every screen names a topic through one helper', () => {
       'projections/transactions.cjs › absorbReceipt › epic',
       'projections/transactions.cjs › absorbSummary › epic',
       'projections/transactions.cjs › absorbSummary › feature',
+      'projections/transactions.cjs › inboxRestoreReceipt › unclaimedFrom',
       'projections/transactions.cjs › pivotContinuationMenu › workUnit',
       'projections/transactions.cjs › stayedLines › unit',
       'projections/transactions.cjs › workunitReceipt › workUnit',
@@ -334,7 +336,6 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a phase, or a work type': [
       'handoff.cjs › phaseTarget › phase',
-      'inbox-set.cjs › unitTitle › unit',
       'projections/epic-menu.cjs › epicMenuScreen › phase',
       'projections/workunit.cjs › revisitPhasesSection › phase',
       'render.cjs › phaseCompleted › phase',

@@ -7,10 +7,11 @@
 // pick (18.7.3, 18.7.12) and, over Claude's pick, what is picked and what
 // fits with it, with the rows that act on it (18.7.4, 18.7.10); `render
 // archived`, each item with how it left the inbox (18.7.11, 18.6.10);
-// `render archived-item` and the delete's confirm; the restore's and the
-// delete's receipts; and where each row leads, followed through the inbox
-// verb it names, with no confirm on an archive (18.7.13). Triage's help
-// (23.S5). The frame and the help screen are test-engine-menus.cjs's; the
+// `render archived-item` and the delete's confirm, a pick standing in triage
+// carried down them; the restore, taking its closer's claim out of the
+// build's log, and the restore's and the delete's receipts; and where each
+// row leads, followed through the inbox verb it names, with no confirm on an
+// archive (18.7.13). Triage's help (23.S5). The frame and the help screen are test-engine-menus.cjs's; the
 // inbox verbs' own transactions their suites'.
 //
 // Layer: verb, each render run as the start skill runs it, in a conversation
@@ -48,13 +49,24 @@ const BUG_NEW = layout.inbox('bugs', '2025-12-30--preview-flickers.md');
 const BUG_OLDER = layout.inbox('bugs', '2025-12-23--window-names-lost.md');
 const QUICK_FIX = layout.inbox('quickfixes', '2025-12-25--border-off-by-one.md');
 
-// The archive, each item leaving it a way of its own.
+// The archive, each item leaving it a way of its own, in an order its file
+// names' dates do not keep. The unit's build log claims three of them.
 const UNIT = 'enter-attaches-from-preview';
-const ARCHIVED_OCT = layout.archived('ideas', '2025-09-01--tab-completion.md');
+const ARCHIVED_OCT = layout.archived('ideas', '2025-09-06--tab-completion.md');
 const CLOSED_BY_UNIT = layout.archived('ideas', '2025-09-02--enter-should-attach.md');
 const CLOSED_BY_NONE = layout.archived('quickfixes', '2025-09-03--prefs-reset.md');
 const CLOSED_BY_GONE = layout.archived('bugs', '2025-09-04--resize-jitter.md');
-const ARCHIVED_SEP = layout.archived('bugs', '2025-09-05--hidden-sessions-flash.md');
+const ARCHIVED_SEP = layout.archived('bugs', '2025-08-01--hidden-sessions-flash.md');
+const BUILD_LOG = layout.unit(UNIT, 'build', 'log.md');
+const LOG_TEXT = [
+  '# The build',
+  '',
+  'Resolved: .leeway/.inbox/ideas/2025-09-02--enter-should-attach.md',
+  'Resolved: .leeway/.inbox/quickfixes/2025-09-03--prefs-reset.md',
+  'Resolved: .leeway/.inbox/ideas/2025-09-06--tab-completion.md',
+  'Enter in the preview attaches.',
+  '',
+].join('\n');
 
 /** Commit the state's changes on a day of their own. @param {string} dir @param {string} day `YYYY-MM-DD` */
 function committedOn(dir, day) {
@@ -75,6 +87,7 @@ const world = fixtureFrom('leeway-triage-', (dir) => {
   writeState(dir, BUG_OLDER, '# Window Names Lost On Restore\n');
   writeState(dir, QUICK_FIX, '# Preview Border Off By One At 80 Columns\n');
   createManifest(dir, UNIT, { status: 'completed' });
+  writeState(dir, BUILD_LOG, LOG_TEXT);
   commitAll(dir, 'the inbox');
   writeState(dir, ARCHIVED_SEP, '# Hidden Sessions Flash On Startup\n');
   committedOn(dir, '2025-09-18');
@@ -124,16 +137,16 @@ const triagePicked = (dir, picked, fits = []) => drawn(dir, ['triage', '--file',
 
 const INBOX_TREE = [
   'IDEAS (3)',
-  '  ├─ 1. Session Previews Show The Last Command     [3 days]',
+  '  ├─ 1. Session Previews Show The Last Command      [3 days]',
   '  ├─ 2. Group Sessions By Project In The Picker    [12 days]',
   '  └─ 3. Rename A Session From The Picker           [5 weeks]',
   '',
   'BUGS (2)',
-  '  ├─ 4. Preview Flickers When A Session Closes    [2 days]',
-  '  └─ 5. Window Names Lost On Restore              [9 days]',
+  '  ├─ 4. Preview Flickers When A Session Closes      [2 days]',
+  '  └─ 5. Window Names Lost On Restore                [9 days]',
   '',
   'QUICK-FIXES (1)',
-  '  └─ 6. Preview Border Off By One At 80 Columns    [7 days]',
+  '  └─ 6. Preview Border Off By One At 80 Columns     [7 days]',
 ];
 
 describe('triage (18.7)', () => {
@@ -208,6 +221,7 @@ describe('triage (18.7)', () => {
     ]);
     assert.deepStrictEqual(rows.w, { kind: 'handoff', skill: 'leeway-discovery', args: ['start', 'none', `${at(dir, IDEA_OLDER)},${at(dir, BUG_OLDER)}`] });
     assert.match(output(dir, ['handoff', `/${rows.w.skill}`, ...rows.w.args]), new RegExp(`^args: start none "${at(dir, IDEA_OLDER)},`, 'm'), 'the handoff takes the seeds as the row gives them');
+    assert.match(sectionOf(triagePicked(dir, [BUG_OLDER, IDEA_OLDER], [QUICK_FIX]).out, 'DISPLAY: triage'), /^FITS WITH THEM, BY MY READ \(1\)$/m);
   });
 
   it('18.S30, 18.S79, 18.7.13: a archives what is picked with no confirm, and triage drawn again lists it no more; b leaves triage with nothing changed', () => {
@@ -221,8 +235,8 @@ describe('triage (18.7)', () => {
     assert.deepStrictEqual(sectionOf(drawn(dir, ['triage'], 'triage').out, 'DISPLAY: triage').trimEnd().split('\n').filter((line) => line.includes('─')), [
       '  ├─ 1. Group Sessions By Project In The Picker    [12 days]',
       '  └─ 2. Rename A Session From The Picker           [5 weeks]',
-      '  └─ 3. Window Names Lost On Restore    [9 days]',
-      '  └─ 4. Preview Border Off By One At 80 Columns    [7 days]',
+      '  └─ 3. Window Names Lost On Restore                [9 days]',
+      '  └─ 4. Preview Border Off By One At 80 Columns     [7 days]',
     ]);
   });
 
@@ -241,6 +255,18 @@ describe('triage (18.7)', () => {
       'h/help → What this menu is for, row by row',
       'b/back → Back to the start menu, nothing changed',
     ]]);
+  });
+
+  it('18.7.3: an age reads today, then days under two weeks, weeks under nine, months — eleven at most — under a year, then years', () => {
+    for (const rel of [IDEA_NEW, IDEA_OLDER, IDEA_OLDEST, BUG_NEW, BUG_OLDER, QUICK_FIX]) fs.rmSync(at(dir, rel));
+    const AGES = [
+      ['2026-01-01', 'today'], ['2025-12-19', '13 days'], ['2025-12-18', '2 weeks'], ['2025-10-31', '8 weeks'], ['2025-10-30', '2 months'],
+      ['2025-10-03', '3 months'], ['2025-01-02', '11 months'], ['2025-01-01', '1 year'], ['2024-01-01', '2 years'],
+    ];
+    for (const [day] of AGES) writeState(dir, layout.inbox('ideas', `${day}--aged.md`), '# Aged\n');
+
+    const tags = sectionOf(drawn(dir, ['triage'], 'triage').out, 'DISPLAY: triage').split('\n').flatMap((line) => /\[(.+)\]$/.exec(line)?.slice(1) ?? []);
+    assert.deepStrictEqual(tags, AGES.map(([, age]) => age));
   });
 
   it('an item is a file named {date}--{slug}.md, titled by its first heading, its slug where it has none', () => {
@@ -332,15 +358,28 @@ describe('the archived items (18.7.11)', () => {
     ]);
   });
 
-  it('18.S48: a wrong closure restored through unarchive is live again, its record of the close gone, and its receipt names it', () => {
+  it('18.S48: a wrong closure restored through unarchive is live again, its record of the close gone and its claim out of the closing unit\'s build log in the same commit, and its receipt says both', () => {
     const { rows } = drawn(dir, ['archived-item', '--path', at(dir, CLOSED_BY_UNIT)], 'archived item');
-    const { restored } = ok(dir, rows.u.argv);
+    const { restored, unclaimed } = ok(dir, rows.u.argv);
+    const live = at(dir, layout.inbox('ideas', '2025-09-02--enter-should-attach.md'));
 
-    assert.deepStrictEqual([restored, Object.keys(JSON.parse(readState(dir, 'manifest.json')).inbox_closed)], [
-      [at(dir, layout.inbox('ideas', '2025-09-02--enter-should-attach.md'))],
+    assert.deepStrictEqual([restored, unclaimed, Object.keys(JSON.parse(readState(dir, 'manifest.json')).inbox_closed)], [
+      [live],
+      [{ path: live, unit: UNIT }],
       ['quickfixes/2025-09-03--prefs-reset.md', 'bugs/2025-09-04--resize-jitter.md'],
     ]);
-    assert.strictEqual(sectionOf(output(dir, ['render', 'inbox-restore-receipt', '--path', restored[0]]), 'DISPLAY: confirmation'), 'Restored "Enter In The Preview Should Attach" to the inbox.\n');
+    assert.strictEqual(readState(dir, BUILD_LOG), LOG_TEXT.replace('Resolved: .leeway/.inbox/ideas/2025-09-02--enter-should-attach.md\n', ''), 'its claim alone comes out');
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']), '', 'the restore commits the log with the move');
+    assert.strictEqual(sectionOf(output(dir, ['render', 'inbox-restore-receipt', '--path', live, '--unclaimed', UNIT]), 'DISPLAY: confirmation'),
+      'Restored "Enter In The Preview Should Attach" to the inbox, its Resolved: line taken out of Enter Attaches From Preview\'s build log.\n');
+  });
+
+  it('a restore of an item no unit closed — closed by none, or archived from triage — touches no build log, and the receipt refuses a unit whose log claims the item still', () => {
+    const { restored, unclaimed } = ok(dir, ['inbox', 'restore', at(dir, CLOSED_BY_NONE), at(dir, ARCHIVED_OCT)]);
+
+    assert.deepStrictEqual([restored.length, unclaimed, readState(dir, BUILD_LOG)], [2, undefined, LOG_TEXT]);
+    assert.strictEqual(refuses(dir, ['render', 'inbox-restore-receipt', '--path', restored[0], '--unclaimed', UNIT]).error,
+      `render inbox-restore-receipt: ${UNIT}'s build log claims it still — the restore has not taken its Resolved: line out`);
   });
 
   it('18.S48: the delete is confirmed first — its no the item again, its yes the item gone from the archive for good, and its receipt names it', () => {
@@ -362,10 +401,35 @@ describe('the archived items (18.7.11)', () => {
     assert.strictEqual(sectionOf(output(dir, ['render', 'inbox-delete-receipt', '--path', at(dir, ARCHIVED_OCT)]), 'DISPLAY: confirmation'), 'Deleted "Tab Completion For Session Names".\n');
   });
 
-  it('an archive with nothing in it says so', () => {
+  it('an archive with nothing in it says so, under the frame\'s own question', () => {
     for (const rel of [ARCHIVED_OCT, CLOSED_BY_UNIT, CLOSED_BY_NONE, CLOSED_BY_GONE, ARCHIVED_SEP]) fs.rmSync(at(dir, rel));
 
-    assert.deepStrictEqual(drawn(dir, ['archived'], 'archived items').screen.slice(0, 4), ['· · · · · · · · · · · ·', 'Nothing is archived.', '', '◆ Which item?']);
+    assert.deepStrictEqual(drawn(dir, ['archived'], 'archived items').screen.slice(0, 4), ['· · · · · · · · · · · ·', 'Nothing is archived.', '', '◆ What would you like to do?']);
+  });
+
+  it('the day an item was archived is the day the state branch last took it in — restored, then archived again later, it reads the later day', () => {
+    const live = at(dir, layout.inbox('bugs', '2025-08-01--hidden-sessions-flash.md'));
+    fs.renameSync(at(dir, ARCHIVED_SEP), live);
+    committedOn(dir, '2025-10-20');
+    fs.renameSync(live, at(dir, ARCHIVED_SEP));
+    committedOn(dir, '2025-11-20');
+
+    assert.strictEqual(drawn(dir, ['archived'], 'archived items').screen[3], '1      → Hidden Sessions Flash On Startup — bug, archived 20 Nov');
+  });
+
+  it('a pick standing in triage is carried down the archived items\' screens, so each back draws the screen before it as it was', () => {
+    const file = pickFile(dir, [BUG_NEW], []);
+    const view = triagePicked(dir, [BUG_NEW]).rows.v;
+    const list = drawn(dir, view.argv.slice(1), 'archived items').rows;
+    const item = drawn(dir, list['1'].argv.slice(1), 'archived item').rows;
+    const gate = drawn(dir, item.d.argv.slice(1), 'archived delete gate').rows;
+
+    assert.deepStrictEqual([view, list.b, item.b, gate.n], [
+      { kind: 'engine', argv: ['render', 'archived', '--file', file] },
+      { kind: 'engine', argv: ['render', 'triage', '--file', file] },
+      { kind: 'engine', argv: ['render', 'archived', '--file', file] },
+      { kind: 'engine', argv: ['render', 'archived-item', '--path', at(dir, ARCHIVED_OCT), '--file', file] },
+    ]);
   });
 
   it('the item\'s screen and the delete\'s confirm refuse no path, a live path, and one the archive does not hold', () => {

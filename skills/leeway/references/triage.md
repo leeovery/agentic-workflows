@@ -4,11 +4,7 @@
 
 ---
 
-Triage works through the inbox: the person picks items, and what's picked is worked now as one piece of work, put on the roadmap or archived. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a row that carries on in the conversation, or a `next` that runs an inbox verb, is below. Once it is done, draw triage again with nothing picked, emit its sections verbatim per their markers, and carry on here:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render triage
-```
+Triage works through the inbox: the person picks items, and what's picked is worked now as one piece of work, put on the roadmap or archived. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a row that carries on in the conversation, or a `next` that runs an inbox verb, is below.
 
 ## Picking
 
@@ -44,26 +40,40 @@ Read each picked item, and write one entry for each to `.leeway/.cache/triage-ro
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add-batch --file .leeway/.cache/triage-roadmap.json
 ```
 
-A name already on the roadmap refuses the whole batch: ask the person for another name for that item, rewrite its entry, and land the batch again. Once it lands, say `On the roadmap: "{title}" → {horizon}.` for one item, or `On the roadmap: {count} items → {horizon}.` for several.
+A name already on the roadmap refuses the whole batch: ask the person for another name for that item, rewrite its entry, and land the batch again. Once it lands, say `On the roadmap: "{title}" → {horizon}.` for one item, or `On the roadmap: {count} items → {horizon}.` for several, then draw triage again (Drawn Again).
 
 ## Archiving
 
-Once `a/archive`'s `inbox archive` has run, say `Archived "{title}".` for one item, or `Archived {count} items.` for several.
+Once `a/archive`'s `inbox archive` has run, say `Archived "{title}".` for one item, or `Archived {count} items.` for several, then draw triage again (Drawn Again).
+
+## Drawn Again
+
+Draw triage with nothing picked, emit its sections verbatim per their markers, and carry on there:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render triage
+```
 
 ## The Archived Items
 
-`v/view` draws the archived items, and a number picked draws that item. Once `u/unarchive`'s `inbox restore` has run, fetch its receipt over the path its response's `restored` names; once the delete's yes has run `inbox delete`, fetch its receipt over the item's path. Emit the receipt's sections verbatim per their markers:
+`v/view` draws the archived items, and a number picked draws that item. Once `u/unarchive`'s `inbox restore` has run, fetch its receipt (Bringing an Item Back). Once the delete's yes has run `inbox delete`, fetch its receipt over the item's path, and emit its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-{verb:[restore|delete]}-receipt --path {path}
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-delete-receipt --path {path}
 ```
 
-Then draw the archived items again, emit its sections verbatim per their markers, and carry on there:
+After either receipt, draw the archived items again — with `--file .leeway/.cache/triage.json` where items were picked when the person chose `v/view` — emit its sections verbatim per their markers, and carry on there:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render archived
+node .claude/skills/leeway-engine/scripts/engine.cjs render archived [--file .leeway/.cache/triage.json]
 ```
 
 ## Bringing an Item Back
 
-Asked in words to bring an archived item back, restore it to the inbox, its path from the archived items' DATA → `inbox restore {path}`.
+Asked in words to bring an archived item back, find its file under `.leeway/.inbox/.archived/{ideas|bugs|quickfixes}/` by its name, and restore it → `inbox restore {path}`.
+
+Once a restore has run, fetch its receipt over the path its response's `restored` names, `--unclaimed` naming the unit its response's `unclaimed` names, where it names one, and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-restore-receipt --path {path} [--unclaimed {work_unit}]
+```

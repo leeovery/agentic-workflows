@@ -28,6 +28,7 @@ const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { completedActions } = require('./projections/start.cjs');
 const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
+const { logClaims } = require('./inbox.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
@@ -985,31 +986,42 @@ function pivotContinuation(cwd, args) {
 }
 
 /**
- * The single-item receipts after an archived item is restored or deleted, over the path
- * the verb answered: a restore's item must be live again, and a delete's
- * gone from the archive — its title read from git's last copy.
+ * What a single-item receipt reads over the path the verb answered, after
+ * an archived item is restored or deleted: a restore's item must be live
+ * again, and a delete's gone from the archive — its title read from git's
+ * last copy.
+ * @template T
  * @param {string} cwd @param {{dotpath: string, path?: string}} args
- * @param {string} surface @param {string} what @param {(cwd: string, given: string) => string} titleAt
- * @returns {string}
+ * @param {string} surface @param {string} what @param {(cwd: string, given: string) => T} read
+ * @returns {T}
  */
-function receiptTitle(cwd, { path: given }, surface, what, titleAt) {
+function receiptRead(cwd, { path: given }, surface, what, read) {
   if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — ${what}`);
   try {
-    return titleAt(cwd, /** @type {string} */ (given));
+    return read(cwd, /** @type {string} */ (given));
   } catch (err) {
     throw new Error(`render ${surface}: ${messageOf(err)}`);
   }
 }
 
-/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
+/**
+ * The restore's receipt. `--unclaimed <unit>`, from the restore's
+ * `unclaimed`, names the unit whose build log it took the item's claim out
+ * of: refused where that log claims the item still.
+ * @param {string} cwd @param {{dotpath: string, path?: string, unclaimed?: string}} args @returns {string}
+ */
 function inboxRestoreReceiptSurface(cwd, args) {
-  return inboxRestoreReceipt(receiptTitle(cwd, args, 'inbox-restore-receipt', 'the live path `inbox restore` answered',
-    (root, given) => liveItem(root, given).title));
+  const item = receiptRead(cwd, args, 'inbox-restore-receipt', 'the live path `inbox restore` answered', liveItem);
+  const { unclaimed } = args;
+  if (unclaimed !== undefined && logClaims(cwd, unclaimed).includes(item.path)) {
+    throw new Error(`render inbox-restore-receipt: ${unclaimed}'s build log claims it still — the restore has not taken its Resolved: line out`);
+  }
+  return inboxRestoreReceipt(item.title, unclaimed ?? null);
 }
 
 /** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
 function inboxDeleteReceiptSurface(cwd, args) {
-  return inboxDeleteReceipt(receiptTitle(cwd, args, 'inbox-delete-receipt', 'the archived path `inbox delete` answered', deletedItemTitle));
+  return inboxDeleteReceipt(receiptRead(cwd, args, 'inbox-delete-receipt', 'the archived path `inbox delete` answered', deletedItemTitle));
 }
 
 // completed-actions — the completed & cancelled view's action menu over the
@@ -1421,7 +1433,7 @@ const SURFACES = {
   'pivot-continuation': pivotContinuation,
   'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
   'absorb-confirm-gate': absorbConfirmSurface,
-  'archived-delete-gate': (cwd, { path: given }) => archivedDeleteGateSurface(cwd, given),
+  'archived-delete-gate': (cwd, { path: given, file }) => archivedDeleteGateSurface(cwd, given, file),
   'inbox-restore-receipt': inboxRestoreReceiptSurface,
   'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'completed-actions': completedActionsSurface,
@@ -1487,8 +1499,8 @@ const SURFACES = {
   'care-kind': careKindSurface,
   'care-drop': careDropSurface,
   triage: (cwd, { file }) => triageSurface(cwd, file),
-  archived: (cwd) => archivedSurface(cwd),
-  'archived-item': (cwd, { path: given }) => archivedItemSurface(cwd, given),
+  archived: (cwd, { file }) => archivedSurface(cwd, file),
+  'archived-item': (cwd, { path: given, file }) => archivedItemSurface(cwd, given, file),
 };
 
 /**
