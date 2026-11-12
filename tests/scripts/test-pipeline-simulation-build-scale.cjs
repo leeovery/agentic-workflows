@@ -36,7 +36,7 @@ const WU = SPEC_TO_BUILD_UNIT;
 const TASKS = 6;
 
 /** The most git commands each measured call runs once a task is a measure. */
-const MOST = Object.freeze({ 'task worktree': 41, 'brief reviewer': 34, 'brief builder': 25, 'task account': 43 });
+const MOST = Object.freeze({ 'task worktree': 40, 'brief reviewer': 33, 'brief builder': 24, 'task account': 42 });
 
 /** A feature in auto, its one phase of six tasks written and started, the first proving 1.S1. */
 const sixWorld = worldFrom('pipeline-build-scale-', (sim) => {

@@ -40,13 +40,16 @@
 // checkout of its repository. Each repo carries its prefix, so a path
 // crosses between the repo's folder and its repository's top
 // (`topPath`, `folderPath`), and a folder between a checkout's top and the
-// repo's folder in it (`checkoutTop`, `folderUnder`), with no read.
+// repo's folder in it (`checkoutTop`, `folderUnder`), with no read. That
+// place, and the repository a folder's checkout belongs to, are the
+// repository's facts (kernel/isolated-git, `repoFacts`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { git, tryGit, dirtyEntries } = require('./git.cjs');
+const { git, tryGit, dirtyEntries, GitError } = require('./git.cjs');
 const { keptRead } = require('./git-reads.cjs');
+const { repoFacts } = require('./isolated-git.cjs');
 const { stateRoot } = require('./state-root.cjs');
 const { codeRoot } = require('./code-root.cjs');
 
@@ -68,8 +71,9 @@ const { codeRoot } = require('./code-root.cjs');
 
 /** Where the folder `dir` sits in its repository. @param {string} dir @returns {Place} */
 function placeOf(dir) {
-  const [top, prefix] = git(dir, ['rev-parse', '--show-toplevel', '--show-prefix']).split('\n');
-  return { top, prefix };
+  const place = repoFacts(dir)?.place ?? null;
+  if (place === null) throw new GitError(`${dir} is not inside a git work tree`);
+  return place;
 }
 
 /** A path from the folder, as its repository's top names it. @param {{prefix: string}} at @param {string} rel */
@@ -115,10 +119,10 @@ function listed(cwd, args) {
  * @returns {string|null}
  */
 function commonDir(dir) {
-  const out = tryGit(dir, ['rev-parse', '--git-common-dir']);
-  if (out === null) return null;
+  const facts = repoFacts(dir);
+  if (facts === null) return null;
   try {
-    return fs.realpathSync(path.resolve(dir, out.trim()));
+    return fs.realpathSync(facts.commonDir);
   } catch {
     return null;
   }

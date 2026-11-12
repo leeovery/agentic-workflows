@@ -48,9 +48,9 @@
 const fs = require('fs');
 const path = require('path');
 const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
-const { projectDirtyEntries, mappedSubmodules, checkoutTop } = require('../kernel/repos.cjs');
+const { projectDirtyEntries, mappedSubmodules, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
+const { mainCheckout } = require('../kernel/isolated-git.cjs');
 const { readSettings } = require('./settings.cjs');
-const { projectCheckout } = require('./landing-git.cjs');
 
 const INCLUDE = '.worktreeinclude';
 
@@ -176,8 +176,11 @@ function preparedLinkOf(project) {
   return (at, { path: entry, status }) => status === '??' && linkAt(at, entry) && (directories ??= linkedDirectories(project())).includes(entry);
 }
 
+/** The project's folder in its own checkout, its root repository's main checkout, from its repositories as any checkout of it reads them. @param {Repo[]} repos */
+const projectFolder = ([root]) => folderUnder(root, mainCheckout(root.path));
+
 /** The predicate of a link preparation made, for the project whose repositories are `repos`, from any checkout of it. @param {Repo[]} repos */
-const preparedIn = (repos) => preparedLinkOf(() => projectCheckout(repos[0].path, repos[0]));
+const preparedIn = (repos) => preparedLinkOf(() => projectFolder(repos));
 
 /**
  * The links preparation made in a checkout of one of the project's
@@ -235,7 +238,7 @@ function stagedHeldOut(repos, repo) {
   const staged = raw.flatMap((record, i) => (record.startsWith(':') ? [{ mode: record.split(' ')[1], name: raw[i + 1] }] : []))
     .filter(({ mode }) => mode !== '000000');
   if (staged.length === 0) return [];
-  const directories = linkedDirectories(projectCheckout(repos[0].path, repos[0]));
+  const directories = linkedDirectories(projectFolder(repos));
   const mapped = mappedSubmodules({ top: checkoutTop(repo, repo.path), prefix: repo.prefix });
   /** @type {Map<string, boolean>} */
   const nestedAt = new Map();

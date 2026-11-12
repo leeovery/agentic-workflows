@@ -77,7 +77,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
+const { isolatedGit, repoFacts, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
 const { dropReads } = require('../kernel/git-reads.cjs');
 const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
@@ -234,8 +234,8 @@ function stateRemote(git) {
   const remotes = remoteNames(git);
   if (remotes.includes('origin')) return { remote: 'origin', remotes };
   if (remotes.length < 2) return { remote: remotes[0] ?? null, remotes };
-  const branch = (git.tryRun(['symbolic-ref', '--quiet', '--short', 'HEAD']) || '').trim();
-  const tracked = branch === '' ? '' : (git.tryRun(['config', '--get', `branch.${branch}.remote`]) || '').trim();
+  const branch = repoFacts(git.cwd)?.branch ?? null;
+  const tracked = branch === null ? '' : (git.tryRun(['config', '--get', `branch.${branch}.remote`]) || '').trim();
   return { remote: remotes.includes(tracked) ? tracked : null, remotes };
 }
 

@@ -32,7 +32,7 @@ const { useTempFolder, filesUnder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { kindOf, keptRead } = require(path.join(SCRIPTS, 'kernel/git-reads.cjs'));
-const { git, gitRun } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
+const { git, gitRun, OPERATION_MARKERS } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 const { spawnSync, spawn, execFileSync } = require(path.join(SCRIPTS, 'kernel/spawn.cjs'));
 const { isolatedGit, withVerbReads } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 const { sleepSync } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
@@ -50,6 +50,11 @@ const branches = (dir) => git(dir, ['for-each-ref', '--format=%(refname:short)',
 
 /** The settings the isolated runner puts ahead of a command. */
 const ISOLATED = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.autocrlf=false'];
+
+/** A repository's facts as kernel/isolated-git asks them: its directories and paths, then where the folder sits. */
+const FACT_DIRECTORIES = ['--path-format=absolute', '--git-common-dir', '--absolute-git-dir',
+  ...[...OPERATION_MARKERS.map(([marker]) => marker), 'leeway-commit.lock'].flatMap((name) => ['--git-path', name])];
+const FACT_PLACE = ['--show-toplevel', '--show-prefix'];
 
 /**
  * Every form of git the engine runs, as the spawn logs of its whole flow
@@ -91,17 +96,17 @@ const FORMS_RUN = {
     ['rev-list', '--max-parents=0', 'HEAD'],
     ['rev-list', '--count', 'HEAD'],
     ['rev-list', '-1', 'fix', '--not', 'main'],
-    ['rev-parse', '--git-common-dir', '--absolute-git-dir'],
+    ['rev-parse', ...FACT_DIRECTORIES, ...FACT_PLACE, '--symbolic-full-name', 'HEAD', '--'],
+    ['rev-parse', ...FACT_DIRECTORIES, ...FACT_PLACE],
+    ['rev-parse', ...FACT_DIRECTORIES],
     ['rev-parse', '--path-format=absolute', '--git-common-dir'],
-    ['rev-parse', '--git-path', 'MERGE_HEAD', '--git-path', 'CHERRY_PICK_HEAD'],
-    ['rev-parse', '--show-toplevel', '--show-prefix'],
     ['rev-parse', '-q', '--verify', 'HEAD'],
     ['rev-parse', '--short', 'HEAD'],
     ['rev-parse', 'HEAD', 'HEAD^{tree}', '--show-toplevel', '--git-common-dir', '--git-path', 'leeway-commit.index', '--absolute-git-dir'],
     ['show', '--no-color', '--relative', '--stat=200', '--stat-graph-width=20', '--format=', 'HEAD', '--'],
     ['show', 'HEAD:manifest.json'],
     ['show-ref', '--verify', '--quiet', 'refs/heads/main'],
-    ['symbolic-ref', '-q', '--short', 'HEAD'],
+    ['symbolic-ref', '-q', 'HEAD'],
     ['symbolic-ref', '--quiet', 'HEAD'],
   ],
   read: [

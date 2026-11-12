@@ -28,10 +28,11 @@ const { codeHeadFiles, codeStatusLines, epicManifest, implementing, building, FO
 before(startBuilding);
 
 // The most git commands a code commit runs, each read asked once in its
-// verb but for what it checks again once it holds the commit lock: in a
-// project of one repository, and across a repository nested in it.
-const ONE_REPO_COMMIT = 22;
-const NESTED_COMMIT = 42;
+// verb — a repository's facts in one call (kernel/isolated-git) — but for
+// what it checks again once it holds the commit lock: in a project of one
+// repository, and across a repository nested in it.
+const ONE_REPO_COMMIT = 17;
+const NESTED_COMMIT = 33;
 
 describe('engine commit --paths: the code commit', () => {
   const setup = fixtureFrom('engine-commit-', (at) => implementing(at, { 'src/other.js': 'const y = 1;\n', 'src/gone.js': 'const z = 1;\n' }));

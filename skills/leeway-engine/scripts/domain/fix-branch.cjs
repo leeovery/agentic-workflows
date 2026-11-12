@@ -81,6 +81,7 @@
 
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit, git } = require('../kernel/git.cjs');
+const { repoFacts } = require('../kernel/isolated-git.cjs');
 const { projectRepos, repoName, childrenFirst } = require('../kernel/repos.cjs');
 const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
@@ -100,7 +101,7 @@ const landing = () => require('./landing.cjs');
 const buildEntry = () => require('./build-entry.cjs');
 
 /** The branch the checkout has out, or null where it is detached. @param {string} root */
-const branchOut = (root) => tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim() ?? null;
+const branchOut = (root) => repoFacts(root)?.branch ?? null;
 
 /** The changes the project's checkout holds not committed outside the state. @param {string} cwd */
 const dirtOf = (cwd) => codeStatus(cwd).files.map(({ path }) => path);

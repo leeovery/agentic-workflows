@@ -39,16 +39,28 @@
 // that stalls — on a filter the repository configures, say — never holds the
 // verb, and the writer lock with it, for ever.
 //
-// It also finds a repository's main checkout, the folder the workflows keep
-// their state in, refusing the repositories and folders that have none; its
-// refusals say so. It knows nothing else of the state.
+// It also reads a repository's facts at a folder (`repoFacts`): where the
+// folder sits in its work tree, the repository's git directories, where
+// each operation git holds open leaves its marker and where a code commit
+// takes its lock, and the ref HEAD names. One `rev-parse` asks them all;
+// where HEAD names no commit, or the folder is in no work tree, that call
+// fails, and the facts are asked apart — what any repository answers, where
+// the folder sits, and HEAD's ref by `symbolic-ref`. They are git's reads,
+// so kept for the verb and dropped as every read is (kernel/git-reads). A
+// marker's path is a fact; whether the marker is there is the working
+// tree's, read by its caller each time.
+//
+// From the facts it finds the work tree a folder is in, and a repository's
+// main checkout, the folder the workflows keep their state in, refusing the
+// repositories and folders that have none; its refusals say so. It knows
+// nothing else of the state.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { AsyncLocalStorage } = require('async_hooks');
 const { spawnSync } = require('child_process');
-const { GitError, READ_BUDGET_BYTES } = require('./git.cjs');
+const { GitError, READ_BUDGET_BYTES, OPERATION_MARKERS } = require('./git.cjs');
 const { keepingReads, asked, kindOf } = require('./git-reads.cjs');
 
 /**
@@ -95,10 +107,11 @@ const CALL_TIMEOUT_MS = 300000;
  */
 
 /**
- * A runner bound to one cwd: `run` answers stdout, empty where it went to a
- * file, and throws a GitError on failure; `tryRun` answers null instead,
- * but for a call past its time limit, which throws for both.
+ * A runner bound to one cwd, `cwd`: `run` answers stdout, empty where it
+ * went to a file, and throws a GitError on failure; `tryRun` answers null
+ * instead, but for a call past its time limit, which throws for both.
  * @typedef {{
+ *   cwd: string,
  *   run: (args: string[], opts?: RunOptions) => string,
  *   tryRun: (args: string[], opts?: RunOptions) => string|null,
  * }} IsolatedGit
@@ -218,6 +231,7 @@ function isolatedGit(cwd) {
   }
 
   return {
+    cwd,
     run(args, opts = {}) {
       const res = spawn(args, opts);
       if (res.error) throw new GitError(`git ${args[0]} failed: ${res.error.message}`);
@@ -231,6 +245,98 @@ function isolatedGit(cwd) {
       return res.error || res.status !== 0 ? null : res.stdout ?? '';
     },
   };
+}
+
+/**
+ * A repository's facts at a folder (the header's):
+ * - `place`, where the folder sits in its work tree: `top`, the tree's top,
+ *   and `prefix`, the folder from there, `''` at the top, else ending in `/`
+ *   — null in a folder of no work tree, a bare repository or a git
+ *   directory;
+ * - `commonDir`, the git directory every worktree of the repository shares,
+ *   and `gitDir`, the folder's own worktree's;
+ * - `markers`, where each operation's marker (kernel/git,
+ *   `OPERATION_MARKERS`) would be, by its name, and `commitLock`, where a
+ *   code commit takes its lock (domain/commit) — the worktree's own, each;
+ * - `head`, the ref HEAD names, a branch with no commit yet among them, as
+ *   `symbolic-ref -q HEAD` answers it, and `branch`, that ref less
+ *   `refs/heads/` — both null on a detached HEAD.
+ * Every path is absolute, every symbolic link in it resolved.
+ * @typedef {{
+ *   place: {top: string, prefix: string}|null,
+ *   commonDir: string,
+ *   gitDir: string,
+ *   markers: Record<string, string>,
+ *   commitLock: string,
+ *   head: string|null,
+ *   branch: string|null,
+ * }} RepoFacts
+ */
+
+/** The lock a code commit takes in its worktree's git directory (domain/commit). */
+const COMMIT_LOCK = 'leeway-commit.lock';
+
+/** git's own paths the facts name: each operation's marker, then the commit lock. */
+const FACT_PATHS = Object.freeze([...OPERATION_MARKERS.map(([marker]) => marker), COMMIT_LOCK]);
+
+// The questions any repository answers, bare or not, one line each.
+const DIRECTORIES = Object.freeze(['--path-format=absolute', '--git-common-dir', '--absolute-git-dir', ...FACT_PATHS.flatMap((name) => ['--git-path', name])]);
+const DIRECTORY_LINES = 2 + FACT_PATHS.length;
+// Answered in a work tree alone.
+const PLACE = Object.freeze(['--show-toplevel', '--show-prefix']);
+// Answered where HEAD names a commit alone: `HEAD` on a detached one. The
+// `--` keeps a file named HEAD from answering for it.
+const HEAD_REF = Object.freeze(['--symbolic-full-name', 'HEAD', '--']);
+
+/**
+ * The facts from git's answers: `lines`, the directories' answers, the
+ * place's after them where `placed`, and the ref HEAD names, or null.
+ * @param {string[]} lines @param {boolean} placed @param {string|null} head
+ * @returns {RepoFacts}
+ */
+function factsOf(lines, placed, head) {
+  const [commonDir, gitDir, ...paths] = lines.slice(0, DIRECTORY_LINES);
+  const [top, prefix] = lines.slice(DIRECTORY_LINES);
+  const { [COMMIT_LOCK]: commitLock, ...markers } = Object.fromEntries(FACT_PATHS.map((name, at) => [name, paths[at]]));
+  return {
+    place: placed ? { top, prefix } : null,
+    commonDir,
+    gitDir,
+    markers,
+    commitLock,
+    head,
+    branch: head === null ? null : head.replace(/^refs\/heads\//, ''),
+  };
+}
+
+/**
+ * The repository's facts at `cwd` (the header's), or null where git finds
+ * no repository there.
+ * @param {string} cwd
+ * @returns {RepoFacts|null}
+ */
+function repoFacts(cwd) {
+  const git = isolatedGit(cwd);
+  const whole = git.tryRun(['rev-parse', ...DIRECTORIES, ...PLACE, ...HEAD_REF]);
+  if (whole === null) return factsApart(git);
+  const lines = whole.split('\n');
+  const head = lines[DIRECTORY_LINES + PLACE.length];
+  return factsOf(lines, true, head === 'HEAD' ? null : head);
+}
+
+/**
+ * The facts asked apart, where asking them together failed: what any
+ * repository answers, with where the folder sits where it is in a work
+ * tree, then HEAD's ref; null where git finds no repository.
+ * @param {IsolatedGit} git
+ * @returns {RepoFacts|null}
+ */
+function factsApart(git) {
+  const placed = git.tryRun(['rev-parse', ...DIRECTORIES, ...PLACE]);
+  const answers = placed ?? git.tryRun(['rev-parse', ...DIRECTORIES]);
+  if (answers === null) return null;
+  const head = git.tryRun(['symbolic-ref', '-q', 'HEAD'])?.trim() || null;
+  return factsOf(answers.split('\n'), placed !== null, head);
 }
 
 /** @param {string} file @returns {string} */
@@ -313,19 +419,16 @@ class NotARepository extends Error {}
  * @returns {string} absolute, every symbolic link resolved
  */
 function mainCheckout(cwd) {
-  // `--path-format=absolute` is git 2.31's: the relative answer resolves
-  // against the cwd it was asked from.
-  const out = isolatedGit(cwd).tryRun(['rev-parse', '--git-common-dir', '--absolute-git-dir']);
-  if (out === null) throw new NotARepository(`${cwd} is not inside a git repository`);
-  const [commonDir, gitDir] = out.trim().split('\n');
-  const common = fs.realpathSync(path.resolve(cwd, commonDir));
+  const facts = repoFacts(cwd);
+  if (facts === null) throw new NotARepository(`${cwd} is not inside a git repository`);
+  const common = fs.realpathSync(facts.commonDir);
   if (path.basename(common) !== '.git') {
     throw new Error(
       `the repository at ${common} has no main checkout — a bare repository, or a git directory kept apart from its ` +
       'work tree; the workflows keep their state in the main checkout',
     );
   }
-  refuseCopiedWorktree(cwd, gitDir);
+  refuseCopiedWorktree(cwd, facts.gitDir);
   return path.dirname(common);
 }
 
@@ -336,9 +439,11 @@ function mainCheckout(cwd) {
  * @returns {string} absolute, every symbolic link resolved
  */
 function workTree(cwd) {
-  const out = isolatedGit(cwd).tryRun(['rev-parse', '--show-toplevel']);
-  if (out === null) throw new Error(`${cwd} is not inside a git work tree`);
-  return fs.realpathSync(out.trim());
+  const place = repoFacts(cwd)?.place ?? null;
+  if (place === null) throw new Error(`${cwd} is not inside a git work tree`);
+  return fs.realpathSync(place.top);
 }
 
-module.exports = { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, withVerbReads, NotARepository, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };
+module.exports = {
+  REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, withVerbReads, repoFacts, NotARepository, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within,
+};
