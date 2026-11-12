@@ -10,7 +10,9 @@
 // repositories left as they are; the record kept through the unit's cancel
 // and reactivate. Read back (task-landed.cjs), a recorded fix's commit up to
 // its recorded tip has landed, a later fix having undone its change, which
-// its change alone, with no pull request read, does not say. Git layer:
+// its change alone, with no pull request read, does not say; a recorded
+// task's commit past its recorded tip, taking a file back that the next
+// adds again, has landed with its work as read. Git layer:
 // the write called in process on a project world built once and copied
 // for each test.
 // ---------------------------------------------------------------------------
@@ -109,6 +111,29 @@ describe('the landing record\'s write (7.2.22)', () => {
     const read = (/** @type {Map<string, any>} */ recorded) => repoLanded(at, UNIT, 'refs/heads/main', { since: null, recorded }).landedCommit(undone, `${UNIT}-1-1`);
 
     assert.deepStrictEqual([read(new Map([[`${UNIT}-1-1`, { commit: squash, tip: undone, first: squash, by: 'engine', at: '' }]])), read(new Map())], [true, false]);
+  });
+
+  it('a recorded task whose branch then deleted a file it added and added it back: landed, the deletion landed with its work as read, past its recorded tip', () => {
+    const { at, commits: [one] } = project();
+    const branch = 'feat/pay-1.1-tip';
+    git(at, ['switch', '-q', '-c', branch, one]);
+    createFile(at, 'tip.txt', 'tip\n');
+    commitCode(at, `feat(pay): write the tip\n\n${TRAILER}: ${UNIT}-1-1`);
+    const landed = codeHead(at);
+    git(at, ['switch', '-q', 'main']);
+    git(at, ['merge', '-q', '--squash', branch]);
+    commitCode(at, `feat(pay): write the tip\n\n${TRAILER}: ${UNIT}-1-1`);
+    const squash = codeHead(at);
+    git(at, ['switch', '-q', branch]);
+    git(at, ['rm', '-q', 'tip.txt']);
+    commitCode(at, `feat(pay): drop the tip\n\n${TRAILER}: ${UNIT}-1-1`);
+    const dropped = codeHead(at);
+    createFile(at, 'tip.txt', 'tip\n');
+    commitCode(at, `feat(pay): the tip again\n\n${TRAILER}: ${UNIT}-1-1`);
+    git(at, ['switch', '-q', 'main']);
+    const read = repoLanded(at, UNIT, 'refs/heads/main', { since: null, recorded: new Map([[`${UNIT}-1-1`, { commit: squash, tip: landed, first: squash, by: 'engine', at: '' }]]) });
+
+    assert.deepStrictEqual([read.stands({ unit: UNIT, phase: 1, n: 1 }), read.landedCommit(dropped, `${UNIT}-1-1`)], ['landed', true]);
   });
 
   it('keeps the record through the unit\'s cancel and reactivate', () => {
