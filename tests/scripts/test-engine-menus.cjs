@@ -164,7 +164,8 @@ describe('the frame (E1, 18.9.1, 18.9.4, 23.2.1)', () => {
         { key: 'h', word: 'help', head: 'What this menu is for, row by row', tail: null, detail: null, recommended: false, next: { kind: 'engine', argv: ['render', 'help', 'triage'] } },
         { key: 'b', word: 'back', head: 'Back to the start menu', tail: null, detail: null, recommended: false, next: START_MENU },
       ],
-      typed: [{ label: 'Pick', next: { kind: 'continue' } }],
+      typed: [{ label: 'Pick', prompt: true, next: { kind: 'continue' } }],
+      showing: null,
     });
   });
 
@@ -393,7 +394,8 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
       gate: 'help',
       question: 'What would you like to do?',
       options: [{ key: 'b', word: 'back', head: 'Back to triage', tail: null, detail: null, recommended: false, next: { kind: 'engine', argv: ['render', 'triage'] } }],
-      typed: [{ label: 'Ask', next: { kind: 'continue' } }],
+      typed: [{ label: 'Ask', prompt: true, next: { kind: 'continue' } }],
+      showing: null,
     });
   });
 
