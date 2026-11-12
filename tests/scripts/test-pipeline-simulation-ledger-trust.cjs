@@ -5,9 +5,12 @@
 // person's answers to them through the ledger verbs, the verdicts and the
 // raises, each landing a line of the trust log where it is a departure, each
 // question labelled by the stub armed for the labeller (labels.cjs), and the
-// person's own words read by it as the reader; and the record of the person
-// — a care entry added on its screens, the "don't care" answers that cue its
-// drop, the drop and a preference kept on the proposal screen.
+// person's own words read by it as the reader; the record of the person —
+// a care entry added on its screens, the "don't care" answers that cue its
+// drop, the drop and a preference kept on the proposal screen; and
+// convergence — the run of answers cueing the offer, the person's yes, and
+// the rest of the topic settled under the rule, the decision point and its
+// convergence seam forced to what switching the rule on makes them.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -19,12 +22,19 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const path = require('path');
 const { startItem } = require('./engine-harness.cjs');
 const { Sim, mappedEpic, answerGate } = require('./pipeline-world.cjs');
 const { trustLines } = require('./pipeline-oracle.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
+const { DAY, UNDRAWN, lines, history } = require('./trust-world.cjs');
+
+const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
+const decisionPoint = require(path.join(DOMAIN, 'decision-point.cjs'));
+const { offerDue } = require(path.join(DOMAIN, 'convergence.cjs'));
+const { TRUST_LOG } = require(path.join(DOMAIN, 'trust-log.cjs'));
 
 describe('pipeline simulation: the trust log', () => {
   let sim;
@@ -136,5 +146,49 @@ describe('pipeline simulation: the trust log', () => {
     sim.run(answerGate(sim, 'record proposal', '--pick', 'y').next.argv);
     sim.run(['enter', 'discussion', wu, 'note-window']);
     assert.ok(sim.sections.includes(`\nperson: ${path.join(sim.configDir, 'person.md')}\n`), 'the entry names no record of the person');
+  });
+
+  it('convergence: eight of the person\'s answers in a row taking Claude\'s lean on a topic with questions open, the eighth cueing the offer; the offer drawn, its forecast the rule\'s, and accepted, its yes in the trust log; then each open question raised as any call under the rule — a behaviour point, quiet across the person\'s other projects and here, settled as Claude\'s call, a danger point still coming to the person', async (t) => {
+    const wu = 'sora';
+    const FLOAT = 'Does a note float over the rest?';
+    const BIN = 'Does deleting a note skip the bin?';
+    sim.env = {
+      ...sim.env,
+      CLAUDE_STUB_ANSWERS: JSON.stringify({ [FLOAT]: labelAnswers('behaviour'), [BIN]: labelAnswers('danger'), 'Settled point': labelAnswers('behaviour'), '': 'no-login' }),
+    };
+    const elsewhere = history({ start: Date.now() - DAY });
+    elsewhere.agree(30, 'behaviour');
+    fs.mkdirSync(sim.configDir, { recursive: true });
+    fs.appendFileSync(path.join(sim.configDir, TRUST_LOG), lines(...elsewhere.events));
+    t.mock.method(decisionPoint, 'convergenceDue', offerDue);
+    mappedEpic(sim, wu, ['note-window']);
+    startItem(sim.dir, wu, 'discussion', 'note-window');
+    const note = `${wu}.discussion.note-window`;
+    /** Claude's question `text`, asked: its short id. @param {string} text */
+    const ask = (text) => sim.run(['ledger', 'ask', note], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text })).id;
+    /** Claude's lean on `question`, worded `text`, raised: the raise's answer. @param {string} question @param {string} text */
+    const raise = (question, text) => sim.runAsync(['raise', note, '--answers', question], null, JSON.stringify({ ...leaningCall('It floats.', 'It stays put.'), question: text }));
+    /** The person's pick of the lean on the raise `id`: the answer. @param {string} id */
+    const lean = (id) => sim.run(['raise', 'answer', id, '--pick', '1'], null, JSON.stringify({ why: 'The person said why.' }));
+    const open = { float: ask(FLOAT), bin: ask(BIN) };
+
+    /** @type {unknown[]} */
+    const cues = [];
+    for (let n = 1; n <= 8; n += 1) {
+      const text = `Settled point ${n}: does a note snap to the grid?`;
+      cues.push(lean((await raise(ask(text), text)).raise).convergence ?? null);
+    }
+    assert.deepStrictEqual(cues, [...Array(7).fill(null), { unit: wu, topic: 'note-window', agreements: 8 }]);
+
+    const offered = sim.render(['convergence', `${wu}.note-window`], { expect: 'content' });
+    assert.ok(offered.includes('\n2 open: I\'d settle 1; 1 comes to you — 1 danger.\n'), `the forecast is not the rule's:\n${offered}`);
+    sim.run(answerGate(sim, 'convergence offer', '--pick', 'y').next.argv);
+    assert.deepStrictEqual(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'convergence').map(({ unit, topic }) => `${unit}.${topic}`), [`${wu}.note-window`]);
+
+    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, question: UNDRAWN }));
+    const settled = await raise(open.float, FLOAT);
+    const danger = await raise(open.bin, BIN);
+    lean(danger.raise);
+    assert.deepStrictEqual([settled.decision, danger.decision], ['proceed', 'ask']);
   });
 });

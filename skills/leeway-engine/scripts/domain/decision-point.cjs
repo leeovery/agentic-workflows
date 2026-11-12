@@ -32,6 +32,11 @@
 // the session's model (trust-settings.cjs) — so the same question draws
 // the same way however often it is raised, and no tally is kept
 // (16.17.4). Claude never chooses which calls are drawn.
+//
+// Beside it, whether Claude offers to settle the rest of a topic once the
+// person has answered a raise there (16.8.1): until the ask rule is switched
+// on, no offer comes. Once switched, it is convergence.cjs's `offerDue`: the
+// topic's run of agreements, where it has come to the offer.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -99,4 +104,14 @@ function ruled(call, { project: { root, name }, model, now, question, ...at }) {
   return drawOf(question) < blindShare(call, /** @type {import('./labeller.cjs').Label} */ (at.label), counts) ? { decision: 'blind', reason: BLIND } : ruling;
 }
 
-module.exports = { decide, ruled };
+/**
+ * The agreements in a row in the topic `topic` of `unit` where Claude offers
+ * to settle the rest of it (16.8.1), else null.
+ * @param {string} _cwd @param {string} _unit @param {string} _topic
+ * @returns {number|null}
+ */
+function convergenceDue(_cwd, _unit, _topic) {
+  return null;
+}
+
+module.exports = { decide, ruled, convergenceDue };

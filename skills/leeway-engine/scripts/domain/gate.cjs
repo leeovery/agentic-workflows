@@ -145,6 +145,22 @@ function lastShown(session) {
   return isObject(read) ? /** @type {ShownRecord} */ (read) : null;
 }
 
+/**
+ * Whether the person's answer at the gate last shown in the conversation
+ * `session` leads to the command `argv`: one of `gates`, shown no earlier
+ * than `since` where given, and answered with the row whose next it is —
+ * what a verb that writes only on the person's answer checks first.
+ * @param {string} session @param {readonly string[]} gates @param {string[]} argv @param {string|null} since
+ */
+function answeredTo(session, gates, argv, since) {
+  const shown = lastShown(session);
+  if (shown === null || !gates.includes(shown.gate) || shown.answered === null) return false;
+  if (since !== null && Date.parse(shown.at) < Date.parse(since)) return false;
+  const { picked } = shown.answered;
+  const next = [...shown.options, ...shown.typed].find((row) => row.key === picked)?.next;
+  return next?.kind === 'engine' && next.argv.join('\0') === argv.join('\0');
+}
+
 /** Forget the gate the conversation `session` was shown. @param {string} session */
 function clearGateShown(session) {
   fs.rmSync(shownFile(session), { force: true });
@@ -236,4 +252,4 @@ function answerGate(cwd, named, answer) {
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed, lastShown };
+module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed, lastShown, answeredTo };

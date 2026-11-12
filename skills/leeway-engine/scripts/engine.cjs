@@ -69,6 +69,7 @@ const { ASSET_USAGE, runAssetVerb } = require('./domain/asset.cjs');
 const { CARRY_VERB, CARRY_USAGE, carryRecord } = require('./domain/ledger-carry.cjs');
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { PERSON_USAGE, runPersonVerb } = require('./domain/person-verbs.cjs');
+const { CONVERGENCE_USAGE, runConvergenceVerb } = require('./domain/convergence.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
@@ -244,6 +245,7 @@ ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
 ${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
 ${PERSON_USAGE.replace(/^/gm, '  ')}
+${CONVERGENCE_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--seed <path> …]
   workunit cancel <work-unit>
@@ -455,6 +457,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render triage [--file <pick.json>]
   render archived [--file <pick.json>]
   render archived-item --path <archived path> [--file <pick.json>]
+  render convergence <wu>.<topic> [--asked]
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -577,6 +580,23 @@ function runPerson(call, argv) {
     const { answer, screen } = runPersonVerb(call.cwd, verb, rest, call.stdin);
     respond(call, answer);
     respondSections(call, screen);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// convergence — the person's answer on the offer to settle the rest of a
+// topic (domain/convergence.cjs): `accept` logs it in the trust log, under
+// that log's own lock; `decline` keeps it in the topic's cache, which the
+// state ignores; each only on the person's answer as the gate recorded it.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runConvergence(call, argv) {
+  const [verb = '', ...rest] = argv;
+  try {
+    respond(call, runConvergenceVerb(call.cwd, verb, rest));
   } catch (err) {
     failJson(call, err);
   }
@@ -2404,7 +2424,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['warn', 'menu-only', 'calls', 'sweep', 'page', 'revised'];
+const RENDER_FLAGS = ['warn', 'menu-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2505,6 +2525,7 @@ const COMMANDS = Object.freeze({
   investigation: runInvestigation,
   'quick-fix': runQuickFix,
   person: runPerson,
+  convergence: runConvergence,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2536,7 +2557,9 @@ const COMMANDS = Object.freeze({
 // project; `gate` writes the trust log, under its own lock, and the
 // conversation's folder; `scratch` lays out and takes apart a reviewer's
 // worktree, outside the state; `person` writes the record of the person,
-// under its own lock, and the conversation's folder; and the rest read:
+// under its own lock, and the conversation's folder; `convergence` writes
+// the trust log, under its own lock, or the topic's cache, which the state
+// ignores; and the rest read:
 // `layout guard` among them, run before every file Claude writes, `brief
 // guard`, before every dispatch of an agent, `shell guard`, before every
 // shell command, `checklist show`, `migrate check`, `measures` and `board`.
@@ -2571,6 +2594,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   board: '*',
   scratch: '*',
   person: '*',
+  convergence: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */

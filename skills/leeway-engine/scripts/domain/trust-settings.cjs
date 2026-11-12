@@ -40,6 +40,9 @@ const WIDE_UNTIL = 20;
 // How many of a kind's latest answers a blind question's reveal compares
 // Claude's picks with (16.17.7, P9).
 const REVEAL_LAST = 25;
+// How many agreements in a row in a topic Claude offers to settle the rest
+// after (16.8.1, P13).
+const CONVERGENCE_RUN = 8;
 
 // The settings file's key the ask rule's settings sit under.
 const TRUST = 'trust';
@@ -103,4 +106,5 @@ function trustSettings() {
 
 module.exports = {
   THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL, REVEAL_LAST, DEFAULTS, trustSettings,
+  CONVERGENCE_RUN,
 };

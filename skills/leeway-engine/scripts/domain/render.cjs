@@ -85,6 +85,7 @@ const { epicMenuSurface } = require('./projections/epic-menu.cjs');
 const { manageSurface, manageUnitSurface, closedSurface, absorbTargetSurface, absorbConfirmSurface } = require('./projections/manage.cjs');
 const { triageSurface, archivedSurface, archivedItemSurface, archivedDeleteGateSurface } = require('./projections/triage.cjs');
 const { careSurface, careKindSurface, careDropSurface } = require('./person-verbs.cjs');
+const { convergenceSurface } = require('./convergence.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -1501,6 +1502,7 @@ const SURFACES = {
   triage: (cwd, { file }) => triageSurface(cwd, file),
   archived: (cwd, { file }) => archivedSurface(cwd, file),
   'archived-item': (cwd, { path: given, file }) => archivedItemSurface(cwd, given, file),
+  convergence: (cwd, { dotpath, asked }) => convergenceSurface(cwd, { dotpath, asked }),
 };
 
 /**

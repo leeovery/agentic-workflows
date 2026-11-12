@@ -258,6 +258,7 @@ describe('every other verb, render and entry that names a topic takes its title,
       return lineOf(output(dir, ['render', 'topic-receipt', `${UNIT}.discovery.${NAME}`, '--verb', 'cancel']), /^Cancelled /);
     }, `Cancelled "${TITLE}".`],
     ['render map', () => lineOf(output(dir, ['render', 'map', `${UNIT}.${NAME}`]), /^Map — /), `Map — ${TITLE}`],
+    ['render convergence', () => refusedPristine(dir, ['render', 'convergence', `${UNIT}.${NAME}`, '--asked'], { env: SESSION }).error, `render convergence: nothing is open on ${TITLE} to settle`],
     ['enter discussion', () => ok(dir, ['enter', 'discussion', UNIT, NAME, '--take'], { env: SESSION }).topic, KEY],
     ['handoff topic', () => lineOf(output(dir, ['handoff', 'topic', UNIT, NAME]), /^args: /), `args: epic ${UNIT} ${KEY}`],
   ];

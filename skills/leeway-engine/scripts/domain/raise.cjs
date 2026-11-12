@@ -316,6 +316,12 @@
 //   to raise again on. The seal is marked answered after the commit, with
 //   the answer the ledger holds, and keeps the first it was marked with:
 //   the ledger, not the seal, says whether a raise is answered.
+// - Once the person's answer to Claude's call lands in a topic's
+//   discussion — never a fact's, nor one answered already — the decision
+//   point is asked whether Claude offers to settle the rest of the topic
+//   (16.8.1, decision-point.cjs `convergenceDue`); where it is due, the
+//   response carries the cue: the unit, the topic and the agreements in a
+//   row there (convergence.cjs).
 // - "I don't follow" logs a raise event in the trust log alone — no entry,
 //   no answer, no reading (16.9.3, 16.12.3) — and counts it on the seal;
 //   the raise stays open, to be shown again. On a raise the ledger holds
@@ -2019,6 +2025,20 @@ function dropCued(cwd, seal, recorded, care) {
 }
 
 /**
+ * The cue to offer to settle the rest of the topic, once the person's answer
+ * to Claude's call has landed in a topic's discussion (the header's): the
+ * unit, the topic and the agreements in a row there, where the decision
+ * point says the offer is due; none where the answer was answered already,
+ * or no offer is due.
+ * @param {string} cwd @param {Seal} seal @param {{already?: true}} recorded
+ */
+function convergenceCued(cwd, { fact, place: { unit, phase, topic } }, recorded) {
+  if (recorded.already || fact || phase !== 'discussion' || topic === null) return {};
+  const agreements = decisionPoint.convergenceDue(cwd, unit, topic);
+  return agreements === null ? {} : { convergence: { unit, topic, agreements } };
+}
+
+/**
  * The reveal of a blind raise answered (16.17.7): what the person gave,
  * whether it was Claude's sealed answer, and on the question's kind in the
  * project how often Claude picked as they did (`alikeOn`), read once the
@@ -2053,7 +2073,8 @@ function shownOnAnswer(cwd, seal, form, given, recorded) {
  * or that they didn't follow — and what a blind raise's answer shows
  * (`shownOnAnswer`). A "don't care" reads the care entries before anything
  * lands, so care entries that do not read refuse it with nothing
- * written.
+ * written. An answer to Claude's call in a topic's discussion cues the
+ * convergence offer where it is due (`convergenceCued`).
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  * @returns {{answered: Record<string, unknown>, reveal: string|null}}
  */
@@ -2065,7 +2086,7 @@ function answerRaise(cwd, args, stdin) {
   const care = form === 'dont-care' ? careEntries() : null;
   const given = answering(cwd, session, seal, form, key, stdin);
   const recorded = recordAnswer(cwd, session, seal, given);
-  const answered = care === null ? recorded : { ...recorded, ...dropCued(cwd, seal, recorded, care) };
+  const answered = { ...recorded, ...(care === null ? {} : dropCued(cwd, seal, recorded, care)), ...convergenceCued(cwd, seal, recorded) };
   return { answered, reveal: shownOnAnswer(cwd, seal, form, given, recorded) };
 }
 

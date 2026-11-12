@@ -55,7 +55,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { type, LINE, listOf } = require('./event-fields.cjs');
 const { conversationDir } = require('./conversation.cjs');
-const { lastShown } = require('./gate.cjs');
+const { answeredTo } = require('./gate.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { projectId, modelOf } = require('./trust-log.cjs');
 const { countsOf, stateOf } = require('./trust-counts.cjs');
@@ -126,21 +126,6 @@ function sessionOf(said) {
   const session = handedSession();
   if (session === null) throw new Error(`${said}: no conversation to answer in — Claude Code hands every command it runs a session id, and this one has none`);
   return session;
-}
-
-/**
- * Whether the person's answer at the gate last shown in the conversation
- * `session` leads to the command `argv`: one of `gates`, shown no earlier
- * than `since` where given, and answered with the row whose next it is.
- * @param {string} session @param {readonly string[]} gates @param {string[]} argv @param {string|null} since
- */
-function answeredTo(session, gates, argv, since) {
-  const shown = lastShown(session);
-  if (shown === null || !gates.includes(shown.gate) || shown.answered === null) return false;
-  if (since !== null && Date.parse(shown.at) < Date.parse(since)) return false;
-  const { picked } = shown.answered;
-  const next = [...shown.options, ...shown.typed].find((row) => row.key === picked)?.next;
-  return next?.kind === 'engine' && next.argv.join('\0') === argv.join('\0');
 }
 
 /** Where the conversation `session` holds its proposal. @param {string} session */
