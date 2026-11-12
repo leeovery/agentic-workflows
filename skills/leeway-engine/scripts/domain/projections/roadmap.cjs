@@ -1,22 +1,47 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: roadmap projections — the Roadmap view over the derived
-// roadmap state (domain/roadmap.cjs), the harvest's proposal overlay, the
-// pull working set, and the add-to-joined-horizon gate.
+// Domain ring: the roadmap's screens over the derived roadmap state
+// (domain/roadmap.cjs; 18.8).
 //
-// Deterministic: same state, same string. Item lifecycle arrives derived
-// (waiting/in-flight/shipped/orphaned — lifecycle by join, never stored);
-// rows carry it as a `↳ state` note, joins named. A bug or a quick-fix row
-// names its kind — in the note on a tree row, as a `[term]` on a numbered
-// one; an idea row is unmarked. Horizons are the user's own release labels —
+// - `render roadmap`: the roadmap's home (18.8.10), drawn in the menus' frame
+//   (menus.cjs), which arrives at the roadmap. "Roadmap · {Project}", each
+//   horizon in the person's order with what waits on it, `{horizon} ({n})`,
+//   its items numbered across the horizons, one line each, a title cut short
+//   where it would run into the kind and where the item came from, `{kind} ·
+//   {origin}`, one left-aligned column across every horizon. An item put
+//   back on no horizon trails under "(no horizon)" (18.8.20); an item in
+//   flight has left the roadmap, and an archived one is off it (18.8.13).
+//   A DATA section gives each number's item, its summary told from
+//   `roadmap state` when it is picked or asked about (18.8.5). Rows:
+//   w, m and a while anything waits, each carrying on in the conversation,
+//   where Claude asks which items; n, the same, asking what and which
+//   horizon; p into the product's conversation (18.8.7); b back to the start
+//   menu. Nothing waiting says so.
+// - `render roadmap-harvest --file <items.json>`: the end of a session of the
+//   product's conversation (18.8.18), a gate: TO THE ROADMAP, each item with
+//   its horizon, the horizons ending at the width, and the yes landing the
+//   file as `roadmap add-batch` lands it, refused as the batch would refuse
+//   it — a name already on the roadmap, archived or not, an illegal name or
+//   horizon, a source not on disk; Keep shaping carries on in the
+//   conversation.
+// - The Roadmap view and the add-to-joined-horizon gate, over every item
+//   with its lifecycle as a `↳ state` note, joins named — a bug or a
+//   quick-fix naming its kind ahead of it, an idea unmarked.
+//
+// Horizons are the person's own release labels, drawn as they wrote them;
 // position carries the semantics, so groups render in list order.
 // ---------------------------------------------------------------------------
 
-const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { renderTree, wrap, TAG_GAP } = require('../../kernel/render.cjs');
+const { displayWidth } = require('../../kernel/terminal.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
-const { menu, menuFrame, cmdOption, rangeOption, promptOption } = require('./surfaces.cjs');
-const { markedKind, DEFAULT_KIND } = require('../roadmap.cjs');
+const { section, dataSection, menu, cmdOption, promptOption, emitAs, clipped, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { markedKind, planRoadmapBatch, roadmapState } = require('../roadmap.cjs');
+const { projectName } = require('../state-checks.cjs');
+const { readPayload, refusing } = require('../staged-payload.cjs');
+const { MENUS, drawMenu } = require('../menus.cjs');
+const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
 
 /** @typedef {import('../roadmap.cjs').RoadmapItemRow} RoadmapItemRow */
 /** @typedef {ReturnType<import('../roadmap.cjs').roadmapState>} RoadmapState */
@@ -96,7 +121,7 @@ function breakdown(totals) {
 // Horizon labels render as stored — they are the user's own release words
 // ("MVP", "v1.5", "someday"), never recased. Item names stay titlecased,
 // matching the discovery map's display convention for topics.
-/** Horizon-grouped item trees, shared by the map and proposal views. @param {string[]} horizons @param {RoadmapItemRow[]} rows */
+/** Horizon-grouped item trees. @param {string[]} horizons @param {RoadmapItemRow[]} rows */
 function horizonTrees(horizons, rows) {
   const parts = [];
   for (const g of groupByHorizon(horizons, rows)) {
@@ -118,105 +143,6 @@ function roadmapMapView(state) {
     + `${breakdown(state.totals)})`) + '\n';
   if (state.items.length === 0) return head + '  (empty)\n';
   return head + horizonTrees(state.horizons, state.items).join('\n');
-}
-
-/**
- * @typedef {object} ProposedRoadmapItem
- * @property {string} name
- * @property {string} horizon
- * @property {string} summary  one line, from the exploration
- */
-
-/**
- * The harvest proposal — the sorted new items grouped by horizon (existing
- * and JIT alike), the existing roadmap unchanged below, and the framing
- * footer. The two-destination sort's "this container" half never appears
- * here — epic-bound items land on the epic's map via its own synthesis view.
- * @param {RoadmapState} state
- * @param {ProposedRoadmapItem[]} proposed
- * @returns {string}
- */
-function roadmapProposalView(state, proposed) {
-  if (!Array.isArray(proposed) || proposed.length === 0) {
-    throw new Error('roadmapProposalView: proposed set is empty — nothing to render');
-  }
-  const parts = ['Proposed Roadmap\n'];
-  const hasExisting = state.items.length > 0;
-
-  // Proposed rows are waiting-to-be: group by the proposal's own horizons
-  // (order: existing list first, then new horizons in proposal order).
-  const horizons = [...state.horizons];
-  for (const p of proposed) {
-    if (!horizons.includes(p.horizon)) horizons.push(p.horizon);
-  }
-  const rows = proposed.map((p) => /** @type {RoadmapItemRow} */ ({
-    name: p.name, horizon: p.horizon, summary: p.summary, kind: DEFAULT_KIND, origin: 'harvest', sources: [], state: 'waiting',
-  }));
-
-  parts.push(`${hasExisting ? 'New this session' : 'Proposed items'} (${proposed.length})`);
-  parts.push(...horizonTrees(horizons, rows));
-
-  if (hasExisting) {
-    parts.push(`Already on the roadmap (${state.items.length})`);
-    parts.push(...horizonTrees(state.horizons, state.items));
-  }
-
-  const footer = `${proposed.length} item${proposed.length === 1 ? '' : 's'}. `
-    + 'Horizons use the conversation\'s own language; placement is my read — say the word to move any of it.';
-  parts.push(wrapWithPrefix(footer, { width: TREE_WIDTH, prefix: '' }).join('\n') + '\n');
-
-  return parts.join('\n');
-}
-
-/**
- * The pull working set's selection screen: waiting items numbered
- * horizon-major, each row a sentence wrapped under its text, a DATA table
- * resolving numbers and one counting each horizon's waiting items, the select
- * menu. Consumed by the roadmap skill's gateway (numbers must resolve
- * mechanically, so the reasoning table rides beside the display).
- * @param {RoadmapState} state
- * @returns {{data: string, display: string, menu: string, rows: {n: number, name: string, horizon: string, kind: string}[]}}
- */
-function roadmapPullSetView(state) {
-  const waiting = state.items.filter((r) => r.state === 'waiting');
-  if (waiting.length === 0) {
-    throw new Error('roadmapPullSetView: no waiting items — nothing to pull');
-  }
-  /** @type {{n: number, name: string, horizon: string, kind: string}[]} */
-  const rows = [];
-  const byHorizon = groupByHorizon(state.horizons, waiting);
-  const groups = byHorizon.map((g) => {
-    const nodes = g.rows.map((row) => {
-      rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon ?? NO_HORIZON, kind: row.kind });
-      const number = `${rows.length}. `;
-      const kind = markedKind(row.kind);
-      return { title: `${number}${titlecase(row.name)}${kind ? ` [${kind}]` : ''} — ${row.summary}`, hang: number.length };
-    });
-    return `${g.horizon}\n${renderTree(nodes, { width: TREE_WIDTH, wrapTitles: true })}`;
-  });
-
-  const data = [
-    `waiting_count: ${waiting.length}`,
-    'ITEMS (n  name  horizon  kind):',
-    ...rows.map((r) => `  ${r.n}  ${r.name}  ${r.horizon}  ${r.kind}`),
-    'HORIZONS (horizon  waiting):',
-    ...byHorizon.map((g) => `  ${g.horizon}  ${g.rows.length}`),
-  ].join('\n');
-
-  const options = [];
-  if (rows.length === 1) {
-    options.push(cmdOption('1', null, 'Start work on the item'));
-  } else {
-    options.push(rangeOption(1, rows.length, 'Start work on item(s) (comma-separated for several)'));
-  }
-  options.push(cmdOption('b', 'back', 'Go back without starting anything'));
-
-  return {
-    data,
-    display: groups.join('\n'),
-    menu: menuFrame(['Which items do you want to start building?', '', ...options]),
-    rows,
-  };
 }
 
 /**
@@ -258,40 +184,8 @@ function roadmapAddGate(state, horizon) {
   return { units, menu: menu(statement, options, { question: 'Where does this go?' }) };
 }
 
-/**
- * The roadmap home menu — the `r/roadmap` row's landing. Pull shows only over
- * waiting items, so it is engine-rendered. The product's conversation is the
- * start menu's own (18.8.7), handed into discovery at no unit. `keys` carries
- * the machine action keys the skill routes on.
- * @param {RoadmapState} state
- * @returns {{keys: {key: string, word?: string, action: string, label: string}[], rendered: string}}
- */
-function roadmapHomeMenu(state) {
-  /** @type {{key: string, word?: string, action: string, label: string}[]} */
-  const keys = [];
-  if (state.totals.waiting > 0) {
-    keys.push({ key: 'w', word: 'work', action: 'pull', label: `Start work on waiting item(s) — creates a piece of work (${state.totals.waiting} waiting)` });
-  }
-  keys.push({ key: 'p', word: 'product', action: 'open_product', label: 'Talk about the product' });
-  keys.push({ key: 'b', word: 'back', action: 'back', label: 'Return to the start menu' });
-
-  const options = keys.map((k) => cmdOption(k.key, k.word ?? null, k.label));
-  options.push(promptOption('Ask', 'Ask about the roadmap'));
-  return { keys, rendered: menu('', options, { question: 'What would you like to do?' }) };
-}
-
-// The static gate menus — engine-rendered like every menu (one renderer,
-// one alignment rule, one register), fetched by the prose at the exact
-// point each is displayed.
-
-/** The roadmap harvest's sort confirm. */
-function roadmapHarvestGate() {
-  return menu('', [
-    cmdOption('y', 'yes', 'Add these items to the roadmap'),
-    cmdOption('e', 'explore', 'Go back to the conversation; not ready yet'),
-    promptOption('Adjust', 'Tell me what to change (move, split, merge, rename, re-word)'),
-  ], { question: 'Put these on the roadmap as shown?' });
-}
+// The static gate menu — engine-rendered like every menu, fetched by the
+// prose at the point it is displayed.
 
 /** The epic synthesis' parks-only confirm — the whole sort is the roadmap's. */
 function roadmapParksGate() {
@@ -302,17 +196,137 @@ function roadmapParksGate() {
   ], { question: 'Park these on the roadmap?' });
 }
 
-/** The view's chrome heading — project-level, no unit. */
-function roadmapTitle() { return 'Roadmap'; }
+/** @typedef {import('../menus.cjs').MenuRow} MenuRow */
+/** @typedef {import('../menus.cjs').MenuScreen} MenuScreen */
+/** @typedef {import('./surfaces.cjs').Next} Next */
+
+/** A row leading into the conversation. @type {Next} */
+const CARRY_ON = Object.freeze({ kind: 'continue' });
+
+/** The branch an item's line opens on, under its horizon. */
+const BRANCH = '  ├─ '.length;
+
+/**
+ * Where an item came from, as its line names it: discovery for one the
+ * product's conversation put there, the inbox for one moved off it, the
+ * roadmap for one added on its own menu, and otherwise the unit it left.
+ * @param {string} origin
+ */
+function originOf(origin) {
+  const [kind, from = ''] = origin.split(/:(.*)/);
+  if (kind === 'harvest' || (kind === 'park' && from === PRODUCT)) return 'discovery';
+  if (kind === 'inbox' || kind === 'roadmap') return kind;
+  return kind === 'topic' ? from.split('/')[0] : from;
+}
+
+/** Items as a tree, one line each. @param {string[]} titles */
+const treeLines = (titles) => renderTree(titles.map((t) => ({ title: t })), { width: Infinity }).trimEnd().split('\n');
+
+/**
+ * Each horizon's waiting items under its heading, numbered across the
+ * horizons (the header's).
+ * @param {{horizon: string, rows: RoadmapItemRow[]}[]} groups @param {number} width
+ * @returns {string[]}
+ */
+function horizonLines(groups, width) {
+  let n = 0;
+  const numbered = groups.map(({ horizon, rows }) => ({
+    horizon,
+    rows: rows.map((row) => ({ text: `${++n}. ${titlecase(row.name)}`, tag: `${row.kind} · ${originOf(row.origin)}` })),
+  }));
+  const all = numbered.flatMap(({ rows }) => rows);
+  const longest = Math.max(...all.map(({ text }) => text.length));
+  const widestTag = Math.max(...all.map(({ tag }) => tag.length));
+  const column = Math.min(BRANCH + longest + TAG_GAP, width - widestTag);
+  return numbered.flatMap(({ horizon, rows }, i) => [
+    ...(i === 0 ? [] : ['']),
+    horizon === NO_HORIZON ? horizon : `${horizon} (${rows.length})`,
+    ...treeLines(rows.map(({ text }) => clipped(text, column - TAG_GAP - BRANCH))).map((line, j) => line.padEnd(column) + rows[j].tag),
+  ]);
+}
+
+/** The waiting items, by horizon in the person's order. @param {RoadmapState} state */
+const waitingGroups = (state) => groupByHorizon(state.horizons, state.items.filter((row) => row.state === 'waiting'));
+
+/**
+ * The roadmap's screen (the header's).
+ * @param {string} project @param {RoadmapState} state
+ * @returns {MenuScreen}
+ */
+function roadmapScreen(project, state) {
+  const groups = waitingGroups(state);
+  /** @type {MenuRow} */
+  const add = { key: 'n', word: 'new', label: 'Add an item — I\'ll ask what it is and which horizon', next: CARRY_ON };
+  /** @type {MenuRow} */
+  const product = { key: 'p', word: 'product', label: 'Talk about the product as a whole', next: { kind: 'handoff', skill: 'leeway-discovery', args: ['none', 'none'] } };
+  /** @type {MenuScreen['back']} */
+  const back = { label: 'Back to the start menu', next: { kind: 'engine', argv: ['render', 'start-menu'] } };
+  const title = `Roadmap · ${project}`;
+  if (groups.length === 0) return { title, shows: [], statement: 'Nothing waits on the roadmap.', rows: [add, product], back };
+  return {
+    title,
+    shows: horizonLines(groups, TREE_WIDTH),
+    rows: [
+      { key: 'w', word: 'work', label: 'Work on items now — discovery finds what kind of work they are', next: CARRY_ON },
+      add,
+      { key: 'm', word: 'move', label: 'Move an item to another horizon you name', next: CARRY_ON },
+      { key: 'a', word: 'archive', label: 'Archive an item', next: CARRY_ON },
+      product,
+    ],
+    back,
+  };
+}
+
+/** Each waiting item's number and name, as a DATA section, where any waits. @param {RoadmapState} state */
+function itemData(state) {
+  const names = waitingGroups(state).flatMap(({ rows }) => rows.map((row) => row.name));
+  return names.length === 0 ? '' : dataSection(names.map((name, i) => `item ${i + 1}: ${name}`));
+}
+
+/** `render roadmap` (the header's). @param {string} cwd @returns {string} */
+function roadmapSurface(cwd) {
+  const state = roadmapState(cwd);
+  return itemData(state) + drawMenu(cwd, MENUS.roadmap, {}, roadmapScreen(projectName(cwd), state));
+}
+
+/**
+ * Lines whose tags end at the width, as the harvest's drawing puts them, a
+ * line cut short where it would run within a gap of its tag.
+ * @param {{text: string, tag: string}[]} rows @param {number} width
+ */
+function rightAligned(rows, width) {
+  return rows.map(({ text, tag }) => clipped(text, width - TAG_GAP - tag.length).padEnd(width - tag.length) + tag);
+}
+
+/**
+ * `render roadmap-harvest --file <items.json>` (the header's).
+ * @param {string} cwd @param {string|undefined} file @returns {string}
+ */
+function roadmapHarvestSurface(cwd, file) {
+  const entries = refusing('render roadmap-harvest', () => {
+    if (file === undefined) throw new Error('--file is required — the items the session proposes, as roadmap add-batch takes them');
+    return planRoadmapBatch(cwd, readPayload(cwd, file)).entries;
+  });
+  const one = entries.length === 1;
+  const lines = treeLines(entries.map((entry) => titlecase(entry.name)));
+  const shows = [`TO THE ROADMAP (${entries.length}, from this conversation)`, ...rightAligned(lines.map((text, i) => ({ text, tag: `[${entries[i].horizon}]` })), TREE_WIDTH)];
+  const statement = one
+    ? `Your yes puts this one on ${projectName(cwd)}'s roadmap, on the horizon you gave it.`
+    : `Your yes puts these ${entries.length} on ${projectName(cwd)}'s roadmap, each on the horizon you gave it.`;
+  const them = one ? 'it' : 'them';
+  return section('DISPLAY: roadmap harvest', emitAs('text'), shows.join('\n'))
+    + section('MENU: roadmap harvest gate', MENU_INSTRUCTION, menu(wrap(statement, displayWidth()).join('\n'), [
+      cmdOption('y', 'yes', `Put ${them} on the roadmap`, { next: { kind: 'engine', argv: ['roadmap', 'add-batch', '--file', /** @type {string} */ (file)] } }),
+      promptOption('Keep shaping', 'Tell me what to change — an item or its horizon', { next: CARRY_ON }),
+    ], { question: `Put ${them} on the roadmap?` }));
+}
 
 module.exports = {
   groupByHorizon,
-  roadmapTitle,
   roadmapMapView,
-  roadmapProposalView,
-  roadmapPullSetView,
   roadmapAddGate,
-  roadmapHarvestGate,
   roadmapParksGate,
-  roadmapHomeMenu,
+  roadmapScreen,
+  roadmapSurface,
+  roadmapHarvestSurface,
 };

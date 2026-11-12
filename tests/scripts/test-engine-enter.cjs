@@ -72,7 +72,7 @@ const EPIC = 'fumi';
 const ATLAS = 'atlas';
 const FEATURE = 'quick-sync';
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
-const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation> <work-unit|product> [<topic>] [--take] [--move]';
+const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation> <work-unit|product> [<topic>] [--take] [--move] [--seeds <seeds>]';
 const TODAY = FROZEN_AT.slice(0, 10);
 
 // A process that no longer runs, and one that does that is not this suite's.
@@ -204,10 +204,12 @@ afterEach(() => {
 });
 
 describe('what cannot be entered is refused, naming the way on, and nothing is written', () => {
-  it('a call that is no entry: a phase not entered through it, a missing unit, an empty topic, a flag it lacks, an extra argument, a move into a row that takes none, a flag twice', () => {
+  it('a call that is no entry: a phase not entered through it, a missing unit, an empty topic, a flag it lacks, an extra argument, a move or seeds into a row that takes none, a flag twice, seeds missing or given twice', () => {
     for (const args of [
       ['research', EPIC, 'onboarding'], ['discussion'], ['discussion', EPIC, ''], ['discussion', EPIC, '--force'], ['discussion', EPIC, 'onboarding', 'more'],
       ['discussion', EPIC, 'onboarding', '--move'], ['discovery', 'product', '--take', '--take'],
+      ['discussion', EPIC, 'onboarding', '--seeds', 'roadmap:loyalty'], ['discovery', 'product', '--seeds'], ['discovery', 'product', '--seeds', '--take'],
+      ['discovery', 'product', '--seeds', 'roadmap:a', '--seeds', 'roadmap:b'],
     ]) {
       assert.strictEqual(refused(args), USAGE, args.join(' '));
     }
@@ -621,6 +623,42 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     ]));
     assert.deepStrictEqual([position(), presence('product', 'product', 'discovery')?.session_id], [{ name: 'product' }, 'sess-1']);
     assert.ok(!fs.existsSync(at('product')), 'the product has no unit');
+  });
+
+  it('18.S60: a start from seeds reads the seeds and only those — each inbox item, each roadmap item\'s note and the logs its other sources point at — and no session log; a return with none reads the two latest (8.2.10, 18.8.15)', () => {
+    const idea = '.leeway/.inbox/ideas/2026-01-03--dark-mode.md';
+    writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+    writeState(dir, '.product/notes/2026-01-02--pinned.md', '# Pinned above every window\n');
+    project({ roadmap: { horizons: ['next'], items: {
+      pinned: { horizon: 'next', summary: 'pinned above every window', kind: 'idea', origin: 'inbox:2026-01-02--pinned', sources: ['.product/notes/2026-01-02--pinned.md', layout.productSession('001')] },
+    } } });
+    const seeded = enter(['discovery', 'product', '--seeds', `${idea},roadmap:pinned`]).sections;
+    assert.strictEqual(seeded, data([
+      `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+      'roadmap seed: pinned',
+      `note: ${at('.product/notes/2026-01-02--pinned.md')}`,
+      `source: ${at(layout.productSession('001'))}`,
+      `roadmap: \`${ENGINE} roadmap state\``,
+      `product: \`${ENGINE} ledger product\``,
+      'research owed: no',
+      `log: ${at(layout.productSession('003'))}`,
+    ]));
+    assert.deepStrictEqual(enter(['discovery', 'product']).sections.match(/^session log: .*$/gm), [layout.productSession('002'), layout.productSession('003')].map((log) => `session log: ${at(log)}`));
+  });
+
+  it('seeds an epic\'s discovery takes in are named to take in (18.8.4); seeds are refused, writing nothing, as the handoff refuses them', () => {
+    project({ roadmap: { horizons: ['next'], items: {
+      loyalty: { horizon: 'next', summary: 'rewards', kind: 'idea', origin: 'harvest' },
+      'colour-drift': { horizon: 'next', summary: 'tag colours drift', kind: 'bug', origin: 'harvest' },
+    } } });
+    assert.deepStrictEqual([
+      refused(['discovery', EPIC, '--seeds', 'roadmap:colour-drift']),
+      refused(['discovery', 'product', '--seeds', 'roadmap:ghost']),
+    ], [
+      'roadmap item "colour-drift" is a bug — only an idea joins an epic; a bug or a quick-fix starts work of its own, through w on the roadmap',
+      'the roadmap has no item "ghost" to seed the work',
+    ]);
+    assert.match(enter(['discovery', EPIC, '--seeds', 'roadmap:loyalty']).sections, /^take in: loyalty$/m);
   });
 
   it('research is owed while the brownfield offer is accepted (8.12.13)', () => {

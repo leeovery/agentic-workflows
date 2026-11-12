@@ -73,6 +73,7 @@ const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, FOL
 const { STATE_DIR_NAME, statePath } = require('../kernel/state-root.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { isoNow } = require('./dates.cjs');
+const { titlecase } = require('./conventions.cjs');
 
 /** @typedef {import('./inbox.cjs').ItemKind} RoadmapKind */
 
@@ -153,11 +154,12 @@ function addNameRefusal(items, name) {
 // valve, origin = the session's container), `inbox:{file stem}` (moved off
 // the inbox with its note), `postpone:{work_unit}` (a topic that left an epic
 // for the roadmap), `topic:{work_unit}/{topic}` (a candidate the person took
-// at a one-topic unit's decided gate, 8.10.2).
+// at a one-topic unit's decided gate, 8.10.2), `roadmap` (added on the
+// roadmap's own menu, 18.8.6).
 /** @param {*} origin */
 function validateOrigin(origin) {
-  if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+|postpone:[^\s]+|topic:[^\s/]+\/[^\s/]+)$/.test(origin)) {
-    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{file stem}, postpone:{work_unit}, topic:{work_unit}/{topic}`);
+  if (typeof origin !== 'string' || !/^(harvest|roadmap|park:[^\s]+|inbox:[^\s]+|postpone:[^\s]+|topic:[^\s/]+\/[^\s/]+)$/.test(origin)) {
+    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, roadmap, park:{origin}, inbox:{file stem}, postpone:{work_unit}, topic:{work_unit}/{topic}`);
   }
 }
 
@@ -374,6 +376,7 @@ function joinState(cwd, item) {
  * @property {string[]} [horizons]
  * @property {number} [item_total]
  * @property {boolean} [horizon_created]
+ * @property {string} [said]  add: the line that reports the item put on its horizon
  * @property {{name: string, horizon: string, kind: RoadmapKind}[]} [added]
  * @property {{from: string, to: string}[]} [notes_moved]  add-batch: the notes off the inbox
  * @property {string[]} [horizons_created]
@@ -605,7 +608,7 @@ function ensureHorizon(roadmap, horizon, position) {
 /**
  * Add one item — the JIT birth path: the node and the named horizon are
  * created when missing. Refuses a duplicate name; never touches existing
- * items. Self-commits.
+ * items. Self-commits, answering the line that reports it (18.8.11).
  * @param {string} cwd
  * @param {string} name
  * @param {{horizon?: string, summary?: string, kind?: string, origin?: string, sources?: string[]}} [fields]
@@ -631,7 +634,7 @@ function addRoadmapItem(cwd, name, { horizon, summary, kind = DEFAULT_KIND, orig
     if (sources.length > 0) item.sources = sources;
     roadmap.items[name] = item;
     /** @type {RoadmapOpResult} */
-    const out = { op: 'add', name, horizon, kind: /** @type {RoadmapKind} */ (kind), origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length };
+    const out = { op: 'add', name, horizon, kind: /** @type {RoadmapKind} */ (kind), origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length, said: `On the roadmap: "${titlecase(name)}" → ${horizon}.` };
     if (horizonCreated) out.horizon_created = true;
     return out;
   });

@@ -733,12 +733,14 @@ describe('roadmap surfaces', () => {
     assert.match(out, /\*\*`w\/waiting`\*\* +→ On the roadmap in "next", waiting\n/, 'the waiting row, nothing else waiting beside it');
   });
 
-  it('horizon-pick: the horizons in map order, each with what waits in it, then the new row', () => {
+  it('horizon-pick --park: the item going on the roadmap named above the horizons in map order, each with what waits in it, then the new row, none named as its own (18.8.2, 18.8.11)', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
-    const out = renderSurface(dir, 'horizon-pick', {});
+    const out = renderSurface(dir, 'horizon-pick', { park: 'streak-freeze' });
     assert.strictEqual(out, [
       "=== MENU: horizon pick (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
+      'Putting "Streak Freeze" on the roadmap.',
+      '',
       '**`◆ Which horizon?`**',
       '',
       '**`1`**     → mvp — *1 waiting*',
@@ -748,24 +750,23 @@ describe('roadmap surfaces', () => {
     ].join('\n'), 'the pulled item counts against no horizon — only what waits is offered');
   });
 
-  it('horizon-pick --park: says what is going on the roadmap above the same rows, naming no horizon as its own (18.8.2, 18.8.11); refuses an address beside it', () => {
-    writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
-    assert.deepStrictEqual(renderSurface(dir, 'horizon-pick', { park: 'streak-freeze' }).split('\n').slice(1, 6), [
-      '· · · · · · · · · · · ·',
-      'Putting "Streak Freeze" on the roadmap.',
-      '',
-      '**`◆ Which horizon?`**',
-      '',
-    ]);
-    assert.throws(() => renderSurface(dir, 'horizon-pick', { park: 'streak-freeze', dotpath: 'mvp.discovery.auth' }),
-      /render horizon-pick: --park names the item being put on the roadmap, and takes no address$/);
+  it('horizon-pick --park over several items, comma-joined, says how many are going on the roadmap', () => {
+    writeRoadmap(TWO_HORIZONS);
+    assert.strictEqual(renderSurface(dir, 'horizon-pick', { park: 'streak-freeze,dark-mode,export-csv' }).split('\n')[2], 'Putting 3 items on the roadmap.');
   });
 
-  it('horizon-pick: refuses a never-born roadmap and one with no horizons', () => {
+  it('horizon-pick: refuses a pick naming nothing going on the roadmap, --park beside an address, a --park name that is no item name or comes twice, a never-born roadmap and one with no horizons', () => {
     assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
+      /^Error: render horizon-pick: name what is going on the roadmap — --park <name>\[,<name>…\], a topic leaving for it as <work_unit>\.discovery\.<topic>, or --back <name> --from <what put it back>$/);
+    assert.throws(() => renderSurface(dir, 'horizon-pick', { park: 'streak-freeze', dotpath: 'mvp.discovery.auth' }),
+      /render horizon-pick: --park names the items being put on the roadmap, and takes no address$/);
+    assert.throws(() => renderSurface(dir, 'horizon-pick', { park: 'streak-freeze,' }),
+      /render horizon-pick: --park takes the items' names, comma-joined — "" is not a legal item name/);
+    assert.throws(() => renderSurface(dir, 'horizon-pick', { park: 'a,b,a' }), /render horizon-pick: --park names "a" twice$/);
+    assert.throws(() => renderSurface(dir, 'horizon-pick', { park: 'streak-freeze' }),
       /render horizon-pick: no roadmap on the project manifest — the caller names its first horizon in prose/);
     writeRoadmap({ horizons: [], items: {} });
-    assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
+    assert.throws(() => renderSurface(dir, 'horizon-pick', { park: 'streak-freeze' }),
       /render horizon-pick: the roadmap holds no horizons — the caller names one in prose/);
   });
 
@@ -1137,19 +1138,10 @@ describe('render backlog-gate', () => {
   });
 });
 
-describe('render roadmap gate menus — static sets, engine-rendered like every menu', () => {
+describe('render roadmap-parks-gate — a static set, engine-rendered like every menu', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
-
-  it('roadmap-harvest-gate: the sort confirm', () => {
-    const out = renderSurface(dir, 'roadmap-harvest-gate', {});
-    assert.match(out, /^=== MENU: roadmap harvest gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
-    assert.match(out, /`◆ Put these on the roadmap as shown\?`/);
-    assert.match(out, /`y\/yes`.*Add these items to the roadmap/);
-    assert.match(out, /`e\/explore`.*Go back to the conversation; not ready yet/);
-    assert.match(out, /\*\*Adjust\*\*.*Tell me what to change \(move, split, merge, rename,/);
-  });
 
   it('roadmap-parks-gate: the parks-only confirm in the park register', () => {
     const out = renderSurface(dir, 'roadmap-parks-gate', {});

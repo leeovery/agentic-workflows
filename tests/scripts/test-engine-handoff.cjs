@@ -88,7 +88,7 @@ function inlineAnswer(skill, args, line) {
   ].join('\n');
 }
 
-/** A project with a feature, an epic, two live inbox items, and a roadmap item waiting beside one the epic took. */
+/** A project with a feature, an epic, two live inbox items, and roadmap items waiting — an idea and a bug — beside one the epic took. */
 function seed() {
   const dir = setupFixture();
   createManifest(dir, 'note-window', { work_type: 'feature' });
@@ -97,7 +97,7 @@ function seed() {
   createFile(dir, BUG, '# Flaky login\n');
   const project = readManifest(dir, '.');
   const item = (summary) => ({ horizon: 'next', summary, kind: 'idea', origin: 'harvest' });
-  project.roadmap = { horizons: ['next'], items: { loyalty: item('Loyalty points'), 'white-label': { ...item('White label'), pulled_to: { work_unit: 'fumi' } } } };
+  project.roadmap = { horizons: ['next'], items: { loyalty: item('Loyalty points'), 'colour-drift': { ...item('Tag colours drift'), kind: 'bug' }, 'white-label': { ...item('White label'), pulled_to: { work_unit: 'fumi' } } } };
   writeState(dir, layout.manifest('.'), `${JSON.stringify(project, null, 2)}\n`);
   return dir;
 }
@@ -145,9 +145,8 @@ describe('engine handoff — the composed answer for every target', () => {
     assert.deepStrictEqual(payloadOf(carried(dir, ['/leeway'])), { skill: 'leeway', args: '', text: 'Invoke `/leeway`.', line: '→ Start' });
   });
 
-  it('the roadmap opens on its home', () => {
-    assert.strictEqual(inline(dir, ['leeway-roadmap', 'open']),
-      inlineAnswer('leeway-roadmap', 'open', '→ Roadmap'));
+  it('the roadmap opens on its home, named bare', () => {
+    assert.strictEqual(inline(dir, ['leeway-roadmap']), inlineAnswer('leeway-roadmap', '', '→ Roadmap'));
   });
 
   it('the epic menu names the epic alone', () => {
@@ -161,10 +160,11 @@ describe('engine handoff — the composed answer for every target', () => {
       inlineAnswer('leeway-continue-epic', 'done-epic', '→ Epic · done-epic'));
   });
 
-  it('discovery into an existing epic takes the work type epic or none, and no seeds', () => {
+  it('discovery into an existing epic takes the work type epic or none, and a waiting roadmap idea to join it as a topic (18.8.4)', () => {
     assert.strictEqual(inline(dir, ['leeway-discovery', 'none', 'fumi']),
       inlineAnswer('leeway-discovery', 'none fumi', '→ Discovery · fumi'));
     assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'fumi', 'none'])).args, 'none fumi "none"');
+    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:loyalty'])).text, 'Invoke `/leeway-discovery none fumi "roadmap:loyalty"`.');
   });
 
   it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit; the spec and the build\'s two places, entered at the unit, an epic\'s with no topic, and refusing a topic (4.11.2)', () => {
@@ -204,7 +204,7 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('the skill named as its slash command — a menu\'s stored route as it stands — answers as the bare name does', () => {
-    assert.strictEqual(inline(dir, ['/leeway-roadmap', 'open']), inline(dir, ['leeway-roadmap', 'open']));
+    assert.strictEqual(inline(dir, ['/leeway-roadmap']), inline(dir, ['leeway-roadmap']));
     assert.strictEqual(carried(dir, ['/leeway-continue-epic', 'fumi']), carried(dir, ['leeway-continue-epic', 'fumi']));
   });
 
@@ -427,8 +427,7 @@ describe('engine handoff — refusals', () => {
       [['leeway-discovery', 'feature'], /^Usage: engine handoff leeway-discovery <work-type\|start\|none> <none\|epic> \[<seeds\|none>\]$/],
       [['leeway-discovery', 'feature', 'none', 'none', 'extra'], /^Usage: engine handoff leeway-discovery /],
       [['leeway', 'fumi'], /^Usage: engine handoff leeway$/],
-      [['leeway-roadmap'], /^Usage: engine handoff leeway-roadmap open$/],
-      [['leeway-roadmap', 'open', 'extra'], /^Usage: engine handoff leeway-roadmap open$/],
+      [['leeway-roadmap', 'open'], /^Usage: engine handoff leeway-roadmap$/],
       [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
       [['leeway-continue-epic', 'fumi', 'discussion', 'completed'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
       [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
@@ -444,13 +443,15 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['leeway-discovery', 'epic', 'ghost'], /^work unit "ghost" not found$/);
   });
 
-  it('discovery into an existing epic refuses a work type that would start new work, and any seeds', () => {
+  it('discovery into an existing epic refuses, before anything travels, a work type that would start new work, an inbox item, a bug or a quick-fix item, and an epic past its spec, in the pull\'s words', () => {
     for (const type of [...VALID_WORK_TYPES.filter((t) => t !== 'epic'), 'start']) {
       refused(dir, ['leeway-discovery', type, 'fumi'], new RegExp(`^the work type into an existing epic must be one of epic\\|none — got "${type}"$`));
     }
-    refused(dir, ['leeway-discovery', 'epic', 'fumi', IDEA], /^seeds start new work, never an existing epic's discovery — got "\.leeway\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
-    refused(dir, ['leeway-discovery', 'none', 'fumi', IDEA], /^seeds start new work, never an existing epic's discovery/);
-    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:loyalty'], /^seeds start new work, never an existing epic's discovery/);
+    refused(dir, ['leeway-discovery', 'none', 'fumi', IDEA], /^an inbox item starts new work, never joins an existing epic — only a waiting roadmap idea joins "fumi": got "\.leeway\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
+    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already/);
+    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:colour-drift'], /^roadmap item "colour-drift" is a bug — only an idea joins an epic; a bug or a quick-fix starts work of its own, through w on the roadmap$/);
+    createFile(dir, '.leeway/fumi/spec.md', '# Fumi\n');
+    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:loyalty'], /^fumi has its spec, so its map is closed — the item stays on the roadmap: pull it into an epic still before its spec, or start it as work of its own$/);
   });
 
   it('discovery refuses seeds that are not live inbox items on disk, named once each', () => {
@@ -472,11 +473,6 @@ describe('engine handoff — refusals', () => {
     const quoted = '.leeway/.inbox/ideas/2026-01-04--a "b".md';
     createFile(dir, quoted, '# Quoted\n');
     refused(dir, ['leeway-discovery', 'feature', 'none', quoted], /^seeds travel quoted — a seed cannot hold a double quote/);
-  });
-
-  it('the roadmap takes open alone — its genesis and pull carry the live conversation and never hand off', () => {
-    refused(dir, ['leeway-roadmap', 'genesis'], /^the mode must be open — got "genesis"$/);
-    refused(dir, ['leeway-roadmap', 'pull'], /^the mode must be open — got "pull"$/);
   });
 
   it('the epic menu refuses a unit that is no epic, a completed feature among them, and one the project lacks', () => {

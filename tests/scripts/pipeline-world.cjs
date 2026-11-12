@@ -28,7 +28,6 @@ const ROOT = path.join(__dirname, '../..');
 const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
 const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
 const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
@@ -1057,14 +1056,24 @@ function startNew(sim) {
   return startPick(sim, 's');
 }
 
-// The roadmap's pull (pull.md): the picked items handed to discovery as its
-// seeds, their kinds giving the pre-seed — `start` where any is an idea.
+// The roadmap drawn, as the roadmap skill draws it, recording the
+// conversation at the roadmap. Answers the rows of the gate it states.
+/** @param {Sim} sim */
+function roadmapMenu(sim) {
+  sim.render(['roadmap'], { expect: 'content' });
+  arrived(sim, 'roadmap');
+  return shownRows(sim);
+}
+
+// Work started from the roadmap (the roadmap skill's w/work): the roadmap
+// drawn, w carrying on in the conversation, where Claude names the items,
+// and the items handed to discovery as its seeds, each `roadmap:{item}`,
+// with no type — discovery finds it (18.8.3). Answers the handoff's payload.
 /** @param {Sim} sim @param {string[]} items */
 function pullFromRoadmap(sim, items) {
-  const { items: rows } = LIB.roadmap.roadmapState(sim.dir);
-  const kinds = items.map((name) => rows.find((/** @type {{name: string}} */ row) => row.name === name).kind);
-  const wayIn = kinds.includes('idea') ? 'start' : (kinds.includes('bug') ? 'bugfix' : 'quick-fix');
-  return handoff(sim, `/leeway-discovery ${wayIn} none "${items.map((name) => `roadmap:${name}`).join(',')}"`);
+  roadmapMenu(sim);
+  assert.deepStrictEqual(answerGate(sim, 'roadmap', '--pick', 'w').next, { kind: 'continue' }, 'w carries on, where Claude asks which items');
+  return handoff(sim, `/leeway-discovery start none "${items.map((name) => `roadmap:${name}`).join(',')}"`);
 }
 
 // Items picked in triage (triage.md): Claude's pick, by the items' paths,
@@ -1724,7 +1733,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

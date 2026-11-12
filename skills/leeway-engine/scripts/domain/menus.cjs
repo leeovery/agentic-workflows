@@ -112,7 +112,7 @@ const MENUS = Object.freeze({
   triage: registered('triage', 'triage', 'triage', 'none', {}, ['w', 'r', 'a', 'c', 'v', BACK]),
   archived: registered('archived', 'archived items', 'the archived items', 'none', {}, [NUMBERED, BACK]),
   'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none', {}, ['u', 'd', BACK]),
-  roadmap: registered('roadmap', 'roadmap', 'the roadmap', 'roadmap'),
+  roadmap: registered('roadmap', 'roadmap', 'the roadmap', 'roadmap', {}, ['w', 'n', 'm', 'a', 'p', BACK]),
   manage: registered('manage', 'manage', 'manage', 'none', {}, [NUMBERED, BACK]),
   'manage-unit': registered('manage-unit', 'manage unit', 'managing the unit', 'none', {}, ['p', 'o', 'c', 'r', BACK]),
   closed: registered('closed', 'closed units', 'the closed units', 'none', {}, [NUMBERED, BACK]),

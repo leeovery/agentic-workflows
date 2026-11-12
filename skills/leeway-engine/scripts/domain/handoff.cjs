@@ -20,24 +20,26 @@
 // completed, whose menu is its complete variant (18.4.23). The start,
 // `leeway`, takes nothing: where finish hands every other unit once it is
 // done, and where a feature's, bugfix's or quick-fix's cancel from inside
-// its session goes (18.4.20).
+// its session goes (18.4.20). The roadmap takes nothing either.
 //
 // Discovery is told how the conversation was come to: a work type, the
 // person starting a piece of work of that kind; `start`, a piece of work of
 // no kind yet (8.2.9); `none`, the product's conversation itself, or an
-// epic's. New work's seeds are live inbox items and waiting roadmap items,
-// `roadmap:{item}`, which a pull hands in (8.1.8).
+// epic's. Its seeds, refused before anything travels where the entry would
+// refuse them (seeds.cjs): new work's, live inbox items and waiting roadmap
+// items, `roadmap:{item}`, which a pull hands in (8.1.8); an existing
+// epic's, waiting roadmap ideas joining it as topics (18.8.4).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
-const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
-const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, NO_ARGUMENT, PRODUCT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { assertSeeds } = require('./seeds.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { mailPhase, topicTitles, itemName, topicKey, roadmapSeedRefusal, retiredRefusal } = require('./derivations.cjs');
+const { mailPhase, topicTitles, itemName, topicKey, retiredRefusal } = require('./derivations.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 
 const HANDOFF_ENV = 'LEEWAY_HANDOFF';
@@ -138,17 +140,6 @@ function finishedEpic(cwd, unit) {
  * twice, none holding the quote discovery reads them inside.
  * @param {string} cwd @param {string} seeds
  */
-function assertSeeds(cwd, seeds) {
-  if (seeds.includes('"')) throw new Error(`seeds travel quoted — a seed cannot hold a double quote: ${seeds}`);
-  const all = seeds.split(',');
-  const roadmap = all.filter((seed) => seed.startsWith(ROADMAP_SEED));
-  const inbox = all.filter((seed) => !seed.startsWith(ROADMAP_SEED));
-  if (inbox.length > 0) parseInboxPaths(cwd, inbox, { archived: false });
-  if (roadmap.length === 0) return;
-  const refusal = roadmapSeedRefusal(readProjectManifest(cwd), roadmap.map((seed) => seed.slice(ROADMAP_SEED.length)));
-  if (refusal !== null) throw new Error(refusal);
-}
-
 /** A place, and the most specific name in it where there is one. @param {string} place @param {string|null} [name] */
 function at(place, name = null) {
   return name === null ? place : `${place} · ${name}`;
@@ -203,13 +194,11 @@ const TARGETS = {
     quoted: 2,
     check: (cwd, [type, unit, seeds = NO_ARGUMENT]) => {
       assertOneOf('the work type', type, [...VALID_WORK_TYPES, START, NO_ARGUMENT]);
-      if (unit === NO_ARGUMENT) {
-        if (seeds !== NO_ARGUMENT) assertSeeds(cwd, seeds);
-        return;
+      if (unit !== NO_ARGUMENT) {
+        assertOneOf('the work type into an existing epic', type, ['epic', NO_ARGUMENT]);
+        assertWorkUnit(cwd, unit, 'epic');
       }
-      assertOneOf('the work type into an existing epic', type, ['epic', NO_ARGUMENT]);
-      if (seeds !== NO_ARGUMENT) throw new Error(`seeds start new work, never an existing epic's discovery — got "${seeds}"`);
-      assertWorkUnit(cwd, unit, 'epic');
+      if (seeds !== NO_ARGUMENT) assertSeeds(cwd, unit === NO_ARGUMENT ? PRODUCT : unit, seeds);
     },
     where: (_cwd, [, unit]) => at('Discovery', unit === NO_ARGUMENT ? null : unit),
   },
@@ -220,9 +209,9 @@ const TARGETS = {
     where: () => at('Start'),
   },
   'leeway-roadmap': {
-    usage: 'open',
-    counts: [1],
-    check: (cwd, [mode]) => assertOneOf('the mode', mode, ['open']),
+    usage: '',
+    counts: [0],
+    check: () => {},
     where: () => at('Roadmap'),
   },
   'leeway-continue-epic': {

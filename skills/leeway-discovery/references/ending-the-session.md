@@ -10,19 +10,15 @@ Re-read the log against the conversation and add what is missing. In an epic's d
 
 In the product's conversation, the capabilities the session named that are not on the roadmap yet, and what still stands of the researcher's open questions, are proposed as roadmap items on one screen. Nothing reaches the roadmap without the person's yes; with nothing to propose, there is no screen.
 
-Each item is a kebab-case `name`, a one-line `summary` in the product's terms, and the horizon the person named; for each they gave none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. Write them to `.leeway/.cache/product/discovery/product/roadmap-items.json`, `[{"name", "horizon", "summary", "sources": ["{log}"]}]`, `{log}` the log's path from the state root and `"kind": "bug"` or `"quick-fix"` for those. Draw them over the roadmap and emit its DISPLAY section verbatim per its marker:
+Each item is a kebab-case `name`, a one-line `summary` in the product's terms, and the horizon the person named; for each they gave none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. Write them to `.leeway/.cache/product/discovery/product/roadmap-items.json`, `[{"name", "horizon", "summary", "sources": ["{log}"]}]`, `{log}` the log's path from the state root and `"kind": "bug"` or `"quick-fix"` for those. Draw the proposal, and emit its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-roadmap/scripts/gateway.cjs proposal --file .leeway/.cache/product/discovery/product/roadmap-items.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-harvest --file .leeway/.cache/product/discovery/product/roadmap-items.json
 ```
 
-Its DATA flags each item: one `exists_on_roadmap` folds into the item there or takes another name, and an illegal name or horizon is respelled — a horizon with the person — before the screen. Then fetch the gate and emit its MENU verbatim per its marker:
+A refusal names what to change: a name already on the roadmap folds into the item there or takes another, and an illegal name or horizon is respelled — a horizon with the person — before it is drawn again.
 
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-harvest-gate
-```
-
-The answer goes to `gate`. Yes lands them, `roadmap add-batch --file .leeway/.cache/product/discovery/product/roadmap-items.json`; explore goes back to the conversation, and the session carries on; a change the person asks for changes the file, and the items are drawn again.
+The answer goes to `gate`; follow its `next`. Yes lands them; Keep shaping goes back to the conversation, and a change the person asks for changes the file, and the items are drawn again.
 
 ## The Close
 

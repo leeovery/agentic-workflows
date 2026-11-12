@@ -131,7 +131,7 @@ function startMenuScreen(read) {
       productRow(read),
       { key: 's', word: 'start', label: 'Start something new — describe it, and we\'ll find what kind of work it is', next: handoff('leeway-discovery', 'start', 'none') },
       { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },
-      { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('leeway-roadmap', 'open') },
+      { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('leeway-roadmap') },
       ...verdictRows(read.verdicts),
       ...(read.closed ? [{ key: 'v', word: 'view', label: 'View completed & cancelled work units', next: drawing('closed') }] : []),
       { key: 'm', word: 'manage', label: 'Manage work units', next: drawing('manage') },

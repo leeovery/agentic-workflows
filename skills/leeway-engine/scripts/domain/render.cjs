@@ -44,14 +44,15 @@ const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs
 const {
   roadmapMapView,
   roadmapAddGate,
-  roadmapHarvestGate,
   roadmapParksGate,
+  roadmapSurface,
+  roadmapHarvestSurface,
 } = require('./projections/roadmap.cjs');
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { lastShown } = require('./gate.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
   computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
@@ -1104,24 +1105,30 @@ function postponeAddress(cwd, dotpath) {
 }
 
 /**
- * The pick over the roadmap's horizons, naming none as its own (18.8.2).
+ * The pick over the roadmap's horizons, naming none as its own (18.8.2),
+ * each with how many wait there, and a new one, named in words; every row
+ * carries what answering it leads to, and a pick naming none of the three
+ * below is refused. With `--park <name>[,<name>…]` — the items Claude is
+ * putting on the roadmap, one or several — it names them above the
+ * question (18.8.11), and every row carries on with the horizon picked.
  * Addressed to a topic leaving for the roadmap, `<wu>.discovery.<topic>`,
- * each horizon's row leads to that topic's postpone gate; a new horizon,
- * named in words, carries on. With `--park <name>`, it asks where an item
- * Claude is putting on the roadmap goes, saying so above the question
- * (18.8.11), and every row carries on with the horizon picked. With
- * `--back <name> --from <what put it back> [--then <items>]`, it asks
- * where an item a cancel or a removal put back on no horizon goes
- * (18.8.20): each horizon's row moves it there, `roadmap move … --from`,
- * the items still to ask about carried on, whose answer leads on
- * (topic-leave.cjs), and a horizon named in words is moved the same way,
- * as its DATA says.
+ * each horizon's row leads to that topic's postpone gate, and a new horizon
+ * carries on. With `--back <name> --from <what put it back> [--then
+ * <items>]`, it asks where an item a cancel or a removal put back on no
+ * horizon goes (18.8.20): each horizon's row moves it there, `roadmap move
+ * … --from`, the items still to ask about carried on, whose answer leads on
+ * (topic-leave.cjs), and a horizon named in words is moved the same way, as
+ * its DATA says.
  * @param {string} cwd @param {{dotpath?: string, park?: string, back?: string, from?: string, then?: string}} args @returns {string}
  */
 function horizonPick(cwd, { dotpath, park, back, from, then }) {
   if (back !== undefined) return horizonBack(cwd, back, from, then);
   if (then !== undefined) throw new Error('render horizon-pick: --then carries the items still to ask about after --back');
-  if (park !== undefined && dotpath !== undefined) throw new Error('render horizon-pick: --park names the item being put on the roadmap, and takes no address');
+  if (park !== undefined && dotpath !== undefined) throw new Error('render horizon-pick: --park names the items being put on the roadmap, and takes no address');
+  if (park === undefined && dotpath === undefined) {
+    throw new Error('render horizon-pick: name what is going on the roadmap — --park <name>[,<name>…], a topic leaving for it as <work_unit>.discovery.<topic>, or --back <name> --from <what put it back>');
+  }
+  const putting = park === undefined ? '' : puttingLine(parked(park));
   const postponing = dotpath === undefined ? null : postponeAddress(cwd, dotpath);
   const state = roadmapState(cwd);
   if (!state.exists) {
@@ -1130,13 +1137,33 @@ function horizonPick(cwd, { dotpath, park, back, from, then }) {
   if (state.horizons.length === 0) {
     throw new Error('render horizon-pick: the roadmap holds no horizons — the caller names one in prose');
   }
-  /** @type {import('./projections/surfaces.cjs').Next|undefined} */
-  const carryOn = postponing === null && park === undefined ? undefined : { kind: 'continue' };
+  /** @type {import('./projections/surfaces.cjs').Next} */
+  const carryOn = { kind: 'continue' };
   const options = horizonRows(state, (horizon) => (postponing === null ? carryOn : { kind: 'engine', argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] }));
-  options.push(cmdOption('n', 'new', 'A new horizon — name it', carryOn === undefined ? {} : { next: carryOn }));
-  const putting = park === undefined ? '' : `Putting "${titlecase(park)}" on the roadmap.`;
+  options.push(cmdOption('n', 'new', 'A new horizon — name it', { next: carryOn }));
   return section('MENU: horizon pick', MENU_INSTRUCTION, menu(putting, options, { question: 'Which horizon?' }));
 }
+
+/**
+ * The items `--park` names, comma-joined, each a legal item name, none twice.
+ * @param {string} park @returns {string[]}
+ */
+function parked(park) {
+  const names = park.split(',');
+  for (const name of names) {
+    try {
+      assertLegalName('item', name);
+    } catch (err) {
+      throw new Error(`render horizon-pick: --park takes the items' names, comma-joined — ${messageOf(err)}`);
+    }
+  }
+  const twice = names.find((name, i) => names.indexOf(name) !== i);
+  if (twice !== undefined) throw new Error(`render horizon-pick: --park names "${twice}" twice`);
+  return names;
+}
+
+/** What the pick says is going on the roadmap: the item by its title, or how many. @param {string[]} names */
+const puttingLine = (names) => (names.length === 1 ? `Putting "${titlecase(names[0])}" on the roadmap.` : `Putting ${names.length} items on the roadmap.`);
 
 /**
  * A row for each of the roadmap's horizons, with how many wait there.
@@ -1208,13 +1235,8 @@ function parkGate(cwd, args) {
   ], { question: 'Park it on the roadmap?' }));
 }
 
-// The static roadmap gate menus — no state to resolve; served as surfaces
+// The static roadmap gate menu — no state to resolve; served as a surface
 // because every menu is engine-rendered, fetched at the point it displays.
-
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function roadmapHarvestGateSurface(_cwd, _args) {
-  return section('MENU: roadmap harvest gate', MENU_INSTRUCTION, roadmapHarvestGate());
-}
 
 /** @param {string} _cwd @param {object} _args @returns {string} */
 function roadmapParksGateSurface(_cwd, _args) {
@@ -1447,7 +1469,6 @@ const SURFACES = {
   'roadmap-add-gate': roadmapAddGateSurface,
   'horizon-pick': horizonPick,
   'park-gate': parkGate,
-  'roadmap-harvest-gate': roadmapHarvestGateSurface,
   'roadmap-parks-gate': roadmapParksGateSurface,
   'query-failure-gate': queryFailureGateSurface,
   'brownfield-offer-gate': brownfieldOfferGateSurface,
@@ -1507,6 +1528,8 @@ const SURFACES = {
   archived: (cwd, { file }) => archivedSurface(cwd, file),
   'archived-item': (cwd, { path: given, file }) => archivedItemSurface(cwd, given, file),
   convergence: (cwd, { dotpath, asked }) => convergenceSurface(cwd, { dotpath, asked }),
+  roadmap: (cwd) => roadmapSurface(cwd),
+  'roadmap-harvest': (cwd, { file }) => roadmapHarvestSurface(cwd, file),
 };
 
 /**

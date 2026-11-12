@@ -6,7 +6,7 @@
 
 The caller provides `work_unit`, `topic`, and `phase` (the session's own). The user has said to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back". It is already theirs and already said: take it from the conversation rather than shaping it further.
 
-From inside a phase the park is one verb. The roadmap skill is the product session and is never invoked here.
+From inside a phase the park is one verb, and the roadmap is never opened.
 
 ## A. Where It Waits
 
@@ -56,7 +56,9 @@ Emit the call's MENU section verbatim per its marker.
 
 ## B. The Horizon
 
-→ Load **[choosing-a-horizon.md](choosing-a-horizon.md)**.
+Name the item first, as **C. Park** says.
+
+→ Load **[choosing-a-horizon.md](choosing-a-horizon.md)** with names = `{name}`.
 
 → On return, proceed to **C. Park**.
 
@@ -71,19 +73,7 @@ Emit the call's MENU section verbatim per its marker.
 | `investigation` | `{work_unit}/topics/{topic}` |
 | `specification`, `implementation`, `review` | `{work_unit}/spec.md` |
 
-A source is recorded only once it is on disk. Before this session's record exists (a specification session before its first write), the park carries none: both calls below leave `[--source {source}]` out.
-
-**The confirm** — it states the item and its summary, marking a bug or a quick-fix as one, the horizon (flagged new when the map does not hold it), the roadmap's own birth when there is none, and the source where there is one. A refusal means the name is already on the roadmap: derive another and render again.
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render park-gate --name {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" [--source {source}]
-```
-
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
+A source is recorded only once it is on disk. Before this session's record exists (a specification session before its first write), the park carries none: leave `[--source {source}]` out.
 
 Park it — the verb validates, births the map and any new horizon, and self-commits, so no commit call follows:
 
@@ -91,21 +81,9 @@ Park it — the verb validates, births the map and any new horizon, and self-com
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]
 ```
 
-Tell the user in one line what was parked and where, then note the park where the phase keeps a running record — the log an investigation session is writing. The other phases keep none: the item's own origin and source are its provenance.
+A refusal means the name is already on the roadmap: derive another and park it again. Once it lands, say the line its response's `said` holds, then note the park where the phase keeps a running record — the log an investigation session is writing. The other phases keep none: the item's own origin and source are its provenance.
 
 → Return to caller.
-
-**If `no`:**
-
-Nothing is recorded. Say so in one line.
-
-→ Return to caller.
-
-**If comment:**
-
-The comment names what to change — the name, the kind, the horizon, or the summary. Take it as the instruction and build the park again; what it does not name stands.
-
-→ Return to **C. Park**.
 
 ## D. Capture
 

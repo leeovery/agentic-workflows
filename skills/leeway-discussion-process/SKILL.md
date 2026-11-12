@@ -150,7 +150,7 @@ The person puts something off for later — "roadmap it", "backlog that", "push 
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} --source {work_unit}/topics/{topic}
 ```
 
-A refused add records nothing; a name already on the roadmap takes another. A question moves to the item, the move taking `{"by": "person", "who_moved_whom": "none"}` on stdin:
+A refused add records nothing; a name already on the roadmap takes another. Once it lands, say the line its response's `said` holds. A question moves to the item, the move taking `{"by": "person", "who_moved_whom": "none"}` on stdin:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs ledger move {work_unit}.discussion.{topic} --question {id} --to roadmap:{name}

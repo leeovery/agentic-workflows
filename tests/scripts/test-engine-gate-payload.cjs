@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFile, spawnSync } = require('child_process');
+const { execFile } = require('child_process');
 
 const { ok, output, refusedPristine } = require('./engine-harness.cjs');
 const { shownIn, showingAnswers } = require('./trust-world.cjs');
@@ -49,14 +49,6 @@ function markers(out) {
   return out.split('\n').filter((l) => l.startsWith('=== '));
 }
 
-/** A skill adapter driven as the process it is. @param {string} dir @param {string} gateway @param {string[]} args @param {Record<string,string>} [env] */
-function runGateway(dir, gateway, args, env = {}) {
-  const script = path.resolve(__dirname, '../../skills', gateway, 'scripts/gateway.cjs');
-  const res = spawnSync('node', [script, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...env } });
-  assert.strictEqual(res.status, 0, `${gateway} ${args.join(' ')} failed\n${res.stderr}`);
-  return res.stdout;
-}
-
 /**
  * One menu composed through the builders with the surface announced — the
  * door to a shape no render surface produces today.
@@ -75,15 +67,6 @@ function seedCancel(dir) {
     work_type: 'epic',
     phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } },
   });
-}
-
-/** A roadmap of two items waiting on one horizon. @param {string} dir */
-function seedWaitingRoadmap(dir) {
-  const manifest = path.join(dir, '.leeway/manifest.json');
-  fs.writeFileSync(manifest, JSON.stringify({
-    ...JSON.parse(fs.readFileSync(manifest, 'utf8')),
-    roadmap: { horizons: ['next'], items: { menus: { horizon: 'next', summary: 'menus in sync', origin: 'harvest' }, loyalty: { horizon: 'next', summary: 'rewards', origin: 'harvest' } } },
-  }));
 }
 
 /** The cancel gate over that topic. */
@@ -135,15 +118,6 @@ describe('gate payload — the announce switch', () => {
 
     assert.ok(!plain.includes('=== GATE'), plain);
     assert.notStrictEqual(plain, announced);
-    assert.strictEqual(withoutGate(announced), plain);
-  });
-
-  it('a gateway view says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
-    seedWaitingRoadmap(dir);
-    const plain = runGateway(dir, 'leeway-roadmap', ['view']);
-    const announced = runGateway(dir, 'leeway-roadmap', ['view'], ANNOUNCED);
-
-    assert.ok(!plain.includes('=== GATE'), plain);
     assert.strictEqual(withoutGate(announced), plain);
   });
 
@@ -352,19 +326,10 @@ describe('gate payload — the statement', () => {
   });
 });
 
-describe('gate payload — a gateway menu', () => {
+describe('gate payload — a menu', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
-
-  it('a gateway\'s MENU states the gate the gateway names it, and its range row is typed rather than pressable', () => {
-    seedWaitingRoadmap(dir);
-    const { gate, typed } = gateOf(runGateway(dir, 'leeway-roadmap', ['pull-set'], ANNOUNCED));
-
-    assert.deepStrictEqual([gate, typed], ['roadmap pull pick', [
-      { label: '1–2', description: 'Start work on item(s) (comma-separated for several)', detail: null },
-    ]]);
-  });
 
   it('a held row states its holder apart from its tail, a recommended row its flag, and neither marker survives into the text', () => {
     seedHeldEpic(dir);
@@ -394,10 +359,6 @@ describe('gate payload — every gateway verb', () => {
 
   /** @typedef {{args: string[], gated: boolean, refused?: boolean}} GatewayCall */
 
-  /** A call whose response draws a menu, stated whole in its payload. @param {...string} args @returns {GatewayCall} */
-  const gated = (...args) => ({ args, gated: true });
-  /** A call whose response draws no menu, so carries no payload. @param {...string} args @returns {GatewayCall} */
-  const ungated = (...args) => ({ args, gated: false });
   /** A call the gateway refuses — a usage error, no payload. @param {...string} args @returns {GatewayCall} */
   const refused = (...args) => ({ args, gated: false, refused: true });
 
@@ -408,11 +369,6 @@ describe('gate payload — every gateway verb', () => {
     'leeway': {
       index: [refused()],
     },
-    'leeway-roadmap': {
-      view: [gated('view')],
-      'pull-set': [gated('pull-set')],
-      proposal: [ungated('proposal', '--file', 'proposed.json')],
-    },
   };
 
   // The shapes the menu builders draw, each met by at least one call's
@@ -422,8 +378,7 @@ describe('gate payload — every gateway verb', () => {
     'a struck row with its cue and its holder': (g) => g.options.some((o) => o.struck && o.cue !== null && o.holder !== null),
     'a row with its tail and a cue': (g) => g.options.some((o) => !o.struck && o.tail !== null && o.cue !== null),
     'a recommended row': (g) => g.options.some((o) => o.recommended),
-    'a range row': (g) => g.typed.some((t) => t.label.includes('–')),
-    'a prompt row': (g) => g.typed.some((t) => !t.label.includes('–')),
+    'a prompt row': (g) => g.typed.length > 0,
     'a statement': (g) => g.statement !== '',
     'a title carrying markup as text': (g) => g.options.some((o) => /[_*[\]]/.test(o.head)),
   };
@@ -453,7 +408,7 @@ describe('gate payload — every gateway verb', () => {
       },
     }));
     createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
-    createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later [v2]', summary: 'stored *value*' }]));
+    createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later', summary: 'stored value' }]));
 
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -519,6 +474,8 @@ describe('gate payload — every gateway verb', () => {
   let epicMenu;
   /** The archived items over the same world, which the engine draws. @type {string} */
   let archived;
+  /** The roadmap's harvest over the same world, which the engine draws. @type {string} */
+  let harvest;
 
   before(async () => {
     dir = setupFixture();
@@ -540,6 +497,7 @@ describe('gate payload — every gateway verb', () => {
     responses = new Map(calls.map(({ call }, i) => [call, answers[i]]));
     epicMenu = output(dir, EPIC_MENU, { env: ANNOUNCED });
     archived = output(dir, ['render', 'archived'], { env: ANNOUNCED });
+    harvest = output(dir, ['render', 'roadmap-harvest', '--file', 'proposed.json'], { env: ANNOUNCED });
   });
   after(() => { cleanupFixture(dir); });
 
@@ -558,8 +516,8 @@ describe('gate payload — every gateway verb', () => {
     });
   }
 
-  it('the world reaches every row shape the menu builders draw, the epic\'s menu and the archived items among the gateways\'', () => {
-    const gates = [...[...responses.values()].map(({ stdout }) => stdout), epicMenu, archived].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
+  it('the world reaches every row shape the menu builders draw, the epic\'s menu, the archived items and the roadmap\'s harvest among the gateways\'', () => {
+    const gates = [...[...responses.values()].map(({ stdout }) => stdout), epicMenu, archived, harvest].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
     for (const [shape, drawn] of Object.entries(SHAPES)) {
       assert.ok(gates.some(drawn), `no menu drew ${shape}`);
     }

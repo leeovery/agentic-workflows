@@ -285,17 +285,6 @@ describe('the gate shown (3.S6)', () => {
 
     assert.deepStrictEqual(shown().typed.map((/** @type {{key: string, prompt: boolean}} */ t) => [t.key, t.prompt]), [['tell-me-what-to-change', true], ['1-4', false]]);
   });
-
-  it('a skill\'s gateway records the gate its MENU states, as the engine\'s dispatch does', () => {
-    const script = path.join(SKILLS, 'leeway-roadmap/scripts/gateway.cjs');
-    const res = spawnSync('node', [script, 'view'], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...conversation() } });
-    assert.strictEqual(res.status, 0, res.stderr);
-
-    const { gate, question, options: [first] } = shown();
-    assert.deepStrictEqual([gate, question], ['roadmap menu', 'What would you like to do?']);
-    assert.deepStrictEqual(events(), [], 'nothing is logged until the gate is answered');
-    assert.strictEqual(answer(['roadmap menu', '--pick', first.key]).picked, first.key);
-  });
 });
 
 describe('gate (6.6, 6.S18)', () => {

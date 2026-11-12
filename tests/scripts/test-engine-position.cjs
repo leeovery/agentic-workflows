@@ -48,10 +48,6 @@ const { storeBrief } = require('../../skills/leeway-engine/scripts/domain/brief.
 const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
-// The phases whose note carries the recovery whole, their skills keeping no
-// steps of their own for it.
-const WHOLE = ['discussion', 'investigation', 'discovery', 'specification', 'implementation', 'review'];
-
 const POSITION_MODULE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/position.cjs');
 
 let dir; // a workflows project
@@ -412,30 +408,24 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
 });
 
 describe('conversation position', () => {
-  /** The note for a skill that runs the work and the files after it. */
+  /** The note for a place with no engine calls and no log: the skill, then the files after it. */
   function note(where, skill, files) {
-    const follow = `The conversation was just compacted. This conversation is working in ${where}. Follow the ${skill} skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${abs(`.claude/skills/${skill}/SKILL.md`)} and its framework in full`;
-    return files.length > 0 ? [`${follow}, then re-read these in full:`, ...files.map((f) => `- ${abs(f)}`)].join('\n') : `${follow}.`;
+    return [
+      `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
+      `- ${abs(`.claude/skills/${skill}/SKILL.md`)} and its framework`,
+      ...files.map((f) => `- ${abs(f)}`),
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
   }
 
-  it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s, an epic\'s menu\'s; none at a linear unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
+  it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s, an epic\'s menu\'s; none at a linear unit\'s menu — and none of them carries a recovery section of its own, the note carrying it (24.2.6)', () => {
     const quickFix = skillAt('fix', 'implementation', 'quick-fix');
     const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), quickFix, ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
     assert.strictEqual(skills.length, 10);
     for (const skill of skills) assert.ok(skill !== null && HANDOFF_TARGETS.includes(skill), `${skill} is a skill a conversation opens on`);
-    const whole = [...WHOLE.map((phase) => skillAt('pay', phase)), quickFix];
-    for (const skill of skills.filter((named) => !whole.includes(named))) {
-      const file = path.join(__dirname, '../../skills', skill, 'SKILL.md');
-      assert.ok(fs.existsSync(file), `${skill} exists`);
-      const text = fs.readFileSync(file, 'utf8');
-      const at = text.indexOf('\n## Resuming After Context Refresh\n');
-      assert.ok(at !== -1, `${skill} carries the recovery steps`);
-      const recovery = text.slice(at, text.indexOf('\n---\n', at));
-      const steps = recovery.split('\n').filter((line) => /^\d+\. /.test(line));
-      assert.match(steps[steps.length - 1], /^\d+\. \*\*Carry on from where the conversation was\*\*, as if the break never happened — no recap and no announcement\. Where the person's message is waiting, take it at the (step|stage) it arrived at, unless it only asks to carry on\. /,
-        `${skill}'s recovery ends by carrying on`);
-      assert.doesNotMatch(recovery, /announce your position|wait for confirmation|position is confirmed/i, `${skill}'s recovery waits on nobody`);
-      assert.match(recovery, /\nDo not guess at progress or continue from memory\./, `${skill}'s recovery reads state from disk`);
+    for (const skill of new Set([...skills, skillAt('pay', undefined, 'epic')])) {
+      const text = fs.readFileSync(path.join(__dirname, '../../skills', /** @type {string} */ (skill), 'SKILL.md'), 'utf8');
+      assert.doesNotMatch(text, /^## Resuming After Context Refresh$/m, `${skill} carries no recovery section`);
     }
     assert.strictEqual(quickFix, 'leeway-quick-fix-process', 'a quick-fix\'s implementation runs in its own skill');
     assert.deepStrictEqual([skillAt('pay', undefined, 'feature'), skillAt('pay', 'scoping'), skillAt('pay', 'planning')], [null, null, null], 'a linear unit\'s menu, and scoping and planning, which no pipeline holds');
@@ -748,17 +738,15 @@ describe('conversation position', () => {
     assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/leeway-experiment-process/SKILL.md'), []]);
   });
 
-  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log caught up from the transcript (24.S19); the roadmap with the product\'s open session\'s log', () => {
+  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log caught up from the transcript (24.S19); the roadmap with its skill alone, holding no session', () => {
     install('leeway-roadmap');
     install('leeway-discovery');
     write('.leeway/.product/sessions/session-003.md', '## 2026-01-01 · session sess-1\n');
     ok(['session', 'label', 'roadmap']);
-    assert.deepStrictEqual([reads().skill, reads().files], [abs('.claude/skills/leeway-roadmap/SKILL.md'), []], 'no session open');
     write('.leeway/manifest.json', JSON.stringify({ product_session: '003' }));
     const roadmap = reads();
-    assert.deepStrictEqual(roadmap.files, [abs('.leeway/.product/sessions/session-003.md')]);
-    assert.strictEqual(roadmap.place, 'roadmap');
-    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'leeway-roadmap', ['.leeway/.product/sessions/session-003.md']));
+    assert.deepStrictEqual([roadmap.skill, roadmap.files, roadmap.place], [abs('.claude/skills/leeway-roadmap/SKILL.md'), [], 'roadmap'], 'the product\'s session open');
+    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'leeway-roadmap', []));
     ok(['session', 'label', 'product']);
     const product = reads();
     assert.deepStrictEqual([product.skill, product.files, product.place], [abs('.claude/skills/leeway-discovery/SKILL.md'), [abs('.leeway/.product/sessions/session-003.md')], 'product']);

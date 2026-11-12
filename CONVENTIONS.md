@@ -245,7 +245,7 @@ The capture skills (`leeway-log-*`) write to the inbox and nothing else. They ar
 
 ### Headings
 
-One H1 per file, its title — except the skills that only hand the work on, the start skill and the epic's menu, which open on their frontmatter alone (lint check 8). Discovery is a phase that talks: it takes an H1, and lint check 8's sets change with its rewrite. H2 for sections, H3 within them. Sections are named for what they cover: no step numbers, no lettered sections, and no heading that routes.
+One H1 per file, its title — except the skills that only hand the work on, the start skill and the menus of the epic and the roadmap, which open on their frontmatter alone (lint check 8). Discovery is a phase that talks: it takes an H1, and lint check 8's sets change with its rewrite. H2 for sections, H3 within them. Sections are named for what they cover: no step numbers, no lettered sections, and no heading that routes.
 
 A skill that only hands the work on carries this blockquote, byte for byte (lint check 9); a phase that talks, discovery among them, carries none:
 
