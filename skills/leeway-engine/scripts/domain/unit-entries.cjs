@@ -12,8 +12,8 @@
 //
 // Each entry carries its short id, its kind, where it stands — a unit, and
 // a topic or none at the unit's level — and its line as written but its
-// schema version, every id in it whole, and a decision given as it stands
-// (ledger-fold.cjs, `givenNow`). The ledger is folded once, in one
+// schema version, every id in it whole, and a decision decided as it stands
+// (ledger-fold.cjs, `decidedNow`). The ledger is folded once, in one
 // streamed pass, and each entry's line read again from the file it opened;
 // a read drawing several units takes every unit's from that one fold
 // (`everyUnitEntries`).
@@ -21,7 +21,7 @@
 
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, isCurrent, standingOf, madeOn, givenNow } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, isCurrent, standingOf, madeOn, decidedNow } = require('./ledger-fold.cjs');
 const { liveness } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -79,8 +79,7 @@ function withEntriesOf(cwd, warnings, wanted, answer) {
       const units = [...new Set([stands.unit, madeOn(folded, id).unit])].filter(wanted);
       if (units.length === 0) continue;
       const { v, ...written } = entryAt(place);
-      const given = givenNow(folded, id);
-      const line = given === null ? written : { ...written, given };
+      const line = kind === 'decision' ? { ...written, ...decidedNow(folded, id) } : written;
       for (const unit of /** @type {string[]} */ (units)) {
         if (!byUnit.has(unit)) byUnit.set(unit, new Map());
         /** @type {Map<string, UnitEntry>} */ (byUnit.get(unit)).set(id, { short: short(id), kind, stands, line });

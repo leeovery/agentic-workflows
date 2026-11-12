@@ -156,10 +156,12 @@ function stepOnly(manifest, what) {
 
 /**
  * The calls of Claude's the ledger holds made in the build for a task
- * (12.12.12), each by its short id and words — never one a moved unit's
- * build made for its own task of that number, carried to its topic's
- * first phase (ledger-rehomed.cjs), nor one a blind question waits on,
- * held back until the person has answered (16.17.2, questions.cjs).
+ * (12.12.12), each standing Claude's as the unit's entries read it, through
+ * the person's latest keep (unit-entries.cjs), by its short id and words —
+ * never one a moved unit's build made for its own task of that number,
+ * carried to its topic's first phase (ledger-rehomed.cjs), nor one a blind
+ * question waits on, held back until the person has answered (16.17.2,
+ * questions.cjs).
  * @param {string} cwd @param {TaskRef} ref
  */
 function callsOf(cwd, ref) {

@@ -6,8 +6,9 @@
 // (5.8.14, 5.8.15): `ledger since`, and `ledger shown`, the read a screen
 // draws from as it shows in the conversation.
 //
-// - Claude's calls: the current decisions Claude made, `by` claude, the
-//   build's included (5.1.6) and those the person handed over, but none a
+// - Claude's calls: the current decisions that stand Claude's, read through
+//   the person's latest keep (ledger-fold.cjs, `decidedNow`), the build's
+//   included (5.1.6) and those the person handed over, but none a
 //   migration carried over (ledger-events.cjs), that a place shows
 //   (5.8.19): a topic, those its map shows — its rows' answers, and an
 //   answer whose question is set aside on a row of its own; a unit, those
@@ -48,7 +49,7 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject, writeJsonAtomic, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
-const { standingOf, inPlace, showsIn } = require('./ledger-fold.cjs');
+const { standingOf, inPlace, showsIn, decidedNow } = require('./ledger-fold.cjs');
 const { isId } = require('./ledger-ids.cjs');
 const { heldBackIn } = require('./questions.cjs');
 
@@ -136,7 +137,7 @@ function callsSince({ folded, entryAt }, { unit, topic }, shown) {
   /** @type {string[]} */
   const calls = [];
   for (const [id, facts] of folded.facts) {
-    if (facts.kind !== 'decision' || !claudesCall(facts) || shown.has(id) || held.has(id)) continue;
+    if (facts.kind !== 'decision' || !claudesCall(decidedNow(folded, id)) || shown.has(id) || held.has(id)) continue;
     if (showsIn(folded, id).some((place) => inPlace(place, at, topic))) calls.push(id);
   }
   return calls;

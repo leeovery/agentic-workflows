@@ -66,10 +66,11 @@
 //   Claude's own call, which went ahead while it waited (16.17.6), keeps
 //   that call where it is Claude's answer, sealed in it, for that question's
 //   reason, `asked-blind`: moving no one, an agreement owed none. How the
-//   keep was given: the person's own, `own`, or their "don't care",
-//   `dont-care`, which hands the call over, the builder's (9.2.16) — on that
-//   blind question's call alone (raise.cjs); the call then stands given
-//   so (ledger-fold.cjs, `givenNow`).
+//   keep was given: the person's own, `own`, which makes the decision
+//   theirs, or their "don't care", `dont-care`, which hands the call over,
+//   the builder's (9.2.16) — on that blind question's call alone
+//   (raise.cjs); the decision then stands so (ledger-fold.cjs,
+//   `decidedNow`).
 // - asset: a file linked from an entry (9.10.5–9.10.7, 9.10.16):
 //   the entry and the file's path from the state root; the status the link
 //   gives it, canonical or reference; and the lift, the path in the project

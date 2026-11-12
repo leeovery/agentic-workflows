@@ -541,7 +541,7 @@ function unitCalls(shower, unit, held = new Set()) {
       short: /** @type {string} */ (shown.id),
       phase: facts.phase,
       topic: facts.topic,
-      by: /** @type {string} */ (facts.by),
+      by: /** @type {string} */ (shown.by),
       given: /** @type {string} */ (shown.given),
       handed: handedTag({ given: /** @type {string} */ (shown.given) }),
       question: facts.answers === null ? null : /** @type {string} */ (show(facts.answers).text),

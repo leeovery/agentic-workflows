@@ -763,26 +763,31 @@ function keptOf(folded, id) {
 }
 
 /**
- * Whose the decision `id` is, as replacing it asks (16.5.7): as the latest
- * keep of the person's standing on it was given — theirs, or handed over by
- * their "don't care" (9.2.16) — else who decided it, read from it.
+ * Whose the decision `id` is, as replacing it asks (16.5.7): as it stands
+ * decided (`decidedNow`).
  * @param {Folded} folded @param {string} id
  * @returns {import('./ledger-events.cjs').DecidedBy}
  */
 function whoseDecision(folded, id) {
-  return decidedBy(factsOf(folded, keptOf(folded, id).at(-1) ?? id));
+  return decidedBy(decidedNow(folded, id));
 }
 
 /**
- * How the entry `id` stands given: a decision handed over by the person's
- * "don't care" where the latest keep of theirs standing on it was given so
- * — on Claude's call gone ahead while a blind question waited (raise.cjs) —
- * else as it was written; null for an entry that is no decision.
- * @param {Folded} folded @param {string} id @returns {string|null}
+ * Who the decision `id` stands decided by, and how given, through the
+ * latest keep of the person's standing on it (16.5.7, 9.2.16): theirs, given
+ * as their own, where they kept it by their pick or own words; its maker's
+ * still, handed over, given `dont-care`, where they kept it by their "don't
+ * care" — on Claude's call gone ahead while a blind question waited
+ * (raise.cjs); else as written. Every list reads a decision's whose so.
+ * @param {Folded} folded @param {string} id
+ * @returns {{by: string|null, given: string|null}}
  */
-function givenNow(folded, id) {
+function decidedNow(folded, id) {
+  const { by, given } = factsOf(folded, id);
   const keep = keptOf(folded, id).at(-1);
-  return keep !== undefined && factsOf(folded, keep).given === 'dont-care' ? 'dont-care' : factsOf(folded, id).given;
+  if (keep === undefined) return { by, given };
+  const kept = factsOf(folded, keep);
+  return kept.given === 'dont-care' ? { by, given: kept.given } : { by: kept.by, given: kept.given };
 }
 
 /**
@@ -1194,6 +1199,6 @@ function discoveredOf(folded, unit, topic) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, readOnce, holding, heldFacts, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  keptOf, whoseDecision, givenNow, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
+  keptOf, whoseDecision, decidedNow, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
   movedToBy,
 };

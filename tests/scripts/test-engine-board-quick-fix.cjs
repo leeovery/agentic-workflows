@@ -155,6 +155,23 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     assert.deepStrictEqual(board().view.calls, []);
   });
 
+  /** The person's keep of Claude's call in the quick-fix, given `given`, as a blind question's answer lands it. @param {'own'|'dont-care'} given */
+  const keptBy = (given) => appendEntry(statePath(dir), {
+    event: 'kept', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
+    by: 'person', who_moved_whom: 'none', entry: ledgerHelpers(() => dir).full(made.call), reason: 'asked-blind', cause: null, why: 'It reads plainer.', sealed: CALL_TEXT, given,
+  }, []);
+
+  it('16.5.7, 9.2.16: a call of Claude\'s the person\'s "don\'t care" kept stays Claude\'s, handed over, among Claude\'s calls; once they keep it by their pick or own words it is theirs, never among them', () => {
+    dir = working();
+    atTheFixes();
+    keptBy('dont-care');
+    const handed = board().view.calls;
+
+    keptBy('own');
+
+    assert.deepStrictEqual([handed, board().view.calls], [[{ id: made.call, text: CALL_TEXT }], []]);
+  });
+
   it('a question proposing to replace Claude\'s call, parking its fix, holds nothing back: the call stands among Claude\'s calls while it waits', () => {
     dir = working();
     atTheFixes();
