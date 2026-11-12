@@ -10,7 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const childProcess = require('child_process');
+const { spawn } = require('./spawn.cjs');
 const { isObject } = require('./manifest-io.cjs');
 const { findStateRoot } = require('./state-root.cjs');
 
@@ -31,7 +31,7 @@ const ENGINE_RUN = `node ${/\s/.test(ENGINE_CJS) ? `'${ENGINE_CJS}'` : ENGINE_CJ
 const launcher = {
   /** @param {string} cwd @param {string[]} argv the engine command */
   launch(cwd, argv) {
-    const child = childProcess.spawn(process.execPath, [ENGINE_CJS, ...argv], { cwd, detached: true, stdio: 'ignore' });
+    const child = spawn(process.execPath, [ENGINE_CJS, ...argv], { cwd, detached: true, stdio: 'ignore' });
     // A job that could not start leaves its work for the next launch — never
     // an unhandled error in the command that launched it.
     child.on('error', () => {});

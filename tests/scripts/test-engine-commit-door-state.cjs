@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // The commit door's state scopes: the pathspec'd commits on the state
 // branch — `engine commit --topic`, `--discovery`, `--product` and `--state`
-// — each taking its own scope and nothing beside it,
-// and `--migrations`, the state with the paths the workflows own in the code
-// tree.
+// — each taking its own scope and nothing beside it, a topic's in no more
+// git commands than its own reads need — and `--migrations`, the state with
+// the paths the workflows own in the code tree.
 //
 // Layer: git. World: the project world and its code projects, built once and
 // copied (engine-harness.cjs), the commit door's epic over them
@@ -22,9 +22,13 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, statePath, layout, createFile, writeState, readState } = harness;
+const { ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, statePath, layout, createFile, writeState, readState, traced } = harness;
 const { headFiles, statusLines, codeHeadFiles, codeStatusLines, epicManifest, twoTopics, setupTwoTopicFixture } = require('./commit-door-world.cjs');
 const { commitStaged } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
+
+// The most git commands a topic's commit runs: the hooks' names read once,
+// the remote read from the config, and the commit's sha never asked again.
+const TOPIC_COMMIT = 13;
 
 describe('engine commit --topic: pathspec isolation', () => {
   let dir;
@@ -36,10 +40,11 @@ describe('engine commit --topic: pathspec isolation', () => {
     writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\npeer session dirt\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
 
-    const res = ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a']);
+    const { result: res, commands } = traced(() => ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a']));
 
     assert.strictEqual(res.ok, true);
     assert.match(res.committed, /^[0-9a-f]+$/);
+    assert.ok(commands.length <= TOPIC_COMMIT, `the commit ran ${commands.length} git commands:\n${commands.join('\n')}`);
     const files = headFiles(dir);
     assert.ok(files.includes(layout.doc('payments', 'investigation', 'topic-a')), 'own topic committed');
     assert.ok(files.includes(layout.manifest('payments')), 'manifest committed');
@@ -299,10 +304,12 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     return stateGit(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort();
   }
 
-  const codeHead = () => git(dir, ['rev-parse', '--short', 'HEAD']).trim();
-  const stateHead = () => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
+  /** Each side's commit as an answer shows it: its first seven characters. */
+  const codeHead = () => git(dir, ['rev-parse', 'HEAD']).trim().slice(0, 7);
+  const stateHead = () => stateGit(dir, ['rev-parse', 'HEAD']).trim().slice(0, 7);
 
-  it('commits the whole state on its branch and every owned code path on the code branch — one commit each, nothing else (6.S25)', () => {
+  it('commits the whole state on its branch and every owned code path on the code branch — one commit each, nothing else, each shown seven characters long whatever git would abbreviate it to (6.S25)', () => {
+    git(dir, ['config', 'core.abbrev', '12']);
     createFile(dir, '.claude/settings.json', '{"permissions":{}}\n');
     fs.unlinkSync(path.join(dir, '.worktreeinclude'));
     createFile(dir, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');

@@ -47,9 +47,9 @@ function snapshot() {
 }
 
 // The most git commands an entry runs with nothing in flight, waiting on a
-// fix task: its own reads, nine of them; reading the build's standing too
+// fix task: its own reads, eight of them; reading the build's standing too
 // would more than double them.
-const IDLE_ENTRY = 12;
+const IDLE_ENTRY = 8;
 
 describe('enter review: what cannot be entered is refused, naming the way on, and nothing is written', () => {
   it('a build whose cut has a phase not closed, naming it or each of them, a quick-fix, whose review the person has not asked for, what the build\'s entry refuses — a unit built under the old plan, a build not begun — and a topic named (14.6.1, 19.5.14)', () => {

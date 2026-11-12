@@ -9,9 +9,9 @@
 // `render git-floor-stop` draws the stop, reading the version again.
 // ---------------------------------------------------------------------------
 
-const { spawnSync } = require('child_process');
 const { gitFloorStop } = require('./projections/boot.cjs');
 const { atLeast } = require('../kernel/version.cjs');
+const { tryGit } = require('../kernel/git.cjs');
 
 /** The oldest git the engine runs on. */
 const GIT_FLOOR = [2, 40, 0];
@@ -38,9 +38,9 @@ function versionOf(answer) {
 
 /** @returns {GitShortfall} */
 function gitShortfall() {
-  const res = spawnSync('git', ['--version'], { encoding: 'utf8' });
-  if (res.error || res.status !== 0) return { found: null };
-  const version = versionOf(res.stdout.trim());
+  const answer = tryGit(process.cwd(), ['--version']);
+  if (answer === null) return { found: null };
+  const version = versionOf(answer.trim());
   return version === null || atLeast(version, GIT_FLOOR) ? null : { found: version.join('.') };
 }
 

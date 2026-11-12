@@ -11,14 +11,17 @@
 // here alone (`handedSession`).
 // ---------------------------------------------------------------------------
 
-const { execFileSync } = require('child_process');
+const { execFileSync } = require('./spawn.cjs');
+const { dropReads } = require('./git-reads.cjs');
 
 /**
  * Block the thread for `ms` without burning CPU: Atomics.wait on a throwaway
- * buffer is never notified, so it sleeps the full timeout.
+ * buffer is never notified, so it sleeps the full timeout. A wait, so what
+ * the verb has read of git goes (kernel/git-reads).
  * @param {number} ms
  */
 function sleepSync(ms) {
+  dropReads();
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 

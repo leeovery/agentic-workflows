@@ -28,9 +28,8 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  git, gitPath, tryGit, literally, commitPathspec, commitStaged, operationInProgress, mergeInProgress, commitMerge,
+  git, gitPath, tryGit, shortSha, literally, commitPathspec, commitStaged, operationInProgress, mergeInProgress, commitMerge,
 } = require('../kernel/git.cjs');
-const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -87,11 +86,11 @@ const PRODUCT_SCOPE = Object.freeze([PRODUCT_SESSIONS, PROJECT_MANIFEST_SPEC]);
  * The state commit: `paths` in the state worktree on `leeway-state`, with
  * the layout's logs changed since, under the writer lock, then pushed; a
  * file outside the layout refuses it (`commitHere`). A push that fails
- * comes back as a warning; the commit stands. The sha is short, as the code
- * tree's commits answer it. A file in `contents` is committed as its change
- * makes it of the branch's own, and of `kept` what is on disk is taken as
- * additions and edits alone, never a removal (`commitState`). While the
- * migration runs, the commit is held (`held`).
+ * comes back as a warning; the commit stands. The sha is shown short, as
+ * the code tree's commits show theirs (`shortSha`). A file in `contents` is
+ * committed as its change makes it of the branch's own, and of `kept` what
+ * is on disk is taken as additions and edits alone, never a removal
+ * (`commitState`). While the migration runs, the commit is held (`held`).
  * @param {string} cwd @param {string|string[]} paths state-relative, or absolute
  * @param {string} message
  * @param {{contents?: Record<string, import('./state-worktree.cjs').Change>, kept?: string[]}} [opts]
@@ -100,7 +99,7 @@ const PRODUCT_SCOPE = Object.freeze([PRODUCT_SESSIONS, PROJECT_MANIFEST_SPEC]);
 function commitStateScoped(cwd, paths, message, { contents = {}, kept = [] } = {}) {
   const root = stateRoot(cwd);
   const { commit, held, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents, kept }));
-  return { committed: commit === null ? null : isolatedGit(root).run(['rev-parse', '--short', commit]).trim(), ...(held ? { held } : {}), warnings };
+  return { committed: commit === null ? null : shortSha(commit), ...(held ? { held } : {}), warnings };
 }
 
 /**

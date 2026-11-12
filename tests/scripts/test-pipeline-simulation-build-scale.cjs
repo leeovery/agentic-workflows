@@ -1,20 +1,23 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's build of a phase of four tasks, as its skill's
+// The pipeline simulation's build of a phase of six tasks, as its skill's
 // prose runs it, measuring what a task's own calls cost by where it sits:
 // each task chained on the one before it, every second one touching the
 // project's ignored clone too. The git commands a task's worktree laid
 // out, its reviewer's brief, its builder's brief once it has landed and its
-// account each run are no more for the fourth task than for the second — each reads the chain below it once,
-// never a read per task beneath it (12.7.10, 12.14). The first task is no
-// measure: nothing is below it, and it touches the project's repository
-// alone.
+// account each run are no more for the sixth task than for the fourth —
+// each reads the chain below it once, never a read per task beneath it
+// (12.7.10, 12.14) — and no more than the counts each read asked once in
+// its verb leaves. The first three tasks are no measure: nothing is below
+// the first, and a repository's tips below a task are read together once
+// two tasks below hold a branch in it, which in the clone the fourth is the
+// first to find.
 //
 // Layer: simulation. World: this file's own, built once on the named world
 // `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
 // feature through its spec to ready to build's pick in auto — its one phase
-// of four tasks written and started; a copy per scenario, which replays the
+// of six tasks written and started; a copy per scenario, which replays the
 // engine calls the build's prose makes, in order, the oracle
 // (pipeline-oracle.cjs) auditing the whole state after every mutation.
 // ---------------------------------------------------------------------------
@@ -30,10 +33,13 @@ const {
 const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
 
 const WU = SPEC_TO_BUILD_UNIT;
-const TASKS = 4;
+const TASKS = 6;
 
-/** A feature in auto, its one phase of four tasks written and started, the first proving 1.S1. */
-const fourWorld = worldFrom('pipeline-build-scale-', (sim) => {
+/** The most git commands each measured call runs once a task is a measure. */
+const MOST = Object.freeze({ 'task worktree': 41, 'brief reviewer': 34, 'brief builder': 25, 'task account': 43 });
+
+/** A feature in auto, its one phase of six tasks written and started, the first proving 1.S1. */
+const sixWorld = worldFrom('pipeline-build-scale-', (sim) => {
   buildEntry(sim, WU);
   sim.run(['task', 'phase', WU, '1', '--title', 'Writing']);
   sim.run(['brief', 'task-writer', WU, '1']);
@@ -46,7 +52,7 @@ describe('pipeline simulation: a task\'s cost by where it sits in its phase', ()
   /** @type {ReturnType<typeof buildLoop>} */ let loop;
   /** Each builder's worktree, made as its isolation makes it. @type {string[]} */ let trees;
   beforeEach(() => {
-    sim = new Sim(fourWorld);
+    sim = new Sim(sixWorld);
     loop = buildLoop(sim, WU);
     trees = [];
   });
@@ -55,7 +61,7 @@ describe('pipeline simulation: a task\'s cost by where it sits in its phase', ()
     sim.destroy();
   });
 
-  it('12.7.10, 12.14: task 1.4\'s worktree, its reviewer\'s brief, its builder\'s brief once it has landed and its account run no more git commands than task 1.2\'s', () => {
+  it('12.7.10, 12.14: task 1.6\'s worktree, its reviewer\'s brief, its builder\'s brief once it has landed and its account run no more git commands than task 1.4\'s, nor than each call\'s most', () => {
     /** The git commands each measured call ran, by the call, a count a task. @type {Record<string, number[]>} */
     const ran = {};
     /** An engine call from `cwd`, the git commands it ran counted under `call`, then audited as the sim audits each: its answer. @param {string} call @param {string[]} args @param {string} [cwd] */
@@ -86,6 +92,7 @@ describe('pipeline simulation: a task\'s cost by where it sits in its phase', ()
       loop.landedTask(task);
     }
 
-    assert.deepStrictEqual(Object.keys(ran).filter((call) => ran[call][3] > ran[call][1]), [], `the git commands each call ran, a count a task: ${JSON.stringify(ran)}`);
+    assert.deepStrictEqual(Object.keys(ran).filter((call) => ran[call][5] > ran[call][3] || ran[call][5] > MOST[call]), [],
+      `the git commands each call ran, a count a task: ${JSON.stringify(ran)}`);
   });
 });

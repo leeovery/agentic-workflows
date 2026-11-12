@@ -15,7 +15,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('./spawn.cjs');
 const { fileLinesBackward } = require('./file-stream.cjs');
 
 /** How many of a failed command's last lines come back. */

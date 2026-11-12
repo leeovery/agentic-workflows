@@ -79,6 +79,7 @@ const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
+const { dropReads } = require('../kernel/git-reads.cjs');
 const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
 const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { folding, layoutPlace, stagedPlace } = require('./layout.cjs');
@@ -207,6 +208,20 @@ function trackingRef(remote) {
 }
 
 /**
+ * The remotes the config names, in order of name, as `git remote` lists
+ * them — read from the config itself, which fires no hook, so no hook's
+ * name is read for it.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git
+ * @returns {string[]}
+ */
+function remoteNames(git) {
+  const named = git.run(['config', '-z', '--name-only', '--list']).split('\0')
+    .filter((key) => key.startsWith('remote.') && key.lastIndexOf('.') > 'remote'.length)
+    .map((key) => key.slice('remote.'.length, key.lastIndexOf('.')));
+  return [...new Set(named)].sort();
+}
+
+/**
  * The project's remotes, and the one the state goes to: `origin`, else the
  * remote the main checkout's branch tracks, else the project's one remote.
  * `remote` is null where the project has none, or several and none of
@@ -216,7 +231,7 @@ function trackingRef(remote) {
  * @returns {{remote: string|null, remotes: string[]}}
  */
 function stateRemote(git) {
-  const remotes = git.run(['remote']).split('\n').filter((name) => name !== '');
+  const remotes = remoteNames(git);
   if (remotes.includes('origin')) return { remote: 'origin', remotes };
   if (remotes.length < 2) return { remote: remotes[0] ?? null, remotes };
   const branch = (git.tryRun(['symbolic-ref', '--quiet', '--short', 'HEAD']) || '').trim();
@@ -467,8 +482,10 @@ function registrationOf(root) {
  * that registration at the folder — both inside this project; the
  * registration it named, and anything of the project it was copied from,
  * are never read or written. The folder's contents and the registration's
- * lock stay as they are. Refuses where the folder holds no link, or this
- * repository keeps no registration by its name.
+ * lock stay as they are. The links are written without git, so what the
+ * verb has read of git goes with them (kernel/git-reads). Refuses where the
+ * folder holds no link, or this repository keeps no registration by its
+ * name.
  * @param {string} root
  * @returns {Relinked}
  */
@@ -488,6 +505,7 @@ function repairStateWorktree(root) {
     writeTextAtomic(dotgit, `gitdir: ${own}\n`);
   }
   writeTextAtomic(path.join(own, 'gitdir'), `${dotgit}\n`);
+  dropReads();
   return { was, from };
 }
 

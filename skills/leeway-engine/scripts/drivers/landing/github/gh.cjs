@@ -15,7 +15,7 @@
 // missing (landing.cjs). No refusal names an install command.
 // ---------------------------------------------------------------------------
 
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('../../../kernel/spawn.cjs');
 const { plain } = require('../../../domain/landing-git.cjs');
 
 const GH = 'gh';

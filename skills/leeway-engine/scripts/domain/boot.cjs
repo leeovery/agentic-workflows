@@ -79,7 +79,7 @@
 // keeps it from launching is a warning.
 // ---------------------------------------------------------------------------
 
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('../kernel/spawn.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');

@@ -18,9 +18,10 @@
 //
 // Mechanism only: it knows nothing about work units or the inbox. Every call
 // spawns `git` with an explicit cwd — the project root, or a repo nested in
-// the project (kernel/repos). Failures throw loud with git's own stderr; a
-// clean scope is not a failure — `commitPathspec` reports it as `null` so
-// callers can treat an empty pause as fine.
+// the project (kernel/repos) — asked through the verb's reads, which keep a
+// read's answer for the verb (kernel/git-reads). Failures throw loud with
+// git's own stderr; a clean scope is not a failure — `commitPathspec`
+// reports it as `null` so callers can treat an empty pause as fine.
 //
 // Index-mutating operations (add, commit) retry on `index.lock`
 // contention — another process (a concurrent session, the user) holding
@@ -32,6 +33,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { sleepSync } = require('./process.cjs');
+const { asked } = require('./git-reads.cjs');
 
 const INDEX_RETRY_MS = 100;
 const INDEX_BUDGET_MS = 5000;
@@ -59,6 +61,23 @@ function commandOf(args) {
 }
 
 /**
+ * git's whole run of `args` — its exit status, stdout and stderr, never
+ * thrown — for a caller that reads a failing exit's own meaning.
+ * @param {string} cwd
+ * @param {string[]} args
+ * @param {Record<string, string>} [env] variables layered over the process's own
+ * @param {string} [input] written to git's stdin
+ * @param {number} [timeoutMs] how long it may run
+ * @returns {import('child_process').SpawnSyncReturns<string>}
+ */
+function gitRun(cwd, args, env, input, timeoutMs) {
+  const runEnv = env && { ...process.env, ...env };
+  return asked(cwd, args, { env: runEnv ?? process.env, input }, () => spawnSync('git', args, {
+    cwd, encoding: 'utf8', env: runEnv, input, maxBuffer: READ_BUDGET_BYTES, timeout: timeoutMs,
+  }));
+}
+
+/**
  * Run git and return stdout. Throws a GitError with git's stderr on a
  * non-zero exit.
  * @param {string} cwd
@@ -69,9 +88,7 @@ function commandOf(args) {
  * @returns {string}
  */
 function git(cwd, args, env, input, timeoutMs) {
-  const res = spawnSync('git', args, {
-    cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, input, maxBuffer: READ_BUDGET_BYTES, timeout: timeoutMs,
-  });
+  const res = gitRun(cwd, args, env, input, timeoutMs);
   if (/** @type {NodeJS.ErrnoException|undefined} */ (res.error)?.code === 'ETIMEDOUT') throw new GitError(`git ${commandOf(args)} timed out after ${Number(timeoutMs) / 1000}s`);
   if (res.error) throw new GitError(`git ${commandOf(args)} failed: ${res.error.message}`);
   if (res.status !== 0) {
@@ -90,7 +107,7 @@ function git(cwd, args, env, input, timeoutMs) {
  * @returns {string|null}
  */
 function tryGit(cwd, args) {
-  const res = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: READ_BUDGET_BYTES });
+  const res = gitRun(cwd, args);
   if (res.error || res.status !== 0) return null;
   return res.stdout;
 }
@@ -269,6 +286,21 @@ function stagingOf(cwd, specs, nested) {
   return { files, pointers, held: heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files), addable: stageableSpecs(cwd, files) };
 }
 
+/**
+ * A commit as a commit's answer shows it, the code tree's and the state's
+ * alike: its first seven characters, whatever length git would abbreviate
+ * it to.
+ * @param {string} sha @returns {string}
+ */
+function shortSha(sha) {
+  return sha.slice(0, 7);
+}
+
+/** The commit HEAD names at `cwd`, as a commit's answer shows it. @param {string} cwd @returns {string} */
+function shortHead(cwd) {
+  return shortSha(git(cwd, ['rev-parse', 'HEAD']).trim());
+}
+
 /** The files `stagingOf` planned staged, each nested folder held out. @param {string} cwd @param {ReturnType<typeof stagingOf>} staging */
 function stageFiles(cwd, { addable, held }) {
   if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
@@ -309,7 +341,7 @@ function commitPathspec(cwd, pathspec, message, nested = []) {
     const scope = [...literally(known), ...held];
     if (!hasChangesInPaths(cwd, scope)) return null;
     gitIndexed(cwd, ['commit', '-m', message, '--', ...scope]);
-    return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+    return shortHead(cwd);
   });
 }
 
@@ -440,7 +472,7 @@ function commitMerge(cwd, specs, message, nested = []) {
   const pointers = staging.pointers.filter((folder) => indexEntries(cwd, [folder]).length > 0);
   if (pointers.length > 0) gitIndexed(cwd, ['add', '--', ...literally(pointers)]);
   gitIndexed(cwd, ['commit', '-q', '-m', message]);
-  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+  return shortHead(cwd);
 }
 
 /**
@@ -520,7 +552,7 @@ function commitIndexEntries(cwd, specs, message) {
   } finally {
     fs.rmSync(env.GIT_INDEX_FILE, { force: true });
   }
-  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+  return shortHead(cwd);
 }
 
 /**
@@ -672,7 +704,7 @@ function diffWithUntracked(cwd, base, args, exclude) {
 }
 
 module.exports = {
-  READ_BUDGET_BYTES, git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
+  READ_BUDGET_BYTES, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, mergeInProgress, unmergedPast, commitMerge,
 };

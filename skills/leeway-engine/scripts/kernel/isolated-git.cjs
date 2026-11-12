@@ -17,13 +17,15 @@
 // A command no form of which fires a hook (`HOOKLESS`) runs without the
 // names. Every other reads them from the config once per verb
 // (`withVerbReads`): every runner the verb makes at one cwd shares the read,
-// and a `config` call through any runner, which may have changed them, has
-// them read again. Outside a verb a runner reads them at its first call that
-// needs them, and again after its own `config` call. No read outlives its
+// and a `config` call through any runner that may write, which may have
+// changed them, has them read again; one that reads the config leaves them.
+// Outside a verb a runner reads them at its first call that needs them, and
+// again after its own `config` call that may write. No read outlives its
 // verb, so a process running many verbs — the test harness, over many
 // worlds — never hands one verb's read to another. Only a read git made is
 // kept: one it could not make — in a folder whose link a moved project
-// broke, which boot then relinks — is made again at the next call.
+// broke, which boot then relinks — is made again at the next call. A verb's
+// other reads of git are kept for it too (kernel/git-reads).
 //
 // Files go into git and come out of it as the bytes they are, whatever the
 // person's config says: line endings are never converted (`core.autocrlf`),
@@ -47,6 +49,7 @@ const path = require('path');
 const { AsyncLocalStorage } = require('async_hooks');
 const { spawnSync } = require('child_process');
 const { GitError, READ_BUDGET_BYTES } = require('./git.cjs');
+const { keepingReads, asked, kindOf } = require('./git-reads.cjs');
 
 /**
  * The variables that point git at a repository, its index, its objects or
@@ -126,11 +129,11 @@ const verbReads = new AsyncLocalStorage();
 /**
  * Run `fn` as one verb: its runners share one read of the config's hooks at
  * each cwd, dropped once `fn` answers — once its promise settles, where it
- * answers one.
+ * answers one — and its reads of git are kept for it (kernel/git-reads).
  * @template T @param {() => T} fn @returns {T}
  */
 function withVerbReads(fn) {
-  return verbReads.run(new Map(), fn);
+  return verbReads.run(new Map(), () => keepingReads(fn));
 }
 
 /**
@@ -202,10 +205,12 @@ function isolatedGit(cwd) {
     base ??= isolatedEnv();
     const reads = verbReads.getStore() ?? own;
     const hooks = HOOKLESS.includes(args[0]) ? {} : hooksOff(hooksAt(reads, cwd, base));
-    const res = spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
-      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...hooks, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
-    });
-    if (args[0] === 'config') reads.clear();
+    const argv = [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args];
+    const runEnv = { ...base, ...hooks, ...env };
+    const res = asked(cwd, argv, { env: runEnv, input, toFile: out !== undefined }, () => spawnSync('git', argv, {
+      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: runEnv, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
+    }));
+    if (args[0] === 'config' && kindOf(args) === 'write') reads.clear();
     if (/** @type {NodeJS.ErrnoException|undefined} */ (res.error)?.code === 'ETIMEDOUT') {
       throw new GitError(`git ${args[0]} timed out after ${timeoutMs / 1000}s`);
     }

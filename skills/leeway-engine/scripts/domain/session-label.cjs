@@ -65,7 +65,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync } = require('../kernel/spawn.cjs');
 const { handedSession, processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.cjs');

@@ -54,7 +54,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('../../../kernel/spawn.cjs');
 const { workUnitNameRefusal } = require('../../../kernel/manifest-schema.cjs');
 const {
   taskId, stepOfId, shownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,

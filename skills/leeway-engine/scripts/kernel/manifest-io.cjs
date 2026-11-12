@@ -20,7 +20,8 @@
 // same way; inside one it is held already, and taken again for nothing.
 // A lock file elsewhere is held the same way (`withStateLockFile`): the one
 // boot's checks hold while the state worktree, and so the writer lock, may
-// not be there yet.
+// not be there yet. A lock taken drops what the verb has read of git
+// (kernel/git-reads): its last holder may have written since.
 //
 // Errors throw `Error` with a stable message; read-surface callers translate
 // to their exit-code convention, transaction callers let them ride to the
@@ -30,6 +31,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ownerAlive, ownStartTime, sleepSync } = require('./process.cjs');
+const { dropReads } = require('./git-reads.cjs');
 
 // Lock discipline: a lock file created with O_EXCL is the mutex; a holder
 // that dies leaves a file whose mtime ages past LOCK_STALE_MS and is broken
@@ -361,6 +363,7 @@ function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS, 
       const fd = fs.openSync(lockFile, 'wx');
       fs.writeSync(fd, String(process.pid));
       fs.closeSync(fd);
+      dropReads();
       return;
     } catch (e) {
       if (!(e && typeof e === 'object' && 'code' in e) || e.code !== 'EEXIST') throw e;
@@ -486,7 +489,10 @@ function tryClaimFile(claimFile, staleMs = LOCK_STALE_MS) {
   };
   const abandoned = () => claimState(claimFile, staleMs) === 'abandoned';
   for (let attempt = 0; attempt < 2; attempt++) {
-    if (createClaim(claimFile, JSON.stringify(own))) return release;
+    if (createClaim(claimFile, JSON.stringify(own))) {
+      dropReads();
+      return release;
+    }
     const state = claimState(claimFile, staleMs);
     if (state === 'held') return null;
     if (state === 'abandoned') breakGuarded(claimFile, abandoned, staleMs);

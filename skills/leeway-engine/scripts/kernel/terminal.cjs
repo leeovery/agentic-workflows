@@ -20,7 +20,7 @@
 
 const fs = require('fs');
 const tty = require('tty');
-const { spawnSync } = require('child_process');
+const { spawnSync } = require('./spawn.cjs');
 
 // The width that shipped before detection existed — every no-answer path
 // lands here, so an undetectable environment renders exactly as it used to.
