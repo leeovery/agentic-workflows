@@ -11,7 +11,9 @@
 // answer revealed beside Claude's, with how often Claude picked as the
 // person did on its kind, its raise event marked blind, and a differing
 // answer a departure waiting on its verdict (16.17.7, 16.S66), and the
-// person's "don't care" refused; and mid-build, a call cheap to undo going
+// person's "don't care" the builder's, revealing nothing and weighing
+// nothing, though it counts towards a care entry's drop (9.2.16, 16.5.4);
+// and mid-build, a call cheap to undo going
 // ahead for its task while its question waits, naming the task and parking
 // none, the call held back from every list of the build's calls, the
 // person's agreement keeping it and the task standing as built — a later
@@ -44,7 +46,7 @@ const { ok, okSections, output, refusedPristine, fixtureFrom, cleanupFixture, st
 const { useTempFolder, createManifest, readManifest, withEnv } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, SESSION_ID, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
-const { DRAWN, idOf } = require('./trust-world.cjs');
+const { DRAWN, DAY, idOf, history, lines } = require('./trust-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 const { fixture } = require('./board-world.cjs');
@@ -137,7 +139,7 @@ afterEach(() => {
 });
 
 const { write, full, entries } = ledgerHelpers(() => dir);
-const { conversation, inFolder, seals, logged, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
+const { conversation, inFolder, seals, logged, project, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
 /**
  * The decision point forced to the rule, as switching it on makes it, for
@@ -380,7 +382,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
    * kind counts at the conversation's model.
    */
   const onTheKind = () => withEnv({ LEEWAY_CONFIG_DIR: config() }, () => {
-    const model = loggedOf('raise')[0].model ?? null;
+    const model = logged().find((event) => event.session === SESSION)?.model ?? null;
     return [alikeOn(evidenceOf(statePath(dir)).answers, 'behaviour'), countsOf(statePath(dir), { model, now: Date.now() }).kinds.behaviour.own];
   });
 
@@ -392,6 +394,22 @@ describe('mid-build (16.17.6, 12.13)', () => {
     const answers = withEnv({ LEEWAY_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir)).answers).filter(({ event }) => event.session === SESSION);
     const entryOf = new Map(answers.map(({ event }) => [event.id, event.entry]));
     return answers.map(({ event, standing, cancelled_by: by }) => [event.type, standing, by === null ? null : entryOf.get(by)]);
+  };
+
+  /** The person's "don't care" on the raise `id`, which must land: its response and what it shows besides. @param {string} id */
+  const leftToMe = (id) => okSections(dir, ['raise', 'answer', id, '--dont-care'], { env: conversation() });
+
+  /**
+   * This project's care entry on behaviour, and the person's "don't care"
+   * on it twice before, as of a day ago: a third in a row cues the entry's
+   * drop.
+   */
+  const caredForTwice = () => {
+    fs.mkdirSync(config(), { recursive: true });
+    fs.writeFileSync(path.join(config(), 'person.md'), `# The record of you\n\n## Care entries\n\n- Fumi: behaviour · ${project()} · 2025-12-01T00:00:00.000Z\n`);
+    const before = history({ project: project(), start: Date.now() - DAY });
+    before.dontCare(2, 'behaviour');
+    fs.writeFileSync(path.join(config(), 'trust.jsonl'), lines(...before.events));
   };
 
   /**
@@ -549,16 +567,48 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.deepStrictEqual(ok(dir, ['raise', 'waiting', BUILT]).waiting.map((/** @type {{about: string}} */ q) => full(q.about)), [full(reworded)]);
   });
 
-  it('the person\'s "don\'t care" on a blind question is refused, nothing landed and the question still waiting: it asks for their own answer, and leaving the call to Claude would land Claude\'s sealed answer and measure nothing', async (t) => {
-    drawingBlind(t);
-    quietOn('behaviour');
-    await raisedInBuild();
+  it('9.2.16, 16.5.4: the person\'s "don\'t care" on a blind question whose call went ahead keeps the call as built, the builder\'s — kept, asked-blind, moving no one, the task never marked changed though its pair reads it — revealing nothing, the receipt naming Claude\'s answer; its raise event weighs nothing in the kind\'s counts or how often Claude picked as the person did, yet counts towards a care entry\'s drop', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND }));
+    caredForTwice();
+    const { landed } = (await raisedInBuild()).res;
     const raise = drawnQ1();
+    beingRead();
+    const before = onTheKind();
 
-    const { error } = refusedPristine(dir, ['raise', 'answer', raise, '--dont-care'], { env: conversation() });
+    const { res, sections } = leftToMe(raise);
 
-    assert.strictEqual(error, 'raise answer: a blind question asks for the person\'s own answer, mine held back — "don\'t care" leaves the call to me, which measures nothing; take their pick or their own words');
-    assert.deepStrictEqual([seals()?.[raise].answered, loggedOf('raise'), ok(dir, ['raise', 'waiting', BUILT]).waiting.map((/** @type {{question: string}} */ q) => q.question)], [null, [], ['Q1']]);
+    const { event, entry, reason, who_moved_whom: moved, why } = entries().at(-1);
+    assert.deepStrictEqual([event, entry, reason, moved, why], ['kept', full(landed.id), 'asked-blind', 'none', 'They don\'t mind which: left to the builder.']);
+    assert.deepStrictEqual([res.receipt, sections, marked(), callsOn()], ['Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 stands as built · nothing waiting on you', '', null, [full(landed.id)]]);
+    assert.deepStrictEqual(standings().filter(([type]) => type === 'raise'), [['raise', 'no-weight', null]]);
+    assert.deepStrictEqual([onTheKind(), res.care_drop], [before, { care: `${projectName(dir)}: behaviour`, kind: 'behaviour', dont_cares: 3 }]);
+  });
+
+  it('9.2.16, 16.5.4: the person\'s "don\'t care" on a blind question parking its task lands Claude\'s sealed answer as the builder\'s, and the build goes on with it — the task never marked changed — revealing nothing, the receipt naming Claude\'s answer; its raise event weighs nothing in the kind\'s counts or how often Claude picked as the person did, yet counts towards a care entry\'s drop', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND }));
+    caredForTwice();
+    await raisedInBuild({ hardToUndo: true });
+    const raise = drawnQ1();
+    beingRead();
+    const before = onTheKind();
+
+    const { res, sections } = leftToMe(raise);
+
+    const { event, by, given, answers, text, task } = entries().at(-1);
+    assert.deepStrictEqual([event, by, given, answers, text, task], ['decided', 'claude', 'dont-care', ASKED.where, CURSOR.text, '2.3']);
+    assert.deepStrictEqual([res.receipt, sections, marked()], ['Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 builds again once its pair has read round 1 · nothing waiting on you', '', null]);
+    assert.deepStrictEqual(standings(), [['raise', 'no-weight', null]]);
+    assert.deepStrictEqual([onTheKind(), res.care_drop], [before, { care: `${projectName(dir)}: behaviour`, kind: 'behaviour', dont_cares: 3 }]);
+  });
+
+  it('the person\'s "don\'t care" on a question asked them with Claude\'s lean shown is an agreement, its receipt naming no answer, as any "don\'t care" is', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.' }));
+    await raisedInBuild();
+
+    const { res, sections } = leftToMe(drawnQ1());
+
+    assert.deepStrictEqual([res.receipt, sections], ['Q1 answered · task 2.3 builds again · nothing waiting on you', '']);
+    assert.deepStrictEqual(standings(), [['raise', 'agreement', null]]);
   });
 
   it('a blind question on a call hard to undo parks its task as any question does, its draw naming the park, nothing landed; drawn, it shows no lean', async (t) => {

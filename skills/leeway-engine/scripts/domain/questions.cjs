@@ -644,18 +644,21 @@ function aheadWords({ task, changed }) {
  * parks waiting before it, `before`, and in step what goes on first then,
  * `turnNow` answering it (task-verbs.cjs, `stepTurn`), read only where the
  * answer freed a task; on a blind question whose call went ahead, what
- * became of the task it went ahead for, `ahead`.
+ * became of the task it went ahead for, `ahead`; and on a blind question
+ * the person's "don't care" left to Claude, Claude's answer, `left`, which
+ * they never saw, standing as the builder's.
  * @param {string} cwd @param {string} unit @param {Parks} parks @param {string[]} before @param {string[]} warnings
  * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow @param {(task: string) => number|null} read the round a task's pair reads
- * @param {{task: string, changed: boolean}|null} [ahead]
+ * @param {{ahead?: {task: string, changed: boolean}|null, left?: string|null}} [how]
  */
-function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read, ahead = null) {
+function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read, { ahead = null, left = null } = {}) {
   const root = /** @type {string} */ (findStateRoot(cwd));
   const name = numbered(parks.number);
   const { meant, waiting } = readQuestions(root, warnings, (read) => ({ meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit) }));
   const said = 'means' in meant ? meant.means : freedWords(meant.freed, turnNow(), read);
   const means = ahead === null ? said : aheadWords(ahead);
-  return receiptLine([name], 'answered', means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
+  const outcome = left === null ? 'answered' : `answered · my answer stands as the builder's: ${left}`;
+  return receiptLine([name], outcome, means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
 }
 
 /**

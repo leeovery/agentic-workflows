@@ -17,12 +17,15 @@
 //   (`evidenceIn`), so the counts make the same of every project's.
 // - Each answer stands, by its event:
 //   - a raise answered with Claude's sealed answer — the person's "don't
-//     care" among them, which lands it (raise.cjs) — or in the person's own
-//     words the separate call read as it (answer-reader.cjs): an agreement;
+//     care" on a question not asked blind among them, which lands it
+//     (raise.cjs) — or in the person's own words the separate call read as
+//     it (answer-reader.cjs): an agreement;
 //   - a raise answered with another row — on a replacement, keeping the
 //     decision as it stands among them (raise.cjs) — or in the person's own
 //     words read as another row or as none: a departure (16.10.1);
-//   - a raise the person didn't follow: no weight (16.12.3);
+//   - a raise the person didn't follow: no weight (16.12.3); and their
+//     "don't care" on a blind question, Claude's answer never shown them,
+//     so it tells nothing of Claude's judgement: no weight (16.17.1);
 //   - a call: Claude's own call — but one a blind question was drawn on, a
 //     blind draw naming its entry, which went ahead while the question
 //     waits mid-build (16.17.6): no weight, the person's answer to the
@@ -78,8 +81,8 @@ const { readProjectEvents } = require('./trust-log.cjs');
 
 /** Where an answer stands, by its event's type, `drawn` the entries blind questions were drawn on. @type {Readonly<Record<string, StandsBy>>} */
 const STANDING = Object.freeze(/** @type {Record<string, StandsBy>} */ ({
-  raise: ({ didnt_follow: didntFollow, answer, reading, sealed }) => {
-    if (didntFollow) return 'no-weight';
+  raise: ({ didnt_follow: didntFollow, dont_care: dontCare, blind, answer, reading, sealed }) => {
+    if (didntFollow || (blind && dontCare)) return 'no-weight';
     return (answer ?? reading) === sealed ? 'agreement' : 'departure';
   },
   call: ({ entry }, drawn) => (drawn.has(entry) ? 'no-weight' : 'call'),

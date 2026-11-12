@@ -31,11 +31,12 @@
 //   person's "don't care", which lands Claude's lean as the builder's, so
 //   the answer is the sealed one, typed and no free text (9.2.14, 16.5.4) —
 //   the entry it lands says it is given so, and a later raise to replace
-//   that entry names it so as whose the decision was; and what the
-//   decision point decided the call from that its label does not hold, as
-//   the raise sealed it, so a replay of the rule over the log decides as it
-//   did: whether it blocked build work, a task parking on it as it was
-//   raised (16.4.7);
+//   that entry names it so as whose the decision was; on Claude's call gone
+//   ahead while a blind question waited, the call it keeps stands as built,
+//   the builder's; and what the decision point decided the call from that
+//   its label does not hold, as the raise sealed it, so a replay of the
+//   rule over the log decides as it did: whether it blocked build work, a
+//   task parking on it as it was raised (16.4.7);
 //   whose the decision it would replace was — who decided it, or the person
 //   where they kept it since — null for a question's answer (16.5.7); and
 //   Claude's mark that it always asks, null for none (19.4.20, 19.4.22);

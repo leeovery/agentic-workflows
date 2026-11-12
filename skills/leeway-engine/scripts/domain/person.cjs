@@ -41,11 +41,12 @@
 //   (16.5.3).
 // - The drop's cue (16.5.4, P6): the person's "don't care" answers to a
 //   kind's questions in one project, given since its care entry there was
-//   added, in a row — an answer to it otherwise, or a reversal of one,
-//   breaks the run; one they didn't follow, and Claude's own call, do
-//   neither — read from that project's evidence alone (trust-evidence.cjs),
-//   never another's (16.18.7). Each run of DONT_CARES in a row cues Claude
-//   to propose dropping the entry.
+//   added, in a row, a blind question's among them though it weighs
+//   nothing — an answer to it otherwise, or a reversal of one, breaks the
+//   run; one they didn't follow, and Claude's own call, do neither — read
+//   from that project's evidence alone (trust-evidence.cjs), never
+//   another's (16.18.7). Each run of DONT_CARES in a row cues Claude to
+//   propose dropping the entry.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -275,6 +276,16 @@ function recordToRead() {
 }
 
 /**
+ * Whether an answer the evidence holds is the person's to a question:
+ * one that weighs as theirs, or their "don't care", a blind question's
+ * weighing nothing.
+ * @param {Answer} answer
+ */
+function answeredOn({ standing, event }) {
+  return event.dont_care === true || (standing !== 'no-weight' && standing !== 'call');
+}
+
+/**
  * How many "don't care" answers to `kind`'s questions run in a row as the
  * last, of `answers` given after `since` — one project's evidence (the
  * header's).
@@ -283,7 +294,7 @@ function recordToRead() {
 function dontCareRun(answers, kind, since) {
   const from = Date.parse(since);
   const at = (/** @type {Answer} */ answer) => Date.parse(/** @type {string} */ (answer.event.at));
-  const timed = answers.filter((answer) => answer.kind === kind && answer.standing !== 'no-weight' && answer.standing !== 'call' && at(answer) > from)
+  const timed = answers.filter((answer) => answer.kind === kind && answeredOn(answer) && at(answer) > from)
     .sort((a, b) => at(a) - at(b));
   return timed.reduce((run, { event }) => (event.type === 'raise' && event.dont_care === true ? run + 1 : 0), 0);
 }

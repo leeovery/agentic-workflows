@@ -785,6 +785,7 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // it agrees with — for each of the person's answers to the lean a raise
 // sealed — an entry, a keep of the decision Claude proposed to replace, or
 // their "don't care", Claude's answer at the raise's id, given so and
+// marked so, or, on a blind question's call gone ahead, a keep of it
 // marked so, and no other — beside the raises the person did not follow;
 // every answer to what a question waiting in the build waited on — the
 // question it answers, by any wording, parked before it, or the decision
@@ -865,8 +866,10 @@ function auditTrust(sim, label, ran = []) {
   assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
     entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e) || leftToClaude(e)).map(namedBy).sort(),
     ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
-  assert.deepStrictEqual(ofType('raise').filter((e) => e.dont_care).map((e) => e.entry).sort(), entries.filter(leftToClaude).map((e) => e.id).sort(),
+  assert.deepStrictEqual(ofType('raise').filter((e) => e.dont_care && !keptAhead.has(e.entry)).map((e) => e.entry).sort(), entries.filter(leftToClaude).map((e) => e.id).sort(),
     ctx('the trust log does not mark a raise "don\'t care" for each of the person\'s "don\'t care" answers, and no other'));
+  assert.deepStrictEqual(ofType('raise').filter((e) => e.dont_care && keptAhead.has(e.entry) && !(e.blind && e.answer === e.sealed)).map((e) => e.entry), [],
+    ctx('a "don\'t care" keeping Claude\'s call gone ahead is no blind question\'s, or no keep of Claude\'s sealed answer'));
   /** @type {(id: string) => string} */
   const firstWording = (id) => (byId.get(id)?.event === 'replaced' && byId.get(id).of === 'question' ? firstWording(byId.get(id).replaces) : id);
   /** @type {(e: Record<string, any>) => {question: string|null, decision: string|null}|null} */
