@@ -157,7 +157,7 @@ function replacementOf(id, own = {}) {
 function keepOf(id) {
   return {
     v: 1, id, event: 'kept', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
-    by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, why: WHY, sealed: MAIN.text,
+    by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, why: WHY, sealed: MAIN.text, given: 'own',
   };
 }
 
@@ -192,7 +192,7 @@ describe('the draw (16.5.7, 29.5.2)', () => {
       answers: null, relies_on: [full(made.screens)],
       replaces: { entry: full(made.opens), reason: 'new-fact', cause: full(made.screens), keep: KEEP },
       call: CALL, fact: false, rows_judged: [], label: null, model: null, blocks_build: false, replaced_by: 'claude', always: null,
-      reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0, parks: null,
+      reason: EVERY_CALL_ASKS, blind: false, at: sealed.at, answered: null, didnt_follow: 0, parks: null,
     });
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise --replaces'));
     assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.head, o.recommended]).slice(0, 3),
@@ -411,7 +411,7 @@ describe('a keep changes nothing current (5.6.10)', () => {
     assert.match(hold.error, /^ledger hold --after names \w+, a kept event — it must name a replacement$/);
   });
 
-  it('every reader passes it by: the knowledge copy is as it was, the late check judges the decisions owed one and never the keep, and a second clone\'s merge carries its line once', async () => {
+  it('every reader passes it by: the knowledge copy is as it was but for whose the decision is, the person\'s now they kept it (16.5.7), the late check judges the decisions owed one and never the keep, and a second clone\'s merge carries its line once', async () => {
     const id = await draw();
     const [before, copied] = [ledgerText(), copy(NOTE_COPY)];
     assert.ok(copied?.includes(KEPT), 'the record\'s copy does not hold the decision');
@@ -419,7 +419,8 @@ describe('a keep changes nothing current (5.6.10)', () => {
     answer(id, ['--pick', 'keep']);
 
     const after = ledgerText();
-    assert.strictEqual(copy(NOTE_COPY), copied);
+    const [was, now] = [/** @type {string} */ (copied).split('\n'), /** @type {string} */ (copy(NOTE_COPY)).split('\n')];
+    assert.deepStrictEqual(now.flatMap((line, at) => (line === was[at] ? [] : [[was[at], line]])), [[`Decided by Claude. Entry ${made.opens}.`, `Decided by the person. Entry ${made.opens}.`]]);
     const keptLine = /** @type {string} */ (after.split('\n').find((line) => line.includes(`"id":"${id}"`)));
     const added = (/** @type {string} */ remote, /** @type {string} */ local) => [...linesToAdd(remote.split('\n'), local.split('\n'), entryId)];
     assert.deepStrictEqual([added(before, after), added(after, after)], [[keptLine], []]);

@@ -425,8 +425,8 @@ describe('task account (12.14.4, 6.3.13)', () => {
     const { id: question } = appendEntry(statePath(dir), { event: 'asked', ...tags, by: 'claude', who_moved_whom: 'none', text: 'Does a receipt show the tax?', part_of: null, relies_on: [], cites: [], task: '1.2' }, []);
     const rows = [{ key: '1', name: 'Shown', text: 'The receipt shows the tax', notice: 'a line for tax' }, { key: '2', name: 'Folded', text: 'The total holds the tax', notice: 'no tax line' }];
     appendEntry(statePath(dir), {
-      event: 'parked', ...tags, question, replaces: null, reason: null, cause: null, relies_on: [], task: '1.2', number: 1,
-      call: { question: 'Should a receipt show the tax?', rows, lean: '1', why: 'Customers ask.', sort: 'one', mechanism: 'A line.', product_wide: false }, rows_judged: [], why_asking: 'Every call asks.', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
+      event: 'parked', ...tags, question, replaces: null, reason: null, cause: null, relies_on: [], task: '1.2', went_ahead: null, number: 1,
+      call: { question: 'Should a receipt show the tax?', rows, lean: '1', why: 'Customers ask.', sort: 'one', mechanism: 'A line.', product_wide: false }, rows_judged: [], why_asking: 'Every call asks.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: false,
     }, []);
 
     refusedWith([UNIT, '1.2'], /^task account: task 1\.2 of pay waits on Q1, parked for the person — they answer it through its raise: raise draw pay Q1$/);

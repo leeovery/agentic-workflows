@@ -10,8 +10,9 @@
 // the model the call is decided under sealed with it, every event about it
 // logged under that model and with Claude's mark, a builder's answered in
 // the conversation among them (16.4.4); and, the decision point forced to
-// the rule in process
-// (`ruled`) as the switch will make it, a question Claude could find out
+// the rule in process (`ruled`) as the switch will make it, on a question
+// whose id draws no blind question (test-engine-raise-blind.cjs), a
+// question Claude could find out
 // sent to check and asked once the same raise is made again, in any
 // words — another task's raise of it sent to check as any first is — a call
 // with no label asked (16.S68), Claude's mark that
@@ -45,19 +46,17 @@ const { okSections, okSectionsAsync, refusesAsync, treeSnapshot, head, statePath
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
-const { DAY, MODEL, lines, history } = require('./trust-world.cjs');
-const { labelled, labelling } = require('./labels.cjs');
+const { MODEL, UNDRAWN } = require('./trust-world.cjs');
+const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { MODEL_LINES, countsFrom, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
 mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
-/** @typedef {import('./labels.cjs').Marks} Marks */
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 // An epic in its build, in auto, beside the epic in discussion.
@@ -125,33 +124,15 @@ afterEach(() => {
 });
 
 const { ledgerText, full, entries } = ledgerHelpers(() => dir);
-const { conversation, inFolder, seals, logText, project, lastEntry, answer } = raiseHelpers(() => dir, config, CALL);
-
-/** The decision point forced to the rule, as switching it on makes it, for test `t`. @param {import('node:test').TestContext} t */
-const byTheRule = (t) => t.mock.method(decisionPoint, 'decide', decisionPoint.ruled);
+const { conversation, inFolder, seals, logText, project, lastEntry, answer, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
 /**
- * The trust log holding `clean` answers on `kind` in this project, each
- * taking Claude's lean, as of a day ago: its text.
- * @param {Kind} kind @param {number} clean
+ * The decision point forced to the rule, as switching it on makes it, for
+ * test `t`: on a question whose id draws no blind question, so a call the
+ * rule lets proceed proceeds (test-engine-raise-blind.cjs).
+ * @param {import('node:test').TestContext} t
  */
-function quietOn(kind, clean = 30) {
-  const h = history({ project: project(), start: Date.now() - DAY });
-  h.agree(clean, kind);
-  fs.mkdirSync(config(), { recursive: true });
-  fs.writeFileSync(path.join(config(), TRUST_LOG), lines(...h.events));
-  return logText();
-}
-
-/** The conversation, the stub labelling `call`'s question `kind`, marked as `marks` says. @param {Record<string, unknown>} call @param {Kind} kind @param {Marks} [marks] */
-const labelledAs = (call, kind, marks) => conversation(labelling(/** @type {string} */ (call.question), kind, marks));
-
-/**
- * A raise of `call` at `at` with `flags`, in the conversation `env` names:
- * its response and whatever it drew.
- * @param {string} at @param {string[]} flags @param {Record<string, unknown>} call @param {Record<string, string|undefined>} env
- */
-const raised = (at, flags, call, env) => okSectionsAsync(dir, ['raise', at, ...flags], { env, stdin: JSON.stringify(call) });
+const byTheRule = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, question: UNDRAWN }));
 
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
@@ -192,7 +173,7 @@ const logEvents = () => logText().split('\n').slice(0, -1).map((line) => JSON.pa
 const cleanFor = (kind, model) => stateOf(countsFrom(logEvents(), { project: project(), model, now: Date.now() }).kinds[kind], 0.2).clean;
 
 describe('what the decision point is given (E1)', () => {
-  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — and the time; and every call still asks, as before the rule is switched on', async (t) => {
+  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — the time, and the id a blind draw hashes, the question\'s, none on a replacement, which is never drawn blind (E3); and every call still asks, as before the rule is switched on', async (t) => {
     const decide = t.mock.method(decisionPoint, 'decide');
     const claude = path.join(config(), 'claude');
     const transcript = path.join(claude, 'projects', '-Users-me-fumi', `${SESSION}.jsonl`);
@@ -212,9 +193,9 @@ describe('what the decision point is given (E1)', () => {
     const look = { labeller: LABELLER, answers: labelled('look').answers };
     const inBuild = { unit: BUILT, phase: 'implementation', topic: null };
     assert.deepStrictEqual(given.map(([call, { now: _now, ...rest }]) => [call, rest]), [
-      [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL }],
-      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null }],
-      [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null }],
+      [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL, question: full(made.note) }],
+      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null, question: null }],
+      [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null, question: full(made.size) }],
     ]);
     assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.parked, taskless.res.parked, taskless.res.task], ['ask', EVERY_CALL_ASKS, 'ask', 'Q1', 'Q2', null]);
   });

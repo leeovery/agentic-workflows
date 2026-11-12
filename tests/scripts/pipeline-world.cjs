@@ -34,7 +34,7 @@ const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/script
 const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
 const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
-const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
+const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf } = require('./engine-harness.cjs');
 const { briefPath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/brief-names.cjs'));
 const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
@@ -51,6 +51,8 @@ const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditG
 const MAP_VERBS = Object.freeze(['add', 'add-batch', 'edit', 'rename', 'remove', 'order', 'brief']);
 // The raise commands that draw nothing: an answer, a question set aside, the questions waiting.
 const RAISE_ANSWERS = Object.freeze(['answer', 'aside', 'waiting']);
+// What a blind question's answer draws: its reveal (16.17.7).
+const REVEAL = '=== DISPLAY: blind question revealed ';
 
 const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
   // This checkout's knowledge setup: keyword-only, pinned as setup records
@@ -130,15 +132,30 @@ class Sim {
   // advisory rides the dump, the view-family pattern; a raise's draw and
   // show — every raise command but its answer, an aside and the questions
   // waiting — whose sections are the screen the raise is drawn as, none
-  // where it parks its task or proceeds; the entry, whose sections are what
-  // the phase reads on arrival; a unit's move, whose sections are start
-  // this work's screen it stages; the capture line, whose section is the
-  // one line it draws; and Claude's proposal for the record of the person,
-  // whose sections are the screen it is proposed on.
-  /** @param {string[]} args */
-  static carriesSections([group, verb]) {
+  // where it parks its task or proceeds; the answer to a raise sealed
+  // blind, `blind`, whose section is its reveal, and no other answer's;
+  // the entry, whose sections are what the phase
+  // reads on arrival; a unit's move, whose sections are start this work's
+  // screen it stages; the capture line, whose section is the one line it
+  // draws; and Claude's proposal for the record of the person, whose
+  // sections are the screen it is proposed on.
+  /** @param {string[]} args @param {string} sections @param {boolean} [blind] */
+  static carriesSections([group, verb], sections, blind = false) {
     return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && MAP_VERBS.includes(verb))
+      || (group === 'raise' && verb === 'answer' && blind && sections.startsWith(REVEAL))
       || (group === 'workunit' && verb === 'move') || (group === 'inbox' && verb === 'capture') || (group === 'person' && verb === 'propose');
+  }
+
+  /**
+   * Whether `args` answer a raise the conversation `identity` names — the
+   * sim's own where none is — sealed blind (16.17.7).
+   * @param {string[]} args @param {{CLAUDE_CODE_SESSION_ID: string}|null} identity
+   */
+  answersBlind([group, verb, prefix], identity) {
+    if (group !== 'raise' || verb !== 'answer') return false;
+    const file = path.join(this.configDir, 'conversations', this.envOf(/** @type {any} */ (identity)).CLAUDE_CODE_SESSION_ID, RAISE_SHOWN);
+    if (!fs.existsSync(file)) return false;
+    return Object.entries(JSON.parse(fs.readFileSync(file, 'utf8'))).some(([id, seal]) => id.startsWith(prefix) && seal.blind === true);
   }
 
   /**
@@ -201,7 +218,7 @@ class Sim {
 
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
   run(args, identity = null, stdin = '') {
-    return this.audited(args, this.engine(args, identity, stdin));
+    return this.audited(args, this.engine(args, identity, stdin), identity);
   }
 
   /**
@@ -210,20 +227,20 @@ class Sim {
    * @param {string} cwd @param {string[]} args @param {object|null} [identity]
    */
   runIn(cwd, args, identity = null) {
-    return this.audited(args, engine.run(args, { cwd, env: this.envOf(identity), stdin: '' }));
+    return this.audited(args, engine.run(args, { cwd, env: this.envOf(identity), stdin: '' }), identity);
   }
 
   /** Engine mutation awaited — the door a command that answers later takes — audited as `run`'s. */
   async runAsync(args, identity = null, stdin = '') {
-    return this.audited(args, await this.engineAsync(args, identity, stdin));
+    return this.audited(args, await this.engineAsync(args, identity, stdin), identity);
   }
 
   /**
-   * A mutation's answer `res` held to ok:true JSON, then the whole state
-   * audited: its parsed answer.
-   * @param {string[]} args @param {{code: number, stdout: string, stderr: string}} res
+   * A mutation's answer `res`, in the conversation `identity` names, held
+   * to ok:true JSON, then the whole state audited: its parsed answer.
+   * @param {string[]} args @param {{code: number, stdout: string, stderr: string}} res @param {object|null} [identity]
    */
-  audited(args, res) {
+  audited(args, res, identity = null) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')}`;
     assert.strictEqual(res.code, 0,
@@ -233,7 +250,7 @@ class Sim {
     const parsed = JSON.parse(first);
     assert.strictEqual(parsed.ok, true, `[${label}] engine answered ok:false`);
     this.sections = nl === -1 ? '' : res.stdout.slice(nl + 1);
-    if (!Sim.carriesSections(args)) {
+    if (!Sim.carriesSections(args, this.sections, this.answersBlind(args, /** @type {any} */ (identity)))) {
       assert.strictEqual(this.sections, '',
         `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
     }

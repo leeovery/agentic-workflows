@@ -21,7 +21,9 @@
 //   the engine recommended, null where it recommended none; then the
 //   answer, as a raise's is.
 // - raise: a question raised to the person (16.9) — the ledger entry the
-//   answer landed as, the question's kind (16.11) and the label it was
+//   answer landed as, but for a keep of Claude's call gone ahead while a
+//   blind question waited, that call, the entry the person agreed with
+//   (16.17.6, raise.cjs); the question's kind (16.11) and the label it was
 //   composed from, Claude's sort of it as a call with one defensible answer
 //   or several (16.3.7), and the row of Claude's sealed answer; then the
 //   answer, and whether the person didn't follow, which leaves no answer,
@@ -29,14 +31,18 @@
 //   person's "don't care", which lands Claude's lean as the builder's, so
 //   the answer is the sealed one, typed and no free text (9.2.14, 16.5.4) —
 //   the entry it lands says it is given so, and a later raise to replace
-//   that entry names it so as whose the decision was; and what the
-//   decision point decided the call from that its label does not hold, as
-//   the raise sealed it, so a replay of the rule over the log decides as it
-//   did: whether it blocked build work, a task parking on it as it was
-//   raised (16.4.7);
-//   whose the decision it would replace was — who decided it, or the person
-//   where they kept it since — null for a question's answer (16.5.7); and
-//   Claude's mark that it always asks, null for none (19.4.20, 19.4.22).
+//   that entry names it so as whose the decision was; on Claude's call gone
+//   ahead while a blind question waited, the call it keeps stands as built,
+//   the builder's; and what the decision point decided the call from that
+//   its label does not hold, as the raise sealed it, so a replay of the
+//   rule over the log decides as it did: whether it blocked build work, a
+//   task parking on it as it was raised (16.4.7);
+//   whose the decision it would replace was — who decided it, or as the
+//   person's keep of it since was given, theirs or their "don't care" —
+//   null for a question's answer (16.5.7); and
+//   Claude's mark that it always asks, null for none (19.4.20, 19.4.22);
+//   and whether it was asked blind, Claude's answer held back (16.17.2), so
+//   an answer given cold reads as one on its own, wherever its draw names.
 //   Whether it was sent to check first is not logged: a call whose label
 //   says Claude could find it out never proceeds — the rule sends it to
 //   check, or asks — so a replay never counts it as one it would skip, and
@@ -46,8 +52,12 @@
 //   its label and its sort.
 // - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
 //   a fix later, a real loss, or a skip — and the point it was given at.
-// - blind-draw: a call drawn as a blind question (16.17.5), by its entry,
-//   with its kind.
+// - blind-draw: a call drawn as a blind question (16.17.5), with its kind,
+//   by the ledger line that holds Claude's call: the line the person's
+//   answer lands at, which seals it; in the build, the park the question
+//   waits on; or, where Claude's call went ahead while the question waits
+//   (16.17.6), the call's own entry, whose call event it makes no evidence
+//   (trust-evidence.cjs). It is logged once, at the draw (raise.cjs).
 // - reversal: the person's later reversal (16.12.1), by its entry, pointing
 //   back at the entry it reverses.
 // - position-switch: a build's position switched (3.3.7), by its unit, to
@@ -167,6 +177,7 @@ const SCHEMA = {
       field('blocks_build', FLAG),
       field('replaced_by', nullable(oneOf(...DECIDED_BY))),
       field('always', nullable(ALWAYS_MARK)),
+      field('blind', FLAG),
     ]),
     call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT)]),
     verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),

@@ -1924,12 +1924,19 @@ function runRaiseDrawParked(call, argv) {
   respondSections(call, screen);
 }
 
+/** @param {Call} call @param {string[]} argv */
+function runRaiseAnswer(call, argv) {
+  const { answered, reveal } = answerRaise(call.cwd, argv, call.stdin);
+  respond(call, answered);
+  if (reveal !== null) respondSections(call, reveal);
+}
+
 /** @param {Call} call @param {string[]} argv @returns {void|Promise<void>} */
 function runRaise(call, argv) {
   if (raiseWaits(argv)) return runRaiseDraw(call, argv);
   const [sub, ...rest] = argv;
   try {
-    if (sub === 'answer') respond(call, answerRaise(call.cwd, rest, call.stdin));
+    if (sub === 'answer') runRaiseAnswer(call, rest);
     else if (sub === 'draw') runRaiseDrawParked(call, rest);
     else if (sub === 'aside') respond(call, asideQuestions(call.cwd, rest));
     else if (sub === 'waiting') respond(call, waitingQuestions(call.cwd, rest));

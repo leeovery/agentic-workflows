@@ -649,8 +649,9 @@ function checkPlaceLive(said, at, live) {
 
 /**
  * Refuse, in the words of `said`, the command asking, a plain value given
- * that the event cannot hold: a reason outside the four (5.6.2), a topic
- * that is no text, a task not as screens show one.
+ * that the event cannot hold: a reason outside the four (5.6.2) — the
+ * blind question's on Claude's call gone ahead the engine's alone — a
+ * topic that is no text, a task not as screens show one.
  * @param {string} said @param {Write} write @param {Map<string, string[]>} given
  */
 function checkValues(said, { event, flags }, given) {
@@ -658,7 +659,8 @@ function checkValues(said, { event, flags }, given) {
     const [named] = /** @type {string[]} */ (given.get(flag.field));
     if (named === undefined) continue;
     const { type } = /** @type {import('./ledger-events.cjs').Field} */ (eventFields(event, contentKind(event)).find((f) => f.name === flag.field));
-    if (!type.test(named)) throw new Error(`${said}: ${flagName(flag)} is ${type.is} — not "${named}"`);
+    const reason = flag.field === REASON.field;
+    if (!type.test(named) || (reason && !REASONS.includes(named))) throw new Error(`${said}: ${flagName(flag)} is ${reason ? `one of ${REASONS.join(', ')}` : type.is} — not "${named}"`);
   }
 }
 

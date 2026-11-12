@@ -43,9 +43,11 @@
 //   an abandoned one leaves it open (9.1.11). A unit or topic that is not
 //   live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
-//   as written but its schema version; a decision the late one-decision
-//   check judged shows beside it what the check found, `late_check`, one
-//   rule or several — several is the flag (16.19.8).
+//   as written but its schema version, a decision decided as it stands —
+//   whose and how given, through the person's latest keep of it
+//   (ledger-fold.cjs, `decidedNow`); a decision the late one-decision check
+//   judged shows beside it what the check found, `late_check`, one rule or
+//   several — several is the flag (16.19.8).
 // - A read takes no lock of its own, but for `ledger shown`, which takes
 //   the last-looked mark's lock once its fold is done (ledger-since.cjs).
 //   What a landing its check finished said rides the answer, and a refusal,
@@ -56,7 +58,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, readOnce, holding, factsOf, isLive, mergeHolds, holdsOf, keptOf, assetsOf, foldedBeneath, mapOf, recordOf, productOf, discoveredOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, readOnce, holding, factsOf, isLive, mergeHolds, holdsOf, keptOf, decidedNow, assetsOf, foldedBeneath, mapOf, recordOf, productOf, discoveredOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
 const { answerSince, answerShown } = require('./ledger-since.cjs');
@@ -117,7 +119,9 @@ function shownLine(event, short) {
 
 /**
  * The shower over a folded ledger, the entry at a place read again from it,
- * with what the late one-decision check found of it, where it found anything.
+ * with what the late one-decision check found of it, where it found
+ * anything, and a decision decided as it stands (ledger-fold.cjs,
+ * `decidedNow`).
  * @param {Folded} folded @param {(place: import('./ledger.cjs').EntryPlace) => Record<string, unknown>} entryAt
  * @returns {Shower}
  */
@@ -126,7 +130,8 @@ function showerOf(folded, entryAt) {
   const short = (/** @type {string} */ id) => /** @type {string} */ (shorts.get(id));
   const show = (/** @type {string} */ id) => {
     const facts = factsOf(folded, id);
-    const shown = shownLine(entryAt(facts.place), short);
+    /** @type {Shown} */
+    const shown = { ...shownLine(entryAt(facts.place), short), ...(facts.kind === 'decision' ? decidedNow(folded, id) : {}) };
     return facts.late_check === null ? shown : { ...shown, late_check: facts.late_check };
   };
   const assets = (/** @type {string} */ id) => assetsOf(folded, id).map(({ path, status, lift }) => ({

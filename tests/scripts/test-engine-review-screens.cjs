@@ -21,18 +21,22 @@
 // those that change what the product does first, then process and
 // internals, the unlabelled last (14.4.4, 16.11.3, P11); and the stop once
 // the cut is through, the review's own, refused while the review goes on
-// without the person, naming what (12.13.22).
+// without the person, naming what (12.13.22). Both hold back Claude's call
+// a blind question waits on, gone ahead for its task (16.17.2).
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
+const path = require('path');
 const { describe, it } = require('node:test');
-const { call, output, refuses, sectionOf } = require('./engine-harness.cjs');
+const { call, output, refuses, sectionOf, ledgerEntries } = require('./engine-harness.cjs');
 const {
-  UNIT, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, firstRoundFailed, raisedAtReview, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, stateText, decided, assert,
+  UNIT, SESSION_ID, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, firstRoundFailed, raisedAtReview, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, stateText, decided, statePath, assert,
 } = require('./review-world.cjs');
+
+const { appendEntry } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/ledger.cjs'));
 
 /** @type {string} */
 let dir;
@@ -198,6 +202,37 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     assert.match(roundPart(file, 1), /FIX TASKS, PHASE 3 \(1 task\)\n {2}└─ 3\.1 The receipt is never sent\./);
     assert.match(roundPart(file, 2), /FIX TASKS, PHASE 4 \(1 task\)\n {2}└─ 4\.1 The receipt's label is terse\./);
     assert.match(file, / {2}5 calls across the work unit, 3 of them in the build, when round 2 was recorded: /);
+  });
+});
+
+describe('a blind question\'s call gone ahead, held back (16.17.2)', () => {
+  /**
+   * A blind question waiting on Claude's call `id`, which went ahead for
+   * task `task` (16.17.6), its park as the raise lands it.
+   * @param {string} id @param {string} task
+   */
+  function blindOn(id, task) {
+    const call = /** @type {{id: string}} */ (ledgerEntries(statePath(dir)).find((line) => String(line.id).startsWith(id))).id;
+    appendEntry(statePath(dir), {
+      event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION_ID,
+      question: null, replaces: call, reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: task, number: 1,
+      call: {
+        question: 'Is the label one word?',
+        rows: [{ key: '1', name: 'Two', text: 'Two words.', notice: 'the label reads plainer' }, { key: '2', name: 'One', text: 'One word.', notice: 'the label is shorter' }],
+        lean: '1', why: 'It reads plainer.', sort: 'several', mechanism: 'The label\'s text.', product_wide: false,
+      },
+      rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: true,
+    }, []);
+  }
+
+  it('the report\'s count of the calls decided for the person holds back Claude\'s call a blind question waits on, gone ahead for its task, as review-calls does, the two agreeing', () => {
+    firstRoundRecorded();
+    const made = decided(dir, `${UNIT}.implementation`, 'Is the label one word?', { by: 'claude', text: 'Two words.', why: 'It reads plainer.' });
+    const counted = callCounts();
+
+    blindOn(made, '4.1');
+
+    assert.deepStrictEqual([counted, callCounts()], [['6', '6'], ['5', '5']]);
   });
 });
 

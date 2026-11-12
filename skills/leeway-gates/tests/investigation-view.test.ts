@@ -22,7 +22,7 @@ const fixture = KILL_ALL as View & Record<string, any>
 const VALIDATING = {
   ...fixture,
   standing: 'validating-root-cause',
-  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', options: null, lean_first: null }],
+  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', options: null, lean: null }],
   decided: [],
   hypotheses: fixture.hypotheses.map((each: { name: string }) => (each.name === 'H1' ? { ...each, state: 'confirmed' } : each)),
   root_cause: { ...fixture.root_cause, validated: false },
@@ -152,9 +152,19 @@ FIX DIRECTION ──────────────────────
     const wait = fixture.waiting[0]
     const lines = (waiting: object) => sectionOf(drawn(INVESTIGATION, { ...fixture, waiting: [{ ...wait, ...waiting }] } as View).text, 'WAITING ON YOU').slice(1)
 
-    expect([lines({ lean_first: false }), lines({ raised_by: 'fix', options: 3 })]).toEqual([
+    expect([lines({ lean: 'marked' }), lines({ raised_by: 'fix', options: 3 })]).toEqual([
       ["⚑ Which fix: 3 options, Claude's lean marked"],
       ["⚑ Which fix: 3 options, Claude's lean first", '     raised by the fix validation'],
+    ])
+  })
+
+  test('16.17.2: a fix direction asked blind says how many options it sets out and nothing of where Claude\'s lean stands, on the investigation and on the unit\'s tab', () => {
+    const waiting = [{ ...fixture.waiting[0], lean: 'held' }]
+    const tab = { ...MINT, type: 'bugfix', here: false, waiting, phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
+
+    expect([sectionOf(drawn(INVESTIGATION, { ...fixture, waiting } as View).text, 'WAITING ON YOU').slice(1), sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU').slice(1)]).toEqual([
+      ['⚑ Which fix: 3 options'],
+      ['⚑ Which fix: 3 options'],
     ])
   })
 
@@ -162,14 +172,14 @@ FIX DIRECTION ──────────────────────
     const wait = fixture.waiting[0]
     const lines = (waiting: object) => sectionOf(drawn(INVESTIGATION, { ...fixture, waiting: [{ ...wait, ...waiting }] } as View).text, 'WAITING ON YOU').slice(1)
 
-    expect([lines({ text: 'Should a save keep the sessions it dropped?', options: null, lean_first: null }), lines({})]).toEqual([
+    expect([lines({ text: 'Should a save keep the sessions it dropped?', options: null, lean: null }), lines({})]).toEqual([
       ['⚑ Should a save keep the sessions it dropped?', '     raised by the fix direction'],
       ["⚑ Which fix: 3 options, Claude's lean first"],
     ])
   })
 
   test('its conclude drawn, the facts line flags it waiting and WAITING ON YOU asks for its yes in the conversation, as the unit\'s tab does', () => {
-    const conclude = { kind: 'conclude', id: 'conclude', text: "Conclude: the hunt's recap, the root cause and the fix, for your yes", page: null, raised_by: null, options: null, lean_first: null }
+    const conclude = { kind: 'conclude', id: 'conclude', text: "Conclude: the hunt's recap, the root cause and the fix, for your yes", page: null, raised_by: null, options: null, lean: null }
     const waits = { ...fixture, standing: 'conclude-waits', waiting: [conclude], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
     const tab = { ...MINT, type: 'bugfix', here: false, waiting: [conclude], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
     const { text, holds } = drawn(INVESTIGATION, waits)

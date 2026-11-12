@@ -11,7 +11,8 @@
 // bound shown to as many places as tell it from its line, and §16's worked
 // scenarios held to their figures; the person's threshold and its raise
 // mid-build read from the settings file; and the rule given the trust
-// log's counts for the project as of the time.
+// log's counts for the project as of the time, with the blind draw over a
+// call it lets proceed (16.17.3, 16.17.4, 16.17.9).
 //
 // Layer: unit. World: the counts are the rule's input, from events built in
 // memory a day before the frozen clock (trust-world.cjs, `history`); the
@@ -28,7 +29,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { FROZEN_MS, statePath } = require('./engine-harness.cjs');
-const { idOf, PROJECT_ID, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
+const { idOf, PROJECT_ID, DRAWN, NARROW, UNDRAWN, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -434,7 +435,7 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     fs.writeFileSync(logPath(), lines(...h.events));
     const call = /** @type {any} */ ({ sort: 'several' });
     const at = (/** @type {number} */ now) => ({
-      label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, always: null, checked: false, project: { root: statePath(dir), name: 'Mint' }, model: MODEL, now,
+      label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, always: null, checked: false, project: { root: statePath(dir), name: 'Mint' }, model: MODEL, now, question: UNDRAWN,
     });
     const decided = [ruled(call, at(FROZEN_MS)).decision, ruled(call, { ...at(FROZEN_MS), model: 'claude-sonnet-5' }).decision, ruled(call, at(twelfth + 500)).decision];
     fs.writeFileSync(path.join(folder(), 'config', 'config.json'), JSON.stringify({ trust: { threshold: 0.15 } }));
@@ -442,5 +443,69 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     assert.deepStrictEqual([...decided, ruled(call, at(FROZEN_MS)), ruled(call, at(FROZEN_MS))], ['proceed', 'ask', 'ask', ...Array(2).fill({
       decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 19%, over your 15%.',
     })]);
+  });
+
+  /**
+   * How `ruled` decides a call sorted `sort` labelled `label` in Mint, its
+   * log holding `h`'s events, on the question `question`, as of the frozen
+   * clock.
+   * @param {History} h @param {string|null} question @param {{sort?: 'one'|'several', label?: import('./labels.cjs').Label|null}} [call]
+   */
+  function drawn(h, question, { sort = 'several', label = BEHAVIOUR } = {}) {
+    fs.mkdirSync(path.dirname(logPath()), { recursive: true });
+    fs.writeFileSync(logPath(), lines(...h.events));
+    const at = { label, place: TOPIC, blocks_build: false, replaced_by: null, always: null, checked: false, project: { root: statePath(project('mint')), name: 'Mint' }, model: MODEL, now: FROZEN_MS, question };
+    return ruled(/** @type {any} */ ({ sort }), at);
+  }
+
+  const BLIND = { decision: 'blind', reason: 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.' };
+
+  it('16.S52, 16.S23: a call the rule lets proceed — a quiet kind\'s — is drawn blind where its question\'s id draws under the share, the same id drawing alike every time; one whose id draws over it proceeds; and a call the rule asks, or sends to check, is never drawn (16.17.3, 16.17.4, 16.6.4, 16.3.1)', () => {
+    const h = history();
+    h.agree(30);
+
+    assert.deepStrictEqual([drawn(h, DRAWN), drawn(h, DRAWN), drawn(h, UNDRAWN).decision, drawn(history(), DRAWN).decision, drawn(h, DRAWN, { label: CHECKABLE }).decision], [BLIND, BLIND, 'proceed', 'ask', 'check']);
+  });
+
+  it('a replacement the rule lets proceed is never drawn blind: it has no question\'s id to draw by, its rows Claude\'s proposals beside the decision as it stands', () => {
+    const h = history();
+    h.agree(30);
+
+    assert.deepStrictEqual(drawn(h, null).decision, 'proceed');
+  });
+
+  it('16.17.9: a kind holding fewer than 20 answers of the project\'s own at the session\'s model draws one in five of its calls — those of other projects and of an older model not counted, nor Claude\'s own calls and the raises the person didn\'t follow, and an answer a reversal cancels counted once, as its reversal — and from 20 on, one in ten', () => {
+    const wide = history();
+    wide.agree(18);
+    wide.agree(10, 'behaviour', { project: ELSEWHERE });
+    wide.agree(10, 'behaviour', { model: PREDECESSOR });
+    wide.call('several');
+    wide.call('several');
+    wide.unfollowed('several');
+    wide.reverse(wide.agree(1)[0]);
+    const narrow = history();
+    narrow.agree(20);
+
+    assert.deepStrictEqual([drawn(wide, NARROW).decision, drawn(wide, UNDRAWN).decision, drawn(narrow, NARROW).decision, drawn(narrow, DRAWN).decision], ['blind', 'proceed', 'proceed', 'blind']);
+  });
+
+  it('16.17.9: a one-answer call proceeding draws by its own count the same way: one in five while it holds fewer than 20 of the project\'s own calls and answers — a raise the person didn\'t follow none of them — one in ten from 20 on, whatever its kind holds (16.3.7)', () => {
+    const few = history();
+    for (let i = 0; i < 19; i += 1) few.call('one');
+    few.unfollowed('one');
+    few.agree(30);
+    const many = history();
+    for (let i = 0; i < 20; i += 1) many.call('one');
+
+    assert.deepStrictEqual([drawn(few, NARROW, { sort: 'one' }).decision, drawn(many, NARROW, { sort: 'one' }).decision, drawn(many, DRAWN, { sort: 'one' }).decision], ['blind', 'proceed', 'blind']);
+  });
+
+  it('the draw is the replay\'s: the first 32 bits of the id\'s SHA-1 as a fraction under the share — an id drawing 0.1004 is blind at one in five and not at one in ten', () => {
+    const quiet = history();
+    quiet.agree(20);
+    const few = history();
+    few.agree(19);
+
+    assert.deepStrictEqual([drawn(few, idOf('Between')).decision, drawn(quiet, idOf('Between')).decision, drawn(quiet, idOf('Drawn')).decision], ['blind', 'proceed', 'blind']);
   });
 });

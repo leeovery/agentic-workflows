@@ -781,11 +781,12 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // Claude leaned down its chain, its own call, handed over or not, or a
 // sealed answer, and it did not stand over the lean — made for a changed
 // mind or a mistake and carrying no sealed answer of Claude's; a raise,
-// naming the line, for each of the person's
-// answers to the lean a raise sealed — an entry, a keep of the decision
-// Claude proposed to replace, or their "don't care", Claude's answer at the
-// raise's id, given so and marked so, and no other — beside the raises the
-// person did not follow;
+// naming the line — but a keep of Claude's call gone ahead names the call
+// it agrees with — for each of the person's answers to the lean a raise
+// sealed — an entry, a keep of the decision Claude proposed to replace, or
+// their "don't care", Claude's answer at the raise's id, given so and
+// marked so, or, on a blind question's call gone ahead, a keep of it
+// given so, and no other — beside the raises the person did not follow;
 // every answer to what a question waiting in the build waited on — the
 // question it answers, by any wording, parked before it, or the decision
 // it replaces or keeps, parked since its last keep — landed through its
@@ -798,22 +799,29 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // blocking build work where that park held a task, never as the parks stood
 // at the answer, the decision it would replace whose it was as it parked,
 // the person's where a keep of theirs stood on it, and the park's mark —
-// and every park of a question holds its first park's; elsewhere blocking
-// no build work, the decision it would replace whose it was as the answer
-// landed, and the one a command just pressed, which lands no line, read off
-// the seal it was pressed on; and nothing left waiting in a
-// conversation, as no append fails. A raise answered and the line it
-// landed agree on whether the answer took Claude's lean — its row, or the
-// row the separate call read from the person's own words — the line
+// but a blind question whose call went ahead while it waits — on that
+// call, asked-blind, naming the task the call was made for — as that call
+// was decided: blocking build work where it was made for a task, replacing
+// nothing (16.17.6) — and every park of a question holds its first park's;
+// elsewhere blocking no build work, the decision it would replace whose it
+// was as the answer landed, and the one a command just pressed, which
+// lands no line, read off the seal it was pressed on; and nothing left
+// waiting in a conversation, as no append fails. A raise answered and the
+// line it landed agree on whether the answer took Claude's lean — its row,
+// or the row the separate call read from the person's own words — the line
 // standing over the lean exactly where it did not (16.19.1). Every verdict
 // names a departure the trust log holds — a raise answered against the
-// lean, a keep among them, or a reversal — that the ledger holds as a decision whose answer stood
-// over the lean, or a keep (16.13.6), and none follows one that is no skip
-// (16.10.1); the verdict a command that `ran` gave has its line, the latest.
+// lean, a keep among them, or a reversal — that the ledger holds as a
+// decision whose answer stood over the lean, or a keep (16.13.6), and none
+// follows one that is no skip (16.10.1); the verdict a command that `ran`
+// gave has its line, the latest.
 // Every call and raise carries the kind its label composes (16.11.3), and
 // the decision it names the kind and hard-to-undo mark that label gives; a
 // raise drawn from a park holds the label the park sealed, so the question
-// is labelled once; and a fact, sealed or parked, holds none (16.3.8).
+// is labelled once; and a fact, sealed or parked, holds none (16.3.8). Each
+// blind question is drawn once in the trust log, with the kind its label
+// composes (16.17.5): one sealed in a conversation, naming its seal; one
+// parked, naming its first park — or, where its call went ahead, that call.
 /** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
 function auditTrust(sim, label, ran = []) {
   const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
@@ -830,6 +838,13 @@ function auditTrust(sim, label, ran = []) {
   const ofType = (/** @type {string} */ type) => events.filter((e) => e.type === type);
   const isDecision = (/** @type {Record<string, any>} */ e) => e.event === 'decided' || e.of === 'decision';
   const isKeep = (/** @type {Record<string, any>} */ e) => e.event === 'kept';
+  /** Whether a line is the person's keep of Claude's call gone ahead while a blind question waited on it (16.17.6). @type {(e: Record<string, any>) => boolean} */
+  const keepsAhead = (e) => isKeep(e) && e.reason === 'asked-blind';
+  /** The entry an answer's raise event names: the line it landed, but the call a keep of a call gone ahead agrees with. @type {(e: Record<string, any>) => string} */
+  const namedBy = (e) => (keepsAhead(e) ? e.entry : e.id);
+  const keptAhead = new Map(entries.filter(keepsAhead).map((e) => [e.entry, e]));
+  /** The line a raise event's answer landed: the keep of the call it names, else the entry it names. @type {(raise: Record<string, any>) => Record<string, any>|undefined} */
+  const answeredLine = (raise) => keptAhead.get(raise.entry) ?? byId.get(raise.entry);
 
   const conversations = path.join(sim.configDir, 'conversations');
   const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
@@ -849,9 +864,10 @@ function auditTrust(sim, label, ran = []) {
   assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),
     ctx('the trust log does not hold one reversal for each of the person\'s replacements standing over a lean the entry it replaces held, and no other'));
   assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
-    entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e) || leftToClaude(e)).map((e) => e.id).sort(),
+    entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e) || leftToClaude(e)).map(namedBy).sort(),
     ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
-  assert.deepStrictEqual(ofType('raise').filter((e) => e.dont_care).map((e) => e.entry).sort(), entries.filter(leftToClaude).map((e) => e.id).sort(),
+  const leftKept = entries.filter((e) => isKeep(e) && e.given === 'dont-care').map((e) => e.entry);
+  assert.deepStrictEqual(ofType('raise').filter((e) => e.dont_care).map((e) => e.entry).sort(), [...entries.filter(leftToClaude).map((e) => e.id), ...leftKept].sort(),
     ctx('the trust log does not mark a raise "don\'t care" for each of the person\'s "don\'t care" answers, and no other'));
   /** @type {(id: string) => string} */
   const firstWording = (id) => (byId.get(id)?.event === 'replaced' && byId.get(id).of === 'question' ? firstWording(byId.get(id).replaces) : id);
@@ -881,8 +897,17 @@ function auditTrust(sim, label, ran = []) {
   const aboutTheSame = (a, b) => (a.question === null ? b.replaces === a.replaces : b.question !== null && firstWording(b.question) === firstWording(a.question));
   /** The first park of the question a park is one of: the earliest of its unit under its number, about the same thing. @type {(p: Record<string, any>) => Record<string, any>} */
   const firstParkOf = (p) => entries.find((q) => q.event === 'parked' && q.unit === p.unit && q.number === p.number && aboutTheSame(q, p));
-  /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked. @type {(first: Record<string, any>) => Record<string, unknown>} */
-  const parkDecidedFrom = (first) => ({ blocks_build: first.task !== null, replaced_by: first.replaces === null ? null : whose(first.replaces, entries.indexOf(first)), always: first.always });
+  /** Whether a park is a blind question whose call went ahead (16.17.6): it names the task the call went ahead for. @type {(p: Record<string, any>) => boolean} */
+  const wentAhead = (p) => p.went_ahead !== null;
+  for (const park of entries.filter((p) => p.event === 'parked' && wentAhead(p))) {
+    const call = byId.get(park.replaces);
+    assert.deepStrictEqual([call.by, call.task, park.reason, park.task, park.blind], ['claude', park.went_ahead, 'asked-blind', null, true],
+      ctx(`the park ${park.id} is no blind question on Claude's call gone ahead for the task it names, parking none`));
+  }
+  /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked: a blind question's whose call went ahead, as that call was. @type {(first: Record<string, any>) => Record<string, unknown>} */
+  const parkDecidedFrom = (first) => (wentAhead(first)
+    ? { blocks_build: byId.get(first.replaces).task !== null, replaced_by: null, always: first.always }
+    : { blocks_build: first.task !== null, replaced_by: first.replaces === null ? null : whose(first.replaces, entries.indexOf(first)), always: first.always });
   /** What a raise event says its call was decided from, of `fields`. @type {(event: Record<string, any>, fields: string[]) => Record<string, unknown>} */
   const decidedFrom = (event, fields) => Object.fromEntries(fields.map((f) => [f, event[f]]));
   for (const park of entries.filter((p) => p.event === 'parked')) {
@@ -898,12 +923,12 @@ function auditTrust(sim, label, ran = []) {
   };
   const answers = ofType('raise').filter((e) => !e.didnt_follow);
   for (const raise of answers) {
-    const expected = answerDecidedFrom(byId.get(raise.entry));
+    const expected = answerDecidedFrom(/** @type {Record<string, any>} */ (answeredLine(raise)));
     assert.deepStrictEqual(decidedFrom(raise, Object.keys(expected)), expected,
       ctx(`the raise ${raise.id} does not log what its call was decided from, as the ledger holds it`));
   }
   const raised = new Set([...answers.map((e) => e.entry), ...sealed.filter((s) => s.fact && s.answered !== null).map((s) => s.id)]);
-  assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
+  assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(namedBy(e))).map((e) => e.id), [],
     ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
   const notFollowed = ofType('raise').filter((e) => e.didnt_follow);
   assert.strictEqual(notFollowed.length, sealed.filter((s) => !s.fact).reduce((sum, s) => sum + s.didnt_follow, 0),
@@ -921,7 +946,7 @@ function auditTrust(sim, label, ran = []) {
   /** Whether a raise's answer took the lean: its row, or the row read from the person's own words. @type {(e: Record<string, any>) => boolean} */
   const tookTheLean = (e) => (e.answer ?? e.reading) === e.sealed;
   for (const raise of answers) {
-    assert.strictEqual(tookTheLean(raise), byId.get(raise.entry)?.who_moved_whom !== 'person-moved-claude',
+    assert.strictEqual(tookTheLean(raise), answeredLine(raise)?.who_moved_whom !== 'person-moved-claude',
       ctx(`the raise ${raise.id} and the line it landed disagree on whether the person's answer took Claude's lean`));
   }
   const departures = new Set([...answers.filter((e) => !tookTheLean(e)), ...ofType('reversal')].map((e) => e.entry));
@@ -948,6 +973,12 @@ function auditTrust(sim, label, ran = []) {
   }
   assert.deepStrictEqual([...sealed.filter((s) => s.fact), ...entries.filter((e) => e.event === 'parked' && e.call.lean === null)].filter((s) => s.label !== null).map((s) => s.id), [],
     ctx('a fact holds a label'));
+  const drawnBlind = [
+    ...sealed.filter((s) => s.blind && s.parks === null).map((s) => [s.id, kindOf(s.label)]),
+    ...entries.filter((p) => p.event === 'parked' && p.blind && firstParkOf(p) === p).map((p) => [wentAhead(p) ? p.replaces : p.id, kindOf(p.label)]),
+  ];
+  assert.deepStrictEqual(ofType('blind-draw').map((e) => [e.entry, e.kind]).sort(), drawnBlind.sort(),
+    ctx('the trust log does not hold one draw for each blind question, with its kind, and no other'));
   if (ran[0] === 'verdict' && ran[1] === 'give') {
     const [, , prefix, verdict, , point] = ran;
     const latest = ofType('verdict').at(-1);

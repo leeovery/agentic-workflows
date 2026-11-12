@@ -94,13 +94,13 @@ function decision(answers, fields = {}) {
 /** A question parked with task 2.3 as Q1, answering `question`. @param {string} question @param {Record<string, unknown>} [fields] */
 function parked(question, fields = {}) {
   return {
-    event: 'parked', ...TAGS, topic: null, phase: 'implementation', question, replaces: null, reason: null, cause: null, relies_on: [], task: '2.3', number: 1,
+    event: 'parked', ...TAGS, topic: null, phase: 'implementation', question, replaces: null, reason: null, cause: null, relies_on: [], task: '2.3', went_ahead: null, number: 1,
     call: {
       question: 'Where should a new note open?',
       rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
       lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
     },
-    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, ...fields,
+    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: false, ...fields,
   };
 }
 
@@ -164,7 +164,7 @@ describe('the events and their schemas', () => {
     appendEntry(root, { event: 'moved', ...TAGS, ...MADE, question: q, to: 'space-homing' }, []);
     appendEntry(root, { event: 'merged', ...TAGS, ...MADE, question: q, into: d, duplicate: null }, []);
     appendEntry(root, { event: 'checked', ...TAGS, entry: d, rules: 'one' }, []);
-    appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, why: 'They float every note.', sealed: 'A floating panel.' }, []);
+    appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, why: 'They float every note.', sealed: 'A floating panel.', given: 'own' }, []);
     appendEntry(root, { event: 'asset', ...TAGS, entry: r, path: 'fumi/assets/note-window.png', status: 'canonical', into: null }, []);
     const parkedId = /** @type {string} */ (appendEntry(root, parked(q), []).id);
     appendEntry(root, { event: 'unparked', ...TAGS, topic: null, phase: 'implementation', task: '2.3', parks: [parkedId] }, []);
@@ -182,27 +182,32 @@ describe('the events and their schemas', () => {
       [...HEADER, ...BY, 'question', 'to'],
       [...HEADER, ...BY, 'question', 'into', 'duplicate'],
       [...HEADER, 'entry', 'rules'],
-      [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
+      [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed', 'given'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
-      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model', 'blocks_build', 'replaced_by', 'always'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'went_ahead', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model', 'blocks_build', 'replaced_by', 'always', 'blind'],
       [...HEADER, 'task', 'parks'],
       [...HEADER, 'lines', 'files'],
     ]);
     assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'parked', 'rehomed', 'replaced', 'still-holds', 'unparked']);
   });
 
-  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none', () => {
-    const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, why: 'They float every note.', sealed: 'A floating panel.' };
+  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal — or, a blind question\'s answer keeping Claude\'s call, moving no one (16.17.6) — never Claude moving them, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none; given as their own, or their "don\'t care" on a blind question\'s call gone ahead alone (9.2.16)', () => {
+    const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, why: 'They float every note.', sealed: 'A floating panel.', given: 'own' };
+    const leftAhead = { ...keep, who_moved_whom: 'none', reason: 'asked-blind', given: 'dont-care' };
+    assert.deepStrictEqual(validEvent(leftAhead), leftAhead);
+    assert.throws(() => validEvent({ ...keep, given: 'dont-care' }), /a keep is given dont-care only on Claude's call gone ahead while a blind question waited, asked-blind/);
+    assert.throws(() => validEvent({ ...keep, given: 'your-call' }), /its given is not one of own, dont-care$/);
     assert.deepStrictEqual(validEvent(keep), keep);
     assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);
-    for (const moved of ['none', 'claude-moved-person']) assert.throws(() => validEvent({ ...keep, who_moved_whom: moved }), /its who_moved_whom is not one of person-moved-claude$/);
+    assert.deepStrictEqual(validEvent({ ...keep, who_moved_whom: 'none' }), { ...keep, who_moved_whom: 'none' });
+    assert.throws(() => validEvent({ ...keep, who_moved_whom: 'claude-moved-person' }), /its who_moved_whom is not one of person-moved-claude, none$/);
     assert.throws(() => validEvent({ ...keep, reason: 'a whim' }), /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
     assert.throws(() => validEvent({ ...keep, sealed: null }), /its sealed is not non-empty text/);
     const { why: _why, ...unexplained } = keep;
     assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
-  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none, a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, and a mark a question always asks by, or none; a task taken off its questions names the task and the parks', () => {
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, and a mark a question always asks by, or none; a task taken off its questions names the task and the parks', () => {
     const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
     const fact = { ...park, call: { ...park.call, rows: [], lean: null, why: null, sort: null } };
     const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3', parks: [newId()] };
@@ -216,6 +221,10 @@ describe('the events and their schemas', () => {
     assert.deepStrictEqual(validEvent(labelled), labelled);
     const decidedFrom = { ...replacing, blocks_build: false, replaced_by: 'your-call', always: 'live-server' };
     assert.deepStrictEqual(validEvent(decidedFrom), decidedFrom);
+    const ahead = { ...replacing, reason: 'asked-blind', task: null, went_ahead: '2.3', blind: true };
+    assert.deepStrictEqual(validEvent(ahead), ahead);
+    const goneAhead = /a blind question on Claude's call gone ahead names the task it went ahead for, its reason asked-blind, and only it does/;
+    const askedBlind = /a blind question on Claude's call gone ahead is asked blind and parks no task/;
     const cases = [
       [{ ...park, replaces: newId(), reason: 'was-wrong' }, /a parked question answers a question or proposes a replacement, one and not both/],
       [{ ...park, question: null }, /a parked question answers a question or proposes a replacement, one and not both/],
@@ -234,6 +243,12 @@ describe('the events and their schemas', () => {
       [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, or null$/],
       [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],
       [{ ...fact, question: null, replaces: newId(), reason: 'was-wrong' }, /a fact parked answers a question, never proposes a replacement/],
+      [{ ...fact, blind: true }, /a fact parked is never blind: it has no answer of Claude's to hold back/],
+      [{ ...replacing, went_ahead: '2.3', task: null, blind: true }, goneAhead],
+      [{ ...ahead, went_ahead: null }, goneAhead],
+      [{ ...ahead, task: '2.3' }, askedBlind],
+      [{ ...ahead, blind: false }, askedBlind],
+      [{ ...ahead, went_ahead: '2' }, /its went_ahead is not a task, as screens show it: \{phase\}\.\{n\}, or null/],
       [{ ...unparked, task: null }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
       [{ ...unparked, parks: [] }, /a task taken off its questions names the parks it is taken off/],
     ];

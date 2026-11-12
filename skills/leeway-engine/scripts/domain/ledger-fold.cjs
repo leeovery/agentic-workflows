@@ -763,13 +763,31 @@ function keptOf(folded, id) {
 }
 
 /**
- * Whose the decision `id` is, as replacing it asks (16.5.7): the person's
- * where a keep of theirs stands on it, else who decided it, read from it.
+ * Whose the decision `id` is, as replacing it asks (16.5.7): as it stands
+ * decided (`decidedNow`).
  * @param {Folded} folded @param {string} id
  * @returns {import('./ledger-events.cjs').DecidedBy}
  */
 function whoseDecision(folded, id) {
-  return keptOf(folded, id).length > 0 ? 'person' : decidedBy(factsOf(folded, id));
+  return decidedBy(decidedNow(folded, id));
+}
+
+/**
+ * Who the decision `id` stands decided by, and how given, through the
+ * latest keep of the person's standing on it (16.5.7, 9.2.16): theirs, given
+ * as their own, where they kept it by their pick or own words; its maker's
+ * still, handed over, given `dont-care`, where they kept it by their "don't
+ * care" — on Claude's call gone ahead while a blind question waited
+ * (raise.cjs); else as written. Every list reads a decision's whose so.
+ * @param {Folded} folded @param {string} id
+ * @returns {{by: string|null, given: string|null}}
+ */
+function decidedNow(folded, id) {
+  const { by, given } = factsOf(folded, id);
+  const keep = keptOf(folded, id).at(-1);
+  if (keep === undefined) return { by, given };
+  const kept = factsOf(folded, keep);
+  return kept.given === 'dont-care' ? { by, given: kept.given } : { by: kept.by, given: kept.given };
 }
 
 /**
@@ -1181,6 +1199,6 @@ function discoveredOf(folded, unit, topic) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, readOnce, holding, heldFacts, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  keptOf, whoseDecision, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
+  keptOf, whoseDecision, decidedNow, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
   movedToBy,
 };

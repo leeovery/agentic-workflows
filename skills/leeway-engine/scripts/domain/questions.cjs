@@ -17,9 +17,17 @@
 //   that park, an `unparked` line naming it: a park made outside any task —
 //   the task writer's, the consolidation agent's or the phase review's
 //   (12.5.5) — names none, and a question parking nothing waits as any other,
-//   nothing waiting on it. What it asks is Claude's call's question as
-//   sealed, or, where its question has been reworded since, its wording as it
-//   stands.
+//   nothing waiting on it: a blind question among them whose call went
+//   ahead for its task while it waits (16.17.6), which names that task and
+//   blocks it not, so every count of the questions waiting on the person
+//   holds it. While it waits, the call is held back from every list of the
+//   build's calls — a task's page, a quick-fix's board, the ledger's since
+//   and the review's calls decided for the person — each asking
+//   `heldBackIn`; and the question is about the question the call answers,
+//   never the call. Whether a question is asked blind is its first park's,
+//   sealed with its call, so a task joining it parks on it blind as well.
+//   What it asks is Claude's call's question as sealed, or, where its
+//   question has been reworded since, its wording as it stands.
 // - Its number: `Q{n}`, per unit, the next after the highest the unit's
 //   parks hold, live or not, so none is ever reused and a queued "Q2" never
 //   shifts when Q1 is answered; a task joining a question waiting takes its
@@ -42,9 +50,9 @@
 //   (`notWaiting`).
 // - `raise waiting <unit>`: the unit's waiting questions, oldest first, each
 //   by its number and its first park's id, with what it asks — its
-//   question's wording as it stands now — the tasks it parks, when it
-//   parked and how many minutes it has waited: what every surface showing
-//   the questions waiting reads (12.13.7).
+//   question's wording as it stands now — what it is about, the tasks it
+//   parks, when it parked and how many minutes it has waited: what every
+//   surface showing the questions waiting reads (12.13.7).
 // - `raise aside <unit> <question> …`: each question named set aside — by
 //   its number, or a park's id — staying waiting (12.13.17): it writes
 //   nothing, and answers the receipt. Any question not waiting refuses the
@@ -56,8 +64,10 @@
 //   park held that waited before the answer and no park still waiting
 //   holds after it — in step, once the task in flight is done, or from the
 //   one in flight where it is one of several freed (12.7.9); where none is,
-//   the task a question still waiting holds; where none is and it parks
-//   none, that no task waited on it; else still
+//   the task a question still waiting holds; on a blind question whose
+//   call went ahead, what became of the task it went ahead for — built
+//   again on the person's answer, or standing as built; where none is and
+//   it parks none, that no task waited on it; else still
 //   waiting — how many questions of the unit still wait, and the
 //   next to raise. The next is read from the conversation's discussion
 //   queue, `discussing.json` in its folder, which the gate mod keeps —
@@ -108,8 +118,9 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
 /**
  * A waiting question as `raise waiting` answers it: its number, its first
  * park's short id, what it asks, the short id of what it is about — its
- * question as worded now, or the decision it would replace — the tasks it
- * parks, when it parked and how many whole minutes it has waited.
+ * question as worded now, or the decision it would replace, but the
+ * question a blind question's call gone ahead answers (`aboutOf`) — the
+ * tasks it parks, when it parked and how many whole minutes it has waited.
  * @typedef {{question: string, id: string, asks: string, about: string, parks: string[], since: string, waited_minutes: number}} Waiting
  */
 /**
@@ -128,10 +139,10 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  * A park's call as sealed: Claude's call, the rows judged, why it asks, its
  * label (labeller.cjs), the model it was decided under, and what the
  * decision point decided it from beyond the label (raise.cjs).
- * @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null} & import('./raise.cjs').DecidedFrom} Sealed
+ * @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null, blind: boolean} & import('./raise.cjs').DecidedFrom} Sealed
  */
 /** A question asked in a quick-fix's conversation still open: its short id, the place it is at, and what it asks. @typedef {{id: string, place: string, asks: string}} AskedOpen */
-/** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
+/** A seal's question: its first park's full id, its number, the tasks it parks, and the task Claude's call went ahead for, null where none did (raise.cjs). @typedef {{park: string, number: number, tasks: string[], went_ahead: string|null}} Parks */
 
 const DISCUSSING = 'discussing.json';
 
@@ -390,8 +401,8 @@ function waitingOn(cwd, unit, subject, warnings) {
  * @param {Record<string, any>} line
  * @returns {Sealed}
  */
-function sealedOf({ call, rows_judged: judged, why_asking: whyAsking, label, model, blocks_build: blocks, replaced_by: replacedBy, always }) {
-  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blocks_build: blocks, replaced_by: replacedBy, always };
+function sealedOf({ call, rows_judged: judged, why_asking: whyAsking, label, model, blind, blocks_build: blocks, replaced_by: replacedBy, always }) {
+  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blind, blocks_build: blocks, replaced_by: replacedBy, always };
 }
 
 /**
@@ -479,12 +490,43 @@ function waitingIn(read, entryAt, unit, now) {
       question: numbered(question.number),
       id: shortId(question.park, read.facts.keys()),
       asks,
-      about: shortId(answers ?? line.replaces, read.facts.keys()),
+      about: shortId(aboutOf(read, line, answers), read.facts.keys()),
       parks: question.tasks,
       since: line.at,
       waited_minutes: Math.max(0, Math.floor((now - Date.parse(line.at)) / 60000)),
     };
   });
+}
+
+/**
+ * What the question whose first park's line is `line` is about, its
+ * question's wording now `answers`: that wording; for a replacement, the
+ * decision it would replace — but for a blind question on Claude's call
+ * gone ahead, the question the call answers, as worded now, never the
+ * call, which it holds back.
+ * @param {Folded} read @param {Record<string, any>} line @param {string|null} answers @returns {string}
+ */
+function aboutOf(read, line, answers) {
+  if (answers !== null) return answers;
+  if (line.went_ahead === null) return line.replaces;
+  const question = /** @type {string} */ (factsOf(read, line.replaces).answers);
+  return wordingOf(read, question) ?? question;
+}
+
+/**
+ * The calls of Claude's a blind question drawn on each waits on, gone
+ * ahead for its task (16.17.6), by full id: held back from every list of
+ * the build's calls until the person has answered (16.17.2).
+ * @param {Folded} read @param {EntryAt} entryAt @param {string} unit @returns {Set<string>}
+ */
+function heldBackIn(read, entryAt, unit) {
+  const ahead = waitingParks(read, unit).filter((id) => factsOf(read, id).replaces !== null && entryAt(factsOf(read, id).place).went_ahead !== null);
+  return new Set(ahead.map((id) => /** @type {string} */ (factsOf(read, id).replaces)));
+}
+
+/** `heldBackIn`, the ledger read. @param {string} cwd @param {string} unit @param {string[]} warnings @returns {Set<string>} */
+function heldBack(cwd, unit, warnings) {
+  return readQuestions(stateRoot(cwd), warnings, (read, entryAt) => heldBackIn(read, entryAt, unit));
 }
 
 /**
@@ -587,20 +629,36 @@ function freedWords(freed, turn, read) {
 }
 
 /**
+ * What became of the task a blind question's call went ahead for, as its
+ * answer landed: built again on the person's answer where it replaced the
+ * call, else standing as built.
+ * @param {{task: string, changed: boolean}} ahead
+ */
+function aheadWords({ task, changed }) {
+  return changed ? `task ${task} is built again on your answer` : `task ${task} stands as built`;
+}
+
+/**
  * The receipt of the person's answer to the parked question `parks`, read
  * from the ledger as it stands once the answer landed, against the unit's
  * parks waiting before it, `before`, and in step what goes on first then,
  * `turnNow` answering it (task-verbs.cjs, `stepTurn`), read only where the
- * answer freed a task.
+ * answer freed a task; on a blind question whose call went ahead, what
+ * became of the task it went ahead for, `ahead`; and on a blind question
+ * the person's "don't care" left to Claude, Claude's answer, `left`, which
+ * they never saw, standing as the builder's.
  * @param {string} cwd @param {string} unit @param {Parks} parks @param {string[]} before @param {string[]} warnings
  * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow @param {(task: string) => number|null} read the round a task's pair reads
+ * @param {{ahead?: {task: string, changed: boolean}|null, left?: string|null}} [how]
  */
-function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read) {
+function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read, { ahead = null, left = null } = {}) {
   const root = /** @type {string} */ (findStateRoot(cwd));
   const name = numbered(parks.number);
   const { meant, waiting } = readQuestions(root, warnings, (read) => ({ meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit) }));
-  const means = 'means' in meant ? meant.means : freedWords(meant.freed, turnNow(), read);
-  return receiptLine([name], 'answered', means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
+  const said = 'means' in meant ? meant.means : freedWords(meant.freed, turnNow(), read);
+  const means = ahead === null ? said : aheadWords(ahead);
+  const outcome = left === null ? 'answered' : `answered · my answer stands as the builder's: ${left}`;
+  return receiptLine([name], outcome, means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
 }
 
 /**
@@ -743,5 +801,5 @@ function parkingTask(root, unit, task, warnings) {
 
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, sealedOf, parkedUnder, parkedQuestion, parkedOn, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen,
+  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen, heldBackIn, heldBack,
 };

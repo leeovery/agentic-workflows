@@ -20,15 +20,16 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { writeState, cleanupFixture, layout, git, FROZEN_AT } = require('./engine-harness.cjs');
+const { writeState, cleanupFixture, layout, git, FROZEN_AT, statePath } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { ledgerReadHelpers } = require('./ledger-world.cjs');
+const { ledgerReadHelpers, ledgerHelpers } = require('./ledger-world.cjs');
 const { UNIT, PLACE, DESCRIPTION, FLAG, HELP, BRANCH } = require('./quick-fix-world.cjs');
 const { place } = require('./board-world.cjs');
-const { RULED, CALL_TEXT, made, working, fix, quickFixBoard } = require('./quick-fix-board-world.cjs');
+const { SESSION, RULED, CALL_TEXT, CALL, made, working, fix, quickFixBoard } = require('./quick-fix-board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { phaseViewOf } = require(path.join(SCRIPTS, 'domain/board.cjs'));
 const { roundReportPath, settlementPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { WORK_TYPE_PIPELINES, EPIC_PHASES } = require(path.join(SCRIPTS, 'kernel/manifest-schema.cjs'));
@@ -132,6 +133,51 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
         { id: made.ruled, text: RULED, by: 'person', unit_title: 'Restore' },
       ],
     ]);
+  });
+
+  /**
+   * A question parked on Claude's call in the quick-fix, proposing to
+   * replace it, as `how` has it.
+   * @param {{reason: string, task: string|null, went_ahead: string|null, blind: boolean}} how
+   */
+  const parkedOnTheCall = (how) => appendEntry(statePath(dir), {
+    event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
+    question: null, replaces: ledgerHelpers(() => dir).full(made.call), cause: null, relies_on: [], number: 1,
+    call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
+    ...how,
+  }, []);
+
+  it('16.17.2: a call of Claude\'s a blind question waits on, gone ahead for its fix, is held back from Claude\'s calls while the question waits', () => {
+    dir = working();
+    atTheFixes();
+    parkedOnTheCall({ reason: 'asked-blind', task: null, went_ahead: '1.1', blind: true });
+
+    assert.deepStrictEqual(board().view.calls, []);
+  });
+
+  /** The person's keep of Claude's call in the quick-fix, given `given`, as a blind question's answer lands it. @param {'own'|'dont-care'} given */
+  const keptBy = (given) => appendEntry(statePath(dir), {
+    event: 'kept', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
+    by: 'person', who_moved_whom: 'none', entry: ledgerHelpers(() => dir).full(made.call), reason: 'asked-blind', cause: null, why: 'It reads plainer.', sealed: CALL_TEXT, given,
+  }, []);
+
+  it('16.5.7, 9.2.16: a call of Claude\'s the person\'s "don\'t care" kept stays Claude\'s, handed over, among Claude\'s calls; once they keep it by their pick or own words it is theirs, never among them', () => {
+    dir = working();
+    atTheFixes();
+    keptBy('dont-care');
+    const handed = board().view.calls;
+
+    keptBy('own');
+
+    assert.deepStrictEqual([handed, board().view.calls], [[{ id: made.call, text: CALL_TEXT }], []]);
+  });
+
+  it('a question proposing to replace Claude\'s call, parking its fix, holds nothing back: the call stands among Claude\'s calls while it waits', () => {
+    dir = working();
+    atTheFixes();
+    parkedOnTheCall({ reason: 'was-wrong', task: '1.1', went_ahead: null, blind: false });
+
+    assert.deepStrictEqual(board().view.calls, [{ id: made.call, text: CALL_TEXT }]);
   });
 
   it('a fix\'s page names its phase the fixes and, with no account, shows its rounds reported whole as its reviews (20.5.6); a scenario of it opens at the quick-fix\'s one branch, as running the product proved it there, and one of a fix not yet started opens not proven', () => {

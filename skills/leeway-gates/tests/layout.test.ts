@@ -25,6 +25,8 @@ import {
   type Typed,
 } from '../hooks/layout.ts'
 
+import BLIND from './fixtures/raise-blind.mjs'
+
 tier('user')
 
 const optionOf = (over: Partial<Option> = {}): Option => ({
@@ -245,6 +247,31 @@ describe('layout', () => {
       '',
       '» Click to choose · click again to send · or type',
     ])
+  })
+
+  test('6.S19: a blind question draws as any raise does, its statement and question over its rows, but none recommended, so the cursor starts on the first, Claude\'s answer nowhere on the band', () => {
+    const { gate: name, ...stated } = BLIND
+    const gate: Gate = { name, ...stated }
+
+    expect(linesOf(gate, 72).map(read)).toEqual([
+      '─',
+      '',
+      '  Fumi · Note Window',
+      '  When you make a new note, where should its window open?',
+      "  WHAT YOU'D NOTICE",
+      '  - Main: every note opens on the same screen',
+      '  - Cursor: the note opens where you are looking',
+      '◆ Which way?',
+      '',
+      'o0 1          On the main screen',
+      'o1 2          On the screen the cursor is on',
+      'o2 technical  Show the mechanism',
+      "o3 explain    I don't follow — explain it again",
+      "t0 Comment    Ask about it, or tell me what I've missed",
+      '',
+      '» Click to choose · click again to send · or type',
+    ])
+    expect(startingRow(gate.options)).toBe(0)
   })
 
   test('the statement stands directly above the question, its lines its own, the glyph on the question alone', () => {

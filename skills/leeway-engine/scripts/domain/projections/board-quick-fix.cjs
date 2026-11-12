@@ -33,21 +33,24 @@
 //   the person changed (16.10.4).
 // - The change is the unit's description, pinned by the note it began
 //   from — the inbox's or the roadmap's, else none.
-// - CLAUDE'S CALLS are every current call of Claude's made in the
-//   quick-fix; REPLACES, for each current decision made there, the decision
-//   made in another unit its chain of replacements goes back to, past those
-//   made in the quick-fix, with its words, whose it was and the unit's
-//   title; both read in one read of the ledger.
+// - CLAUDE'S CALLS are every current decision made in the quick-fix that
+//   stands Claude's, read through the person's latest keep (ledger-fold.cjs,
+//   `decidedNow`), but each a blind question waits on, held back until the
+//   person has answered (16.17.2, questions.cjs); REPLACES, for each current
+//   decision made there, the decision made in another unit its chain of
+//   replacements goes back to, past those made in the quick-fix, with its
+//   words, whose it was and the unit's title; both read in one read of the
+//   ledger.
 // - THE RECORD is `summary.md`'s, each fix's under its title, once every
 //   fix has ended and one at least is done.
 // ---------------------------------------------------------------------------
 
 const { fact, placeFact } = require('../board-model.cjs');
 const { readShown } = require('../ledger-read.cjs');
-const { factsOf, madeOn, isCurrent } = require('../ledger-fold.cjs');
+const { factsOf, madeOn, isCurrent, decidedNow } = require('../ledger-fold.cjs');
 const { shortId } = require('../ledger-ids.cjs');
 const { sealsAt, sealWaits, fixPlaces } = require('../raise.cjs');
-const { askedOpenIds } = require('../questions.cjs');
+const { askedOpenIds, heldBackIn } = require('../questions.cjs');
 const { pairPassed, beingRead } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
 const { fixesUnderWay, startedOn, FIXES_PHASE } = require('../derivations.cjs');
@@ -113,7 +116,7 @@ const ended = ({ state }) => state === 'done' || state === 'closed';
  * @param {BoardAt} at
  * @returns {{calls: QuickFixView['calls'], replaces: QuickFixView['replaces'], raised: WaitingLine[]}}
  */
-const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at.warnings, ({ folded, show, short }) => {
+const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at.warnings, ({ folded, show, short, entryAt }) => {
   const made = [...folded.facts.keys()].filter((id) => factsOf(folded, id).kind === 'decision' && isCurrent(folded, id) && madeOn(folded, id).unit === at.unit);
   /** The decision made in another unit that `id`'s chain of replacements goes back to, past those made in the quick-fix; null where none is. @param {string} id @returns {string|null} */
   const replacing = (id) => {
@@ -122,8 +125,9 @@ const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at
     return replaced;
   };
   const ids = [...folded.facts.keys()];
+  const held = heldBackIn(folded, entryAt, at.unit);
   return {
-    calls: made.filter((id) => factsOf(folded, id).by === 'claude' && replacing(id) === null).map((id) => ({ id: short(id), text: String(show(id).text) })),
+    calls: made.filter((id) => decidedNow(folded, id).by === 'claude' && replacing(id) === null && !held.has(id)).map((id) => ({ id: short(id), text: String(show(id).text) })),
     replaces: made.flatMap((id) => {
       const replaced = replacing(id);
       if (replaced === null) return [];

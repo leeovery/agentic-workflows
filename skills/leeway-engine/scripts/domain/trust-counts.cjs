@@ -55,6 +55,14 @@
 //   prior's together, and its bound exceeds the threshold itself the first
 //   time, a quarter above it after (16.4.10). A gate shows, and goes
 //   automatic and back as a kind goes quiet and asks again (16.20.2).
+// - A count also tallies the answers it holds of the project's own at the
+//   session's model, whatever their age, none cancelled — a one-answer
+//   count's calls among them: the fewer, the wider its range, and the more
+//   of its calls blind questions draw (16.17.9, decision-point.cjs).
+// - A blind question's reveal (16.17.7) says how often Claude picked as the
+//   person did on its kind in the project: of the kind's latest answers,
+//   25 at most (P9) — the person's to a raise, blind or shown, and their
+//   reversals, none cancelled — those that took Claude's lean (`alikeOn`).
 // - What ships is this procedure and its defaults, never anyone's counts
 //   (16.16.1). The defaults are 16.20.1's, held with the person's own
 //   settings over them (trust-settings.cjs).
@@ -63,7 +71,7 @@
 const { evidenceIn } = require('./trust-evidence.cjs');
 const { readPersonEvents, projectId } = require('./trust-log.cjs');
 const { KINDS } = require('./event-fields.cjs');
-const { ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT } = require('./trust-settings.cjs');
+const { ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, REVEAL_LAST } = require('./trust-settings.cjs');
 
 /** @typedef {import('./event-fields.cjs').Kind} Kind */
 /** @typedef {import('./trust-evidence.cjs').Answer} Answer */
@@ -86,7 +94,12 @@ const NO_LOSS = new Set(['nothing', 'fix']);
  */
 /** A change to a count: at a time, on the project's own side or its prior's, an outcome's weight moved by `by`. @typedef {{at: number, own: boolean, outcome: Outcome, by: number}} Change */
 /** How a count is walked. @typedef {'kind'|'one'|'gate'} Rule */
-/** A count: how it is walked, and its changes in time order. @typedef {{rule: Rule, changes: Change[]}} Count */
+/**
+ * A count: how it is walked, its changes in time order, and how many of the
+ * answers it holds are the project's own at the session's model, none
+ * cancelled — what tells its range wide (16.17.9).
+ * @typedef {{rule: Rule, changes: Change[], own: number}} Count
+ */
 /**
  * The counts on a project: each kind's, the one-answer calls', and each
  * answered gate's by its name.
@@ -267,6 +280,9 @@ function kindChanges({ event, standing }, held, verdicts, now) {
 /** What each standing counts as in the one-answer calls' count. @type {Readonly<Record<string, Outcome>>} */
 const ONE_ANSWER = Object.freeze({ agreement: CLEAN, call: CLEAN, departure: LOSS });
 
+/** The standings a kind's count holds: the person's answers. */
+const KIND_HOLDS = Object.freeze(['agreement', 'departure']);
+
 /**
  * The changes an answer makes to the one-answer calls' count.
  * @param {Answer} answer @param {Held} held @param {number} now
@@ -277,7 +293,33 @@ function oneAnswerChanges({ standing }, held, now) {
 }
 
 /** A count of `rule` with no changes yet. @param {Rule} rule @returns {Count} */
-const emptyCount = (rule) => ({ rule, changes: [] });
+const emptyCount = (rule) => ({ rule, changes: [], own: 0 });
+
+/**
+ * An answer's changes added to `count`, and the answer to those it holds of
+ * the project's own at the session's model where `here`.
+ * @param {Count} count @param {Change[]} changes @param {boolean} here
+ */
+function counted(count, changes, here) {
+  count.changes.push(...changes);
+  if (here) count.own += 1;
+}
+
+/**
+ * How often Claude's sealed answer was the person's on `kind` (the
+ * header's): `alike` of the last `of` answers of it `answers` holds; none
+ * of none for no kind.
+ * @param {Answer[]} answers @param {Kind|null} kind
+ * @returns {{alike: number, of: number}}
+ */
+function alikeOn(answers, kind) {
+  const last = answers
+    .filter((answer) => kind !== null && answer.kind === kind && answer.cancelled_by === null && KIND_HOLDS.includes(answer.standing))
+    .map(({ event, standing }) => ({ at: Date.parse(/** @type {string} */ (event.at)), standing }))
+    .sort((a, b) => a.at - b.at)
+    .slice(-REVEAL_LAST);
+  return { alike: last.filter(({ standing }) => standing === 'agreement').length, of: last.length };
+}
 
 /**
  * A gate's count, read from `counts` by its name; one with no answers where
@@ -316,8 +358,9 @@ function countsFrom(events, { project, model, now }) {
   for (const answer of evidence.answers) {
     const answered = held(answer.event, answer.model, answer.cancelled_by);
     if (answered.weight === 0) continue;
-    if (answer.kind !== null) kinds[answer.kind].changes.push(...kindChanges(answer, answered, evidence.verdicts, now));
-    if (answer.sort === 'one') one.changes.push(...oneAnswerChanges(answer, answered, now));
+    const here = answered.own && answered.weight === 1 && answer.cancelled_by === null;
+    if (answer.kind !== null) counted(kinds[answer.kind], kindChanges(answer, answered, evidence.verdicts, now), here && KIND_HOLDS.includes(answer.standing));
+    if (answer.sort === 'one') counted(one, oneAnswerChanges(answer, answered, now), here && Object.hasOwn(ONE_ANSWER, answer.standing));
   }
   for (const event of happened.filter(({ type }) => type === 'gate')) {
     const answered = held(event, /** @type {string|null} */ (event.model), null);
@@ -427,4 +470,4 @@ function stateOf({ rule, changes }, threshold) {
   return { asks, bound: upperBound(split), ...split };
 }
 
-module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf };
+module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn };

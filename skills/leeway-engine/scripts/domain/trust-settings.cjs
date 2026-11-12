@@ -31,6 +31,15 @@ const PRIOR_CAP = 10;
 const AGED_AFTER_MS = 183 * 24 * 60 * 60 * 1000;
 const AGED_WEIGHT = 0.5;
 const INHERITED_WEIGHT = 0.5;
+// The share of Claude's silent calls drawn as blind questions (16.17.3), and
+// the share while a count's range is wide: while it holds fewer than
+// WIDE_UNTIL answers of the project's own at the session's model (16.17.9).
+const BLIND_SHARE = 0.1;
+const WIDE_BLIND_SHARE = 0.2;
+const WIDE_UNTIL = 20;
+// How many of a kind's latest answers a blind question's reveal compares
+// Claude's picks with (16.17.7, P9).
+const REVEAL_LAST = 25;
 
 // The settings file's key the ask rule's settings sit under.
 const TRUST = 'trust';
@@ -93,5 +102,5 @@ function trustSettings() {
 }
 
 module.exports = {
-  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, DEFAULTS, trustSettings,
+  THRESHOLD, HARD_TO_UNDO, ASK_AGAIN, PERCENTILE, PRIOR_CAP, AGED_AFTER_MS, AGED_WEIGHT, INHERITED_WEIGHT, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL, REVEAL_LAST, DEFAULTS, trustSettings,
 };

@@ -12,7 +12,8 @@
 // the project's id it keys them by (`trustLogHelpers`). And what the ask
 // rule's suites share (test-engine-trust-counts.cjs,
 // test-engine-ask-rule.cjs, test-engine-raise-rule.cjs): a history of the
-// log's events built in memory, each a second after the last (`history`).
+// log's events built in memory, each a second after the last (`history`),
+// and questions' ids the blind draw reads each way.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -39,6 +40,11 @@ const { MODEL_LINES } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const idOf = (word) => word.padEnd(21, '0');
 
 const PROJECT_ID = idOf('Fumi');
+// Questions' ids as the blind draw reads them (decision-point.cjs): one
+// drawn at every share, one drawn only at the wide share, and one never.
+const DRAWN = idOf('Drawn');
+const NARROW = idOf('Narrow');
+const UNDRAWN = idOf('Undrawn');
 // A Claude Code session's id.
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const DAY = 24 * 60 * 60 * 1000;
@@ -160,7 +166,7 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
    * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean}} [opts] @param {Where} [where]
    */
   const raise = (kind, answer, { sort = 'several', dontCare = false } = {}, where = {}) => /** @type {string} */ (log('raise', {
-    entry: newId(), kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: false, replaced_by: null, always: null,
+    entry: newId(), kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: false, replaced_by: null, always: null, blind: false,
   }, where).entry);
   const h = {
     events,
@@ -184,7 +190,7 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
     /** A raise on `kind` Claude sorted `sort`, which the person didn't follow. @param {string} sort @param {Kind} [kind] */
     unfollowed: (sort, kind = 'behaviour') => {
-      log('raise', { entry: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null });
+      log('raise', { entry: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false });
     },
     /** @param {string} entry @param {string} verdict @param {Where} [where] */
     verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),
@@ -208,4 +214,4 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
   return h;
 }
 
-module.exports = { idOf, PROJECT_ID, SESSION, DAY, MODEL, lines, from, waitingPath, inConversation, useTrustWorld, trustLogHelpers, history };
+module.exports = { idOf, PROJECT_ID, DRAWN, NARROW, UNDRAWN, SESSION, DAY, MODEL, lines, from, waitingPath, inConversation, useTrustWorld, trustLogHelpers, history };

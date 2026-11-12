@@ -80,11 +80,12 @@
 // - The calls across the unit are every current decision made at any of its
 //   places, with whose it is and how it was given (16.17.8); those decided
 //   for the person are Claude's calls (`claudesCall`), the rule every count
-//   of them reads, the build's share those made at `{unit}.implementation`
-//   or `{unit}.review` (14.4.3). A finding is filed or dropped by a call of
-//   Claude's own at `{unit}.review`, written through the ledger's door;
-//   `review round` and `inbox file` take it by its id and refuse any other
-//   (14.3.5, 14.3.7).
+//   of them reads, but each a blind question waits on, held back until the
+//   person has answered (16.17.2, questions.cjs) — the build's share those
+//   made at `{unit}.implementation` or `{unit}.review` (14.4.3). A finding
+//   is filed or dropped by a call of Claude's own at `{unit}.review`,
+//   written through the ledger's door; `review round` and `inbox file` take
+//   it by its id and refuse any other (14.3.5, 14.3.7).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -105,6 +106,7 @@ const { claudesCall } = require('./ledger-events.cjs');
 const { isCurrent, factsOf } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
+const { heldBackIn } = require('./questions.cjs');
 const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
 const { buildLength, quickFixBuild } = require('./derivations.cjs');
@@ -525,21 +527,23 @@ function treeChanges(cwd, unit, repos) {
  */
 
 /**
- * Every current decision of the unit's, in the ledger's order.
- * @param {Shower} shower @param {string} unit @returns {UnitCall[]}
+ * Every current decision of the unit's, in the ledger's order, but those
+ * `held` names.
+ * @param {Shower} shower @param {string} unit @param {Set<string>} [held]
+ * @returns {UnitCall[]}
  */
-function unitCalls(shower, unit) {
+function unitCalls(shower, unit, held = new Set()) {
   const { folded, show } = shower;
   return [...folded.facts].flatMap(([id, facts]) => {
-    if (facts.kind !== 'decision' || facts.unit !== unit || !isCurrent(folded, id)) return [];
+    if (facts.kind !== 'decision' || facts.unit !== unit || !isCurrent(folded, id) || held.has(id)) return [];
     const shown = show(id);
     return [{
       short: /** @type {string} */ (shown.id),
       phase: facts.phase,
       topic: facts.topic,
-      by: /** @type {string} */ (facts.by),
-      given: facts.given,
-      handed: handedTag({ given: facts.given ?? undefined }),
+      by: /** @type {string} */ (shown.by),
+      given: /** @type {string} */ (shown.given),
+      handed: handedTag({ given: /** @type {string} */ (shown.given) }),
       question: facts.answers === null ? null : /** @type {string} */ (show(facts.answers).text),
       answer: /** @type {string} */ (shown.text),
       why: String(shown.why ?? ''),
@@ -572,6 +576,16 @@ function reviewCallFault({ folded }, unit, given, phase = 'review') {
 /** Whether a call of the unit's was decided for the person: Claude's. @param {UnitCall} call */
 const forThePerson = ({ by, given }) => claudesCall({ by, given });
 
+/**
+ * The unit's calls decided for the person (`forThePerson`), in the
+ * ledger's order, but each a blind question waits on (the header's).
+ * @param {Shower} shower @param {string} unit @returns {UnitCall[]}
+ */
+function callsForThePerson(shower, unit) {
+  const held = heldBackIn(shower.folded, shower.entryAt, unit);
+  return unitCalls(shower, unit, held).filter(forThePerson);
+}
+
 /** Whether a call was made in the build: at the unit's implementation or review. @param {UnitCall} call */
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
@@ -579,5 +593,5 @@ module.exports = {
   TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, notesStanding, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
-  takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
+  takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, callsForThePerson, reviewCallFault, inTheBuild,
 };

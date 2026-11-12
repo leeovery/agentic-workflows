@@ -10,8 +10,9 @@
 // (task-account.cjs, round-report.cjs); the questions waiting, from the
 // ledger's projection (questions.cjs, 12.13.7); a task's calls, the
 // decisions of Claude's the ledger holds made for it in the build
-// (12.12.12); and what running the product proved of a task's scenarios of
-// the cut, at the tips of its branch (runs.cjs).
+// (12.12.12), but each a blind question waits on (16.17.6); and what
+// running the product proved of a task's scenarios of the cut, at the tips
+// of its branch (runs.cjs).
 //
 // - `build-headline <unit> --file <payload>`: the tasks started together,
 //   the payload `{"tasks": [{"task", "changes", "watch"}, …]}` saying what
@@ -75,7 +76,7 @@ const { heldStack, tipCommits } = require('./phase-stack.cjs');
 const { branchHead } = require('./fix-branch.cjs');
 const { runsOf } = require('./runs.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
-const { waitingQuestions } = require('./questions.cjs');
+const { waitingQuestions, heldBack } = require('./questions.cjs');
 const { unitEntries } = require('./unit-entries.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { parseShownTask, parsePhase, shownTask, taskName, phaseName } = require('./task-id.cjs');
@@ -155,16 +156,20 @@ function stepOnly(manifest, what) {
 
 /**
  * The calls of Claude's the ledger holds made in the build for a task
- * (12.12.12), each by its short id and words — never one a moved unit's
- * build made for its own task of that number, carried to its topic's
- * first phase (ledger-rehomed.cjs).
+ * (12.12.12), each standing Claude's as the unit's entries read it, through
+ * the person's latest keep (unit-entries.cjs), by its short id and words —
+ * never one a moved unit's build made for its own task of that number,
+ * carried to its topic's first phase (ledger-rehomed.cjs), nor one a blind
+ * question waits on, held back until the person has answered (16.17.2,
+ * questions.cjs).
  * @param {string} cwd @param {TaskRef} ref
  */
 function callsOf(cwd, ref) {
   const task = shownTask(ref);
-  return [...unitEntries(cwd, ref.unit).values()]
-    .filter(({ kind, line }) => kind === 'decision' && line.by === 'claude' && line.task === task && BUILD_PHASES.includes(String(line.phase)))
-    .map(({ short, line }) => ({ id: short, text: String(line.text) }));
+  const held = heldBack(cwd, ref.unit, []);
+  return [...unitEntries(cwd, ref.unit)]
+    .filter(([id, { kind, line }]) => kind === 'decision' && line.by === 'claude' && line.task === task && BUILD_PHASES.includes(String(line.phase)) && !held.has(id))
+    .map(([, { short, line }]) => ({ id: short, text: String(line.text) }));
 }
 
 /** The tips of the task's branch, as a run names the code it ran: null where it has none yet. @param {string} cwd @param {TaskRef} ref @param {TaskDetail} task */
