@@ -202,10 +202,11 @@
 //   recorded (20.6.10).
 // - `raise show <id> [--technical]` draws a raise again from its seal
 //   alone, never from Claude's words; `--technical` shows the mechanism.
-// - `raise answer <id> (--pick <key> | --own | --didnt-follow)`: the person's
-//   answer, in the conversation that drew the raise, found by its seal — the
-//   id or a prefix of it; a raise it never drew, after a `/clear` or a resume
-//   under a new session, is raised again. A row picked, or the person's own
+// - `raise answer <id> (--pick <key> | --own | --dont-care |
+//   --didnt-follow)`: the person's answer, in the conversation that drew
+//   the raise, found by its seal — the id or a prefix of it; a raise it
+//   never drew, after a `/clear` or a resume under a new session, is
+//   raised again. A row picked, or the person's own
 //   words, lands as the person's decision at the id the draw minted, where
 //   the raise was drawn, answering its question and relying on what it relies
 //   on — on a replacement, as their replacement of the decision for the
@@ -226,6 +227,15 @@
 //   lands, so nothing is affected; and where the decision is affected by
 //   the replacement the keep names as its cause, keeping it confirms it
 //   still holds against it (ledger-affected.cjs).
+// - `--dont-care`, nothing on stdin: the person's "don't care" settles
+//   this question alone (16.5.4), Claude's lean landing at the id the draw
+//   minted as the builder's (9.2.14) — Claude's line, given `dont-care`,
+//   holding the lean row's answer, the other rows' as what it rules out and
+//   Claude's why, as a call that proceeds lands, moving no one. A fact
+//   refuses it: it holds no lean of Claude's to land. Where the call's kind
+//   stands under a care entry in this project, and the person's "don't
+//   care" answers to it now run a multiple of three in a row (person.cjs),
+//   the response cues Claude to propose dropping the entry (16.5.6).
 // - The person's own words on Claude's call are read before anything lands
 //   (answer-reader.cjs): the separate call reads their text against
 //   Claude's rows for the one it picks, so the entry and the event agree on
@@ -246,8 +256,9 @@
 //   ledger-write.cjs): the line it landed — an entry, or a keep — the sort,
 //   the lean's key and the answer's — null for the person's own words, free
 //   text, typed, with the row the separate call read from them, null for
-//   none (16.19.1, 16.19.8) — how it came, whether the person didn't
-//   follow, the sealed label and its kind, and what the call was decided
+//   none (16.19.1, 16.19.8); a "don't care", the lean's — how it came,
+//   whether the person didn't follow, whether it was their "don't care",
+//   the sealed label and its kind, and what the call was decided
 //   from beyond its label, as sealed — whether it blocked build work
 //   (16.4.7), whose the decision it would replace was (16.5.7), Claude's
 //   mark (19.4.20, 19.4.22) — under the sealed model; never a word of the
@@ -305,7 +316,8 @@ const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
 const { clearStop } = require('./position.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { record, modelOf } = require('./trust-log.cjs');
+const { record, modelOf, projectId } = require('./trust-log.cjs');
+const { careEntries, dropCue } = require('./person.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
 const { drawnRows, raiseScreen } = require('./projections/raise.cjs');
@@ -404,9 +416,9 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
 /**
  * The person's answer as its raise event holds it: the row's key — `keep`
  * for a keep, null for their own words — how it came, whether it came as
- * free text, and the row the separate call read from free text, null for
- * none.
- * @typedef {{answer: string|null, via: Via, with_text: boolean, reading: string|null}} Logged
+ * free text, the row the separate call read from free text, null for none,
+ * and whether it was their "don't care".
+ * @typedef {{answer: string|null, via: Via, with_text: boolean, reading: string|null, dont_care: boolean}} Logged
  */
 /**
  * The person's answer as it lands: its landing, its line's content, the
@@ -431,7 +443,7 @@ const REPLACE_USAGE = `${verbUsage('replace', SAID, NO_TASK)} ${PARKS_USAGE} ${A
 const FACT = '--fact';
 const FACT_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${FACT}   (the fact's question as JSON on stdin)`;
 const SHOW_USAGE = 'raise show <id> [--technical]';
-const ANSWER_USAGE = 'raise answer <id> (--pick <key> | --own | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin)';
+const ANSWER_USAGE = 'raise answer <id> (--pick <key> | --own | --dont-care | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin)';
 const DRAW_USAGE = 'raise draw <work-unit> <question>   (by its number, Q{n}, or its park\'s id)';
 const RAISE_USAGE = [QUESTION_USAGE, REPLACE_USAGE, FACT_USAGE, SHOW_USAGE, ANSWER_USAGE, DRAW_USAGE, questions.ASIDE_USAGE, questions.WAITING_USAGE].join('\n');
 // The sub-verbs, each a word where a draw names a place, `<unit>.<phase>`.
@@ -974,6 +986,17 @@ function landsAs({ answers, relies_on: reliesOn, replaces }, stands, task) {
 }
 
 /**
+ * Claude's answer as its line holds it, beyond what its landing holds
+ * (`content`): Claude's, moving no one, the lean row's answer, the other
+ * rows what it rules out, Claude's why, and whether it is product-wide.
+ * @param {Call} call @param {Record<string, unknown>} content
+ */
+function claudesAnswer(call, content) {
+  const lean = leanRow(call);
+  return { by: 'claude', who_moved_whom: 'none', ...content, text: lean.text, why: call.why, rules_out: othersOf(call, lean), product_wide: call.product_wide };
+}
+
+/**
  * Claude's call landed where the decision point lets it proceed: Claude's
  * decision answering the question, or its replacement of the decision —
  * the lean row's answer, the other rows what it rules out, and Claude's
@@ -984,14 +1007,13 @@ function landsAs({ answers, relies_on: reliesOn, replaces }, stands, task) {
  * @returns {Landed}
  */
 function proceeded(cwd, { place, target, task, model }, call, label, warnings) {
-  const lean = leanRow(call);
   const { lands, linked, content, checkRead } = landsAs(target, AT_THE_DRAW, task);
   const { landed } = landRaised(cwd, {
     said: SAID,
     place,
     lands,
     linked,
-    content: { by: 'claude', who_moved_whom: 'none', ...content, text: lean.text, why: call.why, rules_out: othersOf(call, lean), product_wide: call.product_wide },
+    content: claudesAnswer(call, content),
     label,
     id: null,
     logs: callLogged(call.sort, model),
@@ -1373,13 +1395,14 @@ function showRaise(args) {
  * `raise answer`'s argv read: the raise's id or a prefix of it, how the
  * person answered, and the row a pick names.
  * @param {string[]} args
- * @returns {{prefix: string, form: 'pick'|'own'|'didnt-follow', key: string|null}}
+ * @returns {{prefix: string, form: 'pick'|'own'|'dont-care'|'didnt-follow', key: string|null}}
  */
 function answerArgs(args) {
   const [prefix, flag, ...rest] = args;
   if (prefix !== undefined && prefix !== '' && !prefix.startsWith('--')) {
     if (flag === '--pick' && rest.length === 1 && rest[0] !== '' && !rest[0].startsWith('--')) return { prefix, form: 'pick', key: rest[0] };
     if (flag === '--own' && rest.length === 0) return { prefix, form: 'own', key: null };
+    if (flag === '--dont-care' && rest.length === 0) return { prefix, form: 'dont-care', key: null };
     if (flag === '--didnt-follow' && rest.length === 0) return { prefix, form: 'didnt-follow', key: null };
   }
   throw new Error(`Usage: engine ${ANSWER_USAGE}`);
@@ -1512,17 +1535,18 @@ function ownWordsOn({ call }, stdin, toLand) {
  * under the model the call was decided under (16.4.4): its entry, or null
  * where the person didn't follow; the kind of its sealed label, and the
  * label; its sort; the lean's key and the answer's; how it came, and the
- * row read from free text; and what the call was decided from beyond its
- * label, as sealed (`DecidedFrom`).
+ * row read from free text; whether it was the person's "don't care"; and
+ * what the call was decided from beyond its label, as sealed
+ * (`DecidedFrom`).
  * @param {CallSeal} seal @param {Logged & {entry: unknown, didnt_follow: boolean}} answer
  * @returns {{type: string, fields: Record<string, unknown>, model: string|null}}
  */
-function raiseEvent({ call, label, model, blocks_build: blocks, replaced_by: replacedBy, always }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow }) {
+function raiseEvent({ call, label, model, blocks_build: blocks, replaced_by: replacedBy, always }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow, dont_care: dontCare }) {
   return {
     type: 'raise',
     fields: {
       entry, kind: kindOf(label), label, sort: call.sort, sealed: call.lean, answer,
-      via, with_text: withText, reading, didnt_follow: didntFollow, blocks_build: blocks, replaced_by: replacedBy, always,
+      via, with_text: withText, reading, didnt_follow: didntFollow, dont_care: dontCare, blocks_build: blocks, replaced_by: replacedBy, always,
     },
     model,
   };
@@ -1602,7 +1626,24 @@ function answerLanding(seal, { text, why, rules_out: rulesOut }, moved, sealed) 
  */
 function answeredWith(seal, given) {
   const { answer, via, with_text: withText, reading } = given;
-  return { ...answerLanding(seal, given, given.who_moved_whom, leanRow(seal.call).text), answer, logged: { answer, via, with_text: withText, reading } };
+  return { ...answerLanding(seal, given, given.who_moved_whom, leanRow(seal.call).text), answer, logged: { answer, via, with_text: withText, reading, dont_care: false } };
+}
+
+/**
+ * The person's "don't care" on Claude's call, as it lands: Claude's lean,
+ * the builder's (the header's), and its raise event naming the lean,
+ * typed, marked a "don't care".
+ * @param {CallSeal} seal
+ * @returns {Answering}
+ */
+function leftToTheBuilder(seal) {
+  const { call } = seal;
+  const { lands, linked, content, checkRead } = landsAs(seal, AT_THE_ANSWER, null);
+  return {
+    lands, linked, checkRead,
+    content: { ...claudesAnswer(call, content), given: 'dont-care' },
+    answer: call.lean, logged: { answer: call.lean, via: 'typed', with_text: false, reading: null, dont_care: true },
+  };
 }
 
 /**
@@ -1633,7 +1674,7 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
     linked: { entry, reason, cause },
     content: { by: 'person', who_moved_whom: derivedMove({ event: 'kept', by: 'person' }, null, reason, null), why, sealed: leanRow(seal.call).text },
     checkRead: (read) => checkStillCurrent(entry, read),
-    answer: KEEP, logged: { answer: KEEP, via: cameBy(session, seal, KEEP), with_text: false, reading: null },
+    answer: KEEP, logged: { answer: KEEP, via: cameBy(session, seal, KEEP), with_text: false, reading: null, dont_care: false },
   };
 }
 
@@ -1715,7 +1756,7 @@ function didntFollow(cwd, session, seal) {
   if (held !== null) return said(answeredAlready(session, seal, held));
   questions.answerable(cwd, seal.parks, subjectOf(seal), ANSWER_SAID, warnings);
   if (!seal.fact) {
-    const { type, fields, model } = raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, reading: null, didnt_follow: true });
+    const { type, fields, model } = raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, reading: null, didnt_follow: true, dont_care: false });
     record(type, fields, { cwd, warnings, model });
   }
   changeSeals(session, (seals, put) => {
@@ -1727,22 +1768,44 @@ function didntFollow(cwd, session, seal) {
 }
 
 /**
- * How the person's answer lands: an answer to a fact; their own words; on a
- * replacement, a keep of the decision; else their pick of a row.
- * @param {string} cwd @param {string} session @param {Seal} seal @param {'pick'|'own'} form @param {string|null} key @param {() => string} stdin
+ * How the person's answer lands: an answer to a fact, never their "don't
+ * care"; their "don't care"; their own words; on a replacement, a keep of
+ * the decision; else their pick of a row.
+ * @param {string} cwd @param {string} session @param {Seal} seal @param {'pick'|'own'|'dont-care'} form @param {string|null} key @param {() => string} stdin
  * @returns {Answering}
  */
 function answering(cwd, session, seal, form, key, stdin) {
-  if (seal.fact) return factAnswered(seal, form, key, stdin());
+  if (seal.fact) {
+    if (form === 'dont-care') throw new Error(`${ANSWER_SAID}: a fact is the person's to give — "don't care" leaves the call to me, and a fact holds no lean of mine to land`);
+    return factAnswered(seal, form, key, stdin());
+  }
+  if (form === 'dont-care') return leftToTheBuilder(seal);
   if (form === 'own') return answeredWith(seal, ownWordsOn(seal, stdin(), () => stillToLand(cwd, seal)));
   if (key === KEEP && seal.replaces !== null) return keeping(session, seal, seal.replaces, stdin());
   return answeredWith(seal, picked(session, seal, /** @type {string} */ (key), stdin()));
 }
 
 /**
- * `raise answer <id> (--pick <key> | --own | --didnt-follow)`: the
- * person's answer to a raise this conversation drew — a row, `keep` on a
- * replacement, their own words, or that they didn't follow.
+ * The cue to propose dropping the care entry on the kind of `seal`'s label
+ * in this project, of the care entries `care`, once the person's "don't
+ * care" has landed (the header's): none where the answer was answered
+ * already, or no cue stands.
+ * @param {string} cwd @param {Seal} seal @param {{already?: true}} recorded @param {import('./person.cjs').Care[]} care
+ */
+function dropCued(cwd, seal, recorded, care) {
+  const root = findStateRoot(cwd);
+  if (recorded.already || root === null) return {};
+  const cue = dropCue(root, { id: projectId(root), name: projectName(cwd) }, kindOf(seal.label), care);
+  return cue === null ? {} : { care_drop: cue };
+}
+
+/**
+ * `raise answer <id> (--pick <key> | --own | --dont-care |
+ * --didnt-follow)`: the person's answer to a raise this conversation drew
+ * — a row, `keep` on a replacement, their own words, their "don't care",
+ * or that they didn't follow. A "don't care" reads the care entries before
+ * anything lands, so a record of the person that does not read refuses it
+ * with nothing written.
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  */
 function answerRaise(cwd, args, stdin) {
@@ -1750,7 +1813,10 @@ function answerRaise(cwd, args, stdin) {
   const session = sessionOf(ANSWER_SAID);
   const seal = sealNamed(readSeals(session), prefix, ANSWER_SAID);
   if (form === 'didnt-follow') return didntFollow(cwd, session, seal);
-  return recordAnswer(cwd, session, seal, answering(cwd, session, seal, form, key, stdin));
+  if (form !== 'dont-care') return recordAnswer(cwd, session, seal, answering(cwd, session, seal, form, key, stdin));
+  const care = careEntries();
+  const recorded = recordAnswer(cwd, session, seal, answering(cwd, session, seal, form, key, stdin));
+  return { ...recorded, ...dropCued(cwd, seal, recorded, care) };
 }
 
 /** Whether `raise` with `args` answers later: the draw, which waits on the one-decision check. @param {string[]} args */

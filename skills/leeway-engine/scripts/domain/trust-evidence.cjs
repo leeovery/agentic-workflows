@@ -16,7 +16,8 @@
 //   one's (16.13.5, trust-log.cjs). What it makes of them is pure
 //   (`evidenceIn`), so the counts make the same of every project's.
 // - Each answer stands, by its event:
-//   - a raise answered with Claude's sealed answer, or in the person's own
+//   - a raise answered with Claude's sealed answer — the person's "don't
+//     care" among them, which lands it (raise.cjs) — or in the person's own
 //     words the separate call read as it (answer-reader.cjs): an agreement;
 //   - a raise answered with another row — on a replacement, keeping the
 //     decision as it stands among them (raise.cjs) — or in the person's own

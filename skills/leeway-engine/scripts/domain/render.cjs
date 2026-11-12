@@ -84,6 +84,7 @@ const { verdictsSurface } = require('./verdict.cjs');
 const { startMenuSurface } = require('./projections/start-menu.cjs');
 const { epicMenuSurface } = require('./projections/epic-menu.cjs');
 const { manageSurface, manageUnitSurface, closedSurface, absorbTargetSurface, absorbConfirmSurface } = require('./projections/manage.cjs');
+const { careSurface, careKindSurface, careDropSurface } = require('./person-verbs.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -1555,6 +1556,9 @@ const SURFACES = {
   manage: (cwd) => manageSurface(cwd),
   'manage-unit': (cwd, { dotpath, from }) => manageUnitSurface(cwd, dotpath, from),
   closed: (cwd) => closedSurface(cwd),
+  'care': (cwd, { added, dropped }) => careSurface(cwd, { added, dropped }),
+  'care-kind': careKindSurface,
+  'care-drop': careDropSurface,
 };
 
 /**

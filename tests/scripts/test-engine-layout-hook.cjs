@@ -303,6 +303,8 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     'decision-checks.jsonl': 'the one-decision check\'s log',
     'config.json': 'the settings file',
     'person.md': 'the record of the person',
+    'person.md.lock': 'the lock on the record of the person',
+    'conversations/0001-0002/person-proposal.json': 'a conversation\'s proposal for the record of the person',
   });
 
   /** The reason a write to `rel` is refused with. @param {keyof typeof USER_FILES} rel */

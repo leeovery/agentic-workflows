@@ -208,4 +208,4 @@ function rule({ sort }, context) {
   return sort === 'one' ? oneAnswer(context, line) : byKind(context, kind, line);
 }
 
-module.exports = { rule };
+module.exports = { rule, percent, against };

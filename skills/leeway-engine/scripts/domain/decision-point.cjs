@@ -18,13 +18,15 @@
 // with the rule's own reason. `ruled` is what it decides once switched: the
 // ask rule (ask-rule.cjs) over the trust log's counts for the project and
 // the model as of the time (trust-counts.cjs), the person's settings
-// (trust-settings.cjs) and their care entries.
+// (trust-settings.cjs) and their care entries, from the record of the
+// person (person.cjs).
 // ---------------------------------------------------------------------------
 
 const { rule } = require('./ask-rule.cjs');
 const { countsOf } = require('./trust-counts.cjs');
 const { projectId } = require('./trust-log.cjs');
 const { trustSettings } = require('./trust-settings.cjs');
+const { careEntries } = require('./person.cjs');
 
 /** @typedef {import('./ask-rule.cjs').Ruling | 'blind'} Decision */
 /**
@@ -46,13 +48,13 @@ function decide(_call, _at) {
 /**
  * The ask rule's decision on the call: over the counts the trust log holds
  * on the project, for the session's model as of the time, the person's
- * settings, and their care entries, which the record of the person holds
- * (none yet).
+ * settings, and their care entries, which the record of the person holds,
+ * each project's by its id (person.cjs).
  * @param {import('./raise.cjs').Call} call @param {At} at
  * @returns {{decision: Decision, reason: string}}
  */
 function ruled(call, { project: { root, name }, model, now, ...at }) {
-  return rule(call, { ...at, project: { id: projectId(root), name }, counts: countsOf(root, { model, now }), settings: trustSettings(), care: [] });
+  return rule(call, { ...at, project: { id: projectId(root), name }, counts: countsOf(root, { model, now }), settings: trustSettings(), care: careEntries() });
 }
 
 module.exports = { decide, ruled };

@@ -155,11 +155,12 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
   /** A label composing `kind`, null for none. @param {Kind|null} kind */
   const label = (kind) => (kind === null ? null : labelled(kind));
   /**
-   * A raise on `kind` answered `answer`, Claude's lean row 1: its entry.
-   * @param {Kind|null} kind @param {string} answer @param {{sort?: string}} [opts] @param {Where} [where]
+   * A raise on `kind` answered `answer`, Claude's lean row 1 — the
+   * person's "don't care", typed, where `dontCare`: its entry.
+   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean}} [opts] @param {Where} [where]
    */
-  const raise = (kind, answer, { sort = 'several' } = {}, where = {}) => /** @type {string} */ (log('raise', {
-    entry: newId(), kind, label: label(kind), sort, sealed: '1', answer, via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocks_build: false, replaced_by: null, always: null,
+  const raise = (kind, answer, { sort = 'several', dontCare = false } = {}, where = {}) => /** @type {string} */ (log('raise', {
+    entry: newId(), kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: false, replaced_by: null, always: null,
   }, where).entry);
   const h = {
     events,
@@ -167,6 +168,8 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     now: () => clock,
     /** `n` answers on `kind` taking Claude's lean. @param {number} n @param {Kind|null} [kind] @param {Where} [where] */
     agree: (n, kind = 'behaviour', where = {}) => Array.from({ length: n }, () => raise(kind, '1', {}, where)),
+    /** `n` of the person's "don't care" answers on `kind`. @param {number} n @param {Kind|null} [kind] @param {Where} [where] */
+    dontCare: (n, kind = 'behaviour', where = {}) => Array.from({ length: n }, () => raise(kind, '1', { dontCare: true }, where)),
     /** A departure on `kind`, judged `verdict` where given: its entry. @param {string|null} [verdict] @param {Kind|null} [kind] @param {Where} [where] */
     depart: (verdict = null, kind = 'behaviour', where = {}) => {
       const entry = raise(kind, '2', {}, where);
@@ -179,9 +182,9 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     call: (sort, kind = 'behaviour', where = {}) => /** @type {string} */ (log('call', { entry: newId(), kind, label: label(kind), sort }, where).entry),
     /** The person's reversal of `entry`: its own. @param {string} entry @param {Where} [where] */
     reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
-    /** A raise on behaviour Claude sorted `sort`, which the person didn't follow. @param {string} sort */
-    unfollowed: (sort) => {
-      log('raise', { entry: null, kind: 'behaviour', label: label('behaviour'), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, blocks_build: false, replaced_by: null, always: null });
+    /** A raise on `kind` Claude sorted `sort`, which the person didn't follow. @param {string} sort @param {Kind} [kind] */
+    unfollowed: (sort, kind = 'behaviour') => {
+      log('raise', { entry: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null });
     },
     /** @param {string} entry @param {string} verdict @param {Where} [where] */
     verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),

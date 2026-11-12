@@ -25,10 +25,15 @@
 //   composed from, Claude's sort of it as a call with one defensible answer
 //   or several (16.3.7), and the row of Claude's sealed answer; then the
 //   answer, and whether the person didn't follow, which leaves no answer,
-//   no reading and no entry (16.9.3, 16.12.3); and what the decision point
-//   decided the call from that its label does not hold, as the raise sealed
-//   it, so a replay of the rule over the log decides as it did: whether it
-//   blocked build work, a task parking on it as it was raised (16.4.7);
+//   no reading and no entry (16.9.3, 16.12.3); whether the answer was the
+//   person's "don't care", which lands Claude's lean as the builder's, so
+//   the answer is the sealed one, typed and no free text (9.2.14, 16.5.4) —
+//   the entry it lands says it is given so, and a later raise to replace
+//   that entry names it so as whose the decision was; and what the
+//   decision point decided the call from that its label does not hold, as
+//   the raise sealed it, so a replay of the rule over the log decides as it
+//   did: whether it blocked build work, a task parking on it as it was
+//   raised (16.4.7);
 //   whose the decision it would replace was — who decided it, or the person
 //   where they kept it since — null for a question's answer (16.5.7); and
 //   Claude's mark that it always asks, null for none (19.4.20, 19.4.22).
@@ -74,8 +79,9 @@
 // fields contradict each other is no event: free text pressed or naming a
 // row, read as a row though it is no free text, or a row's key answer naming
 // none; a raise followed with no entry, or not followed with an answer, a
-// reading or an entry; an entry reversing itself; and a correction of both or
-// of neither.
+// reading, an entry or a "don't care"; a "don't care" whose answer is not the
+// sealed one, pressed, or free text; an entry reversing itself; and a
+// correction of both or of neither.
 //
 // One file serves every project on the machine, and each project runs the
 // engine its own copy of the workflows installs, so engines of several
@@ -157,6 +163,7 @@ const SCHEMA = {
       field('answer', nullable(KEY)),
       ...HOW_ANSWERED,
       field('didnt_follow', FLAG),
+      field('dont_care', FLAG),
       field('blocks_build', FLAG),
       field('replaced_by', nullable(oneOf(...DECIDED_BY))),
       field('always', nullable(ALWAYS_MARK)),
@@ -191,21 +198,32 @@ function answerContradiction(row, { via, with_text: withText, reading }) {
 
 /**
  * Where a raise the person didn't follow contradicts itself: it has no
- * answer, no reading and no entry, and free text came from the keyboard.
+ * answer, no reading and no entry, is no "don't care", and free text came
+ * from the keyboard.
  * @param {Record<string, unknown>} event @returns {string|null}
  */
-function notFollowedContradiction({ entry, answer, reading, via, with_text: withText }) {
-  if (entry !== null || answer !== null || reading !== null) return 'a raise not followed has no answer, no reading and no entry';
+function notFollowedContradiction({ entry, answer, reading, via, with_text: withText, dont_care: dontCare }) {
+  if (entry !== null || answer !== null || reading !== null || dontCare) return 'a raise not followed has no answer, no reading and no entry, and is no "don\'t care"';
   return withText && via !== 'typed' ? KEYBOARD : null;
 }
 
 /**
+ * Where the person's "don't care" contradicts itself: it lands the sealed
+ * answer, typed, as no free text.
+ * @param {Record<string, unknown>} event @returns {string|null}
+ */
+function dontCareContradiction({ answer, sealed, via, with_text: withText, reading }) {
+  return answer === sealed && via === 'typed' && !withText && reading === null ? null : 'a "don\'t care" lands the sealed answer, typed, as no free text';
+}
+
+/**
  * Where a raise the person followed contradicts itself: it has its entry,
- * and its answer agrees with how it came.
+ * and its answer agrees with how it came — a "don't care" as one does.
  * @param {Record<string, unknown>} event @returns {string|null}
  */
 function followedContradiction(event) {
-  return event.entry === null ? 'a raise answered has the ledger entry its answer landed as' : answerContradiction(event.answer, event);
+  if (event.entry === null) return 'a raise answered has the ledger entry its answer landed as';
+  return event.dont_care ? dontCareContradiction(event) : answerContradiction(event.answer, event);
 }
 
 /**

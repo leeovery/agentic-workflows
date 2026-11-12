@@ -775,14 +775,17 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // The trust log held to the ledger (16.13.3, 16.13.4, 16.12.1), read from
 // the sim's own config folder, the project's events alone, each once by its
 // id: a call for each of Claude's answers, a decision or its replacement of
-// one, but one carried over; a reversal, naming the entry it reverses, for
+// one, but one carried over and one landed at a raise's id, the person's
+// "don't care" on it; a reversal, naming the entry it reverses, for
 // each of the person's replacements of a decision that held Claude's lean —
 // Claude leaned down its chain, its own call, handed over or not, or a
 // sealed answer, and it did not stand over the lean — made for a changed
 // mind or a mistake and carrying no sealed answer of Claude's; a raise,
 // naming the line, for each of the person's
-// answers to the lean a raise sealed — an entry, or a keep of the decision
-// Claude proposed to replace — beside the raises the person did not follow;
+// answers to the lean a raise sealed — an entry, a keep of the decision
+// Claude proposed to replace, or their "don't care", Claude's answer at the
+// raise's id, given so and marked so, and no other — beside the raises the
+// person did not follow;
 // every answer to what a question waiting in the build waited on — the
 // question it answers, by any wording, parked before it, or the decision
 // it replaces or keeps, parked since its last keep — landed through its
@@ -828,9 +831,17 @@ function auditTrust(sim, label, ran = []) {
   const isDecision = (/** @type {Record<string, any>} */ e) => e.event === 'decided' || e.of === 'decision';
   const isKeep = (/** @type {Record<string, any>} */ e) => e.event === 'kept';
 
+  const conversations = path.join(sim.configDir, 'conversations');
+  const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
+  /** @type {Record<string, any>[]} */
+  const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
+  const sealIds = new Set(sealed.map((s) => s.id));
   const claudes = (/** @type {Record<string, any>} */ e) => e.by === 'claude' && e.given !== 'carried';
-  assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && claudes(e)).map((e) => e.id).sort(),
+  const leftToClaude = (/** @type {Record<string, any>} */ e) => isDecision(e) && claudes(e) && sealIds.has(e.id);
+  assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && claudes(e) && !leftToClaude(e)).map((e) => e.id).sort(),
     ctx('the trust log does not hold one call for each of Claude\'s answers, and no other'));
+  assert.deepStrictEqual(entries.filter(leftToClaude).filter((e) => e.given !== 'dont-care').map((e) => e.id), [],
+    ctx('Claude\'s answer landed at a raise\'s id is given otherwise than as the person\'s "don\'t care"'));
   /** @type {(e: Record<string, any>) => boolean} */
   const leaned = (e) => claudes(e) || typeof e.sealed === 'string' || (e.event === 'replaced' && leaned(byId.get(e.replaces)));
   const reversing = entries.filter((e) => e.event === 'replaced' && e.of === 'decision' && e.by === 'person' && e.sealed === null
@@ -838,8 +849,10 @@ function auditTrust(sim, label, ran = []) {
   assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),
     ctx('the trust log does not hold one reversal for each of the person\'s replacements standing over a lean the entry it replaces held, and no other'));
   assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
-    entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e)).map((e) => e.id).sort(),
+    entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e) || leftToClaude(e)).map((e) => e.id).sort(),
     ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
+  assert.deepStrictEqual(ofType('raise').filter((e) => e.dont_care).map((e) => e.entry).sort(), entries.filter(leftToClaude).map((e) => e.id).sort(),
+    ctx('the trust log does not mark a raise "don\'t care" for each of the person\'s "don\'t care" answers, and no other'));
   /** @type {(id: string) => string} */
   const firstWording = (id) => (byId.get(id)?.event === 'replaced' && byId.get(id).of === 'question' ? firstWording(byId.get(id).replaces) : id);
   /** @type {(e: Record<string, any>) => {question: string|null, decision: string|null}|null} */
@@ -889,10 +902,6 @@ function auditTrust(sim, label, ran = []) {
     assert.deepStrictEqual(decidedFrom(raise, Object.keys(expected)), expected,
       ctx(`the raise ${raise.id} does not log what its call was decided from, as the ledger holds it`));
   }
-  const conversations = path.join(sim.configDir, 'conversations');
-  const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
-  /** @type {Record<string, any>[]} */
-  const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
   const raised = new Set([...answers.map((e) => e.entry), ...sealed.filter((s) => s.fact && s.answered !== null).map((s) => s.id)]);
   assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
     ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
