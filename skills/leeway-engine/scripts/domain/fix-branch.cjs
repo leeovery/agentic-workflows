@@ -363,8 +363,8 @@ function theirsLeftOff(branch, onto, { sha, message, paths }) {
  * that did — the repository, where the branch moved from and to, the tasks
  * replayed, those left off — and a warning for each task, and each commit
  * of the person's, left off; null where it holds none, or the repository
- * lacks it. Each task whose commits it drops is read for its landing, so
- * the read's record holds it (`found`).
+ * lacks it. Each task whose commits it drops has its landing read in
+ * reading them (`landedCommit`), so the read's record holds it (`found`).
  * @param {RepoLanding} held
  * @returns {{answer: Record<string, unknown>, remakes: string[], theirs: string[]}|null}
  */
@@ -375,8 +375,6 @@ function cutAgain(held) {
   const past = held.commits();
   const left = past.filter(({ sha, id }) => !held.landedCommit(sha, id));
   if (left.length === past.length) return null;
-  const dropped = past.filter((commit) => !left.includes(commit));
-  for (const id of new Set(dropped.flatMap(({ id }) => (id === null ? [] : [id])))) held.task(parseTaskId(id));
   const { tip: cut, off, theirs } = replayed(ctx.root, left, tip);
   moveBranch(ctx.root, branch, at, cut, `holds work landed on ${ctx.into} by hand${lg.inRepoWords(ctx.repo)}, so it is cut again from there`);
   const tasks = (/** @type {Commit[]} */ commits) => [...new Set(commits.flatMap(({ id }) => (id === null ? [] : [shownTask(parseTaskId(id))])))];

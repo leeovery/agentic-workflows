@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A chain whose later task rewrites, then deletes, the earlier task's lines
-// (task-landed.cjs, the ancestor rule; landing-record.cjs, 7.2.22), through
+// (task-landed.cjs, the chain read; landing-record.cjs, 7.2.22), through
 // the `land` verbs, against each shipped driver in turn: task 1.5 cut from
 // 1.4, rewriting then deleting 1.4's lines, so 1.4's own change never
 // reaches the default branch, yet it lands with the chain above it. Landed
@@ -58,7 +58,7 @@ for (const { name } of listDrivers('landing')) {
     dir = null;
   });
 
-  describe(`the ${name} landing driver's chain, 1.5 cut from 1.4 rewriting then deleting its lines (the ancestor rule, 7.2.22)`, () => {
+  describe(`the ${name} landing driver's chain, 1.5 cut from 1.4 rewriting then deleting its lines (the chain read, 7.2.22)`, () => {
     it('land phase records both, and a second merges nothing (S1)', () => {
       const at = (dir = world());
       ok(at, ['land', 'phase', UNIT, '1']);

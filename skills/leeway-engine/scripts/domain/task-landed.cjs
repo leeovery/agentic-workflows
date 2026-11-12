@@ -773,14 +773,13 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
   };
   /**
    * Whether the task has landed by its branch's tip read whole over where it
-   * was cut (the header's, `tipLanded`), or with a task above it in its
-   * chain (`landedWith`): the last fallback, for a landing no record, line
-   * or driver's commit reads.
+   * was cut (the header's, `tipLanded`): the last fallback, for a landing no
+   * record, line or driver's commit reads.
    * @param {string} id
    */
   const landedWhole = (id) => {
     const { last, how } = lastRead(id);
-    return (last === null ? how.landed : tipLanded(id, last)) || landedWith(id) !== null;
+    return last === null ? how.landed : tipLanded(id, last);
   };
   /** @type {Map<() => Map<string, string>, Map<string, Point|null>>} */
   const points = new Map();
@@ -1042,28 +1041,6 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     const at = tips().get(other);
     return other !== id && at !== undefined && heldByTip(id).has(at);
   };
-  /** @type {Set<string>} */
-  const asking = new Set();
-  /**
-   * The task, landed, whose branch's tip holds this task's (the ancestor
-   * rule): a chain landed whole lands every task in it, however the later
-   * rewrote the earlier's lines — its id, null for none, and for a task
-   * with no commit of its own, whose branch holds no work to land. Only a
-   * task whose tip has moved against the revision (`lg.standings`) is
-   * asked: one standing apart never landed, and one the revision holds
-   * holds this task's tip there too, landing it by its own — so a chain
-   * of tasks none of which landed by a copy is read with no call of its own.
-   * @param {string} id @returns {string|null}
-   */
-  const landedWith = (id) => {
-    if (asking.has(id) || !tips().has(id) || lastRead(id).last === null) return null;
-    asking.add(id);
-    try {
-      return [...tips()].find(([other, at]) => placing(at) === 'moved' && inChain(other, id) && read(other).landed)?.[0] ?? null;
-    } finally {
-      asking.delete(id);
-    }
-  };
   /** @type {Map<string, TaskLanding>} */
   const tasks = new Map();
   /** @type {Set<string>} the tasks whose landing this read was asked of, read or placed */
@@ -1132,15 +1109,13 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
   };
   /**
    * Where a task no record names landed, read from its last commit — held
-   * by the tip, its change held, or named — else from a task above it in
-   * its chain, else from its branch's tip read whole: the landing of the
-   * last fallback (`pointOf`).
+   * by the tip, its change held, or named — else from its branch's tip read
+   * whole: the landing of the last fallback (`pointOf`).
    * @param {string} id @returns {string|null}
    */
   const readLanding = (id) => {
     const { how } = lastRead(id);
-    const above = landedWith(id);
-    if (!how.landed) return above !== null ? landingOf(above) : tipLanding(id);
+    if (!how.landed) return tipLanding(id);
     if ('held' in how) return lineOf().broughtIn.get(how.held) ?? null;
     if ('at' in how) return how.at;
     return lineOf().broughtIn.get(how.named) ?? null;
