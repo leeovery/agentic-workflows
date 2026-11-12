@@ -91,6 +91,10 @@ module.exports = {
   squashedHere: squashedOwn,
   /** A task's branch merged by hand onto the default branch `into` by a merge commit, no landing of it opened. */
   mergedHere: mergeCommit,
+  /** A task's branch fast-forwarded by hand onto the default branch `into`, no landing of it opened. @param {string} dir @param {string} branch @param {string} [into] */
+  forwardedHere: (dir, branch, into) => onMain(dir, [['merge', '-q', '--ff-only', branch]], into),
+  /** A task's own commits copied by hand onto the default branch `into`, oldest first, as a rebase merge lays them, its branch as it was, no landing of it opened. @param {string} dir @param {string} branch @param {string} [into] */
+  rebasedHere: (dir, branch, into = 'main') => onMain(dir, [['cherry-pick', `${into}..${branch}`]], into),
   /** A task's branch squashed by hand under git's own squash message — here, the default branch landing it having nowhere else to be brought from. @param {string} dir @param {string} branch */
   byHandUnpulled: (dir, branch) => onMain(dir, [['merge', '-q', '--squash', branch], ['commit', '-q', '--no-edit']]),
   /** The ways of those, and others, that keep the branch's own commits on the default branch here. */

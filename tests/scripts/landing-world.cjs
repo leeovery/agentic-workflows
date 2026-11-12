@@ -32,7 +32,7 @@
 // checks a
 // refusal moved nothing in the repository (`refusedMoving`), as an answer
 // finding its work done already does (`alreadyMoving`), and follows the
-// remedy it names (`followRemedy`); the
+// remedy it names (`followRemedy`), on a task's branch, a rebase's conflicts settled the task's way (`followedOn`); the
 // remedy table (landing-remedies.cjs) is followed a row a test, in a state
 // of the person's worktrees, or of their config (`personState`,
 // `followed`), against the way on it should read there (`way`), every
@@ -48,7 +48,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const {
-  ok, git, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles, readManifest, FROZEN_AT,
+  ok, git, withEnv, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles, readManifest, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, datedAt } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
@@ -605,6 +605,24 @@ function followRemedy(dir, refusal, settle) {
 }
 
 /**
+ * The way on `refusal` names followed on `branch` in the main checkout,
+ * under `env`, as the person follows it: each conflict a rebase stops at
+ * settled the task's way — the commit it replays — and the rebase gone on;
+ * the checkout put back where it was.
+ * @param {string} dir @param {string} branch @param {string} refusal @param {Record<string, string|undefined>} [env]
+ */
+function followedOn(dir, branch, refusal, env = {}) {
+  const back = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
+  git(dir, ['switch', '-q', branch]);
+  withEnv(env, () => followRemedy(dir, refusal, (there) => {
+    git(there, ['checkout', '--theirs', '--', '.']);
+    git(there, ['add', '-A']);
+    git(there, ['-c', 'core.editor=true', 'rebase', '--continue']);
+  }));
+  git(dir, ['switch', '-q', back]);
+}
+
+/**
  * Where a remedy row leaves the repository: the verb it refuses and its
  * refusal, as it reads where the branch the row's remedy frees is held as
  * the state holds it; how the remedy is taken, if not by running its
@@ -1013,6 +1031,6 @@ function mergedInto(dir, branch, from = 'main', settled = 'ours', forward = true
 module.exports = {
   UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pointersOn, extUpstream, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, finishReady, phaseReviewed,
   landedHere, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped,
-  refusedMoving, alreadyMoving, commandsOf, followRemedy,
+  refusedMoving, alreadyMoving, commandsOf, followRemedy, followedOn,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

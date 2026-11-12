@@ -726,7 +726,9 @@ function pointersAgain(ctx, onto, head) {
  * (`refuseMoved`), a task's branch holds another task's work not landed
  * (the context's `refuseHeld`), a task's branch is gone, naming where to
  * make it again, its change conflicts there, naming the paths and the way
- * on, or the default branch is out with changes in the way.
+ * on — for one read over its tip at its landing, its commits since rebased
+ * onto the default branch (`lg.rebasedSince`), else the default branch
+ * merged in — or the default branch is out with changes in the way.
  * @param {LandingContext} ctx @param {Map<string, string>} refs @param {number} phase @param {Waiting[]} waiting
  */
 function landAlone(ctx, refs, phase, waiting) {
@@ -745,11 +747,13 @@ function landAlone(ctx, refs, phase, waiting) {
     if (own === null) throw new Error(`land: ${since} branch is gone — ${remake({ ref, message: ctx.message(ref) }, remadeAt(ctx, ref, changed, intoTip))} and land again`);
     const head = /** @type {string} */ (refs.get(own));
     ctx.refuseHeld({ ref, branch: own }, head, intoTip);
-    const base = (changed ? read.landedTip(ref) : null) ?? lg.mergeBase(root, at, head);
+    const landedAt = changed ? read.landedTip(ref) : null;
+    const base = landedAt ?? lg.mergeBase(root, at, head);
     const pointers = pointersAgain(ctx, at, head);
     const merged = lg.mergeTree(root, pointers === null ? base : lg.pointedLike(root, base, head, ctx.gitlinks), at, head);
     if ('conflicts' in merged) {
-      throw new Error(`land: ${since} change conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — merge ${into} into ${own}, settling the conflict, and land again`);
+      const wayOn = landedAt === null ? `merge ${into} into ${own}, settling the conflict` : lg.rebasedSince(own, into, landedAt);
+      throw new Error(`land: ${since} change conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — ${wayOn}, and land again`);
     }
     const tree = pointers === null || pointers.size === 0 ? merged.tree : lg.treeWithPointers(root, merged.tree, pointers);
     if (tree === lg.treesOf(root, [at])[0]) empty.push(shown);

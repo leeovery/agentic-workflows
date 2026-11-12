@@ -280,9 +280,9 @@ function pullsOf(ctx, host) {
  * The unit's pull requests (`pullsOf`), read once on a context that keeps
  * its reads (landing-git.cjs, `readOnce`) — those a merge of the call's
  * own merges then read as merged (`mergeStack`).
- * @param {LandingContext} ctx @param {Host} host
+ * @param {LandingContext} ctx @param {Host} [host] its host, where the caller holds it; else read (`hostOf`) only as the pull requests are
  */
-const pullsRead = (ctx, host) => lg.readOnce(ctx, 'pulls', () => pullsOf(ctx, host));
+const pullsRead = (ctx, host) => lg.readOnce(ctx, 'pulls', () => pullsOf(ctx, host ?? hostOf(ctx)));
 
 /**
  * Pull requests bottom first: each chain from one whose base is none of
@@ -318,7 +318,7 @@ function stacksOf(pulls) {
  * id: the head of its pull request (see the header).
  * @param {LandingContext} ctx @returns {Map<string, string>}
  */
-const taken = (ctx) => new Map(pullsRead(ctx, hostOf(ctx)).map((pull) => [taskId(pull.ref), pull.oid]));
+const taken = (ctx) => new Map(pullsRead(ctx).map((pull) => [taskId(pull.ref), pull.oid]));
 
 /**
  * Whether a pull request has landed on the default branch, at the commit
@@ -517,18 +517,20 @@ function catchUpBranches(ctx, stack) {
  * Refuse a merge, before anything merges, where the default branch here is
  * checked out with changes not committed to files the merge of `top`, the
  * head merged last, would change there, so it could not be brought to the
- * merge — naming them; the merge is read only where there are changes. A
- * merge that conflicts with the default branch on GitHub is GitHub's to
- * refuse, and one whose default branch cannot be fetched merges all the
- * same, the answer then warning that it was not brought up — `theirs`, the
- * default branch on GitHub, as its fetch answered.
- * @param {LandingContext} ctx @param {string} top @param {{commit: string}|{failed: string}} theirs
+ * merge — naming them; the merge is read only where there are changes, over
+ * `over` where given, a task's tip at its landing as its change is brought
+ * up (`broughtOver`), else over their merge base. A merge that conflicts
+ * with the default branch on GitHub is GitHub's to refuse, and one whose
+ * default branch cannot be fetched merges all the same, the answer then
+ * warning that it was not brought up — `theirs`, the default branch on
+ * GitHub, as its fetch answered.
+ * @param {LandingContext} ctx @param {string} top @param {{commit: string}|{failed: string}} theirs @param {() => string|null} [over]
  */
-function refuseDirtyDefault(ctx, top, theirs) {
+function refuseDirtyDefault(ctx, top, theirs, over = () => null) {
   const ours = lg.branches(ctx.root).get(ctx.into);
   if (ours === undefined || 'failed' in theirs) return;
   const block = lg.dirtBlock(ctx.root, ctx.into, () => {
-    const merged = lg.mergeTree(ctx.root, lg.mergeBase(ctx.root, theirs.commit, top), theirs.commit, top);
+    const merged = lg.mergeTree(ctx.root, over() ?? lg.mergeBase(ctx.root, theirs.commit, top), theirs.commit, top);
     return 'conflicts' in merged ? new Set() : lg.pathsChanged(ctx.root, ours, merged.tree);
   });
   if (block !== null) throw new Error(`land: ${block}`);
@@ -740,13 +742,14 @@ function settlePointers(ctx, host, stacks, stack, fetched) {
   const into = defaultOn(ctx, fetched);
   const bases = broughtOver(ctx, stacks, stack, into);
   const moves = movesOf(ctx, stacks, stack, into);
+  if (bases.some((over) => over !== null)) return bringUp(ctx, host, stack, into, moves, bases);
   const heads = stack.pulls.map(({ oid }) => oid);
-  const [base, onto, ...held] = lg.pointersAt(ctx.root, [bases[0] ?? lg.mergeBase(ctx.root, into, heads[0]), into, ...heads], ctx.gitlinks);
+  const [base, onto, ...held] = lg.pointersAt(ctx.root, [lg.mergeBase(ctx.root, into, heads[0]), into, ...heads], ctx.gitlinks);
   const top = stack.pulls[stack.pulls.length - 1];
   const own = held[held.length - 1];
   const recorded = new Map(moves.flatMap((moved) => [...moved]));
   const pointed = new Map([...recorded].filter(([at, sha]) => sha !== (own.get(at) ?? null)));
-  if (bases.some((over) => over !== null) || meetsMove(ctx.gitlinks, base, onto, [...held.slice(0, -1), new Map([...own, ...pointed])])) return bringUp(ctx, host, stack, into, moves, bases);
+  if (meetsMove(ctx.gitlinks, base, onto, [...held.slice(0, -1), new Map([...own, ...pointed])])) return bringUp(ctx, host, stack, into, moves, bases);
   if (pointed.size === 0) return [];
   const listed = [...pointed.keys()].map(lg.plain).join(', ');
   const message = names.pointedMessage(ctx.unit, [...pointed.keys()].map(lg.plain));
@@ -886,7 +889,8 @@ function readyStack(ctx, host, stacks, stack) {
   }
   catchUpBranches(ctx, stack);
   const fetched = defaultFetched(ctx, host);
-  refuseDirtyDefault(ctx, stack.pulls[stack.pulls.length - 1].oid, fetched);
+  const over = () => ('failed' in fetched ? null : broughtOver(ctx, stacks, stack, fetched.commit).find((base) => base !== null) ?? null);
+  refuseDirtyDefault(ctx, stack.pulls[stack.pulls.length - 1].oid, fetched, over);
   return fetched;
 }
 
@@ -978,19 +982,25 @@ function headAgain(ctx, host, merged) {
  * conflict in a file with the default branch on GitHub, as `fetched` found
  * it — read over its tip at its landing where it changed after, as it is
  * brought up (`broughtOver`), else over their merge base, as GitHub's squash
- * reads it — naming the paths; a submodule's pointer both sides moved is
- * settled after (`settlePointers`), and one whose default branch was not
- * fetched is GitHub's to refuse.
+ * reads it — naming the paths and the way on: for one read over its tip at
+ * its landing, its commits since rebased onto the default branch on GitHub
+ * and pushed (`lg.rebasedSince`), else that branch merged in; a submodule's
+ * pointer both sides moved is settled after (`settlePointers`), and one
+ * whose default branch was not fetched is GitHub's to refuse.
  * @param {LandingContext} ctx @param {Host} host @param {Pull} pull @param {{commit: string}|{failed: string}} fetched
  */
 function refuseConflicting(ctx, host, pull, fetched) {
   if ('failed' in fetched) return;
-  const base = ctx.landedOn(fetched.commit).landedTip(pull.ref) ?? lg.mergeBase(ctx.root, fetched.commit, pull.oid);
+  const landedAt = ctx.landedOn(fetched.commit).landedTip(pull.ref);
+  const base = landedAt ?? lg.mergeBase(ctx.root, fetched.commit, pull.oid);
   const merged = lg.mergeTree(ctx.root, ctx.gitlinks.length === 0 ? base : lg.pointedLike(ctx.root, base, pull.oid, ctx.gitlinks), fetched.commit, pull.oid);
   if (!('conflicts' in merged)) return;
   const theirs = `${host.remote}/${ctx.into}`;
+  const wayOn = landedAt === null
+    ? `merge ${theirs} into ${pull.head}, settling the conflict,`
+    : `${lg.rebasedSince(pull.head, theirs, landedAt)}, push it with \`git push --force-with-lease ${host.remote} ${pull.head}\`,`;
   throw new Error(`land: task ${shownTask(pull.ref)}'s change conflicts with ${theirs} at ${merged.conflicts.map(lg.plain).join(', ')}, so its pull request was not opened again and nothing merged — `
-    + `merge ${theirs} into ${pull.head}, settling the conflict, and land again`);
+    + `${wayOn} and land again`);
 }
 
 /**

@@ -640,34 +640,48 @@ function copiesOf(root, tip, since, commits, paths) {
 
 /**
  * Where each of `commits` stands against the revision `tip`, read in two
- * calls however many are given: `held` where the tip holds it; `apart`
- * where it is laid on the tip, which moved past none of it, and its tree
- * is not the tip's — so the tip holds neither its change (`holdsChange`)
- * nor a copy of it (`holdsCopy`); else `moved`, the tip not holding it.
+ * calls however many are given (`standingsOn`): `held` where the tip holds
+ * it; `apart` where it is laid on the tip, which moved past none of it,
+ * and its tree is not the tip's — so the tip holds neither its change
+ * (`holdsChange`) nor a copy of it (`holdsCopy`); else `moved`, the tip not
+ * holding it.
  * @param {string} root @param {string} tip @param {string[]} commits
  * @returns {Map<string, Standing>}
  */
-function standings(root, tip, commits) {
+const standings = (root, tip, commits) => standingsOn(root, tip, commits).standing;
+
+/**
+ * `standings`, with the commit `tip` names, null where no commit is asked,
+ * and the commits asked whose first-parent line runs down onto it past
+ * none of its own (`onTip`), as a branch laid on the tip by its own
+ * commits lies — never one meeting it through a merge's other parent.
+ * @param {string} root @param {string} tip @param {string[]} commits
+ * @returns {{tip: string|null, standing: Map<string, Standing>, onTip: Set<string>}}
+ */
+function standingsOn(root, tip, commits) {
   /** @type {Map<string, Standing>} */
   const standing = new Map();
   const asked = [...new Set(commits)];
-  if (asked.length === 0) return standing;
+  if (asked.length === 0) return { tip: null, standing, onTip: new Set() };
   const [tipSha, tipTree] = git(root, ['rev-parse', tip, `${tip}^{tree}`]).trim().split('\n');
   const listed = git(root, ['rev-list', '--topo-order', '--reverse', '--format=%T %P', ...asked, '--not', tip, '--']).split('\n').filter(Boolean);
   /** @type {Map<string, string>} each commit the tip lacks, by its tree */
   const past = new Map();
   /** @type {Set<string>} */
   const laid = new Set();
+  /** @type {Set<string>} */
+  const onLine = new Set();
   for (let at = 0; at < listed.length; at += 2) {
     const sha = listed[at].slice('commit '.length);
     const [tree, ...parents] = listed[at + 1].split(' ');
     past.set(sha, tree);
     if (parents.some((parent) => parent === tipSha || laid.has(parent))) laid.add(sha);
+    if (parents[0] === tipSha || onLine.has(parents[0])) onLine.add(sha);
   }
   for (const sha of asked) {
     standing.set(sha, !past.has(sha) ? 'held' : laid.has(sha) && past.get(sha) !== tipTree ? 'apart' : 'moved');
   }
-  return standing;
+  return { tip: tipSha, standing, onTip: new Set(asked.filter((sha) => onLine.has(sha))) };
 }
 
 /**
@@ -679,24 +693,28 @@ function standings(root, tip, commits) {
  * it by a remedy, or the default branch's copy of it merged back, is none
  * of its; a quick-fix's task, where its own branch stands none, of the
  * quick-fix's one branch's line; where neither line holds one, the newest
- * its branch's tip holds (`newestHeld`). Else, as a branch deleted leaves
- * its commits, the newest of any ref's or reflog's but a branch's a remedy
- * kept (`stampedAnywhere`).
+ * its branch's tip holds (`newestHeld`): `newest`, with `owned`, every task
+ * a work branch here stands for, and `oldest`, the oldest commit stamped
+ * with it on the line its newest came from, with that line's tip. A task
+ * none does — its branch deleted —
+ * has as its last the newest of its commits on any ref or reflog, but a
+ * branch's a remedy kept (`stampedAnywhere`), which the caller reads only
+ * where it asks of such a task.
  * @param {string} root @param {string} key @param {string} unit @param {string|null} since @param {Map<string, string>} [local] the branches here, where the caller read them
- * @param {Map<string, TimedCommit[]>} [anywhere] the commits stamped with each task anywhere, where the caller read them (`stampedAnywhere`)
- * @returns {Map<string, TimedCommit>}
+ * @returns {{newest: Map<string, TimedCommit>, owned: Set<string>, oldest: Map<string, OldestOn>}}
  */
-function lastStamped(root, key, unit, since, local = branches(root), anywhere = stampedAnywhere(root, key, unit, since, local)) {
+function lastStamped(root, key, unit, since, local = branches(root)) {
   const bound = since === null ? [] : [`--since=${since}`];
   const work = [...local].filter(([name]) => names.isWorkBranch(unit, name));
-  const newest = newestOnBranches(root, key, unit, bound, work);
+  const { newest, oldest } = newestOnBranches(root, key, unit, bound, work);
   const owned = new Set([...newest.keys(), ...work.flatMap(([name]) => {
     const ref = names.taskOfBranch(unit, name);
     return ref === null ? [] : [taskId(ref)];
   })]);
-  for (const [id, [commit]] of anywhere) if (!owned.has(id)) newest.set(id, commit);
-  return newest;
+  return { newest, owned, oldest };
 }
+
+/** The oldest commit stamped with a task on a work branch's line, and the tip that line runs from. @typedef {{sha: string, tip: string}} OldestOn */
 
 /** A commit's stamps as `%(trailers)` lists them, of the unit's tasks. @param {string} unit @param {string[]} values */
 const unitStamps = (unit, values) => values.map((value) => value.trim()).filter((value) => value.startsWith(`${unit}-`));
@@ -705,14 +723,17 @@ const unitStamps = (unit, values) => values.map((value) => value.trim()).filter(
  * The commit stamped with each of the unit's tasks nearest the tip of its
  * work branch among `work` on its line (`taskLine`) — a task's own branch
  * its task's, the quick-fix's one branch every task's its own branch does
- * not stand for — read in one call however many.
+ * not stand for — and the oldest so stamped on that line (`OldestOn`),
+ * read in one call however many.
  * @param {string} root @param {string} key @param {string} unit @param {string[]} bound @param {[string, string][]} work by name, at its tip
- * @returns {Map<string, TimedCommit>}
+ * @returns {{newest: Map<string, TimedCommit>, oldest: Map<string, OldestOn>}}
  */
 function newestOnBranches(root, key, unit, bound, work) {
   /** @type {Map<string, TimedCommit>} */
   const newest = new Map();
-  if (work.length === 0) return newest;
+  /** @type {Map<string, OldestOn>} */
+  const oldest = new Map();
+  if (work.length === 0) return { newest, oldest };
   const logged = git(root, ['log', '-z', '--first-parent', `--format=%H%x1f%P%x1f%ct%x1f%(trailers:key=${key},valueonly,separator=%x1f)`, ...bound, ...new Set(work.map(([, tip]) => tip)), '--']);
   /** @type {Map<string, {parents: string[], commit: TimedCommit, ids: string[]}>} */
   const commits = new Map(logged.split('\0').filter(Boolean).map((entry) => {
@@ -722,11 +743,20 @@ function newestOnBranches(root, key, unit, bound, work) {
   const owned = work.map(([name, tip]) => ({ ref: names.taskOfBranch(unit, name), tip })).sort((one, other) => Number(one.ref === null) - Number(other.ref === null));
   for (const { ref, tip } of owned) {
     const owns = (/** @type {string} */ id) => ref === null || id === taskId(ref);
-    for (const { commit, ids } of taskLine(commits, tip)) for (const id of ids.filter(owns)) if (!newest.has(id)) newest.set(id, commit);
+    const claimed = new Set();
+    for (const { commit, ids } of taskLine(commits, tip)) {
+      for (const id of ids.filter(owns)) {
+        if (!newest.has(id)) {
+          newest.set(id, commit);
+          claimed.add(id);
+        }
+        if (claimed.has(id)) oldest.set(id, { sha: commit.sha, tip });
+      }
+    }
   }
   const unfound = owned.flatMap(({ ref, tip }) => (ref === null || newest.has(taskId(ref)) ? [] : [{ id: taskId(ref), tip }]));
   for (const [id, commit] of newestHeld(root, key, unit, bound, unfound)) newest.set(id, commit);
-  return newest;
+  return { newest, oldest };
 }
 
 /**
@@ -1340,6 +1370,16 @@ function quoted(word) {
   return /^[\w@%+=:,./^-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`;
 }
 
+/**
+ * The way on of a task changed after its landing whose change conflicts
+ * with the default branch, `onto`: its branch's commits since its tip at
+ * that landing, `landed`, rebased onto it — never the default branch merged
+ * in, which reads the branch's work over where it was cut and brings back
+ * what it took back of its own work since (task-landed.cjs, `landedTip`).
+ * @param {string} branch @param {string} onto @param {string} landed
+ */
+const rebasedSince = (branch, onto, landed) => `rebase ${plain(branch)}'s commits since its landing onto ${plain(onto)}, settling the conflict in the rebase, with \`git rebase --onto ${quoted(onto)} ${short(landed)} ${quoted(branch)}\``;
+
 /** A repository as a line names it: its folder, or nothing for the project's own. @param {string} repo as answers name it, `.` for the project's own */
 const inRepoWords = (repo) => (repo === '.' ? '' : ` in ${plain(repo)}`);
 
@@ -1900,8 +1940,8 @@ function landingBranch(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, heldOnce, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, belowOwn, copiesOf, standings, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
-  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
+  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, heldOnce, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
+  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, landingBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

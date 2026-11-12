@@ -25,7 +25,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { openArgs, own, cutTask, commitFiles, landedOn, useLandingWorld, phaseReviewed, heldOn, mergedInto } = require('../../scripts/landing-world.cjs');
+const { openArgs, own, cutTask, commitFiles, landedOn, useLandingWorld, phaseReviewed, heldOn, mergedInto, followedOn, short } = require('../../scripts/landing-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, calls, mergeByHand, headDeleted, pulls, ok, refused, tipOnGithub } = require('./world.cjs');
 const { call, git } = require('../../scripts/engine-harness.cjs');
@@ -95,7 +95,7 @@ describe('a feature\'s task changed after its pull request merged on GitHub (7.2
     ]);
   });
 
-  it('its last commit made again here, its change conflicting with a later change of its line on main on GitHub: refused before anything is pushed or opened, naming the way on; main merged into its branch, its change lands', () => {
+  it('its last commit made again here, its change conflicting with a later change of its line on main on GitHub: refused before anything is pushed or opened, naming the way on — its commits since its landing rebased onto main and pushed; that followed, the conflict settled its way, its change lands', () => {
     const dir = project();
     const tip = squashedByHand(dir);
     const later = cutTask(dir, '5.1', 'fix', 'Keep the tip', 'main', { 'tip.txt': 'tip, kept\n' }, { message: 'fix(pay): keep the tip\n\nLeeway-Task: pay-5-1' });
@@ -107,11 +107,11 @@ describe('a feature\'s task changed after its pull request merged on GitHub (7.2
     const from = calls(dir).length;
     const refusal = refused(dir, ['land', 'phase', 'pay', '4']);
     const untouched = [madeSince(dir, from), tipOnGithub(dir, tip.branch)];
-    mergedInto(dir, tip.branch, 'origin/main');
+    followedOn(dir, tip.branch, refusal, GH_ENV);
     const landed = own(ok(dir, ['land', 'phase', 'pay', '4']));
 
     assert.deepStrictEqual([refusal, untouched, landed.merged, heldOn(bareOf(dir), 'tip.txt'), stackMerged(dir, 4)], [
-      `land: task 4.1's change conflicts with origin/main at tip.txt, so its pull request was not opened again and nothing merged — merge origin/main into ${tip.branch}, settling the conflict, and land again`,
+      `land: task 4.1's change conflicts with origin/main at tip.txt, so its pull request was not opened again and nothing merged — rebase ${tip.branch}'s commits since its landing onto origin/main, settling the conflict in the rebase, with \`git rebase --onto origin/main ${short(head)} ${tip.branch}\`, push it with \`git push --force-with-lease origin ${tip.branch}\`, and land again`,
       [[], head], ['4.1'], 'tip, made again\n', 'done',
     ]);
   });
@@ -161,6 +161,22 @@ describe('a feature\'s task changed after its pull request merged on GitHub (7.2
 
     assert.deepStrictEqual([refused(dir, ['land', 'phase', 'pay', '4']), madeSince(dir, from), tipOnGithub(dir, tip.branch)], [
       `land: main is checked out at ${dir}, with changes not committed: tip-note.txt, so nothing moved — commit them, or detach your checkout from main with \`git switch --detach\`, which leaves it at ${main} with its edits, and land again; switching your checkout back to main is yours, when you're ready`,
+      [], head,
+    ]);
+  });
+
+  it('its file taken back on top here, main checked out with a change not committed to that file: refused before anything is pushed or opened, naming it — the merge read over its tip at its landing, which sees the file go', () => {
+    const dir = project();
+    const tip = squashedByHand(dir);
+    const head = tipOnGithub(dir, tip.branch);
+    commitFiles(dir, tip.branch, tip.branch, {}, { removed: ['tip.txt'] });
+    fs.writeFileSync(path.join(dir, 'tip.txt'), 'in the way\n');
+    git(dir, ['add', 'tip.txt']);
+    const main = git(dir, ['rev-parse', '--short', 'main']).trim();
+    const from = calls(dir).length;
+
+    assert.deepStrictEqual([refused(dir, ['land', 'phase', 'pay', '4']), madeSince(dir, from), tipOnGithub(dir, tip.branch)], [
+      `land: main is checked out at ${dir}, with changes not committed: tip.txt, so nothing moved — commit them, or detach your checkout from main with \`git switch --detach\`, which leaves it at ${main} with its edits, and land again; switching your checkout back to main is yours, when you're ready`,
       [], head,
     ]);
   });

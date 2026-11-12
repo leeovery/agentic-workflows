@@ -894,9 +894,9 @@ const didWith = (did) => (answer) => {
  * repository was rewritten after its work landed by hand on the default
  * branch here, at `into`, no verb having recorded it (the stated edge,
  * task-landed.cjs `rewritten`), naming the commit that landed and the way
- * on, which keeps the branch's work: that commit merged in over it, then
- * the default branch, and the task opened — the one refusal of it every
- * land verb acting on a task's landing makes.
+ * on, which keeps the branch's work: the branch's work as it stands made
+ * one commit on that commit, its landing point then, and the task opened —
+ * the one refusal of it every land verb acting on a task's landing makes.
  * @param {LandingContext} ctx @param {string} into @param {TaskRef[]} refs
  */
 function refuseRewritten(ctx, into, refs) {
@@ -907,7 +907,7 @@ function refuseRewritten(ctx, into, refs) {
     const landing = off.landing === null ? '' : ` (${lg.short(off.landing)})`;
     const shown = shownTask(ref);
     throw new Error(`land: task ${shown}'s branch ${off.branch} was rewritten after its work landed on ${ctx.into}${landing}: its commit ${lg.short(off.sha)} landed, and the branch no longer holds it — `
-      + `on ${off.branch}, merge that commit in keeping the branch's work, as \`git merge -s ours ${lg.short(off.sha)}\` does, then merge ${ctx.into} into it, as \`git merge ${lg.quoted(ctx.into)}\` does, settling any conflict the branch's way, `
+      + `on ${off.branch}, make its work as it stands one commit on that one, under its tip's message, with \`git reset --soft ${lg.short(off.sha)}\` then \`git commit -C ORIG_HEAD\`, `
       + `and open the task with \`land open ${ctx.unit} ${shown}\``);
   }
 }
@@ -932,8 +932,9 @@ function refuseRewrittenIn(project, merging, picks) {
  * already; past the chain's tip, to open on it; or with nothing past the
  * default branch or the chain's tip — refused where its branch was
  * rewritten after its work landed by hand (`refuseRewritten`); where it
- * does not descend from the tip; or where it holds another task's work not
- * landed past it (`refuseHeld`).
+ * does not descend from the tip, but for a task changed after its landing,
+ * whose change lands over that landing alone (task-landed.cjs, `stands`);
+ * or where it holds another task's work not landed past it (`refuseHeld`).
  * @param {LandingDriver} driver @param {LandingContext} ctx @param {LandingTask} task
  * @returns {{tip: ChainTip}|{opened: true}|{past: string}}
  */
@@ -946,7 +947,8 @@ function standing(driver, ctx, task) {
   const tip = driver.chainTip(ctx, task);
   if (tip === null) return { opened: true };
   if (lg.isAncestor(ctx.root, task.branch, tip.commit)) return { past: tip.name };
-  if (!lg.isAncestor(ctx.root, tip.commit, task.branch)) {
+  const changed = into !== undefined && ctx.landedOn(into).stands(task.ref) === 'changed';
+  if (!changed && !lg.isAncestor(ctx.root, tip.commit, task.branch)) {
     throw new Error(`land: task ${shownTask(task.ref)}'s branch ${task.branch} does not descend from the chain's tip, ${tip.name} (${lg.short(tip.commit)}) — merge it back onto ${tip.name} first`);
   }
   ctx.refuseHeld(task, `refs/heads/${task.branch}`, /** @type {string} */ (lg.branches(ctx.root).get(ctx.into)), tip);
@@ -1608,7 +1610,7 @@ function engineLandings(repo, { range, merged, recorded, work, first, took }) {
     const named = range.find(({ ids }) => ids.includes(id));
     if (named === undefined) return [];
     const { sha: commit, at } = named;
-    const landing = { id, repo: repoName(repo), root: repo.path, commit, tip: work.tips().get(id) ?? work.stamps().get(id)?.sha ?? commit, by: /** @type {const} */ ('engine') };
+    const landing = { id, repo: repoName(repo), root: repo.path, commit, tip: work.tips().get(id) ?? work.last(id)?.sha ?? commit, by: /** @type {const} */ ('engine') };
     const earlier = recorded.has(id) ? null : first().earlier(parseTaskId(id), took);
     return earlier === null || earlier === commit ? [{ ...landing, at }] : [{ ...landing, commit: earlier }, { ...landing, at }];
   });

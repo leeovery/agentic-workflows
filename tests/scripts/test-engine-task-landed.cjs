@@ -5,7 +5,9 @@
 // task-landed.cjs, `repoLanded`, 7.2.22). Where each task's last commit
 // stands against the branch it lands on: held there, landed; laid on it,
 // its change not there, not landed; laid on it and changing nothing there,
-// landed, as merging it would change nothing. A task landed by its change
+// landed, as merging it would change nothing; one whose branch holds the
+// person's own commit alone, merged by hand, landed where its driver took
+// it at that commit, never without it. A task landed by its change
 // — a phase squashed under its `Task:` lines, or under the person's own
 // message, no commit naming it — has landed, and stays landed once later
 // work rewrites a line of it (R25); one named there only before its last
@@ -620,6 +622,23 @@ describe('repoLanded: where each task\'s last commit stands against the branch i
     const dir = repo(laidWorld);
 
     assert.strictEqual(landed(dir, [2, 3, 4]).commands, landed(dir, [4]).commands);
+  });
+
+  it('a task whose branch holds the person\'s own commit alone, merged onto main by hand by a merge commit: landed at that merge where its driver took it at that commit, its landing point that commit alone; with no commit its driver took, never landed', () => {
+    const dir = repo(laidWorld);
+    const branch = 'feat/pay-1.6-six';
+    git(dir, ['switch', '-q', '-c', branch]);
+    createFile(dir, 'six.txt', 'six\n');
+    git(dir, ['add', 'six.txt']);
+    git(dir, ['commit', '-q', '-m', 'add six']);
+    const took = git(dir, ['rev-parse', 'HEAD']).trim();
+    git(dir, ['switch', '-q', 'main']);
+    git(dir, ['merge', '-q', '--no-ff', '-m', `Merge ${branch}`, branch]);
+    const ref = { unit: UNIT, phase: 1, n: 6 };
+    const taken = () => new Map([[`${UNIT}-1-6`, took]]);
+    const read = repoLanded(dir, UNIT, MAIN, { since: null, taken });
+
+    assert.deepStrictEqual([read.stands(ref), read.earlier(ref, taken), repoLanded(dir, UNIT, MAIN, { since: null }).stands(ref)], ['landed', git(dir, ['rev-parse', 'main']).trim(), 'unlanded']);
   });
 });
 
