@@ -497,6 +497,8 @@ describe('the verdict page (16.10.6, 16.10.7, 16.10.12, 18.4.2)', () => {
         { key: 'b', word: 'back', head: 'Back to the start menu — the rest keep waiting', tail: null, detail: null, recommended: false, next: START_MENU },
       ],
       typed: [],
+      showing: null,
+      hold: null,
     });
   });
 

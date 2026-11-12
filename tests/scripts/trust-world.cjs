@@ -15,7 +15,10 @@
 // (test-engine-convergence.cjs): a history of the log's events built in
 // memory, each a second after the last, an answer naming the ledger entry
 // it landed as where a suite places it (`history`), and questions' ids the
-// blind draw reads each way.
+// blind draw reads each way. And what the suites holding a learned gate's
+// showing through its surface share: the gate a conversation was shown
+// (`shownIn`), and the answers logged at the gate's showings, each by the
+// event it is (`showingAnswers`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -137,6 +140,28 @@ function trustLogHelpers(dir, config) {
 }
 
 /**
+ * The gate the conversation `session` was shown last, as recorded in the
+ * config folder `config`.
+ * @param {string} config @param {string} session @returns {Record<string, any>}
+ */
+const shownIn = (config, session) => JSON.parse(fs.readFileSync(path.join(config, 'conversations', session, 'gate-shown.json'), 'utf8'));
+
+/**
+ * The answers the trust log in the config folder `config` holds at the
+ * learned gate `gate`'s showings, in the order logged: the row each picked,
+ * null for free text; and the event each is, numbered as its id was first
+ * logged, so one showing's answers share a number.
+ * @param {string} config @param {string} gate @returns {[Array<string|null>, number[]]}
+ */
+function showingAnswers(config, gate) {
+  const file = path.join(config, TRUST_LOG);
+  const logged = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line)) : [];
+  const answers = logged.filter((event) => event.type === 'gate' && event.gate === gate && event.showing !== null);
+  const ids = [...new Set(answers.map((event) => event.id))];
+  return [answers.map((event) => event.picked), answers.map((event) => ids.indexOf(event.id))];
+}
+
+/**
  * Where an event of a history is logged, and when: its project, its model,
  * and its time, each the history's own where not given.
  * @typedef {{project?: string|null, model?: string|null, at?: number}} Where
@@ -209,12 +234,13 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     /** @param {string} entry @param {{kind?: Kind|null, verdict?: string|null}} to */
     correct: (entry, { kind = null, verdict = null }) => log('correction', { entry, kind, verdict }),
     /**
-     * An answer at gate `name`: a row pressed, or free text read as `reading`.
-     * @param {string} name @param {{picked?: string, reading?: string|null}} answer @param {Where} [where]
+     * An answer at gate `name`: a row pressed, or free text read as `reading`,
+     * on the showing `showing`, none for a gate off the list.
+     * @param {string} name @param {{picked?: string, reading?: string|null, showing?: string|null}} answer @param {Where} [where]
      */
-    gate: (name, { picked, reading = null }, where = {}) => log('gate', picked === undefined
-      ? { gate: name, recommended: 'y', picked: null, via: 'typed', with_text: true, reading }
-      : { gate: name, recommended: 'y', picked, via: 'pressed', with_text: false, reading: null }, where),
+    gate: (name, { picked, reading = null, showing = null }, where = {}) => log('gate', picked === undefined
+      ? { gate: name, recommended: 'y', picked: null, via: 'typed', with_text: true, reading, showing }
+      : { gate: name, recommended: 'y', picked, via: 'pressed', with_text: false, reading: null, showing }, where),
     /** The other events of the log, which answer nothing. */
     others: () => {
       h.unfollowed('several');
@@ -226,4 +252,4 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
   return h;
 }
 
-module.exports = { idOf, PROJECT_ID, DRAWN, NARROW, UNDRAWN, SESSION, DAY, MODEL, lines, from, waitingPath, inConversation, useTrustWorld, trustLogHelpers, history };
+module.exports = { idOf, PROJECT_ID, DRAWN, NARROW, UNDRAWN, SESSION, DAY, MODEL, lines, from, waitingPath, inConversation, useTrustWorld, trustLogHelpers, shownIn, showingAnswers, history };

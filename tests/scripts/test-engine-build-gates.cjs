@@ -3,7 +3,9 @@
 // ---------------------------------------------------------------------------
 // The build's gates in step (leeway-engine/scripts/domain/build-screens.cjs,
 // drawn by domain/projections/build.cjs): the gate after a task and the gate
-// before a phase's stack merges. A task at its gate as the build's standing
+// before a phase's stack merges; and in step, every process gate of the
+// build stopping whatever its count, a learned one among them
+// (domain/decision-point.cjs `learned`). A task at its gate as the build's standing
 // gives it, and as its entry takes it over after a /clear, is
 // test-engine-build-gates-standing.cjs's; the screens that report,
 // test-engine-build-screens.cjs's; step's one task at a time,
@@ -21,8 +23,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, git, writeState, layout, cleanupFixture, sectionOf, accountTaken } = require('./engine-harness.cjs');
+const { ok, git, writeState, layout, cleanupFixture, sectionOf, accountTaken, withFrozenClock } = require('./engine-harness.cjs');
+const { withEnv } = require('./discovery-test-utils.cjs');
 const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { lines, trustLogHelpers, history } = require('./trust-world.cjs');
+const { learned } = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
+const { TRUST_LOG } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -38,6 +44,7 @@ afterEach(() => {
 });
 
 const { env, screen, refused, position } = buildScreenHelpers(() => dir, () => config);
+const { project } = trustLogHelpers(() => dir, () => config);
 
 /** A phase of the review's fixes past the cut, phase 4, written with a task of each title given. @param {string[]} titles */
 function fixPhase(titles) {
@@ -150,5 +157,20 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
       'render phase-merge-gate: task-id: "one" is not a phase — it is a whole number from 1',
       'render phase-merge-gate: Usage: engine render phase-merge-gate <work-unit> <N>',
     ]);
+  });
+});
+
+describe('the build\'s position at its gates (3.3.3, 3.3.6, 3.3.7)', () => {
+  it('3.S13, 3.S14: switched from auto to step through its door, a learned gate at the build\'s place, run as a step in auto, stops at once whatever its count', () => {
+    const h = history({ project: project() });
+    for (let i = 0; i < 13; i += 1) h.gate('plan gate', { picked: 'y' });
+    fs.writeFileSync(path.join(config, TRUST_LOG), lines(...h.events));
+    const at = { cwd: dir, place: { unit: UNIT, phase: 'implementation', topic: null }, key: ['1.1'] };
+    const learnedHere = () => withEnv({ LEEWAY_CONFIG_DIR: config }, () => withFrozenClock(() => learned('plan gate', at).step));
+    position('auto');
+    const inAuto = learnedHere();
+    position('step');
+
+    assert.deepStrictEqual([inAuto, learnedHere()], ['automatic', 'show']);
   });
 });

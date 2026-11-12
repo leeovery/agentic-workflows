@@ -11,10 +11,20 @@
 // fenced primitives here serve it.
 // Drawn borders never frame content — markdown and fences re-flow with the
 // terminal; fixed-width borders cannot.
+// A learned process gate's MENU (learned-gates.cjs) is drawn with the step
+// the decision point gave it for that gate (decision-point.cjs, `gateStep`),
+// and refused without one or with another gate's; shown, the gate shown
+// keeps the showing it was drawn on and its hold; run as an automatic step,
+// it draws in the menu's place a DATA naming the row it ran and that row's
+// `next`, and the row's one-line report under a marker that does not stop
+// (3.2.9, 6.6.14). Its gate is never shown, the one shown before it goes (gate.cjs),
+// and nothing goes to `gate` (E13). Any other MENU is drawn as it is, its
+// name looked up and nothing read.
 // ---------------------------------------------------------------------------
 
 const { wrap } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
+const { learnedGate, reportOf } = require('../learned-gates.cjs');
 
 const DOTS = '· · · · · · · · · · · ·';
 
@@ -245,15 +255,18 @@ function drawLabel(label) {
  * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'invoke', skill: string, args: string[]} | {kind: 'continue'}} Next
  */
 
-/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>}} GateCollection */
+/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], prompts: Set<GateTyped>, next: Map<GateRow, Next>}} GateCollection */
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, recommended: boolean, next: Next|null}} ShownOption */
-/** @typedef {{label: string, next: Next|null}} ShownTyped */
+/** A typed row, and whether the person answers it in words — a Comment, an Ask — rather than picking items. @typedef {{label: string, prompt: boolean, next: Next|null}} ShownTyped */
 /**
  * The gate a MENU stated: its name as declared, its question, its rows and
- * what each leads to.
- * @typedef {{gate: string, question: string, options: ShownOption[], typed: ShownTyped[]}} GateShown
+ * what each leads to, and a learned gate's showing and its hold
+ * (learned-gates.cjs), each null for any other.
+ * @typedef {{gate: string, question: string, options: ShownOption[], typed: ShownTyped[], showing: string|null, hold: Hold|null}} GateShown
  */
+/** @typedef {import('../learned-gates.cjs').GateStep} GateStep */
+/** @typedef {import('../learned-gates.cjs').Hold} Hold */
 
 // A render is synchronous, so one collection is enough: opened as the command
 // begins — by the engine's dispatch or a skill's gateway, never by what it
@@ -266,6 +279,9 @@ let collected = null;
 // once the command is done.
 /** @type {GateShown|null} */
 let shown = null;
+
+// Whether the command's MENU ran as an automatic step in its gate's place.
+let stepped = false;
 
 /**
  * Whether the gate surface announced itself to this process — the mod sets
@@ -284,8 +300,9 @@ function gateSurfaceAnnounced() {
  * @returns {void}
  */
 function openGate() {
-  collected = { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [], next: new Map() };
+  collected = { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [], prompts: new Set(), next: new Map() };
   shown = null;
+  stepped = false;
 }
 
 /**
@@ -295,6 +312,15 @@ function openGate() {
  */
 function gateShown() {
   return shown;
+}
+
+/**
+ * Whether the command's MENU ran as an automatic step since the gate was
+ * opened, so no gate stands shown.
+ * @returns {boolean}
+ */
+function gateStepped() {
+  return stepped;
 }
 
 /**
@@ -316,12 +342,14 @@ function illustrate(compose) {
  * The GATE block for the MENU about to be emitted — `''` where the gate
  * surface is unannounced, nothing was collected, or the menu composed
  * neither a frame nor a row — and the gate it states kept as the gate
- * shown. Taken once: a second menu in one response finds nothing, and a
- * response with no menu drops what it gathered at the next command.
+ * shown, on a learned gate's showing and its hold. Taken once: a second
+ * menu in one response finds nothing, and a response with no menu drops
+ * what it gathered at the next command.
  * @param {string} name  the gate's name, `MENU:` prefix already dropped
+ * @param {{showing: string|null, hold: Hold|null}} drawnOn
  * @returns {string}
  */
-function gateBlock(name) {
+function gateBlock(name, { showing, hold }) {
   const taken = collected;
   collected = null;
   if (taken === null || (taken.prose === null && taken.rows.size === 0)) return '';
@@ -332,7 +360,9 @@ function gateBlock(name) {
     gate: name,
     question,
     options: taken.options.map((o) => ({ key: o.key, word: o.word, head: o.head, tail: o.tail, detail: o.detail, recommended: o.recommended, next: nextOf(o) })),
-    typed: taken.typed.map((t) => ({ label: t.label, next: nextOf(t) })),
+    typed: taken.typed.map((t) => ({ label: t.label, prompt: taken.prompts.has(t), next: nextOf(t) })),
+    showing,
+    hold,
   };
   if (!gateSurfaceAnnounced()) return '';
   const payload = JSON.stringify({
@@ -387,17 +417,19 @@ function recordOption(line, key, word, { head, tail, cue, holder, recommended },
 }
 
 /**
- * Record one typed row — a natural reply or a span of numbers, never a press
- * — and what answering it leads to, where its composer declared that.
+ * Record one typed row — a natural reply, `prompt`, or a span of numbers,
+ * never a press — and what answering it leads to, where its composer
+ * declared that.
  * @param {string} line  the row as drawn
- * @param {string} label @param {string} description @param {Next} [next] @returns {void}
+ * @param {string} label @param {string} description @param {boolean} prompt @param {Next} [next] @returns {void}
  */
-function recordTyped(line, label, description, next) {
+function recordTyped(line, label, description, prompt, next) {
   if (collected === null) return;
   /** @type {GateTyped} */
   const typed = { label: stripMarkup(label), description: stripMarkup(description), detail: null };
   collected.rows.set(line, typed);
   collected.typed.push(typed);
+  if (prompt) collected.prompts.add(typed);
   if (next) collected.next.set(typed, next);
 }
 
@@ -450,16 +482,20 @@ function gateName(name) {
   return name.replace(/^MENU:\s*/, '');
 }
 
+// What a gate off the learned list is drawn on: no showing, and no hold.
+const NO_SHOWING = Object.freeze({ showing: null, hold: null });
+
 /**
  * One `=== NAME (instruction) ===` demarcated section, a MENU carrying its
  * gate payload immediately above it where the gate surface announced, so a
- * surface drawing the gate never has to read the markdown back out.
- * @param {string} name @param {string} instruction @param {string} body
+ * surface drawing the gate never has to read the markdown back out — the
+ * gate shown on a learned gate's showing and its hold.
+ * @param {string} name @param {string} instruction @param {string} body @param {{showing: string|null, hold: Hold|null}} [drawnOn]
  * @returns {string}
  */
-function sectionOf(name, instruction, body) {
+function sectionOf(name, instruction, body, drawnOn = NO_SHOWING) {
   const block = `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
-  return name.startsWith('MENU') ? gateBlock(gateName(name)) + block : block;
+  return name.startsWith('MENU') ? gateBlock(gateName(name), drawnOn) + block : block;
 }
 
 // The help row is a menu's alone (18.9.4): a question typed at a gate or a
@@ -470,15 +506,45 @@ const HELP_ROW = /^\*\*`h\/help`\*\*/m;
  * One `=== NAME (instruction) ===` demarcated section — the one place a
  * MENU's marker is built but a menu's (`menuSection`), so every MENU states
  * the gate shown. A MENU here is a gate's or a raise's, and one drawing the
- * help row is refused.
+ * help row is refused; a learned gate's is drawn as its step says, and
+ * refused without one, or with one for another gate.
  * @param {string} name @param {string} instruction @param {string} body
+ * @param {GateStep} [step] the decision point's, on a learned gate
  * @returns {string}
  */
-function section(name, instruction, body) {
+function section(name, instruction, body, step) {
   if (name.startsWith('MENU') && HELP_ROW.test(body)) {
     throw new Error(`${gateName(name)}: a gate or a raise carries no h/help row — a question typed at it sets it aside (18.9.4); only a menu draws help`);
   }
-  return sectionOf(name, instruction, body);
+  const learned = name.startsWith('MENU') ? learnedGate(gateName(name)) : null;
+  if (learned === null) return sectionOf(name, instruction, body);
+  if (step?.gate !== learned) {
+    const given = step === undefined ? '' : `, not as ${step.gate}'s`;
+    throw new Error(`${gateName(name)}: a learned gate is drawn as the decision point steps it${given} — decision-point.cjs gateStep`);
+  }
+  return step.step === 'automatic' ? automaticStep(learned, step.row) : sectionOf(name, instruction, body, step);
+}
+
+/**
+ * The learned gate `gate` run as an automatic step on its row `row`, in its
+ * menu's place: a DATA naming the gate, the row and the row's `next`, then
+ * the row's report. The menu's rows are taken, so no gate is shown.
+ * @param {string} gate @param {string} row
+ * @returns {string}
+ */
+function automaticStep(gate, row) {
+  const taken = collected;
+  collected = null;
+  shown = null;
+  stepped = true;
+  const option = taken?.options.find((o) => o.key === row);
+  const report = reportOf(gate, row);
+  if (taken === null || option === undefined || report === null) {
+    throw new Error(`${gate}: row ${row} runs as no automatic step — learned-gates.cjs reports each row that does, and its menu draws it`);
+  }
+  const next = taken.next.get(option) ?? null;
+  return dataSection([`automatic step: ${gate}`, `ran: ${row}`, `next: ${JSON.stringify(next)}`])
+    + sectionOf('DISPLAY: automatic step', AUTOMATIC_STEP_INSTRUCTION, report);
 }
 
 /**
@@ -546,6 +612,9 @@ const CONTINUE_CLAUSE = ' — do not stop; continue as the workflow instructs';
 const AUTO_GATE_CLAUSE = ' — the user set this gate to auto: do not stop; continue as the workflow instructs';
 const CONTINUE_INSTRUCTION = emitAs('text', CONTINUE_CLAUSE);
 const CONTINUE_MARKDOWN_INSTRUCTION = emitAs('markdown', CONTINUE_CLAUSE);
+// A learned gate the engine ran as an automatic step: its DATA names the row
+// it ran and that row's next, as an answer at the gate would (6.6.14).
+const AUTOMATIC_STEP_INSTRUCTION = emitAs('text', ' — an automatic step: do not stop; carry on along the row it ran, as its DATA names it');
 
 // The view's chrome heading (CONVENTIONS.md: The Design System, Chrome):
 // one markdown H1 in the chrome family's heaviest register — bold inline code with the
@@ -731,7 +800,7 @@ function bareOption(key, word, { next } = {}) {
  */
 function promptOption(label, description, { next } = {}) {
   const line = `**${label}** → ${description}`;
-  recordTyped(line, label, description, next);
+  recordTyped(line, label, description, true, next);
   return line;
 }
 
@@ -745,7 +814,7 @@ function promptOption(label, description, { next } = {}) {
  */
 function rangeOption(first, last, label, { next } = {}) {
   const line = `**\`${first}–${last}\`** → ${label}`;
-  recordTyped(line, `${first}–${last}`, label, next);
+  recordTyped(line, `${first}–${last}`, label, false, next);
   return line;
 }
 
@@ -826,5 +895,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
 

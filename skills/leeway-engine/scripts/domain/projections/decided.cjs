@@ -14,8 +14,9 @@
 // - the pick of the candidate to strike, where more than one stands (P8),
 //   on the decided screen or a feature's ready to build, which shows its
 //   topic's close (9.7.6);
-// - the wait for the topic's agents still running (9.7.8), a process gate:
-//   its wait draws the gate again once their reports land, its go goes on.
+// - the wait for the topic's agents still running (9.7.8), a learned process
+//   gate (9.8.12): its wait draws the gate again once their reports land,
+//   its go goes on.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -108,9 +109,10 @@ function agentsOfKind(n, kind) {
  * reports land, empty when none still runs — or go on to the close, a report
  * landing later taken in when the topic next opens.
  * @param {string} unit @param {string} topic @param {string} title the topic as screens title it @param {string[]} kinds the kind of each agent running, in dispatch order
+ * @param {import('../learned-gates.cjs').GateStep} step the gate's, a learned one
  * @returns {string}
  */
-function waitAgents(unit, topic, title, kinds) {
+function waitAgents(unit, topic, title, kinds, step) {
   /** @type {Map<string, number>} */
   const byKind = new Map();
   for (const kind of kinds) byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
@@ -118,7 +120,7 @@ function waitAgents(unit, topic, title, kinds) {
   return section('MENU: wait for agents', MENU_INSTRUCTION, menu(`Still running on ${title}: ${running}.`, [
     cmdOption('w', 'wait', 'Wait — take in what they find first', runs(['render', 'wait-agents', `${unit}.${topic}`])),
     cmdOption('g', 'go', 'Go on — their reports wait for the next opening', { next: { kind: 'continue' } }),
-  ], { question: 'Wait for them?' }));
+  ], { question: 'Wait for them?' }), step);
 }
 
 module.exports = { decidedScreen, strikePick, waitAgents };

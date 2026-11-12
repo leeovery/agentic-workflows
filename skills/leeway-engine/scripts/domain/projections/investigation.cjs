@@ -17,7 +17,9 @@
 //   under the verdict gate at the conclusion (16.10.11); then the conclude
 //   gate: yes concludes the investigation (investigation-conclude.cjs), keep
 //   going carries the hunt on.
-// Each gate's comment takes what the person would change.
+// Each gate's comment takes what the person would change. Each gate is a
+// learned one (learned-gates.cjs), drawn as the decision point steps it: run
+// as an automatic step, its report stands in its menu's place.
 // ---------------------------------------------------------------------------
 
 const { section, dataSection, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -29,6 +31,7 @@ const { counted } = require('./map.cjs');
 /** @typedef {import('../investigation-log.cjs').Hypothesis} Hypothesis */
 /** @typedef {import('../investigation-log.cjs').Experiment} Experiment */
 /** @typedef {import('./surfaces.cjs').Next} Next */
+/** @typedef {import('../learned-gates.cjs').GateStep} GateStep */
 
 /**
  * The plan as it is drawn: the topic as screens title it, each open
@@ -82,10 +85,10 @@ function settledBlock(settled) {
 /**
  * The plan: what the finding changed, where it brought a revised plan back;
  * the open hypotheses in order, each with how it is checked; the settled
- * ones; then the plan gate.
- * @param {PlanView} view @returns {string}
+ * ones; then the plan gate, as it is stepped.
+ * @param {PlanView} view @param {GateStep} step @returns {string}
  */
-function planScreen({ title, order, settled, changed }) {
+function planScreen({ title, order, settled, changed }, step) {
   const blocks = [header(title, changed === null ? 'investigation plan' : 'revised plan')];
   if (changed !== null) blocks.push(block('WHAT THE FINDING CHANGED', indented(changed)));
   blocks.push(block(`IN THE ORDER I'LL CHECK THEM (${order.length})`, renderTree(order.map(({ hypothesis, check }) => ({ title: rowTitle(hypothesis), body: [check] })), { width: TREE_WIDTH })));
@@ -94,7 +97,7 @@ function planScreen({ title, order, settled, changed }) {
     + section('MENU: plan gate', MENU_INSTRUCTION, menu('', [
       cmdOption('y', 'yes', 'Go ahead with the analysis in this order', GO),
       promptOption('Comment', 'Tell me what to change — a hypothesis, or the order'),
-    ], { question: 'Go ahead in this order?' }));
+    ], { question: 'Go ahead in this order?' }), step);
 }
 
 /** The hunt's counts: the hypotheses, how many confirmed, and the experiments. @param {Hypothesis[]} hypotheses @param {Experiment[]} experiments */
@@ -105,10 +108,10 @@ function facts(hypotheses, experiments) {
 
 /**
  * The check-in: every hypothesis, those just resolved marked; the
- * experiments; what comes next; then the check-in gate.
- * @param {CheckInView} view @returns {string}
+ * experiments; what comes next; then the check-in gate, as it is stepped.
+ * @param {CheckInView} view @param {GateStep} step @returns {string}
  */
-function checkInScreen({ title, hypotheses, resolved, experiments, next }) {
+function checkInScreen({ title, hypotheses, resolved, experiments, next }, step) {
   const rows = hypotheses.map((hypothesis) => ({
     title: rowTitle(hypothesis),
     tag: resolved.includes(hypothesis.name) ? `${STATE_WORDS[hypothesis.state]} · just now` : STATE_WORDS[hypothesis.state],
@@ -123,16 +126,16 @@ function checkInScreen({ title, hypotheses, resolved, experiments, next }) {
     + section('MENU: check-in gate', MENU_INSTRUCTION, menu('', [
       cmdOption('y', 'yes', 'Carry on with what\'s next', GO),
       promptOption('Comment', 'Tell me what to look at instead, or what this changes'),
-    ], { question: 'Carry on?' }));
+    ], { question: 'Carry on?' }), step);
 }
 
 /**
  * The conclude: the recap, the symptoms, the root cause and the fix
  * direction; then the verdict gate while a departure waits to be asked,
- * else the conclude gate.
- * @param {ConcludeView} view @returns {string}
+ * else the conclude gate, as it is stepped.
+ * @param {ConcludeView} view @param {GateStep} step @returns {string}
  */
-function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict, areas }) {
+function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict, areas }, step) {
   const blocks = [header(title, 'conclude'), block('THE HUNT', indented(hunt))];
   if (symptoms.length > 0) blocks.push(block(`SYMPTOMS (${symptoms.length})`, symptoms.map(bulleted).join('\n')));
   blocks.push(block('ROOT CAUSE', indented(rootCause)), block('FIX DIRECTION', indented(fix)));
@@ -144,7 +147,7 @@ function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict, 
     cmdOption('y', 'yes', 'Conclude it, and move on to the spec', { next: { kind: 'engine', argv: ['investigation', 'conclude', unit] } }),
     cmdOption('k', 'keep going', 'Keep investigating — there is more to look at', GO),
     promptOption('Comment', 'Tell me what does not match what you saw'),
-  ], { question: 'Conclude the investigation?' }));
+  ], { question: 'Conclude the investigation?' }), step);
 }
 
 module.exports = { planScreen, checkInScreen, concludeScreen };

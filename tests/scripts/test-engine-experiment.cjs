@@ -4,9 +4,11 @@
 // The experiment series (leeway-engine/scripts/domain/experiment.cjs,
 // `engine experiment create|advance|approve|runs|conclude|abandon`): the
 // spawn from a discussion, measuring a question on its map it must name, and
-// its lock, the records in the topic's folder (4.11.15), the walk to verdict,
-// the tally of a running experiment's runs, splits, the release edges, the
-// topic's cancel, and the field surface's guards. The question on the map an
+// its lock, the records in the topic's folder (4.11.15), its now-or-later
+// gate, a learned one, its showing held at the spawning topic for its own
+// experiment alone, the walk to verdict, the tally of a running
+// experiment's runs, splits, the release edges, the topic's cancel, and the
+// field surface's guards. The question on the map an
 // experiment measures is test-engine-experiment-question.cjs's.
 //
 // Layer: verb. World: experiment-world.cjs's lab, built once and copied, its
@@ -18,10 +20,14 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, FROZEN_AT, stateGit, output, fixtureFrom, startItem } = require('./engine-harness.cjs');
 const { writeManifest, readManifest, setup, problemScratch, SESSION, MADE, walkTo } = require('./experiment-world.cjs');
+const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
+const { showingOf } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
+const { shownIn, showingAnswers } = require('./trust-world.cjs');
 
 /** A question asked on timing's map: its short id. */
 function asked(dir, text) {
@@ -176,6 +182,45 @@ describe('the spawn commits its record and hands the conversation on', () => {
     spawn(dir, 'discussion', 'window-placement');
     assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', 'lab', 'timing'] });
     assert.deepStrictEqual(answered('lab', 'timing', 'l'), { kind: 'continue' });
+  });
+
+  it('the now-or-later gate is a learned one, stepped by the decision point at the spawning topic, each showing told by its experiment: run as a step on yes, its report stands in its menu\'s place and its DATA carries the handoff into the laboratory (24.1.2)', (t) => {
+    spawn(dir, 'discussion', 'window-placement');
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', gate: 'experiment spawn gate', row: 'y', showing: '47e5a17f3cac2787' }));
+    const out = output(dir, ['render', 'experiment-spawn-gate', 'lab.discussion.timing', '--id', 'E1'], { env: SESSION });
+
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place, key }] }) => [name, place, key]), [['experiment spawn gate', { unit: 'lab', phase: 'discussion', topic: 'timing' }, 'E1']]);
+    assert.deepStrictEqual(out.split('\n').slice(1, 4), ['automatic step: experiment spawn gate', 'ran: y', 'next: {"kind":"handoff","skill":"leeway-experiment-process","args":["epic","lab","timing"]}']);
+    assert.match(out, /^=== DISPLAY: automatic step .*\nExperiment worked now \[auto\]\. Opening the laboratory\.\n$/m);
+  });
+
+  it('the now-or-later gate\'s showing is held at the spawning topic: set aside by free text, it shows on its hold in the next conversation, the answer there the same event; the gate for another experiment, the first abandoned, is drawn afresh, its answer an event of its own (N1, N2)', () => {
+    const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-exp-config-'));
+    try {
+      /** The conversation `session`, its trust log in the test's own config folder. @param {string} session */
+      const as = (session) => ({ ...SESSION, LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
+      /** The gate for `id` drawn in `session`: the showing it was shown on. @param {string} id @param {string} session */
+      const gate = (id, session) => {
+        output(dir, ['render', 'experiment-spawn-gate', 'lab.discussion.timing', '--id', id], { env: as(session) });
+        return shownIn(config, session).showing;
+      };
+      const aside = (/** @type {string} */ session) => engine(dir, ['gate', 'experiment spawn gate', '--typed'], { env: as(session), stdin: 'What would it measure, exactly?' });
+
+      spawn(dir, 'discussion', 'window-placement');
+      gate('E1', 'first');
+      aside('first');
+      const held = gate('E1', 'next');
+      aside('next');
+      engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'not worth it after all']);
+      spawn(dir, 'discussion', 'window-size');
+      const afresh = gate('E2', 'next');
+      engine(dir, ['gate', 'experiment spawn gate', '--pick', 'l'], { env: as('next') });
+
+      const LAB = { unit: 'lab', phase: 'discussion', topic: 'timing' };
+      assert.deepStrictEqual([held, afresh, showingAnswers(config, 'experiment spawn gate')], [showingOf(LAB, 'E1'), showingOf(LAB, 'E2'), [[null, null, 'l'], [0, 0, 1]]]);
+    } finally {
+      fs.rmSync(config, { recursive: true, force: true });
+    }
   });
 
   it('yes takes a single-topic unit\'s discussion straight into the laboratory for its topic', () => {

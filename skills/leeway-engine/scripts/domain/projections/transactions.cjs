@@ -204,13 +204,15 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
 }
 
 /**
- * The import re-prompt — what a landing's `missing_imports` refusal asks for.
- * Every lander validates its whole batch before copying anything, so the
- * paths named here are the only ones the caller has to replace.
+ * The import re-prompt — what a landing's `missing_imports` refusal asks for,
+ * a learned process gate (8.8.12). Every lander validates its whole batch
+ * before copying anything, so the paths named here are the only ones the
+ * caller has to replace.
  * @param {string[]} missing the refused source paths
+ * @param {import('../learned-gates.cjs').GateStep} step the gate's
  * @returns {string}
  */
-function importReprompt(missing) {
+function importReprompt(missing, step) {
   const body = [
     ...indentedBody(['One or more paths could not be landed — nothing at the path, a folder rather than a file, or unreadable:'], { indent: '' }),
     '',
@@ -222,7 +224,7 @@ function importReprompt(missing) {
       menu('', [
         cmdOption('s', 'skip', 'Land nothing for these paths'),
         promptOption('Provide file paths', 'one or more, space or newline separated'),
-      ], { question: 'How would you like to proceed?' })),
+      ], { question: 'How would you like to proceed?' }), step),
   ].join('\n');
 }
 

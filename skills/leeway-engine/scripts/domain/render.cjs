@@ -68,6 +68,7 @@ const { readyToBuildSurface } = require('./ready-to-build.cjs');
 const { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface } = require('./build-screens.cjs');
 const { investigationPlanSurface, investigationCheckInSurface } = require('./investigation.cjs');
 const { concludeSurface } = require('./investigation-conclude.cjs');
+const decisionPoint = require('./decision-point.cjs');
 const { reviewReportSurface, reviewCallsSurface } = require('./review-round.cjs');
 const { reviewTreeSurface } = require('./review-tree.cjs');
 const { finishSurface } = require('./finish.cjs');
@@ -431,7 +432,8 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
   if (!awaitedExperiments(manifest, phase, topic).includes(/** @type {string} */ (id))) {
     throw new Error(`render experiment-spawn-gate: ${phase} "${topic}" holds no evidence wait on ${id} — the gate follows the recorded spawn (experiment create)`);
   }
-  return experimentSpawnGate({ phase, id: /** @type {string} */ (id), unit: workUnit, topic, workType: manifest.work_type });
+  const step = decisionPoint.gateStep('experiment spawn gate', { cwd, place: { unit: workUnit, phase, topic }, key: id });
+  return experimentSpawnGate({ phase, id: /** @type {string} */ (id), unit: workUnit, topic, workType: manifest.work_type }, step);
 }
 
 // summary-backfill-gate — the epic's provenance recovery. The topics it
@@ -960,9 +962,11 @@ function absorbContinuationSurface(cwd, args) {
   return absorbContinuationMenu(/** @type {string} */ (args.feature), workUnit);
 }
 
-// import-reprompt — the re-prompt after a landing refused on `missing_imports`.
-// No address: the refusal names paths, and the work unit it was aimed at may
-// not exist yet (the work-type commit's own landing refuses before creation).
+// import-reprompt — the re-prompt after a landing refused on `missing_imports`,
+// a learned gate (8.8.12). No address: the refusal names paths, and the work
+// unit it was aimed at may not exist yet (the work-type commit's own landing
+// refuses before creation), so the decision point steps it at no place, each
+// showing told from another by the paths it names.
 
 /** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
 function importRepromptSurface(cwd, { file }) {
@@ -974,7 +978,7 @@ function importRepromptSurface(cwd, { file }) {
   p.missing.forEach((/** @type {unknown} */ m, /** @type {number} */ i) => {
     if (!isFilled(m)) throw new Error(`render import-reprompt: missing[${i}] must be a non-empty string`);
   });
-  return importReprompt(p.missing);
+  return importReprompt(p.missing, decisionPoint.gateStep('import reprompt', { cwd, place: { unit: null, phase: null, topic: null }, key: p.missing }));
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */

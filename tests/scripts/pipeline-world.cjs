@@ -687,6 +687,19 @@ const answerGate = (sim, name, ...answer) => gateAnswered(sim, [name, ...answer]
 /** Free text naming no row, the person's `words`. @param {Sim} sim @param {string} name @param {string} words */
 const typeAtGate = (sim, name, words) => gateAnswered(sim, [name, '--typed'], words);
 
+// A learned gate passed as the prose passes it (3.2.6): the row `key` picked
+// where the render drew its menu; else the automatic step its decision point
+// ran in the menu's place, which must have run that row, and nothing is
+// answered. Answers the row's next.
+/** @param {Sim} sim @param {string} rendered @param {string} name @param {string} key @returns {Next|null} */
+function passGate(sim, rendered, name, key) {
+  if (rendered.includes(`=== MENU: ${name}`)) return answerGate(sim, name, '--pick', key).next;
+  const step = rendered.match(/^automatic step: (.+)\nran: (.+)\nnext: (.+)$/m);
+  assert.ok(step, `the render drew neither ${name}'s menu nor an automatic step`);
+  assert.deepStrictEqual(step.slice(1, 3), [name, key], `${name} ran as a step on another row`);
+  return JSON.parse(step[3]);
+}
+
 /** The gates the person answered, in order, as the trust log has them. @param {Sim} sim @returns {string[]} */
 const gatesAnswered = (sim) => trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'gate').map(({ gate }) => gate);
 
@@ -769,11 +782,12 @@ const investigationCache = (wu, name) => `${STATE_DIR_NAME}/.cache/${wu}/investi
 /**
  * The investigation entered and worked to its root cause (19.4.1–19.4.3):
  * the entry and its reads; the symptom in the person's words and the
- * hypotheses logged, the plan agreed at its gate; where `live`, the
- * person's permission to run the save against the live server asked at the
- * investigation's own level (19.4.20); a trace's finding logged as an
- * experiment settling both, the check-in agreed; and the root cause decided
- * on that finding and logged. Answers the root cause's id.
+ * hypotheses logged, the plan agreed at its gate, or run as its learned
+ * step; where `live`, the person's permission to run the save against the
+ * live server asked at the investigation's own level (19.4.20); a trace's
+ * finding logged as an experiment settling both, the check-in agreed, or
+ * run as its step; and the root cause decided on that finding and logged.
+ * Answers the root cause's id.
  * @param {Sim} sim @param {string} wu @param {{live?: boolean}} [opts]
  */
 async function rootCaused(sim, wu, { live = false } = {}) {
@@ -786,15 +800,15 @@ async function rootCaused(sim, wu, { live = false } = {}) {
   log('symptom', ['--text', 'The app crashes when I save']);
   log('hypothesis', ['--title', 'The save writes a null']);
   log('hypothesis', ['--title', 'The disk is full']);
-  sim.render(['investigation-plan', wu, '--file', sim.write(investigationCache(wu, 'plan.json'), { order: [{ hypothesis: 'H1', check: 'Trace the save' }, { hypothesis: 'H2', check: 'Read the disk' }] })], { expect: 'content' });
-  answerGate(sim, 'plan gate', '--pick', 'y');
+  const plan = sim.render(['investigation-plan', wu, '--file', sim.write(investigationCache(wu, 'plan.json'), { order: [{ hypothesis: 'H1', check: 'Trace the save' }, { hypothesis: 'H2', check: 'Read the disk' }] })], { expect: 'content' });
+  passGate(sim, plan, 'plan gate', 'y');
   if (live) await permitted(sim, wu);
   const finding = ledger('find', [], { ...CLAUDES, text: 'The save writes a null field on every crash.', how: 'Traced save() to write().', known: 'read' });
   log('experiment', ['--title', 'Trace the save', '--showed', 'a null on every crash', '--entry', finding]);
   log('hypothesis', ['H1', '--state', 'confirmed']);
   log('hypothesis', ['H2', '--state', 'ruled-out']);
-  sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
-  answerGate(sim, 'check-in gate', '--pick', 'y');
+  const checkIn = sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
+  passGate(sim, checkIn, 'check-in gate', 'y');
   const asked = ledger('ask', [], { ...CLAUDES, text: 'What crashes the save?' });
   const cause = ledger('decide', ['--answers', asked, '--relies-on', finding], { ...CLAUDES, text: 'The save writes a null that nothing checks.', why: 'The trace showed it.' });
   log('root-cause', ['--entry', cause]);
@@ -891,14 +905,15 @@ async function hunted(sim, wu) {
 
 /**
  * The conclude as the investigation closes (19.4.23): the recap staged at
- * its gate, naming what the bug is in where `bug` does, and the yes run,
- * handing off into the spec (24.S17).
+ * its gate, naming what the bug is in where `bug` does, and the yes run —
+ * the person's, or the gate's learned step's — handing off into the spec
+ * (24.S17).
  * @param {Sim} sim @param {string} wu @param {{fixes?: string}} [bug]
  */
 function concluded(sim, wu, bug = {}) {
   const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.', ...bug });
-  sim.render(['conclude', wu, '--file', recap], { expect: 'content' });
-  const { next } = sim.run(answerGate(sim, 'conclude gate', '--pick', 'y').next.argv);
+  const shown = sim.render(['conclude', wu, '--file', recap], { expect: 'content' });
+  const { next } = sim.run(/** @type {{argv: string[]}} */ (passGate(sim, shown, 'conclude gate', 'y')).argv);
   const route = `/leeway-specification-process bugfix ${wu}`;
   assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the conclude hands off into the spec');
   handoff(sim, route);

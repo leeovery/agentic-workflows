@@ -12,7 +12,8 @@
 // to verdict, sub-experiments nested under their parent, abandoned rows kept
 // with their reason. The approval gate is the briefing confirm that freezes
 // a design before anything is measured. The spawn gate is the spawning
-// conversation's now-or-later choice right after a spawn.
+// conversation's now-or-later choice right after a spawn, a learned process
+// gate (24.1.2).
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
@@ -130,14 +131,15 @@ function experimentNextGate(live, leave) {
  * question the experiment measures waiting on its result unless the person
  * answers it first (9.1.11).
  * @param {{phase: string, id: string, unit: string, topic: string, workType: string}} spawn
+ * @param {import('../learned-gates.cjs').GateStep} step the gate's, a learned one
  * @returns {string}
  */
-function experimentSpawnGate({ phase, id, unit, topic, workType }) {
+function experimentSpawnGate({ phase, id, unit, topic, workType }, step) {
   return section('MENU: experiment spawn gate', MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', `Pause this ${phase} here and open the laboratory for ${id}`,
       { next: { kind: 'handoff', skill: 'leeway-experiment-process', args: [workType, unit, topic] } }),
     cmdOption('l', 'later', `Keep the conversation going — the question ${id} measures waits for its result, unless you answer it first`, { next: { kind: 'continue' } }),
-  ], { question: `Work ${id} now?` }));
+  ], { question: `Work ${id} now?` }), step);
 }
 
 module.exports = { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate };

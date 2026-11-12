@@ -81,7 +81,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
       record('raise', NOT_FOLLOWED, from(dir)), record('call', { entry: called, kind: null, label: null, sort: 'one' }, from(dir)),
       raised(dir, careless, { ...AGREES, via: 'typed', dont_care: true }),
     ];
-    record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null }, from(dir));
+    record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: null }, from(dir));
     record('verdict', { entry: departed, verdict: 'skip', point: 'decided' }, from(dir));
     record('blind-draw', { entry: idOf('Asked'), kind: null }, from(dir));
 

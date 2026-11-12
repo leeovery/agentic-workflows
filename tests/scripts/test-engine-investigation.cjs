@@ -15,10 +15,16 @@
 // investigation-plan|investigation-check-in` (domain/investigation.cjs,
 // domain/projections/investigation.cjs), drawn from the log and Claude's
 // payload, the revised plan back at the plan gate (19.S35, 19.4.19,
-// 19.4.24); its validations' briefs, `brief root-cause-validation|fix-validation`
+// 19.4.24), each gate's showing held at the investigation across
+// conversations; its validations' briefs, `brief root-cause-validation|fix-validation`
 // (domain/brief-records.cjs), from the log, the record, what the hunt rests
 // on and the code; and its close (domain/investigation-conclude.cjs), the
-// conclude gate, `render conclude`, a verdict owed asked first, and its yes,
+// conclude gate, `render conclude`, a verdict owed asked first — none where
+// the gate runs as an automatic step, each waiting in the verdict queue
+// (16.10.11), its showing told by when its recap was staged, a recap staged
+// again only to respell its area keeping it, and a conclude set aside held
+// at the investigation through the raises and the verdicts asked meanwhile —
+// and its yes,
 // `investigation conclude`, standing only once the root cause and the fix
 // rest on current entries, both validated since, nothing of the person's
 // open and no mail waiting, which completes the item, stamps its close,
@@ -54,6 +60,9 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 const { huntIn } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
+const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
+const { TRUST_LOG } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
+const { history, lines, DAY, shownIn, showingAnswers } = require('./trust-world.cjs');
 
 const BUG = 'crash';
 const HUNT = 'hunt';
@@ -143,6 +152,9 @@ let config; // the system config: the conversation's folder
 function env() {
   return { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined };
 }
+
+/** The engine as the next conversation runs it, after this one. */
+const NEXT = () => ({ ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' });
 
 /** A call that must succeed: its response. @param {string[]} args */
 const run = (args) => ok(dir, args, { env: env() });
@@ -503,7 +515,7 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
 
   const PLAN = { order: [{ hypothesis: 'H3', check: 'Reboot a throwaway machine and read the save' }, { hypothesis: 'H2', check: 'Run kill-server with the runtime live' }] };
 
-  it('the plan: the open hypotheses in the order given, each with how it is checked, those settled so far, then the plan gate, whose yes goes on', () => {
+  it('the plan: the open hypotheses in the order given, each with how it is checked, those settled so far, then the plan gate, whose yes goes on; its showing held at the investigation, so set aside by a Comment it shows on its hold in the next conversation, the yes there the same event (N2)', () => {
     hunting();
 
     const sections = rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)]);
@@ -524,7 +536,10 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     ].join('\n'));
     const gate = auditGate(rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)], true), 'investigation-plan');
     assert.strictEqual(gate?.gate, 'plan gate');
-    assert.deepStrictEqual(run(['gate', 'plan gate', '--pick', 'y']).next, { kind: 'continue' });
+    run(['gate', 'plan gate', '--typed', 'comment']);
+    output(dir, ['render', 'investigation-plan', HUNT, '--file', payload('plan.json', PLAN)], { env: NEXT() });
+    assert.deepStrictEqual(ok(dir, ['gate', 'plan gate', '--pick', 'y'], { env: NEXT() }).next, { kind: 'continue' });
+    assert.deepStrictEqual(showingAnswers(config, 'plan gate'), [['comment', 'y'], [0, 0]]);
   });
 
   it('19.S35: a revised plan comes back to the plan gate, saying first what the finding changed (19.4.24)', () => {
@@ -562,7 +577,7 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     assert.strictEqual(plan({ order: [] }), `render investigation-plan: the log holds no open hypothesis — log each one the plan checks first: engine investigation-log hypothesis ${HUNT} --title "<title>"`);
   });
 
-  it('the check-in: every hypothesis, those just resolved marked, the experiments with what each showed and what comes next, then the check-in gate', () => {
+  it('the check-in: every hypothesis, those just resolved marked, the experiments with what each showed and what comes next, then the check-in gate; its showing held at the investigation, so set aside by a Comment it shows on its hold in the next conversation, the yes there the same event (N2)', () => {
     hunting();
 
     const sections = rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server with the runtime live' })]);
@@ -586,9 +601,13 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
       '  Run kill-server with the runtime live',
       '',
     ].join('\n'));
-    const gate = auditGate(rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server' })], true), 'investigation-check-in');
+    const checkIn = ['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server' })];
+    const gate = auditGate(rendered(checkIn, true), 'investigation-check-in');
     assert.strictEqual(gate?.gate, 'check-in gate');
-    assert.deepStrictEqual(run(['gate', 'check-in gate', '--pick', 'y']).next, { kind: 'continue' });
+    run(['gate', 'check-in gate', '--typed', 'comment']);
+    output(dir, ['render', ...checkIn], { env: NEXT() });
+    assert.deepStrictEqual(ok(dir, ['gate', 'check-in gate', '--pick', 'y'], { env: NEXT() }).next, { kind: 'continue' });
+    assert.deepStrictEqual(showingAnswers(config, 'check-in gate'), [['comment', 'y'], [0, 0]]);
   });
 
   it('an intended hypothesis is drawn with the ruled-out glyph, as 20.12.1 draws it (19.4.13)', () => {
@@ -609,6 +628,26 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
       'render investigation-check-in: the check-in names no hypothesis resolved — a check-in comes once one is',
       'render investigation-check-in: the check-in must be {resolved, next}',
     ]);
+  });
+
+  it('each is stepped by the decision point at the investigation, its showing told by what it asks about — the plan by its order and what a revision changed, the check-in by the hypotheses it resolved — and run as a step on yes, its report in its menu\'s place', (t) => {
+    hunting();
+    const asked = t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ gate) => ({ step: 'automatic', gate, row: 'y', showing: '47e5a17f3cac2787' }));
+    const changed = 'E1 showed a kill alone empties it, so the reboot comes first';
+
+    const drawn = [
+      rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)]),
+      rendered(['investigation-plan', HUNT, '--file', payload('plan.json', { ...PLAN, changed }), '--revised']),
+      rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server' })]),
+    ];
+
+    const place = { unit: HUNT, phase: 'investigation', topic: HUNT };
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, at] }) => [name, at.place, at.key]), [
+      ['plan gate', place, [['H3', 'H2'], null]],
+      ['plan gate', place, [['H3', 'H2'], changed]],
+      ['check-in gate', place, ['H1']],
+    ]);
+    assert.deepStrictEqual(drawn.map((sections) => sections.match(/^automatic step: .+$/m)?.[0]), ['automatic step: plan gate', 'automatic step: plan gate', 'automatic step: check-in gate']);
   });
 
   it('each gate refuses a place whose investigation is not open, and a call with no payload', () => {
@@ -949,7 +988,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [{ project: dir, area: null, count: 1, fixed: [{ unit: FEATURE, bugfixes: [RIPE] }] }]);
   });
 
-  it('the conclude\'s DATA names every area the project\'s bugfixes have recorded, with or without a unit, folded for case and spacing, each as first spelt, in name order — so Claude names an area alike', () => {
+  it('the conclude\'s DATA names every area the project\'s bugfixes have recorded, with or without a unit, folded for case and spacing, each as first spelt, in name order — so Claude names an area alike; a recap staged again only to spell its area as the DATA does keeps the time the one it replaces was staged, so its gate is asked on the same showing, and one that says more is staged anew (N3)', (t) => {
     verifySetUp();
     const recorded = (/** @type {string} */ unit, /** @type {string} */ day, /** @type {Record<string, string>} */ fields) => {
       for (const [field, value] of Object.entries({ concluded_at: `2026-10-${day}T09:00:00.000Z`, ...fields })) run(['manifest', 'set', `${unit}.investigation.${unit}`, field, value]);
@@ -962,6 +1001,11 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
 
     const sections = conclude();
     assert.strictEqual(sections.slice(0, sections.indexOf('=== DISPLAY')), data(['area: Boot', 'area: session  restore']));
+
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', gate: 'conclude gate', row: 'y', showing: '47e5a17f3cac2787' }));
+    for (const recap of [{ area: 'Session Restore' }, { area: 'session  restore' }, { hunt: 'Two hypotheses; the save trusted an empty capture.', area: 'session  restore' }]) conclude(RIPE, { ...RECAP, ...recap });
+    const keys = asked.mock.calls.map(({ arguments: [, { key }] }) => key);
+    assert.deepStrictEqual(keys.map((key) => key === keys[0]), [true, true, false]);
   });
 
   it('refuses what the bug is in, writing nothing — a unit the project lacks or this one, an area where no verify setup is recorded or past a line — at the gate, and at the yes once it no longer holds; an area with no unit is kept, a bug in code no unit built', () => {
@@ -989,7 +1033,13 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual([fixes, area, after], [undefined, 'session restore', undefined]);
   });
 
-  it('16.10.5: a call the person changed in the investigation is asked its verdict first, at the conclusion, and the yes waits for it; none changed, none asked', async () => {
+  /** A call the person changed in the investigation, answering against Claude's lean: its decision's short id. */
+  async function departed() {
+    return raised('2');
+  }
+
+  /** A call raised in the investigation, the person picking `pick` where Claude leans to 1: its decision's short id. @param {string} pick */
+  async function raised(pick) {
     const asked = wrote('ask', [], { ...CLAUDE, text: 'Should restore say what it lost?' });
     const call = {
       question: 'Should restore say what it lost?',
@@ -1000,13 +1050,25 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
       lean: '1', why: 'Restore is quiet today.', sort: 'one', mechanism: 'Restore prints one line.', product_wide: false,
     };
     const { res } = await okSectionsAsync(dir, ['raise', RIPE_AT, '--answers', asked], { env: env(), stdin: JSON.stringify(call) });
-    ok(dir, ['raise', 'answer', res.raise, '--pick', '2'], { env: env(), stdin: JSON.stringify({ why: 'The person wants to know.' }) });
+    return ok(dir, ['raise', 'answer', res.raise, '--pick', pick], { env: env(), stdin: JSON.stringify({ why: 'The person wants to know.' }) }).id;
+  }
 
-    const sections = conclude();
+  it('16.10.5: a call the person changed in the investigation is asked its verdict first, at the conclusion, and the yes waits for it; none changed, none asked — and where the conclude ran as its step but the decision point no longer would by the yes, the yes, checking it on the showing staged, refuses and opens no hold, so the next conclude is drawn, asking the verdict', async (t) => {
+    await departed();
+    const { gateStep } = decisionPoint;
+    let calls = 0;
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ gateAt) => (calls++ === 0 ? { step: 'automatic', gate: 'conclude gate', row: 'y', showing: '47e5a17f3cac2787' } : gateStep(name, gateAt)));
+    const held = () => fs.existsSync(at(layout.cache(RIPE, 'investigation', RIPE, path.join('.showings', 'conclude-gate.json'))));
+    const owed = `investigation conclude: a verdict is still to ask — engine render conclude ${RIPE} asks each before the yes`;
+
+    const stepped = conclude();
+    assert.deepStrictEqual([/YOUR VERDICT/.test(stepped), refused(['investigation', 'conclude', RIPE]), held()], [false, owed, false]);
+
+    const sections = conclude(RIPE, null);
 
     assert.match(sections, /^YOUR VERDICT \(1 of 1 call you changed\)$/m);
     assert.match(sections, /^=== MENU: verdict /m);
-    assert.strictEqual(refused(['investigation', 'conclude', RIPE]), `investigation conclude: a verdict is still to ask — engine render conclude ${RIPE} asks each before the yes`);
+    assert.deepStrictEqual([refused(['investigation', 'conclude', RIPE]), held()], [owed, true]);
     const { next } = run(['gate', 'verdict', '--pick', 'n']);
     assert.deepStrictEqual(next.argv.slice(-2), ['--at', 'conclusion']);
     run(next.argv);
@@ -1014,5 +1076,45 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.doesNotMatch(after, /YOUR VERDICT/);
     assert.match(after, /^=== MENU: conclude gate /m);
     assert.strictEqual(run(['investigation', 'conclude', RIPE]).unit, RIPE);
+  });
+
+  it('16.10.11: stepped by the decision point at the investigation, its showing told by when its recap was staged, the conclude run as a step on its yes asks no verdict there — its report stands in its menu\'s place, its DATA carrying the yes\'s next — and the yes, asking the decision point again on that showing, concludes, the departure waiting in the verdict queue', async (t) => {
+    const changed = await departed();
+    const asked = t.mock.method(decisionPoint, 'gateStep', () => ({ step: 'automatic', gate: 'conclude gate', row: 'y', showing: '47e5a17f3cac2787' }));
+
+    const sections = conclude();
+    const concluded = run(['investigation', 'conclude', RIPE]).unit;
+
+    const calls = asked.mock.calls.map(({ arguments: [name, { place, key }] }) => [name, place, key]);
+    assert.deepStrictEqual(calls.map(([name, place]) => [name, place]), [['conclude gate', { unit: RIPE, phase: 'investigation', topic: RIPE }], ['conclude gate', { unit: RIPE, phase: 'investigation', topic: RIPE }]]);
+    assert.match(String(calls[0][2]), /^\d{4}-\d\d-\d\dT/);
+    assert.strictEqual(calls[1][2], calls[0][2], 'the yes asks on the showing the conclude was drawn on');
+    assert.doesNotMatch(sections, /YOUR VERDICT|^=== MENU/m);
+    assert.deepStrictEqual(sections.slice(sections.indexOf('=== DATA')).split('\n').slice(1, 4), ['automatic step: conclude gate', 'ran: y', `next: {"kind":"engine","argv":["investigation","conclude","${RIPE}"]}`]);
+    assert.strictEqual(concluded, RIPE);
+    assert.deepStrictEqual(run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
+  });
+
+  it('a conclude set aside stays held at the investigation through what comes meanwhile — a call the person changed, its raise drawn, then its verdict asked first on the conclude\'s own screen; then a raise drawn and answered, and the recap staged again: drawn again after each, it shows on its hold, never drawn, and its answers are one event (S1)', async (t) => {
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ gateAt) => decisionPoint.learned(name, gateAt));
+    const h = history({ project: JSON.parse(readState(dir, layout.projectManifest)).project_id, start: Date.now() - DAY });
+    for (let i = 0; i < 12; i += 1) h.gate('conclude gate', { picked: 'y' });
+    fs.writeFileSync(path.join(config, TRUST_LOG), lines(...h.events));
+    const gated = (/** @type {string} */ out) => /^=== MENU: conclude gate /m.test(out);
+
+    const first = gated(conclude());
+    const { opened } = shownIn(config, 'sess-1');
+    /** Whether `out` shows the conclude gate on the showing first drawn. @param {string} out */
+    const held = (out) => gated(out) && shownIn(config, 'sess-1').opened === opened;
+    ok(dir, ['gate', 'conclude gate', '--typed'], { env: { ...env(), CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'y' } }) }, stdin: 'Yes, that is the bug.' });
+    await departed();
+    assert.match(conclude(RIPE, null), /^=== MENU: verdict /m);
+    run(run(['gate', 'verdict', '--pick', 'n']).next.argv);
+    const afterVerdict = held(conclude(RIPE, null));
+    await raised('1');
+    const afterRaise = held(conclude(RIPE, { hunt: 'Three hypotheses; the save trusted an empty capture at shutdown.' }));
+    run(['gate', 'conclude gate', '--pick', 'y']);
+
+    assert.deepStrictEqual([first, afterVerdict, afterRaise, showingAnswers(config, 'conclude gate')], [true, true, true, [[null, 'y'], [0, 0]]]);
   });
 });
