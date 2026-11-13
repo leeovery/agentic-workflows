@@ -370,6 +370,24 @@ describe('a question its fix tasks wait on (S1, 20.5.3)', () => {
     ])
   })
 
+  test('20.10.1: what else of the phase waits on the person — a decided topic a changed answer holds — is asked in the conversation beneath the questions, opening its page', () => {
+    const affected = { kind: 'affected', id: UNIT, text: 'Token-aware diff sizing: a decision it relies on changed', page: `topic:${UNIT}` }
+    const changed = review({ waiting: [...(parked.waiting as object[]), affected] }, parked)
+    const rows = paneDrawn(answered(changed, [question]), { now: NOW })
+    const at = rows.indexOf('WAITING ON YOU ───────────────── 1 · asked in the conversation')
+
+    expect([rows.slice(at - 2, at + 3), reviewLines(changed, kitAt(NOW)).find(line => line.key === `review:waiting:${UNIT}`)?.press]).toEqual([
+      [
+        '     parks 9.1 · waiting 1h                          ▸ discuss',
+        '',
+        'WAITING ON YOU ───────────────── 1 · asked in the conversation',
+        '⚑ Token-aware diff sizing: a decision it relies on changed',
+        '',
+      ],
+      `page:topic:${UNIT}`,
+    ])
+  })
+
   test('N5: the fix phase stopped on its question: the facts line says the round fails and the review stopped until the person answers, as the build\'s This session says it (D6), no fix task said to build', () => {
     expect(drawnRows(reviewLines(review({ stopped: true }, parked), kitAt(NOW)).slice(2, 3))).toEqual([
       'round 1 · 19 of 19 areas read · ✗ round 1 fails · ⚑ stopped',

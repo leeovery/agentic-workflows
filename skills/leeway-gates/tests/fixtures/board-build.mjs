@@ -1,6 +1,6 @@
 // The view model engine board answers for a realistic build, held to its shape by tests/scripts/test-engine-board.cjs.
 export default {
-  "version": 8,
+  "version": 9,
   "place": {
     "unit": "token-aware-diff-sizing",
     "type": "feature",
@@ -51,12 +51,28 @@ export default {
       "phase": 6,
       "phases": 8,
       "running": 2,
-      "stopped": false
+      "stopped": false,
+      "untasked": null
     },
     "waiting": [
-      "Q1",
-      "Q2",
-      "Q3"
+      {
+        "kind": "question",
+        "id": "Q1",
+        "text": "Q1 If the terminal closes while the review gate waits, should the release unwind as a decline does, or keep its commit for the operator to finish by hand?",
+        "page": "task:6.7"
+      },
+      {
+        "kind": "question",
+        "id": "Q2",
+        "text": "Q2 When a re-merge fails at the review gate, should the notes the operator already saw stay on offer to accept, or should the run abort with the chunk notes saved?",
+        "page": "task:6.8"
+      },
+      {
+        "kind": "question",
+        "id": "Q3",
+        "text": "Q3 While a regeneration runs as chunks, should plain mode (CI and agents) print a line as each part finishes, or one line when the whole wave is done?",
+        "page": "task:6.5"
+      }
     ],
     "phases": [
       {

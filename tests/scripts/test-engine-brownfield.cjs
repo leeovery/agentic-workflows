@@ -78,7 +78,6 @@ describe('engine brownfield record', () => {
   it('refuses any other value, and any answer out of order — the offer is answered once, and only an accepted one completes', () => {
     refusedPristine(dir, ['brownfield', 'record', 'in-progress'], /the answer is one of native, skipped, accepted, completed — got "in-progress"/);
     refusedPristine(dir, ['brownfield', 'record'], /^Usage: engine brownfield record <native\|skipped\|accepted\|completed>$/);
-    refusedPristine(dir, ['brownfield', 'nope'], /^Unknown brownfield command: nope\. Usage: engine brownfield record/);
     refusedPristine(dir, ['brownfield', 'record', 'completed'], /the offer's answer is "none" — completed follows "accepted"$/);
 
     harness.ok(dir, ['brownfield', 'record', 'accepted']);

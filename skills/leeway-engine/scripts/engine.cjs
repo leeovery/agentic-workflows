@@ -994,7 +994,7 @@ function runEnter(call, argv) {
  */
 function guardFamily(family) {
   return (call, argv) => {
-    if (argv[0] !== 'guard') die(call, `Usage: engine ${family} guard`);
+    if (argv[0] !== 'guard') failJson(call, new Error(`Usage: engine ${family} guard`));
     runGuard(call, `${family} guard`, argv.slice(1));
   };
 }
@@ -1588,11 +1588,13 @@ function runBrownfield(call, argv) {
       respond(call, brownfield.recordBrownfield(cwd, rest[0]));
       return;
     }
-    throw new Error(`Unknown brownfield command: ${command}. ${BROWNFIELD_USAGE}`);
+    throw new Error(BROWNFIELD_USAGE);
   } catch (err) {
     failJson(call, err);
   }
 }
+
+const WALKTHROUGH_USAGE = 'Usage: engine walkthrough record <walked|skipped>';
 
 /**
  * `walkthrough record <walked|skipped>` — the answer to leeway's
@@ -1604,11 +1606,11 @@ function runWalkthrough(call, argv) {
   const { cwd } = call;
   try {
     if (command === 'record') {
-      if (rest.length !== 1) throw new Error('Usage: engine walkthrough record <walked|skipped>');
+      if (rest.length !== 1) throw new Error(WALKTHROUGH_USAGE);
       respond(call, walkthrough.recordWalkthrough(cwd, rest[0]));
       return;
     }
-    throw new Error(`Unknown walkthrough command: ${command}. Usage: engine walkthrough record <walked|skipped>`);
+    throw new Error(WALKTHROUGH_USAGE);
   } catch (err) {
     failJson(call, err);
   }
@@ -2205,6 +2207,7 @@ function runCommit(call, argv) {
       else if (a === '--workflows') workflows = true;
       else if (a === '--migrations') migrationsScope = true;
       else if (a === '--product') productScope = true;
+      else if (a.startsWith('-')) throw new Error(`unknown flag "${a}"`);
       else if (paths) files.push(a);
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
@@ -2407,6 +2410,9 @@ function runHandoff(call, argv) {
 
 const RENDER_FLAGS = ['warn', 'menu-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
 
+/** The render family's refusal of a surface it does not draw, naming every one it does, its three dev aids among them. */
+const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpost', 'tree', 'wrap'].join('|')}> …`;
+
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
@@ -2443,7 +2449,7 @@ function runRender(call, argv) {
       break;
     }
     default:
-      die(call, USAGE);
+      failJson(call, new Error(RENDER_USAGE));
   }
 }
 

@@ -247,4 +247,4 @@ function archivedDeleteGateSurface(cwd, given, file) {
   ], { question: 'Delete it?' }));
 }
 
-module.exports = { triageScreen, triageSurface, archivedSurface, archivedItemSurface, archivedDeleteGateSurface };
+module.exports = { triageSurface, archivedSurface, archivedItemSurface, archivedDeleteGateSurface };

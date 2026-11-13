@@ -5,11 +5,10 @@
  * built; the round, its areas read of all and where it stands, the line
  * wrapping so a failing round's fix tasks show whole (D12), and stopped
  * until the person answers where nothing can go on, as the build's This
- * session says it (D6); WAITING ON YOU,
- * the unit's one list: the questions the review waits on, as the kit draws
- * them, or finish, asked in the conversation (D18) and named as the engine
- * names it, a quick-fix's its close — never both, since
- * finish waits only once no question does; the latest fix tasks as the build's
+ * session says it (D6); WAITING ON YOU as the build draws it, the phase's
+ * own of the unit's one list: the questions the review waits on, then
+ * every other wait asked in the conversation — finish (D18), named as the
+ * engine names it, a quick-fix's its close; the latest fix tasks as the build's
  * phase past the cut, each opening its task's page (20.10.2, D17); FOUND,
  * each finding with its mark by its call and its area — in scope once the
  * round is recorded, else every one its landed reports hold; the round's
@@ -27,7 +26,7 @@
 import { COLOUR, MARK, blank, counted, cutTo, heading, prose, rowsOf, spread, titledLine, widthOf, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
-import { taskLineOf, type TaskLine } from './build.ts'
+import { taskLineOf, waitingLines, type TaskLine, type Waiting } from './build.ts'
 import { section, type Found } from './task.ts'
 
 /** An area of a round, as the engine's model holds it. */
@@ -40,7 +39,7 @@ type ReviewView = View & {
   type: string
   built: number
   round: number
-  waiting: { kind: string; id: string; text: string; page: string | null }[]
+  waiting: Waiting[]
   recorded: boolean
   areas: AreaLine[]
   found: Found[]
@@ -134,21 +133,6 @@ function headOf(view: ReviewView, kit: Kit): Line[] {
       parts: [{ text: `round ${view.round} · ${read} of ${view.areas.length} areas read`, color: COLOUR.secondary }, ...standingOf(view, kit)],
     },
     blank('review:head'),
-  ]
-}
-
-/** WAITING ON YOU (the header's): finish, asked in the conversation, where it waits, else the questions as the kit draws them. */
-function waitingOf(view: ReviewView, kit: Kit): Line[] {
-  const finish = finishOf(view)
-
-  if (finish === undefined) {
-    return kit.waiting()
-  }
-
-  return [
-    section('review:finish', 'WAITING ON YOU', COLOUR.needs, kit.width, '1 · asked in the conversation'),
-    { key: 'review:finish:ask', mark: { text: `${MARK.needs} `, color: COLOUR.needs }, wraps: true, parts: [{ text: finish.text, color: COLOUR.body }] },
-    blank('review:finish'),
   ]
 }
 
@@ -279,7 +263,7 @@ export function reviewLines(view: View, kit: Kit): Line[] {
 
   return [
     ...headOf(review, kit),
-    ...waitingOf(review, kit),
+    ...waitingLines('review:waiting', review.waiting, kit),
     ...fixesOf(review, kit),
     ...foundOf(review, kit),
     ...areasOf(review, kit),

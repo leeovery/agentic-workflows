@@ -1,7 +1,8 @@
 'use strict';
 
-// `engine knowledge` itself: its usage with no command, and an unknown one
-// named before it, in process (knowledge-harness); and, as a real process,
+// `engine knowledge` itself: its usage with no command, in process
+// (knowledge-harness) — an unknown one is refused as every family refuses
+// one (test-engine-retired.cjs); and, as a real process,
 // what only the CLI shows — the exit code a waiting verb's answer sets once
 // the process ends, which stream each answer goes to, and the terminal the
 // process hands the setup wizard only when stdin is one. Over the project
@@ -33,12 +34,11 @@ describe('engine knowledge, in process', () => {
 
   after(() => cleanupFixture(root));
 
-  it('exits 1 with its usage on stderr alone when no command is given, and names an unknown one before the usage', async () => {
+  it('exits 1 with its usage on stderr alone when no command is given', async () => {
     const bare = await knowledge();
     assert.strictEqual(bare.code, 1);
     assert.strictEqual(bare.stdout, '');
     assert.match(bare.stderr, /^Usage: engine knowledge <command> \[options\]\n/);
-    assert.deepStrictEqual(await knowledge('foobar'), { code: 1, stdout: '', stderr: `Unknown command "foobar".\n\n${bare.stderr}` });
   });
 });
 

@@ -17,9 +17,8 @@ const {
 } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const {
   phaseStatus, phaseItems, phaseData, computeNextPhase, lastCompletedPhase,
-  computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
-  compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
+  compareMapRows, buildDiscoveryMap,
   mailboxDir, mailboxFiles, mailboxDepth, mailPhase, mailPhases,
   awaitedExperiments, waits, topicWaits, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
@@ -691,58 +690,6 @@ describe('reads + derivations', () => {
     });
   });
 
-  describe('computeSourceProvenance', () => {
-    it('returns null for null/undefined source', () => {
-      assert.strictEqual(computeSourceProvenance(null), null);
-      assert.strictEqual(computeSourceProvenance(undefined), null);
-    });
-
-    it('returns null for source=discovery', () => {
-      assert.strictEqual(computeSourceProvenance('discovery'), null);
-    });
-
-    it('returns "from {source}" for plain source', () => {
-      assert.strictEqual(computeSourceProvenance('pivot'), 'from pivot');
-    });
-
-    it('unwraps colon-prefixed source to "from {parent}"', () => {
-      assert.strictEqual(computeSourceProvenance('message:kitchen-hardware'), 'from kitchen-hardware');
-    });
-
-    it('unwraps message:{origin} to "from {origin}"', () => {
-      assert.strictEqual(computeSourceProvenance('message:auth-flow'), 'from auth-flow');
-    });
-
-    it('handles comma-joined plain sources', () => {
-      assert.strictEqual(
-        computeSourceProvenance('pivot,gap-analysis'),
-        'from pivot + gap-analysis',
-      );
-    });
-
-    it('handles comma-joined sources with whitespace', () => {
-      assert.strictEqual(
-        computeSourceProvenance('pivot, gap-analysis'),
-        'from pivot + gap-analysis',
-      );
-    });
-
-    it('handles mixed colon-prefixed and plain in a comma-joined source', () => {
-      assert.strictEqual(
-        computeSourceProvenance('message:billing,gap-analysis'),
-        'from billing + gap-analysis',
-      );
-    });
-
-    it('returns null for empty source', () => {
-      assert.strictEqual(computeSourceProvenance(''), null);
-    });
-
-    it('renders bare migration-seeded as "from migration-seeded"', () => {
-      assert.strictEqual(computeSourceProvenance('migration-seeded'), 'from migration-seeded');
-    });
-  });
-
   describe('TIER_RANK', () => {
     it('orders tiers from decided → in-flight → fresh → cancelled → postponed', () => {
       assert.deepStrictEqual(TIER_RANK, { '✓': 0, '◐': 1, '○': 2, '⊘': 3, '⊖': 4 });
@@ -1033,42 +980,6 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.in_flight, 0);
       assert.strictEqual(r.fresh, 0);
       assert.strictEqual(r.cancelled, 0);
-    });
-  });
-
-  describe('computeNeedsSequencing', () => {
-    it('returns true when a live item is missing order', () => {
-      const items = [
-        { tier: '◐', order: 1 },
-        { tier: '○', order: null },
-      ];
-      assert.strictEqual(computeNeedsSequencing(items), true);
-    });
-
-    it('returns false when all live items are ordered', () => {
-      const items = [
-        { tier: '○', order: 1 },
-        { tier: '◐', order: 2 },
-        { tier: '✓', order: 3 },
-      ];
-      assert.strictEqual(computeNeedsSequencing(items), false);
-    });
-
-    it('returns false when only a cancelled item is missing order', () => {
-      const items = [
-        { tier: '◐', order: 1 },
-        { tier: '⊘', order: null },
-      ];
-      assert.strictEqual(computeNeedsSequencing(items), false);
-    });
-
-    it('treats undefined order the same as null (missing)', () => {
-      const items = [{ tier: '○' }];
-      assert.strictEqual(computeNeedsSequencing(items), true);
-    });
-
-    it('returns false for an empty map', () => {
-      assert.strictEqual(computeNeedsSequencing([]), false);
     });
   });
 

@@ -9,7 +9,8 @@
 // after every task of the unit ended, closed or done; a phase removed for
 // good and made again as new; an addition to a task;
 // a type replaced; list; show; a phase's tasks whole; when a task started;
-// every read the same from a copy of the store's files alone; list and ready
+// every read the same from a copy of the store's files alone, and a root
+// with nothing set up yet read as a tracker holding nothing; list and ready
 // as the tracker itself answers them, a person's own child and link among
 // what holds a task —
 // its store made in the state root, never in the project's own a walk up would find, and the
@@ -148,6 +149,16 @@ for (const driver of listDrivers('task')) {
       assert.strictEqual(driver.createUnit(state, UNIT), true);
       assert.deepStrictEqual([driver.ensureStore(state), held()], [false, before]);
       for (const file of driver.storeFiles()) assert.ok(fs.existsSync(path.join(state, file)), `${file} is in the state root`);
+    });
+
+    it('reads a root where nothing is set up yet as a tracker holding nothing, never refusing, and sets nothing up there', () => {
+      const empty = path.join(folder(), 'empty');
+      fs.mkdirSync(empty);
+
+      assert.deepStrictEqual([
+        driver.list(empty, UNIT, 1), driver.tasks(empty, UNIT, 1), driver.ready(empty, UNIT, 1), driver.ready(empty, UNIT, null),
+        driver.show(empty, ref(1, 1)), driver.started(empty, ref(1, 1)), fs.readdirSync(empty),
+      ], [null, null, null, [], null, null, []]);
     });
 
     it('refuses a store left without the files the state branch carries, naming them, rather than make it again', () => {

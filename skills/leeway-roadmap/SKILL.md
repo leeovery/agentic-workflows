@@ -28,7 +28,9 @@ The answer goes to `gate`; follow its `next`. The DATA names each number's item;
 
 ## Adding an Item
 
-`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a small mechanical change. The horizon is the person's: where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation.
+`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a small mechanical change. The horizon is the one they named. Where they named none:
+
+Load **[choosing-a-horizon.md](../leeway-shared/references/choosing-a-horizon.md)** with names = `{name}` and follow its instructions as written.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin roadmap
@@ -50,4 +52,6 @@ Renaming or rewording an item, bringing an archived one back onto a horizon, and
 
 ## Joining an Epic
 
-An idea to join an epic in progress joins it as a new topic, through that epic's discovery, which takes it in: say so in a line, then Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none {epic} "roadmap:{item}"`.
+An idea to join an epic in progress joins it as a new topic, through that epic's discovery, which takes it in. Say so in a line, then hand it over:
+
+Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none {epic} "roadmap:{item}"` and follow its instructions as written.

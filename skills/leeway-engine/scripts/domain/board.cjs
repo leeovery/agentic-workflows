@@ -216,7 +216,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shar
  */
 const PHASE_VIEWS = Object.freeze({
   implementation: [
-    { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
+    { read: (at) => buildView(at, phaseWaiting(at)), banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
     { read: (at) => quickFixView(at, phaseWaiting(at)), banner: (at, view) => quickFixBanner(view, tasksStopped(at)) },
   ],
   review: [{ read: (at) => reviewView(at, phaseWaiting(at)), banner: (at, view) => reviewBanner(view, roundWords(at), phaseWaiting(at)) }],

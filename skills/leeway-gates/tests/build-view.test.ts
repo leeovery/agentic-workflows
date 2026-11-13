@@ -14,6 +14,8 @@ const NOW = Date.parse('2026-10-21T15:00:00.000Z')
 
 const view = BUILD.view as BuildView
 
+const UNIT = 'token-aware-diff-sizing'
+
 const answered = (board: Board): Answer => ({ kind: 'board', board })
 
 /** The build with its view as `change` makes it. */
@@ -86,12 +88,38 @@ describe('the build\'s This session (20.5)', () => {
     ])
   })
 
+  test('20.5.1: what else of the phase waits on the person — a decided topic a changed answer holds — is asked in the conversation beneath the questions, opening its page', () => {
+    const affected = { kind: 'affected', id: UNIT, text: `${view.title}: a decision it relies on changed`, page: `topic:${UNIT}` }
+    const board = built(({ waiting }) => ({ waiting: [...waiting, affected] }))
+    const shown = paneDrawn(board, { now: NOW })
+    const at = shown.indexOf('WAITING ON YOU ───────────────── 1 · asked in the conversation')
+    const line = buildLines((board as { board: Board }).board.view, kitAt(NOW)).find(each => each.key === `build:waiting:${UNIT}`)
+
+    expect([shown.slice(at - 2, at + 3), line?.press]).toEqual([
+      [
+        '     parks 6.5 · waiting 10m                         ▸ discuss',
+        '',
+        'WAITING ON YOU ───────────────── 1 · asked in the conversation',
+        '⚑ Token-aware diff sizing: a decision it relies on changed',
+        '',
+      ],
+      `page:topic:${UNIT}`,
+    ])
+  })
+
   test('D6, D11: a build stopped ends its progress "⚑ stopped until you answer", the words whole, wrapped under its facts', () => {
     const stopped = built(({ progress }) => ({ progress: { ...progress, done: 62, running: 0, stopped: true } }))
     const kit = kitAt(NOW)
     const [, progress] = buildLines((stopped as { board: Board }).board.view, kit)
 
     expect(rowsDrawn(progress!)).toEqual(['▰▰▰▰▰▰▰▱  62 of 68 tasks done · phase 6 of 8 · ⚑ stopped until', '          you answer'])
+  })
+
+  test('before the tracker holds any task of the build, the progress says how far it has come as the start menu\'s row does, in place of its tasks done and its phase, with no bar', () => {
+    const progress = { done: 0, total: 0, phase: 1, phases: 1, running: 0, stopped: false, untasked: 'phase 1 of 1, not yet written' }
+    const [, line] = buildLines({ ...view, progress, waiting: [], phases: [{ phase: 1, name: 'Counting', state: 'not-written', done: 0, total: 0, tasks: [] }] } as View, kitAt(NOW))
+
+    expect(rowsDrawn(line!)).toEqual(['phase 1 of 1, not yet written'])
   })
 
   test('the edge rule: in the header a 40-character title gives way with "…", its type and "· build phase" never do', () => {
@@ -136,6 +164,6 @@ describe('the build\'s This session (20.5)', () => {
   test('20.5.4: a press on a task opens its page, read by its number in the unit it is of', () => {
     const line = buildLines(view, kitAt(NOW)).find(each => each.key === 'task:6.4')
 
-    expect(pressed(HOME, line?.press ?? '', BUILD, VIEWS)?.pages).toEqual([{ ref: 'task:6.4', unit: 'token-aware-diff-sizing', over: null }])
+    expect(pressed(HOME, line?.press ?? '', BUILD, VIEWS)?.pages).toEqual([{ ref: 'task:6.4', unit: UNIT, over: null }])
   })
 })

@@ -937,17 +937,6 @@ function compareMapRows(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-// The tiers a topic carries no suggested execution order under — off the
-// board (cancelled) or waiting on the roadmap (postponed); each stashes its
-// order and gets none back until it returns.
-const UNORDERED_TIERS = ['⊘', '⊖'];
-
-// True when any live map item lacks a suggested execution order.
-// Programmatic detection — the assignment of order values stays with Claude.
-function computeNeedsSequencing(mapItems) {
-  return mapItems.some(it => !UNORDERED_TIERS.includes(it.tier) && it.order == null);
-}
-
 // An `unstarted` stub (messages waiting, no session yet) renders as `fresh`
 // by fall-through. Whether mail waits is a fact about the mailbox on disk,
 // never the manifest — `mailboxDepth` reads it.
@@ -1062,17 +1051,6 @@ function computeMapSummary(items) {
     }
   }
   return counts;
-}
-
-function computeSourceProvenance(source) {
-  if (!source || source === 'discovery') return null;
-  const parts = source.split(',').map(s => s.trim()).filter(Boolean);
-  if (parts.length === 0) return null;
-  const labels = parts.map(p => {
-    const colonIdx = p.indexOf(':');
-    return colonIdx > 0 ? p.slice(colonIdx + 1) : p;
-  });
-  return `from ${labels.join(' + ')}`;
 }
 
 // The conversations a topic's mail waits for, in the order a pipeline is
@@ -1303,7 +1281,6 @@ function mailPhases(stateDir, manifest) {
  * @property {string} title                   how screens title the topic (`topicTitle`)
  * @property {string} goes_by                 the name the topic goes by — its title, else its key
  * @property {string} source
- * @property {string|null} source_provenance
  * @property {number|null} order
  * @property {string} lifecycle
  * @property {string} tier
@@ -1313,14 +1290,13 @@ function mailPhases(stateDir, manifest) {
  * @property {boolean} mail_waiting       messages wait in the topic's mailbox, whatever its items' status
  * @property {number} mail_queued         how many messages wait in the topic's mailbox, counted from disk
  * @property {Wait[]} waits               the live waits of the topic's in-progress discussion (empty when none)
- * @property {string|null} next_action
  */
 
 /**
  * The discovery-map rows for one epic manifest: each discovery item joined to
- * its per-phase lifecycle, sorted by tier → order → name, with the map summary
- * and the sequencing flag. The single builder every discovery-map surface
- * reads, so no two can silently disagree.
+ * its per-phase lifecycle, sorted by tier → order → name, with the map
+ * summary. The single builder every discovery-map surface reads, so no two
+ * can silently disagree.
  *
  * Each row carries the superset of fields any surface needs. `summary` and
  * `description_present` follow the normalised reading — a whitespace-only or
@@ -1329,7 +1305,7 @@ function mailPhases(stateDir, manifest) {
  * render it in full.
  * @param {object} manifest
  * @param {string} stateDir  the state root — the mailboxes are read from disk
- * @returns {{map: DiscoveryMapRow[], summary: object, needs_sequencing: boolean}}
+ * @returns {{map: DiscoveryMapRow[], summary: object}}
  */
 function buildDiscoveryMap(manifest, stateDir) {
   const discoveryItems = phaseItems(manifest, 'discovery');
@@ -1348,7 +1324,6 @@ function buildDiscoveryMap(manifest, stateDir) {
       title: topicTitle(manifest, item.name),
       goes_by: goesBy(topicTitles(manifest), item.name),
       source: item.source || 'discovery',
-      source_provenance: computeSourceProvenance(item.source),
       order: item.order ?? null,
       lifecycle,
       tier,
@@ -1358,11 +1333,10 @@ function buildDiscoveryMap(manifest, stateDir) {
       mail_waiting: mail_queued > 0,
       mail_queued,
       waits: topicWaits(manifest, item.name),
-      next_action: computeNextAction(lifecycle),
     };
   });
   map.sort(compareMapRows);
-  return { map, summary: computeMapSummary(map), needs_sequencing: computeNeedsSequencing(map) };
+  return { map, summary: computeMapSummary(map) };
 }
 
 module.exports = {
@@ -1433,9 +1407,7 @@ module.exports = {
   promotedRefusal,
   itemOf,
   computeMapSummary,
-  computeSourceProvenance,
   compareMapRows,
-  computeNeedsSequencing,
   buildDiscoveryMap,
   mailPhase,
   topicDir,

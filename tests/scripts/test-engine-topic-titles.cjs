@@ -353,7 +353,7 @@ describe('every screen names a topic through one helper', () => {
       'render.cjs › horizonBack › name',
       'render.cjs › puttingLine › names[0]',
       'render.cjs › postponeStatement › target.name',
-      'roadmap.cjs › addRoadmapItem › name',
+      'roadmap.cjs › putOn › name',
     ],
     'an experiment, by its slug where the question it measures is not on the ledger': [
       'projections/board-experiment.cjs › experimentView › record.slug',

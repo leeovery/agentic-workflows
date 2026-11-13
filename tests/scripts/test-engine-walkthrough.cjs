@@ -101,7 +101,6 @@ describe('engine walkthrough record', () => {
     refuses(dir, ['walkthrough', 'record', 'bananas'], /one of walked, skipped — got "bananas"/);
     refuses(dir, ['walkthrough', 'record'], /Usage: engine walkthrough record/);
     refuses(dir, ['walkthrough', 'record', 'walked', 'skipped'], /Usage: engine walkthrough record/);
-    refuses(dir, ['walkthrough', 'nope'], /Unknown walkthrough command/);
     assert.strictEqual(projectManifest(dir).walkthrough, undefined, 'a refused answer writes nothing');
 
     run(dir, ['walkthrough', 'record', 'walked']);

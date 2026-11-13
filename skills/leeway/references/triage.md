@@ -40,7 +40,7 @@ Read each picked item, and write one entry for each to `.leeway/.cache/triage-ro
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add-batch --file .leeway/.cache/triage-roadmap.json
 ```
 
-A name already on the roadmap refuses the whole batch: ask the person for another name for that item, rewrite its entry, and land the batch again. Once it lands, say `On the roadmap: "{title}" → {horizon}.` for one item, or `On the roadmap: {count} items → {horizon}.` for several, then draw triage again (Drawn Again).
+A name already on the roadmap refuses the whole batch: ask the person for another name for that item, rewrite its entry, and land the batch again. Once it lands, say the line each item of its response's `added` holds in `said`, then draw triage again (Drawn Again).
 
 ## Archiving
 

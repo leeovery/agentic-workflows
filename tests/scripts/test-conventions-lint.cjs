@@ -423,6 +423,31 @@ function checkLinks(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 7b — a load is its own line (CONVENTIONS: The Reference File, loaded
+// by one line): a `Load **[…](…)**` directive opens its line — bare, after an
+// arrow or a list marker — or follows a sentence's end on it, never carried
+// mid-sentence ("…, else Load …"). Loads inside fences are exempt.
+// ---------------------------------------------------------------------------
+
+/** What may stand before a load on its line: nothing, an arrow or a list marker, or a sentence's end. */
+const LOAD_OPENS = /^\s*(?:(?:→|[-*]|\d+\.)\s+)?$|[.:?!]\**\s+$/;
+
+function checkLoadLines(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (inFence[i]) return;
+      for (const at of [...line.matchAll(/Load \*\*\[/g)].map(({ index }) => index)) {
+        if (!LOAD_OPENS.test(line.slice(0, at))) out.push({ file, line: i + 1, message: 'a load carried mid-sentence — end the sentence and give the load its own line' });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Check 8 — H1 category rule (scoped to the leeway and leeway-* SKILL.md backbones).
 // Processing backbones (leeway-*-process, plus discovery — a phase that
 // talks — the engine and the project-level skills — roadmap, help) open with
@@ -1487,6 +1512,7 @@ const CHECKS = [
   ['5: banned navigation verbs', checkBannedNav],
   ['6: internal routing-target existence', checkRouting],
   ['7: markdown link resolution', checkLinks],
+  ['7b: a load is its own line, never carried mid-sentence', checkLoadLines],
   ['8: H1 category rule', checkH1Category],
   ['9: Zero Output Rule byte-identity', checkZeroOutput],
   ['10: reference-file attribution', checkAttribution],
@@ -1822,6 +1848,17 @@ test('check 7 (links) — catches broken links, skips fenced/external/placeholde
       '```\n[fenced](nope.md)\n```\n[ext](https://example.com/x.md)\n[tmpl]({work_unit}/f.md)\n[anchor](#section)\n'
     );
     assert.strictEqual(checkLinks([exempt]).length, 0, 'fenced/external/placeholder/anchor links must be skipped');
+  });
+});
+
+test('check 7b (load lines) — catches a load carried mid-sentence, permits one opening its line, after an arrow or a list marker, or after a sentence\'s end, and skips fences', () => {
+  withTemp((dir) => {
+    const load = 'Load **[choosing-a-horizon.md](choosing-a-horizon.md)** with names = `{name}` and follow its instructions as written.';
+    const bad = write(dir, 'skills/x/a.md', `The horizon is the one they named, else ${load}\nFor each they gave none, ${load}\n`);
+    assert.deepStrictEqual(checkLoadLines([bad]).map(({ line }) => line), [1, 2]);
+
+    const good = write(dir, 'skills/x/b.md', `${load}\n→ ${load}\n- ${load}\n2. ${load}\nThe person shares a file. ${load}\nOnce it is drawn: ${load}\n**If the answer is yes.** ${load}\n\`\`\`\nsay so, then ${load}\n\`\`\`\n`);
+    assert.strictEqual(checkLoadLines([good]).length, 0, 'a load opening its line, after an arrow, a list marker or a sentence\'s end, or in a fence, must pass');
   });
 });
 

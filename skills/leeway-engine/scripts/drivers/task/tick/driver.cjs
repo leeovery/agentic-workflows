@@ -9,8 +9,10 @@
 // from the state root, a walk up would find a project's own store in its
 // code tree. The store's JSONL is what the state branch carries; Tick's
 // cache, its lock and the temp file it renames in are local to the machine.
-// A store folder without its JSONL is refused, where Tick would call it made,
-// and so is a line of it that is not JSON, named by its number.
+// The store is set up once its JSONL is there: a read before then answers a
+// tracker holding nothing. A store folder without its JSONL is refused as the
+// store is made, where Tick would call it made, and so is a line of it that
+// is not JSON, named by its number.
 // Tick's own lock is taken inside the engine's writer lock, which every task
 // verb holds.
 //
@@ -127,12 +129,13 @@ function said(name) {
  * last change — when each that moved into progress first did, and every
  * task's record, by id and under its parent, as the store holds them: read
  * once a version of the store, which Tick writes afresh and renames in
- * whole each time. Refuses a line that is not JSON, a name two tasks hold,
- * and a task holding two.
+ * whole each time; none where the store is not set up. Refuses a line that
+ * is not JSON, a name two tasks hold, and a task holding two.
  * @param {string} root
  * @returns {Ids}
  */
 function idsIn(root) {
+  if (!setUp(root)) return noIds();
   const store = path.join(root, STORE, TASKS);
   const { ino, size, mtimeMs, ctimeMs } = fs.statSync(store);
   const version = `${store}\0${ino}\0${size}\0${mtimeMs}\0${ctimeMs}`;
@@ -143,10 +146,15 @@ function idsIn(root) {
 /** The store last parsed, by the version of it read. @type {{version: string, ids: Ids}|null} */
 let lastRead = null;
 
+/** Whether the store is set up at `root` (the header's). @param {string} root */
+const setUp = (root) => fs.existsSync(path.join(root, STORE, TASKS));
+
+/** A tracker holding nothing. @returns {Ids} */
+const noIds = () => ({ byRef: new Map(), byId: new Map(), ended: new Map(), started: new Map(), held: new Map(), children: new Map() });
+
 /** The store at `store` parsed (`idsIn`'s). @param {string} store @returns {Ids} */
 function parsed(store) {
-  /** @type {Ids} */
-  const ids = { byRef: new Map(), byId: new Map(), ended: new Map(), started: new Map(), held: new Map(), children: new Map() };
+  const ids = noIds();
   for (const [i, line] of fs.readFileSync(store, 'utf8').split('\n').entries()) {
     if (line === '') continue;
     /** @type {Held} */
@@ -193,7 +201,7 @@ const idOf = (ids, ref) => /** @type {string} */ (ids.byRef.get(ref));
 
 /** Tick's ids in a message put as the engine names them. @param {string} root @param {string} message */
 function inEngineWords(root, message) {
-  if (message.search(TICK_ID) === -1 || !fs.existsSync(path.join(root, STORE, TASKS))) return message;
+  if (message.search(TICK_ID) === -1 || !setUp(root)) return message;
   const { byId } = idsIn(root);
   return message.replace(TICK_ID, (id) => {
     const name = byId.get(id);
@@ -260,7 +268,7 @@ function reopenParents(root, ids, unit, refs) {
 /** @param {string} root @returns {boolean} */
 function ensureStore(root) {
   const store = path.join(root, STORE);
-  if (fs.existsSync(path.join(store, TASKS))) return false;
+  if (setUp(root)) return false;
   if (fs.existsSync(store)) throw new Error(`the tracker's store at ${store} holds no ${TASKS}`);
   tick(root, ['init']);
   return true;

@@ -559,7 +559,7 @@ function runKnowledge(call, argv) {
   const [verb, ...args] = positional;
   if (!verb) stop(call, USAGE + '\n');
   const handler = Object.hasOwn(VERBS, verb) ? VERBS[verb].run : null;
-  if (!handler) stop(call, `Unknown command "${verb}".\n\n${USAGE}\n`);
+  if (!handler) stop(call, `${JSON.stringify({ ok: false, error: `Usage: engine knowledge <${Object.keys(VERBS).join('|')}> …` })}\n`);
 
   let answer;
   try {

@@ -50,7 +50,8 @@ const BUG_OLDER = layout.inbox('bugs', '2025-12-23--window-names-lost.md');
 const QUICK_FIX = layout.inbox('quickfixes', '2025-12-25--border-off-by-one.md');
 
 // The archive, each item leaving it a way of its own, in an order its file
-// names' dates do not keep. The unit's build log claims three of them.
+// names' dates do not keep — two closed on one day, the later file first.
+// The unit's build log claims three of them.
 const UNIT = 'enter-attaches-from-preview';
 const ARCHIVED_OCT = layout.archived('ideas', '2025-09-06--tab-completion.md');
 const CLOSED_BY_UNIT = layout.archived('ideas', '2025-09-02--enter-should-attach.md');
@@ -102,7 +103,7 @@ const world = fixtureFrom('leeway-triage-', (dir) => {
     inbox_closed: {
       'ideas/2025-09-02--enter-should-attach.md': { unit: UNIT, at: '2025-09-25T10:00:00Z' },
       'quickfixes/2025-09-03--prefs-reset.md': { unit: null, at: '2025-09-20T10:00:00Z' },
-      'bugs/2025-09-04--resize-jitter.md': { unit: 'split-panes', at: '2025-09-19T10:00:00Z' },
+      'bugs/2025-09-04--resize-jitter.md': { unit: 'split-panes', at: '2025-09-20T15:00:00Z' },
     },
   }, null, 2));
   committedOn(dir, '2025-10-04');
@@ -311,7 +312,7 @@ describe('the archived items (18.7.11)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(dir));
 
-  it('18.S80, 18.6.10: each item with how it left, the latest to leave first — archived on the day the state branch took it in, closed by a unit by its title, its name where the unit is gone, closed with no unit on its day — each opening the item', () => {
+  it('18.S80, 18.6.10: each item with how it left, the latest to leave first, by the time it left within a day — archived on the day the state branch took it in, closed by a unit by its title, its name where the unit is gone, closed with no unit on its day — each opening the item', () => {
     const { out, screen, rows } = drawn(dir, ['archived'], 'archived items');
 
     assert.strictEqual(sectionOf(out, 'TITLE'), '# **`■ Triage · Archived`**\n');
@@ -322,8 +323,8 @@ describe('the archived items (18.7.11)', () => {
       '1      → Tab Completion For Session Names — idea, archived 3 Oct',
       '2      → Enter In The Preview Should Attach — idea, closed by',
       '         Enter Attaches From Preview',
-      '3      → Preferences Reset On Upgrade — quick-fix, closed 20 Sep',
-      '4      → Resize \\Jitters\\ \\[twice\\] — bug, closed by Split Panes',
+      '3      → Resize \\Jitters\\ \\[twice\\] — bug, closed by Split Panes',
+      '4      → Preferences Reset On Upgrade — quick-fix, closed 20 Sep',
       '5      → Hidden Sessions Flash On Startup — bug, archived 18 Sep',
       'h/help → What this menu is for, row by row',
       'b/back → Back to triage',

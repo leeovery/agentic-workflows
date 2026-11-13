@@ -282,8 +282,11 @@ wraps under its mark or indent rather than lose them at the edge; a title
 gives way with "…". A topic under way that a session is in turns its ◐ in
 seafoam; one no session is in is sky blue and still.
 
-In the build, This session shows the build's progress, then what waits on you,
-each question with its `▸ discuss`, then the phases, each task on its line with
+In the build, This session shows the build's progress — before its first task,
+how far it has come as the start menu's row says it — then what waits on you,
+each question with its `▸ discuss`, then whatever else of the build's waits,
+asked in the conversation — a decided topic a changed answer holds, opening
+its topic — then the phases, each task on its line with
 its state at the right. A task opens its page: its standing, the evidence its
 runs gave, what it does, what it fixes, the questions it waits on, what was
 done and what differs from the task, its reviews and Claude's calls, each a
@@ -293,8 +296,9 @@ goes; each has its `▸ discuss` while the session is in the task's unit, the
 discussion being the session's. In the review phase it shows the round: each
 area's read, the fix tasks a failing round brought, what was found, the
 checks not proven, what went to the inbox and the verdict, and what waits on
-you: the review's own questions, as the build's do, and finish once the
-review is over and no question waits; a finding opens its page, while the
+you as the build shows it: the review's own questions, then whatever else
+of the review's waits, finish once the review is over and no question waits
+among it; a finding opens its page, while the
 round is read as its reviewer's report holds it. A line whose
 words carry a state, a standing or what waits on you wraps under its mark and
 is never cut at the edge; only a title gives way, with `…`.

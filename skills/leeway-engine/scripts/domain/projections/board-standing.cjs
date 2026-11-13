@@ -39,8 +39,10 @@
 //   raises and its conclude; the specification the map its sweep staged
 //   (8.10.9), its gaps and ready to build's yes; the build and the review their questions, a quick-fix's
 //   asked in its conversation among them, and finish or a quick-fix's
-//   close; a discussion and an experiment none. An epic's decided topics,
-//   those a changed answer holds and its verdicts are no phase's.
+//   close; a discussion and an experiment none. Any other unit's wait
+//   counts too in the phase its door hands into: a decided topic a changed
+//   answer holds, in the phase the unit is in (12.15.4). An epic's decided
+//   topics, those a changed answer holds and its verdicts are no phase's.
 // - The banner counts what it takes, flagged — the map alone by its own
 //   words — and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
@@ -49,10 +51,11 @@ const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
 const { readQuestions, waitingIn } = require('../questions.cjs');
 const { readShownOnce } = require('../ledger-read.cjs');
 const { waitsOf } = require('../waits.cjs');
+const { phaseSkill } = require('../handoff.cjs');
 const { quickFixBuild, tasksBegun, topicTitle } = require('../derivations.cjs');
 const { nowOf } = require('../unit-phases.cjs');
 const { counted } = require('./map.cjs');
-const { buildView } = require('./board-build.cjs');
+const { buildRead } = require('./board-build.cjs');
 const { specLine } = require('./board-spec.cjs');
 const { raiseLine, CONCLUDE_LINE } = require('./board-investigation.cjs');
 const { closeWait } = require('./board-quick-fix.cjs');
@@ -119,12 +122,15 @@ const LINES = Object.freeze({
   verdict: (_, wait) => ({ ...plainLine(wait), text: `Verdict on a call you changed: ${wait.text}` }),
 });
 
-/** What waits on the person in the unit (the header's), read once a call. @param {BoardAt} at @returns {WaitingLine[]} */
-const waitingOn = (at) => at.once('waiting-on', () => readShownOnce(at.root, at.warnings, (shower) => {
+/** What waits on the person in the unit (the header's), each wait with the board's line for it, read once a call. @param {BoardAt} at @returns {{wait: Wait, line: WaitingLine}[]} */
+const waitsAt = (at) => at.once('waiting-on', () => readShownOnce(at.root, at.warnings, (shower) => {
   const { waits, warnings } = waitsOf(at.cwd, [at.manifest], { verdicts: at.manifest.work_type === 'epic', session: at.session, shower });
   at.warnings.push(...warnings);
-  return /** @type {Wait[]} */ (waits.get(at.unit)).map((wait) => LINES[wait.kind](at, wait));
+  return /** @type {Wait[]} */ (waits.get(at.unit)).map((wait) => ({ wait, line: LINES[wait.kind](at, wait) }));
 }));
+
+/** What waits on the person in the unit (the header's). @param {BoardAt} at @returns {WaitingLine[]} */
+const waitingOn = (at) => waitsAt(at).map(({ line }) => line);
 
 /** The kinds of wait that hold the phase the unit is in: asked in the conversation, it goes no further until each is answered. */
 const HOLDING = Object.freeze(['map', 'gap', 'ready', 'raise', 'conclude', 'finish']);
@@ -138,10 +144,17 @@ const PHASE_OWN = Object.freeze({
   review: Object.freeze(['question', 'raised', 'finish']),
 });
 
-/** What waits on the person in the phase the session is in, its view's and its banner's (the header's). @param {BoardAt} at @returns {WaitingLine[]} */
+/**
+ * What waits on the person in the phase the session is in, its view's and
+ * its banner's (the header's): the phase's own kinds, and in a unit not an
+ * epic each wait whose door hands into the phase.
+ * @param {BoardAt} at @returns {WaitingLine[]}
+ */
 function phaseWaiting(at) {
-  const own = PHASE_OWN[at.place.phase ?? ''] ?? [];
-  return waitingOn(at).filter(({ kind }) => own.includes(kind));
+  const { phase } = at.place;
+  const own = PHASE_OWN[phase ?? ''] ?? [];
+  const door = phase === null || at.manifest.work_type === 'epic' ? null : phaseSkill(phase, at.manifest.work_type);
+  return waitsAt(at).filter(({ wait: { kind, next } }) => own.includes(kind) || (next.kind === 'handoff' && next.skill === door)).map(({ line }) => line);
 }
 
 /**
@@ -159,7 +172,7 @@ const holds = ({ kind }) => HOLDING.includes(kind);
  * once a call.
  * @param {BoardAt} at @returns {boolean}
  */
-const tasksStopped = (at) => at.once('stopped', () => tasksBegun(at.manifest) && buildView(at).view.progress.stopped);
+const tasksStopped = (at) => at.once('stopped', () => tasksBegun(at.manifest) && buildRead(at).view.progress.stopped);
 
 /** How the phase the unit is in stands (the header's). @param {BoardAt} at @returns {PhaseStanding} */
 function standingOf(at) {

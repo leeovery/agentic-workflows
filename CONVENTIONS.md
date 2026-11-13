@@ -278,5 +278,5 @@ A skill splits a part into a reference when the part is needed only at a moment 
   ```
 
   A reference loaded by another reference names that file instead. A shared reference, under `skills/leeway-shared/references/`, says `*Shared reference. Loaded by {callers}.*`.
-- **Loaded** by one line, the link bold and resolving (lint check 7): `Load **[name.md](references/name.md)** and follow its instructions as written.` What it needs from the caller is named in the load line — ``… with topic = `{topic}`.`` — and is already in context.
+- **Loaded** by one line, never mid-sentence, the link bold and resolving (lint checks 7, 7b): `Load **[name.md](references/name.md)** and follow its instructions as written.` What it needs from the caller is named in the load line — ``… with topic = `{topic}`.`` — and is already in context.
 - **Deferring to the owner.** A reference that needs another skill's mechanic invokes that skill or loads its reference, carrying only what the caller knows. It never restates the owner's paths, naming or format. Where two files say the same thing, delete one rather than keep them aligned.

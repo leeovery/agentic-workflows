@@ -9,7 +9,9 @@
 // older units carry in a list outside the tables; and the command catalogue
 // has the new families with their verbs and the kept ones, and no verb for
 // what the release removes; each verb it says one the engine dispatches, and
-// each a family's own refusal names said, its surfaces SURFACES's own.
+// each a family's own refusal names said, its surfaces SURFACES's own; and
+// a verb a family does not know refused in one shape, a retired name
+// recognised by none.
 //
 // Layer: verb. World: the project, copied once, where each verb the usage
 // names is called; the rest reads the shipped skills folder, the schema
@@ -204,6 +206,21 @@ describe('the command catalogue (6.S3)', () => {
         unsaid.push(...named.filter((verb) => !saidOf(family).includes(verb)).map((verb) => `${family} ${verb}`));
       }
       assert.deepStrictEqual([...new Set(unsaid)], []);
+    });
+
+    it('refuses a verb a family does not know in one shape, render\'s surfaces among them: the family\'s usage as a refusal, guessing nothing of what was asked', async () => {
+      // The families whose first word is no verb: an answer, a handoff's target, a place, a unit, a conversation.
+      const VERBLESS = ['github-rule', 'github-squash', 'handoff', 'raise', 'cut', 'board'];
+      const misshapen = [];
+      for (const family of Object.keys(COMMANDS).filter((name) => !VERBLESS.includes(name))) {
+        const { code, stderr } = await runAsync([family, 'roadmap-view'], { cwd: world });
+        /** @type {unknown} */
+        let refusal = null;
+        try { refusal = JSON.parse(String(stderr)); } catch { /* a plain dump is misshapen */ }
+        const error = String(/** @type {{error?: unknown}} */ (refusal)?.error ?? '');
+        if (code !== 1 || /** @type {{ok?: unknown}} */ (refusal)?.ok !== false || !error.startsWith(`Usage: engine ${family} `) || error.includes('roadmap-view')) misshapen.push(family);
+      }
+      assert.deepStrictEqual(misshapen, []);
     });
   });
 });

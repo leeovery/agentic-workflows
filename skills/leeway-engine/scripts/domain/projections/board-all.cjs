@@ -17,7 +17,8 @@
 //   reshape retires waiting on the migration's cut, as its menu row says
 //   them (progress.cjs); a bug's investigation how far its hunt has come;
 //   the specification where it stands, as its banner says it; the build its
-//   tasks done of all, a quick-fix its fixes done of all, the review its
+//   tasks done of all, or as its menu row says it while the tracker holds
+//   none of them yet, a quick-fix its fixes done of all, the review its
 //   round, as its banner says it — a quick-fix's too — each stopped where
 //   nothing can go on; nothing for a linear unit's discussion, nor a build
 //   or review not run by its cut — under the old plan, its tracker not the
@@ -41,7 +42,7 @@ const { projectName } = require('../state-checks.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { roadmapItems, itemWaiting, itemPostponedFrom, topicTitle, buildByCut, quickFixBuild, tasksBegun } = require('../derivations.cjs');
 const { counts } = require('../start-menu.cjs');
-const { buildView, buildWords } = require('./board-build.cjs');
+const { buildWords } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { groupByHorizon } = require('./roadmap.cjs');
 const { specDoing } = require('./board-spec.cjs');
@@ -70,7 +71,7 @@ const HOW_FAR = Object.freeze({
   discussion: (at) => epicMeasure(at.cwd, at.manifest, 'discussion') ?? '',
   investigation: investigationHowFar,
   specification: (at) => specDoing(at, waitingOn(at)),
-  build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(buildView(at).view)}` : ''),
+  build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(at)}` : ''),
   implementation: (at) => (quickFixBuild(at.manifest) && tasksBegun(at.manifest) ? `${stoppedWords(at)}${quickFixWords(at)}` : ''),
   review: (at) => {
     if (!ownTasks(at.manifest)) return '';

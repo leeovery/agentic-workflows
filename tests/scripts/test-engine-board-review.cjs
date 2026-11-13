@@ -5,8 +5,9 @@
 // projections/board-review.cjs, 20.10): the round under way, each area by
 // its reports and the briefs this conversation issued for it in that round;
 // and the build past the cut in step, its fix phase with a task behind the
-// one in flight and the phase whose merge waits. A round recorded failing
-// is test-engine-board-review-rounds.cjs, one that ends the phase
+// one in flight and the phase whose merge waits; and a decided topic a
+// changed answer holds, waiting in the review (12.15.4). A round recorded
+// failing is test-engine-board-review-rounds.cjs, one that ends the phase
 // test-engine-board-review-rounds-end.cjs; where the review stands on
 // every view, test-engine-board-review-standing.cjs.
 //
@@ -22,7 +23,9 @@ const fs = require('fs');
 const path = require('path');
 const {
   UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, firstRoundFailed, commitFile, ok, writeState, statePath, git,
+  readManifest, createManifest,
 } = require('./review-world.cjs');
+const { MADE } = require('./ledger-world.cjs');
 const { area, tests, facts, placed, reviewBoard } = require('./review-board-world.cjs');
 const { withEnv, holdLock, lockAttempts, layout, traced } = require('./engine-harness.cjs');
 
@@ -169,5 +172,38 @@ describe('the build past the cut (P14, 7.2.4, 12.7.9)', () => {
     firstRoundFailed();
 
     assert.deepStrictEqual([reading, drawn()], [[['review', 'unit', 'all'], []], [['review', 'unit', 'all'], []]]);
+  });
+});
+
+describe('what else of the review waits on the person (20.10.1, 12.15.4)', () => {
+  /** A ledger write by the person at `address`: its short id. @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
+  const write = (verb, address, flags, content) => ok(dir, ['ledger', verb, address, ...flags], { env: env(), stdin: JSON.stringify({ ...MADE, by: 'person', ...content }) }).id;
+
+  /** The unit's topic's answer, and a decision relying on it, written as its discussion would have before its spec: the answer's id. */
+  function decidedOnTopic() {
+    const manifest = readManifest(dir, UNIT);
+    const spec = statePath(dir, layout.unit(UNIT, 'spec.md'));
+    const held = fs.readFileSync(spec);
+    const { build: _build, cut: _cut, checklists: _checklists, ...before } = manifest;
+    createManifest(dir, UNIT, { ...before, phases: { discussion: { items: { [UNIT]: { status: 'in-progress' } } } } });
+    fs.rmSync(spec);
+    const topic = `${UNIT}.discussion.${UNIT}`;
+    const split = write('decide', topic, ['--answers', write('ask', topic, [], { text: 'Is a refund ever split?' })], { text: 'Never split.', why: 'Simple.' });
+    write('decide', topic, ['--answers', write('ask', topic, [], { by: 'claude', text: 'Does a receipt list refunds?' }), '--relies-on', split], { by: 'claude', text: 'One line per refund.', why: 'Never split.' });
+    fs.writeFileSync(spec, held);
+    createManifest(dir, UNIT, manifest);
+    return split;
+  }
+
+  it('a decided topic a changed answer holds, its door the review, is counted on the banner and listed in WAITING ON YOU, opening the topic', () => {
+    const split = decidedOnTopic();
+    write('replace', `${UNIT}.review`, ['--replaces', split, '--reason', 'changed-mind'], { drops: ['never split'], text: 'Split when asked.', why: 'Wanted.' });
+    enter();
+    const { view, banner } = board();
+
+    assert.deepStrictEqual([banner.facts.at(-1), view.waiting], [
+      { text: '1 waiting on you', needs: true },
+      [{ kind: 'affected', id: UNIT, text: 'Pay: a decision it relies on changed', page: `topic:${UNIT}` }],
+    ]);
   });
 });

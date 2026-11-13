@@ -29,7 +29,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, cleanupFixture, readState, readManifest, layout,
+  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, cleanupFixture, readState, readManifest, writeState, commitAll, layout,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION_ID, QUESTIONS, CALL, taskText, buildScreensWorld, buildScreenHelpers, boardHelpers } = require('./build-screens-world.cjs');
@@ -88,6 +88,16 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
     ok(dir, ['board', 'other-conversation'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'other-conversation' } });
 
     assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir), folder: fs.existsSync(path.join(config, 'conversations', 'other-conversation')) }, { ...before, folder: false });
+  });
+
+  it('reads the tracker with no task driver chosen yet as things stand, choosing none: the project manifest gains no setting', () => {
+    const { drivers, ...project } = JSON.parse(readState(dir, layout.projectManifest));
+    writeState(dir, layout.projectManifest, `${JSON.stringify(project, null, 2)}\n`);
+    commitAll(dir, 'no driver chosen');
+    const before = treeSnapshot(dir);
+    const { view } = board();
+
+    assert.deepStrictEqual([Object.keys(drivers), view.units.map(({ standing }) => standing), treeSnapshot(dir)], [['task'], ['0 of 4 tasks done'], before]);
   });
 
   it('a unit\'s page opened from All work at the start menu stays once the session enters a unit, and a page over it goes back to it (20.3.6, 20.3.5)', () => {

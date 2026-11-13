@@ -80,7 +80,7 @@ describe('the build on the board (20.5)', () => {
         unit: UNIT,
         title: 'Pay',
         type: 'feature',
-        progress: { done: 0, total: 4, phase: 1, phases: 3, running: 0, stopped: false },
+        progress: { done: 0, total: 4, phase: 1, phases: 3, running: 0, stopped: false, untasked: null },
         waiting: [],
         phases: phasesWith(line('1.1', 'Take a card', 'at-gate')),
       },
@@ -167,7 +167,7 @@ describe('the build on the board (20.5)', () => {
       { tasks: view.phases[0].tasks.slice(1), waiting: view.waiting, question, banner: banner.facts.at(-1) },
       {
         tasks: [line('1.2', 'Show a receipt', 'waits', { on: ['Q1'] }), line('1.3', 'Mail the receipt', 'after', { on: ['1.2'] })],
-        waiting: ['Q1'],
+        waiting: [{ kind: 'question', id: 'Q1', text: `Q1 ${QUESTIONS[0]}`, page: 'task:1.2' }],
         question: { question: 'Q1', asks: QUESTIONS[0], parks: [{ task: '1.2', title: 'Show a receipt' }], after: ['1.3'] },
         banner: { text: '1 waiting on you', needs: true },
       },
