@@ -46,6 +46,8 @@ const {
 } = require('./pipeline-world.cjs');
 const { history, lines, DAY } = require('./trust-world.cjs');
 const { trustLines } = require('./pipeline-oracle.cjs');
+const { FROZEN_AT } = require('./engine-harness.cjs');
+const { statePath } = require('./discovery-test-utils.cjs');
 const decisionPoint = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/decision-point.cjs'));
 const { TRUST_LOG } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 
@@ -57,6 +59,21 @@ const callOf = (question, keys) => JSON.stringify({
   rows: keys.map((key) => ({ key, name: `Option ${key}`, text: `The save does ${key}`, notice: `a save does ${key}` })),
   lean: keys[0], why: 'It stops the crash at its cause.', sort: 'one', mechanism: 'The save checks the field.', product_wide: false,
 });
+
+/**
+ * Every place `sim` enters stamped as entered at the frozen instant, so a
+ * learned gate's showing there, which hashes that time, draws alike on
+ * every run. @param {import('node:test').TestContext} t @param {Sim} sim
+ */
+function enteredFrozen(t, sim) {
+  const engine = sim.engine.bind(sim);
+  t.mock.method(sim, 'engine', (/** @type {string[]} */ args, /** @type {any} */ identity, /** @type {string} */ stdin) => {
+    const res = engine(args, identity, stdin);
+    const { entered, unit, phase, topic = unit } = args[0] === 'enter' && res.code === 0 ? JSON.parse(res.stdout.split('\n')[0]) : {};
+    if (entered === true) fs.writeFileSync(statePath(sim.dir, '.cache', unit, phase, topic, 'entered.json'), JSON.stringify({ at: FROZEN_AT }));
+    return res;
+  });
+}
 
 /** What raised each wait on the conversation's board. @param {Sim} sim */
 const raisersOn = (sim) => sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view.waiting.map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by);
@@ -198,8 +215,8 @@ describe('pipeline simulation: bugfix', () => {
   });
 
   it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan, check-in and conclude gates each run as a learned step, nothing answered at them, each logged as a step, the conclude\'s yes standing over the fix the person changed; ready to build, as long answered alike, still stops before any code; and a lower threshold\'s replay would have stopped at each step', async (t) => {
-    // Each showing told by its place alone, so the run draws as the unit's
-    // name says, whatever time its recap is staged at: none blind here.
+    // Each showing told by its place and the frozen instant it was entered
+    // at alone, no key: none blind here.
     const wu = 'save-null';
     const { project_id: project } = JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway/manifest.json'), 'utf8'));
     const seeded = history({ project, start: Date.now() - DAY });
@@ -207,6 +224,7 @@ describe('pipeline simulation: bugfix', () => {
     for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
     fs.writeFileSync(path.join(sim.configDir, TRUST_LOG), lines(...seeded.events));
     t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, { ...at, key: null }));
+    enteredFrozen(t, sim);
 
     startNew(sim);
     startUnit(sim, 'bugfix', wu, 'Fix the crash');
