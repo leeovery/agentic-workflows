@@ -356,7 +356,7 @@ describe('the tally the matrix shows (17.1.2, 17.S8)', () => {
     assert.deepStrictEqual(KINDS.filter((kind) => kinds[kind].answered > 0).map((kind) => [kind, kinds[kind]]), [['behaviour', { answered: 1, overturned: 0, lost: 0 }]]);
   });
 
-  it('carries in the person\'s other projects\' answers, each once at its weight now — under its kind, else under the one-answer calls, though a kind\'s answer sorted as one counts in both — each at most 10 answers\' weight; the project\'s own never, nor one reversed since', () => {
+  it('carries in the person\'s other projects\' answers, each once at its weight now — under its kind, else under the one-answer calls — Claude\'s own calls there whatever their kind, which no kind\'s count weighs — though a kind\'s answer sorted as one counts in both — each at most 10 answers\' weight; the project\'s own never, nor one reversed since', () => {
     const h = history();
     h.agree(2, 'look', { project: ELSEWHERE, at: FROZEN_MS - SIX_MONTHS - DAY });
     h.agree(4, 'look', { project: ELSEWHERE, at: FROZEN_MS - DAY });
@@ -364,10 +364,12 @@ describe('the tally the matrix shows (17.1.2, 17.S8)', () => {
     h.agree(5, 'look');
     for (let i = 0; i < 3; i += 1) h.raise('words', '1', { sort: 'one' }, { project: ELSEWHERE });
     h.call('one', null, { project: ELSEWHERE });
+    h.call('one', 'look', { project: ELSEWHERE });
+    h.call('several', 'look', { project: ELSEWHERE });
     h.reverse(h.call('one', null, { project: ELSEWHERE }), { project: ELSEWHERE });
 
     const { carried } = tallyFrom(h.events, { project: HERE, model: MODEL, now: FROZEN_MS });
-    assert.deepStrictEqual(Object.fromEntries(carried), { look: 5, scope: 10, words: 3, one: 2 });
+    assert.deepStrictEqual(Object.fromEntries(carried), { look: 5, scope: 10, words: 3, one: 3 });
   });
 });
 

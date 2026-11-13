@@ -186,7 +186,8 @@ function oneSays({ settings: { threshold }, one }) {
 function midBuildSays(settings) {
   const { threshold, build_threshold: build } = settings;
   if (build === null) return `${percent(threshold)}, the same as elsewhere, until a build's own answers show how much to raise it.`;
-  if (!buildRaised(settings)) return `${percent(threshold)}, the same as elsewhere: your ${percent(build)} pick sits below it.`;
+  if (build < threshold) return `${percent(threshold)}, the same as elsewhere: your ${percent(build)} pick sits below it.`;
+  if (build === threshold) return `${percent(build)}, your pick, the same as elsewhere.`;
   return `${percent(build)}, your pick, where elsewhere it is ${percent(threshold)}.`;
 }
 
