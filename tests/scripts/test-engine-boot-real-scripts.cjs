@@ -7,7 +7,12 @@
 // checks handed back, and its notices told once. A project with a legacy
 // `.workflows/` meets the reshape's directives: boot stops at each, bare,
 // until the session records it, and the boot that completes the run hands
-// back everything the migrations before them journaled.
+// back everything the migrations before them journaled. A real project on
+// the layout before Leeway's, with no `.leeway/`, meets the reshape: the
+// guard refusing over uncommitted changes and over a live session, boot
+// stopping with nothing written (21.S5, 21.S6), and a project at 070 running
+// the guard, then the chain from its old record, then the move, a run killed
+// once the guard has placed the state carried on by the next boot (21.S2).
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), made once per
 // process and copied; the engine is the repo's own.
@@ -20,6 +25,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
@@ -28,7 +34,13 @@ const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrate.cjs'));
-const { FLAG, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
+const { FLAG, LABELS_ON, MIGRATED_TO_070, legacyLayout, setupProject, legacyProject, real, runEngine, runEngineFails } = require('./boot-world.cjs');
+
+/** A process's start time as the old skills recorded it: `ps`, in UTC and the C locale. @param {number} pid */
+const startOf = (pid) => execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], { encoding: 'utf8', env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' } }).trim();
+
+/** The migrations record's lines. @param {string} project */
+const recordOf = (project) => fs.readFileSync(statePath(project, layout.migrations), 'utf8').split('\n').filter(Boolean);
 
 /** What boot answers where it stops at a directive, and nothing else. */
 const DIRECTIVE_STOP = ['ok', 'state', 'id', 'file', 'done', 'of', 'warnings'];
@@ -143,6 +155,107 @@ describe('engine boot (real scripts)', () => {
 
     assert.strictEqual(git(project, ['show', 'HEAD:.claude/settings.json']), migrated);
     assert.strictEqual(git(project, ['status', '--porcelain', '--', '.claude']).trim(), '');
+  });
+});
+
+describe('engine boot runs the reshape (real scripts)', () => {
+  let root;
+  let project;
+  /** Boot's environment: no user-level folder of today's skills for the move to carry, never the machine's. */
+  let env;
+  beforeEach(() => {
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-reshape-')));
+    project = legacyProject(root);
+    env = { WORKFLOWS_CONFIG_DIR: path.join(root, 'no-workflows-config') };
+  });
+  afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  /** Every file of the project as it stands, `.git/` aside, with its text; and the repository's refs and checkouts. */
+  function projectAsItStands() {
+    /** @type {Record<string, string>} */
+    const files = {};
+    const walk = (/** @type {string} */ rel) => {
+      for (const entry of fs.readdirSync(path.join(project, rel), { withFileTypes: true })) {
+        const at = path.join(rel, entry.name);
+        if (entry.isDirectory()) { if (at !== '.git') walk(at); } else files[at] = fs.readFileSync(path.join(project, at), 'utf8');
+      }
+    };
+    walk('');
+    return { files, refs: git(project, ['for-each-ref']), worktrees: git(project, ['worktree', 'list', '--porcelain']) };
+  }
+
+  it('21.S5, 21.S6: the guard refuses over uncommitted changes under .workflows/, then over another session live in the project — boot stops with its facts, and nothing is written but the exclude line', () => {
+    createFile(project, '.workflows/payments/discussion/draft.md', '# Draft\n');
+    const before = projectAsItStands();
+
+    assert.deepStrictEqual(runEngine(real, project, ['boot'], env), { ok: true, state: 'guard', cause: 'dirty', unit: null, phase: null, topic: null, active: null, warnings: [] });
+
+    const written = Date.now() - 180 * 1000;
+    const row = path.join(project, '.workflows/.cache/payments/discussion/payments/presence');
+    createFile(path.dirname(row), 'presence', JSON.stringify({ pid: process.pid, pid_start: startOf(process.pid), session_id: 'another-session' }));
+    fs.utimesSync(row, new Date(written), new Date(written));
+    before.files[path.relative(project, row)] = fs.readFileSync(row, 'utf8');
+
+    const live = runEngine(real, project, ['boot'], { ...env, CLAUDE_CODE_SESSION_ID: 'this-session', CLAUDE_PID: undefined });
+
+    assert.deepStrictEqual({ ...live, active: undefined }, { ok: true, state: 'guard', cause: 'live', unit: 'payments', phase: 'discussion', topic: 'payments', active: undefined, warnings: [] });
+    assert.ok(live.active >= 180 && live.active < 210, `active ${live.active}s ago`);
+    const facts = ['--cause', live.cause, '--unit', live.unit, '--phase', live.phase, '--topic', live.topic, '--active', String(live.active)];
+    assert.match(real.output(project, ['render', 'migration-guard-stop', ...facts]), /^> Another session is working in this project: Payments, in its discussion, last active 3m ago\./m);
+    assert.deepStrictEqual(projectAsItStands(), before);
+    assert.ok(!fs.existsSync(statePath(project)), 'no state folder: no record, no lock, no journal');
+    assert.strictEqual(fs.readFileSync(path.join(project, '.git/info/exclude'), 'utf8').split('\n').filter((line) => line === '/.leeway/').length, 1);
+  });
+
+  it('21.3.4: the guard\'s stop draws its two screens from boot\'s facts — the live session by its unit, phase and topic, the topic left out where it is the unit, and how long ago — refusing facts that are not a refusal\'s', () => {
+    const screen = (/** @type {string[]} */ facts) => real.output(project, ['render', 'migration-guard-stop', ...facts]);
+
+    assert.strictEqual(screen(['--cause', 'live', '--unit', 'fumi', '--phase', 'discussion', '--topic', 'licensing-and-trial-integrity', '--active', '180']), [
+      '=== DISPLAY: migration guard stop (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ The migration can\'t run while another session is live here',
+      '',
+      '=== DISPLAY: migration guard account (emit verbatim as markdown (not a code block)) ===',
+      '> Another session is working in this project: Fumi, in the discussion of Licensing And Trial Integrity, last active 3m ago. A major upgrade never runs under a live session, so nothing has been changed.',
+      '>',
+      '> End that session, then run `/leeway` here again.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(screen(['--cause', 'dirty']), [
+      '=== DISPLAY: migration guard stop (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ The migration can\'t run: .workflows/ has uncommitted changes',
+      '',
+      '=== DISPLAY: migration guard account (emit verbatim as markdown (not a code block)) ===',
+      '> The migration\'s commit would sweep them in with its own, so nothing has been changed.',
+      '>',
+      '> Commit or discard them, then run `/leeway` here again.',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual([
+      ['--cause', 'dirty', '--unit', 'fumi'],
+      ['--cause', 'live', '--unit', 'fumi', '--phase', 'discussion', '--topic', 'licensing'],
+      ['--cause', 'live', '--unit', 'fumi', '--phase', 'discussion', '--topic', 'licensing', '--active', '3m'],
+      ['--cause', 'busy'],
+    ].map((facts) => real.refuses(project, ['render', 'migration-guard-stop', ...facts]).error), [
+      'render migration-guard-stop: --unit names the live session a refusal for uncommitted changes has none of',
+      'render migration-guard-stop: --active takes the seconds since the live session was last active, got ""',
+      'render migration-guard-stop: --active takes the seconds since the live session was last active, got "3m"',
+      'render migration-guard-stop: --cause is live or dirty, as boot\'s guard stop answers it, got "busy"',
+    ]);
+  });
+
+  it('21.S2: a project at 070 runs the guard, then the chain from the old record, 071 on, then the move — 072\'s kind on the moved roadmap — to the records directive; a run killed once the guard has placed the state is carried on by the next boot', () => {
+    const kill = path.join(root, 'kill-after-guard.cjs');
+    fs.writeFileSync(kill, "const fs = require('fs');\nconst real = fs.appendFileSync;\nfs.appendFileSync = (file, data, ...rest) => { real(file, data, ...rest); if (String(file).endsWith('.state/migrations') && data === '074\\n') process.exit(9); };\n");
+
+    assert.match(runEngineFails(real, project, ['boot'], { ...env, NODE_OPTIONS: `--require ${kill}` }).error, /migrate\.cjs failed/);
+    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074']);
+
+    const stopped = runEngine(real, project, ['boot'], env);
+
+    assert.deepStrictEqual([stopped.state, stopped.id], ['directive', '079-records']);
+    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '078']);
+    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(project, layout.projectManifest), 'utf8')).roadmap.items['dark-mode'].kind, 'idea');
+    assert.strictEqual(git(project, ['for-each-ref', 'refs/heads/leeway-state']), '', 'nothing committed before the migration\'s commit');
   });
 });
 

@@ -26,9 +26,6 @@
 //   is missing everywhere, and only there, the trace is read across the
 //   repository: every tree checked out, and the tip of every branch, local
 //   and remote-tracking.
-//
-// The layout before the state branch — `.workflows/` on the code branch — is
-// read here too: its state moves onto `leeway-state` by the migration alone.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -46,7 +43,6 @@ const { readBlobs } = require('./state-merge-blobs.cjs');
 const GITIGNORE = '.gitignore';
 const STATE_IGNORE_LINE = `${STATE_DIR_NAME}/`;
 const STATE_EXCLUDE_LINE = `/${STATE_DIR_NAME}/`;
-const LEGACY_STATE_DIR = '.workflows';
 /** The folder in the git dir the branch tips' blobs are read through, cleared after. */
 const TRACE_SCRATCH = 'leeway-trace-read';
 
@@ -157,17 +153,6 @@ function holdsTrace(cwd) {
 }
 
 /**
- * Whether the project is on the layout before the state branch: its
- * `.workflows/` on the code branch checked out.
- * @param {string} cwd
- * @returns {boolean}
- */
-function onLegacyLayout(cwd) {
-  const listed = isolatedGit(codeRoot(cwd)).tryRun(['ls-tree', '--name-only', 'HEAD', '--', LEGACY_STATE_DIR]);
-  return listed !== null && listed.trim() !== '';
-}
-
-/**
  * Keep the state folder in the repository's own exclude file, in the main
  * checkout's git directory, which every worktree shares. A file that cannot
  * be written is a warning: the state stands without it.
@@ -209,4 +194,4 @@ function keepStateIgnored(cwd, warnings) {
   );
 }
 
-module.exports = { holdsTrace, onLegacyLayout, keepStateExcluded, keepStateIgnored };
+module.exports = { holdsTrace, keepStateExcluded, keepStateIgnored };

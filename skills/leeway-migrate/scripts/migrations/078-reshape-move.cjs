@@ -16,17 +16,13 @@
 // stopped in the main checkout aborts the run, unrecorded and with nothing
 // written, until it is finished or aborted, as boot waits these out.
 //
-// Where it writes: the state worktree, added here on an unborn
-// `leeway-state` and locked as the engine locks it. Git 2.40 has no
-// `worktree add --orphan`, so the worktree is added detached with nothing
-// checked out, and `switch --orphan` empties it onto the unborn branch; every
-// git call here runs with hooks off and the caller's repository environment
-// cleared. A plain `.leeway/` already there — the runner's migrations record,
-// written before this step runs — is set aside while the worktree is added,
-// then put back inside it. A `.leeway/` already on `leeway-state` is written
-// again, and locked where it was left unlocked; a registration a removed
-// `.leeway/` left behind is cleared first: a move cut short is run again
-// from the start, the project manifest written whole or not at all.
+// Where it writes: the state worktree on an unborn `leeway-state`, which
+// the guard (074) put in place, found there or put in place again as the
+// guard does it (reshape.cjs, `placeStateWorktree`); every git call here
+// runs with hooks off and the caller's repository environment cleared. A
+// `.leeway/` already on `leeway-state` is written again: a move cut short is
+// run again from the start, the project manifest written whole or not at
+// all.
 //
 // The project's own files, in its folder in the main checkout, are taken to
 // the new names and staged for the migration's commit (21.5.19, 21.9.2):
@@ -194,8 +190,6 @@
 //   - the state worktree's HEAD log records the code HEAD it was added at,
 //     which boot's repair of a lost branch would read — 29.17's wiring of the
 //     unborn branch;
-//   - `worktree add` failing, or a kill between it and `switch`, strands the
-//     set-aside folder or the registered worktree;
 //   - staging `.gitignore` takes the person's own unstaged edits to it too;
 //   - a research item and its topic's discussion both waiting on
 //     experiments keep only the discussion's wait;
@@ -236,16 +230,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { spawnSync } = require('child_process');
 const linters = require('./073-environment-linters.cjs');
+const {
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree,
+} = require('../reshape.cjs');
 const TASK_DRIVERS = path.join(__dirname, '../../../leeway-engine/scripts/drivers/task');
 
-const CODE_TREE_STATE = '.workflows';
-const STATE_DIR = '.leeway';
-const SET_ASIDE = '.leeway-set-aside';
-const STATE_BRANCH = 'leeway-state';
-const STATE_LOCK_REASON = 'leeway state, do not remove';
-const STATE_GITIGNORE = ['/.knowledge/', '/.cache/', '/.lock', '/.lock.*', '.manifest.json.*.tmp', '/.ledger.jsonl.*.tmp', ''].join('\n');
 const CODE_GITIGNORE = '.gitignore';
 const STATE_IGNORE_LINE = `${STATE_DIR}/`;
 const SETTINGS = '.claude/settings.json';
@@ -266,12 +256,6 @@ const ROADMAP_NOTE = /^notes\/(?:ideas|bugs|quickfixes)\/([0-9]{4}-[0-9]{2}-[0-9
 // The baseline's answers the brownfield offer remembers (21.11.2).
 const BROWNFIELD_ANSWERS = ['native', 'skipped', 'completed'];
 
-const REPOSITORY_ENV = [
-  'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_COMMON_DIR', 'GIT_CONFIG', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_PARAMETERS', 'GIT_DIR',
-  'GIT_GRAFT_FILE', 'GIT_IMPLICIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_NAMESPACE', 'GIT_NO_REPLACE_OBJECTS', 'GIT_OBJECT_DIRECTORY',
-  'GIT_PREFIX', 'GIT_QUARANTINE_PATH', 'GIT_REPLACE_REF_BASE', 'GIT_SHALLOW_FILE', 'GIT_WORK_TREE',
-];
-const HOOKS_OFF = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor='];
 // The marker each stopped operation leaves in the git directory, as the engine reads them.
 const OPERATION_MARKERS = [
   ['MERGE_HEAD', 'a merge'], ['CHERRY_PICK_HEAD', 'a cherry-pick'], ['REVERT_HEAD', 'a revert'],
@@ -376,31 +360,6 @@ function withoutRepositoryEnv(fn) {
   }
 }
 
-/** A git call with hooks off. @param {string} cwd @param {string[]} args @returns {{ok: boolean, stdout: string, stderr: string}} */
-function git(cwd, args) {
-  const res = spawnSync('git', [...HOOKS_OFF, ...args], { cwd, encoding: 'utf8' });
-  return { ok: !res.error && res.status === 0, stdout: res.stdout || '', stderr: res.stderr || '' };
-}
-
-/** @param {string} cwd @param {string[]} args */
-function mustGit(cwd, args) {
-  const res = git(cwd, args);
-  if (!res.ok) throw new Error(`git ${args.slice(0, 2).join(' ')} failed: ${res.stderr.trim()}`);
-}
-
-/** The main checkout of the repository `projectDir` is in, or null where it is in none. @param {string} projectDir */
-function mainCheckout(projectDir) {
-  const res = git(projectDir, ['rev-parse', '--git-common-dir']);
-  if (!res.ok) return null;
-  const common = fs.realpathSync(path.resolve(projectDir, res.stdout.trim()));
-  return path.basename(common) === '.git' ? path.dirname(common) : null;
-}
-
-/** The project's folder as the main checkout holds it. @param {string} projectDir @param {string} main */
-function projectInMain(projectDir, main) {
-  return path.resolve(main, git(projectDir, ['rev-parse', '--show-prefix']).stdout.trim());
-}
-
 /**
  * The operation git has stopped in the middle of at `cwd`, or null: the
  * markers boot waits out before it stages a file there.
@@ -411,56 +370,6 @@ function stoppedOperation(cwd) {
   const paths = res.stdout.trim().split('\n');
   const open = OPERATION_MARKERS.find((_, i) => res.ok && fs.existsSync(path.resolve(cwd, paths[i])));
   return open === undefined ? null : `${open[1]} (${open[0]})`;
-}
-
-/** Whether the state branch has a commit: a state the move never writes over. @param {string} main */
-function stateBorn(main) {
-  return git(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${STATE_BRANCH}`]).ok;
-}
-
-/** @param {string} root */
-function onStateBranch(root) {
-  if (!fs.existsSync(path.join(root, '.git'))) return false;
-  const res = git(root, ['symbolic-ref', '--quiet', 'HEAD']);
-  return res.ok && res.stdout.trim() === `refs/heads/${STATE_BRANCH}`;
-}
-
-/** Git's record of the worktree at `root`, or null where it holds none. @param {string} main @param {string} root */
-function registration(main, root) {
-  return git(main, ['worktree', 'list', '--porcelain']).stdout.split('\n\n').find((entry) => entry.startsWith(`worktree ${root}\n`)) ?? null;
-}
-
-/** @param {string} main @param {string} root */
-const locked = (main, root) => /^locked(?: |$)/m.test(registration(main, root) ?? '');
-
-/**
- * The state worktree added at `root` on an unborn `leeway-state`, whatever
- * a plain folder there held put back inside it, and a registration a
- * removed folder left there cleared first.
- * @param {string} main @param {string} root
- */
-function addStateWorktree(main, root) {
-  const aside = path.join(main, SET_ASIDE);
-  const held = fs.existsSync(root);
-  if (held) fs.renameSync(root, aside);
-  if (registration(main, root) !== null) mustGit(main, ['worktree', 'remove', '--force', '--force', STATE_DIR]);
-  mustGit(main, ['worktree', 'add', '--quiet', '--detach', '--no-checkout', STATE_DIR, 'HEAD']);
-  mustGit(root, ['switch', '--quiet', '--orphan', STATE_BRANCH]);
-  if (!held) return;
-  for (const name of fs.readdirSync(aside)) fs.renameSync(path.join(aside, name), path.join(root, name));
-  fs.rmdirSync(aside);
-}
-
-/**
- * The state worktree at `.leeway/` on an unborn `leeway-state`, locked as
- * the engine locks it: added, or the one a move cut short already added.
- * @param {string} main @returns {string}
- */
-function placeStateWorktree(main) {
-  const root = path.join(main, STATE_DIR);
-  if (!onStateBranch(root)) addStateWorktree(main, root);
-  if (!locked(main, root)) mustGit(main, ['worktree', 'lock', '--reason', STATE_LOCK_REASON, STATE_DIR]);
-  return root;
 }
 
 /** Every file under `dir`, the tools' sidecars aside, as posix paths relative to it. @param {string} dir @param {string} [at] @returns {string[]} */

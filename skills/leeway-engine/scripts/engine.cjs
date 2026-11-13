@@ -430,6 +430,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render state-merge-gate
   render ledger-stop
   render directive-stop --directive <id>
+  render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>]
   render help <menu> [<arg>] [--<name> <value> …]
   render verdicts [--unit <unit>]
   render start-menu
@@ -1797,8 +1798,9 @@ function runAgent(call, argv) {
 // ---------------------------------------------------------------------------
 // boot — the entry pipeline: a git below the engine's floor, or none, stops
 // it first, then a folder in no git repository; the state put in place and
-// caught up (a lost state, the layout before the state branch, or a merge
-// waiting on a pick stops it), migrations (hard error on failure),
+// caught up (a lost state, or a merge waiting on a pick, stops it), or left
+// to the reshape's migration, whose guard's refusal stops it; migrations
+// (hard error on failure; a directive not yet done stops it),
 // knowledge check (failure reports not-ready), and when ready the keyword
 // side brought in line, compacted and the vector fill launched
 // (warn-don't-block). `--start-again` is the person's yes at the lost-state

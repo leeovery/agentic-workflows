@@ -17,6 +17,9 @@
 //   still to raise — its question open, no raise of it sealed in the calling
 //   conversation (raise.cjs) — so a session compacted part-way reads them
 //   back (21.6.10).
+// - The runner asks a directive's pieces (`piecesOf`) as it meets it: a
+//   directive whose check answers none leaves the session nothing to do,
+//   and the runner records it unrun (21.4.3).
 // - The directive's checklist (checklist.cjs) holds one item, its check,
 //   the engine's: done while the check passes, never marked or skipped. Its
 //   close records the directive in the migrations record — the one way a
@@ -142,27 +145,44 @@ function loadCheck(id) {
   return checker;
 }
 
+/** What a check reads: the project's code root and its state, both absolute. @param {string} cwd */
+function checkDirs(cwd) {
+  return { projectDir: codeRoot(cwd), stateDir: stateRoot(cwd) };
+}
+
 /**
- * Run the check of the directive `id` against the project at `cwd`. Refuses
- * a check that will not load, exports another shape, fails, or answers
- * anything but its pieces.
+ * The pieces of the directive `id`'s work, as its check answers them over
+ * the project at `cwd` — none where it leaves the session nothing to do,
+ * which the runner records unrun. Refuses a check that will not load,
+ * exports another shape, fails, or answers anything but its pieces.
  * @param {string} cwd @param {string} id
- * @returns {Checked}
+ * @returns {Piece[]}
  */
-function checkDirective(cwd, id) {
-  const { counts, check, raises } = loadCheck(id);
-  const dirs = { projectDir: codeRoot(cwd), stateDir: stateRoot(cwd) };
+function piecesOf(cwd, id) {
+  const { check } = loadCheck(id);
   let pieces;
   try {
-    pieces = check(dirs);
+    pieces = check(checkDirs(cwd));
   } catch (err) {
     throw new Error(`${id}'s check failed: ${messageOf(err)}`);
   }
   if (!Array.isArray(pieces) || !pieces.every(isPiece)) throw new Error(`${id}'s check answered no list of { name, problems }`);
+  return pieces;
+}
+
+/**
+ * Run the check of the directive `id` against the project at `cwd`. Refuses
+ * as `piecesOf` does.
+ * @param {string} cwd @param {string} id
+ * @returns {Checked}
+ */
+function checkDirective(cwd, id) {
+  const { counts, raises } = loadCheck(id);
+  const pieces = piecesOf(cwd, id);
   const unfinished = pieces.filter((piece) => piece.problems.length > 0);
   const passed = unfinished.length === 0;
   const checked = { directive: id, passed, done: pieces.length - unfinished.length, of: pieces.length, counts: { one: counts.one, many: counts.many }, unfinished };
-  return passed && typeof raises === 'function' ? { ...checked, raise: unraised(cwd, pointsOf(id, raises, dirs)) } : checked;
+  return passed && typeof raises === 'function' ? { ...checked, raise: unraised(cwd, pointsOf(id, raises, checkDirs(cwd))) } : checked;
 }
 
 /**
@@ -248,4 +268,4 @@ function runMigrateVerb(cwd, argv) {
   }
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };

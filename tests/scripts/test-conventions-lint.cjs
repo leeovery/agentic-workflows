@@ -1413,8 +1413,8 @@ function checkBuildProse(files) {
 // ---------------------------------------------------------------------------
 // Check 35 — the start skill draws every one of boot's stops. Its boot step
 // carries a branch for each stop boot answers (`BOOT_STOPS`), and the branch
-// fetches the surface that stop names, where it names one: a stop with no
-// branch falls through to the start going on.
+// fetches the surface that stop names: a stop with no branch falls through
+// to the start going on.
 // ---------------------------------------------------------------------------
 
 const START_SKILL = 'leeway';
@@ -1454,7 +1454,7 @@ function checkBootStops(files, stops = BOOT_STOPS) {
     for (const [stop, surface] of Object.entries(stops)) {
       const branch = found.branches.get(stop);
       if (branch === undefined) out.push({ file, line: found.line, message: `boot's \`${stop}\` stop has no branch in Step 0.1` });
-      else if (surface !== null && !branch.body.some((line) => line.includes(`engine.cjs render ${surface}`))) {
+      else if (!branch.body.some((line) => line.includes(`engine.cjs render ${surface}`))) {
         out.push({ file, line: branch.line, message: `the \`${stop}\` branch does not fetch \`render ${surface}\`` });
       }
     }
@@ -2840,14 +2840,14 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
   });
 });
 
-test('check 35 (boot\'s stops) — catches a stop with no branch in the start skill\'s boot step and a branch that fetches no screen of its stop; permits a stop with no screen, and passes every other skill by', () => {
+test('check 35 (boot\'s stops) — catches a stop with no branch in the start skill\'s boot step and a branch that fetches no screen of its stop, and passes every other skill by', () => {
   withTemp((dir) => {
-    const stops = { lost: 'state-lost-gate', repo: 'repo-stop', merge: 'state-merge-gate', migrate: null };
+    const stops = { lost: 'state-lost-gate', repo: 'repo-stop', merge: 'state-merge-gate', guard: 'migration-guard-stop' };
     const skill = write(dir, 'skills/leeway/SKILL.md', [
       '## Step 0: Initialisation', '', '### Step 0.1: Boot', '',
       '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate', '```', '',
       '#### If `state` is `repo`', '', 'Say the folder is in no repository.', '',
-      '#### If `state` is `migrate`', '', '**STOP.**', '',
+      '#### If `state` is `guard`', '', 'node .claude/skills/leeway-engine/scripts/engine.cjs render migration-guard-stop --cause dirty', '',
       '### Step 0.2: Setup', '', '#### If `state` is `merge`', '', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-merge-gate', '',
     ].join('\n'));
     const other = write(dir, 'skills/leeway-roadmap/SKILL.md', '### Step 0.1: Boot\n');

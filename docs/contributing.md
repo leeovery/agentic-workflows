@@ -68,8 +68,8 @@ node tests/scripts/knowledge-eval.cjs --pin
 
 ## Writing a migration
 
-Migrations bring an existing project's `.workflows/` forward to the
-current design; `engine boot` runs them at `/leeway`. The rules
+Migrations bring an existing project's state forward to the current
+design; `engine boot` runs them at `/leeway`. The rules
 every migration keeps are CLAUDE.md's (Migrations). The orchestrator's
 header (`skills/leeway-migrate/scripts/migrate.cjs`) states the module
 contract — `id`, `description`, `run`, the report callbacks, the optional
@@ -105,11 +105,37 @@ format and its check's contract.
   it still lacks. The stop's screen says them as "12 of Fumi's 19
   topics have their records". `engine migrate check` runs it; the
   directive is recorded only when
-  `engine checklist close directive NNN-slug` finds it passing.
+  `engine checklist close directive NNN-slug` finds it passing, or by
+  the runner, unrun, where its check answers no piece at all: there is
+  nothing for the session to do.
 - `tests/scripts/test-migration-directives.cjs` lints every directive's
   head and holds its check beside it; a directive's own suite drives its
   check over a project the migration is under way in
   (`tests/scripts/migration-world.cjs`).
+
+The **reshape** — the migration from the workflows' `.workflows/` to
+Leeway's `.leeway/` — keeps a contract of its own in the runner, stated
+in the same header:
+
+- Whether a project owes it is `skills/leeway-migrate/scripts/reshape.cjs`'s
+  to answer (`owed`): its `.workflows/` on the main checkout's code
+  branch, and no commit on `leeway-state`. The engine asks it there, so
+  no engine module names the old layout.
+- Where the run's record holds no line, the old record,
+  `.workflows/.state/migrations`, seeds it, written whole, so a project
+  part-way through the existing chain runs the rest of it, never the
+  whole fleet again.
+- The reshape's guard (074) runs first, before the existing chain, while
+  it is unrecorded and the reshape is owed: its check for uncommitted
+  changes sees only the person's. A refusal prints
+  `---REFUSED: 074---` and the refusal's facts, records nothing, and
+  boot stops there. On a pass it puts the state worktree in place
+  (`reshape.cjs`, `placeStateWorktree`), so every step after it runs
+  while the migration runs.
+- Boot runs the reshape's run in the project's folder in the main
+  checkout, the copy the move reads, wherever it was called from.
+- `reshape.cjs` is loaded by released migrations: once they ship it is
+  frozen with them, and a change is a new module.
 
 ## Prose tests
 

@@ -3,7 +3,7 @@
 //
 // Tests for the Node migration orchestrator (migrate.cjs).
 //
-// Two layers:
+// Three layers:
 //   - Real fleet: run the actual migrate.cjs against a temp project, as far
 //     as its first directive — the bash-3.2 execution path, idempotency,
 //     PROJECT_DIR pinning, and a
@@ -15,7 +15,11 @@
 //     a directive stopping the run, recorded unrun in the reshape's sequence
 //     where there is no code-tree state, and a run with nothing pending
 //     reading the migrations folder once (21.10.4; the engine's side is
-//     test-migration-directives.cjs's).
+//     test-migration-directives.cjs's); a migration's refusal ending the run.
+//   - The reshape's contract, over the synthetic fleet: the guard run first
+//     while the reshape is owed, its refusal writing nothing, and the record
+//     seeded from the old one, whole, a kill at the seed's rename included
+//     (the real guard is test-migration-074.cjs's).
 //
 // Layer: process.
 //
@@ -58,14 +62,15 @@ function run(migrate, project, env = {}, args = ['--record', path.join(project, 
   return { status: res.status, stdout: res.stdout || '', stderr: res.stderr || '' };
 }
 
-/** Copy migrate.cjs into a fresh scripts/ dir and write the given migration
- *  files into its sibling migrations/. Returns the copied migrate path. */
+/** Copy migrate.cjs and the reshape's module it loads into a fresh scripts/
+ *  dir and write the given migration files into its sibling migrations/.
+ *  Returns the copied migrate path. */
 function synthFleet(migrations) {
   const root = tmp('mig-orch-synth-');
   const scripts = path.join(root, 'scripts');
   const migDir = path.join(scripts, 'migrations');
   fs.mkdirSync(migDir, { recursive: true });
-  fs.copyFileSync(REAL_MIGRATE, path.join(scripts, 'migrate.cjs'));
+  for (const script of ['migrate.cjs', 'reshape.cjs']) fs.copyFileSync(path.join(path.dirname(REAL_MIGRATE), script), path.join(scripts, script));
   for (const [name, content] of Object.entries(migrations)) {
     fs.writeFileSync(path.join(migDir, name), content);
   }
@@ -145,6 +150,33 @@ const idOf = (/** @type {string} */ name) => name.slice(0, name.indexOf('-'));
 const REAL_IDS = REAL_NAMES.map(idOf).sort();
 const REAL_DIRECTIVES = REAL_NAMES.filter((name) => name.endsWith('.md')).sort();
 const FIRST_DIRECTIVE = REAL_DIRECTIVES[0].replace(/\.md$/, '');
+
+// The record the layout before the state branch kept, in the project's folder.
+const OLD_RECORD = '.workflows/.state/migrations';
+
+// A .cjs migration that refuses to run, with the facts `refused`.
+const refusing = (/** @type {string} */ id, /** @type {object} */ refused) =>
+  `'use strict';\nmodule.exports = { id: '${id}', description: 'refusing ${id}', run() { throw Object.assign(new Error('refused'), { refused: ${JSON.stringify(refused)} }); } };\n`;
+
+/**
+ * A project that owes the reshape: a repository whose code branch holds its
+ * `.workflows/`, its old migrations record `old` where given, and no state
+ * branch.
+ * @param {string} [old]
+ */
+function owingProject(old) {
+  const project = freshProject();
+  const sh = (/** @type {string[]} */ args) => spawnSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', ...args], { cwd: project, encoding: 'utf8' });
+  fs.writeFileSync(path.join(project, '.workflows/manifest.json'), '{}\n');
+  if (old !== undefined) {
+    fs.mkdirSync(path.join(project, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(project, OLD_RECORD), old);
+  }
+  sh(['init', '-q', '-b', 'main']);
+  sh(['add', '-A']);
+  sh(['commit', '-q', '-m', 'the old layout']);
+  return project;
+}
 
 describe('migrate.cjs — real fleet', () => {
   it('runs the fleet under stock /bin/bash 3.2 as far as its first directive, writing each migration before it to the migrations record', () => {
@@ -602,5 +634,73 @@ describe('migrate.cjs — synthetic fleet', () => {
     // report_update fired under 3.2 → the summary reflects one updated file.
     assert.match(res.stdout, /1 migration\(s\) applied, 1 file\(s\) updated\./);
     assert.ok(res.stdout.includes('---STOP_GATE: FILES_UPDATED---'));
+  });
+
+  it('a migration\'s refusal ends the run: its marker and facts printed, nothing recorded for it and nothing after it run', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.cjs': refusing('002', { cause: 'busy' }), '003-c.cjs': cjsMig('003') });
+    const project = freshProject();
+
+    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([res.status, res.stdout], [0, '---REFUSED: 002---\n{"cause":"busy"}\n']);
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n');
+    assert.strictEqual(trackingLog(project), '001\n');
+  });
+});
+
+describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
+  it('runs the reshape\'s guard first while the reshape is owed, ahead of the chain that brings an older project up; where it is not owed, in its place', () => {
+    const fleet = { '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002'), '074-guard.cjs': cjsMig('074', 'reportSkip') };
+    const owing = owingProject();
+    const settled = freshProject();
+
+    for (const project of [owing, settled]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+
+    assert.deepStrictEqual([fs.readFileSync(path.join(owing, 'order.log'), 'utf8'), trackingLog(owing)], ['074\n001\n002\n', '074\n001\n002\n']);
+    assert.deepStrictEqual([fs.readFileSync(path.join(settled, 'order.log'), 'utf8'), trackingLog(settled)], ['001\n002\n074\n', '001\n002\n074\n']);
+  });
+
+  it('a refusal of the guard writes nothing at all — no record, no seed, no journal — and runs nothing of the chain', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '074-guard.cjs': refusing('074', { cause: 'dirty', unit: null, phase: null, topic: null, active: null }) });
+    const project = owingProject('001\n');
+
+    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([res.status, res.stdout], [0, '---REFUSED: 074---\n{"cause":"dirty","unit":null,"phase":null,"topic":null,"active":null}\n']);
+    assert.ok(!fs.existsSync(path.join(project, '.leeway')), 'nothing written for the state');
+    assert.ok(!fs.existsSync(path.join(project, 'order.log')));
+  });
+
+  it('seeds a record holding no line from the old one, written whole — a project part-way through the chain runs the rest of it — and never one that holds a line', () => {
+    const fleet = { '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002'), '003-c.cjs': cjsMig('003') };
+    const seeded = freshProject();
+    fs.mkdirSync(path.join(seeded, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(seeded, OLD_RECORD), '001\n002');
+    const held = freshProject();
+    fs.mkdirSync(path.join(held, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(held, OLD_RECORD), '001\n002\n');
+    fs.mkdirSync(path.join(held, RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(held, RECORD), '001\n');
+
+    for (const project of [seeded, held]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+
+    assert.deepStrictEqual([fs.readFileSync(path.join(seeded, 'order.log'), 'utf8'), trackingLog(seeded)], ['003\n', '001\n002\n003\n']);
+    assert.deepStrictEqual([fs.readFileSync(path.join(held, 'order.log'), 'utf8'), trackingLog(held)], ['002\n003\n', '001\n002\n003\n']);
+  });
+
+  it('a run killed as the seed is renamed into place leaves no record, and the next seeds it whole', () => {
+    const { migrate, root } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.cjs': cjsMig('002') });
+    const project = freshProject();
+    fs.mkdirSync(path.join(project, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(project, OLD_RECORD), '001\n');
+    const kill = path.join(root, 'kill-rename.cjs');
+    fs.writeFileSync(kill, `const fs = require('fs');\nconst real = fs.renameSync;\nfs.renameSync = (from, to) => { if (String(to).endsWith(${JSON.stringify(RECORD)})) process.exit(9); return real(from, to); };\n`);
+
+    const killed = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` });
+    assert.strictEqual(killed.status, 9);
+    assert.strictEqual(trackingLog(project), '');
+
+    assert.strictEqual(run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+    assert.deepStrictEqual([fs.readFileSync(path.join(project, 'order.log'), 'utf8'), trackingLog(project)], ['002\n', '001\n002\n']);
   });
 });

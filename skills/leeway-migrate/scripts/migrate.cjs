@@ -68,7 +68,33 @@
 //     its handbacks nor its run report: each is journaled, for the run that
 //     completes. The directive is recorded by `engine checklist close
 //     directive NNN-{slug}`, which its passing check alone lets through; the
-//     next run carries on past it. One start may meet several.
+//     next run carries on past it. One start may meet several. A directive
+//     whose check answers no piece at all has nothing for the session to do
+//     (21.4.3): the runner records it unrun and carries on. The check is run
+//     through the engine's side of the directives (`piecesOf`,
+//     leeway-engine/scripts/domain/directives.cjs); one that cannot answer
+//     stops the run there, as one with pieces does.
+//   - A `*.cjs` migration may refuse to run: it throws an error carrying
+//     `refused`, an object of the facts its refusal states. The runner prints
+//     `---REFUSED: NNN---` and the facts on one JSON line, and ends, nothing
+//     recorded for it and nothing after it run.
+//
+// The reshape (21.2), whose own knowledge of the layout before it is
+// reshape.cjs's:
+//   - The record. Where it holds no line, the record the layout before the
+//     state branch kept in the project's folder, `.workflows/.state/
+//     migrations`, seeds it, written whole, so a project at 044 runs 045
+//     onwards and never 001.
+//   - The guard runs first. While the project owes the reshape (`owed`) and
+//     the record does not hold the guard (074), the runner runs it before
+//     any other migration — the chain that brings an older project up to
+//     today's shape among them — and before it writes anything: the record,
+//     its seed and the journals are written only once it passes, inside the
+//     state worktree it put in place, so a refusal leaves nothing behind.
+//   - Where it runs. While the reshape is owed or under way, boot runs the
+//     runner in the project's folder in the main checkout, wherever boot was
+//     called from: the copy the move reads, which the migration's commit
+//     drops.
 //
 // The bash binary used for `*.sh` migrations is `bash` on PATH, overridable via
 // LEEWAY_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
@@ -77,9 +103,13 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { OLD_STATE, owed } = require('./reshape.cjs');
 
 const SCRIPT_DIR = __dirname;
 const MIGRATIONS_DIR = path.join(SCRIPT_DIR, 'migrations');
+
+// The engine's side of the directives, which runs a directive's check.
+const ENGINE_DIRECTIVES = path.join(SCRIPT_DIR, '..', '..', 'leeway-engine', 'scripts', 'domain', 'directives.cjs');
 
 // migrate.sh printed this marker iff files were updated — the authoritative
 // "changed" signal boot keys on. Kept byte-identical.
@@ -121,13 +151,22 @@ const USAGE = `usage: migrate.cjs ${RECORD_FLAG} <path> ${JOURNALS_FLAG} <dir> �
 // nothing. In a project with none there is nothing for it to upgrade, so
 // each is recorded unrun.
 const LAST_CODE_TREE_MIGRATION = 72;
-const CODE_TREE_STATE = '.workflows';
 
 // The reshape's sequence (074–081, 21.2) carries a project's state out of
 // the code tree's `.workflows/`. A directive of it, in a project with none,
 // has nothing to carry, so it is recorded unrun; the sequence's code steps
 // see that for themselves. Renumbered with the sequence until it is released.
 const LAST_CODE_TREE_DIRECTIVE = 81;
+
+// The reshape's guard, which runs ahead of every other migration while the
+// reshape is owed.
+const RESHAPE_GUARD = '074';
+
+// The record the layout before the state branch kept, from the project's folder.
+const OLD_RECORD = path.join(OLD_STATE, '.state', 'migrations');
+
+// Where the record's seed is written before it is renamed into place, in the journals folder.
+const SEED_JOURNAL = 'record-seed.tmp';
 
 const DIRECTIVE = '.md';
 const CHECK = '.check.cjs';
@@ -216,9 +255,61 @@ function compareMigrations(a, b) {
   return ba < bb ? -1 : ba > bb ? 1 : 0;
 }
 
-/** The IDs the record holds, one a line. @param {string} record @returns {Set<string>} */
+/** The IDs the record holds, one a line; none where there is no record yet. @param {string} record @returns {Set<string>} */
 function recordedIds(record) {
-  return new Set(fs.readFileSync(record, 'utf8').split('\n'));
+  return new Set(fs.existsSync(record) ? fs.readFileSync(record, 'utf8').split('\n') : []);
+}
+
+/**
+ * Make the record where it is missing, and where it holds no line seed it
+ * from the record the layout before the state branch kept: written beside
+ * the journals and renamed into place, so a run cut short leaves the whole
+ * seed or none.
+ * @param {string} record @param {string} old @param {string} journals
+ */
+function seedRecord(record, old, journals) {
+  const held = fs.existsSync(record) ? fs.readFileSync(record, 'utf8') : null;
+  if (held !== null && held.trim() !== '') return;
+  const seed = fs.existsSync(old) ? fs.readFileSync(old, 'utf8') : '';
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  if (seed.trim() === '') {
+    if (held === null) fs.writeFileSync(record, '');
+    return;
+  }
+  const staged = journalPath(journals, SEED_JOURNAL);
+  fs.mkdirSync(path.dirname(staged), { recursive: true });
+  fs.writeFileSync(staged, seed.endsWith('\n') ? seed : `${seed}\n`);
+  fs.renameSync(staged, record);
+}
+
+/**
+ * The guard's script where it runs ahead of every other migration: the
+ * record does not hold it, and the project at `cwd` owes the reshape.
+ * @param {string[]} scripts @param {string} record @param {string} cwd
+ * @returns {string|undefined}
+ */
+function guardAhead(scripts, record, cwd) {
+  const guard = scripts.find((script) => migrationId(script) === RESHAPE_GUARD);
+  return guard !== undefined && !recordedIds(record).has(RESHAPE_GUARD) && owed(cwd) ? guard : undefined;
+}
+
+/**
+ * Whether the directive's check answers no piece at all, leaving the
+ * session nothing to do. A check that cannot answer leaves the directive
+ * to the session, whose `migrate check` names why.
+ * @param {string} cwd @param {string} directive its id, `NNN-{slug}`
+ */
+function nothingToDo(cwd, directive) {
+  try {
+    return require(ENGINE_DIRECTIVES).piecesOf(cwd, directive).length === 0;
+  } catch {
+    return false;
+  }
+}
+
+/** End the run at a migration's refusal, printing its facts. @param {string} script @param {object} refused */
+function refuse(script, refused) {
+  process.stdout.write(`---REFUSED: ${migrationId(script)}---\n${JSON.stringify(refused)}\n`);
 }
 
 /** Whether a file in the migrations folder is a migration: a directive's check is its directive's. @param {string} name */
@@ -259,10 +350,11 @@ function handedBack(value) {
 }
 
 /**
- * Run a `*.cjs` migration in-process against the contract. A throw propagates
- * to the top-level handler, aborting the run without recording.
+ * Run a `*.cjs` migration in-process against the contract: what it did, or
+ * the facts of its refusal. Any other throw propagates to the top-level
+ * handler, aborting the run without recording.
  * @param {string} scriptAbs
- * @returns {{updated: number, skipped: number, description: string, info: string|null, verify: string|null, notice: string|null}}
+ * @returns {{updated: number, skipped: number, description: string, info: string|null, verify: string|null, notice: string|null}|{refused: object}}
  */
 function runCjsMigration(scriptAbs) {
   const mod = require(scriptAbs);
@@ -271,11 +363,18 @@ function runCjsMigration(scriptAbs) {
   }
   let updated = 0;
   let skipped = 0;
-  const ret = mod.run({
-    projectDir: '.',
-    reportUpdate: () => { updated += 1; },
-    reportSkip: () => { skipped += 1; },
-  });
+  let ret;
+  try {
+    ret = mod.run({
+      projectDir: '.',
+      reportUpdate: () => { updated += 1; },
+      reportSkip: () => { skipped += 1; },
+    });
+  } catch (err) {
+    const refused = err !== null && typeof err === 'object' ? /** @type {{refused?: unknown}} */ (err).refused : undefined;
+    if (refused !== null && typeof refused === 'object') return { refused };
+    throw err;
+  }
   const handed = ret && typeof ret === 'object' ? ret : {};
   return {
     updated,
@@ -299,9 +398,7 @@ function main() {
   const args = process.argv.slice(2);
   const record = pathOf(cwd, args, RECORD_FLAG);
   const journals = pathOf(cwd, args, JOURNALS_FLAG);
-  fs.mkdirSync(path.dirname(record), { recursive: true });
-  if (!fs.existsSync(record)) fs.writeFileSync(record, '');
-  const codeTreeState = fs.existsSync(path.join(cwd, CODE_TREE_STATE));
+  const codeTreeState = fs.existsSync(path.join(cwd, OLD_STATE));
 
   if (!fs.existsSync(MIGRATIONS_DIR)) {
     process.stdout.write(`No migrations directory found at ${MIGRATIONS_DIR}\n`);
@@ -324,6 +421,14 @@ function main() {
     return;
   }
 
+  const guard = guardAhead(scripts, record, cwd);
+  const guarded = guard === undefined ? null : runCjsMigration(guard);
+  if (guarded !== null && 'refused' in guarded) {
+    refuse(/** @type {string} */ (guard), guarded.refused);
+    return;
+  }
+  seedRecord(record, path.join(cwd, OLD_RECORD), journals);
+
   const tallyFile = journalPath(journals, TALLY_JOURNAL);
   const tally = readTally(tallyFile);
   const recorded = recordedIds(record);
@@ -332,29 +437,11 @@ function main() {
     recorded.add(id);
   };
 
-  for (const script of scripts) {
-    const id = migrationId(script);
-    if (!id) {
-      process.stdout.write(`Warning: Skipping ${script} (no numeric prefix)\n`);
-      continue;
-    }
-
-    // Skip entire migration if already recorded.
-    if (recorded.has(id)) continue;
-    const directive = script.endsWith(DIRECTIVE);
-    if (!codeTreeState && parseInt(id, 10) <= (directive ? LAST_CODE_TREE_DIRECTIVE : LAST_CODE_TREE_MIGRATION)) {
-      noteRecorded(id);
-      continue;
-    }
-    if (directive) {
-      process.stdout.write(`---DIRECTIVE: ${path.basename(script, DIRECTIVE)}---\n`);
-      return;
-    }
-
-    const result = script.endsWith('.cjs')
-      ? runCjsMigration(script)
-      : runShMigration(cwd, script, record);
-
+  /**
+   * Record a migration that ran, count it, and journal what it handed back.
+   * @param {string} id @param {{updated: number, stdout?: string, description?: string, info?: string|null, verify?: string|null, notice?: string|null}} result
+   */
+  const settle = (id, result) => {
     if (result.stdout) process.stdout.write(result.stdout);
 
     noteRecorded(id);
@@ -375,6 +462,42 @@ function main() {
         writeJournal(file, [...readJournal(file), entries[key]]);
       }
     }
+  };
+
+  if (guarded !== null) settle(RESHAPE_GUARD, guarded);
+
+  for (const script of scripts) {
+    const id = migrationId(script);
+    if (!id) {
+      process.stdout.write(`Warning: Skipping ${script} (no numeric prefix)\n`);
+      continue;
+    }
+
+    // Skip entire migration if already recorded.
+    if (recorded.has(id)) continue;
+    const directive = script.endsWith(DIRECTIVE);
+    if (!codeTreeState && parseInt(id, 10) <= (directive ? LAST_CODE_TREE_DIRECTIVE : LAST_CODE_TREE_MIGRATION)) {
+      noteRecorded(id);
+      continue;
+    }
+    if (directive) {
+      const named = path.basename(script, DIRECTIVE);
+      if (nothingToDo(cwd, named)) {
+        noteRecorded(id);
+        continue;
+      }
+      process.stdout.write(`---DIRECTIVE: ${named}---\n`);
+      return;
+    }
+
+    const result = script.endsWith('.cjs')
+      ? runCjsMigration(script)
+      : runShMigration(cwd, script, record);
+    if ('refused' in result) {
+      refuse(script, result.refused);
+      return;
+    }
+    settle(id, result);
   }
 
   if (tally.updated > 0) {

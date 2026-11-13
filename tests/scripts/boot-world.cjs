@@ -3,7 +3,8 @@
 // The world the boot suites share (test-engine-boot-*.cjs): the project
 // fixture, a git repository with its state worktree and the workflows' own
 // hooks in its settings, made once per process and copied (`bootProject`,
-// `setupProject`); the library's stub engine, whose migration runner
+// `setupProject`); a real project on the layout before Leeway's, with no
+// `.leeway/` (`legacyProject`); the library's stub engine, whose migration runner
 // STUB_MIGRATE_MODE and its siblings drive (`stubbed`), and the repo's real
 // scripts (`real`); the hooks boot installs, as settings read;
 // a knowledge base that reads ready, a short record to index, and
@@ -16,7 +17,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll, fixtureFrom, layout, statePath, writeState, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked } = harness;
+const { git, commitAll, fixtureFrom, folderFrom, layout, statePath, writeState, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked } = harness;
 const { createFile } = require('./discovery-test-utils.cjs');
 const store = require(path.join(path.dirname(harness.ENGINE), 'kernel/knowledge/store.cjs'));
 
@@ -61,6 +62,36 @@ function legacyLayout(project) {
 /** The project fixture at `{root}/project`. @param {string} root */
 function setupProject(root) {
   return projectWorld(path.join(root, 'project'));
+}
+
+/** The migrations a project at 070 had run, as its old record lists them. */
+const MIGRATED_TO_070 = [...new Set(fs.readdirSync(path.join(path.dirname(harness.ENGINE), '../../leeway-migrate/scripts/migrations'))
+  .filter((name) => /^[0-9]+-/.test(name) && !name.endsWith('.check.cjs'))
+  .map((name) => name.slice(0, name.indexOf('-'))))].filter((id) => Number(id) <= 70).sort();
+
+/**
+ * A real project on the layout before Leeway's, no `.leeway/` in it: its
+ * `.workflows/` committed on `main` as the chain up to 070 left it — its
+ * cache ignored there, its old migrations record at 070, a roadmap item with
+ * no kind, and a feature mid-discussion — beside the workflows' own hooks.
+ */
+const legacyWorld = folderFrom('engine-boot-legacy-', (folder) => {
+  const project = harness.initRepo(path.join(folder, 'project'));
+  createFile(project, 'README.md', '# Project\n');
+  createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+  createFile(project, '.workflows/.gitignore', '.cache/\n');
+  createFile(project, '.workflows/.state/migrations', MIGRATED_TO_070.map((id) => `${id}\n`).join(''));
+  createFile(project, '.workflows/manifest.json', JSON.stringify({ roadmap: { items: { 'dark-mode': { title: 'Dark mode', state: 'waiting', horizon: null, sources: [] } } } }, null, 2) + '\n');
+  createFile(project, '.workflows/payments/manifest.json', JSON.stringify({
+    name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: { discussion: { items: { payments: { status: 'in-progress' } } } },
+  }, null, 2) + '\n');
+  createFile(project, '.workflows/payments/discussion/payments.md', '# Payments\n\nHow refunds settle.\n');
+  harness.commitCode(project, 'the old layout');
+});
+
+/** The legacy project at `{root}/project`. @param {string} root */
+function legacyProject(root) {
+  return path.join(legacyWorld(root), 'project');
 }
 
 /** The engines a test drives: the copy beside the stand-in migration runner, and the repo's real scripts. */
@@ -156,5 +187,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, FLAG, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails,
+  hookHelpers, FLAG, LABELS_ON, STORE_FILES, MIGRATED_TO_070, legacyLayout, setupProject, legacyProject, stubbed, real, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails,
 };
