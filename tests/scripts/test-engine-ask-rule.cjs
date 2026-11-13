@@ -318,6 +318,16 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
     ]);
   });
 
+  it('16.4.7: a raise mid-build the threshold has since risen past holds no more — a question blocking build work takes the threshold, as one not blocking does, said as the threshold', () => {
+    const overtaken = { threshold: 0.3, build_threshold: 0.25 };
+    const nine = behaviourAfter(9);
+
+    assert.deepStrictEqual([ruling(nine, { blocks_build: true, settings: overtaken }), ruling(nine, { settings: overtaken })], [
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 26%, under your 30%.' },
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 26%, under your 30%.' },
+    ]);
+  });
+
   it('16.S20: quiet behaviour at 20% holding 13 clean answers asks once a loss lands (27.94%), over 25% — so too a loss at 15 clean answers (25.01%) — and goes quiet again only once it holds 20 clean answers beside the loss: asking at 19 (20.67%), quiet at 20 (19.81%) (16.6.3)', () => {
     assert.deepStrictEqual([
       decision(behaviourAfter(13)), decision(behaviourAfter(13, lossThen())), ruling(behaviourAfter(15, lossThen())),

@@ -55,8 +55,8 @@ function raiseHelpers(dir, config, call) {
   /** The conversation's sealed raises, null where none was sealed. @returns {Record<string, any>|null} */
   const seals = () => (fs.existsSync(inFolder(RAISE_SHOWN)) ? JSON.parse(fs.readFileSync(inFolder(RAISE_SHOWN), 'utf8')) : null);
 
-  /** The trust log's events, each but its id, its time and the project's name. */
-  const logged = () => logEvents().map(({ id: _id, at: _at, project_name: _name, ...event }) => event);
+  /** The trust log's events, each but its id, its time, a raise's time and the project's name. */
+  const logged = () => logEvents().map(({ id: _id, at: _at, raised: _raised, project_name: _name, ...event }) => event);
 
   /**
    * The person's answer, which must land: its response.

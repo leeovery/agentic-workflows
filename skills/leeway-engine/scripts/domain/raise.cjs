@@ -425,6 +425,7 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
  * @property {string} reason
  * @property {boolean} blind whether it is asked blind, Claude's answer held back until the person's is given (16.17.2)
  * @property {string} at when it was shown
+ * @property {string} raised when its call was decided: as it was sealed, or, drawn from the build, as its question parked
  * @property {Answered|null} answered
  * @property {number} didnt_follow
  * @property {Parks|null} parks the question waiting in the build it was drawn from, or null
@@ -1058,13 +1059,14 @@ function claudesAnswer(call, content) {
  * decision answering the question, or its replacement of the decision —
  * the lean row's answer, the other rows what it rules out, and Claude's
  * why, its kind the label's — made for its task in the build, else for
- * none, logged as a call carrying its sort and label, under the model it
- * was decided under; at `id` where one is minted for it, else at its own.
+ * none, logged as a call carrying its sort and label, and whether it
+ * blocked build work, under the model it was decided under; at `id` where
+ * one is minted for it, else at its own.
  * @param {string} cwd @param {Raising} raising @param {Call} call @param {Label|null} label @param {string[]} warnings @param {string|null} [id]
  * @returns {Landed}
  */
-function proceeded(cwd, { place, target, task, model }, call, label, warnings, id = null) {
-  const lean = leanRow(call);
+function proceeded(cwd, raising, call, label, warnings, id = null) {
+  const { place, target, task, model } = raising;
   const { lands, linked, content, checkRead } = landsAs(target, AT_THE_DRAW, task);
   const { landed } = landRaised(cwd, {
     said: SAID,
@@ -1074,7 +1076,7 @@ function proceeded(cwd, { place, target, task, model }, call, label, warnings, i
     content: claudesAnswer(call, content),
     label,
     id,
-    logs: callLogged(call.sort, model),
+    logs: callLogged(call.sort, model, decidedFrom(raising).blocks_build),
     checkRead: (read) => {
       checkRead(read);
       questions.checkUnparked(read, subjectOf(target), SAID);
@@ -1286,10 +1288,11 @@ function askedAs({ blind, reason }) {
 function askedRaise(cwd, raising, what, asking, warnings) {
   const { session, place, target } = raising;
   const id = newId();
+  const at = new Date().toISOString();
   /** @type {Seal} */
   const seal = {
     v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
-    ...what, ...asking, ...decidedFrom(raising), at: new Date().toISOString(), answered: null, didnt_follow: 0, parks: null,
+    ...what, ...asking, ...decidedFrom(raising), at, raised: at, answered: null, didnt_follow: 0, parks: null,
   };
   const drawn = sealDrawn(session, place, target, seal);
   clearGateShown(session);
@@ -1527,7 +1530,7 @@ function drawParked(cwd, args) {
     v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
     ...(lean === null ? { call: { ...fact, question: asks }, fact: true } : { call: { ...line.call, question: asks }, fact: false }),
     rows_judged: line.rows_judged, label: line.label, model: line.model, blocks_build: line.blocks_build, replaced_by: line.replaced_by, always: line.always,
-    reason: line.why_asking, blind: line.blind, at: new Date().toISOString(), answered: null, didnt_follow: 0,
+    reason: line.why_asking, blind: line.blind, at: new Date().toISOString(), raised: line.at, answered: null, didnt_follow: 0,
     parks: { park: question.park, number: question.number, tasks: question.tasks, went_ahead: line.went_ahead },
   };
   const drawn = sealDrawn(session, place, target, seal);
@@ -1713,17 +1716,17 @@ function ownWordsOn({ call }, stdin, toLand) {
  * label; its sort; the lean's key and the answer's; how it came, and the
  * row read from free text; whether it was the person's "don't care"; what
  * the call was decided from beyond its label, as sealed (`DecidedFrom`);
- * and whether it was asked blind, so an answer given cold reads as one on
- * its own (16.17.5).
+ * when it was decided, as sealed; and whether it was asked blind, so an
+ * answer given cold reads as one on its own (16.17.5).
  * @param {CallSeal} seal @param {Logged & {entry: unknown, didnt_follow: boolean}} answer
  * @returns {{type: string, fields: Record<string, unknown>, model: string|null}}
  */
-function raiseEvent({ call, label, model, blocks_build: blocks, replaced_by: replacedBy, always, blind }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow, dont_care: dontCare }) {
+function raiseEvent({ call, label, model, blocks_build: blocks, replaced_by: replacedBy, always, raised, blind }, { entry, answer, via, with_text: withText, reading, didnt_follow: didntFollow, dont_care: dontCare }) {
   return {
     type: 'raise',
     fields: {
       entry, kind: kindOf(label), label, sort: call.sort, sealed: call.lean, answer,
-      via, with_text: withText, reading, didnt_follow: didntFollow, dont_care: dontCare, blocks_build: blocks, replaced_by: replacedBy, always, blind,
+      via, with_text: withText, reading, didnt_follow: didntFollow, dont_care: dontCare, blocks_build: blocks, replaced_by: replacedBy, always, raised, blind,
     },
     model,
   };

@@ -940,6 +940,17 @@ function auditTrust(sim, label, ran = []) {
     assert.deepStrictEqual(decidedFrom(raise, Object.keys(expected)), expected,
       ctx(`the raise ${raise.id} does not log what its call was decided from, as the ledger holds it`));
   }
+  /** When an answer's call was decided: as its question's first park was made where it waited in the build, else as its seal was made, where the seal stands. @type {(raise: Record<string, any>) => string|undefined} */
+  const decidedWhen = (raise) => parksWaited(byId.get(raise.entry))[0]?.at ?? sealed.find((s) => s.id === raise.entry)?.at;
+  for (const raise of answers) {
+    const when = decidedWhen(raise);
+    assert.ok(Date.parse(raise.raised) <= Date.parse(raise.at) && (when === undefined || raise.raised === when),
+      ctx(`the raise ${raise.id} does not log when its call was decided, ${when}, but ${raise.raised}`));
+  }
+  for (const call of ofType('call')) {
+    assert.strictEqual(call.blocks_build, call.sort === null ? null : (byId.get(call.entry)?.task ?? null) !== null,
+      ctx(`the call ${call.id} does not log whether it blocked build work, as the entry it landed says`));
+  }
   const raised = new Set([...answers.map((e) => e.entry), ...sealed.filter((s) => s.fact && s.answered !== null).map((s) => s.id)]);
   assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(namedBy(e))).map((e) => e.id), [],
     ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));

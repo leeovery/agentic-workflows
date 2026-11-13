@@ -7,10 +7,13 @@
 // question labelled by the stub armed for the labeller (labels.cjs), and the
 // person's own words read by it as the reader; the record of the person —
 // a care entry added on its screens, the "don't care" answers that cue its
-// drop, the drop and a preference kept on the proposal screen; and
-// convergence — the run of answers cueing the offer, the person's yes, and
-// the rest of the topic settled under the rule, the decision point and its
-// convergence seam forced to what switching the rule on makes them.
+// drop, the drop and a preference kept on the proposal screen; convergence
+// — the run of answers cueing the offer, the person's yes, and the rest of
+// the topic settled under the rule, the decision point and its convergence
+// seam forced to what switching the rule on makes them; and the matrix —
+// the threshold and its raise mid-build each picked from its replay, a
+// lower threshold replayed and kept from, and the person's corrections of
+// a kind and a verdict in words.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -41,7 +44,7 @@ describe('pipeline simulation: the trust log', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one; then the matrix, the threshold and its raise mid-build each picked from its replay, a lower one replayed and kept from, and the person\'s corrections of a call\'s kind and of the verdict they gave', async () => {
     const wu = 'fumi';
     sim.env = {
       ...sim.env,
@@ -113,6 +116,17 @@ describe('pipeline simulation: the trust log', () => {
     assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => d.id === retitled), 'the person\'s own decision, changed, waits on a verdict');
     const kinds = trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'call' || type === 'raise').map(({ type, kind }) => `${type} ${kind}`);
     assert.deepStrictEqual(kinds, ['call look', 'call look', 'raise behaviour', 'raise behaviour', 'raise behaviour', 'call null', 'raise behaviour'], 'the calls and raises carry no labels for the oracle to hold');
+
+    sim.render(['matrix'], { expect: 'content' });
+    for (const setting of [['--threshold', '25'], ['--build', '30']]) {
+      sim.render(['matrix-replay', ...setting], { expect: 'content' });
+      sim.run(answerGate(sim, 'matrix replay', '--pick', 'y').next.argv);
+    }
+    sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' });
+    assert.deepStrictEqual(answerGate(sim, 'matrix replay', '--pick', 'n').next, { kind: 'engine', argv: ['render', 'matrix'] });
+    sim.run(['trust', 'correct', call, '--kind', 'behaviour']);
+    sim.run(['trust', 'correct', reversal, '--verdict', 'fix']);
+    sim.render(['matrix'], { expect: 'content' });
   });
 
   it('the record of the person: a care entry on look added on the care entries\' screens; a look question raised three times, each answered "don\'t care" — Claude\'s lean landing as the builder\'s, its raise marked so — the third cueing the drop, proposed on the proposal screen and dropped on the person\'s yes; a preference proposed and kept, named at the next entry', async () => {

@@ -283,6 +283,7 @@ describe('the seal (P1, P6)', () => {
       reason: EVERY_CALL_ASKS,
       blind: false,
       at: sealed.at,
+      raised: sealed.at,
       answered: null,
       didnt_follow: 0,
       parks: null,

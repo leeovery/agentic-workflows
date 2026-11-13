@@ -96,7 +96,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const config = path.join(world(), 'config');
     const session = '6f1c2b9a-0d4e-4a7b-9c3e-2f5a8b7d1e40';
     const header = { id: newId(), at: '2026-10-28T10:00:00Z', project: null, project_name: null, model: null, session };
-    const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null }))}\n`;
+    const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null, blocks_build: null }))}\n`;
     createFile(path.join(config, 'conversations', session), 'trust-pending.jsonl', waiting);
 
     assert.deepStrictEqual(boot(main, { LEEWAY_CONFIG_DIR: config }), { ok: true, state: 'lost', warnings: [] });

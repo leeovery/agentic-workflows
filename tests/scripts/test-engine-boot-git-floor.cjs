@@ -92,7 +92,7 @@ const WAITING_SESSION = '6f1c2b9a-0d4e-4a7b-9c3e-2f5a8b7d1e40';
 /** A trust-log event a conversation keeps waiting, as one line. */
 function waitingEvent() {
   const header = { id: newId(), at: '2026-10-28T10:00:00Z', project: null, project_name: null, model: null, session: WAITING_SESSION };
-  return `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null }))}\n`;
+  return `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null, blocks_build: null }))}\n`;
 }
 
 /** The stop's screen: its title, then what boot found. @param {string} title @param {string} found */

@@ -88,6 +88,7 @@ const { manageSurface, manageUnitSurface, closedSurface, absorbTargetSurface, ab
 const { triageSurface, archivedSurface, archivedItemSurface, archivedDeleteGateSurface } = require('./projections/triage.cjs');
 const { careSurface, careKindSurface, careDropSurface } = require('./person-verbs.cjs');
 const { convergenceSurface } = require('./convergence.cjs');
+const { matrixSurface, replaySurface } = require('./trust-verbs.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -1530,6 +1531,8 @@ const SURFACES = {
   convergence: (cwd, { dotpath, asked }) => convergenceSurface(cwd, { dotpath, asked }),
   roadmap: (cwd) => roadmapSurface(cwd),
   'roadmap-harvest': (cwd, { file }) => roadmapHarvestSurface(cwd, file),
+  matrix: (cwd) => matrixSurface(cwd),
+  'matrix-replay': (cwd, { threshold, build }) => replaySurface(cwd, { threshold, build }),
 };
 
 /**

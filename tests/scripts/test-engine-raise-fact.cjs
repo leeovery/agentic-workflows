@@ -177,7 +177,7 @@ describe('the draw (16.S75, 16.3.8)', () => {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
       answers: full(asked.ships), relies_on: [full(asked.team)], replaces: null,
       call: FACT, fact: true, rows_judged: [], label: null, model: null, blocks_build: false, replaced_by: null, always: null,
-      reason: ONLY_YOU_KNOW, blind: false, at: seal.at, answered: null, didnt_follow: 0, parks: null,
+      reason: ONLY_YOU_KNOW, blind: false, at: seal.at, raised: seal.at, answered: null, didnt_follow: 0, parks: null,
     });
     assert.strictEqual(output(dir, ['raise', 'show', res.raise], { env: conversation() }), `{"ok":true,"raise":"${res.raise}"}\n${screen(res.raise, FACT)}`);
     assert.strictEqual(output(dir, ['raise', 'show', res.raise, '--technical'], { env: conversation() }), `{"ok":true,"raise":"${res.raise}"}\n${screen(res.raise, FACT, { technical: true })}`);

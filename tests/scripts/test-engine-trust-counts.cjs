@@ -11,8 +11,10 @@
 // worked values, and the state walked in time order at the threshold a
 // question takes, each moment's changes together;
 // derived from the log each time, as of the clock passed in, never stored;
-// what the release ships of them; and a blind question's reveal's count
-// of a kind's last answers that took Claude's lean.
+// the tally the matrix shows beside the bound, and the weight a count's
+// prior carries in; what the release ships of them; and a blind
+// question's reveal's count of a kind's last answers that took Claude's
+// lean.
 //
 // Layer: unit. World: the events are built in memory, each a second after
 // the last, a day before the frozen clock (trust-world.cjs, `history`); the
@@ -35,7 +37,7 @@ const { readTrustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs')
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 const {
-  MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn,
+  MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn, tallyFrom,
 } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const { evidenceIn } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 
@@ -63,11 +65,12 @@ const round = (bound) => Math.round(bound * 1e9) / 1e9;
 const countsIn = (h, { model = MODEL, now = FROZEN_MS } = {}) => countsFrom(h.events, { project: HERE, model, now });
 
 /**
- * Where `count` stands at `threshold`, its bound to nine places.
+ * Where `count` stands at `threshold`, its bound to nine places, but the
+ * rate it asks over while quiet, which its own test reads.
  * @param {Count} count @param {number} [threshold]
  */
 function standing(count, threshold = AT_20) {
-  const state = stateOf(count, threshold);
+  const { opens: _opens, ...state } = stateOf(count, threshold);
   return { ...state, bound: round(state.bound) };
 }
 
@@ -315,6 +318,86 @@ describe('the merge with the person\'s other projects (16.14.3, 16.14.6)', () =>
     for (let i = 0; i < 4; i += 1) h.depart('loss', 'behaviour', { project: ELSEWHERE });
 
     assert.deepStrictEqual([behaviour(h, { now: old + DAY }), behaviour(h)], [{ losses: 2.5, clean: 7.5 }, { losses: 2, clean: 6 }]);
+  });
+});
+
+describe('the tally the matrix shows (17.1.2, 17.S8)', () => {
+  it('counts the project\'s own answers once each, whatever their weight: answered, the departures overturned, and those lost — judged a real loss, or not yet judged — as of the clock; a reversal in place of the answer it cancels; Claude\'s one-answer calls, standing or answered, and those overruled', () => {
+    const h = history();
+    h.agree(1, 'behaviour', { at: FROZEN_MS - SIX_MONTHS - DAY });
+    h.agree(2, 'behaviour', { at: FROZEN_MS - DAY });
+    h.depart('loss');
+    h.depart('fix');
+    const waiting = h.depart(null);
+    h.reverse(h.agree(1, 'look')[0]);
+    h.reverse(h.call('one', null));
+    h.call('one');
+    h.sorted('one', '1', 'scope');
+    const before = h.now();
+    h.verdict(waiting, 'nothing');
+
+    const tally = (/** @type {number} */ now) => tallyFrom(h.events, { project: HERE, model: MODEL, now });
+    assert.deepStrictEqual([tally(before), tally(FROZEN_MS)].map(({ kinds: { behaviour: b, look }, one }) => ({ behaviour: b, look, one })), [
+      { behaviour: { answered: 6, overturned: 3, lost: 2 }, look: { answered: 1, overturned: 1, lost: 1 }, one: { calls: 3, overruled: 1 } },
+      { behaviour: { answered: 6, overturned: 3, lost: 1 }, look: { answered: 1, overturned: 1, lost: 1 }, one: { calls: 3, overruled: 1 } },
+    ]);
+  });
+
+  it('leaves out what the counts never weigh: another project\'s answers, a model\'s the session does not read, one not followed, Claude\'s call standing, and a question with no label from every kind', () => {
+    const h = history();
+    h.agree(1);
+    h.agree(1, 'behaviour', { project: ELSEWHERE });
+    h.agree(1, 'behaviour', { model: UNLISTED });
+    h.unfollowed('several');
+    h.call('several');
+    h.agree(1, null);
+
+    const { kinds } = tallyFrom(h.events, { project: HERE, model: MODEL, now: FROZEN_MS });
+    assert.deepStrictEqual(KINDS.filter((kind) => kinds[kind].answered > 0).map((kind) => [kind, kinds[kind]]), [['behaviour', { answered: 1, overturned: 0, lost: 0 }]]);
+  });
+
+  it('carries in the person\'s other projects\' answers, each once at its weight now — under its kind, else under the one-answer calls — Claude\'s own calls there whatever their kind, which no kind\'s count weighs — though a kind\'s answer sorted as one counts in both — each at most 10 answers\' weight; the project\'s own never, nor one reversed since', () => {
+    const h = history();
+    h.agree(2, 'look', { project: ELSEWHERE, at: FROZEN_MS - SIX_MONTHS - DAY });
+    h.agree(4, 'look', { project: ELSEWHERE, at: FROZEN_MS - DAY });
+    h.agree(13, 'scope', { project: ELSEWHERE });
+    h.agree(5, 'look');
+    for (let i = 0; i < 3; i += 1) h.raise('words', '1', { sort: 'one' }, { project: ELSEWHERE });
+    h.call('one', null, { project: ELSEWHERE });
+    h.call('one', 'look', { project: ELSEWHERE });
+    h.call('several', 'look', { project: ELSEWHERE });
+    h.reverse(h.call('one', null, { project: ELSEWHERE }), { project: ELSEWHERE });
+
+    const { carried } = tallyFrom(h.events, { project: HERE, model: MODEL, now: FROZEN_MS });
+    assert.deepStrictEqual(Object.fromEntries(carried), { look: 5, scope: 10, words: 3, one: 3 });
+  });
+});
+
+describe('a count read up to a time (16.15.2)', () => {
+  it('stands where the walk over its changes up to that time does, read in time order at several thresholds, and read again at an earlier time afresh', () => {
+    const h = history();
+    h.agree(10);
+    h.depart('loss');
+    h.agree(6);
+    h.depart(null);
+    h.agree(3, 'behaviour', { at: FROZEN_MS - DAY / 2 });
+    const counts = countsIn(h);
+    const times = h.events.map(({ at }) => Date.parse(/** @type {string} */ (at)));
+    const read = [...times, times[3]].flatMap((until) => [AT_20, 0.25].map((threshold) => stateOf({ ...counts.kinds.behaviour, until }, threshold)));
+    const walked = [...times, times[3]].flatMap((until) => [AT_20, 0.25].map((threshold) => stateOf(countsIn(h, { now: until }).kinds.behaviour, threshold)));
+
+    assert.deepStrictEqual(read, walked);
+  });
+
+  it('says the rate a quiet count asks over: a kind\'s a quarter above the threshold; the one-answer calls\' the threshold itself until they first ask, a quarter above it once they went quiet after', () => {
+    const h = history();
+    h.agree(20);
+    for (let i = 0; i < 10; i += 1) h.call('one', null);
+    const before = h.now();
+    h.reverse(h.call('one', null));
+    for (let i = 0; i < 20; i += 1) h.call('one', null);
+
+    assert.deepStrictEqual([stateOf(countsIn(h).kinds.behaviour, AT_20).opens, stateOf(countsIn(h, { now: before }).one, AT_20).opens, stateOf(countsIn(h).one, AT_20).opens], [0.25, AT_20, 0.25]);
   });
 });
 

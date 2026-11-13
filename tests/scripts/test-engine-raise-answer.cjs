@@ -183,6 +183,17 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
     assert.deepStrictEqual(answered, { answer: '1' });
   });
 
+  it('its raise event carries when the rule decided its question, as the seal holds it, never when the answer came: a raise answered long after it was drawn logs the time it was drawn (16.15.3)', async () => {
+    const id = await draw();
+    const raised = '2025-12-01T09:00:00.000Z';
+    fs.writeFileSync(inFolder(RAISE_SHOWN), JSON.stringify({ ...seals(), [id]: { ...seals()[id], raised } }));
+
+    answer(id, ['--pick', '1']);
+
+    const event = JSON.parse(/** @type {string} */ (logText().trim().split('\n').at(-1)));
+    assert.deepStrictEqual([event.raised, Date.parse(event.at) > Date.parse(raised)], [raised, true]);
+  });
+
   it('the person\'s own words land with their text and why, and what they rule out where Claude gives it, none else; the separate call unable to read them — no login serves it — standing over the lean, logged as free text, typed, naming no row, with no row read (16.19.8)', async () => {
     const plain = await draw(asked.where);
     const ruling = await draw(asked.size);
@@ -512,7 +523,7 @@ describe('proceed (E7, 16.3.7)', () => {
     assert.deepStrictEqual([res, sections], [{ ok: true, decision: 'proceed', reason, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() }, '']);
     const id = full(res.id);
     assert.deepStrictEqual(lastEntry(), entryOf(id, asked.where, { by: 'claude', why: CALL.why, sealed: null }));
-    assert.deepStrictEqual(logged(), [{ v: 1, type: 'call', project: project(), model: null, session: SESSION, entry: id, kind: null, label: null, sort: 'several' }]);
+    assert.deepStrictEqual(logged(), [{ v: 1, type: 'call', project: project(), model: null, session: SESSION, entry: id, kind: null, label: null, sort: 'several', blocks_build: false }]);
     assert.ok(!fs.existsSync(inFolder(RAISE_SHOWN)), 'a call that proceeds was sealed');
   });
 
@@ -523,7 +534,7 @@ describe('proceed (E7, 16.3.7)', () => {
 
     const id = full(res.id);
     assert.deepStrictEqual([lastEntry().kind, lastEntry().hard_to_undo], ['scope', true]);
-    assert.deepStrictEqual(logged(), [{ v: 1, type: 'call', project: project(), model: null, session: SESSION, entry: id, kind: 'scope', label: LABEL, sort: 'several' }]);
+    assert.deepStrictEqual(logged(), [{ v: 1, type: 'call', project: project(), model: null, session: SESSION, entry: id, kind: 'scope', label: LABEL, sort: 'several', blocks_build: false }]);
   });
 });
 

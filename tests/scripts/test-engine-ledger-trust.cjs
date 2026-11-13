@@ -100,7 +100,7 @@ function counted() {
 
 /** The call naming Claude's decision `short`. @param {string} short */
 function callOf(short) {
-  return { type: 'call', project: project(), entry: full(short), kind: null, label: null, sort: null };
+  return { type: 'call', project: project(), entry: full(short), kind: null, label: null, sort: null, blocks_build: null };
 }
 
 /** The reversal naming the replacement `short` and the entry it reverses. @param {string} short @param {string} reversed */

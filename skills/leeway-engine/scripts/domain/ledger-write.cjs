@@ -1020,14 +1020,15 @@ function contentFields(said, write, given, replaced) {
 
 /**
  * Claude's call logged (16.3.7), naming the entry, its kind and the label
- * it was composed from, and its sort — null where no raise sorted it — under
+ * it was composed from, its sort, and whether it blocked build work as the
+ * decision point decided it — each null where no raise decided it — under
  * `model`, where a raise decided it, the model it was decided under; with
  * none, the call is the write's own, under its caller's.
- * @param {'one'|'several'|null} sort @param {string|null} [model]
+ * @param {'one'|'several'|null} sort @param {string|null} [model] @param {boolean|null} [blocks]
  * @returns {Logs}
  */
-function callLogged(sort, model) {
-  return ({ id, kind }, label) => ({ type: 'call', fields: { entry: id, kind, label, sort }, model });
+function callLogged(sort, model, blocks = null) {
+  return ({ id, kind }, label) => ({ type: 'call', fields: { entry: id, kind, label, sort, blocks_build: blocks }, model });
 }
 
 /** The person's reversal logged (16.12.1), naming the entry and the entry it reverses. @type {Logs} */

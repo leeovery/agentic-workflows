@@ -118,6 +118,7 @@ const MENUS = Object.freeze({
   closed: registered('closed', 'closed units', 'the closed units', 'none', {}, [NUMBERED, BACK]),
   verdicts: registered('verdicts', 'verdicts', 'the verdict queue', 'none', { label: 'What this screen is for, row by row' }, ['n', 'f', 'l', 'b']),
   care: registered('care', 'care entries', 'the care entries', 'none', { label: 'What this screen is for, row by row' }, ['n', 'd', 'b']),
+  matrix: registered('matrix', 'matrix', 'the matrix', 'none', { label: 'What this screen is for, row by row' }, ['t', 'u', 'c', BACK]),
 });
 
 /** The menu a render names, refused where none is. @param {string|undefined} id @returns {Menu} */

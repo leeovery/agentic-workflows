@@ -11,14 +11,14 @@
 // verdicts' and the raises' (raise-world.cjs): the log's text and events, and
 // the project's id it keys them by (`trustLogHelpers`). And what the ask
 // rule's suites share (test-engine-trust-counts.cjs,
-// test-engine-ask-rule.cjs, test-engine-raise-rule.cjs) and convergence's
-// (test-engine-convergence.cjs): a history of the log's events built in
-// memory, each a second after the last, an answer naming the ledger entry
-// it landed as where a suite places it (`history`), and questions' ids the
-// blind draw reads each way. And what the suites holding a learned gate's
-// showing through its surface share: the gate a conversation was shown
-// (`shownIn`), and the answers logged at the gate's showings, each by the
-// event it is (`showingAnswers`).
+// test-engine-ask-rule.cjs, test-engine-raise-rule.cjs), convergence's
+// (test-engine-convergence.cjs) and the matrix's (test-engine-matrix.cjs): a
+// history of the log's events built in memory, each a second after the
+// last, an answer naming the ledger entry it landed as where a suite places
+// it (`history`), and questions' ids the blind draw reads each way. And what
+// the suites holding a learned gate's showing through its surface share: the
+// gate a conversation was shown (`shownIn`), and the answers logged at the
+// gate's showings, each by the event it is (`showingAnswers`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -177,11 +177,14 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
   let clock = start;
   /** @type {Record<string, unknown>[]} */
   const events = [];
-  /** @param {string} type @param {Record<string, unknown>} fields @param {Where} [where] */
+  /**
+   * An event logged, its fields given or made from its time.
+   * @param {string} type @param {Record<string, unknown>|((at: string) => Record<string, unknown>)} fields @param {Where} [where]
+   */
   const log = (type, fields, { project = here, model = current, at } = {}) => {
     clock = at ?? clock + 1000;
     const header = { id: newId(), at: new Date(clock).toISOString(), project, project_name: project === null ? null : 'fumi', model, session: null };
-    const event = trustEvent(type, header, fields);
+    const event = trustEvent(type, header, typeof fields === 'function' ? fields(header.at) : fields);
     events.push(event);
     return event;
   };
@@ -190,18 +193,33 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
   /**
    * A raise on `kind` answered `answer`, Claude's lean row 1, landed as
    * `entry` — the person's "don't care", typed, where `dontCare`; asked
-   * blind where `blind`: its entry.
-   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string}} [opts] @param {Where} [where]
+   * blind where `blind`; blocking build work where `blocksBuild`;
+   * replacing a decision of `replacedBy`'s; under Claude's mark `always`;
+   * raised at `raised`, else as it is answered: its entry.
+   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string, blocksBuild?: boolean, replacedBy?: string|null, always?: string|null, raised?: number}} [opts] @param {Where} [where]
    */
-  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId() } = {}, where = {}) => /** @type {string} */ (log('raise', {
-    entry, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: false, replaced_by: null, always: null, blind,
-  }, where).entry);
+  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId(), blocksBuild = false, replacedBy = null, always = null, raised } = {}, where = {}) => /** @type {string} */ (log('raise', (at) => ({
+    entry, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: blocksBuild, replaced_by: replacedBy, always,
+    raised: raised === undefined ? at : new Date(raised).toISOString(), blind,
+  }), where).entry);
   const h = {
     events,
+    raise,
     /** The clock's time now, as the next event's is a second on. */
     now: () => clock,
     /** `n` answers on `kind` taking Claude's lean. @param {number} n @param {Kind|null} [kind] @param {Where} [where] */
     agree: (n, kind = 'behaviour', where = {}) => Array.from({ length: n }, () => raise(kind, '1', {}, where)),
+    /** `n` answers on `kind` taking Claude's lean, each blocking build work. @param {number} n @param {Kind|null} [kind] */
+    blocking: (n, kind = 'behaviour') => Array.from({ length: n }, () => raise(kind, '1', { blocksBuild: true })),
+    /**
+     * `n` questions on `kind` blocking build work, raised together a second
+     * on, then answered in turn taking Claude's lean, a second apart.
+     * @param {number} n @param {Kind|null} [kind]
+     */
+    parked: (n, kind = 'behaviour') => {
+      const raised = clock + 1000;
+      return Array.from({ length: n }, () => raise(kind, '1', { blocksBuild: true, raised }));
+    },
     /** `n` of the person's "don't care" answers on `kind`. @param {number} n @param {Kind|null} [kind] @param {Where} [where] */
     dontCare: (n, kind = 'behaviour', where = {}) => Array.from({ length: n }, () => raise(kind, '1', { dontCare: true }, where)),
     /** A departure on `kind`, judged `verdict` where given: its entry. @param {string|null} [verdict] @param {Kind|null} [kind] @param {Where} [where] */
@@ -221,13 +239,19 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     answered: (entry, answer, kind = 'behaviour', { dontCare = false, blind = false } = {}) => raise(kind, answer, { entry, dontCare, blind }),
     /** The person's yes to the convergence offer on `topic` of `unit`. @param {string} unit @param {string} topic */
     converged: (unit, topic) => log('convergence', { unit, topic }),
-    /** Claude's call on `kind`, sorted `sort`, as `entry`: its entry. @param {string|null} sort @param {Kind} [kind] @param {Where} [where] @param {string} [entry] */
-    call: (sort, kind = 'behaviour', where = {}, entry = newId()) => /** @type {string} */ (log('call', { entry, kind, label: label(kind), sort }, where).entry),
+    /**
+     * Claude's call on `kind`, sorted `sort` — none where no raise decided
+     * it — as `entry`, blocking build work where `blocksBuild`: its entry.
+     * @param {string|null} sort @param {Kind} [kind] @param {Where} [where] @param {{blocksBuild?: boolean, entry?: string}} [opts]
+     */
+    call: (sort, kind = 'behaviour', where = {}, { blocksBuild = false, entry = newId() } = {}) => /** @type {string} */ (log('call', {
+      entry, kind, label: label(kind), sort, blocks_build: sort === null ? null : blocksBuild,
+    }, where).entry),
     /** The person's reversal of `entry`: its own. @param {string} entry @param {Where} [where] */
     reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
     /** A raise on `kind` Claude sorted `sort`, which the person didn't follow. @param {string} sort @param {Kind} [kind] */
     unfollowed: (sort, kind = 'behaviour') => {
-      log('raise', { entry: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false });
+      log('raise', (at) => ({ entry: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, raised: at, blind: false }));
     },
     /** @param {string} entry @param {string} verdict @param {Where} [where] */
     verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),

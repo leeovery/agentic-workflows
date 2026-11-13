@@ -54,7 +54,11 @@
 //   asks once it holds at least one overrule's weight, its own and its
 //   prior's together, and its bound exceeds the threshold itself the first
 //   time, a quarter above it after (16.4.10). A gate shows, and goes
-//   automatic and back as a kind goes quiet and asks again (16.20.2).
+//   automatic and back as a kind goes quiet and asks again (16.20.2). A
+//   count read up to a time, as the replay reads one at each question it
+//   decides again (replay.cjs), is the same walk stopped there; read again
+//   at a later time, at the same threshold, it carries on from where it
+//   stopped, so a replay walks each count once, never again from the start.
 // - A count also tallies the answers it holds of the project's own at the
 //   session's model, whatever their age, none cancelled — a one-answer
 //   count's calls among them: the fewer, the wider its range, and the more
@@ -63,6 +67,13 @@
 //   person did on its kind in the project: of the kind's latest answers,
 //   25 at most (P9) — the person's to a raise, blind or shown, and their
 //   reversals, none cancelled — those that took Claude's lean (`alikeOn`).
+// - The tally the matrix shows beside the bound (17.1.2): the project's own
+//   answers its counts weigh at all, each counted once whatever its weight
+//   — a kind's answered, overturned and lost as of the clock, and Claude's
+//   one-answer calls and those overruled; and the weight carried in from
+//   the person's other projects, each answer once, at its weight now: an
+//   answer with a kind under that kind, any other under the one-answer
+//   calls, each at most the cap the merge holds a prior to.
 // - What ships is this procedure and its defaults, never anyone's counts
 //   (16.16.1). The defaults are 16.20.1's, held with the person's own
 //   settings over them (trust-settings.cjs).
@@ -97,8 +108,9 @@ const NO_LOSS = new Set(['nothing', 'fix']);
 /**
  * A count: how it is walked, its changes in time order, and how many of the
  * answers it holds are the project's own at the session's model, none
- * cancelled — what tells its range wide (16.17.9).
- * @typedef {{rule: Rule, changes: Change[], own: number}} Count
+ * cancelled — what tells its range wide (16.17.9); read up to the time
+ * `until` alone where given, as it stood then (the header's).
+ * @typedef {{rule: Rule, changes: Change[], own: number, until?: number}} Count
  */
 /**
  * The counts on a project: each kind's, the one-answer calls', and each
@@ -106,7 +118,12 @@ const NO_LOSS = new Set(['nothing', 'fix']);
  * @typedef {{kinds: Record<Kind, Count>, one: Count, gates: Map<string, Count>}} Counts
  */
 /** A count's split, at a gate with its usual answer. @typedef {{losses: number, clean: number, usual?: string|null}} Split */
-/** Where a count stands: whether it asks, its bound, and its split. @typedef {Split & {asks: boolean, bound: number}} State */
+/**
+ * Where a count stands: whether it asks, its bound, its split, and the rate
+ * it asks over while quiet — the threshold itself for the one-answer calls
+ * until they first ask, else a quarter above it.
+ * @typedef {Split & {asks: boolean, bound: number, opens: number}} State
+ */
 
 // Lanczos' approximation, g = 7, n = 9.
 const LANCZOS = [
@@ -391,6 +408,78 @@ function countsOf(root, { model, now }) {
 }
 
 /**
+ * A kind's answers as the matrix counts them (the header's): the person's,
+ * answered; the departures among them, overturned; and those lost, judged a
+ * real loss or not yet judged.
+ * @typedef {{answered: number, overturned: number, lost: number}} KindTally
+ */
+/** Claude's one-answer calls, standing or answered, and the overrules among them. @typedef {{calls: number, overruled: number}} OneTally */
+/** Where a carried answer is counted once: under its kind, or the one-answer calls'. @typedef {Kind|'one'} Carrier */
+/**
+ * The tally on a project: each kind's, and the one-answer calls'; and the
+ * weight carried in from the person's other projects, by where it is
+ * counted, each at most the merge's cap.
+ * @typedef {{kinds: Record<Kind, KindTally>, one: OneTally, carried: Map<Carrier, number>}} Tally
+ */
+
+/** Whether an answer standing `standing` counts under its kind. @param {string} standing */
+const kindCounts = (standing) => standing === 'agreement' || standing === 'departure';
+
+/**
+ * Where a carried answer is counted once (the header's), or null where no
+ * count reads it.
+ * @param {Answer} answer @returns {Carrier|null}
+ */
+function carrierOf({ kind, sort, standing }) {
+  if (kind !== null && kindCounts(standing)) return kind;
+  return sort === 'one' && Object.hasOwn(ONE_ANSWER, standing) ? 'one' : null;
+}
+
+/**
+ * The tally `events` hold for the project `project`, for the model `model`
+ * as of the time `now` (the header's): every answer of the project's own
+ * whose model `model` reads, counted once — a reversal in place of the
+ * answer it cancels — and every other project's carried in. Pure.
+ * @param {Record<string, unknown>[]} events
+ * @param {{project: string|null, model: string|null, now: number}} clock
+ * @returns {Tally}
+ */
+function tallyFrom(events, { project, model, now }) {
+  const evidence = evidenceIn(events.filter(({ at }) => Date.parse(/** @type {string} */ (at)) <= now));
+  const ancestry = ancestryOf(model);
+  /** @type {Record<Kind, KindTally>} */
+  const kinds = /** @type {Record<Kind, KindTally>} */ (Object.fromEntries(KINDS.map((kind) => [kind, { answered: 0, overturned: 0, lost: 0 }])));
+  /** @type {OneTally} */
+  const one = { calls: 0, overruled: 0 };
+  /** @type {Map<Carrier, number>} */
+  const carried = new Map();
+  for (const answer of evidence.answers) {
+    const { event, standing, cancelled_by: cancelledBy, kind, sort, model: of } = answer;
+    const weight = modelWeight(of, ancestry);
+    if (cancelledBy !== null || weight === 0) continue;
+    if (event.project !== project) {
+      const carrier = carrierOf(answer);
+      const held = { at: Date.parse(/** @type {string} */ (event.at)), own: false, weight, end: Infinity };
+      if (carrier !== null) carried.set(carrier, (carried.get(carrier) ?? 0) + changesOf(held, () => CLEAN, [], now).reduce((sum, { by }) => sum + by, 0));
+      continue;
+    }
+    const departs = standing === 'departure';
+    if (kind !== null && kindCounts(standing)) {
+      const tally = kinds[kind];
+      tally.answered += 1;
+      if (departs) tally.overturned += 1;
+      if (departs && judgedAt(evidence.verdicts.get(/** @type {string} */ (event.entry)) ?? [], now) === LOSS) tally.lost += 1;
+    }
+    if (sort === 'one' && Object.hasOwn(ONE_ANSWER, standing)) {
+      one.calls += 1;
+      if (departs) one.overruled += 1;
+    }
+  }
+  for (const [carrier, weight] of carried) carried.set(carrier, Math.min(PRIOR_CAP, weight));
+  return { kinds, one, carried };
+}
+
+/**
  * The weights the project's own answers and its prior hold, merged: the
  * prior scaled to at most PRIOR_CAP answers' weight, then added.
  * @param {Map<Outcome, number>} own @param {Map<Outcome, number>} prior
@@ -441,13 +530,20 @@ function add(weights, outcome, by) {
 }
 
 /**
- * Where `count` stands at `threshold`: walked through its changes in time
- * order, each moment's changes taken together, then the state moved where
- * the bound crosses a line (16.6.1).
- * @param {Count} count @param {number} threshold the one the question takes
- * @returns {State}
+ * A walk of `count` at `threshold` (`stateOf`'s), carried forward in time:
+ * where it stands once it has taken every change up to a time, and the
+ * time it has reached.
+ * @typedef {{reached: number, to: (until: number) => State}} Walk
  */
-function stateOf({ rule, changes }, threshold) {
+
+/**
+ * `count`'s walk at `threshold`, from before its first change: through its
+ * changes in time order, each moment's changes taken together, then the
+ * state moved where the bound crosses a line (16.6.1).
+ * @param {Count} count @param {number} threshold
+ * @returns {Walk}
+ */
+function walkOf({ rule, changes }, threshold) {
   const { split: splitBy, asks: asksFirst, opensAt, needs } = RULES[rule];
   /** @type {Map<Outcome, number>} */
   const own = new Map();
@@ -456,18 +552,49 @@ function stateOf({ rule, changes }, threshold) {
   let asks = asksFirst;
   let opens = threshold * opensAt;
   let split = splitBy(new Map());
-  changes.forEach((change, i) => {
-    add(change.own ? own : prior, change.outcome, change.by);
-    if (changes[i + 1]?.at === change.at) return;
-    split = splitBy(merged(own, prior));
-    if (asks && below(threshold, split)) {
-      asks = false;
-      opens = threshold * ASK_AGAIN;
-    } else if (!asks && above(opens, split) && split.losses >= needs) {
-      asks = true;
-    }
-  });
-  return { asks, bound: upperBound(split), ...split };
+  let next = 0;
+  return {
+    reached: -Infinity,
+    to(until) {
+      for (; next < changes.length && changes[next].at <= until; next += 1) {
+        const change = changes[next];
+        add(change.own ? own : prior, change.outcome, change.by);
+        if (changes[next + 1]?.at === change.at) continue;
+        split = splitBy(merged(own, prior));
+        if (asks && below(threshold, split)) {
+          asks = false;
+          opens = threshold * ASK_AGAIN;
+        } else if (!asks && above(opens, split) && split.losses >= needs) {
+          asks = true;
+        }
+      }
+      this.reached = until;
+      return { asks, bound: upperBound(split), opens, ...split };
+    },
+  };
 }
 
-module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn };
+/**
+ * The walks of counts read up to a time, by their changes and the threshold
+ * each is walked at: a read at a later time carries its walk on from where
+ * the last stopped (the header's).
+ * @type {WeakMap<Change[], Map<number, Walk>>}
+ */
+const WALKS = new WeakMap();
+
+/**
+ * Where `count` stands at `threshold`, as of its `until` where it has one,
+ * else as of every change it holds (the header's).
+ * @param {Count} count @param {number} threshold the one the question takes
+ * @returns {State}
+ */
+function stateOf(count, threshold) {
+  if (count.until === undefined) return walkOf(count, threshold).to(Infinity);
+  let walks = WALKS.get(count.changes);
+  if (walks === undefined) WALKS.set(count.changes, walks = new Map());
+  let walk = walks.get(threshold);
+  if (walk === undefined || walk.reached > count.until) walks.set(threshold, walk = walkOf(count, threshold));
+  return walk.to(count.until);
+}
+
+module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn, tallyFrom };

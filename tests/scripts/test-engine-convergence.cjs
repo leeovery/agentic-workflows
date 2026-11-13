@@ -217,7 +217,7 @@ describe('the run (16.8.7)', () => {
       h.reverse(made.here[3]);
       agreeing(h, 8, 4);
       h.unfollowed('several');
-      h.call('several', 'behaviour', {}, made.here[12]);
+      h.call('several', 'behaviour', {}, { entry: made.here[12] });
       for (const entry of made.away) h.answered(entry, '1');
       h.answered(made.here[13], '1');
     });

@@ -41,17 +41,25 @@
 //   task parking on it as it was raised (16.4.7);
 //   whose the decision it would replace was — who decided it, or as the
 //   person's keep of it since was given, theirs or their "don't care" —
-//   null for a question's answer (16.5.7); and
+//   null for a question's answer (16.5.7);
 //   Claude's mark that it always asks, null for none (19.4.20, 19.4.22);
-//   and whether it was asked blind, Claude's answer held back (16.17.2), so
-//   an answer given cold reads as one on its own, wherever its draw names.
+//   and when the rule decided it, as sealed: as it was raised in the
+//   conversation, or parked in the build — the event's own time is its
+//   answer's, which may come long after; and whether it was asked blind,
+//   Claude's answer held back (16.17.2), so an answer given cold reads as
+//   one on its own, wherever its draw names.
 //   Whether it was sent to check first is not logged: a call whose label
 //   says Claude could find it out never proceeds — the rule sends it to
 //   check, or asks — so a replay never counts it as one it would skip, and
 //   the label holds it already (16.3.1). A raise followed has its entry: the
 //   command that writes the entry records the event (16.13.3).
 // - call: a call Claude made (16.3.7), by its ledger entry, with its kind,
-//   its label and its sort.
+//   its label and its sort; and, for a call a raise decided, whether it
+//   blocked build work, as the decision point decided it, null for any
+//   other. The rule decided it as it landed, the event's own time; and
+//   what else the rule reads asks whatever the counts, so a call that went
+//   ahead held none of it: no entry of the person's to replace, no mark of
+//   Claude's, no label sending it to check.
 // - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
 //   a fix later, a real loss, or a skip — and the point it was given at.
 // - blind-draw: a call drawn as a blind question (16.17.5), with its kind,
@@ -182,9 +190,10 @@ const SCHEMA = {
       field('blocks_build', FLAG),
       field('replaced_by', nullable(oneOf(...DECIDED_BY))),
       field('always', nullable(ALWAYS_MARK)),
+      field('raised', TIME),
       field('blind', FLAG),
     ]),
-    call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT)]),
+    call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT), field('blocks_build', nullable(FLAG))]),
     verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),
     'blind-draw': event([field('entry', ID), field('kind', KIND)]),
     reversal: event([field('entry', ID), field('reverses', ID)]),
