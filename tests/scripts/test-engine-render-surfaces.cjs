@@ -22,6 +22,8 @@ const path = require('path');
 const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { titlecase } = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
+const { output } = require('./engine-harness.cjs');
+const { fixture } = require('./board-world.cjs');
 
 /** A string matched literally inside a regular expression. */
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -951,6 +953,12 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.ok(squash.includes(`\n${name} lands each task on GitHub as a pull request squashed into one commit.`), squash);
     assert.match(squash, /\*\*`◆ Squash from the pull request's title and description\?`\*\*/);
     assert.match(unwrap(squash), /\*\*`n\/no`\*\*\s+→ Leave it as it is — \*set it later by hand\*/);
+  });
+
+  it('the stop the gate mod\'s band tests draw carrying ⚑ (18.S43) is the engine\'s answer under the gate surface, its project named Fumi', async () => {
+    const out = output(dir, ['render', 'state-lost-gate'], { env: { LEEWAY_GATE_SURFACE: '1' } }).replaceAll(titlecase(path.basename(dir)), 'Fumi');
+
+    assert.strictEqual(out, await fixture('menu-state-lost.mjs'));
   });
 
   it('the knowledge gate: four menus keyed by what each asks; the reuse row names the configuration it adopts', () => {

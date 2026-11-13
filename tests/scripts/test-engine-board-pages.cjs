@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // `engine board`'s pages of a task in the build (leeway-engine/scripts/
 // domain/projections/board-build.cjs, 20.5.4–20.5.7): a task's page with
-// its account, rounds, calls and what running the product proved; a
-// scenario's page and an evidence page; the task as written, a round of its
+// its account, rounds, calls and what running the product proved, the
+// calls on no tab of their own (27.S9); a scenario's page and an evidence page; the task as written, a round of its
 // review and a call read in full; and how a page stays, is read against
 // the unit it was opened in, and answers unavailable. The board's frame and
 // the build's view are test-engine-board.cjs.
@@ -24,11 +24,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, cleanupFixture, readState, writeState, layout,
+  ok, refuses, cleanupFixture, readState, writeState, layout,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION_ID, buildScreensWorld, buildScreenHelpers, boardHelpers, line } = require('./build-screens-world.cjs');
 const { fixture, misfits, place } = require('./board-world.cjs');
+const { TABS } = require('../../skills/leeway-engine/scripts/domain/board-model.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -83,6 +84,14 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
       questions: [],
       fixes: [],
     });
+  });
+
+  it('27.S9: no tab shows the calls made grouped by kind — the board has This session, the unit\'s tab and All work alone, a tab of calls refused, neither the unit\'s nor All work holding any — while a task\'s page still lists the calls it made', () => {
+    enterBuild();
+    const tabs = ['unit', 'all'].map((tab) => Object.keys(board(['--tab', tab]).view).filter((key) => /call/.test(key)));
+
+    assert.deepStrictEqual([TABS, tabs, board(['--page', 'task:1.1']).view.calls.map((/** @type {{text: string}} */ { text }) => text)], [['this', 'unit', 'all'], [[], []], ['The till masks the digits']]);
+    assert.match(refuses(dir, ['board', SESSION_ID, '--tab', 'calls'], { env: env() }).error, /--tab is this, unit or all, not "calls"/);
   });
 
   it('a scenario opens on the run that decides it: what it proved and when, what it drives and checks by the spec\'s words parted at their "then", and each text evidence kept with it, read whole (15.2.14, D16); the mod\'s fixtures of both pages are shaped as these, each list holding one (N6)', async () => {

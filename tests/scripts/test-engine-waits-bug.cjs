@@ -59,7 +59,7 @@ describe('a bug\'s investigation (18.2.3, N1)', () => {
     const read = { here: waiting(HUNT), elsewhere: waiting('sess-cleared'), nowhere: waiting() };
     ok(dir, ['raise', 'answer', killAll.raise, '--pick', '1'], { env: as(), stdin: JSON.stringify({ why: 'Every session is lost.' }) });
     /** The question raised at `bug`, waiting. @param {string} bug @param {string} id */
-    const raised = (bug, id) => wait('question', id, `What does ${bug} lose?`, door('leeway-investigation-process', 'bugfix', bug));
+    const raised = (bug, id) => wait('raise', id, `What does ${bug} lose?`, door('leeway-investigation-process', 'bugfix', bug));
     const none = { [BUGS[0]]: [], [BUGS[1]]: [] };
 
     assert.deepStrictEqual([read, waiting(HUNT), progress(dir, BUGS[0])], [

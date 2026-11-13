@@ -28,17 +28,16 @@
 //   the person: its question open, or the decision it would replace current
 //   and kept by no answer since. Each carries the effort
 //   its agent's definition fixes (brief-names.cjs).
-// - What waits on the person, while it is under way, is each raise this
-//   conversation sealed at its places that the person has not answered and
-//   whose question is still open,
-//   or whose decision a replacement proposes is still current — asked in
-//   the conversation, never queued (20.12.1). Each says what raised it: the
+// - What waits on the person, while it is under way, is the hunt's share
+//   of the unit's one list (waits.cjs): each raise this conversation sealed
+//   at its places still waiting — asked in the conversation, never queued
+//   (20.12.1) — then the conclude once its screen draws, whose yes waits on
+//   the person as every gate that ends a phase does. Each raise says what
+//   raised it, read from the latest seal asking about its decision: the
 //   validation one of whose findings was surfaced as it, whatever that
 //   validation's row now stands at — asked as its question, or raised
 //   replacing its decision (`agent surface`); else the fix direction where
-//   it is the fix direction's; else nothing. Then the conclude, once its
-//   screen draws (investigation-conclude.cjs, `concludeDraws`): its yes
-//   waits on the person, as every gate that ends a phase does.
+//   it is the fix direction's; else nothing.
 // - The fix direction's raises are those down its question's chain — one
 //   answering it, or replacing a decision of its chain (`downChain`) — and,
 //   before its question is logged, one carrying a step back. The latest
@@ -96,6 +95,7 @@ const { projectName } = require('../state-checks.cjs');
 /** @typedef {import('../investigation-log.cjs').Rested} Rested */
 /** @typedef {import('../unit-entries.cjs').UnitView} Entries */
 /** @typedef {import('../raise.cjs').Seal} Seal */
+/** @typedef {import('../waits.cjs').Wait} Wait */
 /** @typedef {import('../topic-map.cjs').Row} Row */
 
 const PHASE = 'investigation';
@@ -167,7 +167,7 @@ function raisedBy(at, seal) {
 const waitingSeals = (at) => at.once('hunt-waiting', () => ledgerAt(at).seals.filter((seal) => sealWaits(ledgerAt(at).folded, seal)));
 
 /** The conclude's yes, as what waits on the person. @type {HuntWait} */
-const CONCLUDE = Object.freeze({ kind: 'conclude', id: 'conclude', text: 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes', page: null, raised_by: null, options: null, lean: null });
+const CONCLUDE_LINE = Object.freeze({ kind: 'conclude', id: 'conclude', text: 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes', page: null, raised_by: null, options: null, lean: null });
 
 /** Whether the conclude's yes waits on the person, read once a call. @param {BoardAt} at */
 const concludeWaits = (at) => at.once('hunt-conclude', () => concludeDraws(at.cwd, at.unit));
@@ -185,31 +185,34 @@ function leanAmong(seal, rows) {
   return rows[0]?.key === lean ? 'first' : 'marked';
 }
 
+/** The decision a raise asks the person about: the question it answers, or the decision it would replace. @param {Seal} seal */
+const subjectOf = (seal) => /** @type {string} */ (seal.answers ?? seal.replaces?.entry);
+
 /**
- * What waits on the person in the investigation (the header's), none once
- * it is no longer under way: each raise by its id, short among the
- * ledger's, its question, what raised it, and, for the fix direction's,
- * how many options it sets out and where Claude's lean stands among them
- * (`leanAmong`); then the conclude while its yes waits.
- * @param {BoardAt} at @returns {HuntWait[]}
+ * A raise waiting on the person, as the hunt holds it (the header's), read
+ * from the latest seal asking about the decision the unit's one list names
+ * it by: by the raise's id, short among the ledger's; what raised it, and
+ * for the fix direction's how many options it sets out and where Claude's
+ * lean stands among them (`leanAmong`).
+ * @param {BoardAt} at @param {Wait} wait @returns {HuntWait}
  */
-const investigationWaits = (at) => at.once('hunt-waits', () => {
-  if (!investigating(at)) return [];
+function raiseLine(at, wait) {
   const ids = [...ledgerAt(at).folded.facts.keys()];
-  const raises = waitingSeals(at).map((seal) => {
-    const rows = fixSeal(at, seal) && !seal.fact ? drawnRows(seal) : null;
-    return {
-      kind: /** @type {const} */ ('raise'),
-      id: shortId(seal.id, ids),
-      text: seal.call.question,
-      page: null,
-      raised_by: raisedBy(at, seal),
-      options: rows === null ? null : rows.length,
-      lean: rows === null ? null : leanAmong(seal, rows),
-    };
-  });
-  return concludeWaits(at) ? [...raises, CONCLUDE] : raises;
-});
+  const seal = /** @type {Seal} */ (ledgerAt(at).seals.filter((sealed) => shortId(subjectOf(sealed), ids) === wait.id).at(-1));
+  const rows = fixSeal(at, seal) && !seal.fact ? drawnRows(seal) : null;
+  return {
+    kind: 'raise',
+    id: shortId(seal.id, ids),
+    text: wait.text,
+    page: null,
+    raised_by: raisedBy(at, seal),
+    options: rows === null ? null : rows.length,
+    lean: rows === null ? null : leanAmong(seal, rows),
+  };
+}
+
+/** Whether a wait of the unit's one list is the hunt's own: a raise, or the conclude. @param {WaitingLine} line @returns {line is HuntWait} */
+const huntOwn = (line) => line.kind === 'raise' || line.kind === 'conclude';
 
 /**
  * Each validation of the hunt (the header's): after what it validates is
@@ -365,12 +368,12 @@ function decidedOf(at) {
 }
 
 /**
- * The investigation's This session (the header's): what waits on the
- * person its own raises alone, never what waits on the unit in a later
- * phase.
- * @param {BoardAt} at @returns {{view: InvestigationView}}
+ * The investigation's This session (the header's): of what waits on the
+ * person in the unit, `waiting`, its own raises and its conclude alone,
+ * never what waits on the unit in a later phase.
+ * @param {BoardAt} at @param {WaitingLine[]} waiting @returns {{view: InvestigationView}}
  */
-function investigationView(at) {
+function investigationView(at, waiting) {
   const hunt = huntAt(at);
   const { rootCause } = ledgerAt(at);
   const own = ownSection(at);
@@ -383,7 +386,7 @@ function investigationView(at) {
       project: projectName(at.cwd),
       started: startedOn(at.manifest),
       standing: standingOf(at),
-      waiting: investigationWaits(at),
+      waiting: waiting.filter(huntOwn),
       decided: decidedOf(at),
       symptoms: hunt.symptoms.map(({ text }) => text),
       hypotheses: hunt.hypotheses.map(({ name, title, state }) => ({ name, title, state })),
@@ -470,4 +473,4 @@ function optionPage(at, key) {
   return { kind: 'hunt', unit: at.unit, item: 'option', name: key, title: row.name, state: standing, text: bodyText([row.text, row.notice]) };
 }
 
-module.exports = { investigationView, investigationBanner, investigationWaits, investigationDoing, investigationHowFar, hypothesesCount, huntMoments, huntPage, optionPage };
+module.exports = { investigationView, investigationBanner, raiseLine, CONCLUDE_LINE, investigationDoing, investigationHowFar, hypothesesCount, huntMoments, huntPage, optionPage };

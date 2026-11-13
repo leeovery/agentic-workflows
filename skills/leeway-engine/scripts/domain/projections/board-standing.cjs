@@ -38,45 +38,45 @@
 //   conversation and holding it waits — the map, an investigation's raise
 //   or its conclude, a gap, ready to build's yes, finish or a quick-fix's
 //   close; else under way.
-// - What waits on the person is the unit's one list, in order, each wait
-//   with its words and the page a press on it opens, where it opens one:
-//   approve the map while a map is staged, the sweep's candidates among it
-//   after the sweep (8.10.9); each raise its investigation asks in this
-//   conversation, with what raised it, then its conclude once its screen
-//   draws (board-investigation.cjs); the spec's gaps (spec-passes.cjs),
-//   each opening the finding that raised it, and then ready to build's yes
-//   once its screen draws (ready-to-build.cjs, `readyDraws`), while the
-//   build has not begun; the questions the build and the review wait on
-//   (questions.cjs), each opening the page of the first task it parks, one
-//   parking none its question's entry — a replacement's, the decision it
-//   would replace; a quick-fix's questions its builders parked its fixes on
-//   among them, then each raise this conversation sealed at its place still
-//   waiting, parking nothing (19.5.25); and finish once its screen draws
-//   (finish.cjs, `finishDraws`) and no question waits (D18), a quick-fix's
-//   its close. Each gate's wait is read by that gate's own check, never a
-//   copy of it.
+// - What waits on the person is the list the unit's menu reads (waits.cjs;
+//   20.8.5), read in this conversation, its verdicts for an epic as the
+//   epic's menu asks for them — so the board and the menus never differ —
+//   each wait with the board's words and the page a press on it opens,
+//   where it opens one: approve the map with the topics it holds and what
+//   it parks, or the sweep's candidates still standing (8.10.9); a topic's
+//   decided, and a decided topic an answer it relied on, replaced since,
+//   holds (10.2.6), each opening the topic; ready to build's yes; a gap of
+//   the spec opening the finding that raised it (board-spec.cjs); a
+//   question of the build or the review opening the page of the first task
+//   it parks, one parking none its question's entry — a replacement's, the
+//   decision it would replace (questions.cjs); an investigation's raise
+//   with what raised it, and its conclude (board-investigation.cjs); a
+//   quick-fix's question asked in its conversation; finish, a quick-fix's
+//   its close with whether a verdict is owed (board-quick-fix.cjs); and a
+//   verdict waiting, by the words of the answer it judges.
 // - The banner counts that list, flagged — the map alone by its own words —
 //   and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
 
 const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
-const { specBegun, specUnderWay } = require('../spec-standing.cjs');
-const { waitingAndFreed } = require('../questions.cjs');
+const { specBegun } = require('../spec-standing.cjs');
+const { readQuestions, waitingIn } = require('../questions.cjs');
+const { readShownOnce } = require('../ledger-read.cjs');
 const {
-  phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec, quickFixBuild, tasksBegun, fixesBegun, reviewAsked, startedOn,
+  phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec, quickFixBuild, tasksBegun, fixesBegun, reviewAsked, startedOn, topicTitle,
 } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
-const { finishDraws } = require('../finish.cjs');
 const { buildView } = require('./board-build.cjs');
-const { specWaits } = require('./board-spec.cjs');
-const { investigationWaits } = require('./board-investigation.cjs');
-const { raisedWaits, closeWait } = require('./board-quick-fix.cjs');
+const { specLine } = require('./board-spec.cjs');
+const { raiseLine, CONCLUDE_LINE } = require('./board-investigation.cjs');
+const { closeWait } = require('./board-quick-fix.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** What where a unit has come to reads of it: the project, the unit and its manifest, and one read of anything read twice. @typedef {Pick<BoardAt, 'cwd'|'unit'|'manifest'|'once'>} UnitRead */
 /** @typedef {import('../board-model.cjs').UnitNow} UnitNow */
 /** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
 /** @typedef {import('../board-model.cjs').Fact} Fact */
+/** @typedef {import('../waits.cjs').Wait} Wait */
 /** @typedef {'complete'|'running'|'later'} Status */
 /** A phase of a unit, by its tab's name and the phase whose status it reads, where it stands and the day it closed. @typedef {{phase: string, reads: string, status: Status, on: string|null}} PhaseAt */
 /** How the phase a unit is in stands (the header's). @typedef {'running'|'stopped'|'waits'|'complete'} PhaseStanding */
@@ -207,62 +207,81 @@ function unitRead(cwd, manifest) {
 }
 
 /**
- * Approve the map, while a map is staged: its topics in order and what it
+ * Approve the map with what is staged: its topics in order and what it
  * parks on the roadmap, or after the sweep its candidates still standing,
  * to take or strike.
- * @param {BoardAt} at @returns {WaitingLine[]}
+ * @param {BoardAt} at @param {Wait} wait @returns {WaitingLine}
  */
-function mapWaits(at) {
-  const staged = at.manifest.work_type === 'epic' ? stagedOrNone(at.cwd, at.unit) : null;
-  if (staged === null) return [];
+function mapLine(at, wait) {
+  const staged = /** @type {NonNullable<ReturnType<typeof stagedOrNone>>} */ (stagedOrNone(at.cwd, at.unit));
   const parks = staged.parks?.length ?? 0;
   const holds = staged.candidates === undefined
     ? `${counted(staged.topics.length, 'topic')} in this order${parks === 0 ? '' : `, and ${parks} to the roadmap`}`
     : `${counted(candidatesStanding(staged.candidates).length, 'candidate')} the sweep found, to take or strike`;
-  return [{ kind: 'map', id: 'approve-the-map', text: `Approve the map: ${holds}`, page: null }];
+  return { kind: 'map', id: wait.id, text: `Approve the map: ${holds}`, page: null };
 }
+
+/** The questions of the build and the review waiting, by their number, each with the tasks it parks and what it is about (questions.cjs), read once a call. @param {BoardAt} at @returns {Map<string, {about: string, parks: string[]}>} */
+const questionsAt = (at) => at.once('waiting-questions', () => readQuestions(at.root, at.warnings, (read, entryAt) => new Map(
+  waitingIn(read, entryAt, at.unit, Date.now()).map(({ question, about, parks }) => [question, { about, parks }]),
+)));
 
 /**
- * The questions its build and the review wait on, oldest first, each
- * opening the page of the first task it parks, which holds it whole, or
- * one parking none its question's entry — a replacement's, the decision it
- * would replace.
- * @param {BoardAt} at @returns {WaitingLine[]}
+ * A question of the build or the review, opening the page of the first task
+ * it parks, which holds it whole, or one parking none its question's entry
+ * — a replacement's, the decision it would replace.
+ * @param {BoardAt} at @param {Wait} wait @returns {WaitingLine}
  */
-function questionWaits(at) {
-  if (!tasksBegun(at.manifest)) return [];
-  return waitingAndFreed(at.cwd, at.unit, at.warnings).waiting.map(({ question, asks, about, parks }) => ({
-    kind: /** @type {const} */ ('question'), id: question, text: `${question} ${asks}`, page: parks.length === 0 ? `entry:${about}` : `task:${parks[0]}`,
-  }));
+function questionLine(at, wait) {
+  const { about, parks } = /** @type {{about: string, parks: string[]}} */ (questionsAt(at).get(wait.id));
+  return { kind: 'question', id: wait.id, text: `${wait.id} ${wait.text}`, page: parks.length === 0 ? `entry:${about}` : `task:${parks[0]}` };
 }
-
-/** Finish, once its screen draws: its checklist closed, every item the engine checks of it holding — the review over among them (D18). @param {BoardAt} at @returns {boolean} */
-const finishWaits = (at) => finishDraws(at.cwd, at.unit);
 
 /** Finish, as what waits on the person. @type {WaitingLine} */
 const FINISH = Object.freeze({ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null });
 
-/** Finish once its screen draws and no question waits (D18): a quick-fix's its close (board-quick-fix.cjs). @param {BoardAt} at @returns {WaitingLine[]} */
-function finishLine(at) {
-  if (quickFixBuild(at.manifest)) return [closeWait(at)].filter((line) => line !== null);
-  return finishWaits(at) ? [FINISH] : [];
-}
+/** A wait by its own words, opening `page`. @param {Wait} wait @param {string|null} [page] @returns {WaitingLine} */
+const plainLine = ({ kind, id, text }, page = null) => ({ kind, id, text, page });
 
-/** What waits on the person in the unit (the header's), read once a call. @param {BoardAt} at @returns {WaitingLine[]} */
-const waitingOn = (at) => at.once('waiting-on', () => {
-  const questions = questionWaits(at);
-  return [
-    ...mapWaits(at),
-    ...investigationWaits(at),
-    ...(specUnderWay(at.cwd, at.manifest) ? specWaits(at) : []),
-    ...questions,
-    ...raisedWaits(at),
-    ...(questions.length === 0 ? finishLine(at) : []),
-  ];
+/** A wait about a topic, opening the topic. @param {Wait} wait */
+const topicLine = (wait) => plainLine(wait, `topic:${wait.topic}`);
+
+/** Each kind of wait as the board lists it (the header's). @type {Readonly<Record<Wait['kind'], (at: BoardAt, wait: Wait) => WaitingLine>>} */
+const LINES = Object.freeze({
+  map: mapLine,
+  decided: (at, wait) => ({ ...topicLine(wait), text: `Decided: what ${topicTitle(at.manifest, /** @type {string} */ (wait.topic))} decided, for your yes` }),
+  ready: specLine,
+  conclude: () => CONCLUDE_LINE,
+  finish: (at) => (quickFixBuild(at.manifest) ? /** @type {WaitingLine} */ (closeWait(at)) : FINISH),
+  gap: specLine,
+  question: questionLine,
+  raise: raiseLine,
+  raised: (_, wait) => plainLine(wait),
+  affected: (_, wait) => topicLine(wait),
+  verdict: (_, wait) => ({ ...plainLine(wait), text: `Verdict on a call you changed: ${wait.text}` }),
 });
 
-/** Whether a wait holds the phase: all but a build's questions, which wait on the board, and a quick-fix's raises, asked in the conversation and holding nothing. @param {WaitingLine} line */
-const holds = ({ kind }) => kind !== 'question' && kind !== 'raised';
+/** What waits on the person in the unit (the header's), read once a call. @param {BoardAt} at @returns {WaitingLine[]} */
+const waitingOn = (at) => at.once('waiting-on', () => readShownOnce(at.root, at.warnings, (shower) => {
+  // Loaded at the first read, not with the module: waits.cjs reads where a
+  // unit has come to from this module, through unit-handoff.cjs.
+  const { waitsOf } = require('../waits.cjs');
+  const { waits, warnings } = waitsOf(at.cwd, [at.manifest], { verdicts: at.manifest.work_type === 'epic', session: at.session, shower });
+  at.warnings.push(...warnings);
+  return /** @type {Wait[]} */ (waits.get(at.unit)).map((wait) => LINES[wait.kind](at, wait));
+}));
+
+/** The kinds of wait that hold the phase the unit is in: asked in the conversation, it goes no further until each is answered. */
+const HOLDING = Object.freeze(['map', 'gap', 'ready', 'raise', 'conclude', 'finish']);
+
+/**
+ * Whether a wait holds the phase (`HOLDING`): never a build's question,
+ * which waits on the board, a quick-fix's, asked in the conversation and
+ * holding nothing, a topic's decided, which holds its topic alone, a
+ * decided topic a changed answer holds, nor a verdict.
+ * @param {WaitingLine} line
+ */
+const holds = ({ kind }) => HOLDING.includes(kind);
 
 /**
  * Whether nothing of the unit's tasks can go on without an answer (the

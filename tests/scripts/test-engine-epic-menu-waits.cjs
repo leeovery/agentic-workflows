@@ -12,8 +12,9 @@
 // recommended while a wait stands; every topic decided, the spec not
 // entered, the epic in its specification, an affected topic's door the
 // spec; a topic with experiments waiting leading into the laboratory,
-// struck by a hold there alone; and the review's row standing aside for
-// finish. The screen itself: test-engine-epic-menu.cjs.
+// struck by a hold there alone; the review's row standing aside for
+// finish; and the board at the menu listing what the menu lists (20.8.5).
+// The screen itself: test-engine-epic-menu.cjs.
 //
 // Layer: verb — the render through the engine in process, and the screen
 // composed in process over the waits given. World: the decided suites'
@@ -47,7 +48,7 @@ const verdict = (id) => wait('verdict', id, 'Off until you turn it on.', VERDICT
 describe('what waits, drawn first (18.4.2)', () => {
   const dir = useDecidedWorld();
   const { close, payload, staged, reverse, answer } = decidedHelpers(dir);
-  const { spawned } = decidedBoardHelpers(dir);
+  const { board, at, spawned } = decidedBoardHelpers(dir);
 
   /** The epic's menu as the world's conversation draws it. */
   const menu = () => output(dir(), ['render', 'epic-menu', FUMI], { env: SESSION });
@@ -94,16 +95,17 @@ describe('what waits, drawn first (18.4.2)', () => {
     ], { kind: 'handoff', skill: 'leeway-discovery', args: ['none', FUMI] }, VERDICTS]);
   });
 
-  it('a topic whose decided waits is drawn as that wait alone, its door the topic', () => {
+  it('a topic whose decided waits is drawn as that wait alone, its door the topic; the board at the menu lists it too, opening the topic (20.8.5)', () => {
     close();
     staged({ lines: [], candidates: [] });
     const rows = rowsOf(menu());
+    const { waiting } = board().view;
 
-    assert.deepStrictEqual([rows.slice(0, 3), answer('epic menu', '1')], [[
+    assert.deepStrictEqual([rows.slice(0, 3), answer('epic menu', '1'), waiting], [[
       '1           → Close "Note Window" as decided — what it decided',
       '              waits on your yes (recommended)',
       '2           → Continue "Space Homing" — in progress',
-    ], topicDoor(FUMI, 'note-window')]);
+    ], topicDoor(FUMI, 'note-window'), [{ kind: 'decided', id: 'note-window', text: 'Decided: what Note Window decided, for your yes', page: 'topic:note-window' }]]);
   });
 
   it('18.4.21: a wait about a topic another conversation holds is struck and never recommended — the first topic free is', () => {
@@ -119,11 +121,12 @@ describe('what waits, drawn first (18.4.2)', () => {
   });
 
   /** Note Window's decision relying on Space Homing's answer, replaced since: Note Window affected. */
+  /** A decided topic an answer it relied on, replaced since, holds: the replacing answer's id. */
   function affected() {
     const homing = answeredIn(dir(), SPACE, 'Does a space remember its notes?', { ...MADE, text: 'It does.' });
     const asked = writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'Where does a note open?' });
     writeIn(dir(), 'decide', NOTE, ['--answers', asked, '--relies-on', homing.answer], { ...MADE, text: 'In the space that made it.', why: 'Spaces remember.' });
-    writeIn(dir(), 'replace', SPACE, ['--replaces', homing.answer, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text: 'It does not.', why: 'The person wants it so.' });
+    return writeIn(dir(), 'replace', SPACE, ['--replaces', homing.answer, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text: 'It does not.', why: 'The person wants it so.' });
   }
 
   it('18.S78, 10.2.6: a decided topic an entry of which relies on an answer replaced since waits first, recommended, its door the topic — off DECIDED, still counted decided', () => {
@@ -139,6 +142,41 @@ describe('what waits, drawn first (18.4.2)', () => {
       'e/verdicts  → Give the verdict waiting on a call you changed',
       '2           → Continue "Space Homing" — in progress',
     ], topicDoor(FUMI, 'note-window')]);
+  });
+
+  it('20.S32, 20.8.5: at the epic\'s menu, the board\'s WAITING ON YOU lists what the menu lists — the decided topic a replaced answer holds, opening the topic, and the verdict — counted unflagged on the banner', () => {
+    const verdictOn = affected();
+    const manifest = readManifest(dir(), FUMI);
+    manifest.phases.discussion.items['note-window'].status = 'completed';
+    createManifest(dir(), FUMI, manifest);
+    const rows = rowsOf(menu()).filter((row) => /^(1|e\/verdicts) /.test(row));
+    const { view, banner } = board();
+    const sameEntry = (/** @type {string} */ a, /** @type {string} */ b) => a.startsWith(b) || b.startsWith(a);
+
+    assert.deepStrictEqual([rows, view.at_menu, view.waiting.map(({ id, ...line }) => line), sameEntry(view.waiting[1].id, verdictOn), banner.facts.at(-1)], [
+      ['1           → "Note Window": a decision it relies on changed —', 'e/verdicts  → Give the verdict waiting on a call you changed'],
+      true,
+      [
+        { kind: 'affected', text: 'Note Window: a decision it relies on changed', page: 'topic:note-window' },
+        { kind: 'verdict', text: 'Verdict on a call you changed: It does not.', page: null },
+      ],
+      true,
+      { text: '2 waiting on you', needs: false, waits: true },
+    ]);
+  });
+
+  it('20.8.5: in a topic\'s discussion, the affected topic and the verdict waiting are counted on the banner yet never hold the phase', () => {
+    affected();
+    const manifest = readManifest(dir(), FUMI);
+    manifest.phases.discussion.items['note-window'].status = 'completed';
+    createManifest(dir(), FUMI, manifest);
+    at([FUMI, 'discussion', 'space-homing']);
+    const { banner } = board();
+    const { waiting } = board(['--tab', 'unit']).view;
+
+    assert.deepStrictEqual([waiting.map((/** @type {{kind: string}} */ { kind }) => kind), banner.state === 'needs', banner.facts.at(-1)], [
+      ['affected', 'verdict'], false, { text: '2 waiting on you', needs: true },
+    ]);
   });
 
   it('20.15.2, 10.2.6: every topic decided and the spec not entered, the epic is in its specification — s/spec offered, an affected topic\'s door the spec', () => {

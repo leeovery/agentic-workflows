@@ -38,6 +38,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT: FUMI, MADE, leaningCall } = require('./ledger-world.cjs');
 const { SOLO, SOLO_AT, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 const review = require('./review-world.cjs');
+const { fixture } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
@@ -114,6 +115,12 @@ describe('the start menu (18.2.12)', () => {
   /** A message waiting in `unit`'s topic's mailbox. @param {string} unit @param {string} topic */
   const mailFor = (unit, topic) => writeState(dir(), `${unit}/topics/${topic}/mail/001-a-note.md`, '# A note\n\nFrom Discovery · 1 Oct\n');
 
+  it('the start menu the gate mod\'s band tests draw (18.S42) is the engine\'s answer under the gate surface', async () => {
+    const out = output(dir(), ['render', 'start-menu'], { env: { CLAUDE_CODE_SESSION_ID: HERE, LEEWAY_GATE_SURFACE: '1' } });
+
+    assert.strictEqual(out, await fixture('menu-start.mjs'));
+  });
+
   it('18.S1, 7.S16, 28.S1: a row per unit, type first, saying how far it has come and naming no topic — a build the phase it is at of every phase of its cut, one not yet written saying so — each continuing its unit; no waiting section', () => {
     building('ledger', ['phase-1-start', 'phase-1-close', 'phase-2-start']);
     building('paced', ['phase-1-start', 'phase-1-close']);
@@ -130,14 +137,16 @@ describe('the start menu (18.2.12)', () => {
       '24.S16: each row continues its unit where it stands');
   });
 
-  it('18.2.3: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
+  it('18.2.3: every kind of wait lands in exactly one count — approve the map, decided, ready to build, an investigation\'s conclude and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
     /** The count each kind of wait lands in. */
     const landsIn = Object.fromEntries(WAIT_KINDS.map((kind) => {
       const waiting = counts([/** @type {any} */ ({ kind })]);
       return [kind, Object.keys(waiting).filter((count) => waiting[/** @type {keyof typeof waiting} */ (count)] === 1).join(', ') || null];
     }));
 
-    assert.deepStrictEqual(landsIn, { map: 'gates', decided: 'gates', ready: 'gates', finish: 'gates', question: 'questions', affected: 'topics', verdict: null });
+    assert.deepStrictEqual(landsIn, {
+      map: 'gates', decided: 'gates', ready: 'gates', conclude: 'gates', finish: 'gates', gap: 'questions', question: 'questions', raise: 'questions', raised: 'questions', affected: 'topics', verdict: null,
+    });
   });
 
   it('18.S44, 18.S6: a unit\'s count takes in the gate waiting in it and never its verdict, which has the e row while it waits, leading to the verdict page, which draws — and none waiting, no e row', () => {

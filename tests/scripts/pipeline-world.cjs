@@ -343,6 +343,11 @@ class Sim {
   manifest(wu) {
     return JSON.parse(fs.readFileSync(path.join(this.dir, '.leeway', wu, 'manifest.json'), 'utf8'));
   }
+
+  /** The board as the sim's conversation draws it — This session unless `args` name a tab — the mod's read, nothing to audit. @param {string[]} [args] */
+  board(args = []) {
+    return JSON.parse(this.read(['board', this.env.CLAUDE_CODE_SESSION_ID, ...args]));
+  }
 }
 
 /** Session-log helper — workunit create needs one. */

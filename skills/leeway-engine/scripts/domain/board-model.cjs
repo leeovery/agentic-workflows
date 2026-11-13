@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 7;
+const BOARD_VERSION = 8;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -400,16 +400,20 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  */
 /**
  * What waits on the person in a unit, the unit's one list every view reads
- * (board-standing.cjs): approve the map, with the topics it holds and what
- * it parks, or the sweep's candidates; a gap of its spec, or ready to
- * build's yes; a question of its build, a quick-fix's fixes' among them;
- * finish, a quick-fix's close among it; a raise its investigation asks in
- * this conversation, held with what raised it as its view holds it
- * (HuntWait), or its conclude; or a question Claude raised in a quick-fix's
- * conversation, parking nothing (`raised`) — by its number or entry, a
- * gate by its name (`finish`, `close`, `conclude`), its words, and the
- * page a press on it opens, null where none.
- * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish'|'raise'|'conclude'|'raised', id: string, text: string, page: string|null}} WaitingLine
+ * (board-standing.cjs), the list its menu reads (20.8.5): approve the map,
+ * with the topics it holds and what it parks, or the sweep's candidates; a
+ * topic's decided; a gap of its spec, or ready to build's yes; a question
+ * of its build, a quick-fix's fixes' among them; finish, a quick-fix's
+ * close among it; a raise its investigation asks in this conversation,
+ * held with what raised it as its view holds it (HuntWait), or its
+ * conclude; a question Claude raised in a quick-fix's conversation,
+ * parking nothing (`raised`); a decided topic an answer it relied on,
+ * replaced since, holds (`affected`, 10.2.6); or, an epic's, a verdict
+ * waiting on an answer that departed from Claude's lean — by its number or
+ * entry, a topic's by the topic, a gate by its name (`finish`, `close`,
+ * `conclude`), its words, and the page a press on it opens, null where
+ * none.
+ * @typedef {{kind: 'map'|'decided'|'gap'|'ready'|'question'|'finish'|'raise'|'conclude'|'raised'|'affected'|'verdict', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any

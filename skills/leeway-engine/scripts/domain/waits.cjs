@@ -9,20 +9,25 @@
 // - The authority gates waiting: approve the map while a map is staged
 //   (approve-map.cjs); an epic's topic's decided once its screen draws
 //   (decided.cjs); ready to build once its screen draws, the spec's gaps all
-//   answered (ready-to-build.cjs); finish once its screen draws — a
-//   quick-fix's close — which it never does while a question of the build
-//   waits (D18, finish.cjs), and is never listed while a question of this
-//   conversation waits.
-// - The questions waiting, each read by the module that owns its rule: the
-//   spec's gaps while the spec is under way (spec-passes.cjs,
-//   spec-standing.cjs); the build's and its review's, parked in the ledger,
-//   a builder's among them (questions.cjs); a quick-fix's asked in its
-//   conversation, parking nothing (questions.cjs); and each raise this
-//   conversation sealed where one waits (raise.cjs, `raisePlaces`) that the
-//   person has not answered, but one counted already as asked. A seal is
-//   its conversation's alone, where it can be shown and answered: read in
-//   no conversation, none counts. Everything else is read from the ledger
-//   and the unit's files, the same in any conversation.
+//   answered (ready-to-build.cjs); an investigation's conclude once its
+//   screen draws (investigation-conclude.cjs, 20.12.5); finish once its
+//   screen draws — a quick-fix's close — which it never does while a
+//   question of the build waits (D18, finish.cjs), and is never listed
+//   while a question of this conversation waits.
+// - The questions waiting, each read by the module that owns its rule, each
+//   kind by where it is asked: the spec's gaps while the spec is under way
+//   (spec-passes.cjs, spec-standing.cjs), asked in the conversation and
+//   holding the spec (`gap`); the build's and its review's, parked in the
+//   ledger, a builder's among them and a blind question holding its task
+//   open (questions.cjs), waiting on the board (`question`); each raise this
+//   conversation sealed at its investigation's places that the person has
+//   not answered (raise.cjs, `raisePlaces`), holding the investigation
+//   (`raise`); and a quick-fix's asked in its conversation, parking nothing
+//   (questions.cjs), with each raise this conversation sealed at its fixes'
+//   places still unanswered, but one counted already as asked (`raised`). A
+//   seal is its conversation's alone, where it can be shown and answered:
+//   read in no conversation, none counts. Everything else is read from the
+//   ledger and the unit's files, the same in any conversation.
 // - Each decided topic with an entry relying on an answer replaced since
 //   (10.2.6, ledger-affected.cjs), its door where such an entry is answered
 //   (unit-handoff.cjs): the topic's own while the unit is in the phase its
@@ -50,11 +55,12 @@ const { stagedOrNone } = require('./approve-map.cjs');
 const { decidedDraws } = require('./decided.cjs');
 const { readyDraws } = require('./ready-to-build.cjs');
 const { finishDraws } = require('./finish.cjs');
+const { concludeDraws } = require('./investigation-conclude.cjs');
 const { specUnderWay } = require('./spec-standing.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { affectedAnsweredIn } = require('./unit-handoff.cjs');
 const {
-  buildFinished, quickFixBuild, fixesBegun, reviewAsked, tasksBegun, itemOf, mailPhase, topicTitle,
+  buildFinished, quickFixBuild, fixesBegun, reviewAsked, tasksBegun, investigationUnderWay, itemOf, mailPhase, topicTitle,
 } = require('./derivations.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
@@ -62,7 +68,7 @@ const {
 /** @typedef {import('./raise.cjs').Seal} Seal */
 
 /** Every kind of wait (the header's). */
-const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish', 'question', 'affected', 'verdict']));
+const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'conclude', 'finish', 'gap', 'question', 'raise', 'raised', 'affected', 'verdict']));
 
 /** @typedef {typeof WAIT_KINDS[number]} WaitKind */
 /**
@@ -103,6 +109,9 @@ const wait = (kind, id, text, next, topic = null) => ({ kind, id, text, topic, n
 /** What a raise asks the person of: its question, or the decision its rows would replace. @param {Seal} seal */
 const subjectOf = (seal) => /** @type {string} */ (seal.answers ?? seal.replaces?.entry);
 
+/** The kind of a raise sealed at `place`: an investigation's, holding it, or a quick-fix's, parking nothing (the header's). @param {Seal['place']} place @returns {WaitKind} */
+const raiseKind = (place) => (place.phase === 'investigation' ? 'raise' : 'raised');
+
 /**
  * Each raise the reading conversation sealed where one waits in the unit,
  * still waiting, parking nothing, but those asked already, by their
@@ -114,7 +123,7 @@ function sealedWaits({ shower: { folded, short }, session }, manifest, asked) {
   if (session === null) return [];
   return raisePlaces(manifest).flatMap((place) => sealsAt(session, place)).sort((a, b) => a.at.localeCompare(b.at))
     .filter((seal) => seal.parks === null && (seal.answers === null || !asked.has(factsOf(folded, seal.answers).root)) && sealWaits(folded, seal))
-    .map((seal) => wait('question', short(subjectOf(seal)), seal.call.question, intoPhase(manifest, seal.place.phase)));
+    .map((seal) => wait(raiseKind(seal.place), short(subjectOf(seal)), seal.call.question, intoPhase(manifest, seal.place.phase)));
 }
 
 /**
@@ -126,7 +135,7 @@ function sealedWaits({ shower: { folded, short }, session }, manifest, asked) {
 function askedWaits({ folded, show, short }, manifest) {
   const ids = quickFixBuild(manifest) && fixesBegun(manifest) ? askedOpenIds(folded, manifest.name) : [];
   return {
-    waits: ids.map((id) => wait('question', short(id), String(show(id).text).replace(/\s+/g, ' ').trim(), intoPhase(manifest, factsOf(folded, id).phase))),
+    waits: ids.map((id) => wait('raised', short(id), String(show(id).text).replace(/\s+/g, ' ').trim(), intoPhase(manifest, factsOf(folded, id).phase))),
     roots: new Set(ids.map((id) => factsOf(folded, id).root)),
   };
 }
@@ -159,12 +168,18 @@ function finishGate(cwd, manifest) {
   return [wait('finish', 'finish', quickFixBuild(manifest) ? 'Close' : 'Finish', intoPhase(manifest, buildPlace(manifest)))];
 }
 
+/** An investigation's conclude once its screen draws, its door the investigation. @param {string} cwd @param {Record<string, any>} manifest @returns {Wait[]} */
+function concludeGate(cwd, manifest) {
+  if (!investigationUnderWay(manifest) || !concludeDraws(cwd, manifest.name)) return [];
+  return [wait('conclude', 'conclude', 'Conclude', intoPhase(manifest, 'investigation'))];
+}
+
 /** A unit's spec: its gaps waiting, and ready to build once its screen draws, which it never does while one waits. @param {string} cwd @param {Record<string, any>} manifest @param {string[]} warnings @returns {Wait[]} */
 function specWaits(cwd, manifest, warnings) {
   if (!specUnderWay(cwd, manifest)) return [];
   const door = intoPhase(manifest, 'specification');
   return [
-    ...waitingGaps(cwd, manifest.name, warnings).map(({ short, text }) => wait('question', short, text, door)),
+    ...waitingGaps(cwd, manifest.name, warnings).map(({ short, text }) => wait('gap', short, text, door)),
     ...(readyDraws(cwd, manifest.name) ? [wait('ready', 'ready-to-build', 'Ready to build', door)] : []),
   ];
 }
@@ -204,6 +219,7 @@ function unitWaits(cwd, root, read, manifest) {
     ...decidedGates(cwd, manifest),
     ...specWaits(cwd, manifest, read.warnings),
     ...questions,
+    ...concludeGate(cwd, manifest),
     ...(questions.length === 0 ? finishGate(cwd, manifest) : []),
     ...affectedWaits(cwd, shower, root, manifest),
     ...inUnit(shower.folded, read.queue, manifest.name).map((id) => wait('verdict', shower.short(id), String(shower.show(id).text), verdictsOf(manifest.name))),

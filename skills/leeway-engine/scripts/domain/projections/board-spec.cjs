@@ -61,7 +61,6 @@ const { readShown } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
 const { cutPhases, buildBegun } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
-const { readyDraws } = require('../ready-to-build.cjs');
 const { counted } = require('./map.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -71,6 +70,7 @@ const { counted } = require('./map.cjs');
 /** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
 /** @typedef {import('../board-model.cjs').FindingStanding} FindingStanding */
 /** @typedef {import('../spec-passes.cjs').Gap} Gap */
+/** @typedef {import('../waits.cjs').Wait} Wait */
 /** @typedef {ReturnType<typeof reportedPasses>[number]} Reported */
 
 /** The unit's passes reported, read once a call. @param {BoardAt} at @returns {Reported[]} */
@@ -267,20 +267,20 @@ function gapsWith(at, waiting, reported, reading) {
   return waiting.map((line) => gaps.get(line.id) ?? { ...line, pass: null, finding: null, sections: [] });
 }
 
+/** Ready to build's yes, as what waits on the person. @type {WaitingLine} */
+const READY = Object.freeze({ kind: 'ready', id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null });
+
 /**
- * The spec's gaps and then ready to build's yes, as what waits on the
- * person in the unit: each gap by its words, opening the finding that
- * raised it, else its entry; the yes once its screen draws (`readyDraws`).
- * @param {BoardAt} at @returns {WaitingLine[]}
+ * A wait of the spec's, as the board lists it: a gap by its words, opening
+ * the finding that raised it, else its entry; ready to build's yes by its
+ * own words.
+ * @param {BoardAt} at @param {Wait} wait @returns {WaitingLine}
  */
-function specWaits(at) {
-  const reported = reportedOf(at);
-  const gaps = gapsOf(at).map((gap) => {
-    const { kind, id, text, page } = gapLine(at, gap, reported, null);
-    return { kind, id, text, page };
-  });
-  if (gaps.length > 0) return gaps;
-  return readyDraws(at.cwd, at.unit) ? [{ kind: /** @type {const} */ ('ready'), id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null }] : [];
+function specLine(at, wait) {
+  if (wait.kind === 'ready') return READY;
+  const gap = /** @type {Gap} */ (gapsOf(at).find(({ short }) => short === wait.id));
+  const { kind, id, text, page } = gapLine(at, gap, reportedOf(at), null);
+  return { kind, id, text, page };
 }
 
 /**
@@ -442,4 +442,4 @@ function specFindingPage(at, said, id) {
   };
 }
 
-module.exports = { specView, specBanner, specDoing, specWaits, reportedOf, sectionPage, passPage, specFindingPage, passMoments };
+module.exports = { specView, specBanner, specDoing, specLine, reportedOf, sectionPage, passPage, specFindingPage, passMoments };

@@ -79,6 +79,7 @@ const { readPosition, readLeft, conversationDir } = require('./conversation.cjs'
 const { BRIEFS } = require('./brief-names.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { withOneCheck } = require('./ledger.cjs');
+const { readOnce } = require('./ledger-fold.cjs');
 const { trackedUnit } = require('./task-verbs.cjs');
 const { parseShownTask } = require('./task-id.cjs');
 const { tasksBegun, quickFixBuild } = require('./derivations.cjs');
@@ -223,7 +224,7 @@ const PHASE_VIEWS = Object.freeze({
   specification: [{ read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) }],
   discovery: [{ read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' }],
   experiment: [{ read: experimentView, banner: (_, view) => experimentBanner(view) }],
-  investigation: [{ read: investigationView, banner: (_, view) => investigationBanner(view) }],
+  investigation: [{ read: (at) => investigationView(at, waitingOn(at)), banner: (_, view) => investigationBanner(view) }],
 });
 
 /** The view a phase draws for a type, null where the unit's page stands for it. @param {string} type @param {string|null} phase @returns {PhaseView|null} */
@@ -353,20 +354,23 @@ function ownRead(here, warnings) {
 
 /**
  * `engine board` (the header's), its reads one read of the ledger
- * (ledger.cjs).
+ * (ledger.cjs), folded once however many units it draws (ledger-fold.cjs,
+ * `readOnce`).
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @returns {Board}
  */
-const boardOf = (cwd, positional, opts) => withOneCheck(() => boardRead(cwd, positional, opts));
+const boardOf = (cwd, positional, opts) => withOneCheck(() => {
+  /** @type {string[]} */
+  const warnings = [];
+  return readOnce(stateRoot(cwd), warnings, () => boardRead(cwd, positional, opts, warnings));
+});
 
-/** @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @returns {Board} */
-function boardRead(cwd, positional, opts) {
+/** @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @param {string[]} warnings @returns {Board} */
+function boardRead(cwd, positional, opts, warnings) {
   if (positional.length !== 1) throw new Error(`Usage: engine ${BOARD_USAGE}`);
   const [session] = positional;
   const tab = /** @type {Board['tab']} */ (opts.tab ?? 'this');
   if (!TABS.includes(tab)) throw new Error(`--tab is this, unit or all, not "${tab}"`);
   if (opts['page-unit'] !== undefined && opts.page === undefined) throw new Error('--page-unit names the unit a page was opened in, and goes with --page');
-  /** @type {string[]} */
-  const warnings = [];
   const position = readPosition(session);
   const place = placeOf(stateRoot(cwd), position);
   const page = opts.page === undefined ? null : pageOf(tab, opts.page, opts['page-unit']);

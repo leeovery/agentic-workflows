@@ -24,6 +24,7 @@ const path = require('path');
 
 const { ok, output, refusedPristine, screenOf, sectionOf, readManifest, writeState, layout, treeSnapshot, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
+const { fixture } = require('./board-world.cjs');
 
 const EPIC = 'fumi';
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
@@ -110,6 +111,12 @@ function beat(phase, topic, session, pid) {
 const rowsOf = (out) => screenOf(out, 'MENU: epic menu').slice(3);
 
 describe('the screen (18.4.17)', () => {
+  it('the epic menu the gate mod\'s band tests draw (18.S42, 18.S65) is the engine\'s answer under the gate surface', async () => {
+    const out = output(dir, ['render', 'epic-menu', EPIC], { env: { ...conversation(), LEEWAY_GATE_SURFACE: '1' } });
+
+    assert.strictEqual(out, await fixture('menu-epic.mjs'));
+  });
+
   it('18.S10, 18.S14, 18.S16, 18.S19, 18.S20, 18.S46, 8.S8, 9.S20, 10.S5: in discussion — the phase as the heading, the tally, DECIDED and SET ASIDE with no key, the topics by what they need, discovery\'s row, help and back', () => {
     beat('discussion', 'licensing', 'peer', PEER);
     const out = menuOf();

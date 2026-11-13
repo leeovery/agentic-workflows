@@ -18,6 +18,9 @@ import {
 } from 'claude-code/testing'
 
 import BOARD from './fixtures/board-build.mjs'
+import EPIC_MENU from './fixtures/menu-epic.mjs'
+import START_MENU from './fixtures/menu-start.mjs'
+import STATE_LOST from './fixtures/menu-state-lost.mjs'
 
 tier('user')
 
@@ -4302,5 +4305,115 @@ describe('register', () => {
     await clock.advance(1000)
 
     expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
+  })
+})
+
+/** What the model reads of an engine answer stating `gate`: every section above the gate, as it came, then the menu's note that it is drawn. */
+const readOf = (response: string, gate: string) =>
+  [response.slice(0, response.indexOf(GATE_LINE)) + DRAWN_MENU[0].replace('task gate', gate), ...DRAWN_MENU.slice(1)].join('\n')
+
+describe('the menus on the band (18.10.5, 18.10.7, 18.10.9)', () => {
+  for (const [menu, response, heads] of [
+    ['start menu', START_MENU, ['Continue feature: Solo', 'Continue epic: Fumi', 'Talk about the product', 'Triage the inbox', 'How Leeway works']],
+    ['epic menu', EPIC_MENU, ['Continue "Management Window"', 'Start "Build And Release"', 'Back to the start menu']],
+  ] as const) {
+    test(`18.S42: the ${menu} the engine draws stands above its rows, printed as it came, and its rows are buttons`, async ($, on) => {
+      const { filled } = world($, on, response)
+
+      await $.session.start(SESSION)
+
+      expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(readOf(response, menu))
+
+      await $.turn.complete(TURN_END)
+
+      const ui = await $.ui.mount(MOUNT)
+      const lines = await linesOf(ui)
+
+      expect(heads.filter(head => !lines.some(line => line.includes(head))), 'every row drawn on the band').toEqual([])
+
+      await click(ui, heads[0])
+
+      expect(filled, 'a press on its row puts its answer in the prompt').toEqual(['1'])
+
+      await ui.unmount()
+    })
+  }
+
+  test('18.S43: a menu carrying ⚑ in its properties block keeps it — the model reads that block whole, under its own fence, and only the menu is drawn', async ($, on) => {
+    world($, on, STATE_LOST)
+
+    await $.session.start(SESSION)
+
+    const read = stdoutOf(await $.tool.call(ENGINE_CALL))
+
+    expect(read).toBe(readOf(STATE_LOST, 'state lost gate'))
+    expect(read.split('\n').slice(0, 2)).toEqual([
+      '=== DISPLAY: state lost stop (emit verbatim as a properties code block (```properties fence)) ===',
+      "⚑ Boot stopped: Leeway's state branch is gone",
+    ])
+  })
+
+  test('18.S65: a second click on the epic menu while Claude works is held and marked queued, and sent once the turn ends with the menu still up', async ($, on) => {
+    const { submitted } = world($, on, EPIC_MENU)
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+    const row = 'Continue "Onboarding"'
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, row)
+    await click(ui, row)
+
+    expect(submitted, 'nothing but the turn’s own').toEqual(['ping'])
+    expect((await linesOf(ui)).find(line => line.includes(row))).toMatch(/· queued/)
+
+    await ui.unmount()
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping', '2'])
+  })
+
+  test('18.S65: an Esc before a tool runs puts the epic menu back, unpicked', async ($, on) => {
+    world($, on, EPIC_MENU)
+
+    await presented($)
+
+    let ui = await $.ui.mount(MOUNT)
+
+    await click(ui, 'Continue "Onboarding"')
+    await click(ui, 'Continue "Onboarding"')
+    await ui.unmount()
+
+    expect(await isDrawn($)).toBe(false)
+
+    await $.turn.complete(INTERRUPTED)
+
+    ui = await $.ui.mount(MOUNT)
+
+    expect(await lineOf(ui, 'What would you like to do?')).toBe(2)
+    expect(await footerOf(ui)).toBe(IDLE_FOOTER)
+
+    await ui.unmount()
+  })
+
+  test('18.S65: the epic menu on the band when the conversation is left is drawn again, as it was, on resume while the transcript still ends there', async ($, on) => {
+    const { reads } = world($, on, EPIC_MENU, { marked: ['s0'] })
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    let ui = await $.ui.mount(MOUNT)
+    const before = await linesOf(ui)
+
+    await ui.unmount()
+    await quitAndResume($)
+
+    ui = await $.ui.mount(MOUNT)
+
+    expect(await linesOf(ui)).toEqual(before)
+
+    await ui.unmount()
   })
 })

@@ -35,7 +35,7 @@ describe('a quick-fix\'s questions and its close (18.2.3, N1)', () => {
   const intoFixes = door('leeway-quick-fix-process', 'quick-fix', TYPO);
   const PROPOSAL = { ...leaningCall('Entering marks the row.', 'Entering marks nothing.'), question: 'What should the README say entering does?' };
   /** The replacement of Claude's call `call` on the README, waiting. @param {string} call */
-  const replacingWait = (call) => wait('question', call, PROPOSAL.question, intoFixes);
+  const replacingWait = (call) => wait('raised', call, PROPOSAL.question, intoFixes);
 
   /** Claude's replacement of its call `call` on the README raised in this conversation: the raise's id. @param {string} call */
   const replacing = async (call) => (await okSectionsAsync(dir, ['raise', PLACE, '--replaces', call, '--reason', 'was-wrong'], { env: env(), stdin: JSON.stringify(PROPOSAL) })).res.raise;
@@ -47,7 +47,7 @@ describe('a quick-fix\'s questions and its close (18.2.3, N1)', () => {
     const raise = await replacing(made.call);
     const read = { here: waiting(SESSION), cleared: waiting('sess-cleared'), none: waiting() };
     ok(dir, ['raise', 'answer', raise, '--pick', 'keep'], { env: env(), stdin: JSON.stringify({ why: 'The README is right.' }) });
-    const ASKED = wait('question', asked, CALL.question, intoFixes);
+    const ASKED = wait('raised', asked, CALL.question, intoFixes);
 
     assert.deepStrictEqual([read, waiting(SESSION)], [
       { here: { [TYPO]: [ASKED, replacingWait(made.call)] }, cleared: { [TYPO]: [ASKED] }, none: { [TYPO]: [ASKED] } },

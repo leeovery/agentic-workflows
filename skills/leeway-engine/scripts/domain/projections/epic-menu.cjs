@@ -87,13 +87,17 @@ const SEPARATOR = ' · ';
 /** Each tally's count after the topics, by the map summary's name for it, with its words. */
 const TALLIED = Object.freeze([['decided', 'decided'], ['in_flight', 'in progress'], ['fresh', 'not started'], ['cancelled', 'cancelled'], ['postponed', 'postponed']]);
 
+/** A question waiting, a spec's gap among them, as its row reads. @param {Wait} wait @returns {LabelParts} */
+const questionLabel = (wait) => ({ head: wait.text, tail: 'a question waiting for you' });
+
 /** How each wait reads as a row, by its kind. @type {Readonly<Record<string, (wait: Wait, title: string) => LabelParts>>} */
 const WAIT_LABELS = Object.freeze({
   map: () => ({ head: 'Approve the map', tail: 'the map waits on your yes' }),
   decided: (_wait, title) => ({ head: `Close "${title}" as decided`, tail: 'what it decided waits on your yes' }),
   ready: () => ({ head: 'Ready to build', tail: 'the spec waits on your yes' }),
   finish: () => ({ head: 'Finish', tail: 'the review passed, and finish waits on your yes' }),
-  question: (wait) => ({ head: wait.text, tail: 'a question waiting for you' }),
+  gap: questionLabel,
+  question: questionLabel,
   affected: (_wait, title) => ({ head: `"${title}": a decision it relies on changed`, tail: 'confirm it still holds, or replace it' }),
 });
 
