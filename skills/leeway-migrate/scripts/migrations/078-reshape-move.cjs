@@ -10,16 +10,15 @@
 //
 // What it reads: `.workflows/` in the project's folder — the runner's,
 // nested in its repository or at the top — as the main checkout holds it,
-// the copy `.workflows/` leaves the default branch from (21.5.11). Run from
-// a linked worktree whose copy differs, the verification addendum says
-// which copy was moved. A rebase, merge, cherry-pick, revert or bisect
-// stopped in the main checkout aborts the run, unrecorded and with nothing
-// written, until it is finished or aborted, as boot waits these out.
+// the copy `.workflows/` leaves the default branch from (21.5.11). A
+// rebase, merge, cherry-pick, revert or bisect stopped in the main checkout
+// aborts the run, unrecorded and with nothing written, until it is finished
+// or aborted, as boot waits these out.
 //
 // Where it writes: the state worktree on an unborn `leeway-state`, which
 // the guard (074) put in place, found there or put in place again as the
-// guard does it (reshape.cjs, `placeStateWorktree`); every git call here
-// runs with hooks off and the caller's repository environment cleared. A
+// guard does it (reshape/shared.cjs, `placeStateWorktree`); every git call
+// here runs with hooks off and the caller's repository environment cleared. A
 // `.leeway/` already on `leeway-state` is written again: a move cut short is
 // run again from the start, the project manifest written whole or not at
 // all.
@@ -233,7 +232,7 @@ const crypto = require('crypto');
 const linters = require('./073-environment-linters.cjs');
 const {
   OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree,
-} = require('../reshape.cjs');
+} = require('./reshape/shared.cjs');
 const TASK_DRIVERS = path.join(__dirname, '../../../leeway-engine/scripts/drivers/task');
 
 const CODE_GITIGNORE = '.gitignore';
@@ -1343,21 +1342,6 @@ function moveUserFolder() {
 }
 
 /**
- * Where the move ran from a linked worktree whose `.workflows/` differs from
- * the main checkout's, the sentence saying which copy was moved; or null.
- * @param {string} here @param {string} project
- * @returns {string|null}
- */
-function copyNote(here, project) {
-  if (here === project) return null;
-  if (git(project, ['diff', '--no-index', '--quiet', '--', path.join(project, CODE_TREE_STATE), path.join(here, CODE_TREE_STATE)]).ok) return null;
-  const branch = git(here, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
-  const on = branch.ok ? `on ${branch.stdout.trim()}` : 'on a detached HEAD';
-  return `The move took ${CODE_TREE_STATE}/ from the main checkout, ${project}, the copy it leaves the default branch from; `
-    + `the worktree it ran in, ${here}, ${on}, holds a ${CODE_TREE_STATE}/ that differs, and what differs there was not moved.`;
-}
-
-/**
  * The move of the project at `projectDir` — its own folder, nested in its
  * repository or at the top, as the main checkout holds it — into the state
  * worktree at the repository's main checkout.
@@ -1409,9 +1393,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   const userNote = moveUserFolder();
   const left = [...projectLeft, ...unitsLeft];
   const carried = linters.run({ projectDir, reportUpdate: () => {}, reportSkip: () => {} });
-  const copied = copyNote(fs.realpathSync(here), project);
   const notes = [
-    copied,
     left.length === 0 ? null : `These were not carried into ${STATE_DIR}/, the layout having no place for them: ${left.map((rel) => `${CODE_TREE_STATE}/${rel}`).join(', ')}. Each stays in ${CODE_TREE_STATE}/ until the migration's commit; move any still wanted into its unit's assets/, or the product's.`,
     settingsNote,
     userNote,

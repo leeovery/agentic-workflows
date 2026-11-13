@@ -1,14 +1,11 @@
 'use strict';
 
 //
-// reshape.cjs — what the reshape's migration knows of a project from before
-// Leeway, shared by the runner (migrate.cjs), the reshape's steps and the
-// engine, so no engine module names the old layout.
-//
-// Whether the project owes the reshape (`owed`): the main checkout's HEAD
-// holds the project's `.workflows/` — in its own folder, nested in its
-// repository or at the top — and `leeway-state` has no commit. A folder in
-// no repository, or in one with no main checkout, owes nothing.
+// What the reshape's steps share — the guard (074) and the move (078): the
+// layout's names before and after it, git as they run it, and the state
+// worktree put in place. Released with them, it is frozen with them: the
+// runtime's own knowledge of the layout before Leeway is the migrate
+// skill's `old-layout.cjs`, and neither loads the other.
 //
 // The state worktree put in place for the reshape (`placeStateWorktree`):
 // `.leeway/` in the main checkout, on an unborn `leeway-state`, locked as
@@ -23,9 +20,6 @@
 //
 // Every git call runs with hooks off and the caller's repository
 // environment cleared, so it names its repository by its folder alone.
-//
-// The guard (074) and the move (078) load it, so once they are released it
-// is frozen with them, as they are.
 //
 
 const fs = require('fs');
@@ -83,19 +77,6 @@ function stateBorn(main) {
   return git(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${STATE_BRANCH}`]).ok;
 }
 
-/**
- * Whether the project at `projectDir` owes the reshape: its `.workflows/`
- * on the main checkout's HEAD, and no commit on `leeway-state`.
- * @param {string} projectDir
- * @returns {boolean}
- */
-function owed(projectDir) {
-  const main = mainCheckout(projectDir);
-  if (main === null || stateBorn(main)) return false;
-  const listed = git(projectInMain(projectDir, main), ['ls-tree', '--name-only', 'HEAD', '--', OLD_STATE]);
-  return listed.ok && listed.stdout.trim() !== '';
-}
-
 /** Git's record of the worktree at `root`, or null where it holds none. @param {string} main @param {string} root */
 function registration(main, root) {
   return git(main, ['worktree', 'list', '--porcelain']).stdout.split('\n\n').find((entry) => entry.startsWith(`worktree ${root}\n`)) ?? null;
@@ -150,5 +131,5 @@ function placeStateWorktree(main) {
 
 module.exports = {
   OLD_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV,
-  git, mustGit, mainCheckout, projectInMain, stateBorn, owed, placeStateWorktree,
+  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree,
 };

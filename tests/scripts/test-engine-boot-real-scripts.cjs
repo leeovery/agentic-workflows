@@ -196,7 +196,8 @@ describe('engine boot runs the reshape (real scripts)', () => {
     fs.utimesSync(row, new Date(written), new Date(written));
     before.files[path.relative(project, row)] = fs.readFileSync(row, 'utf8');
 
-    const live = runEngine(real, project, ['boot'], { ...env, CLAUDE_CODE_SESSION_ID: 'this-session', CLAUDE_PID: undefined });
+    // The calling session in a time zone and locale of its own: the row's start time is UTC's and the C locale's.
+    const live = runEngine(real, project, ['boot'], { ...env, CLAUDE_CODE_SESSION_ID: 'this-session', CLAUDE_PID: undefined, TZ: 'Asia/Tokyo', LANG: 'en_GB.UTF-8', LC_ALL: undefined, LC_TIME: undefined });
 
     assert.deepStrictEqual({ ...live, active: undefined }, { ok: true, state: 'guard', cause: 'live', unit: 'payments', phase: 'discussion', topic: 'payments', active: undefined, warnings: [] });
     assert.ok(live.active >= 180 && live.active < 210, `active ${live.active}s ago`);

@@ -6,10 +6,12 @@
 // Step 1 of the reshape's sequence (21.2, 21.3): a major upgrade never runs
 // under a live session, nor over uncommitted changes the migration's commit
 // would sweep in. The runner runs it ahead of every other migration while
-// the project owes the reshape (reshape.cjs, `owed`), the chain that brings
-// an older project up to today's shape included, so the changes it reads
-// are only the person's. Where the reshape is not owed — a project set up
-// on Leeway, or one whose state is born — it has nothing to guard.
+// the project owes the reshape, the chain that brings an older project up
+// to today's shape included, so the changes it reads are only the
+// person's. Where the reshape is not owed — a project set up on Leeway, or
+// one whose state is born — it has nothing to guard. It reads that for
+// itself: the main checkout's HEAD holds the project's `.workflows/`, and
+// `leeway-state` has no commit.
 //
 // It refuses, writing nothing, while:
 //   - another session holds one of the old skills' presence rows,
@@ -29,7 +31,7 @@
 // null for uncommitted changes — which the runner prints, recording nothing.
 //
 // On a pass it puts the state worktree in place on the unborn
-// `leeway-state` (reshape.cjs, `placeStateWorktree`), its `.gitignore`
+// `leeway-state` (reshape/shared.cjs, `placeStateWorktree`), its `.gitignore`
 // with it, so every step after it — the legacy split's directive before the
 // move among them — runs while the migration runs: commits held, the trust
 // log silent. Run again over a placement cut short, it finishes it.
@@ -40,9 +42,17 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { OLD_STATE, git, mainCheckout, projectInMain, owed, placeStateWorktree } = require('../reshape.cjs');
+const { OLD_STATE, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree } = require('./reshape/shared.cjs');
 
 const PRESENCE = 'presence';
+
+/** Whether the project at `projectDir` owes the reshape. @param {string} projectDir */
+function owed(projectDir) {
+  const main = mainCheckout(projectDir);
+  if (main === null || stateBorn(main)) return false;
+  const listed = git(projectInMain(projectDir, main), ['ls-tree', '--name-only', 'HEAD', '--', OLD_STATE]);
+  return listed.ok && listed.stdout.trim() !== '';
+}
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {

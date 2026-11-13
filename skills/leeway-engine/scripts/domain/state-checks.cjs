@@ -25,7 +25,7 @@
 //   was copied, the copy's state becoming its own and the original's left
 //   alone.
 // - No branch here or on the remote: a project that owes the reshape — which
-//   the migrate skill answers (leeway-migrate/scripts/reshape.cjs, `owed`)
+//   the migrate skill answers (leeway-migrate/scripts/old-layout.cjs, `owed`)
 //   — goes on to the migration, which puts its state in place, whatever
 //   folder a migration cut short left there; a project being set up gets
 //   the orphan branch; one whose repository holds the workflows' trace — on
@@ -55,7 +55,7 @@ const {
   createStateBranchAt, folderCommit, lockStateWorktree, askStateRemote, fetchStateTip, fetchRemoteBranches, refuseCodeHistory, pushState, withBootLock,
 } = require('./state-worktree.cjs');
 const { holdsTrace, keepStateExcluded } = require('./code-trace.cjs');
-const { owed } = require('../../../leeway-migrate/scripts/reshape.cjs');
+const { owed } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./state-worktree.cjs').RemoteAnswer} RemoteAnswer */
 /** @typedef {import('./state-worktree.cjs').StateInspection} StateInspection */

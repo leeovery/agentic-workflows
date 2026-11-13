@@ -872,7 +872,8 @@ function killedAt({ method, file, when }, dir, args, { env = {}, stdin = '' } = 
 // migration recorded and nothing changed; `fail`, a crash; `reshape`, the
 // state worktree put in place as the reshape's guard puts it, where the
 // reshape is owed, and the guard recorded; `refuse`, the guard's refusal,
-// its facts STUB_MIGRATE_REFUSAL. Where STUB_MIGRATE_MARK names a file, it
+// its facts STUB_MIGRATE_REFUSAL, or another migration's where
+// STUB_MIGRATE_REFUSED names its id. Where STUB_MIGRATE_MARK names a file, it
 // records there the state branch's tip as it found it: that it ran, and
 // over what state. Where STUB_MIGRATE_RUNS names one, it records there, as
 // a line at its start and another at its end, the folder it ran in and
@@ -898,13 +899,10 @@ const noteRun = (at) => {
   fs.appendFileSync(process.env.STUB_MIGRATE_RUNS, JSON.stringify({ at, cwd: process.cwd(), ...locks }) + '\\n');
 };
 if (mode === 'refuse') {
-  process.stdout.write('---REFUSED: 074---\\n' + process.env.STUB_MIGRATE_REFUSAL + '\\n');
+  process.stdout.write('---REFUSED: ' + (process.env.STUB_MIGRATE_REFUSED || '074') + '---\\n' + process.env.STUB_MIGRATE_REFUSAL + '\\n');
   process.exit(0);
 }
-if (mode === 'reshape') {
-  const reshape = require('./reshape.cjs');
-  if (reshape.owed('.')) reshape.placeStateWorktree(main);
-}
+if (mode === 'reshape' && require('./old-layout.cjs').owed('.')) require('./migrations/reshape/shared.cjs').placeStateWorktree(main);
 noteRun('start');
 for (const until = Date.now() + 5000; process.env.STUB_MIGRATE_HOLD && !fs.existsSync(process.env.STUB_MIGRATE_HOLD) && Date.now() < until;) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
@@ -992,22 +990,24 @@ function hooked(hooks, rest = {}) {
 /** @type {(ReturnType<typeof harness> & {path: string})|null} */
 let stub = null;
 
-/** What the migrate skill knows of the reshape, which the engine asks. */
-const RESHAPE = path.join(path.dirname(path.dirname(path.dirname(ENGINE))), 'leeway-migrate/scripts/reshape.cjs');
+/** The migrate skill's scripts: the old layout's module the engine asks, and the reshape's shared steps. */
+const MIGRATE_SCRIPTS = path.join(path.dirname(path.dirname(path.dirname(ENGINE))), 'leeway-migrate/scripts');
 
 /**
  * The engine copied, once per process, into a skills folder beside the
- * stand-in migration runner (`STUB_MIGRATE`) and the migrate skill's
- * reshape module — boot finds the runner beside its own file, so the copy runs that resolution as installed: its path,
- * and the shapes bound to it. The copy is never written to; each test
- * brings its own project.
+ * stand-in migration runner (`STUB_MIGRATE`), the old layout's module and
+ * the reshape's shared steps — boot finds the runner beside its own file,
+ * so the copy runs that resolution as installed: its path, and the shapes
+ * bound to it. The copy is never written to; each test brings its own
+ * project.
  */
 function stubEngine() {
   if (stub !== null) return stub;
   const skills = templateFolder('engine-skills-');
   fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'leeway-engine'), { recursive: true });
   createFile(skills, 'leeway-migrate/scripts/migrate.cjs', STUB_MIGRATE);
-  fs.copyFileSync(RESHAPE, path.join(skills, 'leeway-migrate/scripts/reshape.cjs'));
+  fs.copyFileSync(path.join(MIGRATE_SCRIPTS, 'old-layout.cjs'), path.join(skills, 'leeway-migrate/scripts/old-layout.cjs'));
+  fs.cpSync(path.join(MIGRATE_SCRIPTS, 'migrations/reshape'), path.join(skills, 'leeway-migrate/scripts/migrations/reshape'), { recursive: true });
   const at = path.join(skills, 'leeway-engine/scripts/engine.cjs');
   stub = { ...harness(at), path: at };
   return stub;

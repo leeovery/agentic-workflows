@@ -15,11 +15,13 @@
 //     a directive stopping the run, recorded unrun in the reshape's sequence
 //     where there is no code-tree state, and a run with nothing pending
 //     reading the migrations folder once (21.10.4; the engine's side is
-//     test-migration-directives.cjs's); a migration's refusal ending the run.
+//     test-migration-directives.cjs's); a refusal from any migration but the
+//     reshape's guard failing the run.
 //   - The reshape's contract, over the synthetic fleet: the guard run first
 //     while the reshape is owed, its refusal writing nothing, and the record
 //     seeded from the old one, whole, a kill at the seed's rename included
-//     (the real guard is test-migration-074.cjs's).
+//     (the real guard is test-migration-074.cjs's); and its frozen steps and
+//     the runtime's old-layout.cjs never loading each other.
 //
 // Layer: process.
 //
@@ -62,7 +64,7 @@ function run(migrate, project, env = {}, args = ['--record', path.join(project, 
   return { status: res.status, stdout: res.stdout || '', stderr: res.stderr || '' };
 }
 
-/** Copy migrate.cjs and the reshape's module it loads into a fresh scripts/
+/** Copy migrate.cjs and the old layout's module it loads into a fresh scripts/
  *  dir and write the given migration files into its sibling migrations/.
  *  Returns the copied migrate path. */
 function synthFleet(migrations) {
@@ -70,7 +72,7 @@ function synthFleet(migrations) {
   const scripts = path.join(root, 'scripts');
   const migDir = path.join(scripts, 'migrations');
   fs.mkdirSync(migDir, { recursive: true });
-  for (const script of ['migrate.cjs', 'reshape.cjs']) fs.copyFileSync(path.join(path.dirname(REAL_MIGRATE), script), path.join(scripts, script));
+  for (const script of ['migrate.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(REAL_MIGRATE), script), path.join(scripts, script));
   for (const [name, content] of Object.entries(migrations)) {
     fs.writeFileSync(path.join(migDir, name), content);
   }
@@ -636,13 +638,14 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.ok(res.stdout.includes('---STOP_GATE: FILES_UPDATED---'));
   });
 
-  it('a migration\'s refusal ends the run: its marker and facts printed, nothing recorded for it and nothing after it run', () => {
+  it('a refusal from any migration but the reshape\'s guard fails the run like any throw: no marker printed, nothing recorded for it and nothing after it run', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.cjs': refusing('002', { cause: 'busy' }), '003-c.cjs': cjsMig('003') });
     const project = freshProject();
 
     const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
 
-    assert.deepStrictEqual([res.status, res.stdout], [0, '---REFUSED: 002---\n{"cause":"busy"}\n']);
+    assert.deepStrictEqual([res.status, res.stdout], [1, '']);
+    assert.match(res.stderr, /^migration run failed: Error: refused/);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n');
     assert.strictEqual(trackingLog(project), '001\n');
   });
@@ -686,6 +689,24 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
 
     assert.deepStrictEqual([fs.readFileSync(path.join(seeded, 'order.log'), 'utf8'), trackingLog(seeded)], ['003\n', '001\n002\n003\n']);
     assert.deepStrictEqual([fs.readFileSync(path.join(held, 'order.log'), 'utf8'), trackingLog(held)], ['002\n003\n', '001\n002\n003\n']);
+  });
+
+  it('the reshape\'s frozen steps and the runtime never load each other: nothing in migrations/ loads old-layout.cjs, and nothing outside it loads migrations/reshape/', () => {
+    const scripts = path.dirname(REAL_MIGRATE);
+    const skills = path.resolve(scripts, '..', '..');
+    const migrations = path.join(scripts, 'migrations');
+    const runtime = path.join(scripts, 'old-layout.cjs');
+    const frozen = path.join(migrations, 'reshape');
+    const loads = (/** @type {string} */ file) => [...fs.readFileSync(file, 'utf8').matchAll(/require\((['"])(\.{1,2}\/[^'"]+)\1\)/g)].map((m) => path.resolve(path.dirname(file), m[2]));
+    const files = fs.readdirSync(skills, { recursive: true, encoding: 'utf8' }).filter((rel) => rel.endsWith('.cjs')).map((rel) => path.join(skills, rel));
+
+    const crossing = files.flatMap((file) => loads(file)
+      .filter((target) => (file.startsWith(migrations + path.sep) ? target === runtime : target.startsWith(frozen + path.sep)))
+      .map((target) => `${path.relative(skills, file)} loads ${path.relative(skills, target)}`));
+
+    assert.deepStrictEqual(crossing, []);
+    assert.ok(loads(path.join(migrations, '074-reshape-guard.cjs')).includes(path.join(frozen, 'shared.cjs')), 'the scan reads a frozen step\'s loads');
+    assert.ok(loads(path.join(skills, 'leeway-engine/scripts/domain/state-checks.cjs')).includes(runtime), 'the scan reads the runtime\'s loads');
   });
 
   it('a run killed as the seed is renamed into place leaves no record, and the next seeds it whole', () => {

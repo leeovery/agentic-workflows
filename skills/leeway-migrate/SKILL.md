@@ -7,6 +7,7 @@ Migrations run via `engine boot` (`node .claude/skills/leeway-engine/scripts/eng
 
 - `scripts/migrate.cjs` — the runner: runs every migration in `scripts/migrations/` (`*.sh`, `*.cjs`, and the directives, `*.md` with their checks) in one numeric-prefix ordering, records each in `.leeway/.state/migrations`, stops at a directive the start session carries out, and reports update counts.
 - `scripts/migrations/NNN-*` — the migrations, each idempotent.
-- `scripts/reshape.cjs` — what the reshape's migration knows of a project from before Leeway: whether it is owed, and the state worktree put in place for it.
+- `scripts/migrations/reshape/` — what the reshape's released steps share, the state worktree put in place among it: frozen with them.
+- `scripts/old-layout.cjs` — what the runner and the engine know of a project from before Leeway: whether it owes the reshape, and what a checkout other than the main one holds that the reshape leaves where it is.
 
 The conversational surface (change summary, review gate, commit, a directive carried out) lives in `leeway` Step 0.

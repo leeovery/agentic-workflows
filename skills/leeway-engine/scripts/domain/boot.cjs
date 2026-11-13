@@ -49,7 +49,9 @@
 // writer lock with it once the state worktree is there, so a second boot
 // meanwhile waits, then finds it done or stopped. It runs in the project's
 // folder in the main checkout, wherever boot was called from: the copy the
-// reshape moves.
+// reshape moves. Called from another checkout, boot warns of each file of
+// that checkout's old state the reshape leaves where it is, differing from
+// the main checkout's (the migrate skill's old-layout.cjs, `unmoved`).
 //
 // While the migration is under way — its state worktree checked out on a
 // `leeway-state` with no commit yet — nothing is committed before the
@@ -121,6 +123,7 @@ const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
+const { unmoved } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
@@ -149,9 +152,10 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 // The line migrate.cjs ends a run on where it stops at a directive.
 const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
 
-// The line migrate.cjs ends a run on where a migration refused to run,
-// before the one-line JSON of the refusal's facts; the run recorded nothing.
-const REFUSED_MARKER = /^---REFUSED: [0-9]+---$/;
+// The line migrate.cjs ends a run on where the reshape's guard (074) refused
+// to run, before the one-line JSON of the refusal's facts; the run recorded
+// nothing.
+const GUARD_REFUSED = '---REFUSED: 074---';
 
 /**
  * @typedef {object} SystemConfigReport
@@ -334,7 +338,10 @@ function boot(cwd, { startAgain = false } = {}) {
     return runMigrations(cwd, codeRoot(cwd), warnings);
   });
   if (migrated === null) return { state: 'merge', warnings };
-  if ('refused' in migrated) return { state: 'guard', ...migrated.refused, warnings };
+  if ('refused' in migrated) {
+    const { cause, unit, phase, topic, active } = migrated.refused;
+    return { state: 'guard', cause, unit, phase, topic, active, warnings };
+  }
   if ('directive' in migrated) return { state: 'directive', ...directiveStopped(cwd, migrated.directive), warnings };
   const { migrations, migrationsCommitted } = migrated;
 
@@ -377,9 +384,23 @@ function placeAndReshape(cwd, root, startAgain, warnings) {
     const placed = placeState(cwd, { startAgain });
     warnings.push(...placed.warnings);
     if ('stop' in placed || !placed.migrating) return { placed, migrated: undefined };
-    const run = () => runMigrations(cwd, folderUnder(placeOf(codeRoot(cwd)), path.dirname(root)), warnings);
+    const here = codeRoot(cwd);
+    const from = folderUnder(placeOf(here), path.dirname(root));
+    warnUnmoved(here, from, warnings);
+    const run = () => runMigrations(cwd, from, warnings);
     return { placed, migrated: migrationRuns(root) ? withStateLock(root, run) : run() };
   });
+}
+
+/**
+ * Where boot ran in another checkout than the main one, the warning naming
+ * each file of its old state the reshape, run from `from`, leaves where it is.
+ * @param {string} here @param {string} from @param {string[]} warnings
+ */
+function warnUnmoved(here, from, warnings) {
+  const left = unmoved(here);
+  if (left.length === 0) return;
+  warnings.push(`the migration moves the project's state as the main checkout holds it, in ${from}; where boot ran, in ${here}, these differ from it and stay where they are: ${left.join(', ')}`);
 }
 
 /**
@@ -406,20 +427,14 @@ function commitLedgerTail(root, warnings) {
  */
 
 /**
- * The refusal a run printed, or undefined where it printed none. Refuses
- * one whose facts do not read: the run stopped, and boot cannot say why.
+ * The guard's refusal a run printed, or undefined where it printed none.
  * @param {string} stdout
  * @returns {Refusal|undefined}
  */
 function refusalIn(stdout) {
   const lines = stdout.split('\n');
-  const at = lines.findIndex((line) => REFUSED_MARKER.test(line));
-  if (at === -1) return undefined;
-  try {
-    return JSON.parse(lines[at + 1]);
-  } catch (err) {
-    throw new Error(`migrate.cjs refused a migration, and its reason does not read: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  const at = lines.indexOf(GUARD_REFUSED);
+  return at === -1 ? undefined : JSON.parse(lines[at + 1]);
 }
 
 /**

@@ -117,25 +117,29 @@ The **reshape** — the migration from the workflows' `.workflows/` to
 Leeway's `.leeway/` — keeps a contract of its own in the runner, stated
 in the same header:
 
-- Whether a project owes it is `skills/leeway-migrate/scripts/reshape.cjs`'s
+- Whether a project owes it is `skills/leeway-migrate/scripts/old-layout.cjs`'s
   to answer (`owed`): its `.workflows/` on the main checkout's code
-  branch, and no commit on `leeway-state`. The engine asks it there, so
-  no engine module names the old layout.
+  branch, and no commit on `leeway-state`. The engine and the runner ask
+  it there, so no engine module names the old layout.
 - Where the run's record holds no line, the old record,
   `.workflows/.state/migrations`, seeds it, written whole, so a project
   part-way through the existing chain runs the rest of it, never the
   whole fleet again.
 - The reshape's guard (074) runs first, before the existing chain, while
   it is unrecorded and the reshape is owed: its check for uncommitted
-  changes sees only the person's. A refusal prints
+  changes sees only the person's. It alone may refuse: a refusal prints
   `---REFUSED: 074---` and the refusal's facts, records nothing, and
   boot stops there. On a pass it puts the state worktree in place
-  (`reshape.cjs`, `placeStateWorktree`), so every step after it runs
-  while the migration runs.
+  (`migrations/reshape/shared.cjs`, `placeStateWorktree`), so every step
+  after it runs while the migration runs.
 - Boot runs the reshape's run in the project's folder in the main
-  checkout, the copy the move reads, wherever it was called from.
-- `reshape.cjs` is loaded by released migrations: once they ship it is
-  frozen with them, and a change is a new module.
+  checkout, the copy the move reads, wherever it was called from. Called
+  from another checkout, it warns of each file of that checkout's
+  `.workflows/` that differs from the main checkout's and stays where it
+  is (`old-layout.cjs`, `unmoved`).
+- `migrations/reshape/` is what the reshape's released steps share: it is
+  frozen with them, and holds its own reading of the layout. The
+  runtime's is `old-layout.cjs`, free to change. Neither loads the other.
 
 ## Prose tests
 

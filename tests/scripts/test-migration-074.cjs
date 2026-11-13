@@ -19,6 +19,10 @@
 // inside — and a run killed at each of the placement's writes is finished by
 // the next.
 //
+// The guard runs as a session in a time zone and locale of its own, the
+// rows' start times taken in UTC and the C locale, as the old skills took
+// them.
+//
 // Layer: migration. World: a project on today's layout, made once per
 // process and copied for each test; a run killed at a write runs in a child.
 // Budget: 6 s — the placement is killed at eight points, each in a child
@@ -37,12 +41,16 @@ const { execFileSync, spawnSync } = require('child_process');
 const { git, initRepo, commitCode, createFile, folderFrom, withEnv, cleanupFixture } = require('./engine-harness.cjs');
 const GUARD = require.resolve('../../skills/leeway-migrate/scripts/migrations/074-reshape-guard.cjs');
 const MIGRATION = require(GUARD);
-const { STATE_LOCK_REASON, STATE_GITIGNORE, migrationRuns } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const { migrationRuns } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 
 const STATE = '.leeway';
 const SET_ASIDE = '.leeway-set-aside';
+const LOCK_REASON = 'leeway state, do not remove';
+const STATE_GITIGNORE = '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n';
 const NOW = Date.parse('2026-11-13T12:00:00Z');
-const THIS_SESSION = { CLAUDE_CODE_SESSION_ID: 'this-session', CLAUDE_PID: undefined };
+
+/** The calling session, in a time zone and locale of its own: the rows' start times are UTC's and the C locale's all the same. */
+const THIS_SESSION = { CLAUDE_CODE_SESSION_ID: 'this-session', CLAUDE_PID: undefined, TZ: 'Asia/Tokyo', LANG: 'en_GB.UTF-8', LC_ALL: undefined, LC_TIME: undefined };
 
 /** A process's start time as the old skills recorded it: `ps`, in UTC and the C locale. @param {number} pid */
 const startOf = (pid) => execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], { encoding: 'utf8', env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' } }).trim();
@@ -124,7 +132,7 @@ function placed(top, root) {
 
 /** The state worktree as the guard puts it in place at `root`, holding `others` beside its own files. @param {string} root @param {string[]} [others] */
 const IN_PLACE = (root, others = []) => ({
-  registered: [`worktree ${root}`, 'branch refs/heads/leeway-state', `locked ${STATE_LOCK_REASON}`],
+  registered: [`worktree ${root}`, 'branch refs/heads/leeway-state', `locked ${LOCK_REASON}`],
   unborn: true,
   holds: ['.git', '.gitignore', ...others].sort(),
   gitignore: STATE_GITIGNORE,
@@ -204,7 +212,7 @@ describe('migration 074: the reshape\'s guard', () => {
 
       assert.deepStrictEqual(guard(main), { updates: 1, skips: 0 });
       presence(main, 'fumi/discussion/pricing', { ...LIVE, session_id: 'a session of its own' });
-      assert.deepStrictEqual(guard(main, { CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: String(process.pid) }), { updates: 1, skips: 0 }, 'the calling process\'s own row');
+      assert.deepStrictEqual(guard(main, { ...THIS_SESSION, CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: String(process.pid) }), { updates: 1, skips: 0 }, 'the calling process\'s own row');
     });
   });
 

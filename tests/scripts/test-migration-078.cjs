@@ -32,7 +32,7 @@
 // `.leeway/` ignore line staged with hooks off and the caller's git
 // environment cleared, the move run again over one cut short and over one
 // whose `.leeway/` the person removed, a project nested in its repository,
-// one run from a linked worktree, a merge stopped in the main checkout, the
+// a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
 // one under way, a `.worktreeinclude` of the workflows' lines alone,
 // settings that do not parse, a user-level folder the engine's holds a
@@ -1216,33 +1216,6 @@ describe('migration 078: a small project', () => {
       assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'the repository\'s top untouched');
       assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'app/.gitignore');
     } finally {
-      cleanupFixture(dir);
-    }
-  });
-
-  it('run from a linked worktree, moves the main checkout\'s copy and stages the ignore line there, saying so where the worktree\'s copy differs (21.5.11)', () => {
-    dir = tempProject('migration-078-linked-');
-    const linked = `${dir}-wt`;
-    const branchCopy = path.join(linked, 'app/.workflows/tally/discussion/tally.md');
-    try {
-      write(dir, 'README.md', 'the repository\n');
-      feature(path.join(dir, 'app'));
-      git(dir, ['worktree', 'add', '--quiet', '-b', 'feat', linked]);
-      fs.writeFileSync(branchCopy, '# Discussion: Tally, as the branch has it\n');
-      const { returned } = run(path.join(linked, 'app'));
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
-      assert.strictEqual(fs.readFileSync(path.join(dir, 'app/.gitignore'), 'utf8'), '.leeway/\n');
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'app/.gitignore');
-      assert.ok(!fs.existsSync(path.join(linked, 'app/.gitignore')), 'the worktree\'s branch untouched');
-      assert.strictEqual(git(linked, ['diff', '--cached', '--name-only']).trim(), '');
-      assert.deepStrictEqual(returned, {
-        verify: `The move took .workflows/ from the main checkout, ${dir}/app, the copy it leaves the default branch from; the worktree it ran in, ${linked}/app, on feat, `
-          + 'holds a .workflows/ that differs, and what differs there was not moved.',
-      });
-      fs.writeFileSync(branchCopy, '# Discussion: Tally\n');
-      assert.strictEqual(run(path.join(linked, 'app')).returned, undefined, 'nothing to say where the copies match');
-    } finally {
-      cleanupFixture(linked);
       cleanupFixture(dir);
     }
   });

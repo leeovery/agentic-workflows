@@ -74,13 +74,9 @@
 //     through the engine's side of the directives (`piecesOf`,
 //     leeway-engine/scripts/domain/directives.cjs); one that cannot answer
 //     stops the run there, as one with pieces does.
-//   - A `*.cjs` migration may refuse to run: it throws an error carrying
-//     `refused`, an object of the facts its refusal states. The runner prints
-//     `---REFUSED: NNN---` and the facts on one JSON line, and ends, nothing
-//     recorded for it and nothing after it run.
 //
-// The reshape (21.2), whose own knowledge of the layout before it is
-// reshape.cjs's:
+// The reshape (21.2), whose runtime knowledge of the layout before it is
+// old-layout.cjs's:
 //   - The record. Where it holds no line, the record the layout before the
 //     state branch kept in the project's folder, `.workflows/.state/
 //     migrations`, seeds it, written whole, so a project at 044 runs 045
@@ -91,6 +87,11 @@
 //     today's shape among them — and before it writes anything: the record,
 //     its seed and the journals are written only once it passes, inside the
 //     state worktree it put in place, so a refusal leaves nothing behind.
+//   - The guard alone may refuse to run, run there: it throws an error
+//     carrying `refused`, the facts its refusal states. The runner prints
+//     `---REFUSED: 074---` and the facts on one JSON line, and ends, nothing
+//     recorded and nothing else run. Any other migration's throw, carrying
+//     `refused` or not, fails the run.
 //   - Where it runs. While the reshape is owed or under way, boot runs the
 //     runner in the project's folder in the main checkout, wherever boot was
 //     called from: the copy the move reads, which the migration's commit
@@ -103,7 +104,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { OLD_STATE, owed } = require('./reshape.cjs');
+const { OLD_STATE, owed } = require('./old-layout.cjs');
 
 const SCRIPT_DIR = __dirname;
 const MIGRATIONS_DIR = path.join(SCRIPT_DIR, 'migrations');
@@ -307,9 +308,25 @@ function nothingToDo(cwd, directive) {
   }
 }
 
-/** End the run at a migration's refusal, printing its facts. @param {string} script @param {object} refused */
-function refuse(script, refused) {
-  process.stdout.write(`---REFUSED: ${migrationId(script)}---\n${JSON.stringify(refused)}\n`);
+/**
+ * Run the reshape's guard ahead of every other migration: what it did, or
+ * the facts of its refusal. Any other throw propagates, as any migration's.
+ * @param {string} script
+ * @returns {ReturnType<typeof runCjsMigration>|{refused: object}}
+ */
+function runGuard(script) {
+  try {
+    return runCjsMigration(script);
+  } catch (err) {
+    const refused = err !== null && typeof err === 'object' ? /** @type {{refused?: unknown}} */ (err).refused : undefined;
+    if (refused !== null && typeof refused === 'object') return { refused };
+    throw err;
+  }
+}
+
+/** End the run at the guard's refusal, printing its facts. @param {object} refused */
+function refuse(refused) {
+  process.stdout.write(`---REFUSED: ${RESHAPE_GUARD}---\n${JSON.stringify(refused)}\n`);
 }
 
 /** Whether a file in the migrations folder is a migration: a directive's check is its directive's. @param {string} name */
@@ -350,11 +367,10 @@ function handedBack(value) {
 }
 
 /**
- * Run a `*.cjs` migration in-process against the contract: what it did, or
- * the facts of its refusal. Any other throw propagates to the top-level
- * handler, aborting the run without recording.
+ * Run a `*.cjs` migration in-process against the contract. A throw propagates
+ * to the top-level handler, aborting the run without recording.
  * @param {string} scriptAbs
- * @returns {{updated: number, skipped: number, description: string, info: string|null, verify: string|null, notice: string|null}|{refused: object}}
+ * @returns {{updated: number, skipped: number, description: string, info: string|null, verify: string|null, notice: string|null}}
  */
 function runCjsMigration(scriptAbs) {
   const mod = require(scriptAbs);
@@ -363,18 +379,11 @@ function runCjsMigration(scriptAbs) {
   }
   let updated = 0;
   let skipped = 0;
-  let ret;
-  try {
-    ret = mod.run({
-      projectDir: '.',
-      reportUpdate: () => { updated += 1; },
-      reportSkip: () => { skipped += 1; },
-    });
-  } catch (err) {
-    const refused = err !== null && typeof err === 'object' ? /** @type {{refused?: unknown}} */ (err).refused : undefined;
-    if (refused !== null && typeof refused === 'object') return { refused };
-    throw err;
-  }
+  const ret = mod.run({
+    projectDir: '.',
+    reportUpdate: () => { updated += 1; },
+    reportSkip: () => { skipped += 1; },
+  });
   const handed = ret && typeof ret === 'object' ? ret : {};
   return {
     updated,
@@ -422,9 +431,9 @@ function main() {
   }
 
   const guard = guardAhead(scripts, record, cwd);
-  const guarded = guard === undefined ? null : runCjsMigration(guard);
+  const guarded = guard === undefined ? null : runGuard(guard);
   if (guarded !== null && 'refused' in guarded) {
-    refuse(/** @type {string} */ (guard), guarded.refused);
+    refuse(guarded.refused);
     return;
   }
   seedRecord(record, path.join(cwd, OLD_RECORD), journals);
@@ -493,10 +502,6 @@ function main() {
     const result = script.endsWith('.cjs')
       ? runCjsMigration(script)
       : runShMigration(cwd, script, record);
-    if ('refused' in result) {
-      refuse(script, result.refused);
-      return;
-    }
     settle(id, result);
   }
 

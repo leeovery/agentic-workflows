@@ -8,8 +8,10 @@
 // leaving no trace; the line kept in a nested project's .gitignore and the
 // exclude file; a boot from a code worktree; and a project owing the
 // reshape, whose migration boot runs in the main checkout's project folder
-// under its lock — its guard's refusal a stop with nothing written, and a
-// second boot meanwhile waiting for the run to end.
+// under its lock — its guard's refusal a stop with nothing written, boot
+// reading that refusal alone and only its facts, a warning naming what a
+// boot from another checkout leaves unmoved, and a second boot meanwhile
+// waiting for the run to end.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -269,6 +271,40 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(!fs.existsSync(statePath(main)), 'no state folder, so no record, lock or journal');
     assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
     assert.strictEqual(boot(main, env).state, 'guard');
+  });
+
+  it('reads the guard\'s refusal alone, and of it only the facts its stop states: no fact overwrites the stop, and another migration\'s refusal marker is none of boot\'s', () => {
+    const owing = owingProject();
+    const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
+    const facts = JSON.stringify({ ...refused, ok: false, state: 'ready', warnings: ['a fact'], more: true });
+    const settled = projectInWorld({ name: 'shop' });
+    boot(settled);
+
+    assert.deepStrictEqual(boot(owing, { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: facts }), { ok: true, state: 'guard', ...refused, warnings: [] });
+    const other = boot(settled, { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSED: '075', STUB_MIGRATE_REFUSAL: facts });
+    assert.deepStrictEqual([other.state, other.migrations.output], ['ready', `---REFUSED: 075---\n${facts}`]);
+  });
+
+  it('called from another checkout, warns of each file of its .workflows/ that differs from the main checkout\'s, which the migration leaves where it is — the files the old state ignores aside; called from the main checkout, of none', () => {
+    const main = owingProject();
+    createFile(main, '.workflows/.gitignore', '.cache/\n');
+    createFile(main, '.workflows/payments/discussion/payments.md', '# Payments\n');
+    commitCode(main, 'a discussion');
+    const code = path.join(world(), 'portal-feature');
+    git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    createFile(code, '.workflows/payments/discussion/payments.md', '# Payments, as the branch has it\n');
+    commitCode(code, 'the branch\'s discussion');
+    createFile(code, '.workflows/payments/research/payments.md', '# Research\n');
+    fs.rmSync(path.join(code, '.workflows/payments/manifest.json'));
+    createFile(code, '.workflows/.cache/payments/discussion/payments/presence', '{}\n');
+    const env = { STUB_MIGRATE_MODE: 'reshape' };
+    const unmoved = (/** @type {{warnings: string[]}} */ booted) => booted.warnings.filter((warning) => warning.startsWith('the migration moves'));
+
+    assert.deepStrictEqual(unmoved(boot(code, env)), [
+      `the migration moves the project's state as the main checkout holds it, in ${main}; where boot ran, in ${code}, these differ from it and stay where they are: `
+        + '.workflows/payments/discussion/payments.md, .workflows/payments/manifest.json, .workflows/payments/research/payments.md',
+    ]);
+    assert.deepStrictEqual(unmoved(boot(main, env)), []);
   });
 
   it('a second boot meanwhile waits on boot\'s lock until the first boot\'s run ends, then runs the migration under way itself', async (t) => {
