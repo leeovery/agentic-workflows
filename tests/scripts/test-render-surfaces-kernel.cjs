@@ -45,8 +45,8 @@ describe('surfaces primitives', () => {
   it('a timed instruction is built from its parts — the form, the moment, then the behaviour clause where there is one', () => {
     assert.strictEqual(timedInstruction('text', 'after the result summary', AUTO_GATE_CLAUSE),
       'emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the workflow instructs');
-    assert.strictEqual(timedInstruction('text', 'only at an analysis deferral', CONTINUE_CLAUSE),
-      'emit verbatim as a text code block (```text fence) only at an analysis deferral — do not stop; continue as the workflow instructs');
+    assert.strictEqual(timedInstruction('text', 'after the receipt', CONTINUE_CLAUSE),
+      'emit verbatim as a text code block (```text fence) after the receipt — do not stop; continue as the workflow instructs');
     assert.strictEqual(timedInstruction('markdown', 'after the response', STOP_CLAUSE),
       "emit verbatim as markdown (not a code block) after the response, then STOP for the user's response");
     assert.strictEqual(timedInstruction('text', 'after the response'),
@@ -389,14 +389,15 @@ describe('CLI boundary — engine render through the argv entry', () => {
   const run = (/** @type {string[]} */ args) => render(dir, args);
 
   it('flags survive argv: --variant, --file, scalar flags, boolean flags', () => {
-    const names = writePayload(dir, 'names.json', { names: ['billing-core'] });
-    assert.ok(run(['summary-backfill-gate', 'pay', '--variant', 'unsourced', '--file', names]).includes('Billing Core'));
-    assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
+    assert.match(run(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai']), /Use the existing configuration \(openai\)/);
+    const missing = writePayload(dir, 'missing.json', { missing: ['notes/ghost.md'] });
+    assert.ok(run(['import-reprompt', '--file', missing]).includes('• notes/ghost.md'));
+    assert.ok(run(['phase-note', 'pay.discussion.pay', '--verb', 'Resuming']).includes('Resuming discussion: Pay'));
     assert.ok(run(['walkthrough-offer', '--menu-only']).startsWith('=== MENU: '), '--menu-only must survive boolean-flag registration through argv');
   });
 
   it('surface errors surface as failJson on stderr with exit 1', () => {
-    assert.match(harness.refuses(dir, ['render', 'summary-backfill-gate', 'pay', '--variant', 'unsourced', '--file', 'missing.json']).error,
+    assert.match(harness.refuses(dir, ['render', 'import-reprompt', '--file', 'missing.json']).error,
       /missing\.json/);
   });
 });
@@ -419,7 +420,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: backlog-gate, candidate-gate, send-closed-target, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, summary-backfill-gate, phase-completed, phase-note, cancel-gate, postpone-gate, workunit-receipt, topic-receipt, absorb-receipt, absorb-continuation, import-reprompt, pivot-continuation, absorb-target, absorb-confirm-gate, archived-delete-gate, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-parks-gate, query-failure-gate, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, repo-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build, build-headline, task-landed, task-account, step-gate, phase-merge-gate, build-stop, build-progress, review-report, review-calls, review-tree, finish, investigation-plan, investigation-check-in, conclude, help, verdicts, start-menu, epic-menu, manage, manage-unit, closed, care, care-kind, care-drop, triage, archived, archived-item, convergence, roadmap, roadmap-harvest, matrix, matrix-replay\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: backlog-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, phase-note, cancel-gate, postpone-gate, workunit-receipt, topic-receipt, absorb-receipt, import-reprompt, absorb-target, absorb-confirm-gate, archived-delete-gate, inbox-restore-receipt, inbox-delete-receipt, horizon-pick, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, repo-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build, build-headline, task-landed, task-account, step-gate, phase-merge-gate, build-stop, build-progress, review-report, review-calls, review-tree, finish, investigation-plan, investigation-check-in, conclude, help, verdicts, start-menu, epic-menu, manage, manage-unit, closed, care, care-kind, care-drop, triage, archived, archived-item, convergence, roadmap, roadmap-harvest, matrix, matrix-replay\)/);
   });
 });
 

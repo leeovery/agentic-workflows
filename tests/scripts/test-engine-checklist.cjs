@@ -46,7 +46,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, statePath, layout, writeState, readManifest, commitAll, stateGit, fixtureFrom, cleanupFixture, lockAttempts, holdLock,
+  ok, refusedPristine, statePath, layout, writeState, readManifest, commitAll, fixtureFrom, cleanupFixture, lockAttempts, holdLock, failingStateCommits, retried,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -486,6 +486,13 @@ describe('the close, refused while any item is open (6.4.4, 6.S26)', () => {
     assert.strictEqual(refused(['close', 'decided', UNIT, 'cards']), 'checklist close: decided.cards has items open: mailbox-empty');
     fs.rmSync(statePath(dir, mailFor('cards')));
     assert.strictEqual(checklist(['close', 'decided', UNIT, 'cards']).checklist, 'decided.cards');
+  });
+
+  it('a mark whose commit fails names the retry that commits it, which leaves nothing uncommitted', () => {
+    const res = failingStateCommits(dir, () => checklist(['done', 'decided', UNIT, 'cards', 'findings-rerun']));
+
+    assert.strictEqual(res.committed, null);
+    assert.deepStrictEqual(retried(dir, res), { took: [`M\t${layout.manifest(UNIT)}`], left: '' });
   });
 
   it('refuses decided\'s close while a measured finding is not yet re-run', () => {

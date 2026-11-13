@@ -4,14 +4,14 @@
 // The person's answer at a gate (leeway-engine/scripts/domain/gate.cjs):
 // the record of the gate shown — every MENU's gate stated through
 // `section()` (surfaces.cjs), the command's MENU kept for the calling
-// conversation by the engine's dispatch and a skill's gateway, with the mod
-// announced or not, never for a command that failed, a menu drawn as an
-// illustration, a raise's menu, or a command without a session — and
-// `engine gate`, which logs the answer to the trust log by the gate's name
-// (3.2.6, 16.11.9): the row the engine recommended and the row picked, a
-// typed row, or free text, its words read by the separate call for the row
-// they pick and dropped (16.S40, 16.S68); pressed only where the mod's record of its last
-// press names this gate and row after it was shown — whatever the rows mod
+// conversation by the engine's dispatch, with the mod announced or not,
+// never for a command that failed, a menu drawn as an illustration, a
+// raise's menu, or a command without a session — and `engine gate`, which
+// logs the answer to the trust log by the gate's name (3.2.6, 16.11.9): the
+// row the engine recommended and the row picked, a typed row, or free text,
+// its words read by the separate call for the row they pick and dropped
+// (16.S40, 16.S68); pressed only where the mod's record of its last press
+// names this gate and row after it was shown — whatever the rows mod
 // did with the send's own record — typed otherwise and always with the mod
 // off (6.6.3, 6.6.4); what the row leads to returned and never performed
 // (6.6.2); a rerun after a kill read once; each refusal logging nothing, a
@@ -20,7 +20,7 @@
 // record of a press read as the mod writes it, each literal read off its
 // source.
 //
-// Layer: verb, the gateway's record and the source guard beside it. World:
+// Layer: verb, the dispatch's record and the source guards beside it. World:
 // the project from the fixture library, read and never written — a feature
 // in implementation while another unit's session holds the code slot,
 // which puts the code gate's recommended row on screen — shared by every
@@ -49,6 +49,7 @@ const {
 const { showingOf, shows } = require(path.join(SCRIPTS, 'domain/learned-gates.cjs'));
 const { recordGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { readTrustLog } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { SCHEMA } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { renderSurface } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const { codeGate } = require(path.join(SCRIPTS, 'domain/projections/enter.cjs'));
 const { announced } = require('./gate-audit.cjs');
@@ -274,6 +275,21 @@ describe('the gate shown (3.S6)', () => {
     });
     const building = sources(SKILLS).filter((file) => fs.readFileSync(file, 'utf8').includes('=== MENU'));
     assert.deepStrictEqual(building.map((file) => path.relative(SKILLS, file)), []);
+  });
+
+  it('each name an engine render declares for its MENU, a templated one aside, is a name the trust log keys (16.11.9)', () => {
+    /** @param {string} folder @returns {string[]} */
+    const declared = (folder) => fs.readdirSync(folder, { withFileTypes: true }).flatMap((e) => {
+      const at = path.join(folder, e.name);
+      if (e.isDirectory()) return declared(at);
+      if (!e.name.endsWith('.cjs')) return [];
+      return [...fs.readFileSync(at, 'utf8').matchAll(/['`]MENU: ([^'`$]+?)(?: — [^'`]*)?['`]/g)].map((m) => m[1]);
+    });
+    const names = new Set(declared(SCRIPTS));
+    const gate = SCHEMA.events.gate.fields.find((f) => f.name === 'gate');
+
+    assert.ok(names.size > 0, 'no engine render declares a menu — the guard would pass vacuously');
+    assert.deepStrictEqual([...names].filter((name) => !gate?.type.test(name)), []);
   });
 
   it('a typed row is keyed by its label\'s words, lowercase, joined by hyphens, and marked where the person answers it in words rather than picking items', () => {

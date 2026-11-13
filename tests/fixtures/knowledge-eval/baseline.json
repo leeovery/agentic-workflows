@@ -7,11 +7,11 @@
       "recall@10": 1,
       "file_hit@5": 1,
       "excerpt_hit@5": 1,
-      "bytes": 4734.5909,
-      "negative_results": 4.2222,
-      "negative_bytes": 4752.8889,
-      "near_miss_results": 4.5,
-      "near_miss_bytes": 4899.0833
+      "bytes": 5031.0455,
+      "negative_results": 4.5556,
+      "negative_bytes": 5067.5556,
+      "near_miss_results": 4.8333,
+      "near_miss_bytes": 5206.5833
     },
     "portal": {
       "hit@5": null,
@@ -46,11 +46,11 @@
       "recall@10": null,
       "file_hit@5": null,
       "excerpt_hit@5": null,
-      "bytes": 962.1429,
-      "negative_results": 1,
-      "negative_bytes": 960.6667,
-      "near_miss_results": 1,
-      "near_miss_bytes": 963.25
+      "bytes": 1893.8571,
+      "negative_results": 2,
+      "negative_bytes": 1904.6667,
+      "near_miss_results": 2,
+      "near_miss_bytes": 1885.75
     }
   },
   "cases": {
@@ -69,12 +69,12 @@
     "tick-near-miss-text-search": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":3,"bytes":2753},
     "tick-near-miss-effort-estimates": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":2498},
     "tick-near-miss-secrets-in-tasks": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":2279},
-    "fumi-neg-portal-go-file-organisation": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":971},
-    "fumi-neg-portal-tmux-resume-hooks": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":940},
-    "fumi-neg-tick-same-second-ordering": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":971},
-    "fumi-near-miss-spell-check": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":971},
-    "fumi-near-miss-note-templates": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":971},
-    "fumi-near-miss-timed-reminders": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":940},
-    "fumi-near-miss-localisation": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":1,"bytes":971}
+    "fumi-neg-portal-go-file-organisation": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":2056},
+    "fumi-neg-portal-tmux-resume-hooks": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":1829},
+    "fumi-neg-tick-same-second-ordering": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":1829},
+    "fumi-near-miss-spell-check": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":1829},
+    "fumi-near-miss-note-templates": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":1829},
+    "fumi-near-miss-timed-reminders": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":1829},
+    "fumi-near-miss-localisation": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":2,"bytes":2056}
   }
 }

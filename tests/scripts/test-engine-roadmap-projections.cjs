@@ -3,11 +3,9 @@
 // The roadmap's screens over derived roadmap state (projections/roadmap.cjs):
 // the roadmap's home as its projection lays it out — each horizon's waiting
 // items, where each came from, one column, and the title cut short at the
-// width (18.8.10) — and the Roadmap view's rows, a bug or a quick-fix marked
-// with its kind and an idea unmarked. The home's rows, where each leads and
-// the empty home, as `render roadmap` draws them, and the harvest's screen,
-// are test-engine-roadmap-menu.cjs's; the view's gate surfaces are
-// test-engine-render-surfaces.cjs's.
+// width (18.8.10). The home's rows, where each leads and the empty home, as
+// `render roadmap` draws them, and the harvest's screen, are
+// test-engine-roadmap-menu.cjs's.
 //
 // Layer: unit. The state is a value, the shape roadmapState answers, at the
 // hermetic 65 columns.
@@ -17,7 +15,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { roadmapMapView, roadmapScreen } = require('../../skills/leeway-engine/scripts/domain/projections/roadmap.cjs');
+const { roadmapScreen } = require('../../skills/leeway-engine/scripts/domain/projections/roadmap.cjs');
 
 /** A derived-state fixture — the shape roadmapState returns. */
 function state(items, horizons = ['mvp', 'v1']) {
@@ -94,18 +92,4 @@ describe('the roadmap\'s home (18.8.10)', () => {
     assert.deepStrictEqual(shows.slice(-2), ['(no horizon)', '  └─ 2. Exports    idea · discovery']);
   });
 
-});
-
-describe('the Roadmap view', () => {
-  it('renders the empty-born state and the breakdown header', () => {
-    assert.match(roadmapMapView(state([])), /Roadmap \(0 items\)\n  \(empty\)\n/);
-    assert.match(roadmapMapView(state(ROWS)), /Roadmap \(4 items — 1 in flight · 3 waiting\)/);
-  });
-
-  it('names a bug or a quick-fix row\'s kind in its ↳ note, ahead of the state; an idea row\'s note is its state alone', () => {
-    const out = roadmapMapView(state([ROWS[1], ...FIXES]));
-    assert.match(out, /Login Crash\n.*sign-in crashes\n.*↳ Bug · waiting/);
-    assert.match(out, /Typo\n.*↳ Quick-fix · in flight: typo/);
-    assert.match(out, /Menus\n.*operators maintain\n.*↳ Waiting/);
-  });
 });

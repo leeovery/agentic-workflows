@@ -71,10 +71,6 @@ describe('pipeline simulation: epic postpone', () => {
     sim.refuses(['enter', 'discussion', wu, 'talking'], /^the topic "talking" is postponed to the roadmap — pulling it forward goes through the epic menu/);
     assert.strictEqual(derivations.phaseStatus(sim.manifest(wu), 'discussion'), 'completed', 'the postponed conversation under way no longer holds the phase in progress');
     assert.strictEqual(d.needs_sequencing, false, 'a postponed row carries no order and asks for none');
-    // The gap analysis reads the decided discussions' records: the postponed
-    // one drops out of its input set.
-    assert.deepStrictEqual(derivations.collectAnalysisInputs(sim.manifest(wu), path.join(sim.dir, '.leeway'), 'gap-analysis')
-      .map((f) => path.basename(f)), ['stays.md']);
 
     // The roadmap owns it: cancel and reactivate refuse, a send lands.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);

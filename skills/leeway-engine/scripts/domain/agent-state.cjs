@@ -396,18 +396,6 @@ function agentRows(cwd, workUnit, phase, topic) {
 }
 
 /**
- * A discussion topic's latest review row — the highest-numbered `review`
- * row in scan order, or null when no review has been dispatched.
- * @param {string} cwd @param {string} workUnit @param {string} topic
- */
-function latestReview(cwd, workUnit, topic) {
-  const rows = agentRows(cwd, workUnit, 'discussion', topic)
-    .filter((r) => r.kind === 'review')
-    .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
-  return rows.length ? rows[rows.length - 1] : null;
-}
-
-/**
  * Dispatch: allocate the next id for this kind, record the row in-flight,
  * and answer with the content-file path the sub-agent must write. No file
  * is created — the content file's later existence is the completion signal.
@@ -1092,14 +1080,11 @@ module.exports = {
   incorporateAgent,
   closeInFlight,
   abandonEarlierPasses,
-  completedReviewCycles,
-  reviewArming,
   agentDir,
   agentRows,
   agentsLeft,
   runningAgents,
   inFlightStandings,
-  latestReview,
   gapReviewSince,
   validationFor,
   dispatchedRows,

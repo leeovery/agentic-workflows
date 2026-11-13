@@ -175,36 +175,13 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.strictEqual(readWorkUnit(dir, 'auth').description, 'Fixture', 'batch must be all-or-nothing');
   });
 
-  it('schema validation is unchanged: statuses, work types, gate modes', () => {
+  it('schema validation is unchanged: statuses, work types', () => {
     writeWorkUnit(dir, 'auth', 'feature');
     assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', 'concluded']).error, /Invalid status/);
     assert.match(runFails(dir, ['set', 'auth', 'work_type', 'saga']).error, /Invalid work_type/);
-    assert.match(runFails(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', 'manual']).error, /Invalid gate mode/);
-    for (const mode of ['gated', 'auto']) {
-      runJson(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', mode]);
-      assert.strictEqual(readWorkUnit(dir, 'auth').phases.discovery.analysis_staging['discovery-gap-analysis'].gate_mode, mode);
-    }
     assert.strictEqual(runFails(dir, ['set', 'auth.discovery.topic', 'status', 'in-progress']).error,
       'Phase "discovery" items carry no status field — lifecycle is computed at render time; create map items with `engine topic add`');
     assert.match(runFails(dir, ['set', 'ghost', 'status', 'completed']).error, /Work unit "ghost" not found/);
-  });
-
-  it('a gate mode is a walk\'s alone, gated or auto — no phase item carries one, and no gate has a bound', () => {
-    writeWorkUnit(dir, 'auth', 'feature');
-    for (const [dotpath, field] of [['auth.discussion.auth', 'finding_gate_mode'], ['auth.investigation.auth', 'task_gate_mode']]) {
-      assert.strictEqual(runFails(dir, ['set', dotpath, field, 'auto']).error,
-        `"${field}" is not a gate the schema knows — a gate mode is a walk's, its staging row's gate_mode`);
-    }
-    // The gap analysis's gate is the walk: its staging row is written on the epic's discovery.
-    writeWorkUnit(dir, 'pay', 'epic');
-    const gate = 'analysis_staging.discovery-gap-analysis';
-    runJson(dir, ['set', 'pay.discovery', `${gate}.gate_mode`, 'auto']);
-    assert.match(runFails(dir, ['set', 'pay.discovery', `${gate}.gate_mode`, 'bounded']).error, /Invalid gate mode "bounded"\. Must be one of: gated, auto/);
-    // A batch with one bad gate writes nothing.
-    assert.match(runFails(dir, ['set', 'pay.discovery', `${gate}.candidates.billing.status=pending`, `${gate}.gate_mode=bounded`]).error, /Invalid gate mode/);
-    const staged = readWorkUnit(dir, 'pay').phases.discovery.analysis_staging['discovery-gap-analysis'];
-    assert.deepStrictEqual(staged, { gate_mode: 'auto' }, 'the earlier accepted write stands, and the refused batch wrote nothing — not even its valid pair');
-    assert.strictEqual(readWorkUnit(dir, 'auth').phases.discussion, undefined, 'the refused write landed nothing');
   });
 
   it('a typed field refuses NON-string values — number, boolean, ~→null, object bypass nothing', () => {
@@ -215,8 +192,6 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.match(runFails(dir, ['set', 'auth', 'status', 'true']).error, /Invalid status true\b/);
     assert.match(runFails(dir, ['set', 'auth', 'status', '~']).error, /Invalid status null\b/);
     assert.match(runFails(dir, ['set', 'auth', 'work_type', '42']).error, /Invalid work_type 42\b/);
-    assert.match(runFails(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', '5']).error, /Invalid gate mode 5\b/);
-    assert.match(runFails(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', '{}']).error, /Invalid gate mode \{\}/);
     assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', '3']).error, /Invalid status 3 for phase "discussion"/);
     // None of the refused writes touched the manifest.
     const m = readWorkUnit(dir, 'auth');
@@ -572,24 +547,16 @@ describe('engine manifest set — two grammars, never mixed', () => {
   });
 });
 
-describe('candidate and experiment state is vocabulary-guarded', () => {
+describe('experiment state and the instants are vocabulary-guarded', () => {
   let dir;
   beforeEach(() => {
-    dir = setupFixture('staging-guard-');
+    dir = setupFixture('state-guard-');
     writeWorkUnit(dir, 'pay', 'epic', { phases: {
       experiment: { items: { pay: { status: 'in-progress' } } },
       discovery: { items: {} },
     } });
   });
   afterEach(() => cleanupFixture(dir));
-
-  it('candidate gate state takes only its vocabulary', () => {
-    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode=gated',
-      'analysis_staging.discovery-gap-analysis.candidates.auth.status=pending']);
-    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.candidates.auth.status', 'resolved']);
-    assert.match(runFails(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.candidates.auth.status', 'maybe']).error,
-      /Invalid candidate status/);
-  });
 
   it('the map\'s approval takes only an instant: anything else would read as no approval, the epic back in its discovery', () => {
     for (const bad of ['true', '"2026-07-15"', '"soon"', '"2026-13-45T00:00:00Z"']) {
@@ -612,28 +579,21 @@ describe('candidate and experiment state is vocabulary-guarded', () => {
 
   it('the non-canonical spellings of guarded locations are refused, not silently unvalidated', () => {
     // work-unit level via a phases.-prefixed field
-    assert.match(runFails(dir, ['set', 'pay', 'phases.discovery.analysis_staging.discovery-gap-analysis.candidates.auth.status', 'bogus']).error,
+    assert.match(runFails(dir, ['set', 'pay', 'phases.experiment.items.pay.experiments.E1.status', 'bogus']).error,
       /"phases" is the phase tree itself/);
     // phase level via an items.-prefixed field — leaf and wholesale container alike
     assert.match(runFails(dir, ['set', 'pay.experiment', 'items.pay.experiments.E1.status', 'bogus']).error,
       /"items" is the topic tree/);
     assert.match(runFails(dir, ['set', 'pay.experiment', 'items.pay.experiments', '{"E1":{"status":"bogus"}}']).error,
       /"items" is the topic tree/);
-    const m = readWorkUnit(dir, 'pay');
-    assert.strictEqual(m.phases.discovery.analysis_staging, undefined, 'nothing persisted');
-    assert.strictEqual(m.phases.experiment.items.pay.experiments, undefined, 'nothing persisted');
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.experiment.items.pay.experiments, undefined, 'nothing persisted');
   });
 
   it('push cannot seed a guarded container as an array', () => {
-    for (const [dotpath, field] of [
-      ['pay.discovery', 'analysis_staging'], ['pay.discovery', 'analysis_staging.discovery-gap-analysis'],
-      ['pay.experiment.pay', 'experiments'], ['pay.experiment.pay', 'experiments.E1'],
-    ]) {
-      assert.match(runFails(dir, ['push', dotpath, field, 'x']).error, /guarded state container/);
+    for (const field of ['experiments', 'experiments.E1']) {
+      assert.match(runFails(dir, ['push', 'pay.experiment.pay', field, 'x']).error, /guarded state container/);
     }
-    const m = readWorkUnit(dir, 'pay');
-    assert.strictEqual(m.phases.discovery.analysis_staging, undefined, 'nothing persisted');
-    assert.strictEqual(m.phases.experiment.items.pay.experiments, undefined, 'nothing persisted');
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.experiment.items.pay.experiments, undefined, 'nothing persisted');
   });
 });
 

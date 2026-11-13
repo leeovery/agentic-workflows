@@ -186,14 +186,14 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
     assert.deepStrictEqual(readProject(dir).roadmap.items['login-crash'], { ...pointers, archived: { at: '2026-01-01T00:00:00Z', horizon: 'later' } });
     assert.strictEqual(fs.readFileSync(path.join(dir, BUG_NOTE), 'utf8'), '# 2026-03-02--login-crash.md\n', 'the note stays in the product\'s notes');
     assert.deepStrictEqual(committedPaths(), ['M\tmanifest.json']);
-    const home = output(dir, ['render', 'roadmap-view']);
+    const home = output(dir, ['render', 'roadmap']);
     assert.match(home, /Dark Mode/);
     assert.doesNotMatch(home, /Login Crash/);
 
     runOk(dir, ['move', 'login-crash', '--horizon', 'later']);
     assert.deepStrictEqual(readProject(dir).roadmap.items['login-crash'], kept);
     assert.ok(exists(BUG_NOTE));
-    assert.match(output(dir, ['render', 'roadmap-view']), /Login Crash/);
+    assert.match(output(dir, ['render', 'roadmap']), /Login Crash/);
   });
 
   it('one name across the inbox: a title captured the same day in every kind takes the next free -{n} where any kind holds it, live, archived or in the product\'s notes, and every one reaches the roadmap, together and one after the other (4.11.16)', () => {

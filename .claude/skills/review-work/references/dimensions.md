@@ -149,15 +149,14 @@ A change lands in one place and is owed in several. Enumerate them.
 ## H. Code structure
 
 The code surfaces carry established conventions of their own — the engine's
-three rings, the gateway contract, the knowledge subsystem, the migrations,
-the tests. Read `skills/leeway-engine/SKILL.md` and
-`references/library-and-gateway.md` before the diff; they are where the
+two rings, the knowledge subsystem, the migrations, the tests. Read
+`skills/leeway-engine/SKILL.md` before the diff; it is where the
 architecture is stated.
 
 **Layering.** Kernel is mechanism and the manifest's on-disk contract;
-domain is the workflow ontology; the gateway is the verb-dispatch harness.
-Code sits in the ring that owns it — workflow semantics leaking into
-`kernel/`, or render mechanism reimplemented in `domain/`, is a finding.
+domain is the workflow ontology. Code sits in the ring that owns it —
+workflow semantics leaking into `kernel/`, or render mechanism
+reimplemented in `domain/`, is a finding.
 Derivations may require reads; never the reverse.
 
 **Single home.** Each mechanism exists once. The wrap budget lives in the
@@ -168,11 +167,11 @@ work types, phases, and statuses. A second implementation of any of these
 is a finding even when it is correct today.
 
 **Reuse over reimplementation.** A derivation, read, or projection that
-already exists in `lib.cjs` is called, not rewritten locally. Two functions
+already exists in the domain is called, not rewritten locally. Two functions
 computing the same thing from the same state will diverge.
 
-**Doors and directions.** Writes go through the CLI, reads through the
-library. `DATA` is for reasoning and is never displayed; `DISPLAY` and
+**Doors and directions.** Skill prose reaches the engine through the CLI
+alone. `DATA` is for reasoning and is never displayed; `DISPLAY` and
 `MENU` are emitted verbatim and never parsed for a decision. Anything
 parameterised or state-branching renders in code, not in prose. The engine
 never parses markdown artifacts to populate a render — address-backed
@@ -190,10 +189,6 @@ blocks, and defaults substituted for a value that should have been an error.
 **Types.** JSDoc annotations are real contracts here — `checkJs` and
 `strictNullChecks` are on. A new export without them, or an `any` widening
 that hides a nullable, weakens the one mechanical check this code has.
-
-**Adapters.** Each per-skill `gateway.cjs` registers handlers and calls
-`runGateway`. The prose names the verb; the adapter never infers what a
-call is for and never branches on argv shape.
 
 **Migrations.** Read and write `manifest.json` directly, never through
 `engine manifest`. Outcome is signalled only through `reportUpdate` and

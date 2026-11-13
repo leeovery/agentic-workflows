@@ -370,13 +370,16 @@ function passageProblems(c, j, fixture) {
 }
 
 /**
- * The judgments no chunk of the built store matches — unreachable by any
- * ranking, one line each.
- * @param {EvalCase[]} cases  one project's
+ * What keeps a built store from measuring its project's cases, one line
+ * each: a store that indexes nothing, where every case would return nothing
+ * whatever retrieval does, and each judgment no chunk of it matches —
+ * unreachable by any ranking.
+ * @param {string} project @param {EvalCase[]} cases  the project's
  * @param {Array<Record<string, any>>} chunks  every chunk of that project's store
  * @returns {string[]}
  */
-function unmatchedJudgments(cases, chunks) {
+function storeProblems(project, cases, chunks) {
+  if (chunks.length === 0) return [`${project}: its store indexes nothing — its fixture holds no file the index takes`];
   return cases.flatMap((c) => c.relevant.flatMap((j, i) => (chunks.some((chunk) => matches(chunk, j))
     ? []
     : [`${c.id}: relevant[${i}]: no indexed chunk of ${j.source} carries the anchor`])));
@@ -616,16 +619,16 @@ async function projectTimings(built, opened, chunks, runs) {
 }
 
 /**
- * A built project's cases, once every judgment is known to match a chunk of
- * its store — and, on a timed run, what the project cost.
+ * A built project's cases, once its store is known to measure them
+ * (`storeProblems`) — and, on a timed run, what the project cost.
  * @param {BuiltProject} built @param {EvalCase[]} cases @param {boolean} timed
  * @returns {Promise<{runs: CaseRun[], timings: ProjectTimings|null}>}
  */
 async function runProject(built, cases, timed) {
   const opened = await openStore(built);
   const chunks = store.allChunks(opened.db);
-  const unmatched = unmatchedJudgments(cases, chunks);
-  if (unmatched.length > 0) throw new Error(`judgments no indexed chunk matches:\n  ${unmatched.join('\n  ')}`);
+  const problems = storeProblems(built.project, cases, chunks);
+  if (problems.length > 0) throw new Error(`the store cannot measure its cases:\n  ${problems.join('\n  ')}`);
   const runs = [];
   for (const evalCase of cases) runs.push(await runCase(opened, evalCase));
   return { runs, timings: timed ? await projectTimings(built, opened, chunks, runs) : null };
@@ -1071,7 +1074,7 @@ async function main(flags) {
 module.exports = {
   loadCases,
   validateCases,
-  unmatchedJudgments,
+  storeProblems,
   runKnowledge,
   evaluate,
   readBaseline,

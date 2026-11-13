@@ -21,12 +21,10 @@
 const fs = require('fs');
 const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { displayWidth } = require('../kernel/terminal.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
+const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
-const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { completedActions } = require('./projections/start.cjs');
+const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { logClaims } = require('./inbox.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
@@ -36,29 +34,21 @@ const {
 const { migrationsApplied, migrationGate, stateLostGate, repoStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
-const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
-const { roadmapState, hasRoadmapNode, validateKind, markedKind, addNameRefusal, DEFAULT_KIND } = require('./roadmap.cjs');
+const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
-const {
-  roadmapMapView,
-  roadmapAddGate,
-  roadmapParksGate,
-  roadmapSurface,
-  roadmapHarvestSurface,
-} = require('./projections/roadmap.cjs');
-const { revisitPhasesSection } = require('./projections/workunit.cjs');
+const { roadmapSurface, roadmapHarvestSurface } = require('./projections/roadmap.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { lastShown } = require('./gate.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, assertLegalName } = require('../kernel/manifest-schema.cjs');
-const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
+const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const {
-  computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
+  computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan, unitOpenRecords,
-  postponePlan, postponeTarget, postponedItem, openExperiments, roadmapItems,
-  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
+  postponePlan, postponeTarget, postponedItem, openExperiments,
+  topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
@@ -158,84 +148,11 @@ function backlogGate(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
-// The discovery-map gates. A staged candidate and a closed send target each
-// stop the same way: the proposal above, the confirm beneath. Judgment supplies the names and values; the bodies,
-// the questions and the option sets are fixed here, so a gate reads the same
-// whichever flow raised it and at any width.
+// The discovery-map surfaces. A closed send target stops with the proposal
+// above, the confirm beneath. Judgment supplies the names and values; the
+// bodies, the questions and the option sets are fixed here, so a gate reads
+// the same whichever flow raised it and at any width.
 // ---------------------------------------------------------------------------
-
-// candidate-gate — the analysis approval gate's per-candidate stop. The
-// candidate's own fields are judgment content staged by the analysis; the
-// gate mode is manifest state at the staging subtree, so the branch renders
-// inside the surface: the caller never chooses between gated and auto
-// output. A candidate the manifest does not mark `pending` never renders —
-// a stale payload refuses rather than gating something already decided.
-// The announce variant opens the walk: how many candidates wait pending,
-// counted from the same subtree — nothing to review where none do, or the
-// analysis staged nothing.
-
-/** The gap analysis's staging subtree, or undefined. @param {object} manifest @returns {any} */
-function gapStaging(manifest) {
-  return ((((manifest.phases || {}).discovery || {}).analysis_staging) || {})['discovery-gap-analysis'];
-}
-
-/** @param {string} cwd @param {string} dotpath @returns {string} */
-function candidateAnnounce(cwd, dotpath) {
-  const { manifest } = resolveWorkUnit(cwd, dotpath, 'candidate-gate');
-  const staging = gapStaging(manifest);
-  const rows = Object.values((staging && staging.candidates) || {});
-  const pending = rows.filter((row) => row && row.status === 'pending').length;
-  return section('DISPLAY: candidates announced', CONTINUE_INSTRUCTION,
-    pending === 0 ? 'Nothing new to review.' : `Gap analysis surfaced ${pending} candidate topic(s).`);
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string, variant?: string}} args
- * @returns {string}
- */
-function candidateGate(cwd, { dotpath, file, variant }) {
-  if (variant !== undefined && variant !== 'announce') {
-    throw new Error(`render candidate-gate: --variant takes "announce" alone — the per-candidate gate takes none, got "${variant}"`);
-  }
-  if (variant === 'announce') return candidateAnnounce(cwd, dotpath);
-  if (!file) throw new Error('render candidate-gate: --file <payload.json> is required');
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'candidate-gate');
-  const staging = gapStaging(manifest);
-  if (!staging || typeof staging !== 'object') {
-    throw new Error(`render candidate-gate: no staged gap-analysis candidates for "${workUnit}"`);
-  }
-  const p = readJsonPayload(cwd, file, 'candidate-gate');
-  if (!isFilled(p.name)) throw new Error('render candidate-gate: "name" must be a non-empty string');
-  if (!isFilled(p.summary)) throw new Error('render candidate-gate: "summary" must be a non-empty string');
-  const row = (staging.candidates || {})[p.name];
-  if (!row || typeof row !== 'object' || row.status !== 'pending') {
-    throw new Error(`render candidate-gate: "${p.name}" is not a pending candidate — a stale payload never renders`);
-  }
-  const mode = staging.gate_mode;
-  if (mode !== 'gated' && mode !== 'auto') {
-    throw new Error(`render candidate-gate: gate_mode must be "gated" or "auto", got "${mode}"`);
-  }
-  const name = titlecase(p.name);
-  const display = section('DISPLAY: candidate', emitAs('text'), [
-    name,
-    ...indentedBody([p.summary, 'surfaced by gap analysis']),
-  ].join('\n'));
-  if (mode === 'auto') {
-    return [display, section(
-      'DISPLAY: candidate approved',
-      timedInstruction('text', 'after recording the approval', AUTO_GATE_CLAUSE),
-      `${name} — approved [auto].`,
-    )].join('\n');
-  }
-  return [display, section('MENU: candidate gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Approve — the topic joins the map and its phase can start from the epic menu'),
-    cmdOption('a', 'auto', 'Approve this and all remaining candidates automatically'),
-    cmdOption('s', 'skip', 'Skip and dismiss — the analysis never re-proposes this name'),
-    cmdOption('p', 'postpone', 'Postpone — the topic joins the map with its brief and waits on the roadmap under a horizon you name'),
-    promptOption('Comment', 'Tell me what to change (summary or description)'),
-  ], { question: 'Add this topic to the map?' }))].join('\n');
-}
 
 // discovery-map — an epic's map for Claude and for the person: its topics in
 // their order with their lifecycles, an unstarted topic's brief, the one a
@@ -252,37 +169,6 @@ function discoveryMapSurface(cwd, { dotpath }) {
   const { map, summary } = buildDiscoveryMap(manifest, stateRoot(cwd));
   const rows = map.map((row) => (row.lifecycle === 'fresh' ? { ...row, brief: statePath(cwd, briefFile(workUnit, row.name)) } : row));
   return discoveryMapScreen(workUnit, { rows, summary }, dismissedNames(manifest));
-}
-
-// send-closed-target — the send's stop over a cancelled target, which no
-// future session will surface. The address names the target and the surface
-// derives its lifecycle with the same join every other map consumer uses.
-// The statement names the target; the ask beneath it is fixed.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function sendClosedTarget(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'send-closed-target');
-  if (phase !== 'discovery') {
-    throw new Error(`render send-closed-target: address must be <work_unit>.discovery.<target>, got phase "${phase}"`);
-  }
-  if (!itemOf(manifest, 'discovery', topic)) {
-    throw new Error(`render send-closed-target: ${noTopicRefusal(manifest, topic)}`);
-  }
-  const { lifecycle } = computeTopicLifecycle(manifest, topic);
-  if (lifecycle !== 'cancelled') {
-    throw new Error(`render send-closed-target: "${topic}" is "${lifecycle}", not cancelled — the gate serves cancelled targets`);
-  }
-  // The reopen row states its consequence: choosing it does not only land the
-  // message, it puts the topic back in front of every convergence read.
-  return section('MENU: closed target gate', MENU_INSTRUCTION, menu(`"${topic}" is cancelled, so it won't pick up messages.`, [
-    cmdOption('o', 'open', 'Reactivate it and send the message there — the topic returns to its previous state and counts as open again'),
-    cmdOption('e', 'elsewhere', 'Pick a different target'),
-    cmdOption('d', 'drop', "Don't send it; it stays with the current topic"),
-  ], { question: 'Where should the message go?' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -438,115 +324,8 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
   return experimentSpawnGate({ phase, id: /** @type {string} */ (id), unit: workUnit, topic, workType: manifest.work_type }, step);
 }
 
-// summary-backfill-gate — the epic's provenance recovery. The topics it
-// recovers are the map's rows missing a summary or a description, read from
-// the manifest in map order; the summaries drafted for the rows missing one
-// are judgment content and ride a payload keyed by topic. batch = the
-// proposed summaries above the accept gate, proposed = the same display
-// alone (the edit loop's re-render), unsourced = the topics no source file
-// could be drafted from, named by payload.
-
-const { buildDiscoveryMap } = require('./derivations.cjs');
-
-const SUMMARY_BACKFILL_VARIANTS = ['batch', 'proposed', 'unsourced'];
-
-/** @param {string} cwd @param {string} workUnit @param {object} manifest @returns {import('./derivations.cjs').DiscoveryMapRow[]} */
-function backfillRows(cwd, workUnit, manifest) {
-  const rows = buildDiscoveryMap(manifest, stateRoot(cwd)).map
-    .filter((row) => !row.summary_present || !row.description_present);
-  if (rows.length === 0) {
-    throw new Error(`render summary-backfill-gate: "${workUnit}" has no discovery item missing a summary or description — nothing to backfill`);
-  }
-  return rows;
-}
-
-/**
- * The drafted summaries, one per row missing its summary — null where the
- * topic's source file is missing.
- * @param {string} cwd @param {string|undefined} file @param {import('./derivations.cjs').DiscoveryMapRow[]} rows
- * @returns {Record<string, string|null>}
- */
-function draftedSummaries(cwd, file, rows) {
-  if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required — the drafted summaries');
-  const drafted = readJsonPayload(cwd, file, 'summary-backfill-gate').summaries;
-  if (!drafted || typeof drafted !== 'object' || Array.isArray(drafted)) {
-    throw new Error('render summary-backfill-gate: "summaries" must be an object keyed by topic name');
-  }
-  const needing = rows.filter((row) => !row.summary_present).map((row) => row.name);
-  const stray = Object.keys(drafted).find((name) => !needing.includes(name));
-  if (stray) throw new Error(`render summary-backfill-gate: "${stray}" is not a topic missing its summary — only those take a drafted line`);
-  const unanswered = needing.find((name) => drafted[name] !== null && !isFilled(drafted[name]));
-  if (unanswered) {
-    throw new Error(`render summary-backfill-gate: "summaries.${unanswered}" must be its drafted line, or null where its source file is missing`);
-  }
-  return drafted;
-}
-
-/**
- * The proposed summaries, one numbered row per topic.
- * @param {import('./derivations.cjs').DiscoveryMapRow[]} rows @param {Record<string, string|null>} drafted @param {string} instruction
- * @returns {string}
- */
-function proposedSummaries(rows, drafted, instruction) {
-  const indent = '       ';
-  const lines = [`Proposed summaries for ${rows.length} topic(s):`, ''];
-  rows.forEach((row, i) => {
-    lines.push(`  ${i + 1}. ${row.title}`);
-    if (!row.summary_present) {
-      lines.push(...indentedBody([drafted[row.name] ?? '(source file missing — please provide)'], { indent }));
-      return;
-    }
-    // The tag keeps its two-space gap, dropping to a line of its own where the summary's last line has no room.
-    const summary = indentedBody([/** @type {string} */ (row.summary)], { indent });
-    const tagged = `${summary[summary.length - 1]}  (already populated)`;
-    if (tagged.length <= displayWidth()) summary[summary.length - 1] = tagged;
-    else summary.push(`${indent}(already populated)`);
-    lines.push(...summary);
-  });
-  return section('DISPLAY: proposed summaries', instruction, lines.join('\n'));
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, variant?: string, file?: string}} args
- * @returns {string}
- */
-function summaryBackfillGate(cwd, { dotpath, variant, file }) {
-  if (variant === undefined || !SUMMARY_BACKFILL_VARIANTS.includes(variant)) {
-    throw new Error(`render summary-backfill-gate: --variant must be one of ${SUMMARY_BACKFILL_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
-  }
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
-  if (variant === 'unsourced') return unsourcedGate(cwd, file, topicTitles(manifest));
-  const rows = backfillRows(cwd, workUnit, manifest);
-  const drafted = draftedSummaries(cwd, file, rows);
-  if (variant === 'proposed') return proposedSummaries(rows, drafted, CONTINUE_INSTRUCTION);
-  return [
-    proposedSummaries(rows, drafted, emitAs('text', ', directly above the menu')),
-    section('MENU: summary batch gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('y', 'yes', 'Accept all summaries as drafted (description is auto-drafted silently)'),
-      cmdOption('e', 'edit', 'Edit one or more summary lines before accepting'),
-      cmdOption('s', 'skip', 'Skip the whole batch (leave fields blank)'),
-    ], { question: 'Accept these summaries?' })),
-  ].join('\n');
-}
-
-/** The topics no source file could be drafted from. @param {string} cwd @param {string|undefined} file @param {Record<string, string>} titles @returns {string} */
-function unsourcedGate(cwd, file, titles) {
-  if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required for --variant unsourced');
-  const p = readJsonPayload(cwd, file, 'summary-backfill-gate');
-  if (!Array.isArray(p.names) || p.names.length === 0 || p.names.some((n) => !isFilled(n))) {
-    throw new Error('render summary-backfill-gate: "names" must be a non-empty array of topic names');
-  }
-  const unsourced = [`${p.names.length} topic(s) have no source file to draft from:`, '', ...p.names.map((n) => `- ${titled(titles, n)}`)];
-  return section('MENU: unsourced topics gate', MENU_INSTRUCTION, menu(unsourced.join('\n'), [
-    cmdOption('p', 'provide', "Tell me the summary for each and I'll write it"),
-    cmdOption('d', 'dismiss', 'Write a minimal name-derived summary noting the missing source, so this stops re-prompting'),
-    cmdOption('l', 'leave', 'Leave them unset; this flow re-offers next time'),
-  ], { question: 'How do you want to handle them?' }));
-}
-
 // ---------------------------------------------------------------------------
-// Work-unit surfaces — the completion banner, the cancel and postpone gates.
+// Work-unit surfaces — the cancel and postpone gates.
 // Address-backed (work_type from the manifest); phases ride as flags.
 // ---------------------------------------------------------------------------
 
@@ -571,23 +350,6 @@ function resolveWorkUnit(cwd, dotpath, surface) {
   if (!manifest) throw new Error(`render ${surface}: work unit "${dotpath}" not found`);
   const typeLabel = TYPE_LABELS[manifest.work_type] || titlecase(String(manifest.work_type || ''));
   return { workUnit: dotpath, manifest, typeLabel };
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, phase?: string}} args
- * @returns {string}
- */
-function phaseCompleted(cwd, { dotpath, phase }) {
-  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'phase-completed');
-  if (!isFilled(phase)) throw new Error('render phase-completed: --phase is required');
-  // A derived phase has no completion ceremony — the record closed, the
-  // session ends, and sibling records may still live — so its line says what
-  // is true: the session is complete, never the phase.
-  const line = DERIVED_PHASES.includes(phase)
-    ? `${titlecase(phase)} session complete for "${titlecase(workUnit)}".`
-    : `${titlecase(phase)} completed for "${titlecase(workUnit)}".`;
-  return section('DISPLAY: phase completed', CONTINUE_INSTRUCTION, line);
 }
 
 /** `a`, `a and b`, `a, b, and c`. @param {string[]} parts */
@@ -952,18 +714,6 @@ function absorbReceiptSurface(cwd, args) {
   return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments, renamed });
 }
 
-/** @param {string} cwd @param {{dotpath: string, feature?: string}} args @returns {string} */
-function absorbContinuationSurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-continuation');
-  if (manifest.work_type !== 'epic') {
-    throw new Error(`render absorb-continuation: "${workUnit}" is not an epic — the absorb has not run`);
-  }
-  if (!isFilled(args.feature)) {
-    throw new Error("render absorb-continuation: --feature is required — the absorbed feature's name");
-  }
-  return absorbContinuationMenu(/** @type {string} */ (args.feature), workUnit);
-}
-
 // import-reprompt — the re-prompt after a landing refused on `missing_imports`,
 // a learned gate (8.8.12). No address: the refusal names paths, and the work
 // unit it was aimed at may not exist yet (the work-type commit's own landing
@@ -982,15 +732,6 @@ function importRepromptSurface(cwd, { file }) {
     if (!isFilled(m)) throw new Error(`render import-reprompt: missing[${i}] must be a non-empty string`);
   });
   return importReprompt(p.missing, decisionPoint.gateStep('import reprompt', { cwd, place: { unit: null, phase: null, topic: null }, key: p.missing }));
-}
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function pivotContinuation(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'pivot-continuation');
-  if (manifest.work_type !== 'epic') {
-    throw new Error(`render pivot-continuation: "${workUnit}" is not an epic — the pivot has not run`);
-  }
-  return pivotContinuationMenu(workUnit);
 }
 
 /**
@@ -1032,66 +773,11 @@ function inboxDeleteReceiptSurface(cwd, args) {
   return inboxDeleteReceipt(receiptRead(cwd, args, 'inbox-delete-receipt', 'the archived path `inbox delete` answered', deletedItemTitle));
 }
 
-// completed-actions — the completed & cancelled view's action menu over the
-// selected unit, its status read where the list read it. An active unit
-// refuses: the list it is picked from holds closed units alone.
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function completedActionsSurface(cwd, args) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, args.dotpath, 'completed-actions');
-  if (manifest.status !== 'completed' && manifest.status !== 'cancelled') {
-    throw new Error(`render completed-actions: "${workUnit}" is not completed or cancelled (status: ${manifest.status ?? 'none'})`);
-  }
-  return completedActions(workUnit, manifest.status);
-}
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function revisitPhasesSurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'revisit-phases');
-  const type = manifest.work_type;
-  if (!WORK_UNIT_TYPES[type]) {
-    throw new Error(`render revisit-phases: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the revisit menu serves the linear work types`);
-  }
-  const { next_phase } = computeNextPhase(manifest);
-  const targets = phaseTargets(cwd, manifest, next_phase).revisit;
-  if (targets.length === 0) {
-    throw new Error(`render revisit-phases: "${workUnit}" has no completed earlier phase to revisit`);
-  }
-  return revisitPhasesSection(targets);
-}
-
 // ---------------------------------------------------------------------------
-// The roadmap surfaces — project-level, no address. Each handler resolves
-// the derived roadmap state (domain/roadmap.cjs — lifecycle by join, never
-// stored), refuses states the calling prose never reaches, and hands the
-// pure projection its detail. The pull working set and the proposal overlay
-// are gateway views (they carry DATA the flow resolves numbers through), not
-// render surfaces.
+// The horizon pick — project-level. It resolves the derived roadmap state
+// (domain/roadmap.cjs — lifecycle by join, never stored) and refuses states
+// the calling prose never reaches.
 // ---------------------------------------------------------------------------
-
-/** @param {string} cwd @param {object} _args @returns {string} */
-function roadmapViewSurface(cwd, _args) {
-  const state = roadmapState(cwd);
-  if (!state.exists) {
-    throw new Error('render roadmap-view: no roadmap on the project manifest — it is born at the first park, add, or session');
-  }
-  return section('DISPLAY: roadmap', emitAs('text'), roadmapMapView(state));
-}
-
-/**
- * @param {string} cwd @param {Record<string, string|undefined>} args
- * @returns {string} DATA + MENU, or '' where the add passes — no member of
- *   the horizon in an epic underway, the roadmap and the horizon unborn among them
- */
-function roadmapAddGateSurface(cwd, args) {
-  if (!args.horizon) throw new Error('render roadmap-add-gate: --horizon is required');
-  const gate = roadmapAddGate(roadmapState(cwd), args.horizon);
-  if (!gate) return '';
-  return [
-    dataSection([`work_units: ${gate.units.join(', ')}`]),
-    section('MENU: roadmap add gate', MENU_INSTRUCTION, gate.menu),
-  ].join('\n');
-}
 
 /**
  * The address of a topic leaving for the roadmap, checked as the postpone
@@ -1202,49 +888,6 @@ function horizonBack(cwd, name, from, then) {
     ));
 }
 
-// ` (new)` for a horizon an existing map does not hold yet; a never-born map
-// says its own birth instead.
-/** @param {{exists: boolean, horizons: string[]}} roadmap @param {string} horizon */
-function horizonFlag(roadmap, horizon) {
-  return roadmap.exists && !roadmap.horizons.includes(horizon) ? ' (new)' : '';
-}
-
-/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
-function parkGate(cwd, args) {
-  const { name, horizon, summary, source, kind = DEFAULT_KIND } = args;
-  if (!isFilled(name)) throw new Error('render park-gate: --name is required');
-  if (!isFilled(horizon)) throw new Error('render park-gate: --horizon is required');
-  if (!isFilled(summary)) throw new Error('render park-gate: --summary is required');
-  try {
-    validateKind(kind);
-  } catch (err) {
-    throw new Error(`render park-gate: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  const taken = addNameRefusal(roadmapItems(loadProjectManifest(cwd)), name);
-  if (taken !== null) throw new Error(`render park-gate: ${taken}`);
-  const state = roadmapState(cwd);
-  const marked = markedKind(/** @type {import('./roadmap.cjs').RoadmapKind} */ (kind));
-  const what = marked ? `the ${marked} ` : '';
-  const statement = [
-    `Parking ${what}**${titlecase(name)}** — ${summary} — puts it on the roadmap under "${horizon}"${horizonFlag(state, horizon)}, waiting until it is pulled into work.`,
-    ...(state.exists ? [] : ['The roadmap is created with it.']),
-    ...(isFilled(source) ? [`Its source is \`${source}\`.`] : []),
-  ].join(' ');
-  return section('MENU: park gate', MENU_INSTRUCTION, menu(statement, [
-    cmdOption('y', 'yes', 'Park it'),
-    cmdOption('n', 'no', 'Leave it — nothing is recorded'),
-    promptOption('Comment', 'Tell me what to change (name, kind, horizon, or summary)'),
-  ], { question: 'Park it on the roadmap?' }));
-}
-
-// The static roadmap gate menu — no state to resolve; served as a surface
-// because every menu is engine-rendered, fetched at the point it displays.
-
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function roadmapParksGateSurface(_cwd, _args) {
-  return section('MENU: roadmap parks gate', MENU_INSTRUCTION, roadmapParksGate());
-}
-
 // The cross-flow static gates — adopted engine-side as their files were
 // touched (menus are engine-rendered, static sets included). Wording is
 // the gates' own; each is fetched at the exact point it displays.
@@ -1286,45 +929,6 @@ function repoStopSurface(cwd) {
   const folder = path.resolve(cwd);
   if (!outsideRepository(folder)) throw new Error(`render repo-stop: ${folder} is in a git repository — nothing stopped boot`);
   return repoStop(folder);
-}
-
-/**
- * A command's error output beneath a callout heading: each line two columns
- * in, keeping its own indentation, wrapped at the display width.
- * @param {string} output @returns {string[]}
- */
-function errorOutputLines(output) {
-  const lines = output.replace(/\s+$/, '').split('\n').map((l) => l.trimEnd());
-  while (lines.length > 0 && lines[0] === '') lines.shift();
-  return lines.flatMap((line) => {
-    if (line === '') return [''];
-    const own = /** @type {RegExpMatchArray} */ (line.match(/^\s*/))[0];
-    return indentedBody([line.slice(own.length)], { indent: `  ${own}` });
-  });
-}
-
-/**
- * The knowledge query-failure gate — the failed query's error output and how
- * to diagnose it, then retry or proceed without context.
- * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function queryFailureGateSurface(cwd, { file }) {
-  if (!file) throw new Error('render query-failure-gate: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'query-failure-gate');
-  if (!isFilled(p.error)) throw new Error('render query-failure-gate: "error" must be the query\'s error output, a non-empty string');
-  const display = section('DISPLAY: query failure', emitAs('text', ', directly above the menu'), [
-    '⚑ Knowledge query failed',
-    ...errorOutputLines(p.error),
-    '',
-    ...indentedBody(["Likely causes: a knowledge config that can't be read or names a provider it can't use, or a store that can't be read or has lost its metadata. Run this to diagnose:"]),
-    '',
-    `    ${ENGINE_COMMAND} knowledge status`,
-  ].join('\n'));
-  const gate = section('MENU: query failure gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('r', 'retry', "I'll fix the issue; retry the query"),
-    cmdOption('s', 'skip', 'Proceed without knowledge context for this phase'),
-  ], { question: 'How should I proceed?' }));
-  return [display, gate].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -1442,37 +1046,24 @@ function knowledgeReadySurface(cwd) {
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'backlog-gate': backlogGate,
-  'candidate-gate': candidateGate,
-  'send-closed-target': sendClosedTarget,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
-  'summary-backfill-gate': summaryBackfillGate,
-  'phase-completed': phaseCompleted,
   'phase-note': phaseNote,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
   'absorb-receipt': absorbReceiptSurface,
-  'absorb-continuation': absorbContinuationSurface,
   'import-reprompt': importRepromptSurface,
-  'pivot-continuation': pivotContinuation,
   'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
   'absorb-confirm-gate': absorbConfirmSurface,
   'archived-delete-gate': (cwd, { path: given, file }) => archivedDeleteGateSurface(cwd, given, file),
   'inbox-restore-receipt': inboxRestoreReceiptSurface,
   'inbox-delete-receipt': inboxDeleteReceiptSurface,
-  'completed-actions': completedActionsSurface,
-  'revisit-phases': revisitPhasesSurface,
-  'roadmap-view': roadmapViewSurface,
-  'roadmap-add-gate': roadmapAddGateSurface,
   'horizon-pick': horizonPick,
-  'park-gate': parkGate,
-  'roadmap-parks-gate': roadmapParksGateSurface,
-  'query-failure-gate': queryFailureGateSurface,
   'brownfield-offer-gate': brownfieldOfferGateSurface,
   'walkthrough-offer': walkthroughOfferSurface,
   'walkthrough-screen': walkthroughScreenSurface,

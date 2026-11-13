@@ -219,44 +219,52 @@ describe('engine commit --product: the product\'s conversation\'s scope', () => 
   });
 });
 
-describe('engine commit --state: the analysis scopes', () => {
+describe('engine commit --state: the files only the engine writes, the unit\'s and the project\'s, and the state\'s own .state', () => {
   let dir;
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the work unit form takes its analysis dir and its manifest', () => {
-    writeState(dir, layout.unitState('payments', 'discussion-consolidation-analysis.md'), '# Groupings\n');
-    writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    // A live peer mid-write, in the same work unit — the theft this scope closes.
-    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\npeer session dirt\n');
-    writeState(dir, layout.unit('payments', 'spec.md'), '# Spec\nhalf written\n');
-
-    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
-
-    assert.match(res.committed, /^[0-9a-f]+$/);
-    const files = headFiles(dir);
-    assert.ok(files.includes(layout.unitState('payments', 'discussion-consolidation-analysis.md')), 'the analysis rides');
-    assert.ok(files.includes(layout.manifest('payments')), 'so does the manifest it wrote');
-    assert.deepStrictEqual(
-      statusLines(dir).sort(),
-      [` M ${layout.brief('payments', 'topic-b')}`, `?? ${layout.unit('payments', 'spec.md')}`],
-      'both live peers keep every byte they had not committed',
-    );
+  /** A peer's documents mid-write in the work unit — a spec and an experiment's report, which Claude writes — and another unit's run record. */
+  const PEERS = Object.freeze({
+    [layout.unit('payments', 'spec.md')]: '# Spec\nhalf written\n',
+    [layout.experiment('payments', 'topic-b', 'E1-speed', 'report.md')]: '# Report\nhalf written\n',
+    [layout.run('billing', '1.S1', '001')]: '{"verdict":"pass"}\n',
   });
 
-  it('the global form takes .leeway/.state and nothing else', () => {
-    writeState(dir, layout.migrations, '062\n');
-    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\npeer session dirt\n');
+  /** Every file the state's tree holds changed or untracked, as git states each. @param {string} dir */
+  const changed = (dir) => stateGit(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean).sort();
+
+  /** The project's manifest with a field of its own changed. @param {string} dir */
+  const projectChanged = (dir) => writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n\n`);
+
+  it('the work unit form takes every file only the engine writes that changed, in the unit and the project\'s own, and none of a peer\'s — the retry a verb\'s pending note names', () => {
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeState(dir, layout.run('payments', '1.S1', '001'), '{"verdict":"pass"}\n');
+    writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\nits brief rewritten\n');
+    projectChanged(dir);
+    for (const [file, text] of Object.entries(PEERS)) writeState(dir, file, text);
+
+    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
+
+    assert.match(res.committed, /^[0-9a-f]+$/);
+    assert.deepStrictEqual(headFiles(dir).sort(), [layout.projectManifest, layout.manifest('payments'), layout.run('payments', '1.S1', '001'), layout.brief('payments', 'topic-b')].sort());
+    assert.deepStrictEqual(changed(dir), Object.keys(PEERS).map((file) => `?? ${file}`).sort(), 'every peer keeps every byte it had not committed');
+  });
+
+  it('the global form takes the project\'s own files only the engine writes and .leeway/.state, and nothing of a unit\'s', () => {
+    writeState(dir, layout.migrations, '062\n');
+    projectChanged(dir);
+    writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    for (const [file, text] of Object.entries(PEERS)) writeState(dir, file, text);
 
     const res = ok(dir, ['commit', '--state', '-m', 'chore: record the migrations run']);
 
-    assert.deepStrictEqual(headFiles(dir), [layout.migrations]);
+    assert.deepStrictEqual(headFiles(dir).sort(), [layout.projectManifest, layout.migrations].sort());
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(
-      statusLines(dir).sort(),
-      [` M ${layout.manifest('payments')}`, ` M ${layout.brief('payments', 'topic-b')}`],
-      'a work unit is none of the global state dir\'s business',
+      changed(dir),
+      [` M ${layout.manifest('payments')}`, ...Object.keys(PEERS).map((file) => `?? ${file}`)].sort(),
+      'a work unit is none of the project\'s business',
     );
   });
 
@@ -272,9 +280,9 @@ describe('engine commit --state: the analysis scopes', () => {
     assert.match(refuses(dir, ['commit', 'no-such-unit', '--state', '-m', 'x']).error, /no work unit directory/);
   });
 
-  it('never beats — an analysis is not a session sitting in a topic', () => {
-    writeState(dir, layout.unitState('payments', 'discussion-consolidation-analysis.md'), '# Groupings\n');
-    ok(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
+  it('never beats — a retry is not a session sitting in a topic', () => {
+    writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('payments'))), 'no heartbeat anywhere');
   });
 });

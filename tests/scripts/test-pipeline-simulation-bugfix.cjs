@@ -162,9 +162,6 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(continueUnit(sim, wu).line, `→ Specification · ${wu}`);
     specToBuild(sim, wu, [wu]);
     assert.doesNotMatch(await query('holds as decided'), /^\[specification \|/m);
-    // A build by its cut leaves nothing to revisit — never the spec
-    // (11.9.1), nor the investigation the spec closed (4.11.2).
-    sim.refuses(['render', 'revisit-phases', wu], /"crash-fix" has no completed earlier phase to revisit/);
   });
 
   it('bugfix moved to a feature from its investigation (19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {

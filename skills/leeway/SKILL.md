@@ -1,7 +1,7 @@
 ---
 name: leeway
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.

@@ -94,16 +94,15 @@ const DRAWN = Object.freeze({
 
 /** A path in each of today's places, and the place's path. */
 const TODAYS = Object.freeze({
-  'pay/.state/discovery-gap-analysis.md': '{unit}/.state',
   '.state/environment-setup.md': '.state/environment-setup.md',
 });
 
-/** Paths outside every place: beside each folder's places, a free folder named as a file, and a name a placeholder refuses. */
+/** Paths outside every place: beside each folder's places, a free folder named as a file, a name a placeholder refuses, and a unit's .state/. */
 const OUTSIDE = Object.freeze([
   'notes.md', '.ledger.jsonl.bak', 'manifest.json.bak', '.tmp/notes.md',
   '.inbox/2026-10-30--smart-retry.md', '.inbox/ideas/smart-retry.md', '.inbox/notes/2026-10-30--smart-retry.md', '.inbox/.archived/2026-10-30--smart-retry.md',
   '.product/notes.md', '.product/sessions/notes.md', '.product/notes/smart-retry.md', '.product/spikes/pricing-page/index.html',
-  '.state/notes.md', '.baseline/overview.md',
+  '.state/notes.md', '.baseline/overview.md', 'pay/.state/discovery-gap-analysis.md',
   'pay/notes.md', 'pay/scratch/notes.md', 'pay/discovery/notes.md', 'pay/topics/auth.md', 'pay/topics/auth/notes.md', 'pay/topics/auth/mail/retry-policy.md',
   'pay/topics/auth/experiments/notes.md', 'pay/topics/auth/experiments/E1-token-cost/notes.md', 'pay/topics/auth/experiments/E1-token-cost/E1.1-cold-start/notes.md',
   'pay/spikes/checkout/index.html', 'pay/build/notes/today.md', 'pay/build/tasks/notes.md', 'pay/build/tasks/1.2/notes.md', 'pay/build/phases/phase-1/notes.md',
@@ -128,7 +127,7 @@ describe('4.11\'s places (4.11.17)', () => {
     assert.deepStrictEqual(new Set(Object.values(DRAWN)), new Set(LAYOUT.map(named)));
   });
 
-  it('a path beside each folder\'s places, a free folder named as a file, and a name a placeholder refuses are in no place', () => {
+  it('a path beside each folder\'s places, a free folder named as a file, a name a placeholder refuses, and a unit\'s .state/ (4.11.16) are in no place', () => {
     assert.deepStrictEqual(OUTSIDE.filter((rel) => layoutPlace(rel) !== null), []);
   });
 
@@ -247,7 +246,6 @@ describe('today\'s places (E4)', () => {
       seed: layout.seed('pay', '2026-10-30--smart-retry'),
       record: layout.record('pay', 'auth'),
       summary: layout.summary('pay'),
-      unitState: layout.unitState('pay', 'discussion-consolidation-analysis.md'),
       run: layout.run('pay', '3.S2', '001'),
     };
     assert.deepStrictEqual(Object.keys(samples).sort(), Object.keys(layout).sort(), 'a sample of every place the helper names');

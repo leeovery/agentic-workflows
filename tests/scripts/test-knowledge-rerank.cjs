@@ -44,9 +44,9 @@ describe('retrievability', () => {
 });
 
 describe('rerank — soft down-rank', () => {
-  it('multiplies the base score by R (no boosts/confidence)', () => {
-    const out = rerank([{ id: 'a', score: 1.0, phase: 'record', progressElapsed: 3 }], [], 3);
-    assert.ok(close(out[0].score, 0.9)); // 1.0 * 0.9^(3/3)
+  it('multiplies the base score by R (no boosts), whatever its confidence', () => {
+    const out = rerank(['high', 'low'].map((confidence) => ({ id: confidence, score: 1.0, phase: 'record', confidence, progressElapsed: 3 })), [], 3);
+    assert.ok(out.every((r) => close(r.score, 0.9))); // 1.0 * 0.9^(3/3)
   });
 
   it('leaves a frontier chunk (progressElapsed 0) undecayed', () => {
@@ -83,14 +83,7 @@ describe('rerank — soft down-rank', () => {
     assert.ok(loose[0].score > tight[0].score);
   });
 
-  it('adds the confidence tier, 0.01 per step, undimmed by decay', () => {
-    const tiers = ['high', 'medium', 'low', 'unknown'].map((confidence) =>
-      rerank([{ id: confidence, score: 0.5, phase: 'record', confidence, progressElapsed: 3 }], [], 3)[0].score);
-    const expected = [0.04, 0.03, 0.01, 0].map((tier) => 0.5 * 0.9 + tier);
-    tiers.forEach((score, i) => assert.ok(close(score, expected[i])));
-  });
-
-  it('records the decay, boost and tier each result received beside its scoring', () => {
+  it('records the decay and boost each result received beside its scoring', () => {
     const [out] = rerank(
       [{ id: 'a', score: 0.5, phase: 'record', work_unit: 'x', confidence: 'low', progressElapsed: 3, scoring: { kept: 2 } }],
       [{ field: 'work_unit', value: 'x' }, { field: 'phase', value: 'record' }],
@@ -99,8 +92,7 @@ describe('rerank — soft down-rank', () => {
     assert.strictEqual(out.scoring.kept, 2);
     assert.ok(close(out.scoring.decay, 0.9));
     assert.ok(close(out.scoring.boost, 0.2));
-    assert.ok(close(out.scoring.tier, 0.01));
-    assert.ok(close(out.score, 0.5 * 0.9 + 0.2 + 0.01));
+    assert.ok(close(out.score, 0.5 * 0.9 + 0.2));
   });
 
   it('keeps results that score alike in the order they came', () => {

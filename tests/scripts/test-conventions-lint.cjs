@@ -1307,7 +1307,7 @@ const THE_PERSON = /\b(the person|the user)\b/i;
 /** Whether a sentence tells a session to write the project's CLAUDE.md. @param {string} sentence */
 const writesClaudeMd = (sentence) => /CLAUDE\.md/.test(sentence) && WRITE_VERB.test(sentence) && !NEGATED.test(sentence) && !THE_PERSON.test(sentence);
 
-/** The shipped code: the engine's, the gateways' and the mods', comments left out. */
+/** The shipped code: the engine's and the mods', comments left out. */
 function codeFiles(root = REPO) {
   const out = [];
   const walk = (dir) => {
@@ -2136,7 +2136,7 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       '',
       'Draw each diagram in a text code block (```text fence). Then emit the `MENU: task gate` section verbatim per its marker.',
       '',
-      'Read the `sessions` rows only — the response\'s deferral section is the analysis dispatch\'s and is not emitted here.',
+      'Read the `sessions` rows only — the response\'s receipt is the map\'s and is not emitted here.',
       '',
       'Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted.',
       '',

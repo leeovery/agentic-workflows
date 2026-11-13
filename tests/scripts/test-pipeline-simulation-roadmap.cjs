@@ -259,24 +259,6 @@ describe('pipeline simulation: roadmap', () => {
     const placed = sim.run(answerGate(sim, 'horizon pick', '--pick', '1').next.argv);
     assert.deepStrictEqual([placed.horizon, placed.next], [sim.run(['roadmap', 'state']).horizons[0], { kind: 'continue' }]);
 
-    // The render surfaces hold over the live state: the map view and the
-    // add-to-joined-horizon gate, whose DATA names the unit its delivery row
-    // pulls into — the `--into` a `d/delivery` answer takes.
-    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /DISPLAY: roadmap/);
-    const addGate = sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' });
-    assert.match(addGate, /^=== DATA [^\n]*\nwork_units: mvp\n\n=== MENU: roadmap add gate[\s\S]*\*\*`d\/delivery`\*\*/);
-    // An Ask sets the gate aside; once the person is ready it renders again.
-    assert.strictEqual(sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' }), addGate);
-    // The static gate menu renders like every menu — engine-served.
-    assert.match(sim.render(['roadmap-parks-gate'], { expect: 'content' }), /MENU: roadmap parks gate/);
-    // A failed query's error output rides the failure gate's payload,
-    // verbatim, written to the roadmap session's own cache.
-    const queryFailure = sim.write('.leeway/.cache/roadmap/query-failure.json',
-      { error: 'Error: loadStore: corrupted store file at .leeway/.knowledge/store.bin\n' });
-    const failureGate = sim.render(['query-failure-gate', '--file', queryFailure], { expect: 'content' });
-    assert.match(failureGate, /⚑ Knowledge query failed\n {2}Error: loadStore: corrupted store file/);
-    assert.match(failureGate, /MENU: query failure gate/);
-
     // The roadmap's `b/back`: the start menu drawn again, the session
     // working nowhere.
     roadmapMenu(sim);
@@ -288,8 +270,6 @@ describe('pipeline simulation: roadmap', () => {
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'guest-ordering').state, 'shipped');
     assert.deepStrictEqual(state.totals, { items: 6, waiting: 4, in_flight: 0, shipped: 2, orphaned: 0 });
-    // The view renders the shipped row from the join, after the completion.
-    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /✓ Guest Ordering/);
 
     // The reserved identities hold: no work unit may take the layer's name,
     // or the product's.
@@ -421,7 +401,8 @@ describe('pipeline simulation: roadmap', () => {
       type: 'epic', name: 'launch', description: 'Guest checkout, and the cart bug it exposes', reason: 'Its parts each need decisions; the bug rides along.',
     });
     sim.run(started.next.argv);
-    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Cart Drops Items\n.*↳ Bug · in flight: launch/);
+    const cart = sim.run(['roadmap', 'state']).items.find((i) => i.name === 'cart-drops-items');
+    assert.deepStrictEqual([cart.kind, cart.state, cart.work_unit], ['bug', 'in-flight', 'launch']);
 
     // The epic's map lands the idea as a topic, bound to it — the bug is
     // material for it, never a topic, and never bound.

@@ -270,8 +270,8 @@ function drawLabel(label) {
 /** @typedef {import('../learned-gates.cjs').Hold} Hold */
 
 // A render is synchronous, so one collection is enough: opened as the command
-// begins — by the engine's dispatch or a skill's gateway, never by what it
-// renders — and taken at the first MENU.
+// begins — by the engine's dispatch, never by what it renders — and taken
+// at the first MENU.
 /** @type {GateCollection|null} */
 let collected = null;
 
@@ -646,24 +646,6 @@ function dataSection(lines) {
 }
 
 /**
- * The `ACTIONS` key table a flow resolves a menu's answer through — one row
- * per key, its `key` and `word` leading (`—` for a row with no word), then
- * the caller's cells. A pressed row sends its word, or its key where it has
- * none, so both stand in the table.
- * @template {{key: string, word?: string | null}} K
- * @param {string[]} columns  the column names after `key  word`
- * @param {K[]} keys
- * @param {(k: K) => string[]} cells
- * @returns {string[]}
- */
-function actionsTable(columns, keys, cells) {
-  return [
-    `ACTIONS (${['key', 'word', ...columns].join('  ')}):`,
-    ...keys.map((k) => `  ${[k.key, k.word || '—', ...cells(k)].join('  ')}`),
-  ];
-}
-
-/**
  * The menu frame: an opening dot rule above the content. One-sided by
  * design — output stops while the user chooses, so their own input closes
  * the block more definitively than a drawn rule could. Projections with
@@ -897,5 +879,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
 

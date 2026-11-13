@@ -130,19 +130,18 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('no field write beats — a three-segment set is often a cross-phase write', () => {
-    // The gap analysis's `source` stamp and a brief's `brief_incorporated`
-    // mark write one phase's item from another phase's session. A beat there
-    // mints a hold on a topic nobody is in.
+    // A brief's `brief_incorporated` mark writes one phase's item from another
+    // phase's session. A beat there mints a hold on a topic nobody is in.
     ok(dir, ['manifest', 'set', 'payments.discussion.topic-a', 'status', 'in-progress']);
     assert.ok(!beaten('discussion', 'topic-a'), 'a field write is not a session claiming the topic');
 
-    ok(dir, ['manifest', 'set', 'payments.discussion', 'gate_mode', 'gated']);
-    assert.ok(!beaten('discussion', 'topic-b'), 'a phase-level write names no topic');
+    ok(dir, ['manifest', 'set', 'payments.discovery', 'approved_at', '2026-07-15T09:30:00.000Z']);
+    assert.ok(!beaten('discovery', 'topic-b'), 'a phase-level write names no topic');
 
     const ops = JSON.stringify([{ op: 'set', path: 'payments.discussion.topic-b', fields: { status: 'in-progress' } }]);
     writeState(dir, layout.cache('scratch', 'ops.json'), ops);
     ok(dir, ['manifest', 'apply', 'payments', '--file', path.join(STATE_DIR_NAME, layout.cache('scratch', 'ops.json'))]);
-    assert.ok(!beaten('discussion', 'topic-b'), 'apply writes across topics — the analysis session holds none of them');
+    assert.ok(!beaten('discussion', 'topic-b'), 'apply writes across topics — the session applying holds none of them');
   });
 
   it('a commit on a closed item releases the slot, and every commit after it keeps it released', () => {

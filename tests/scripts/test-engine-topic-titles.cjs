@@ -6,7 +6,7 @@
 // the key, and a send aimed at the title lands in the topic's own mailbox.
 // Every screen names a topic through one helper (derivations.cjs: `titled`,
 // `itemTitle`, `goesBy`), held by a guard over every titlecase in the
-// engine's domain and the gateways.
+// engine's domain.
 //
 // Layer: verb. World: a project with its state worktree, built once and
 // copied, holding the epic `fumi`: its note window under discussion and
@@ -317,17 +317,12 @@ describe('every screen names a topic through one helper', () => {
       'projections/manage.cjs › manageUnitScreen › manifest.name',
       'projections/manage.cjs › unitRowOn › manifest.name',
       'projections/start-menu.cjs › unitRow › name',
-      'projections/start.cjs › completedActions › workUnit',
-      'projections/transactions.cjs › absorbContinuationMenu › epic',
-      'projections/transactions.cjs › absorbContinuationMenu › feature',
       'projections/transactions.cjs › absorbReceipt › epic',
       'projections/transactions.cjs › absorbSummary › epic',
       'projections/transactions.cjs › absorbSummary › feature',
       'projections/transactions.cjs › inboxRestoreReceipt › unclaimedFrom',
-      'projections/transactions.cjs › pivotContinuationMenu › workUnit',
       'projections/transactions.cjs › stayedLines › unit',
       'projections/transactions.cjs › workunitReceipt › workUnit',
-      'render.cjs › phaseCompleted › workUnit',
       'render.cjs › workUnitCancel › workUnit',
       'state-checks.cjs › projectName › path.basename(path.dirname(stateRoot(cwd)))',
       'state-merge-landing.cjs › openMerge › path.basename(path.dirname(root))',
@@ -338,8 +333,6 @@ describe('every screen names a topic through one helper', () => {
     'a phase, or a work type': [
       'handoff.cjs › phaseTarget › phase',
       'projections/epic-menu.cjs › epicMenuScreen › phase',
-      'projections/workunit.cjs › revisitPhasesSection › phase',
-      'render.cjs › phaseCompleted › phase',
       'render.cjs › resolveWorkUnit › String(manifest.work_type || \'\')',
     ],
     'a build, named for itself': [
@@ -350,18 +343,15 @@ describe('every screen names a topic through one helper', () => {
       'projections/decided.cjs › strikePick › name',
       'projections/discovery-map.cjs › struckBlock › name',
       'projections/transactions.cjs › absorbReceipt › topic',
-      'render.cjs › candidateGate › p.name',
     ],
     'a roadmap item or an inbox item': [
       'projections/roadmap.cjs › horizonLines › row.name',
       'projections/roadmap.cjs › roadmapHarvestSurface › entry.name',
-      'projections/roadmap.cjs › roadmapNodes › row.name',
       'projections/transactions.cjs › backOnTheRoadmap › name',
       'projections/transactions.cjs › stayedLines › name',
       'projections/transactions.cjs › MAP_LINES › c.from_roadmap',
       'render.cjs › horizonBack › name',
       'render.cjs › puttingLine › names[0]',
-      'render.cjs › parkGate › name',
       'render.cjs › postponeStatement › target.name',
       'roadmap.cjs › addRoadmapItem › name',
     ],
@@ -391,7 +381,7 @@ describe('every screen names a topic through one helper', () => {
 
   /** Each titlecase in `file`, as `file › owner › argument`: its definition, its imports and its exports aside. @param {string} file */
   function titlecasesIn(file) {
-    const name = path.relative(file.startsWith(DOMAIN) ? DOMAIN : SKILLS, file);
+    const name = path.relative(DOMAIN, file);
     /** @type {string[]} */
     const uses = [];
     let owner = '(top)';
@@ -410,9 +400,8 @@ describe('every screen names a topic through one helper', () => {
     return uses;
   }
 
-  it('titlecases no topic\'s name: each titlecase in the domain and the gateways names something no topic phase holds', () => {
-    const gateways = fs.readdirSync(SKILLS).map((skill) => path.join(SKILLS, skill, 'scripts/gateway.cjs')).filter((file) => fs.existsSync(file));
-    const found = [...new Set([...scripts(DOMAIN), ...gateways].flatMap(titlecasesIn))].sort();
+  it('titlecases no topic\'s name: each titlecase in the domain names something no topic phase holds', () => {
+    const found = [...new Set(scripts(DOMAIN).flatMap(titlecasesIn))].sort();
     assert.deepStrictEqual(found, Object.values(NOT_A_TOPIC).flat().sort(),
       'a topic\'s name goes through titled or itemTitle (derivations.cjs), which give a started topic its title; list a titlecase here only for a name no topic phase holds');
   });

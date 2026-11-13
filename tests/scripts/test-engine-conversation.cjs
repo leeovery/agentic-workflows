@@ -4,8 +4,8 @@
 // Tests for the conversation folder, `{config}/conversations/{session-id}/`
 // beside the system config — `LEEWAY_CONFIG_DIR`, else
 // `~/.config/leeway` — and found by the session id alone from wherever a
-// command runs: the mark every engine and gateway call leaves where Claude
-// Code handed it a session id — once, never without an id, never outside a
+// command runs: the mark every engine call leaves where Claude Code
+// handed it a session id — once, never without an id, never outside a
 // workflows project, never from the commands Claude Code's own hooks run —
 // `conversation end`, the SessionEnd hook's record of the transcript path as
 // the hook hands it, written only where the folder exists, and the tidy any
@@ -33,11 +33,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { tidyConversations, callerModel, readPosition, tasksInFlight, positionPath } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
-
-const SKILLS = path.resolve(__dirname, '..', '..', 'skills');
 
 let dir; // a workflows project
 let config; // this test's system config directory
@@ -182,22 +179,9 @@ describe('the mark', () => {
     assert.ok(!fs.existsSync(conversationsRoot()));
   });
 
-  it('every gateway script marks the conversation that runs it, whatever its answer', () => {
-    const gateways = fs.readdirSync(SKILLS)
-      .filter((d) => d !== 'leeway-engine' && fs.existsSync(path.join(SKILLS, d, 'scripts/gateway.cjs')));
-    assert.ok(gateways.includes('leeway'), `found ${gateways.join(', ') || 'no gateways'} — the skills read is broken`);
-    for (const gateway of gateways) {
-      spawnSync('node', [path.join(SKILLS, gateway, 'scripts/gateway.cjs')],
-        { cwd: dir, encoding: 'utf8', env: { ...process.env, ...session(`via-${gateway}`) } });
-    }
-    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), gateways.map((g) => `via-${g}`).sort());
-  });
-
-  it('marks only inside a workflows project — an engine call or a gateway run where no `.leeway/` exists makes none', () => {
+  it('marks only inside a workflows project — an engine call where no `.leeway/` exists makes none', () => {
     inScratch((bare) => {
       harness.call(bare, ['session', 'repair'], { env: session('sess-1') });
-      spawnSync('node', [path.join(SKILLS, 'leeway', 'scripts/gateway.cjs')],
-        { cwd: bare, encoding: 'utf8', env: { ...process.env, ...session('sess-1') } });
       assert.deepStrictEqual(fs.readdirSync(bare), []);
     });
     assert.ok(!fs.existsSync(conversationsRoot()));

@@ -115,7 +115,7 @@ describe('mergeFramings', () => {
 });
 
 describe('explanation', () => {
-  it("prints each framing's scores, then the framing kept, worked through decay, boost and tier", () => {
+  it("prints each framing's scores, then the framing kept, worked through decay and boost", () => {
     const db = axisStore();
     const { cut, framings } = searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, vectors: axis(2) });
     const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: 3 }));
@@ -125,12 +125,12 @@ describe('explanation', () => {
     assert.deepStrictEqual(explanation(results.find((r) => r.id === VECTOR)), [
       'Framing 1: keyword absent, vector 0.6000 → 0.6000, blended 0.3600',
       `Framing 2: keyword ${ledgers} → 1.0000, vector 0.6000 → 0.6000, blended 0.7600`,
-      "Score: kept framing 2's 0.7600 × 0.9000 decay + 0.1000 boost + 0.0300 tier = 0.8140",
+      "Score: kept framing 2's 0.7600 × 0.9000 decay + 0.1000 boost = 0.7840",
     ]);
     assert.deepStrictEqual(explanation(results.find((r) => r.id === BOTH)), [
       `Framing 1: keyword ${receipts} → 1.0000, vector 1.0000 → 1.0000, blended 1.0000`,
       'Framing 2: keyword absent, vector 1.0000 → 1.0000, blended 0.6000',
-      "Score: kept framing 1's 1.0000 × 0.9000 decay + 0.1000 boost + 0.0300 tier = 1.0300",
+      "Score: kept framing 1's 1.0000 × 0.9000 decay + 0.1000 boost = 1.0000",
     ]);
   });
 
@@ -142,7 +142,7 @@ describe('explanation', () => {
     assert.deepStrictEqual(explanation(both), [
       `Framing 1: keyword ${raw.toFixed(4)}`,
       'Framing 2: not in its top 20',
-      `Score: kept framing 1's ${raw.toFixed(4)} × 1.0000 decay + 0.0000 boost + 0.0300 tier = ${(raw + 0.03).toFixed(4)}`,
+      `Score: kept framing 1's ${raw.toFixed(4)} × 1.0000 decay + 0.0000 boost = ${raw.toFixed(4)}`,
     ]);
   });
 

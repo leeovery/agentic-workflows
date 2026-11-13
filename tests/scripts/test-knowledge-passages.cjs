@@ -58,7 +58,7 @@ function chunkDoc(content) {
 
 /** The chunk as a result ranked on framing `kept`. @param {string} content @param {number} kept */
 function result(content, kept) {
-  return { ...chunkDoc(content), score: 1, scoring: { framings: [], kept, cut: 20, decay: 1, boost: 0, tier: 0 } };
+  return { ...chunkDoc(content), score: 1, scoring: { framings: [], kept, cut: 20, decay: 1, boost: 0 } };
 }
 
 describe('withPassages', () => {

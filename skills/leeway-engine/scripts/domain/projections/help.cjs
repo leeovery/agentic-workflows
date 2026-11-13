@@ -75,9 +75,10 @@ function readHelp(m) {
 /**
  * Where a menu and its help part (23.2.4), its help null where it has none:
  * help for a menu whose rows are not drawn yet, rows drawn with no help,
- * each key the menu registers that its help does not tell, and each its
- * help tells that the menu does not register, the help's own rows apart —
- * none where they agree, a menu with neither rows nor help among them.
+ * each key the menu registers that its help does not tell, each its help
+ * tells that the menu does not register, the help's own rows apart, and
+ * each it tells twice — none where they agree, a menu with neither rows nor
+ * help among them.
  * @param {Menu} m @param {Help|null} help @returns {string[]}
  */
 function menuDrift(m, help) {
@@ -88,6 +89,7 @@ function menuDrift(m, help) {
   return [
     ...m.keys.filter((key) => !told.includes(key)).map((key) => `${m.id}: row ${key} has no help`),
     ...told.filter((key) => !m.keys.includes(key) && !own.includes(key)).map((key) => `${m.id}: its help tells of a row ${key} the menu does not register`),
+    ...told.filter((key, i) => told.indexOf(key) !== i).map((key) => `${m.id}: its help tells row ${key} twice`),
   ];
 }
 

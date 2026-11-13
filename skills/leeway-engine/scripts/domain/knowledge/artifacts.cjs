@@ -42,7 +42,6 @@ const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport } = require('../import-landing.cjs');
 
-const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
 const SUMMARY_PATH = /^([^/]+)\/summary\.md$/;
 
 /** The phase a record's chunks carry. */
@@ -58,15 +57,7 @@ const UNIT_RECORD = '.unit';
 const summaryFile = (unit) => `${unit}/summary.md`;
 
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['analysis', RECORD_PHASE, SUMMARY_PHASE];
-
-// The indexable files under `{wu}/.state/`, each basename mapped
-// to its topic — the directory also holds operational state that must never
-// enter the store.
-/** @type {Record<string, string>} */
-const ANALYSIS_CACHE_FILES = {
-  'discovery-gap-analysis': 'gap-analysis',
-};
+const INDEXED_PHASES = [RECORD_PHASE, SUMMARY_PHASE];
 
 /**
  * @typedef {object} Identity
@@ -158,31 +149,6 @@ function recordIdentity(rest) {
 }
 
 /**
- * An analysis cache's identity: `{wu}/.state/{filename}.md`, the
- * whitelisted filenames alone.
- * @param {string} workUnit @param {string} rest
- * @returns {Identity}
- */
-function analysisIdentity(workUnit, rest) {
-  assertSegment('work unit', workUnit);
-  const fileMatch = /^([^/]+)\.md$/.exec(rest);
-  if (!fileMatch) {
-    throw new UserError(
-      `Unexpected .state path structure: ${rest}\n` +
-        'Expected: {work_unit}/.state/{filename}.md'
-    );
-  }
-  const basename = fileMatch[1];
-  if (!Object.hasOwn(ANALYSIS_CACHE_FILES, basename)) {
-    throw new UserError(
-      `Refusing to index .state file "${basename}.md" — only analysis caches ` +
-        `(${Object.keys(ANALYSIS_CACHE_FILES).join(', ')}) are indexable.`
-    );
-  }
-  return { workUnit, phase: 'analysis', topic: ANALYSIS_CACHE_FILES[basename] };
-}
-
-/**
  * An artifact's identity from its state-relative path, or a UserError naming
  * the shape the path should have.
  * @param {string} filePath
@@ -191,16 +157,12 @@ function analysisIdentity(workUnit, rest) {
 function deriveIdentity(filePath) {
   const norm = filePath.replace(/\\/g, '/');
 
-  // The dotted directories first: they would otherwise fall into the `.state`
-  // capture and read as an invalid work unit.
   if (norm.startsWith(`${RECORDS_DIR}/`)) return recordIdentity(norm.slice(RECORDS_DIR.length + 1));
-  const stateMatch = ANALYSIS_PATH.exec(norm);
-  if (stateMatch) return analysisIdentity(stateMatch[1], stateMatch[2]);
   const summaryMatch = SUMMARY_PATH.exec(norm);
   if (!summaryMatch) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
-        `Expected path matching: ${RECORDS_DIR}/..., {work_unit}/summary.md or {work_unit}/.state/...`
+        `Expected path matching: ${RECORDS_DIR}/... or {work_unit}/summary.md`
     );
   }
   assertSegment('work unit', summaryMatch[1]);
@@ -330,8 +292,7 @@ function recordArtifacts(root, workUnit) {
 }
 
 /**
- * A live work unit's artifacts: its analysis caches, its record copies and
- * its short record.
+ * A live work unit's artifacts: its record copies and its short record.
  * @param {string} root @param {Record<string, any>} unit
  * @returns {Artifact[]}
  */
@@ -341,10 +302,6 @@ function unitArtifacts(root, unit) {
   /** @type {Artifact[]} */
   const items = recordArtifacts(root, workUnit);
   if (exists(summaryFile(workUnit))) items.push({ file: summaryFile(workUnit), workUnit, phase: SUMMARY_PHASE, topic: UNIT_RECORD });
-  for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
-    const file = path.posix.join(workUnit, '.state', `${basename}.md`);
-    if (exists(file)) items.push({ file, workUnit, phase: 'analysis', topic });
-  }
   return items;
 }
 

@@ -21,8 +21,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const path = require('path');
-const { ok, refuses, statePath, layout, readState, readManifest, stateGit, head, lastMessage, touched } = require('./engine-harness.cjs');
+const { ok, refuses, statePath, layout, readState, readManifest, stateGit, head, lastMessage, touched, failingStateCommits, retried } = require('./engine-harness.cjs');
 const { trustLogPath } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
 const { UNIT, SESSION, READ_BACK, commented, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
@@ -55,15 +54,12 @@ describe('the yes (11.8.1, 11.8.6, E11)', () => {
     assert.strictEqual(refused(['topic', 'postpone', UNIT, 'refunds', '--horizon', 'next']), `postponing "refunds" is refused — ${UNIT}'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit's cancel, through manage on the start menu`);
   });
 
-  it('names the unit\'s own commit where its commit fails, which takes what the yes wrote, the review\'s record among it', () => {
+  it('names the unit\'s own commit where its commit fails, which takes what the yes wrote, the review\'s record among it, and leaves nothing uncommitted', () => {
     publish();
-    fs.writeFileSync(path.join(dir(), '.git', 'refs', 'heads', 'leeway-state.lock'), '');
-    const answer = yes(['--position', 'auto', '--marks', readBack({ s1: { m: { '1-1-1': { s: 'tick' } } } })]);
-    fs.rmSync(path.join(dir(), '.git', 'refs', 'heads', 'leeway-state.lock'));
+    const answer = failingStateCommits(dir(), () => yes(['--position', 'auto', '--marks', readBack({ s1: { m: { '1-1-1': { s: 'tick' } } } })]));
 
-    assert.deepStrictEqual([answer.committed, answer.note], [null, `commit pending — state saved; retry with: engine commit ${UNIT} -m "<message>"`]);
-    ok(dir(), ['commit', UNIT, '-m', `ready-to-build(${UNIT}): auto`]);
-    assert.deepStrictEqual(touched(statePath(dir()), 'HEAD'), [`M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort());
+    assert.deepStrictEqual([answer.committed, answer.note], [null, `commit pending — state saved; retry with: engine commit ${UNIT} --state -m "<message>"`]);
+    assert.deepStrictEqual(retried(dir(), answer), { took: [`M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort(), left: '' });
   });
 
   it('takes no marks while no page is open, and refuses a position that is none of the build\'s and arguments of another shape, writing nothing', () => {

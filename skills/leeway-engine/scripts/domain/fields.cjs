@@ -28,7 +28,6 @@ const {
   VALID_PHASES,
   VALID_PHASE_STATUSES,
   DERIVED_PHASES,
-  VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_ID_PATTERN,
@@ -202,19 +201,6 @@ function validatePhase(phase) {
   }
 }
 
-/**
- * A gate-mode write: a walk's nested `gate_mode` (a staging row), in the
- * vocabulary. No phase item carries a gate mode.
- * @param {string[]} segments the resolved internal path @param {*} value
- */
-function validateGateMode(segments, value) {
-  const field = segments[segments.length - 1];
-  if (field !== 'gate_mode') fail(`"${field}" is not a gate the schema knows — a gate mode is a walk's, its staging row's gate_mode`);
-  if (typeof value !== 'string' || !VALID_GATE_MODES.includes(value)) {
-    fail(`Invalid gate mode ${JSON.stringify(value)}. Must be one of: ${VALID_GATE_MODES.join(', ')}`);
-  }
-}
-
 /** @param {string} phase @param {*} value */
 function validatePhaseStatus(phase, value) {
   const valid = VALID_PHASE_STATUSES[phase];
@@ -269,14 +255,6 @@ function validateSet(segments, value, fieldSegments = segments) {
     return;
   }
 
-  // Gate modes — a walk's nested `gate_mode` under its staging row.
-  const last = segments[segments.length - 1];
-  if (last.endsWith('_gate_mode') || last === 'gate_mode') {
-    if (segments[0] === 'phases' && segments.length >= 2) validatePhase(segments[1]);
-    validateGateMode(segments, value);
-    return;
-  }
-
   // phases.<phase> — validate phase name
   if (segments.length >= 2 && segments[0] === 'phases') {
     const phase = segments[1];
@@ -320,16 +298,6 @@ function validateSet(segments, value, fieldSegments = segments) {
     // release edges cannot read.
     if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'awaiting_experiments') {
       validateAwaitingExperiments(value);
-      return;
-    }
-
-    // Analysis candidate gate state (field analysis_staging.<analysis>.candidates.<name>.…)
-    if (fieldSegments[0] === 'analysis_staging' && fieldSegments.length >= 2) {
-      const leaf = fieldSegments[fieldSegments.length - 1];
-      if (leaf === 'status' && (typeof value !== 'string' || !['pending', 'approved', 'skipped', 'resolved'].includes(value))) {
-        fail(`Invalid candidate status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped, resolved`);
-      }
-      return;
     }
   }
 }
@@ -363,7 +331,7 @@ function refuseShadowField(phase, topic, fieldSegments) {
 // Vocabulary-guarded state containers take leaf writes only — a wholesale
 // set could land any shape unvalidated. Delete clears them; apply/set write
 // their leaves.
-const GUARDED_CONTAINERS = ['analysis_staging', 'experiments'];
+const GUARDED_CONTAINERS = ['experiments'];
 
 /** @param {string[]} fieldSegments */
 function refuseContainerWrite(fieldSegments) {

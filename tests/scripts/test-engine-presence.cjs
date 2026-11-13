@@ -3,7 +3,7 @@
 //
 // Tests for the presence heartbeat: beat / clear / scan / cleanup, the
 // held-process identity check (the one verdict — idle time is shown, never
-// judged), and the engine-rendered deferral section.
+// judged); a scan answers its JSON alone.
 //
 // Layer: verb.
 //
@@ -18,7 +18,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { auditMarkers } = require('./gate-audit.cjs');
 
 function setup() {
   const dir = harness.setupGitFixture('engine-presence-');
@@ -35,10 +34,6 @@ function cleanup(dir) {
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' };
 const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
 const engine = (dir, args, identity = OWN) => harness.okSections(dir, args, { env: identity });
-/** The deferral callout as one line — the renderer wraps it at the display width. */
-function unwrapped(sections) {
-  return sections.replace(/\n +/g, ' ');
-}
 const engineFails = (dir, args, env = {}) => harness.refuses(dir, args, { env });
 const engineWith = (dir, args, { env = {}, input, cwd = dir } = {}) =>
   harness.ok(cwd, args, { env: { ...OWN, ...env }, stdin: input });
@@ -63,85 +58,36 @@ describe('engine presence', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
-  it('beat creates the heartbeat; scan reports it held with the deferral section', () => {
+  it('beat creates the heartbeat; scan reports it held, its JSON alone', () => {
     const beat = engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER).res;
     assert.deepStrictEqual(beat, { ok: true, work_unit: 'pay', phase: 'discussion', topic: 'alpha', beat: true });
     assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/pay/discussion/alpha/presence')));
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    auditMarkers(sections, 'presence scan');
-    assert.deepStrictEqual(Object.keys(res), ['ok', 'work_unit', 'held', 'held_sources', 'sessions'],
-      'one verdict — no live total, no staleness window');
+    assert.deepStrictEqual(Object.keys(res), ['ok', 'work_unit', 'held', 'sessions'],
+      'one verdict — no live total, no staleness window, no source count');
     assert.strictEqual(res.held, 1);
-    assert.strictEqual(res.held_sources, 1, 'a discussion session is source material an analysis reads');
     assert.deepStrictEqual(Object.keys(res.sessions[0]), ['phase', 'topic', 'age_seconds', 'held', 'session_id', 'pid', 'checkout']);
     assert.strictEqual(res.sessions[0].checkout, dir, 'the beat records the checkout its session works in');
     assert.strictEqual(res.sessions[0].phase, 'discussion');
     assert.strictEqual(res.sessions[0].topic, 'alpha');
     assert.strictEqual(res.sessions[0].held, true);
-    assert.ok(sections.includes(
-      '=== DISPLAY: presence deferral (emit verbatim as a text code block (```text fence) only at an analysis deferral — do not stop; continue as the workflow instructs) ===',
-    ), `deferral marker carries its qualifier and the continuation instruction: ${sections}`);
-    assert.ok(sections.includes('\n  ⚑ Analyses deferred — 1 session(s): discussion/alpha (last'), `callout flag line at the 2-space indent: ${sections}`);
-    assert.match(unwrapped(sections),
-      /⚑ Analyses deferred — 1 session\(s\): discussion\/alpha \(last active \d+s ago\)\. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs presence clear pay discussion alpha`\./,
-      `the callout names the row with its last-active age and the release: ${sections}`);
-    // The body is a callout: wrapped at the display width, continuations at
-    // the 4-space hang — never a hand-wrapped fixed column.
-    const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
-    for (const line of sections.split('\n')) {
-      if (line.startsWith('===')) continue;
-      assert.ok(line.length <= displayWidth(), `deferral line overflows: ${line}`);
-    }
+    assert.strictEqual(sections, '', 'a scan renders nothing beside its JSON');
   });
 
-  it('the caller\'s own hold never defers — a session does not wait on itself', () => {
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
-    const own = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(own.res.held, 1, 'the row is held');
-    assert.strictEqual(own.res.held_sources, 0, 'but it is this session\'s — an analysis run here is not waiting on it');
-    assert.strictEqual(own.sections, '');
-
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
-    const mixed = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(mixed.res.held_sources, 1);
-    assert.ok(unwrapped(mixed.sections).includes('1 session(s): discussion/beta (last active'), mixed.sections);
-    assert.ok(!mixed.sections.includes('discussion/alpha'), `the own row is never named: ${mixed.sections}`);
-  });
-
-  it('a held session outside the source phases defers no analysis', () => {
-    // The analyses read discussion; a laboratory, a spec, or code session
-    // holds nothing they look at.
-    for (const phase of ['specification', 'implementation', 'review', 'investigation', 'experiment']) {
-      engine(dir, ['presence', 'beat', 'pay', phase, 'alpha'], PEER);
-    }
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(res.held, 5, 'every session is held');
-    assert.strictEqual(res.held_sources, 0, 'none of them is source material');
-    assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
-
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
-    const second = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(second.res.held_sources, 1);
-    assert.ok(second.sections.includes('discussion/beta'), second.sections);
-    assert.ok(!second.sections.includes('review/'), `the callout names source rows alone: ${second.sections}`);
-  });
-
-  it('held_sources counts held source rows alone — a dead source session is not one', () => {
+  it('held counts held rows alone — a dead session is not one', () => {
     const dead = spawnSync('node', ['-e', '']);
     craftRecord(dir, 'discussion', 'beta', { pid: dead.pid, pid_start: EPOCH_START, session_id: 'gone' });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     engine(dir, ['presence', 'beat', 'pay', 'review', 'gamma'], PEER);
 
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    const { res } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions.length, 3, 'every row is listed, held or not');
-    assert.strictEqual(res.held, 2);
-    assert.strictEqual(res.held_sources, 1, 'alpha alone: beta is dead, review is not a source');
-    assert.ok(unwrapped(sections).includes('1 session(s): discussion/alpha (last active'), sections);
-    assert.ok(!sections.includes('discussion/beta'), `a dead source row is never named: ${sections}`);
+    assert.strictEqual(res.held, 2, 'alpha and gamma: beta is dead');
+    assert.strictEqual(res.sessions.find((r) => r.topic === 'beta').held, false);
   });
 
-  it('an idle heartbeat stays held and still defers — the callout carries its age', () => {
+  it('an idle heartbeat stays held — its age shown, never judged', () => {
     // A session left idle for hours is still a session. The age is shown so
     // the user can weigh it; no surface turns it into a verdict.
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
@@ -149,29 +95,10 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    const { res } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions[0].held, true, 'the owning process still runs');
     assert.ok(res.sessions[0].age_seconds >= 1100);
-    assert.strictEqual(res.held, 1);
-    assert.strictEqual(res.held_sources, 1, 'idle is not gone — the analysis still waits');
-    assert.ok(unwrapped(sections).includes('⚑ Analyses deferred — 1 session(s): discussion/beta (last active 20m ago).'),
-      `the callout names the row with its idle time: ${sections}`);
-  });
-
-  it('the deferral names every held source row with its own age, freshest first', () => {
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'platform-support'], PEER);
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'storage-and-sync'], PEER);
-    for (const [topic, minutes] of [['platform-support', 19], ['storage-and-sync', 20]]) {
-      const p = presenceFile(dir, 'discussion', topic);
-      const past = new Date(Date.now() - minutes * 60 * 1000);
-      fs.utimesSync(p, past, past);
-    }
-
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(res.held_sources, 2);
-    assert.ok(unwrapped(sections).includes(
-      '⚑ Analyses deferred — 2 session(s): discussion/platform-support (last active 19m ago), discussion/storage-and-sync (last active 20m ago). They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear pay discussion platform-support`.',
-    ), sections);
+    assert.strictEqual(res.held, 1, 'idle is not gone');
   });
 
   it('render phase-note beats the addressed topic — announcing the entry is the same act as claiming the slot', () => {
@@ -242,7 +169,7 @@ describe('engine presence', () => {
       ['pay/discussion/alpha', 'ship/implementation/beta'],
     );
     assert.ok(res.sessions.every((r) => 'held' in r && !('live' in r) && 'age_seconds' in r && 'session_id' in r), 'the row shape is the scan\'s');
-    assert.strictEqual(sections, '', 'the deferral section belongs to the work-unit scan');
+    assert.strictEqual(sections, '', 'a scan renders nothing beside its JSON');
     assert.strictEqual(engine(dir, ['presence', 'scan', 'pay']).res.work_unit, 'pay', 'the per-work-unit form is unchanged');
   });
 
@@ -316,10 +243,9 @@ describe('engine presence', () => {
 
   it('an identity-less heartbeat is never held — a record that cannot be verified', () => {
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: null });
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    const { res } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions[0].held, false, 'fresh mtime notwithstanding');
-    assert.strictEqual(res.held_sources, 0);
-    assert.strictEqual(sections, '', 'an unverifiable row defers nothing');
+    assert.strictEqual(res.held, 0);
   });
 
   it('a legacy bare-pid heartbeat is never held', () => {

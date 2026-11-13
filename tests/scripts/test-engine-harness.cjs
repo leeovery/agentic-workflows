@@ -30,7 +30,6 @@ const {
 } = harness;
 
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-own' };
-const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
 
 /** The feature's topic's record copy, state-relative. */
 const RECORD = layout.record('card', 'card');
@@ -84,10 +83,12 @@ describe('engine harness — the shapes', () => {
     assert.strictEqual(pure.res.ok, true);
     assert.strictEqual(pure.sections, '', 'a transaction answers with pure JSON');
 
-    ok(dir, ['presence', 'beat', 'pay', 'discussion', 'pay'], { env: PEER });
-    const scan = okSections(dir, ['presence', 'scan', 'pay'], { env: OWN });
-    assert.strictEqual(scan.res.held_sources, 1);
-    assert.match(scan.sections, /Analyses deferred/, 'the sections after the response line');
+    fs.mkdirSync(statePath(dir, 'v1'), { recursive: true });
+    fs.writeFileSync(statePath(dir, 'v1/manifest.json'), JSON.stringify({ name: 'v1', work_type: 'epic', status: 'in-progress', phases: {} }));
+    const brief = writeState(dir, layout.cache('scratch', 'auth.md'), '# Auth\n');
+    const added = okSections(dir, ['topic', 'add', 'v1', 'auth', '--summary', 'Signing in', '--brief', brief], { env: OWN });
+    assert.strictEqual(added.res.ok, true);
+    assert.match(added.sections, /^=== /, 'the sections after the response line');
   });
 
   it('refuses fails loudly when the call succeeds instead', () => {
@@ -96,7 +97,7 @@ describe('engine harness — the shapes', () => {
   });
 
   it('output answers the whole stdout of a call that must succeed', () => {
-    const rendered = output(dir, ['render', 'phase-completed', 'pay', '--phase', 'investigation']);
+    const rendered = output(dir, ['render', 'phase-note', 'pay.investigation.pay', '--verb', 'Resuming']);
     assert.match(rendered, /^=== /, 'the render surface, sections and all');
     assert.strictEqual(output(dir, ['manifest', 'get', 'pay.investigation.pay', 'status']), 'in-progress\n',
       'a bare read is its raw stdout, trailing newline included');

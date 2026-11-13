@@ -25,7 +25,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, git, stateGit, writeState, statePath, touched, layout, cleanupFixture, readManifest, accountTaken,
+  ok, refusedPristine, git, stateGit, writeState, statePath, touched, layout, cleanupFixture, readManifest, accountTaken, failingStateCommits, retried,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const {
@@ -203,5 +203,15 @@ describe('a phase\'s close (6.4.9)', () => {
       'pay/build/phases/phase-1/review-a.md', 'pay/build/phases/phase-1/review-b.md', 'pay/build/phases/phase-1/settlement.json',
       'pay/build/phases/phase-2/consolidation.md', 'pay/build/phases/phase-2/review-a.md', 'pay/build/phases/phase-2/review-b.md',
     ]);
+  });
+
+  it('a close whose commit fails names the retry that commits its records beside the manifest — the unit\'s whole scope, the build its one conversation — which leaves nothing uncommitted', () => {
+    everyItem(2, ['2.1'], ['2.S1']);
+    writeState(dir, layout.unit(UNIT, 'build', 'phases', 'phase-2', 'consolidation.md'), '## The notes\n\nNone.\n');
+    const res = failingStateCommits(dir, () => ok(dir, ['checklist', 'close', 'phase-close', UNIT, '2'], { env: SESSION }));
+    const { took, left } = retried(dir, res);
+
+    assert.strictEqual(res.committed, null);
+    assert.deepStrictEqual([['A\tpay/build/phases/phase-2/consolidation.md', 'A\tpay/build/phases/phase-2/review-a.md', 'A\tpay/build/phases/phase-2/review-b.md', 'M\tpay/manifest.json'].filter((file) => !took.includes(file)), left], [[], '']);
   });
 });

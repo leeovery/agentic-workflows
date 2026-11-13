@@ -137,7 +137,7 @@ describe('knowledge eval — keyword mode', () => {
     ]);
   });
 
-  it('a judgment no chunk of the built store carries is named', () => {
+  it('a judgment no chunk of the built store carries is named, and a store that indexes nothing is refused whatever its cases judge', () => {
     const chunks = [
       { source_file: SOURCE, content: `Before. ${ANCHOR} — on every query. After.` },
       { source_file: OTHER, content: 'A deterministic failure, never intermittent, restated.' },
@@ -145,10 +145,11 @@ describe('knowledge eval — keyword mode', () => {
     const split = { source: SOURCE, anchor: 'on every query — and the next', grade: 'primary', framing: 0 };
     const elsewhere = { source: OTHER, anchor: ANCHOR, grade: 'supporting', framing: 0 };
     const cases = [tickCase(), tickCase({ id: 'unmatched', relevant: [...tickCase().relevant, split, elsewhere] }), negativeCase()];
-    assert.deepStrictEqual(knowledgeEval.unmatchedJudgments(cases, chunks), [
+    assert.deepStrictEqual(knowledgeEval.storeProblems('tick', cases, chunks), [
       `unmatched: relevant[1]: no indexed chunk of ${SOURCE} carries the anchor`,
       `unmatched: relevant[2]: no indexed chunk of ${OTHER} carries the anchor`,
     ]);
+    assert.deepStrictEqual(knowledgeEval.storeProblems('fumi', [negativeCase()], []), ['fumi: its store indexes nothing — its fixture holds no file the index takes']);
   });
 
   it('a move names each metric and case that moved, and how to re-pin', () => {

@@ -143,10 +143,6 @@ describe('the menus\' registry', () => {
       'start-menu': 'none', 'epic-menu': 'unit', triage: 'none', archived: 'none', 'archived-item': 'none', roadmap: 'roadmap', manage: 'none', 'manage-unit': 'none', closed: 'none', verdicts: 'none', care: 'none', matrix: 'none',
     });
   });
-
-  it('23.2.4: every menu\'s help tells exactly the rows it registers', () => {
-    assert.deepStrictEqual(menusDrift(), []);
-  });
 });
 
 describe('the frame (E1, 18.9.1, 18.9.4, 23.2.1)', () => {
@@ -475,19 +471,22 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     });
   });
 
-  it('23.2.4: a menu and its help part where a key the menu registers is not told, or one told is not registered, where its rows are drawn with no help, or its help is written before its rows — and agree where each is both, or neither is yet', () => {
+  it('23.2.4: a menu and its help part where a key the menu registers is not told, or one told is not registered or told twice, where its rows are drawn with no help, or its help is written before its rows — and agree where each is both, or neither is yet', () => {
     const help = parseHelp(HELP_TEXT, 'triage.help.md');
+    const twice = parseHelp(HELP_TEXT.replace('\nb → ', '\nw → Work again.\nb → '), 'triage.help.md');
 
     assert.deepStrictEqual([
       menuDrift(drawn('triage', ['#', 'w', 'a']), help),
       menuDrift(TRIAGE, null),
       menuDrift(drawn('triage', []), help),
+      menuDrift(TRIAGE, twice),
       menuDrift(TRIAGE, help),
       menuDrift(drawn('triage', []), null),
     ], [
       ['triage: row a has no help', 'triage: its help tells of a row b the menu does not register'],
       ['triage: its rows have no help — triage.help.md, beside its projection'],
       ['triage: its help is written, and the menu registers no rows'],
+      ['triage: its help tells row w twice'],
       [],
       [],
     ]);

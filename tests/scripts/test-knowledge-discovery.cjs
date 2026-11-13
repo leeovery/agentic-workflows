@@ -52,8 +52,8 @@ function buildFixture(root) {
   const proj = { work_units: {} };
 
   // Epic: multi-topic phases (mixed statuses), each discussion's log beside
-  // its record copy, an older version's import, seeds, an asset, analysis
-  // caches, discovery's logs, the open one among them.
+  // its record copy, an older version's import, seeds, an asset, an older
+  // version's `.state/` files, discovery's logs, the open one among them.
   proj.work_units['payments'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
@@ -84,7 +84,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'spec.md'), '# The unit\'s spec — never indexed\n');
   writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth — an older version\'s, never indexed\n');
-  writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
+  writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# a gap analysis — never indexed (4.11.16)\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'session-001.md'), '# S1 — a log, never indexed\n');
@@ -143,7 +143,6 @@ function buildFixture(root) {
 // Golden set — its paths state-relative, sorted by JSON string.
 const EXPECTED = [
   { workUnit: 'auth-flow', phase: 'record', topic: 'auth-flow', file: '.knowledge/records/auth-flow/auth-flow.md' },
-  { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: 'payments/.state/discovery-gap-analysis.md' },
   { workUnit: 'payments', phase: 'record', topic: '.unit', file: '.knowledge/records/payments.md' },
   { workUnit: 'payments', phase: 'record', topic: 'ledger', file: '.knowledge/records/payments/ledger.md' },
   { workUnit: 'payments', phase: 'record', topic: 'refunds', file: '.knowledge/records/payments/refunds.md' },

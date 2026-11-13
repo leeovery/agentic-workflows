@@ -442,7 +442,6 @@ const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
   writeFile(dir, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
-  writeFile(dir, '.leeway/auth-flow/.state/discovery-gap-analysis.md', '# Analysis\n');
   // A log, never indexed.
   writeFile(dir, '.leeway/auth-flow/discovery/session-001.md', '# Session 001\n');
   // A store that cannot be loaded, checkout-local and never committed: a
@@ -513,6 +512,13 @@ describe('work-unit completion — finish\'s, in process', () => {
     assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'reactivate']), /"Auth Flow" reactivated\./);
     assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'cancel']).error,
       /not "cancelled" — the cancel has not run/);
+  });
+
+  it('the receipt refuses an address that is no bare work unit, and a unit the project does not hold', () => {
+    assert.deepStrictEqual(['auth-flow.discussion.auth-flow', 'ghost'].map((address) => engineFails(dir, ['render', 'workunit-receipt', address, '--verb', 'cancel']).error), [
+      'render workunit-receipt: address must be a bare <work_unit>, got "auth-flow.discussion.auth-flow"',
+      'render workunit-receipt: work unit "ghost" not found',
+    ]);
   });
 
   it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
@@ -638,9 +644,8 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.previous_status, 'cancelled');
     // Cancellation removed the unit's chunks; reactivation re-indexes them in a
-    // SINGLE scoped bulk pass over the unit — its record copies and analysis
-    // caches. The store cannot be loaded,
-    // so the pass fails → one warn-don't-block warning.
+    // SINGLE scoped bulk pass over the unit — its record copies and its short
+    // record. The store cannot be loaded, so the pass fails → one warn-don't-block warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
