@@ -14,8 +14,8 @@
 // none; a record of none keeping every rule but the cites; every entry
 // citing a heading its file holds once, in a file of its topic's own or the
 // unit's — its log and the reviews the move folded into it, its brief, an
-// experiment's record, the unit's assets, or its spec.md as the code
-// branch's HEAD holds its specs, where its building started — never the
+// experiment's record, the unit's assets, or its spec.md as its specs
+// under `.workflows/` hold, where its building started — never the
 // cache, another topic's or its mail; every subtopic its old map shows
 // decided carried, one entry settling several, every one still undecided
 // and every thread still open carried by an open question. A record
@@ -24,15 +24,19 @@
 // mended. Once it passes, the check lists each point marked to raise on a
 // live topic until the conversation raises it — none on a topic never
 // started, carried in discovery, whose first opening reads it with the rest
-// of its record. `.workflows/` is read in the main checkout, and the record
-// where the state keeps it, from a linked worktree too. The check rests on
+// of its record. `.workflows/` is read where the move read it, the working
+// tree in the main checkout, the old chain's and the split's changes
+// uncommitted there among it, and the record where the state keeps it, from
+// a linked worktree too. The check rests on
 // the record the carry kept and its ids in the ledger, and reads what the
 // real move (078) writes. The directive's own example record carries, and
 // the directive spells no path from the session's folder. The directive's
 // head is linted with every directive's (test-migration-directives.cjs);
 // the carry's mechanics are test-engine-ledger-carry.cjs's.
 //
-// Layer: migration. World: the records directive's (migration-world.cjs),
+// Layer: migration. Budget: 8 s — every carry and check is the engine's
+// over a copied repository with its state worktree, and one case runs the
+// real move. World: the records directive's (migration-world.cjs),
 // made once and copied for each test, and that world with every topic's
 // record carried, made once and copied; and one small project in today's
 // layout, moved by the real 078.
@@ -258,12 +262,26 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
       'ledger carry: fumi\'s auth was promoted to platform, which carries its record');
   });
 
-  it('reads the old map as the code branch\'s HEAD holds it, not as the working tree does', () => {
-    const manifest = path.join(dir, '.workflows/shop/manifest.json');
-    fs.writeFileSync(manifest, JSON.stringify({ ...JSON.parse(fs.readFileSync(manifest, 'utf8')), phases: {} }));
+  it('F1: reads `.workflows/` where the move read it, the working tree in the main checkout, which holds what the old chain and the split changed in the same run, never committed — the old map, the research\'s threads and the specs spec.md joins (21.5.8)', () => {
+    /** A unit's old manifest changed in the working tree alone. @param {string} unit @param {(manifest: any) => void} edit */
+    const reshape = (unit, edit) => {
+      const file = path.join(dir, '.workflows', unit, 'manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+      edit(manifest);
+      fs.writeFileSync(file, JSON.stringify(manifest));
+    };
+    reshape('shop', (manifest) => { manifest.phases.discussion.items.weights.subtopics['by-price'] = { status: 'decided', parent: null }; });
+    reshape('fumi', (manifest) => { manifest.phases.research.items.search.threads['stop-words'] = { question: 'Are stop words dropped?', status: 'open', origin: 'seed', parent: null }; });
+    fs.appendFileSync(path.join(dir, '.workflows/shop/specification/weights/specification.md'), '\n## Pricing\n\nBy price.\n');
+    const [q1, d1] = GOOD['shop.discussion.weights'];
 
-    assert.strictEqual(refused('shop.discussion.weights', GOOD['shop.discussion.weights'].map(({ map_item: _, ...entry }) => entry)),
-      breaks('shop', 'weights', ['tie-break is decided on its map, and no entry carries it']));
+    assert.deepStrictEqual([
+      refused('shop.discussion.weights', [q1, { ...d1, cites: [{ path: 'shop/spec.md', section: 'Pricing' }] }]),
+      refused('fumi.discussion.search', GOOD['fumi.discussion.search']),
+    ], [
+      breaks('shop', 'weights', ['by-price is decided on its map, and no entry carries it']),
+      breaks('fumi', 'search', ['the thread stop-words is still open in its research, and no open question carries it']),
+    ]);
   });
 
   it('an import come in from the topic that no entry links, a record of no entries and a topic of no log among them, and in a unit of one topic one from its discovery; one whose file is gone, and an epic\'s from its discovery as a whole, asked of no topic', () => {
@@ -303,7 +321,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
   });
 
-  it('the unit\'s spec.md where its building never started; where it started, a heading its specs on HEAD lack, or hold more than once', () => {
+  it('the unit\'s spec.md where its building never started; where it started, a heading its specs under `.workflows/` lack, or hold more than once', () => {
     const licensing = GOOD['fumi.discussion.licensing'];
     assert.strictEqual(refused('fumi.discussion.licensing', [...licensing.slice(0, 3), { ...licensing[3], cites: [{ path: 'fumi/spec.md', section: 'Corrigenda' }] }]),
       breaks('fumi', 'licensing', ['entry d2 cites fumi/spec.md, which the state does not hold']));
@@ -346,7 +364,7 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
 });
 
 describe('from a linked worktree (4.1.4)', () => {
-  it('the carry reads the record where the state keeps it, and with the check reads `.workflows/` in the main checkout — its old map on HEAD — not the worktree\'s branch, whose map differs; carried, what was said beside the record is cleared', () => {
+  it('the carry reads the record where the state keeps it, and with the check reads `.workflows/` in the main checkout — its old map there — not the worktree\'s branch, whose map differs; carried, what was said beside the record is cleared', () => {
     dir = world();
     const side = path.join(path.dirname(dir), 'side');
     git(dir, ['worktree', 'add', '-q', '-b', 'side', side]);

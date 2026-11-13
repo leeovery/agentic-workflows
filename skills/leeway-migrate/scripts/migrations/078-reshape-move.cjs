@@ -44,17 +44,23 @@
 // kept as `brownfield_offer`, the brownfield offer's remembered answer, in
 // today's words — the offer is made once per project, and a completed
 // assessment was offered it — and one still under way kept as nothing, so
-// the offer is made again (21.11.1, 21.11.2, 8.12.11); each roadmap item's
-// sources follow their files, once each, the roadmap's `imports` index is
-// dropped — its files are the product's assets, which nothing indexes — and
-// its open session is marked as the product's conversation's
-// (`product_session`). The inbox and the environment setup file are carried as
-// they are, but for an inbox file whose name is no item's
+// the offer is made again (21.11.1, 21.11.2, 8.12.11); the defaults first
+// use no longer asks for go, the plan's format and the project skills
+// (22.3.1, 22.3.2), and no driver's setting is written, so a migrated
+// project's drivers are the defaults, resolved at first need (22.4.3,
+// 7.1.11); each roadmap item's sources follow their files, once each, the
+// roadmap's `imports` index is dropped — its files are the product's
+// assets, which nothing indexes — and its open session is marked as the
+// product's conversation's (`product_session`). The inbox, the environment
+// setup file and the checkout's knowledge config are carried as they are,
+// but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
-// behind. `.roadmap/` is `.product/` (21.5.7): its sessions as they are
-// but for their headings, demoted as a log's documents are, each note out
-// of its kind's folder under its inbox name, and `imports/` as `assets/`,
-// the documents' links to an import rewritten as a unit's are.
+// behind; the knowledge store is not, and the next boot builds it from the
+// config, with no setup question (21.9.6). `.roadmap/` is `.product/`
+// (21.5.7): its sessions as they are but for their headings, demoted as a
+// log's documents are, each note out of its kind's folder under its inbox
+// name, and `imports/` as `assets/`, the documents' links to an import
+// rewritten as a unit's are.
 // `.baseline/`'s docs are reference in `.product/assets/baseline/`, names
 // kept, and so is each interview agenda in `.baseline/.state/`, beside them:
 // it holds the person's answers, which an area under way has woven into no
@@ -132,8 +138,11 @@
 //     an implementation item in progress or completed — and, where it has,
 //     stays for the cut and the merges to join into `spec.md` (21.8.5); a
 //     quick-fix's spec goes to `assets/specs/` whatever its building, and
-//     once the quick-fix is completed its spec is its `summary.md` and its
-//     plan goes, its spec and plan items with them (21.5.15, 21.5.16);
+//     once the quick-fix is completed — its status says so, or every phase
+//     of its old pipeline, scoping, implementation and review, completed,
+//     whatever its status reads — its spec is its `summary.md` and its plan
+//     goes, its spec and plan items with them (21.5.15, 21.5.16), its
+//     status completed but where it was cancelled (21.5.14);
 //   - implementation folders and the unit's `.state/` go whole, holding
 //     tracking and analysis files only, and so do the spec and plan reviews'
 //     tracking files, each matched by its whole name as those reviews write
@@ -246,6 +255,11 @@ const PERMISSION_LISTS = ['allow', 'deny', 'ask'];
 const OLD_RULE_PATH = `${CODE_TREE_STATE}/`;
 const NEW_RULE_PATH = `${STATE_DIR}/`;
 
+// The project's files carried into the state as they are: the environment
+// setup, and the checkout's knowledge config, from which the next boot
+// builds the store the move never carries (21.9.6).
+const CARRIED_AS_IS = ['.state/environment-setup.md', '.knowledge/config.json'];
+
 const ROADMAP = '.roadmap';
 const PRODUCT = '.product';
 const BASELINE = '.baseline';
@@ -254,6 +268,8 @@ const ROADMAP_SESSION = /^sessions\/session-[0-9]{3,}\.md$/;
 const ROADMAP_NOTE = /^notes\/(?:ideas|bugs|quickfixes)\/([0-9]{4}-[0-9]{2}-[0-9]{2}--[a-z0-9]+(?:-[a-z0-9]+)*\.md)$/;
 // The baseline's answers the brownfield offer remembers (21.11.2).
 const BROWNFIELD_ANSWERS = ['native', 'skipped', 'completed'];
+// The project's defaults first use no longer asks for (22.3.1, 22.3.2).
+const RETIRED_DEFAULTS = ['plan_format', 'project_skills'];
 
 // The marker each stopped operation leaves in the git directory, as the engine reads them.
 const OPERATION_MARKERS = [
@@ -285,6 +301,8 @@ const RESEARCH_WAITS = ['awaiting_experiments'];
 
 // A completed quick-fix's spec and plan, gone with their files.
 const QUICK_FIX_SPENT = ['specification', 'planning'];
+// A quick-fix's pipeline as today's engine runs it.
+const QUICK_FIX_PIPELINE = ['scoping', 'implementation', 'review'];
 
 const DELIVERY_PHASES = ['specification', 'planning', 'review'];
 // Folders carried whole under a name of the layout's, their files as they are.
@@ -562,8 +580,14 @@ function mapTopics(reshaped) {
 /** @param {Record<string, any>} manifest */
 const isQuickFix = (manifest) => manifest.work_type === 'quick-fix';
 
-/** @param {Record<string, any>} manifest */
-const quickFixDone = (manifest) => isQuickFix(manifest) && manifest.status === 'completed';
+/** Whether every phase of a quick-fix's old pipeline completed, as today's engine reads a phase. @param {Record<string, any>} manifest */
+const pipelineDone = (manifest) => QUICK_FIX_PIPELINE.every((phase) => {
+  const items = Object.values(itemsOf(manifest, phase));
+  return items.length > 0 && items.every((item) => isObject(item) && item.status === 'completed');
+});
+
+/** Whether a quick-fix is moved as a completed one: its status says so, or every phase of its old pipeline does. @param {Record<string, any>} manifest */
+const quickFixDone = (manifest) => isQuickFix(manifest) && (manifest.status === 'completed' || pipelineDone(manifest));
 
 /** Whether the unit keeps no spec or planning items: nothing built, and not a quick-fix. @param {Record<string, any>} manifest */
 const writtenFresh = (manifest) => !isQuickFix(manifest) && !buildingStarted(manifest);
@@ -580,7 +604,8 @@ function createdAt({ created }) {
  * quick-fix's spec and plan with their files, and the spec and planning
  * items of a unit that writes its spec fresh; an epic's topics on its map,
  * every one in the order, and an epic with topics past its map, approved
- * when it was made; each import's path following its file.
+ * when it was made; each import's path following its file; and a quick-fix
+ * whose old pipeline completed, completed, unless it was cancelled.
  * @param {Record<string, any>} manifest @param {Set<string>} topics
  * @returns {Record<string, any>}
  */
@@ -598,6 +623,7 @@ function reshapedManifest(manifest, topics) {
     if (out.work_type === 'epic' && Object.keys(itemsOf(out, 'discovery')).length > 0) out.phases.discovery.approved_at = createdAt(manifest);
   }
   if (Array.isArray(out.imports)) out.imports = out.imports.map(asAsset);
+  if (quickFixDone(manifest) && manifest.status !== 'cancelled') out.status = 'completed';
   return out;
 }
 
@@ -1129,8 +1155,8 @@ function moveStores(project, state) {
 }
 
 /**
- * The inbox, the environment setup and the state's own ignore file, with
- * `ignored` added to it.
+ * The inbox, the environment setup, the checkout's knowledge config and the
+ * state's own ignore file, with `ignored` added to it.
  * @param {string} from @param {string} state @param {string[]} ignored
  * @returns {string[]} the inbox's files left behind, named as no item is
  */
@@ -1140,8 +1166,10 @@ function moveProjectFiles(from, state, ignored) {
     const item = path.join(from, '.inbox', rel);
     writeFile(path.join(state, '.inbox', rel), fs.readFileSync(item), modeOf(item));
   }
-  const setup = path.join(from, '.state', 'environment-setup.md');
-  if (fs.existsSync(setup)) writeFile(path.join(state, '.state', 'environment-setup.md'), fs.readFileSync(setup));
+  for (const rel of CARRIED_AS_IS) {
+    const file = path.join(from, rel);
+    if (fs.existsSync(file)) writeFile(path.join(state, rel), fs.readFileSync(file), modeOf(file));
+  }
   writeFile(path.join(state, '.gitignore'), ignored.length === 0 ? STATE_GITIGNORE : `${STATE_GITIGNORE}${ignored.join('\n')}\n`);
   return inbox.filter((f) => !INBOX_ITEM.test(f)).map((f) => `.inbox/${f}`);
 }
@@ -1210,10 +1238,13 @@ function moveProduct(from, state, relocations) {
 /**
  * The project manifest less the baseline's status fields, a recorded
  * `native`, `skipped` or `completed` kept as the brownfield offer's answer
- * (21.11.1, 21.11.2); each roadmap item's sources following their files, once each;
- * the roadmap's `imports` index dropped, its files the product's assets
- * (21.5.7); the roadmap's open session the product's conversation's,
- * `product_session`.
+ * (21.11.1, 21.11.2); less the defaults first use no longer asks for, the
+ * plan's format and the project skills (22.3.1, 22.3.2), the `defaults`
+ * object with them once empty, and no driver's setting written, so each
+ * resolves to its default at first need (22.4.3, 7.1.11); each roadmap
+ * item's sources following their files, once each; the roadmap's `imports`
+ * index dropped, its files the product's assets (21.5.7); the roadmap's open
+ * session the product's conversation's, `product_session`.
  * @param {Record<string, any>} project @param {Relocations} relocations
  * @returns {Record<string, any>}
  */
@@ -1221,6 +1252,10 @@ function reshapedProject(project, relocations) {
   const { baseline, ...out } = structuredClone(project);
   const answer = isObject(baseline) ? baseline.status : undefined;
   if (BROWNFIELD_ANSWERS.includes(answer)) out.brownfield_offer = answer;
+  if (isObject(out.defaults)) {
+    for (const field of RETIRED_DEFAULTS) delete out.defaults[field];
+    if (Object.keys(out.defaults).length === 0) delete out.defaults;
+  }
   const roadmap = isObject(out.roadmap) ? out.roadmap : {};
   for (const item of Object.values(isObject(roadmap.items) ? roadmap.items : {})) {
     if (isObject(item) && Array.isArray(item.sources)) item.sources = [...new Set(item.sources.map((source) => relocations.get(source) ?? source))];
@@ -1404,8 +1439,8 @@ function move(projectDir, reportUpdate, reportSkip) {
 
 module.exports = {
   id: '078',
-  description: 'move the project from .workflows/ into the layout in .leeway/, the state worktree on an unborn leeway-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store in the state, the user-level folder to ~/.config/leeway/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary; implementation folders, the reviews\' tracking files and the retired manifest state go. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the tracker\'s store is carried into the state. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, all staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  description: 'move the project from .workflows/ into the layout in .leeway/, the state worktree on an unborn leeway-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/leeway/, and the project\'s files to the new names',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; implementation folders, the reviews\' tracking files and the retired manifest state go. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, all staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return withoutRepositoryEnv(() => move(projectDir, reportUpdate, reportSkip));
   },

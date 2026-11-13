@@ -2,14 +2,17 @@
 
 // ---------------------------------------------------------------------------
 // What boot reads of the project for the start menu
-// (leeway-engine/scripts/domain/boot.cjs): the brownfield offer's answer,
-// the walkthrough's recorded answer, and the baseline signal — the code
-// history from before the workflows arrived; and no worktree include written.
+// (leeway-engine/scripts/domain/boot.cjs): the brownfield offer's answer —
+// the one the reshape's move (078) carried from a project's baseline among
+// them — the walkthrough's recorded answer, and the baseline signal — the
+// code history from before the workflows arrived; and no worktree include
+// written.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
 // with its state worktree and the workflows' hooks, made once per process and
 // copied; boot runs from a copy of the engine beside a stand-in migration
-// runner whose behaviour the test picks through the environment.
+// runner whose behaviour the test picks through the environment. The move
+// runs in a scratch repository beside it, the user-level folders its own.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -23,23 +26,43 @@ const harness = require('./engine-harness.cjs');
 const { git, statePath, layout, WORKFLOW_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
-const { datedAt, createFile } = require('./discovery-test-utils.cjs');
+const { datedAt, createFile, withEnv } = require('./discovery-test-utils.cjs');
+const MOVE = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
 
 const { stubbed, bootProject, runEngine } = require('./boot-world.cjs');
+
+/**
+ * The project manifest the reshape's move (078) writes for a project on
+ * today's layout whose baseline records each of `statuses`, in turn: moved
+ * in a scratch repository under `root`, the user-level folders its own,
+ * never the pinned ones.
+ * @param {string} root @param {string[]} statuses @returns {string[]}
+ */
+function movedWithBaselines(root, statuses) {
+  const old = harness.initRepo(path.join(root, 'moved'));
+  createFile(old, '.workflows/manifest.json', '{}\n');
+  harness.commitAll(old, 'today\'s layout');
+  return withEnv({ WORKFLOWS_CONFIG_DIR: path.join(root, 'workflows'), LEEWAY_CONFIG_DIR: path.join(root, 'leeway') }, () => statuses.map((status) => {
+    fs.writeFileSync(path.join(old, '.workflows/manifest.json'), JSON.stringify({ work_units: {}, baseline: { status } }));
+    MOVE.run({ projectDir: old, reportUpdate: () => {}, reportSkip: () => {} });
+    return fs.readFileSync(statePath(old, layout.projectManifest), 'utf8');
+  }));
+}
 
 describe('engine boot', () => {
   let fix;
   beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('brownfield_offer: a recorded answer — a moved project\'s among them — reads as itself, so boot hands over no signal and the judgment and the offer are not made again; accepted stands for the research owed (21.S50, 8.S78, 8.12.11)', () => {
+  it('21.S50: brownfield_offer — a project moved with its baseline native, skipped or completed reads that answer, so boot hands over no signal and the judgment and the offer are not made again; accepted stands for the research owed (8.S78, 8.12.11)', () => {
     const projManifest = statePath(fix.project, layout.projectManifest);
+    const manifests = [...movedWithBaselines(fix.root, ['native', 'skipped', 'completed']), JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' })];
 
-    for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
-      fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, brownfield_offer: answer }));
+    assert.deepStrictEqual(manifests.map((manifest) => {
+      fs.writeFileSync(projManifest, manifest);
       const res = runEngine(stubbed, fix.project, ['boot']);
-      assert.deepStrictEqual([res.brownfield_offer, 'baseline_signal' in res], [answer, false], answer);
-    }
+      return [res.brownfield_offer, 'baseline_signal' in res];
+    }), [['native', false], ['skipped', false], ['completed', false], ['accepted', false]]);
   });
 
   it('brownfield_offer: nothing recorded — no field, an unrecognised value, a malformed one, no project manifest — reads none, the signal attached', () => {

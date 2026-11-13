@@ -24,7 +24,7 @@ Paths below are from the state's folder, but one under `.workflows/`, which is f
 
 - Its log, `{unit}/topics/{topic}/log.md`, its brief, `brief.md` beside it, and its experiments' records in `experiments/`.
 - Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and still in `.workflows/` once it has.
-- Its old discussion map and its research's threads, as the code branch's HEAD holds them in the main checkout, never a working tree; a promoted topic's research as the unit it came from holds it.
+- Its old discussion map and its research's threads, in its unit's manifest under `.workflows/`, as the move read them; a promoted topic's research as the unit it came from holds it.
 - Its reviews never folded in, which the move appended to its log, each under `## Review {id}, never folded in`.
 
 Its brief lists each of these as the check reads them.

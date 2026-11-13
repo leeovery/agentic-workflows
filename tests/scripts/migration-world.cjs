@@ -145,10 +145,9 @@ function midMigration(dir) {
 // move folded into its log; the cross-cutting unit the promoted topic went
 // to, its import copied with it, one of its decisions settling two
 // subtopics, its review left behind in the epic's store folded into its log
-// too; an epic of one topic
-// whose building started, its spec still on the code branch, an import
-// come in from its discovery as a whole; and a cancelled feature, an import
-// come in from its discovery.
+// too; an epic of one topic whose building started, its spec still in
+// `.workflows/`, an import come in from its discovery as a whole; and a
+// cancelled feature, an import come in from its discovery.
 const RECORDS_OLD = Object.freeze({
   'README.md': '# Fumi\n',
   '.workflows/fumi/manifest.json': jsonText({
