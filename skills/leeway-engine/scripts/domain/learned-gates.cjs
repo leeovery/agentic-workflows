@@ -28,8 +28,9 @@
 //   them. Its digest (`showingOf`) hashes the gate's place — unit, phase and
 //   topic — with the key its surface draws it from out of its own state, the
 //   same on every redraw of one showing and different between showings. Its
-//   answer logs it (trust-events.cjs), so a replay draws a past showing
-//   again as it was drawn: `drawnBlind(gate, showing)`.
+//   answer logs it, and so does the step run on it, as no answer
+//   (trust-events.cjs), so a replay draws a past showing again as it was
+//   drawn: `drawnBlind(gate, showing)` (replay.cjs).
 // - A showing held keeps its key, so a gate whose key names its subject
 //   tells a showing held of a subject gone (`heldFor`): the reprompt over
 //   other paths, the spawn gate for another experiment, the wait once none
@@ -58,8 +59,9 @@ const crypto = require('crypto');
  * A gate's step: shown, or run as an automatic step on one of its rows —
  * each for the gate it was drawn for, on the showing it was drawn on, none
  * for a gate off the list; shown, with the showing's hold, none where the
- * decision point holds none.
- * @typedef {{step: 'show', gate: string, showing: string|null, hold: Hold|null} | {step: 'automatic', gate: string, row: string, showing: string}} GateStep
+ * decision point holds none; run, with the warnings of logging it where its
+ * append failed.
+ * @typedef {{step: 'show', gate: string, showing: string|null, hold: Hold|null} | {step: 'automatic', gate: string, row: string, showing: string, warnings?: string[]}} GateStep
  */
 
 /** Each learned gate by its name: the report of each row that may run as an automatic step. @type {Readonly<Record<string, Readonly<Record<string, string>>>>} */

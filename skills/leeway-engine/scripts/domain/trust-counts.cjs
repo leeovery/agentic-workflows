@@ -62,7 +62,9 @@
 // - A count also tallies the answers it holds of the project's own at the
 //   session's model, whatever their age, none cancelled — a one-answer
 //   count's calls among them: the fewer, the wider its range, and the more
-//   of its calls blind questions draw (16.17.9, decision-point.cjs).
+//   of its calls blind questions draw (16.17.9, decision-point.cjs). Read up
+//   to a time, as the replay draws a question again (replay.cjs), it holds
+//   those given by then and not cancelled by then (`ownOf`).
 // - A blind question's reveal (16.17.7) says how often Claude picked as the
 //   person did on its kind in the project: of the kind's latest answers,
 //   25 at most (P9) — the person's to a raise, blind or shown, and their
@@ -106,11 +108,17 @@ const NO_LOSS = new Set(['nothing', 'fix']);
 /** A change to a count: at a time, on the project's own side or its prior's, an outcome's weight moved by `by`. @typedef {{at: number, own: boolean, outcome: Outcome, by: number}} Change */
 /** How a count is walked. @typedef {'kind'|'one'|'gate'} Rule */
 /**
- * A count: how it is walked, its changes in time order, and how many of the
- * answers it holds are the project's own at the session's model, none
- * cancelled — what tells its range wide (16.17.9); read up to the time
- * `until` alone where given, as it stood then (the header's).
- * @typedef {{rule: Rule, changes: Change[], own: number, until?: number}} Count
+ * When the answers a count holds of the project's own at the session's
+ * model joined it, and when those a reversal cancelled left it, each in
+ * time order.
+ * @typedef {{joined: number[], left: number[]}} Owned
+ */
+/**
+ * A count: how it is walked, its changes in time order, and the answers it
+ * holds of the project's own at the session's model — what tells its range
+ * wide (16.17.9); read up to the time `until` alone where given, as it
+ * stood then (the header's).
+ * @typedef {{rule: Rule, changes: Change[], owned: Owned, until?: number}} Count
  */
 /**
  * The counts on a project: each kind's, the one-answer calls', and each
@@ -310,16 +318,40 @@ function oneAnswerChanges({ standing }, held, now) {
 }
 
 /** A count of `rule` with no changes yet. @param {Rule} rule @returns {Count} */
-const emptyCount = (rule) => ({ rule, changes: [], own: 0 });
+const emptyCount = (rule) => ({ rule, changes: [], owned: { joined: [], left: [] } });
 
 /**
- * An answer's changes added to `count`, and the answer to those it holds of
- * the project's own at the session's model where `here`.
- * @param {Count} count @param {Change[]} changes @param {boolean} here
+ * An answer's changes added to `count`, and, where `here`, the answer to
+ * those it holds of the project's own at the session's model: from when it
+ * was given until a reversal cancels it.
+ * @param {Count} count @param {Change[]} changes @param {boolean} here @param {Held} held
  */
-function counted(count, changes, here) {
+function counted(count, changes, here, held) {
   count.changes.push(...changes);
-  if (here) count.own += 1;
+  if (!here) return;
+  count.owned.joined.push(held.at);
+  if (held.end !== Infinity) count.owned.left.push(held.end);
+}
+
+/** How many of the times `times`, in time order, are at or before `until`. @param {number[]} times @param {number} until */
+function atOrBefore(times, until) {
+  let low = 0;
+  let high = times.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (times[mid] <= until) low = mid + 1;
+    else high = mid;
+  }
+  return low;
+}
+
+/**
+ * How many answers of the project's own at the session's model `count`
+ * holds, as of its `until` where it has one (the header's).
+ * @param {Count} count
+ */
+function ownOf({ owned: { joined, left }, until = Infinity }) {
+  return atOrBefore(joined, until) - atOrBefore(left, until);
 }
 
 /**
@@ -375,9 +407,9 @@ function countsFrom(events, { project, model, now }) {
   for (const answer of evidence.answers) {
     const answered = held(answer.event, answer.model, answer.cancelled_by);
     if (answered.weight === 0) continue;
-    const here = answered.own && answered.weight === 1 && answer.cancelled_by === null;
-    if (answer.kind !== null) counted(kinds[answer.kind], kindChanges(answer, answered, evidence.verdicts, now), here && KIND_HOLDS.includes(answer.standing));
-    if (answer.sort === 'one') counted(one, oneAnswerChanges(answer, answered, now), here && Object.hasOwn(ONE_ANSWER, answer.standing));
+    const here = answered.own && answered.weight === 1;
+    if (answer.kind !== null) counted(kinds[answer.kind], kindChanges(answer, answered, evidence.verdicts, now), here && KIND_HOLDS.includes(answer.standing), answered);
+    if (answer.sort === 'one') counted(one, oneAnswerChanges(answer, answered, now), here && Object.hasOwn(ONE_ANSWER, answer.standing), answered);
   }
   for (const event of happened.filter(({ type }) => type === 'gate')) {
     const answered = held(event, /** @type {string|null} */ (event.model), null);
@@ -388,7 +420,11 @@ function countsFrom(events, { project, model, now }) {
     const row = /** @type {Outcome} */ (event.picked ?? event.reading);
     count.changes.push(...changesOf(answered, () => row, [], now));
   }
-  for (const count of [...Object.values(kinds), one, ...gates.values()]) count.changes.sort((a, b) => a.at - b.at);
+  for (const count of [...Object.values(kinds), one, ...gates.values()]) {
+    count.changes.sort((a, b) => a.at - b.at);
+    count.owned.joined.sort((a, b) => a - b);
+    count.owned.left.sort((a, b) => a - b);
+  }
   return { kinds, one, gates };
 }
 
@@ -597,4 +633,4 @@ function stateOf(count, threshold) {
   return walk.to(count.until);
 }
 
-module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, alikeOn, tallyFrom };
+module.exports = { MODEL_LINES, upperBound, ancestryOf, countsFrom, countsOf, gateCount, stateOf, ownOf, alikeOn, tallyFrom };

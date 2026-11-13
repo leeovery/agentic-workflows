@@ -132,7 +132,7 @@ const { conversation, inFolder, seals, logText, project, lastEntry, answer, quie
  * rule lets proceed proceeds (test-engine-raise-blind.cjs).
  * @param {import('node:test').TestContext} t
  */
-const byTheRule = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, question: UNDRAWN }));
+const byTheRule = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: UNDRAWN }));
 
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
@@ -193,9 +193,9 @@ describe('what the decision point is given (E1)', () => {
     const look = { labeller: LABELLER, answers: labelled('look').answers };
     const inBuild = { unit: BUILT, phase: 'implementation', topic: null };
     assert.deepStrictEqual(given.map(([call, { now: _now, ...rest }]) => [call, rest]), [
-      [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL, question: full(made.note) }],
-      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null, question: null }],
-      [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null, question: full(made.size) }],
+      [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL, chain: full(made.note) }],
+      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null, chain: null }],
+      [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null, chain: full(made.size) }],
     ]);
     assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.parked, taskless.res.parked, taskless.res.task], ['ask', EVERY_CALL_ASKS, 'ask', 'Q1', 'Q2', null]);
   });
@@ -219,6 +219,25 @@ describe('what the decision point is given (E1)', () => {
       entries().filter(({ event }) => event === 'parked').map(({ replaced_by: replacedBy }) => replacedBy),
       logEvents().map(({ replaced_by: replacedBy, blocks_build: blocks, always }) => [replacedBy, blocks, always]),
     ], [['person'], [['claude', false, null], ['person', true, null]]]);
+  });
+
+  it('the experiment still running that measures the question, and the question\'s id its blind draw hashes, ride with the call to its raise event — sealed in the conversation, or on its park in the build — none for a replacement, so a replay decides it again as it was decided (9.1.11, 16.17.4)', async () => {
+    /** The unit `unit`'s manifest rewritten with experiment E1 running on `question`. @param {string} unit @param {string} question @param {Record<string, unknown>} [more] */
+    const measuring = (unit, question, more = {}) => createManifest(dir, unit, {
+      work_type: 'epic', phases: { ...PHASES, experiment: { items: { 'note-window': { experiments: { E1: { question: full(question), status: 'running' } } } } } }, ...more,
+    });
+    measuring(UNIT, made.note);
+    measuring(BUILT, made.size, { build: { position: 'auto' } });
+
+    answer((await raised(NOTE, ['--answers', made.note], CALL, conversation())).res.raise, ['--pick', '1']);
+    await raised(BUILD, ['--answers', made.size, '--parks', '2.3'], CALL, conversation());
+    answer(okSections(dir, ['raise', 'draw', BUILT, 'Q1'], { env: conversation() }).res.raise, ['--pick', '1']);
+    answer((await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, conversation())).res.raise, ['--pick', '1']);
+
+    assert.deepStrictEqual([
+      entries().filter(({ event }) => event === 'parked').map(({ measured, chain }) => [measured, chain]),
+      logEvents().map(({ measured, chain }) => [measured, chain]),
+    ], [[['E1', full(made.size)]], [['E1', full(made.note)], ['E1', full(made.size)], [null, null]]]);
   });
 });
 

@@ -33,7 +33,7 @@ const path = require('path');
 
 const { ok, output, refuses, screenOf, statePath, readState, layout, fixtureFrom, withFrozenClock, FROZEN_MS } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { idOf, UNDRAWN, SESSION, DAY, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
+const { idOf, DRAWN, NARROW, UNDRAWN, SESSION, DAY, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -50,6 +50,13 @@ const ENV = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION });
 const UNIT = 'fumi';
 const OTHER = idOf('Aircon');
 const AT_25 = Object.freeze({ ...DEFAULTS, threshold: 0.25 });
+const AT_15 = Object.freeze({ ...DEFAULTS, threshold: 0.15 });
+// Showings of the plan gate its blind ask never draws, and one it draws.
+const SHOWINGS = Object.freeze(['0000000000000000', '0000000000000001', '0000000000000002', '0000000000000003', '0000000000000005', '0000000000000006', '0000000000000007',
+  '0000000000000008', '0000000000000009', '000000000000000a', '000000000000000b', '000000000000000c', '000000000000000d']);
+const DRAWN_SHOWING = '0000000000000012';
+// What a replay finds at the learned gates where it replays no showing.
+const NO_GATES = Object.freeze({ showings: 0, changed: 0, overruled: 0 });
 // The CPU a replay of a busy year may take.
 const REPLAY_BUDGET_S = 3;
 
@@ -243,7 +250,7 @@ function replayedHistory(project) {
 function behaviourRuled(dir, blocks) {
   return withFrozenClock(() => ruled(/** @type {any} */ ({ sort: 'several' }), {
     label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, measured: null, checked: false,
-    project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS, question: UNDRAWN,
+    project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS, chain: UNDRAWN,
   }));
 }
 
@@ -541,8 +548,8 @@ describe('the replay (16.15.2, 16.15.3, P14)', () => {
     recent.agree(1, null);
     const month = replay([...old.events, ...recent.events], at);
 
-    assert.deepStrictEqual(whole, { since: Date.parse(/** @type {string} */ (old.events[0].at)), whole: true, more: false, questions: 30, changed: 1, overruled: 1 });
-    assert.deepStrictEqual(month, { since: FROZEN_MS - 30 * DAY, whole: false, more: false, questions: 20, changed: 0, overruled: 0 });
+    assert.deepStrictEqual(whole, { since: Date.parse(/** @type {string} */ (old.events[0].at)), whole: true, more: false, questions: 30, changed: 1, overruled: 1, gates: NO_GATES });
+    assert.deepStrictEqual(month, { since: FROZEN_MS - 30 * DAY, whole: false, more: false, questions: 20, changed: 0, overruled: 0, gates: NO_GATES });
   });
 
   it('16.4.7: a raise mid-build replays the questions that blocked build work alone, against the threshold used elsewhere where none is picked; and the whole log names its first day', () => {
@@ -603,7 +610,7 @@ describe('the replay decides each question as the rule did (16.15.2, 16.15.3)', 
     h.agree(3, 'behaviour');
     h.raise('behaviour', '1', { raised });
 
-    assert.deepStrictEqual(replay(h.events, at), { since: Date.parse(/** @type {string} */ (h.events[0].at)), whole: true, more: false, questions: 13, changed: 2, overruled: 0 });
+    assert.deepStrictEqual(replay(h.events, at), { since: Date.parse(/** @type {string} */ (h.events[0].at)), whole: true, more: false, questions: 13, changed: 2, overruled: 0, gates: NO_GATES });
   });
 
   it('N3: skipped counts the questions the setting proposed lets go ahead where the person\'s own asks, never those both let go ahead', () => {
@@ -613,7 +620,7 @@ describe('the replay decides each question as the rule did (16.15.2, 16.15.3)', 
     assert.deepStrictEqual([replay(h.events, at).changed, replay(h.events, { ...at, settings: { ...DEFAULTS, threshold: 0.22 } }).changed], [3, 2]);
   });
 
-  it('each question is decided from what its event holds — its model, its sort, a decision of the person\'s it would replace, Claude\'s mark — in its own project alone; a reversal after the clock is none yet; and the period holds a question decided as it opens', () => {
+  it('each question is decided from what its event holds — its model, its sort, a decision of the person\'s it would replace, Claude\'s mark, the experiment still running that measured it — in its own project alone; a reversal after the clock is none yet; and the period holds a question decided as it opens', () => {
     /**
      * Twelve behaviour answers taking Claude's lean in Aircon, then `then`:
      * the replay at 25% as of the clock `nowOf` reads — its questions, those
@@ -636,10 +643,102 @@ describe('the replay decides each question as the rule did (16.15.2, 16.15.3)', 
       changedAfter((h) => h.raise('behaviour', '1', { sort: 'one' })),
       changedAfter((h) => h.raise('behaviour', '1', { replacedBy: 'person' })),
       changedAfter((h) => h.raise('behaviour', '1', { always: 'live-server' })),
+      changedAfter((h) => h.raise('behaviour', '1', { measured: 'E1' })),
       changedAfter((h) => h.raise('behaviour', '1', {}, { project: idOf('Pay') })),
       changedAfter((h) => h.reverse(h.raise('behaviour', '1')), (h) => h.now() - 500),
       replay(month.events, at).whole,
-    ], [[13, 3, 0], [13, 2, 0], [13, 2, 0], [13, 2, 0], [13, 2, 0], [12, 2, 0], [13, 3, 0], false]);
+    ], [[13, 3, 0], [13, 2, 0], [13, 2, 0], [13, 2, 0], [13, 2, 0], [13, 2, 0], [12, 2, 0], [13, 3, 0], false]);
+  });
+
+  it('a care entry dropped since stands for the questions decided while it stood — 16 behaviour answers under it, then dropped: none skipped, where read as never standing 3 were — the drop paired with its entry by its project, its kind and when it was added, one dropped part way through standing for those before it alone, and one added again since standing from then (16.5.2)', () => {
+    /** 16 behaviour answers in Aircon under a care entry added before them, then `drop`: those 25% skips. @param {(h: ReturnType<typeof history>, added: number) => void} drop */
+    const skipped = (drop) => {
+      const h = history({ project: OTHER });
+      const added = h.now();
+      h.agree(16, 'behaviour');
+      drop(h, added);
+      return replay(h.events, at).changed;
+    };
+    const partWay = history({ project: OTHER });
+    const added = partWay.now();
+    partWay.agree(12, 'behaviour');
+    partWay.careDrop('behaviour', added);
+    const readded = partWay.now() + 500;
+    partWay.agree(4, 'behaviour');
+
+    assert.deepStrictEqual([
+      skipped(() => {}),
+      skipped((h, at16) => h.careDrop('behaviour', at16)),
+      skipped((h, at16) => h.careDrop('behaviour', at16, { project: idOf('Pay') })),
+      skipped((h, at16) => h.careDrop('look', at16)),
+      skipped((h) => h.careDrop('behaviour', h.now())),
+      replay(partWay.events, at).changed,
+      replay(partWay.events, { ...at, care: [{ project: OTHER, kind: 'behaviour', added: new Date(readded).toISOString() }] }).changed,
+    ], [3, 0, 3, 3, 3, 1, 0]);
+  });
+
+  it('a question the rule lets go ahead is drawn again by the blind draw on its question\'s id, at the share as it stood: drawn, it is asked, never skipped — one drawn at the wide share alone drawn while its kind held fewer than 20 of the project\'s own answers, however many it holds since (16.17.4, 16.17.9)', () => {
+    /** Twelve behaviour answers in Aircon, then a question on `chain`, then `more` answers: the questions and those 25% skips. @param {string} chain @param {number} [more] */
+    const skippedOn = (chain, more = 0) => {
+      const h = history({ project: OTHER });
+      h.agree(12, 'behaviour');
+      h.raise('behaviour', '1', { chain });
+      h.agree(more, 'behaviour');
+      const { questions, changed } = replay(h.events, at);
+      return [questions, changed];
+    };
+    const wide = history({ project: OTHER });
+    wide.agree(20, 'behaviour');
+    wide.raise('behaviour', '1', { chain: NARROW });
+
+    assert.deepStrictEqual([skippedOn(UNDRAWN), skippedOn(DRAWN), skippedOn(NARROW), skippedOn(NARROW, 10), replay(wide.events, { ...at, settings: { ...DEFAULTS, threshold: 0.1 } }).changed], [[13, 3], [13, 2], [13, 2], [23, 2], 11]);
+  });
+
+  it('a question is drawn again at the share its count gave as it was raised: an answer of the project\'s own a reversal cancelled by then gone from it, one cancelled since still in it; a one-answer question at the one-answer calls\' share, never its kind\'s — drawn at the wide share alone, asked where an undrawn one is skipped (16.17.9)', () => {
+    /** Those `proposed` skips over the person's `own` in Aircon, the history `build` makes with a last question on `chain`. @param {(h: ReturnType<typeof history>, chain: string) => void} build @param {string} chain @param {number} own @param {number} proposed */
+    const skipped = (build, chain, own, proposed) => {
+      const h = history({ project: OTHER });
+      build(h, chain);
+      return replay(h.events, { ...at, settings: { ...DEFAULTS, threshold: own }, proposed: { ...DEFAULTS, threshold: proposed } }).changed;
+    };
+    /** @type {(h: ReturnType<typeof history>, chain: string) => void} */
+    const cancelledBefore = (h, chain) => {
+      h.reverse(h.agree(19, 'behaviour')[0]);
+      h.raise('behaviour', '1', { chain });
+    };
+    /** @type {(h: ReturnType<typeof history>, chain: string) => void} */
+    const cancelledSince = (h, chain) => {
+      const [first] = h.agree(20, 'behaviour');
+      h.raise('behaviour', '1', { chain });
+      h.reverse(first);
+    };
+    /** @type {(h: ReturnType<typeof history>, chain: string) => void} */
+    const oneAnswer = (h, chain) => {
+      for (let i = 0; i < 20; i += 1) h.call('one', 'behaviour');
+      h.raise('look', '2', { sort: 'one' });
+      h.raise('behaviour', '1', { sort: 'one', chain });
+    };
+
+    assert.deepStrictEqual([UNDRAWN, NARROW].map((chain) => [skipped(cancelledBefore, chain, 0.15, 0.25), skipped(cancelledSince, chain, 0.1, 0.25), skipped(oneAnswer, chain, 0.15, 0.2)]), [[9, 11, 1], [8, 11, 1]]);
+  });
+
+  it('below the person\'s threshold, a call that went ahead mid-build while the blind question drawn on it waited is overruled where the person answered that question otherwise than the call, never where they kept it or did not care; and a call of Claude\'s it proposed to replace itself, the person keeping it, is no overrule (16.17.6)', () => {
+    const h = history({ project: OTHER });
+    h.agree(13, 'behaviour');
+    const [kept, overturned, shrugged, proposed] = [newId(), newId(), newId(), newId()];
+    for (const entry of [kept, overturned, shrugged]) {
+      h.call('several', 'behaviour', {}, { blocksBuild: true, entry });
+      h.blindDraw(entry);
+    }
+    h.call('several', 'behaviour', {}, { entry: proposed });
+    h.raise('behaviour', '1', { entry: kept, replaces: kept, blind: true, blocksBuild: true, chain: DRAWN });
+    h.raise('behaviour', '2', { replaces: overturned, blind: true, blocksBuild: true, chain: DRAWN });
+    h.raise('behaviour', '1', { replaces: shrugged, blind: true, blocksBuild: true, chain: DRAWN, dontCare: true });
+    h.raise('behaviour', '2', { replaces: proposed, replacedBy: 'claude' });
+
+    const { questions, changed, overruled } = replay(h.events, { ...at, proposed: AT_15 });
+
+    assert.deepStrictEqual({ questions, changed, overruled }, { questions: 4, changed: 4, overruled: 1 });
   });
 
   it('a care entry stands for the questions decided after it was added alone, as the record holds it', () => {
@@ -704,6 +803,15 @@ describe('the replay decides each question as the rule did (16.15.2, 16.15.3)', 
     assert.strictEqual(replay(h.events, at).changed, 3);
   });
 
+  it('the whole log opens at the first of what it replays, a showing of a learned gate before any question among it', () => {
+    const h = history({ project: OTHER });
+    h.gate('plan gate', { picked: 'y', showing: SHOWINGS[0] });
+    h.agree(13, 'behaviour');
+    const { since, whole } = replay(h.events, at);
+
+    assert.deepStrictEqual({ since, whole }, { since: Date.parse(/** @type {string} */ (h.events[0].at)), whole: true });
+  });
+
   it('the period and the whole log\'s first day go by when each question was raised, never when its answer came', () => {
     const opened = FROZEN_MS - 31 * DAY;
     const h = history({ project: OTHER, start: FROZEN_MS - 20 * DAY });
@@ -764,6 +872,117 @@ describe('the replay decides each question as the rule did (16.15.2, 16.15.3)', 
     logHolding(h.events);
 
     assert.strictEqual(found(dir, ['--threshold', '15']), 'Since 31 Dec 2025, 15% would have asked you none of the 2 calls that went ahead as mine.');
+  });
+});
+
+describe('the replay at the learned gates (16.20.2, 3.2.7)', () => {
+  const at = Object.freeze({ project: { id: OTHER, name: 'Aircon' }, settings: DEFAULTS, proposed: AT_25, care: [], now: FROZEN_MS, blocking: false });
+
+  /**
+   * Ten answers of y at the plan gate in Aircon, each on a showing of its
+   * own, then one on `third`, then y and n on two showings more.
+   * @param {string} third
+   */
+  function answeredAt(third) {
+    const h = history({ project: OTHER });
+    for (const showing of SHOWINGS.slice(0, 10)) h.gate('plan gate', { picked: 'y', showing });
+    h.gate('plan gate', { picked: 'y', showing: third });
+    h.gate('plan gate', { picked: 'y', showing: SHOWINGS[10] });
+    h.gate('plan gate', { picked: 'n', showing: SHOWINGS[11] });
+    return h;
+  }
+
+  it('above the person\'s threshold: the showings they answered, each decided again over the gate\'s count as it stood before it — those it would have run as a step, and those among them the person picked otherwise at; one its blind ask draws shows at any threshold; a gate off the list, a step run, and a raise mid-build replay no showing', () => {
+    const offList = answeredAt(SHOWINGS[12]);
+    offList.gate('state lost gate', { picked: 'y' });
+    const stepped = answeredAt(SHOWINGS[12]);
+    stepped.step('plan gate', 'y', DRAWN_SHOWING);
+
+    assert.deepStrictEqual([replay(answeredAt(SHOWINGS[12]).events, at).gates, replay(answeredAt(DRAWN_SHOWING).events, at).gates, replay(offList.events, at).gates, replay(stepped.events, at).gates], [
+      { showings: 13, changed: 3, overruled: 1 },
+      { showings: 13, changed: 2, overruled: 1 },
+      { showings: 13, changed: 3, overruled: 1 },
+      { showings: 13, changed: 3, overruled: 1 },
+    ]);
+    assert.deepStrictEqual(replay(answeredAt(SHOWINGS[12]).events, { ...at, settings: { ...DEFAULTS, build_threshold: 0.2 }, proposed: { ...DEFAULTS, build_threshold: 0.25 }, blocking: true }).gates, NO_GATES);
+  });
+
+  it('below the person\'s threshold: the steps run, each decided again over the gate\'s count as it stood before it — those it would have shown, none where the setting proposed steps it too', () => {
+    const h = history({ project: OTHER });
+    for (let i = 0; i < 13; i += 1) h.gate('plan gate', { picked: 'y' });
+    for (const showing of SHOWINGS.slice(0, 3)) h.step('plan gate', 'y', showing);
+
+    assert.deepStrictEqual([replay(h.events, { ...at, proposed: AT_15 }).gates, replay(h.events, { ...at, proposed: { ...DEFAULTS, threshold: 0.195 } }).gates], [
+      { showings: 3, changed: 3, overruled: 0 },
+      { showings: 3, changed: 0, overruled: 0 },
+    ]);
+  });
+
+  it('a showing answered in words the separate call read as the step\'s row is no pick otherwise; one read as another row is', () => {
+    const h = history({ project: OTHER });
+    for (const showing of SHOWINGS.slice(0, 10)) h.gate('plan gate', { picked: 'y', showing });
+    h.gate('plan gate', { reading: 'y', showing: SHOWINGS[10] });
+    h.gate('plan gate', { reading: 'n', showing: SHOWINGS[11] });
+
+    assert.deepStrictEqual(replay(h.events, at).gates, { showings: 12, changed: 2, overruled: 1 });
+  });
+
+  it('each showing is decided over the gate\'s count for the model of the session it came in: steps on a model before the newest, its answers given on it, read in full (16.4.4)', () => {
+    const h = history({ project: OTHER, model: MODEL_LINES[0][1] });
+    for (let i = 0; i < 13; i += 1) h.gate('plan gate', { picked: 'y' });
+    for (const showing of SHOWINGS.slice(0, 3)) h.step('plan gate', 'y', showing);
+
+    assert.deepStrictEqual(replay(h.events, { ...at, proposed: AT_15 }).gates, { showings: 3, changed: 3, overruled: 0 });
+  });
+
+  it('over the last month, its showings alone: a gate\'s showings from before it replay none (P14)', () => {
+    const old = history({ project: OTHER, start: FROZEN_MS - 70 * DAY });
+    for (const showing of SHOWINGS) old.gate('plan gate', { picked: 'y', showing });
+    const recent = history({ project: OTHER, start: FROZEN_MS - 10 * DAY });
+    recent.agree(20, 'behaviour');
+    recent.gate('plan gate', { picked: 'y', showing: DRAWN_SHOWING });
+    const { whole, gates } = replay([...old.events, ...recent.events], at);
+
+    assert.deepStrictEqual({ whole, gates }, { whole: false, gates: { showings: 1, changed: 0, overruled: 0 } });
+  });
+
+  it('the replay screen says what the threshold would have changed at the gates — above the person\'s, the stops it would have gone on past and those they picked otherwise at; below, the stops it would have made, opening with the period where no question opens it', () => {
+    const { dir, id } = fumi();
+    const above = history({ project: id });
+    above.agree(13, 'behaviour');
+    for (const showing of SHOWINGS.slice(0, 10)) above.gate('plan gate', { picked: 'y', showing });
+    above.gate('plan gate', { picked: 'y', showing: SHOWINGS[10] });
+    above.gate('plan gate', { picked: 'n', showing: SHOWINGS[11] });
+    logHolding(above.events);
+    const less = inZone('UTC', () => screenOf(render(dir, ['matrix-replay', '--threshold', '25']), 'DISPLAY: matrix replay'));
+    const below = history({ project: id });
+    for (let i = 0; i < 13; i += 1) below.gate('plan gate', { picked: 'y' });
+    for (const showing of SHOWINGS.slice(0, 3)) below.step('plan gate', 'y', showing);
+    logHolding(below.events);
+    const more = inZone('UTC', () => screenOf(render(dir, ['matrix-replay', '--threshold', '15']), 'DISPLAY: matrix replay'));
+
+    assert.deepStrictEqual([less, more], [[
+      '25% IN PLACE OF YOUR 20%',
+      '  Since 31 Dec 2025, 25% would have skipped 3 questions; you\'d',
+      '  have overruled none of them.',
+      '  At the gates that learn from your answers, it would have gone',
+      '  on past 2 of the 12 stops you answered; you\'d have picked',
+      '  otherwise at 1 of them.',
+    ], [
+      '15% IN PLACE OF YOUR 20%',
+      '  No call of mine has gone ahead in Fumi yet.',
+      '  Since 31 Dec 2025, at the gates that learn from your answers,',
+      '  15% would have stopped at 3 of the 3 stops I went on past.',
+    ]]);
+  });
+
+  it('the replay screen says the threshold would have gone on past none of the stops answered where it changes none, naming no pick otherwise', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    for (const showing of SHOWINGS.slice(0, 3)) h.gate('plan gate', { picked: 'y', showing });
+    logHolding(h.events);
+
+    assert.strictEqual(found(dir, ['--threshold', '25']), 'You haven\'t answered a question in Fumi yet. Since 31 Dec 2025, at the gates that learn from your answers, 25% would have gone on past none of the 3 stops you answered.');
   });
 });
 

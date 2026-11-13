@@ -446,7 +446,7 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     fs.writeFileSync(logPath(), lines(...h.events));
     const call = /** @type {any} */ ({ sort: 'several' });
     const at = (/** @type {number} */ now) => ({
-      label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(dir), name: 'Mint' }, model: MODEL, now, question: UNDRAWN,
+      label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(dir), name: 'Mint' }, model: MODEL, now, chain: UNDRAWN,
     });
     const decided = [ruled(call, at(FROZEN_MS)).decision, ruled(call, { ...at(FROZEN_MS), model: 'claude-sonnet-5' }).decision, ruled(call, at(twelfth + 500)).decision];
     fs.writeFileSync(path.join(folder(), 'config', 'config.json'), JSON.stringify({ trust: { threshold: 0.15 } }));
@@ -458,14 +458,14 @@ describe('the rule as the decision point gives it, once switched on (decision-po
 
   /**
    * How `ruled` decides a call sorted `sort` labelled `label` in Mint, its
-   * log holding `h`'s events, on the question `question`, as of the frozen
-   * clock.
-   * @param {History} h @param {string|null} question @param {{sort?: 'one'|'several', label?: import('./labels.cjs').Label|null}} [call]
+   * log holding `h`'s events, on the question whose id is `chain`, as of the
+   * frozen clock.
+   * @param {History} h @param {string|null} chain @param {{sort?: 'one'|'several', label?: import('./labels.cjs').Label|null}} [call]
    */
-  function drawn(h, question, { sort = 'several', label = BEHAVIOUR } = {}) {
+  function drawn(h, chain, { sort = 'several', label = BEHAVIOUR } = {}) {
     fs.mkdirSync(path.dirname(logPath()), { recursive: true });
     fs.writeFileSync(logPath(), lines(...h.events));
-    const at = { label, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(project('mint')), name: 'Mint' }, model: MODEL, now: FROZEN_MS, question };
+    const at = { label, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(project('mint')), name: 'Mint' }, model: MODEL, now: FROZEN_MS, chain };
     return ruled(/** @type {any} */ ({ sort }), at);
   }
 

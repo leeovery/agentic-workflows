@@ -53,7 +53,7 @@ const fs = require('fs');
 const path = require('path');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { LOCK_TIMEOUT_MS, writeTextAtomic, withStateLockFile } = require('../kernel/manifest-io.cjs');
-const { TIME } = require('./event-fields.cjs');
+const { TIME, CARE_KINDS } = require('./event-fields.cjs');
 const { isId } = require('./ledger-ids.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 const { PERSON } = require('./user-files.cjs');
@@ -67,10 +67,6 @@ const { PERSON } = require('./user-files.cjs');
 
 // The layout this engine reads and writes (P5).
 const VERSION = 1;
-
-// The kinds a care entry may name, in the order the kind pick lists them
-// (16.5.6, F3): danger is left out, as it always asks.
-const CARE_KINDS = Object.freeze(/** @type {Kind[]} */ (['contract', 'scope', 'behaviour', 'look', 'words', 'process', 'internals']));
 
 // How many "don't care" answers in a row cue the drop (16.5.6, P6).
 const DONT_CARES = 3;
@@ -316,6 +312,6 @@ function dropCue(root, { id, name }, kind, care) {
 }
 
 module.exports = {
-  CARE, CARE_KINDS, personPath, readRecord, checkWritable, changeRecord, careOf, holdsPreference, withPreference, withoutPreference, withCare, careIn,
+  CARE, personPath, readRecord, checkWritable, changeRecord, careOf, holdsPreference, withPreference, withoutPreference, withCare, careIn,
   careEntries, recordToRead, dropCue,
 };

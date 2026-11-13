@@ -12,10 +12,10 @@
 // What it decides from (E1), as the raise gives it: the call; its label;
 // where it is made, and whether it blocks build work; whose the entry it
 // would replace is; the experiment still running that measures the question
-// it answers; Claude's mark that it always asks; whether it was sent
-// to check once already; the project; the model of the session making it;
-// the time; and the question's id, the same on every raise of it (E3), none
-// for a replacement.
+// it answers; Claude's mark that it always asks; the question's id, the
+// first entry of its chain, the same on every raise of it (E3), none for a
+// replacement; whether it was sent to check once already; the project; the
+// model of the session making it; and the time.
 //
 // Until the ask rule is switched on (29.19.2), every call asks (29.5.2),
 // with the rule's own reason. `ruled` is what it decides once switched: the
@@ -26,13 +26,8 @@
 // kind's, or a one-answer call's (16.3.7) — on a question, never a
 // replacement, which sets out Claude's proposals beside the decision as it
 // stands, so its rows tell where Claude leans, a blind question drawn at
-// the share (16.17.3, 16.17.9): the question's id turned into a number,
-// the first 32 bits of its SHA-1 as a fraction, as the measured replay
-// drew (trust/replay_rule.py), drawing blind under the share — the wider
-// share while the call's count holds few answers of the project's own at
-// the session's model (trust-settings.cjs) — so the same question draws
-// the same way however often it is raised, and no tally is kept
-// (16.17.4). Claude never chooses which calls are drawn.
+// the share over those counts (blind-draw.cjs, 16.17.3). Claude never
+// chooses which calls are drawn.
 //
 // Beside it, whether Claude offers to settle the rest of a topic, asked once
 // the person has answered a raise there and by the offer's own render
@@ -58,15 +53,20 @@
 // the build has a position (3.3.1) — as the gate's count stands for the
 // project and the session's model as of the time, at the person's
 // threshold, its showing's blind ask drawn. A gate off the list shows, and
-// nothing is read for it.
+// nothing is read for it. A surface's draw that runs the gate as a step
+// logs the step in the trust log (trust-events.cjs), its id drawn from the
+// project, the gate and the showing, so a redraw of the showing is read
+// once and another project's step on a showing drawn alike is read too,
+// the warnings of an append that fails on the step for its surface to
+// draw (16.13.3); a verb's check logs none.
 // ---------------------------------------------------------------------------
 
-const crypto = require('crypto');
 const { rule } = require('./ask-rule.cjs');
-const { kindOf } = require('./labeller.cjs');
 const { countsFrom, countsOf, gateCount, stateOf } = require('./trust-counts.cjs');
-const { projectId, modelOf, readPersonEvents } = require('./trust-log.cjs');
-const { trustSettings, BLIND_SHARE, WIDE_BLIND_SHARE, WIDE_UNTIL } = require('./trust-settings.cjs');
+const { drawsBlind } = require('./blind-draw.cjs');
+const { projectId, modelOf, readPersonEvents, record } = require('./trust-log.cjs');
+const { idFrom } = require('./ledger-ids.cjs');
+const { trustSettings } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
 const { learnedGate, heldFor, showingOf, shows, stepOf } = require('./learned-gates.cjs');
 const { heldShowing, holdShowing, endShowing } = require('./showing-hold.cjs');
@@ -75,12 +75,11 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 
 /** @typedef {import('./ask-rule.cjs').Ruling | 'blind'} Decision */
-/** @typedef {import('./trust-counts.cjs').Counts} Counts */
 /**
  * Where and when a call is decided, beside the call itself, and the id its
- * blind draw hashes: the question's, the same on every raise of it; none
- * for a replacement, which is never drawn blind.
- * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number, question: string|null}} At
+ * blind draw hashes: the question's, the first entry of its chain, the same
+ * on every raise of it; none for a replacement, which is never drawn blind.
+ * @typedef {Omit<import('./ask-rule.cjs').Context, 'project'|'counts'|'settings'|'care'> & {project: {root: string, name: string}, model: string|null, now: number, chain: string|null}} At
  */
 /** @typedef {import('./learned-gates.cjs').GateStep} GateStep */
 /**
@@ -93,9 +92,6 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 const BLIND = 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.';
-// The draw reads the first 32 bits of the id's SHA-1: 8 hex digits.
-const DRAW_DIGITS = 8;
-const DRAW_RANGE = 2 ** 32;
 
 /**
  * Whether the call goes to the person, and why.
@@ -104,23 +100,6 @@ const DRAW_RANGE = 2 ** 32;
  */
 function decide(_call, _at) {
   return { decision: 'ask', reason: EVERY_CALL_ASKS };
-}
-
-/** The question's id as a number from 0 up to 1 (16.17.4). @param {string} question */
-function drawOf(question) {
-  return parseInt(crypto.createHash('sha1').update(question).digest('hex').slice(0, DRAW_DIGITS), 16) / DRAW_RANGE;
-}
-
-/**
- * The share of the call's kind's calls — of the one-answer calls, for a
- * call sorted `one` — drawn blind: the wide share while its count holds
- * fewer than WIDE_UNTIL answers of the project's own at the session's
- * model.
- * @param {{sort: 'one'|'several'}} call @param {import('./labeller.cjs').Label} label @param {Counts} counts
- */
-function blindShare({ sort }, label, counts) {
-  const count = sort === 'one' ? counts.one : counts.kinds[/** @type {import('./event-fields.cjs').Kind} */ (kindOf(label))];
-  return count.own < WIDE_UNTIL ? WIDE_BLIND_SHARE : BLIND_SHARE;
 }
 
 /**
@@ -132,11 +111,11 @@ function blindShare({ sort }, label, counts) {
  * @param {import('./raise.cjs').Call} call @param {At} at
  * @returns {{decision: Decision, reason: string}}
  */
-function ruled(call, { project: { root, name }, model, now, question, ...at }) {
+function ruled(call, { project: { root, name }, model, now, chain, ...at }) {
   const counts = countsOf(root, { model, now });
   const ruling = rule(call, { ...at, project: { id: projectId(root), name }, counts, settings: trustSettings(), care: careEntries() });
-  if (ruling.decision !== 'proceed' || question === null) return ruling;
-  return drawOf(question) < blindShare(call, /** @type {import('./labeller.cjs').Label} */ (at.label), counts) ? { decision: 'blind', reason: BLIND } : ruling;
+  if (ruling.decision !== 'proceed') return ruling;
+  return drawsBlind(call, /** @type {import('./labeller.cjs').Label} */ (at.label), counts, chain) ? { decision: 'blind', reason: BLIND } : ruling;
 }
 
 /**
@@ -162,8 +141,8 @@ function gateStep(name, at) {
 /**
  * The gate `gate` at its place: shown on the showing held there, while it is
  * of the subject `key` names; else drawn on the showing its key tells, as
- * `decides` steps it, a surface's draw opening its hold where it shows — a
- * verb's check opens none.
+ * `decides` steps it, a surface's draw opening its hold where it shows and
+ * logging the step where it runs as one — a verb's check does neither.
  * @param {string} gate @param {GateAt} at @param {(showing: string, root: string) => GateStep} decides
  * @returns {GateStep}
  */
@@ -173,7 +152,25 @@ function drawn(gate, { cwd, place, key, check = false }, decides) {
   if (held !== null) return shows(gate, held.showing, { place, opened: held.opened });
   const showing = showingOf(place, key);
   const step = decides(showing, root);
-  return step.step === 'automatic' || check ? step : shows(gate, showing, { place, opened: holdShowing(root, gate, place, showing, key).opened });
+  if (check) return step;
+  if (step.step === 'automatic') return stepLogged(cwd, root, step);
+  return shows(gate, showing, { place, opened: holdShowing(root, gate, place, showing, key).opened });
+}
+
+/**
+ * The step `step` logged in the trust log from `cwd`, in the project at
+ * `root` (the header's): no answer, its id drawn from the project, the gate
+ * and the showing. Where the append fails, the event waits in the
+ * conversation for its next record, and the step carries the warnings.
+ * @param {string} cwd @param {string} root @param {GateStep & {step: 'automatic'}} step
+ * @returns {GateStep}
+ */
+function stepLogged(cwd, root, step) {
+  const { gate, row, showing } = step;
+  /** @type {string[]} */
+  const warnings = [];
+  record('step', { gate, row, showing }, { cwd, warnings, id: idFrom('step', projectId(root), gate, showing) });
+  return warnings.length === 0 ? step : { ...step, warnings };
 }
 
 /**

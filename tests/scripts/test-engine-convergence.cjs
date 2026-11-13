@@ -163,7 +163,7 @@ const due = (topic = TOPIC) => withEnv({ LEEWAY_CONFIG_DIR: config() }, () => of
 const switchedOn = (t) => t.mock.method(decisionPoint, 'convergenceDue', offerDue);
 
 /** The decision point as switching the rule on makes it, for the test `t`, on a question never drawn blind. @param {TestContext} t */
-const ruledOn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, question: UNDRAWN }));
+const ruledOn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: UNDRAWN }));
 
 /** Why the offer is refused on the note window, drawn as it comes with no word of the person's. */
 const notDue = () => refusedPristine(dir, ['render', 'convergence', AT], { env: conversation() }).error;

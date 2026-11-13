@@ -16,10 +16,11 @@
 // and refused without one or with another gate's; shown, the gate shown
 // keeps the showing it was drawn on and its hold; run as an automatic step,
 // it draws in the menu's place a DATA naming the row it ran and that row's
-// `next`, and the row's one-line report under a marker that does not stop
-// (3.2.9, 6.6.14). Its gate is never shown, the one shown before it goes (gate.cjs),
-// and nothing goes to `gate` (E13). Any other MENU is drawn as it is, its
-// name looked up and nothing read.
+// `next`, with the warnings of logging the step where its append failed
+// (16.13.3), and the row's one-line report under a marker that does not
+// stop (3.2.9, 6.6.14). Its gate is never shown, the one shown before it
+// goes (gate.cjs), and nothing goes to `gate`. Any other MENU is drawn as
+// it is, its name looked up and nothing read.
 // ---------------------------------------------------------------------------
 
 const { wrap } = require('../../kernel/render.cjs');
@@ -522,17 +523,18 @@ function section(name, instruction, body, step) {
     const given = step === undefined ? '' : `, not as ${step.gate}'s`;
     throw new Error(`${gateName(name)}: a learned gate is drawn as the decision point steps it${given} — decision-point.cjs gateStep`);
   }
-  return step.step === 'automatic' ? automaticStep(learned, step.row) : sectionOf(name, instruction, body, step);
+  return step.step === 'automatic' ? automaticStep(learned, step.row, step.warnings) : sectionOf(name, instruction, body, step);
 }
 
 /**
  * The learned gate `gate` run as an automatic step on its row `row`, in its
- * menu's place: a DATA naming the gate, the row and the row's `next`, then
- * the row's report. The menu's rows are taken, so no gate is shown.
- * @param {string} gate @param {string} row
+ * menu's place: a DATA naming the gate, the row and the row's `next`, and
+ * the `warnings` of logging it, then the row's report. The menu's rows are
+ * taken, so no gate is shown.
+ * @param {string} gate @param {string} row @param {string[]} [warnings]
  * @returns {string}
  */
-function automaticStep(gate, row) {
+function automaticStep(gate, row, warnings = []) {
   const taken = collected;
   collected = null;
   shown = null;
@@ -543,7 +545,7 @@ function automaticStep(gate, row) {
     throw new Error(`${gate}: row ${row} runs as no automatic step — learned-gates.cjs reports each row that does, and its menu draws it`);
   }
   const next = taken.next.get(option) ?? null;
-  return dataSection([`automatic step: ${gate}`, `ran: ${row}`, `next: ${JSON.stringify(next)}`])
+  return dataSection([`automatic step: ${gate}`, `ran: ${row}`, `next: ${JSON.stringify(next)}`, ...warnings.map((warning) => `warning: ${warning}`)])
     + sectionOf('DISPLAY: automatic step', AUTOMATIC_STEP_INSTRUCTION, report);
 }
 

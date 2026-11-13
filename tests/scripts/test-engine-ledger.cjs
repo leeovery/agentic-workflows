@@ -100,7 +100,7 @@ function parked(question, fields = {}) {
       rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
       lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
     },
-    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: false, ...fields,
+    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...fields,
   };
 }
 
@@ -184,7 +184,7 @@ describe('the events and their schemas', () => {
       [...HEADER, 'entry', 'rules'],
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed', 'given'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
-      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'went_ahead', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model', 'blocks_build', 'replaced_by', 'always', 'blind'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'went_ahead', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model', 'blocks_build', 'replaced_by', 'always', 'measured', 'chain', 'blind'],
       [...HEADER, 'task', 'parks'],
       [...HEADER, 'lines', 'files'],
     ]);
@@ -207,21 +207,21 @@ describe('the events and their schemas', () => {
     assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
-  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none — the park holding that task open asked-blind too, parking it, naming none gone ahead; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, and a mark a question always asks by, or none; a task taken off its questions names the task and the parks', () => {
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none — the park holding that task open asked-blind too, parking it, naming none gone ahead; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, a mark a question always asks by, or none, the experiment still running that measures its question, or none, and its question\'s id the blind draw hashes, or none; a task taken off its questions names the task and the parks', () => {
     const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
     const fact = { ...park, call: { ...park.call, rows: [], lean: null, why: null, sort: null } };
     const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3', parks: [newId()] };
     assert.deepStrictEqual(validEvent(fact), fact);
     assert.deepStrictEqual(validEvent(unparked), unparked);
-    const replacing = { ...park, question: null, replaces: newId(), reason: 'was-wrong' };
+    const replacing = { ...park, question: null, replaces: newId(), reason: 'was-wrong', chain: null };
     assert.deepStrictEqual(validEvent(park), park);
     assert.deepStrictEqual(validEvent(replacing), replacing);
     assert.deepStrictEqual(validEvent({ ...park, task: null }), { ...park, task: null });
     const labelled = { ...park, label: { labeller: 'claude-sonnet-5-5', answers: Array(12).fill(false) } };
     assert.deepStrictEqual(validEvent(labelled), labelled);
-    const decidedFrom = { ...replacing, blocks_build: false, replaced_by: 'your-call', always: 'live-server' };
+    const decidedFrom = { ...replacing, blocks_build: false, replaced_by: 'your-call', always: 'live-server', measured: 'E2.1' };
     assert.deepStrictEqual(validEvent(decidedFrom), decidedFrom);
-    const ahead = { ...replacing, reason: 'asked-blind', task: null, went_ahead: '2.3', blind: true };
+    const ahead = { ...replacing, reason: 'asked-blind', task: null, went_ahead: '2.3', chain: park.chain, blind: true };
     assert.deepStrictEqual(validEvent(ahead), ahead);
     const held = { ...ahead, task: '2.3', went_ahead: null };
     assert.deepStrictEqual(validEvent(held), held);
@@ -244,6 +244,8 @@ describe('the events and their schemas', () => {
       [{ ...park, blocks_build: null }, /its blocks_build is not true or false$/],
       [{ ...park, replaced_by: 'builder' }, /its replaced_by is not one of person, claude, your-call, dont-care, carried, or null$/],
       [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, or null$/],
+      [{ ...park, measured: 'the timing experiment' }, /its measured is not an experiment's id, or null$/],
+      [{ ...park, chain: 'Q1' }, /its chain is not an entry id, or null$/],
       [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],
       [{ ...fact, question: null, replaces: newId(), reason: 'was-wrong' }, /a fact parked answers a question, never proposes a replacement/],
       [{ ...fact, blind: true }, /a fact parked is never blind: it has no answer of Claude's to hold back/],

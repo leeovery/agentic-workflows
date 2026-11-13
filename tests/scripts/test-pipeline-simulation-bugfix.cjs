@@ -22,8 +22,10 @@
 // opening. And a bugfix whose investigation's gates the person has always
 // said yes at, the decision point stepping them as it will once the learned
 // gates are switched on: the plan, the check-in and the conclude each run as
-// a learned step, the conclude's yes standing over a call the person changed,
-// and ready to build, its count as long, stopping before any code.
+// a learned step, logged as one, the conclude's yes standing over a call the
+// person changed, and ready to build, its count as long, stopping before any
+// code; then the replay of a lower threshold, which would have stopped at
+// each of those steps.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -43,6 +45,7 @@ const {
   investigationCache, rootCaused, reported, validated, fixDirected, concluded,
 } = require('./pipeline-world.cjs');
 const { history, lines, DAY } = require('./trust-world.cjs');
+const { trustLines } = require('./pipeline-oracle.cjs');
 const decisionPoint = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/decision-point.cjs'));
 const { TRUST_LOG } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 
@@ -197,7 +200,7 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.map((d) => d.text), ['The save writes a null that nothing checks.', 'Rework saving as a feature']);
   });
 
-  it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan, check-in and conclude gates each run as a learned step, nothing answered at them, the conclude\'s yes standing over the fix the person changed; ready to build, as long answered alike, still stops before any code', async (t) => {
+  it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan, check-in and conclude gates each run as a learned step, nothing answered at them, each logged as a step, the conclude\'s yes standing over the fix the person changed; ready to build, as long answered alike, still stops before any code; and a lower threshold\'s replay would have stopped at each step', async (t) => {
     // Each showing told by its place alone, so the run draws as the unit's
     // name says, whatever time its recap is staged at: none blind here.
     const wu = 'save-null';
@@ -219,5 +222,9 @@ describe('pipeline simulation: bugfix', () => {
 
     specToBuild(sim, wu, [wu]);
     assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'ready to build']);
+    const steps = [...new Map(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'step').map((step) => [step.id, [step.gate, step.row]])).values()];
+    assert.deepStrictEqual(steps, [['plan gate', 'y'], ['check-in gate', 'y'], ['conclude gate', 'y']]);
+    const replayed = sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' }).replace(/\s+/g, ' ');
+    assert.ok(replayed.includes('at the gates that learn from your answers, 15% would have stopped at 3 of the 3 stops I went on past.'), replayed);
   });
 });

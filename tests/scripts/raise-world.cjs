@@ -72,12 +72,14 @@ function raiseHelpers(dir, config, call) {
 
   /**
    * A raise event as the trust log holds it, but its id and time: `own` over
-   * the pick of the lean, typed.
+   * the pick of the lean, typed, its question's id and the decision it would
+   * replace none.
    * @param {string|null} entry @param {Record<string, unknown>} [own]
    */
   const raiseEvent = (entry, own = {}) => ({
     v: 1, type: 'raise', project: project(), model: null, session: SESSION,
-    entry, kind: null, label: null, sort: call.sort, sealed: call.lean, answer: call.lean, via: 'typed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, blind: false, ...own,
+    entry, replaces: null, kind: null, label: null, sort: call.sort, sealed: call.lean, answer: call.lean, via: 'typed', with_text: false, reading: null, didnt_follow: false, dont_care: false,
+    blocks_build: false, replaced_by: null, always: null, measured: null, chain: null, blind: false, ...own,
   });
 
   /**

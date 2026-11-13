@@ -33,6 +33,12 @@
 //   entry on the kind added in this project, or dropped from it (16.5.6), on
 //   the person's pick of the row leading here on the care entries' screens;
 //   then the care entries' screen with the line reporting it.
+// - A care entry dropped, by either drop, is logged in the trust log once
+//   the record is written: its kind and when it was added, as the record
+//   held it, in this project (`care-drop`, trust-events.cjs) — so a replay
+//   reads the entries as they stood at each question (replay.cjs), while
+//   the record keeps what stands now. Where the append fails, the event
+//   waits in the conversation and the answer carries the warning.
 // - `render care [--added <kind> | --dropped <kind>]`: the care entries'
 //   screen, in the menus' frame (projections/care.cjs), the line reporting
 //   the entry just added or dropped above it — the dropped kind's count
@@ -53,16 +59,16 @@ const { stdinObject } = require('../kernel/call.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { type, LINE, listOf } = require('./event-fields.cjs');
+const { type, LINE, CARE_KINDS, listOf } = require('./event-fields.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { answeredTo } = require('./gate.cjs');
 const { projectName } = require('./state-checks.cjs');
-const { projectId, modelOf } = require('./trust-log.cjs');
+const { projectId, modelOf, record } = require('./trust-log.cjs');
 const { countsOf, stateOf } = require('./trust-counts.cjs');
 const { trustSettings } = require('./trust-settings.cjs');
 const { PROPOSAL } = require('./user-files.cjs');
 const {
-  CARE, CARE_KINDS, readRecord, checkWritable, changeRecord, careOf, careIn, holdsPreference, withPreference, withoutPreference, withCare,
+  CARE, readRecord, checkWritable, changeRecord, careOf, careIn, holdsPreference, withPreference, withoutPreference, withCare,
 } = require('./person.cjs');
 const { MENUS, drawMenu } = require('./menus.cjs');
 const { proposalScreen } = require('./projections/person.cjs');
@@ -226,25 +232,41 @@ function changed(record, { drop, preference, care, why = '', examples = [] }) {
   return withCare(record, drop ? others : [...careOf(record), { ...care, added: new Date().toISOString() }]);
 }
 
+/** The care entry `entry` drops from `record`, as the record holds it; null where it drops none. @param {PersonRecord} record @param {Entry} entry @returns {Care|null} */
+function droppedCare(record, { drop, care }) {
+  if (!drop || care === null) return null;
+  return careOf(record).find(({ project, kind }) => project === care.project && kind === care.kind) ?? null;
+}
+
 /**
  * The entry kept in, or dropped from, the record under its lock, checked
- * again there, in the words of `said`; its name, as the screens name it.
- * @param {string} said @param {Entry} entry
+ * again there, in the words of `said`, then a care entry dropped logged
+ * from `cwd` (the header's): its name, as the screens name it, and the
+ * warnings where the log could not be appended to.
+ * @param {string} cwd @param {string} said @param {Entry} entry
+ * @returns {{named: string, warnings: string[]}}
  */
-function write(said, entry) {
-  return changeRecord((record) => {
-    checkStanding(said, record, entry);
-    return { record: changed(record, entry), answer: entryNamed(entry) };
+function write(cwd, said, entry) {
+  const { named, dropped } = changeRecord((held) => {
+    checkStanding(said, held, entry);
+    return { record: changed(held, entry), answer: { named: entryNamed(entry), dropped: droppedCare(held, entry) } };
   });
+  /** @type {string[]} */
+  const warnings = [];
+  if (dropped !== null) record('care-drop', { kind: dropped.kind, added: dropped.added }, { cwd, warnings });
+  return { named, warnings };
 }
+
+/** What a verb answers, with the warnings where there are any. @param {Record<string, unknown>} answer @param {string[]} warnings */
+const warned = (answer, warnings) => (warnings.length > 0 ? { ...answer, warnings } : answer);
 
 /**
  * The person's yes on the proposal held (the header's): kept, or dropped,
  * then let go.
- * @param {boolean} drop
+ * @param {string} cwd @param {boolean} drop
  * @returns {Answered}
  */
-function yesTo(drop) {
+function yesTo(cwd, drop) {
   const verb = drop ? 'drop' : 'keep';
   const said = `person ${verb}`;
   const session = sessionOf(said);
@@ -253,9 +275,9 @@ function yesTo(drop) {
   if (!answeredTo(session, [PROPOSAL_GATE[verb]], ['person', verb], held.at)) {
     throw new Error(`${said}: the person has not said yes to "${entryNamed(held)}" — only their y/yes on its screen ${drop ? 'drops' : 'keeps'} it, and nothing is written`);
   }
-  const named = write(said, held);
+  const { named, warnings } = write(cwd, said, held);
   fs.rmSync(heldPath(session), { force: true });
-  return { answer: { [drop ? 'dropped' : 'kept']: named }, screen: '' };
+  return { answer: warned({ [drop ? 'dropped' : 'kept']: named }, warnings), screen: '' };
 }
 
 /**
@@ -289,10 +311,10 @@ function cared(cwd, drop, kind) {
   if (!answeredTo(session, CARE_GATES, ['person', verb, '--care', picked], null)) {
     throw new Error(`${said}: the person has not picked "${entryNamed({ preference: null, care })}" to ${drop ? 'drop' : 'add'} — only their pick on the care entries' screens, render care, leads here, and nothing is written`);
   }
-  const named = write(said, { drop, preference: null, care });
+  const { named, warnings } = write(cwd, said, { drop, preference: null, care });
   /** @type {Next} */
   const next = { kind: 'engine', argv: ['render', 'care', drop ? '--dropped' : '--added', picked] };
-  return { answer: { [drop ? 'dropped' : 'kept']: named, next }, screen: '' };
+  return { answer: warned({ [drop ? 'dropped' : 'kept']: named, next }, warnings), screen: '' };
 }
 
 /**
@@ -301,7 +323,7 @@ function cared(cwd, drop, kind) {
  * @returns {(cwd: string, args: string[]) => Answered}
  */
 const answer = (drop) => (cwd, args) => {
-  if (args.length === 0) return yesTo(drop);
+  if (args.length === 0) return yesTo(cwd, drop);
   if (args.length === 2 && args[0] === '--care') return cared(cwd, drop, args[1]);
   throw new Error(`Usage: engine ${drop ? DROP_USAGE : KEEP_USAGE}`);
 };

@@ -8,12 +8,14 @@
 // first added names that version and the default a line written before it
 // takes. An event's line is read against the fields its version holds, in
 // their order, and nothing else. The kinds of question (16.11.3), the marks
-// a question always asks by (19.4.20, 19.4.22), a row's key, a model's id
-// and the labeller's label (16.11.5) are named here too, since both streams
-// carry them.
+// a question always asks by (19.4.20, 19.4.22), an experiment's id, a row's
+// key, a model's id and the labeller's label (16.11.5) are named here too,
+// since both streams carry them; and the kinds a care entry names, which the
+// trust log and the record of the person (person.cjs) both carry.
 // ---------------------------------------------------------------------------
 
 const { isObject } = require('../kernel/manifest-io.cjs');
+const { EXPERIMENT_ID_PATTERN } = require('../kernel/manifest-schema.cjs');
 const { isId } = require('./ledger-ids.cjs');
 
 /**
@@ -103,6 +105,10 @@ const KINDS = Object.freeze(['process', 'danger', 'contract', 'scope', 'look', '
 
 /** A kind of question (16.11.3). @typedef {'process'|'danger'|'contract'|'scope'|'look'|'words'|'behaviour'|'internals'} Kind */
 
+// The kinds a care entry may name, in the order the kind pick lists them
+// (16.5.6, F3): danger is left out, as it always asks.
+const CARE_KINDS = Object.freeze(/** @type {Kind[]} */ (['contract', 'scope', 'behaviour', 'look', 'words', 'process', 'internals']));
+
 // The marks Claude gives a question that always asks, as `raise --always`
 // takes them: a design problem (19.4.22), or testing against a live server
 // (19.4.20).
@@ -111,6 +117,10 @@ const ALWAYS_MARKS = Object.freeze(['design-problem', 'live-server']);
 /** A mark that only makes a question ask. @typedef {'design-problem'|'live-server'} Always */
 
 const ALWAYS_MARK = oneOf(...ALWAYS_MARKS);
+
+// An experiment's id, as its unit's manifest keys it: `E{n}`, or a
+// sub-experiment's `E{n}.{m}` (4.11.15).
+const EXPERIMENT = type('an experiment\'s id', (v) => typeof v === 'string' && EXPERIMENT_ID_PATTERN.test(v));
 
 // A Claude model's id, as the API names it — never an alias, never words.
 const MODEL = type('a model id', (v) => typeof v === 'string' && v.length <= 64 && /^claude-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v));
@@ -158,4 +168,4 @@ function readFields(value, fields, v, name) {
   return { event };
 }
 
-module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, ALWAYS_MARKS, ALWAYS_MARK, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };
+module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, CARE_KINDS, ALWAYS_MARKS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };

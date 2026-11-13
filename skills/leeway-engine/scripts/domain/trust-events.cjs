@@ -25,7 +25,10 @@
 // - raise: a question raised to the person (16.9) — the ledger entry the
 //   answer landed as, but for a keep of Claude's call gone ahead while a
 //   blind question waited, that call, the entry the person agreed with
-//   (16.17.6, raise.cjs); the question's kind (16.11) and the label it was
+//   (16.17.6, raise.cjs); the decision it would replace, by its entry — on
+//   a blind question drawn on Claude's call gone ahead, that call, so a
+//   replay reads an answer against it as overruling the call — null for a
+//   question's answer; the question's kind (16.11) and the label it was
 //   composed from, Claude's sort of it as a call with one defensible answer
 //   or several (16.3.7), and the row of Claude's sealed answer; then the
 //   answer, and whether the person didn't follow, which leaves no answer,
@@ -38,12 +41,16 @@
 //   the builder's; and what the decision point decided the call from that
 //   its label does not hold, as the raise sealed it, so a replay of the
 //   rule over the log decides as it did: whether it blocked build work, a
-//   task parking on it as it was raised (16.4.7);
-//   whose the decision it would replace was — who decided it, or as the
-//   person's keep of it since was given, theirs or their "don't care" —
-//   null for a question's answer (16.5.7);
-//   Claude's mark that it always asks, null for none (19.4.20, 19.4.22);
-//   and when the rule decided it, as sealed: as it was raised in the
+//   task parking on it as it was raised (16.4.7); whose the decision it
+//   would replace was — who decided it, or as the person's keep of it since
+//   was given, theirs or their "don't care" — null for a question's answer
+//   (16.5.7); Claude's mark that it always asks, null for none (19.4.20,
+//   19.4.22); the experiment still running that measured its question, by
+//   its id, null for none (9.1.11); and the question's id its blind draw
+//   hashes, the first entry of its chain — on a blind question drawn on
+//   Claude's call gone ahead, the chain of the question that call answers —
+//   null on any other replacement, which is never drawn (16.17.4, E3); and
+//   when the rule decided it, as sealed: as it was raised in the
 //   conversation, or parked in the build — the event's own time is its
 //   answer's, which may come long after; and whether it was asked blind,
 //   Claude's answer held back (16.17.2), so an answer given cold reads as
@@ -59,7 +66,8 @@
 //   other. The rule decided it as it landed, the event's own time; and
 //   what else the rule reads asks whatever the counts, so a call that went
 //   ahead held none of it: no entry of the person's to replace, no mark of
-//   Claude's, no label sending it to check.
+//   Claude's, no experiment measuring its question, no label sending it to
+//   check.
 // - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
 //   a fix later, a real loss, or a skip — and the point it was given at.
 // - blind-draw: a call drawn as a blind question (16.17.5), with its kind,
@@ -77,6 +85,18 @@
 // - correction: the person's correction of a question's kind or of a
 //   departure's verdict (16.15.4), by its entry: what they corrected it to,
 //   the other null.
+// - step: a learned gate run as an automatic step (3.2.7, learned-gates.cjs),
+//   by the gate's name, the row it ran and the showing it ran on — no
+//   answer, so nothing that counts the person's answers reads it, and the
+//   gate's own bound least of all; a replay decides it again (replay.cjs).
+//   Its id is drawn from the gate and its showing, so a redraw of the same
+//   showing is read once (decision-point.cjs).
+// - care-drop: a care entry dropped from the record of the person (16.5.2,
+//   person-verbs.cjs), in the project the event is keyed by: its kind, and
+//   when it was added, as the record held it — hand-editable, so the event
+//   carries the time it removed, and a replay pairs the entry by its
+//   project, kind and that time, reading each entry as it stood (replay.cjs).
+//   The record keeps what stands now; the log, what stood.
 //
 // An answer, at a gate or to a raise, is how it came — `via`, pressed with
 // a click or typed at the keyboard (6.6.4): the mod says which, and with
@@ -118,7 +138,7 @@
 // ---------------------------------------------------------------------------
 
 const {
-  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, ALWAYS_MARK, MODEL, LABEL: A_LABEL, oneOf, nullable, field, event, addedIn, readFields,
+  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, CARE_KINDS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL: A_LABEL, oneOf, nullable, field, event, addedIn, readFields,
 } = require('./event-fields.cjs');
 const { DECIDED_BY } = require('./ledger-events.cjs');
 const { KEBAB_SLUG_PATTERN, BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
@@ -179,6 +199,7 @@ const SCHEMA = {
     ]),
     raise: event([
       field('entry', nullable(ID)),
+      field('replaces', nullable(ID)),
       field('kind', KIND),
       field('label', LABEL),
       field('sort', SORT),
@@ -190,6 +211,8 @@ const SCHEMA = {
       field('blocks_build', FLAG),
       field('replaced_by', nullable(oneOf(...DECIDED_BY))),
       field('always', nullable(ALWAYS_MARK)),
+      field('measured', nullable(EXPERIMENT)),
+      field('chain', nullable(ID)),
       field('raised', TIME),
       field('blind', FLAG),
     ]),
@@ -200,6 +223,8 @@ const SCHEMA = {
     'position-switch': event([field('unit', SLUG), field('to', oneOf(...BUILD_POSITIONS))]),
     convergence: event([field('unit', SLUG), field('topic', SLUG)]),
     correction: event([field('entry', ID), field('kind', KIND), field('verdict', nullable(oneOf(...JUDGED)))]),
+    step: event([field('gate', GATE), field('row', KEY), field('showing', SHOWING)]),
+    'care-drop': event([field('kind', oneOf(...CARE_KINDS)), field('added', TIME)]),
   },
 };
 
