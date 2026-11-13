@@ -13,11 +13,11 @@
 //   within each, numbered across the kinds in that order (18.7.3). An
 //   item's date is its file name's, never the file's time, which a clone
 //   resets.
-// - The archived items, the latest to leave first (18.7.11): one an
-//   `inbox close` recorded, closed by the unit whose work resolved it,
-//   named as the start menu names a unit, or closed with no unit
-//   (18.6.10), on the day it closed; any other archived on the day
-//   the state branch took it into the archive, a day unknown while that is
+// - The archived items, the latest to leave first, by the time each left
+//   (18.7.11): one an `inbox close` recorded, closed by the unit whose work
+//   resolved it, named as the start menu names a unit, or closed with no
+//   unit (18.6.10), on the day it closed; any other archived on the day the
+//   state branch took it into the archive, a day unknown while that is
 //   uncommitted.
 // ---------------------------------------------------------------------------
 
@@ -111,20 +111,20 @@ function storeItem(cwd, list, given, archived) {
 }
 
 /**
- * The day the state branch last took each archived file in, by its path in
+ * When the state branch last took each archived file in, by its path in
  * the state; none for one it holds no commit of.
  * @param {string} cwd @returns {Map<string, string>}
  */
-function archiveDays(cwd) {
-  const log = isolatedGit(stateRoot(cwd)).tryRun(['log', '--no-renames', '--diff-filter=A', '--relative', '--format=@%cs', '--name-only', '--', ARCHIVED]) ?? '';
+function archiveTimes(cwd) {
+  const log = isolatedGit(stateRoot(cwd)).tryRun(['log', '--no-renames', '--diff-filter=A', '--relative', '--format=@%cI', '--name-only', '--', ARCHIVED]) ?? '';
   /** @type {Map<string, string>} */
-  const days = new Map();
-  let day = '';
+  const times = new Map();
+  let time = '';
   for (const line of log.split('\n')) {
-    if (line.startsWith('@')) day = line.slice(1);
-    else if (line !== '' && !days.has(line)) days.set(line, day);
+    if (line.startsWith('@')) time = line.slice(1);
+    else if (line !== '' && !times.has(line)) times.set(line, time);
   }
-  return days;
+  return times;
 }
 
 /** An archived item's place in the state, as the record and git name it. @param {PickupItem} item */
@@ -139,17 +139,21 @@ const archivedRel = ({ folder, path: file }) => `${folder}/${path.basename(file)
 function archivedItems(cwd) {
   const items = combinedInbox(discoverInbox(cwd).archived);
   const record = closures(cwd);
-  const days = items.every((item) => Object.hasOwn(record, archivedRel(item))) ? new Map() : archiveDays(cwd);
-  /** @param {PickupItem} item @returns {Left} */
+  const times = items.every((item) => Object.hasOwn(record, archivedRel(item))) ? new Map() : archiveTimes(cwd);
+  /** How an item left, and when, null where that is not known. @param {PickupItem} item @returns {{left: Left, at: string|null}} */
   const leftOf = (item) => {
     const closure = record[archivedRel(item)];
-    if (closure === undefined) return { closed: false, by: null, on: days.get(`${ARCHIVED}/${archivedRel(item)}`) ?? null };
-    return { closed: true, by: closure.unit === null ? null : titlecase(closure.unit), on: closure.at.slice(0, 10) };
+    if (closure === undefined) {
+      const at = times.get(`${ARCHIVED}/${archivedRel(item)}`) ?? null;
+      return { left: { closed: false, by: null, on: at?.slice(0, 10) ?? null }, at };
+    }
+    return { left: { closed: true, by: closure.unit === null ? null : titlecase(closure.unit), on: closure.at.slice(0, 10) }, at: closure.at };
   };
+  const when = (/** @type {string|null} */ at) => (at === null ? 0 : Date.parse(at));
   return items
-    .map((item) => ({ ...item, left: leftOf(item) }))
-    .sort((a, b) => (b.left.on ?? '').localeCompare(a.left.on ?? '') || a.n - b.n)
-    .map((item, i) => ({ ...item, n: i + 1 }));
+    .map((item) => ({ item, ...leftOf(item) }))
+    .sort((a, b) => when(b.at) - when(a.at) || a.item.n - b.item.n)
+    .map(({ item, left }, i) => ({ ...item, left, n: i + 1 }));
 }
 
 /**

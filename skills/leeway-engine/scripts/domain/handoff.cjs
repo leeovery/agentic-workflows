@@ -134,12 +134,6 @@ function finishedEpic(cwd, unit) {
   return manifest.work_type === 'epic' && manifest.status === 'completed';
 }
 
-/**
- * New work's seeds, comma-joined as discovery splits them: live inbox items,
- * every one on disk, and waiting roadmap items, `roadmap:{item}` — none
- * twice, none holding the quote discovery reads them inside.
- * @param {string} cwd @param {string} seeds
- */
 /** A place, and the most specific name in it where there is one. @param {string} place @param {string|null} [name] */
 function at(place, name = null) {
   return name === null ? place : `${place} · ${name}`;

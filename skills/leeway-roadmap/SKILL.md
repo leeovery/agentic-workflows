@@ -28,7 +28,7 @@ The answer goes to `gate`; follow its `next`. The DATA names each number's item;
 
 ## Adding an Item
 
-`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a small mechanical change. The horizon is the person's: where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation.
+`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a small mechanical change. The horizon is the one they named, else Load **[choosing-a-horizon.md](../leeway-shared/references/choosing-a-horizon.md)** with names = `{name}`.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin roadmap

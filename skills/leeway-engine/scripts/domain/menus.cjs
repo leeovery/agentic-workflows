@@ -11,10 +11,9 @@
 //   All work — at the unit it is drawn for, the epic's menu, or at the
 //   roadmap; and the keys of its rows, `#` standing for every numbered row,
 //   each told by its help file beside its projection (23.2.4,
-//   projections/help.cjs) — none until its screen is drawn; and its help:
-//   the label of its help row, and, where its help is not the plain one,
-//   its heading, its closing line and the rows of its own, each with its
-//   next (23.2.3). Help is a gate of its own, `help`, drawn for a menu.
+//   projections/help.cjs); and its help: the label of its help row, and,
+//   where its help is not the plain one, its heading, its closing line and
+//   the rows of its own, each with its next (23.2.3). Help is a gate of its own, `help`, drawn for a menu.
 // - The frame: a menu's render draws its TITLE where it has one, what it
 //   shows above its question as a text block, and its MENU — the statement
 //   it makes under the rule, where it makes one, wrapped to the pane as its
@@ -90,12 +89,12 @@ const QUESTION = 'What would you like to do?';
 const HELP_LABEL = 'What this menu is for, row by row';
 
 /**
- * A menu as the registry holds it, its rows' keys those `keys` names — none
- * until its screen is drawn — its help the plain one but where `help` says.
- * @param {string} id @param {string} gate @param {string} named @param {Arrival} arrival @param {Partial<MenuHelp>} [help] @param {string[]} [keys]
+ * A menu as the registry holds it, its rows' keys those `keys` names, its
+ * help the plain one but where `help` says.
+ * @param {string} id @param {string} gate @param {string} named @param {Arrival} arrival @param {string[]} keys @param {Partial<MenuHelp>} [help]
  * @returns {Menu}
  */
-const registered = (id, gate, named, arrival, help = {}, keys = []) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze(keys), help: Object.freeze({ label: HELP_LABEL, ...help }) });
+const registered = (id, gate, named, arrival, keys, help = {}) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze(keys), help: Object.freeze({ label: HELP_LABEL, ...help }) });
 
 /** The start menu's help: "■ Help", the walk through Leeway reached from it, which the start skill carries on into (23.2.3). @type {Partial<MenuHelp>} */
 const START_HELP = Object.freeze({
@@ -107,18 +106,18 @@ const START_HELP = Object.freeze({
 
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */
 const MENUS = Object.freeze({
-  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', START_HELP, [NUMBERED, 'p', 's', 't', 'r', 'e', 'v', 'm']),
-  'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit', {}, [NUMBERED, 'e', 's', 'd', BACK]),
-  triage: registered('triage', 'triage', 'triage', 'none', {}, ['w', 'r', 'a', 'c', 'v', BACK]),
-  archived: registered('archived', 'archived items', 'the archived items', 'none', {}, [NUMBERED, BACK]),
-  'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none', {}, ['u', 'd', BACK]),
-  roadmap: registered('roadmap', 'roadmap', 'the roadmap', 'roadmap', {}, ['w', 'n', 'm', 'a', 'p', BACK]),
-  manage: registered('manage', 'manage', 'manage', 'none', {}, [NUMBERED, BACK]),
-  'manage-unit': registered('manage-unit', 'manage unit', 'managing the unit', 'none', {}, ['p', 'o', 'c', 'r', BACK]),
-  closed: registered('closed', 'closed units', 'the closed units', 'none', {}, [NUMBERED, BACK]),
-  verdicts: registered('verdicts', 'verdicts', 'the verdict queue', 'none', { label: 'What this screen is for, row by row' }, ['n', 'f', 'l', 'b']),
-  care: registered('care', 'care entries', 'the care entries', 'none', { label: 'What this screen is for, row by row' }, ['n', 'd', 'b']),
-  matrix: registered('matrix', 'matrix', 'the matrix', 'none', { label: 'What this screen is for, row by row' }, ['t', 'u', 'c', BACK]),
+  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', [NUMBERED, 'p', 's', 't', 'r', 'e', 'v', 'm'], START_HELP),
+  'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit', [NUMBERED, 'e', 's', 'd', BACK]),
+  triage: registered('triage', 'triage', 'triage', 'none', ['w', 'r', 'a', 'c', 'v', BACK]),
+  archived: registered('archived', 'archived items', 'the archived items', 'none', [NUMBERED, BACK]),
+  'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none', ['u', 'd', BACK]),
+  roadmap: registered('roadmap', 'roadmap', 'the roadmap', 'roadmap', ['w', 'n', 'm', 'a', 'p', BACK]),
+  manage: registered('manage', 'manage', 'manage', 'none', [NUMBERED, BACK]),
+  'manage-unit': registered('manage-unit', 'manage unit', 'managing the unit', 'none', ['p', 'o', 'c', 'r', BACK]),
+  closed: registered('closed', 'closed units', 'the closed units', 'none', [NUMBERED, BACK]),
+  verdicts: registered('verdicts', 'verdicts', 'the verdict queue', 'none', ['n', 'f', 'l', 'b'], { label: 'What this screen is for, row by row' }),
+  care: registered('care', 'care entries', 'the care entries', 'none', ['n', 'd', 'b'], { label: 'What this screen is for, row by row' }),
+  matrix: registered('matrix', 'matrix', 'the matrix', 'none', ['t', 'u', 'c', BACK], { label: 'What this screen is for, row by row' }),
 });
 
 /** The menu a render names, refused where none is. @param {string|undefined} id @returns {Menu} */
@@ -155,7 +154,7 @@ function checkRow(m, { key, next }) {
   const at = `${m.id}: row ${key}`;
   if (next === undefined || next === null) throw new Error(`${at} leads nowhere — every row of a menu carries its next`);
   if (key === HELP || key === BACK) throw new Error(`${at} is the frame's own — h/help is added to every menu, and b/back is the screen's back`);
-  if (!m.keys.includes(registeredKey(key))) throw new Error(`${at} is not among the keys ${m.id} registers: ${m.keys.join(', ') || 'none'}`);
+  if (!m.keys.includes(registeredKey(key))) throw new Error(`${at} is not among the keys ${m.id} registers: ${m.keys.join(', ')}`);
 }
 
 /** A row drawn as a menu's rows are, its next recorded. @param {MenuRow} row */

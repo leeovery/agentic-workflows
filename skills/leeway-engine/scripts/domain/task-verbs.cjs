@@ -116,7 +116,7 @@ const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.c
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-const { resolveDriver, settingOf, needsRefusal } = require('./drivers.cjs');
+const { resolveDriver, chosenDriver, settingOf, needsRefusal } = require('./drivers.cjs');
 const { ignoreInState, withIgnored } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
@@ -680,12 +680,12 @@ function goesOn(parked, { phases, ready }, lets) {
 /**
  * `read` against a copy of the tracker's store, each of its files read
  * whole once — a store kept in one file, read as it stood at one moment:
- * no writer lock taken, nothing set up or written into the state, the copy
- * removed after.
+ * no writer lock taken, nothing set up or written into the state — the
+ * driver read as things stand, never set — the copy removed after.
  * @template T @param {string} cwd @param {(driver: TaskDriver, root: string) => T} read @returns {T}
  */
 function withStoreCopy(cwd, read) {
-  const driver = /** @type {TaskDriver} */ (resolveDriver(cwd, 'task').driver);
+  const driver = /** @type {TaskDriver} */ (chosenDriver(cwd, 'task').driver);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-store-'));
   try {
     for (const file of driver.storeFiles()) {

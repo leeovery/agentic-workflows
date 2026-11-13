@@ -48,7 +48,7 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
   };
   const committedPaths = () => stateGit(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
 
-  it('moves every note off the inbox into the product\'s notes under its inbox name and lands every item — kind from the folder, origin the file stem, the note the one source — under one commit (4.S34)', () => {
+  it('moves every note off the inbox into the product\'s notes under its inbox name and lands every item — kind from the folder, origin the file stem, the note the one source — under one commit, each answered with the line that reports it (4.S34, 18.8.11)', () => {
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
     const res = runOk(dir, batch([
       { name: 'dark-mode', horizon: 'later', summary: 'a dark theme', note: IDEA },
@@ -57,9 +57,9 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
     ]));
 
     assert.deepStrictEqual(res.added, [
-      { name: 'dark-mode', horizon: 'later', kind: 'idea' },
-      { name: 'login-crash', horizon: 'later', kind: 'bug' },
-      { name: 'loyalty', horizon: 'v1', kind: 'idea' },
+      { name: 'dark-mode', horizon: 'later', kind: 'idea', said: 'On the roadmap: "Dark Mode" → later.' },
+      { name: 'login-crash', horizon: 'later', kind: 'bug', said: 'On the roadmap: "Login Crash" → later.' },
+      { name: 'loyalty', horizon: 'v1', kind: 'idea', said: 'On the roadmap: "Loyalty" → v1.' },
     ]);
     assert.deepStrictEqual(res.notes_moved, [{ from: IDEA, to: IDEA_NOTE }, { from: BUG, to: BUG_NOTE }]
       .map(({ from, to }) => ({ from: path.join(dir, from), to: path.join(dir, to) })));

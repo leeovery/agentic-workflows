@@ -279,11 +279,13 @@ describe('engine commit', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): capture y');
   });
 
-  it('rejects a missing message, missing scope, a scope it has no more, and bad work unit names', () => {
+  it('rejects a missing message, missing scope, a flag it has no more — with a unit or alone, never taken for one — an argument past the unit, and bad work unit names', () => {
     assert.match(engineFails(dir, ['commit', 'payments']).error, /Usage: engine commit/);
-    for (const scope of [['--plan', 'auth'], ['--imports']]) {
-      assert.match(engineFails(dir, ['commit', 'payments', '-m', 'msg', ...scope]).error, new RegExp(`unexpected argument "${scope[0]}"`));
+    for (const args of [['payments', '-m', 'msg', '--plan', 'auth'], ['payments', '-m', 'msg', '--imports'], ['--roadmap', '-m', 'msg']]) {
+      const flag = /** @type {string} */ (args.find((arg) => /^--(plan|imports|roadmap)$/.test(arg)));
+      assert.strictEqual(engineFails(dir, ['commit', ...args]).error, `unknown flag "${flag}"`);
     }
+    assert.strictEqual(engineFails(dir, ['commit', 'payments', 'auth', '-m', 'msg']).error, 'unexpected argument "auth"');
     assert.match(engineFails(dir, ['commit', '-m', 'msg']).error, /Usage: engine commit/);
     assert.match(engineFails(dir, ['commit', 'payments', '--inbox', '-m', 'msg']).error, /Usage: engine commit/);
     assert.match(engineFails(dir, ['commit', '../escape', '-m', 'msg']).error, /invalid work unit name/);

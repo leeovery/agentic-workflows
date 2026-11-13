@@ -61,16 +61,14 @@ describe('pipeline simulation: epic postpone', () => {
     assert.deepStrictEqual(second.postponed, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     sim.run(['topic', 'postpone', wu, 'decided', '--horizon', 'later']);
 
-    // The lifecycle, the sequencing flag, and the epic's own completion all
-    // walk past a topic that has left; the menu sets each aside under the
-    // horizon it waits on.
+    // The lifecycle and the epic's own completion walk past a topic that
+    // has left; the menu sets each aside under the horizon it waits on.
     const d = discoveryMap();
     assert.deepStrictEqual(setAside(), ['├─ Decided — postponed · roadmap later', '├─ Fresh One — postponed · roadmap next', '└─ Talking — postponed · roadmap later']);
     assert.strictEqual(d.map.find((r) => r.name === 'talking').lifecycle, 'postponed');
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.talking`, 'status']), 'postponed');
     sim.refuses(['enter', 'discussion', wu, 'talking'], /^the topic "talking" is postponed to the roadmap — pulling it forward goes through the epic menu/);
     assert.strictEqual(derivations.phaseStatus(sim.manifest(wu), 'discussion'), 'completed', 'the postponed conversation under way no longer holds the phase in progress');
-    assert.strictEqual(d.needs_sequencing, false, 'a postponed row carries no order and asks for none');
 
     // The roadmap owns it: cancel and reactivate refuse, a send lands.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);

@@ -651,7 +651,7 @@ Authority splits at the pull: un-pulled items take every edit (`edit`, `rename`,
 ```bash
 engine roadmap state
 engine roadmap add <name> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--origin <tag>] [--source <path> …]   # its response's `said`, the line that reports it: On the roadmap: "{Name}" → {horizon}. (18.8.11)
-engine roadmap add-batch --file <items.json>       # entries {name, horizon, summary, kind?, origin?, sources?, note?} — atomic, one commit; a note moves off the inbox to .product/notes/
+engine roadmap add-batch --file <items.json>       # entries {name, horizon, summary, kind?, origin?, sources?, note?} — atomic, one commit; a note moves off the inbox to .product/notes/; its response's `added` each item with its `said`, as add's
 engine roadmap edit <name> --summary <text>        # any join state (cosmetic on a pulled item)
 engine roadmap rename <old> <new>                  # any join state; every field carried, join included
 engine roadmap move <name> --horizon <h> [--from <wu>|<wu>.discovery.<topic> [--then <item>,…]]   # a waiting item re-bucketed, or an archived one brought back; JIT-creates the horizon; with --from, an item a cancel or a removal put back on no horizon, answering its way on as `next` — the pick for the first of --then's items still on none, the rest carried, else where it goes

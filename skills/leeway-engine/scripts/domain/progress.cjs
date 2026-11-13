@@ -4,7 +4,7 @@
 // Domain ring: how far a unit has come, as a menu's row says it (18.2.2) —
 // the start menu's row for each unit, and an epic menu's build row.
 //
-// - Its phase is where the board has it come to (board-standing.cjs).
+// - Its phase is where the unit has come to (unit-phases.cjs).
 // - A phase with a measure says how far: an epic's discovery its topics on
 //   the map; an epic's discussion its topics decided of all ("discussion, 1
 //   of 4 topics decided"), each in the words All work says it in

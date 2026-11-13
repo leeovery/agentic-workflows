@@ -367,7 +367,7 @@ function joinState(cwd, item) {
  * @property {number} [item_total]
  * @property {boolean} [horizon_created]
  * @property {string} [said]  add: the line that reports the item put on its horizon
- * @property {{name: string, horizon: string, kind: RoadmapKind}[]} [added]
+ * @property {{name: string, horizon: string, kind: RoadmapKind, said: string}[]} [added]  add-batch: each item put on its horizon, with the line that reports it
  * @property {{from: string, to: string}[]} [notes_moved]  add-batch: the notes off the inbox
  * @property {string[]} [horizons_created]
  * @property {string} [summary]
@@ -595,6 +595,9 @@ function ensureHorizon(roadmap, horizon, position) {
   return true;
 }
 
+/** The line that reports an item put on its horizon (18.8.11). @param {string} name @param {string} horizon */
+const putOn = (name, horizon) => `On the roadmap: "${titlecase(name)}" → ${horizon}.`;
+
 /**
  * Add one item — the JIT birth path: the node and the named horizon are
  * created when missing. Refuses a duplicate name; never touches existing
@@ -624,7 +627,7 @@ function addRoadmapItem(cwd, name, { horizon, summary, kind = DEFAULT_KIND, orig
     if (sources.length > 0) item.sources = sources;
     roadmap.items[name] = item;
     /** @type {RoadmapOpResult} */
-    const out = { op: 'add', name, horizon, kind: /** @type {RoadmapKind} */ (kind), origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length, said: `On the roadmap: "${titlecase(name)}" → ${horizon}.` };
+    const out = { op: 'add', name, horizon, kind: /** @type {RoadmapKind} */ (kind), origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length, said: putOn(name, horizon) };
     if (horizonCreated) out.horizon_created = true;
     return out;
   });
@@ -792,7 +795,7 @@ function applyBatch(cwd, manifest, entries, said) {
   /** @type {RoadmapOpResult} */
   const out = {
     op: 'add-batch',
-    added: resolved.map((e) => ({ name: e.name, horizon: e.horizon, kind: e.kind })),
+    added: resolved.map((e) => ({ name: e.name, horizon: e.horizon, kind: e.kind, said: putOn(e.name, e.horizon) })),
     horizons_created: horizonsCreated,
     horizons: [...roadmap.horizons],
     item_total: Object.keys(roadmap.items).length,

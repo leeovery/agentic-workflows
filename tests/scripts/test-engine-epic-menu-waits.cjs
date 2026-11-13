@@ -15,8 +15,9 @@
 // struck by a hold there alone; the review's row standing aside for
 // finish; and the board at the menu listing what the menu lists (20.8.5),
 // no phase's banner counting the epic's own, each phase taking its own of
-// the list (20.2.4), and All work counting as the start menu's row does
-// (20.16). The screen itself: test-engine-epic-menu.cjs.
+// the list (20.2.4), a feature's affected topic counted in the phase its
+// door hands into (12.15.4), and All work counting as the start menu's row
+// does (20.16). The screen itself: test-engine-epic-menu.cjs.
 //
 // Layer: verb — the render through the engine in process, and the screen
 // composed in process over the waits given. World: the decided suites'
@@ -32,7 +33,7 @@ const path = require('path');
 const { ok, output, screenOf, sectionOf, readManifest } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT: FUMI, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
-const { SOLO, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers, decidedBoardHelpers } = require('./decided-world.cjs');
+const { SOLO, SOLO_AT, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers, decidedBoardHelpers } = require('./decided-world.cjs');
 const { topicDoor, door, wait } = require('./waits-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -191,6 +192,28 @@ describe('what waits, drawn first (18.4.2)', () => {
     ]);
   });
 
+  it('12.15.4, 20.2.4: a feature\'s decided topic a changed answer holds waits in the phase the feature is in — its specification\'s banner and WAITING ON YOU listing it, then its build\'s banner counting it', () => {
+    const split = answeredIn(dir(), SOLO_AT, 'Is a refund ever split?', { ...MADE, by: 'person', text: 'Never split.' });
+    const asked = writeIn(dir(), 'ask', SOLO_AT, [], { ...MADE, text: 'Does a receipt list refunds?' });
+    writeIn(dir(), 'decide', SOLO_AT, ['--answers', asked, '--relies-on', split.answer], { ...MADE, text: 'One line per refund.', why: 'Refunds are never split.' });
+    const manifest = readManifest(dir(), SOLO);
+    createManifest(dir(), SOLO, { ...manifest, phases: { ...manifest.phases, discussion: { items: { [SOLO]: { status: 'completed' } } } } });
+    writeIn(dir(), 'replace', `${SOLO}.specification`, ['--replaces', split.answer, '--reason', 'changed-mind'], { ...MADE, by: 'person', drops: ['never split'], text: 'Split when asked.', why: 'The person wants it so.' });
+    at([SOLO, 'specification', SOLO]);
+    const inSpec = board();
+    createManifest(dir(), SOLO, { ...readManifest(dir(), SOLO), build: { position: 'auto' }, cut: { phases: [{ name: 'All', goal: 'Pay.', scenarios: [], sections: ['1'], relies_on: [] }] } });
+    ok(dir(), ['task', 'phase', SOLO, '1', '--title', 'All']);
+    at([SOLO, 'implementation', SOLO]);
+    const inBuild = board();
+
+    assert.deepStrictEqual([inSpec.banner.facts.at(-1), inSpec.view.waiting.map((/** @type {{kind: string, text: string}} */ { kind, text }) => [kind, text]), inBuild.view.kind, inBuild.banner.facts.at(-1)], [
+      { text: '1 waiting on you', needs: true },
+      [['affected', 'Solo: a decision it relies on changed']],
+      'build',
+      { text: '1 waiting on you', needs: true },
+    ]);
+  });
+
   it('20.16, 18.2.3: All work counts what waits in the epic as the start menu\'s row does — the decided topic a replaced answer holds, never the verdict, which waits on the queue', () => {
     affected();
     const manifest = readManifest(dir(), FUMI);
@@ -205,12 +228,26 @@ describe('what waits, drawn first (18.4.2)', () => {
     assert.deepStrictEqual(WAIT_KINDS.filter((kind) => holds({ kind })), ['map', 'ready', 'conclude', 'finish', 'gap', 'raise']);
   });
 
-  it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises and its conclude, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics, its affected ones and its verdicts no phase\'s', () => {
-    const list = WAIT_KINDS.map((kind) => ({ kind, id: kind, text: kind, page: null }));
-    /** The kinds a session in `phase` takes, over a list holding every kind. @param {string} phase */
-    const takes = (phase) => phaseWaiting(/** @type {any} */ ({ place: { phase }, once: () => list })).map(({ kind }) => kind);
+  /** The phases a session can be in. */
+  const PHASES = ['discovery', 'discussion', 'experiment', 'investigation', 'specification', 'implementation', 'review'];
 
-    assert.deepStrictEqual(Object.fromEntries(['discovery', 'discussion', 'experiment', 'investigation', 'specification', 'implementation', 'review'].map((phase) => [phase, takes(phase)])), {
+  /**
+   * The ids a session in each phase takes of `waits` in a unit of `type`,
+   * by the phase.
+   * @param {string} type @param {Wait[]} waits
+   */
+  function takenIn(type, waits) {
+    const listed = waits.map((given) => ({ wait: given, line: { kind: given.kind, id: given.id, text: given.text, page: null } }));
+    /** @param {string} phase */
+    const takes = (phase) => phaseWaiting(/** @type {any} */ ({ place: { phase }, manifest: { work_type: type }, once: () => listed })).map(({ id }) => id);
+    return Object.fromEntries(PHASES.map((phase) => [phase, takes(phase)]));
+  }
+
+  it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises and its conclude, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics, its affected ones and its verdicts no phase\'s, whichever phase their door hands into', () => {
+    const intoSpec = door('leeway-specification-process', 'epic', FUMI);
+    const every = WAIT_KINDS.map((kind) => wait(kind, kind, kind, ['decided', 'affected'].includes(kind) ? intoSpec : VERDICTS));
+
+    assert.deepStrictEqual(takenIn('epic', every), {
       discovery: ['map'],
       discussion: [],
       experiment: [],
@@ -218,6 +255,20 @@ describe('what waits, drawn first (18.4.2)', () => {
       specification: ['map', 'ready', 'gap'],
       implementation: ['finish', 'question', 'raised'],
       review: ['finish', 'question', 'raised'],
+    });
+  });
+
+  it('12.15.4, 20.2.4: in a unit not an epic, a decided topic a changed answer holds counts in the phase its door hands into — the phase the unit is in — and in no other', () => {
+    const affectedInto = (/** @type {string} */ phase) => wait('affected', phase, 'Solo: a decision it relies on changed', door(`leeway-${phase}-process`, 'feature', SOLO), SOLO);
+
+    assert.deepStrictEqual(takenIn('feature', ['specification', 'implementation', 'review'].map(affectedInto)), {
+      discovery: [],
+      discussion: [],
+      experiment: [],
+      investigation: [],
+      specification: ['specification'],
+      implementation: ['implementation'],
+      review: ['review'],
     });
   });
 

@@ -1,6 +1,6 @@
 # Choosing a Horizon
 
-*Shared reference. Loaded by [backlogging.md](backlogging.md) and leeway's [triage.md](../../leeway/references/triage.md).*
+*Shared reference. Loaded by [backlogging.md](backlogging.md), leeway's [triage.md](../../leeway/references/triage.md), [leeway-roadmap](../../leeway-roadmap/SKILL.md) and leeway-discovery's [ending-the-session.md](../../leeway-discovery/references/ending-the-session.md).*
 
 ---
 
