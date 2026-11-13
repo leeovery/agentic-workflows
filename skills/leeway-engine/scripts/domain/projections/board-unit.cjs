@@ -34,8 +34,10 @@
 //   decisions, an investigation its hypotheses, the specification its
 //   sections with the build phases cut
 //   once complete and its passes reported until then, the build its cut's
-//   tasks done — of them while it runs — a quick-fix's implementation its
-//   fixes done of all, building while under way, the review its round and,
+//   tasks done — of them while it runs, as its menu row says it while the
+//   tracker holds none of them yet (progress.cjs) — a quick-fix's
+//   implementation its fixes done of all, building while under way, the
+//   review its round and,
 //   once recorded, where it stands as the banner says it, a quick-fix's
 //   review once asked for among them (board-standing.cjs); a phase under
 //   way says what it is doing, an investigation validating while either
@@ -73,7 +75,7 @@ const { seedsOf, fromRoadmap, seedOrigin } = require('../inbox.cjs');
 const { dayBefore } = require('../dates.cjs');
 const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile, quickFixBuild, tasksBegun, startedOn } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
-const { buildView, buildMoments } = require('./board-build.cjs');
+const { buildRead, buildMoments, untasked } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
@@ -320,9 +322,11 @@ function specWords(at) {
   return `${counted(areas, 'section')} · ${after}`;
 }
 
-/** The cut's tasks done, of them while the build runs, as the tab says them; the review's fix tasks are not the build's. @param {BoardAt} at */
+/** The cut's tasks done, of them while the build runs, as the tab says them, or the start menu's words before it has any; the review's fix tasks are not the build's. @param {BoardAt} at */
 function buildTasks(at) {
-  const cut = buildView(at).view.phases.filter(({ phase }) => phase <= cutLength(at.manifest));
+  const before = untasked(at);
+  if (before !== null) return before;
+  const cut = buildRead(at).view.phases.filter(({ phase }) => phase <= cutLength(at.manifest));
   const done = cut.reduce((sum, phase) => sum + phase.done, 0);
   return buildFinished(at.manifest) ? `${counted(done, 'task')} done` : `${done} of ${counted(cut.reduce((sum, phase) => sum + phase.total, 0), 'task')} done`;
 }
@@ -493,10 +497,4 @@ function unitBanner(at, view) {
   return { state: 'running', facts: [placeFact('epic'), placeFact(at.place.phase ?? 'at its menu'), fact(`${view.progress.decided} of ${view.progress.total} topics decided`)] };
 }
 
-/** How far an epic in its discussion has come, as All work says it: its topics decided of all. @param {Record<string, any>} manifest */
-function epicWords(manifest) {
-  const live = liveInOrder(manifest);
-  return `${live.filter((topic) => computeTopicLifecycle(manifest, topic).lifecycle === 'decided').length} of ${counted(live.length, 'topic')} decided`;
-}
-
-module.exports = { unitPage, phasePage, unitBanner, placeBanner, epicWords };
+module.exports = { unitPage, phasePage, unitBanner, placeBanner };

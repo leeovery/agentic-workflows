@@ -48,6 +48,11 @@
 // - Where the build stands is read from the unit's one read of the tracker
 //   (board.cjs), as the build's one reader of it reads it (build-entry.cjs);
 //   a task's page takes its task from that read.
+// - What waits on the person in the build is the phase's own of the unit's
+//   one list (board-standing.cjs), its questions among them.
+// - How far the build has come, as All work and the unit's tab say it, is
+//   the start menu's row's words while the tracker holds none of its tasks
+//   (progress.cjs), else its tasks done of all.
 // ---------------------------------------------------------------------------
 
 const { fact, placeFact } = require('../board-model.cjs');
@@ -68,12 +73,15 @@ const { REVIEWER_LETTERS } = require('../../kernel/reviewers.cjs');
 const { parseShownTask, taskName } = require('../task-id.cjs');
 const { counted } = require('./map.cjs');
 const { BUILDING_ROLES } = require('../brief-names.cjs');
+const { buildMeasure } = require('../progress.cjs');
 
 /** @typedef {import('../board-model.cjs').TaskLine} TaskLine */
 /** @typedef {import('../board-model.cjs').TaskState} TaskState */
 /** @typedef {import('../board-model.cjs').BuildPhase} BuildPhase */
 /** @typedef {import('../board-model.cjs').BuildView} BuildView */
+/** The build as drawn, all but what waits, and the questions a press can queue. @typedef {{view: Omit<BuildView, 'waiting'>, questions: Question[]}} BuildRead */
 /** @typedef {import('../board-model.cjs').Question} Question */
+/** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
 /** @typedef {import('../board-model.cjs').Fact} Fact */
 /** @typedef {import('../build-entry.cjs').BuildStanding} BuildStanding */
 /** @typedef {import('../build-entry.cjs').StandingTask} StandingTask */
@@ -199,14 +207,24 @@ const reviewStandingAt = (at) => at.once('review', () => reviewStanding(readingA
 const mergingAt = (at, standing) => standing.merging ?? (standing.finished ? reviewStandingAt(at).merging : null);
 
 /**
- * The build's This session (20.5.1–20.5.3) and the questions a press can
- * queue, from one read of where the build stands, drawn once a call
- * whichever tabs show it.
- * @param {BoardAt} at @returns {{view: BuildView, questions: Question[]}}
+ * The build as This session draws it (20.5.1–20.5.3), all but what waits
+ * on the person, and the questions a press can queue, from one read of
+ * where the build stands, drawn once a call whichever tabs read it.
+ * @param {BoardAt} at @returns {BuildRead}
  */
-const buildView = (at) => at.once('build-view', () => drawBuild(at));
+const buildRead = (at) => at.once('build-view', () => drawBuild(at));
 
-/** The build's This session, drawn (`buildView`'s). @param {BoardAt} at @returns {{view: BuildView, questions: Question[]}} */
+/**
+ * The build's This session: the build as drawn, and what waits on the
+ * person in it, the phase's own of the unit's one list (board-standing.cjs).
+ * @param {BoardAt} at @param {WaitingLine[]} waiting @returns {{view: BuildView, questions: Question[]}}
+ */
+function buildView(at, waiting) {
+  const { view, questions } = buildRead(at);
+  return { view: { ...view, waiting }, questions };
+}
+
+/** The build as drawn (`buildRead`'s). @param {BoardAt} at @returns {BuildRead} */
 function drawBuild(at) {
   const standing = standingAt(at);
   const merging = mergingAt(at, standing);
@@ -227,7 +245,6 @@ function drawBuild(at) {
         running: lines.filter(running).length,
         stopped: stoppedOf(at, standing),
       },
-      waiting: standing.waiting.map(({ question }) => question),
       phases,
     },
     questions: questionsOf(standing),
@@ -334,7 +351,7 @@ function taskPage(at, given) {
     reviews: reviewsOf(at, ref, account),
     calls: callsOf(at.cwd, ref),
     ran: ranOf(at.cwd, at.manifest, ref, task, criteria).ran,
-    questions: buildView(at).questions.filter(({ parks }) => parks.some(({ task: parked }) => parked === given)),
+    questions: buildRead(at).questions.filter(({ parks }) => parks.some(({ task: parked }) => parked === given)),
     fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, area, call, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, from: null, area, call, text }] : []))),
   };
 }
@@ -464,9 +481,17 @@ function buildMoments(at) {
   ];
 }
 
-/** How far the build has come, as All work and the unit's tab say it. @param {BuildView} view */
-const buildWords = ({ progress }) => `${progress.done} of ${counted(progress.total, 'task')} done`;
+/** How far the build has come while the tracker holds none of its tasks yet, as the start menu says it (progress.cjs); null once it holds one. @param {BoardAt} at */
+function untasked(at) {
+  return buildRead(at).view.phases.some(({ tasks }) => tasks.length > 0) ? null : buildMeasure(at.manifest);
+}
+
+/** How far the build has come, as All work says it: its tasks done of all, or the start menu's words before it has any. @param {BoardAt} at */
+function buildWords(at) {
+  const { progress } = buildRead(at).view;
+  return untasked(at) ?? `${progress.done} of ${counted(progress.total, 'task')} done`;
+}
 
 module.exports = {
-  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt, questionsOf, roundsRead,
+  buildRead, buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, untasked, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt, questionsOf, roundsRead,
 };

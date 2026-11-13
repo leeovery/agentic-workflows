@@ -55,7 +55,7 @@ const { phaseSkill } = require('../handoff.cjs');
 const { quickFixBuild, tasksBegun, topicTitle } = require('../derivations.cjs');
 const { nowOf } = require('../unit-phases.cjs');
 const { counted } = require('./map.cjs');
-const { buildView } = require('./board-build.cjs');
+const { buildRead } = require('./board-build.cjs');
 const { specLine } = require('./board-spec.cjs');
 const { raiseLine, CONCLUDE_LINE } = require('./board-investigation.cjs');
 const { closeWait } = require('./board-quick-fix.cjs');
@@ -172,7 +172,7 @@ const holds = ({ kind }) => HOLDING.includes(kind);
  * once a call.
  * @param {BoardAt} at @returns {boolean}
  */
-const tasksStopped = (at) => at.once('stopped', () => tasksBegun(at.manifest) && buildView(at).view.progress.stopped);
+const tasksStopped = (at) => at.once('stopped', () => tasksBegun(at.manifest) && buildRead(at).view.progress.stopped);
 
 /** How the phase the unit is in stands (the header's). @param {BoardAt} at @returns {PhaseStanding} */
 function standingOf(at) {

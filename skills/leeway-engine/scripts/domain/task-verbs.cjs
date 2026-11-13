@@ -678,7 +678,7 @@ function goesOn(parked, { phases, ready }, lets) {
  */
 
 /**
- * `read` against a copy of the tracker's store, each of its files read
+ * `read` against a copy of the tracker's store, each of its files there read
  * whole once — a store kept in one file, read as it stood at one moment:
  * no writer lock taken, nothing set up or written into the state — the
  * driver read as things stand, never set — the copy removed after.
@@ -688,7 +688,7 @@ function withStoreCopy(cwd, read) {
   const driver = /** @type {TaskDriver} */ (chosenDriver(cwd, 'task').driver);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-store-'));
   try {
-    for (const file of driver.storeFiles()) {
+    for (const file of driver.storeFiles().filter((name) => fs.existsSync(statePath(cwd, name)))) {
       const text = fs.readFileSync(statePath(cwd, file));
       fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
       fs.writeFileSync(path.join(root, file), text);

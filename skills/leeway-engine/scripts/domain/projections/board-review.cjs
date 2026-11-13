@@ -69,7 +69,7 @@ const { reposOf, landedOf } = require('../phase-checks.cjs');
 const { copiedTasks } = require('../task-verbs.cjs');
 const { quickFixBuild, FIXES_PHASE } = require('../derivations.cjs');
 const { acceptanceOf, fixScenarios } = require('../fix-acceptance.cjs');
-const { buildView, taskLine, standingAt, reviewStandingAt, readingAt, scenarioWording } = require('./board-build.cjs');
+const { buildRead, taskLine, standingAt, reviewStandingAt, readingAt, scenarioWording } = require('./board-build.cjs');
 const { tasksStopped } = require('./board-standing.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -267,7 +267,7 @@ function reviewView(at, waiting) {
   const standing = reviewStandingAt(at);
   const round = shownRound(standing);
   const record = standing.rounds[round - 1];
-  const build = buildView(at);
+  const build = buildRead(at);
   const built = standingAt(at).phases.flatMap(({ tasks }) => tasks).filter(({ status }) => status === 'done').length;
   return {
     view: {

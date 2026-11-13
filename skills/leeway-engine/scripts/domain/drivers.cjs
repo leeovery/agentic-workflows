@@ -111,7 +111,9 @@ const METHODS = Object.freeze({
  * `started` — also work in a root holding the store's files alone, copied
  * there for a read that must not wait on a writer (task-verbs.cjs), and
  * answer there as they would in the state root, writing nothing beyond what
- * `localFiles` names. `storeFiles` and `localFiles` name, from the root, the
+ * `localFiles` names, and in a root where the store is not set up yet —
+ * what set up means is the driver's — answer as a tracker holding nothing.
+ * `storeFiles` and `localFiles` name, from the root, the
  * files the state branch carries and the gitignore patterns of those the
  * tool keeps local. The engine owns the refusals: `list`, `tasks` and
  * `ready` answer null for a phase not written, `show` null for a task the

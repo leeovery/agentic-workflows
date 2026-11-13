@@ -192,7 +192,7 @@ describe('what waits, drawn first (18.4.2)', () => {
     ]);
   });
 
-  it('12.15.4, 20.2.4: a feature\'s decided topic a changed answer holds waits in the phase the feature is in — its specification\'s banner and WAITING ON YOU listing it, then its build\'s banner counting it', () => {
+  it('12.15.4, 20.2.4, 20.5.1: a feature\'s decided topic a changed answer holds waits in the phase the feature is in — its specification\'s banner and WAITING ON YOU listing it, then its build\'s', () => {
     const split = answeredIn(dir(), SOLO_AT, 'Is a refund ever split?', { ...MADE, by: 'person', text: 'Never split.' });
     const asked = writeIn(dir(), 'ask', SOLO_AT, [], { ...MADE, text: 'Does a receipt list refunds?' });
     writeIn(dir(), 'decide', SOLO_AT, ['--answers', asked, '--relies-on', split.answer], { ...MADE, text: 'One line per refund.', why: 'Refunds are never split.' });
@@ -206,11 +206,13 @@ describe('what waits, drawn first (18.4.2)', () => {
     at([SOLO, 'implementation', SOLO]);
     const inBuild = board();
 
-    assert.deepStrictEqual([inSpec.banner.facts.at(-1), inSpec.view.waiting.map((/** @type {{kind: string, text: string}} */ { kind, text }) => [kind, text]), inBuild.view.kind, inBuild.banner.facts.at(-1)], [
+    const listed = (/** @type {{view: {waiting: {kind: string, text: string}[]}}} */ { view }) => view.waiting.map(({ kind, text }) => [kind, text]);
+    assert.deepStrictEqual([inSpec.banner.facts.at(-1), listed(inSpec), inBuild.view.kind, inBuild.banner.facts.at(-1), listed(inBuild)], [
       { text: '1 waiting on you', needs: true },
       [['affected', 'Solo: a decision it relies on changed']],
       'build',
       { text: '1 waiting on you', needs: true },
+      [['affected', 'Solo: a decision it relies on changed']],
     ]);
   });
 

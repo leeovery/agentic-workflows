@@ -5,21 +5,20 @@
  *
  * Each fix is drawn as the build draws a task, its line the build's own
  * (`views/build.ts`), a press away from its page, its pair's rounds beneath
- * it. A question a fix's builder parked its task on waits as the build's
- * do, a press queueing it; a question Claude raised in the conversation,
- * and the close, are asked there. The facts line, which ends in where it
- * stands, wraps rather than lose those words at the edge.
+ * it. WAITING ON YOU is the build's: a question a fix's builder parked its
+ * task on, a press queueing it; a question Claude raised in the
+ * conversation, and the close, asked there. The facts line, which ends in
+ * where it stands, wraps rather than lose those words at the edge.
  */
 import { COLOUR, INDENT, MARK, blank, counted, dayOf, heading, prose, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
-import { taskLineOf, taskState, type TaskLine } from './build.ts'
+import { taskLineOf, taskState, waitingLines, type TaskLine, type Waiting } from './build.ts'
 import type { ViewDrawing } from './index.ts'
 import { header, section } from './words.ts'
 
 type Rounds = { sent_back: number; reading: number | null; passed: number | null; settled: boolean }
 type Fix = TaskLine & { rounds: Rounds }
-type Waiting = { kind: string; id: string; text: string; page: string | null }
 type Replaced = { id: string; text: string; by: 'person' | 'claude'; unit_title: string }
 type FixRecord = { title: string; changed: string; why: string; leaves: string }
 
@@ -73,24 +72,6 @@ function factsLine(view: QuickFix, kit: Kit): Line {
   const count = doneOf(view.progress)
 
   return { key: 'qf:facts', wraps: true, parts: [{ text: standing.length === 0 ? count : `${count} · `, color: COLOUR.secondary }, ...standing] }
-}
-
-/**
- * WAITING ON YOU: the questions the fixes' builders parked them on, as the
- * build's, where any wait; then what is asked in the conversation — a
- * question Claude raised, and the close.
- */
-function waitingLines(view: QuickFix, kit: Kit): Line[] {
-  const asked = view.waiting.filter(({ kind }) => kind !== 'question')
-  const parked = view.waiting.some(({ kind }) => kind === 'question') ? kit.waiting() : []
-
-  return [
-    ...parked,
-    ...section(
-      heading('qf:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: `${asked.length} · asked in the conversation`, color: COLOUR.secondary }], kit.width),
-      asked.map(({ id, text }) => ({ key: `qf:waiting:${id}`, mark: { text: `${MARK.needs} `, color: COLOUR.needs }, wraps: true, parts: [{ text, color: COLOUR.body }] })),
-    ),
-  ]
 }
 
 const changeLines = (view: QuickFix, width: number): Line[] => [
@@ -201,7 +182,7 @@ const quickFixLines = (view: QuickFix, kit: Kit): Line[] => [
   ...header('qf', view.title, [{ text: ` · ${view.type}`, color: COLOUR.secondary }], whereOf(view), kit.width),
   factsLine(view, kit),
   blank('qf:head'),
-  ...waitingLines(view, kit),
+  ...waitingLines('qf:waiting', view.waiting, kit),
   ...changeLines(view, kit.width),
   ...fixesLines(view, kit),
   ...callLines(view, kit.width),

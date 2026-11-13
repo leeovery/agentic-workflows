@@ -14,6 +14,8 @@ const NOW = Date.parse('2026-10-21T15:00:00.000Z')
 
 const view = BUILD.view as BuildView
 
+const UNIT = 'token-aware-diff-sizing'
+
 const answered = (board: Board): Answer => ({ kind: 'board', board })
 
 /** The build with its view as `change` makes it. */
@@ -86,6 +88,25 @@ describe('the build\'s This session (20.5)', () => {
     ])
   })
 
+  test('20.5.1: what else of the phase waits on the person — a decided topic a changed answer holds — is asked in the conversation beneath the questions, opening its page', () => {
+    const affected = { kind: 'affected', id: UNIT, text: `${view.title}: a decision it relies on changed`, page: `topic:${UNIT}` }
+    const board = built(({ waiting }) => ({ waiting: [...waiting, affected] }))
+    const shown = paneDrawn(board, { now: NOW })
+    const at = shown.indexOf('WAITING ON YOU ───────────────── 1 · asked in the conversation')
+    const line = buildLines((board as { board: Board }).board.view, kitAt(NOW)).find(each => each.key === `build:waiting:${UNIT}`)
+
+    expect([shown.slice(at - 2, at + 3), line?.press]).toEqual([
+      [
+        '     parks 6.5 · waiting 10m                         ▸ discuss',
+        '',
+        'WAITING ON YOU ───────────────── 1 · asked in the conversation',
+        '⚑ Token-aware diff sizing: a decision it relies on changed',
+        '',
+      ],
+      `page:topic:${UNIT}`,
+    ])
+  })
+
   test('D6, D11: a build stopped ends its progress "⚑ stopped until you answer", the words whole, wrapped under its facts', () => {
     const stopped = built(({ progress }) => ({ progress: { ...progress, done: 62, running: 0, stopped: true } }))
     const kit = kitAt(NOW)
@@ -136,6 +157,6 @@ describe('the build\'s This session (20.5)', () => {
   test('20.5.4: a press on a task opens its page, read by its number in the unit it is of', () => {
     const line = buildLines(view, kitAt(NOW)).find(each => each.key === 'task:6.4')
 
-    expect(pressed(HOME, line?.press ?? '', BUILD, VIEWS)?.pages).toEqual([{ ref: 'task:6.4', unit: 'token-aware-diff-sizing', over: null }])
+    expect(pressed(HOME, line?.press ?? '', BUILD, VIEWS)?.pages).toEqual([{ ref: 'task:6.4', unit: UNIT, over: null }])
   })
 })

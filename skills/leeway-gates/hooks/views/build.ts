@@ -2,17 +2,22 @@
  * The build's This session (20.5.1–20.5.3): its header; the progress bar
  * with the tasks done of all, the phase of the cut and how many run, ending
  * "⚑ stopped until you answer" once nothing can go on (D6), the line
- * wrapping under its facts (D11); WAITING ON YOU where the kit draws it;
- * then every phase of the cut, and of the review's fixes past it, in order —
- * a complete one folded to its heading, one not yet written saying so, the
- * others listing their tasks, each a press away from its page.
+ * wrapping under its facts (D11); WAITING ON YOU, the phase's own of the
+ * unit's one list: the questions as the kit draws them, then every other
+ * wait, asked in the conversation, by its words, each opening its page where
+ * it has one; then every phase of the cut, and of the review's fixes past
+ * it, in order — a complete one folded to its heading, one not yet written
+ * saying so, the others listing their tasks, each a press away from its
+ * page.
  *
- * A task's line, its mark and its state, are the review's fix tasks' too
- * (`views/review.ts`).
+ * A task's line, its mark and its state, are the review's fix tasks' too,
+ * and WAITING ON YOU the review's and a quick-fix's (`views/review.ts`,
+ * `views/quick-fix.ts`).
  */
 import { BAR_CELLS, COLOUR, MARK, blank, folding, heading, progressBar, spread, titledLine, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
+import { section } from './words.ts'
 
 /** A task's state on the board, as the engine's model holds it. */
 export type TaskState = 'done' | 'building' | 'in-review' | 'at-gate' | 'behind' | 'failed' | 'waits' | 'after' | 'not-started' | 'closed'
@@ -30,13 +35,37 @@ export type BuildPhase = {
   tasks: TaskLine[]
 }
 
+/** What waits on the person in the phase, as the engine's model holds it. */
+export type Waiting = { kind: string; id: string; text: string; page: string | null }
+
 /** The build's This session, as the engine's model holds it. */
 export type BuildView = View & {
   kind: 'build'
   title: string
   type: string
   progress: { done: number; total: number; phase: number; phases: number; running: number; stopped: boolean }
+  waiting: Waiting[]
   phases: BuildPhase[]
+}
+
+/** WAITING ON YOU (the header's), its lines keyed under `key`. */
+export function waitingLines(key: string, waiting: readonly Waiting[], kit: Kit): Line[] {
+  const asked = waiting.filter(({ kind }) => kind !== 'question')
+  const parked = waiting.some(({ kind }) => kind === 'question') ? kit.waiting() : []
+
+  return [
+    ...parked,
+    ...section(
+      heading(key, { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: `${asked.length} · asked in the conversation`, color: COLOUR.secondary }], kit.width),
+      asked.map(({ id, text, page }) => ({
+        key: `${key}:${id}`,
+        mark: { text: `${MARK.needs} `, color: COLOUR.needs },
+        wraps: true,
+        parts: [{ text, color: COLOUR.body }],
+        ...(page === null ? {} : { press: pageKey(page) }),
+      })),
+    ),
+  ]
 }
 
 /** What a running task's state reads, its clock where it has one. */
@@ -154,7 +183,7 @@ export function buildLines(view: View, kit: Kit): Line[] {
     titledLine('build:head', { text: build.title, bold: true }, [{ text: ` · ${build.type} · build phase`, color: COLOUR.secondary }], kit.width),
     progressOf(build.progress),
     blank('build:head'),
-    ...kit.waiting(),
+    ...waitingLines('build:waiting', build.waiting, kit),
     ...build.phases.flatMap(phase => phaseLines(phase, kit)),
   ]
 }

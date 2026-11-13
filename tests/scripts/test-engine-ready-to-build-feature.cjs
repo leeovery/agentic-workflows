@@ -17,7 +17,9 @@
 // parked, the struck recorded, the topic decided and its close taken, with
 // the build begun — every line and candidate checked before anything is
 // written, the review page's marks among it, and landed only once the
-// review has settled (8.S31, 8.10.2, 8.10.11).
+// review has settled (8.S31, 8.10.2, 8.10.11). Between the yes and the
+// build's first task, nothing set up in the tracker yet, the board reads the
+// unit as the start menu's row does, writing nothing (20.16, 28.2.1).
 //
 // Layer: verb. World: the ready to build world's feature, and the same with
 // the person's changes of Claude's calls (ready-to-build-world.cjs), copied
@@ -29,9 +31,12 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { ok, output, refuses, refusedPristine, sectionOf, statePath, layout, readState, writeState, readManifest, stateGit, lastMessage } = require('./engine-harness.cjs');
+const path = require('path');
+const { ok, output, refuses, refusedPristine, sectionOf, statePath, layout, readState, writeState, readManifest, stateGit, lastMessage, treeSnapshot } = require('./engine-harness.cjs');
 const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 const { FEATURE, FEATURE_PHASE, SESSION, write, written, cut, closeReady, made, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented } = require('./ready-to-build-world.cjs');
+
+const { progressOf, progressWords } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/progress.cjs'));
 
 /** Each block of the screen's display, by its first line. @param {string} out */
 const blocks = (out) => sectionOf(out, 'DISPLAY: ready to build').split('\n\n').map((block) => block.split('\n')[0]);
@@ -163,5 +168,39 @@ describe('the one screen\'s yes (9.7.6, 8.S31)', () => {
     const marks = readBack({ s1: { m: commented('1-1-1', 'Midnight where?') } });
     assert.match(refuses(dir(), ['ready-to-build', 'yes', FEATURE, '--position', 'auto', '--marks', marks], { env: SESSION }).error, /^ready-to-build yes: a comment on the review page waits for Claude/);
     assert.deepStrictEqual([ledgerEvents().length, readManifest(dir(), FEATURE).phases.discussion.items[FEATURE].status], [before, 'in-progress']);
+  });
+});
+
+describe('the board between the yes and the build\'s first task (20.16, 28.2.1)', () => {
+  const dir = useReadyWorld(feature);
+  /** The board's view at `args`. @param {string[]} [args] */
+  const view = (args = []) => ok(dir(), ['board', SESSION.CLAUDE_CODE_SESSION_ID, ...args], { env: SESSION }).view;
+
+  /** The unit as the start menu's row says how far it has come, and as All work, its tab and This session draw it. */
+  function drawn() {
+    const [{ phase, standing }] = view(['--tab', 'all']).units;
+    const { words } = view(['--tab', 'unit', '--unit', FEATURE]).phases.find((/** @type {{phase: string}} */ row) => row.phase === 'build');
+    const here = view();
+    return {
+      menu: progressWords(progressOf(dir(), readManifest(dir(), FEATURE))),
+      all: `${phase}, ${standing}`,
+      tab: `build, ${words}`,
+      here: here.kind === 'build' ? `build, phase ${here.progress.phase} of ${here.progress.phases}, ${here.phases[0].state}` : here.kind,
+    };
+  }
+
+  it('reads the unit as the start menu does while the tracker holds none of its tasks, nothing set up there yet — after the yes and once the build is entered — and no read writes anything', () => {
+    ok(dir(), ['session', 'label', FEATURE, 'specification', FEATURE], { env: SESSION });
+    ok(dir(), ['ready-to-build', 'yes', FEATURE, '--position', 'step'], { env: SESSION });
+    const yes = treeSnapshot(dir());
+    const window = drawn();
+    const read = treeSnapshot(dir());
+    ok(dir(), ['enter', 'implementation', FEATURE], { env: SESSION });
+    const entry = treeSnapshot(dir());
+    const entered = drawn();
+
+    const menu = 'build, phase 1 of 1, not yet written';
+    assert.deepStrictEqual([window, entered], [{ menu, all: menu, tab: menu, here: 'spec' }, { menu, all: menu, tab: menu, here: 'build, phase 1 of 1, not-written' }]);
+    assert.deepStrictEqual([read, treeSnapshot(dir())], [yes, entry]);
   });
 });
