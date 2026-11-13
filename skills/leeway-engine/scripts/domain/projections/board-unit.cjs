@@ -78,7 +78,8 @@ const { roundWords } = require('./board-review.cjs');
 const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
 const { mapCount, textOf } = require('./board-discovery.cjs');
-const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, pastDiscovery } = require('./board-standing.cjs');
+const { waitingOn, standingOf, holds } = require('./board-standing.cjs');
+const { phasesAt, nowOf, closedOn, pastDiscovery } = require('../unit-phases.cjs');
 const { investigationView, investigationDoing, hypothesesCount, huntMoments } = require('./board-investigation.cjs');
 const { quickFixWords } = require('./board-quick-fix.cjs');
 
@@ -404,13 +405,13 @@ const sectionsPage = (at, phase, sections) => ({ kind: 'phase', unit: at.unit, t
 const PHASE_PAGES = Object.freeze({
   discovery: (at) => sectionsPage(at, 'discovery', seedSections(at)),
   discussion: (at) => sectionsPage(at, 'discussion', decisionSections(at)),
-  investigation: (at) => investigationView(at).view,
+  investigation: (at) => investigationView(at, waitingOn(at)).view,
 });
 
 /**
  * A phase on the unit's tab: where it stands — the phase the unit is in as
  * it stands — what its records hold, and the day it closed.
- * @param {BoardAt} at @param {Map<string, 'this'|'other'>} sessions @param {import('./board-standing.cjs').PhaseAt} held @returns {UnitPhase}
+ * @param {BoardAt} at @param {Map<string, 'this'|'other'>} sessions @param {import('../unit-phases.cjs').PhaseAt} held @returns {UnitPhase}
  */
 function phaseLine(at, sessions, { phase, reads, status, on }) {
   const session = sessionOf(sessions, [reads]);
@@ -429,7 +430,7 @@ function mapWords(at) {
  * An epic's phase while its discovery runs, before any topic exists:
  * discovery with the topics on its map, waiting on the person while the map
  * does; each after it with what it waits on.
- * @param {BoardAt} at @param {Map<string, 'this'|'other'>} sessions @param {import('./board-standing.cjs').PhaseAt} held @returns {UnitPhase}
+ * @param {BoardAt} at @param {Map<string, 'this'|'other'>} sessions @param {import('../unit-phases.cjs').PhaseAt} held @returns {UnitPhase}
  */
 function shapingPhase(at, sessions, { phase }) {
   const session = sessionOf(sessions, [phase]);

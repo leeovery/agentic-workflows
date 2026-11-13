@@ -24,7 +24,7 @@ const fs = require('fs');
 const { readManifest } = require('./engine-harness.cjs');
 const path = require('path');
 const {
-  Sim, mapTopics, sessionLog, send, decideTopic, mappedEpic, enterEntry, handoff, epicMenuAt, epicRow, epicKey, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
+  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, enterEntry, handoff, follow, epicMenuAt, epicRow, epicKey, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic', () => {
@@ -54,9 +54,10 @@ describe('pipeline simulation: epic', () => {
         { name: 'note-model', summary: 'What a note is', brief: briefDraft(sim, wu, 'note-model') },
         { name: 'sync', summary: 'Notes between Macs', brief: briefDraft(sim, wu, 'sync') },
       ],
+      parks: [{ name: 'fumi-sync', summary: 'A hosted sync service', horizon: 'later', sources: [`${wu}/discovery/session-001.md`] }],
     };
     sim.render(['approve-map', wu, '--file', sim.write('.leeway/.cache/scratch/staged-map.json', map)], { expect: 'content' });
-    const drawn = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args])).view;
+    const drawn = (/** @type {string[]} */ args) => sim.board(args).view;
     const [shaping] = drawn(['--tab', 'unit']).phases;
     const { phase, standing } = drawn(['--tab', 'all']).units.find((/** @type {{unit: string}} */ { unit }) => unit === wu);
     assert.deepStrictEqual([shaping.phase, shaping.words, phase, standing], ['discovery', '2 topics', 'discovery', '2 topics on the map'],
@@ -64,12 +65,28 @@ describe('pipeline simulation: epic', () => {
     const approved = approveTheMap(sim, wu, map);
     assert.deepStrictEqual(approved.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
     handoff(sim, `/leeway-continue-epic ${wu}`);
+    sim.handOver();
     const first = epicKey(sim, wu, 'note-model');
     assert.deepStrictEqual([first.key, first.recommended], ['1', true]);
-    const { now, lately: [moment] } = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID])).view;
+    const atMenu = drawn([]);
     const yes = readManifest(sim.dir, wu).phases.discovery.approved_at;
-    assert.deepStrictEqual([now, moment.kind, moment.detail], [{ phase: 'discussion', since: yes }, 'map-approved', '2 topics, 0 to the roadmap'],
+    assert.deepStrictEqual([atMenu.now, atMenu.lately[0].kind, atMenu.lately[0].detail], [{ phase: 'discussion', since: yes }, 'map-approved', '2 topics, 1 to the roadmap'],
       'S2, N8, 20.11.4: at its menu, the epic\'s discovery closed when the map\'s yes recorded its approval, the moment saying what the map took in');
+    assert.deepStrictEqual([atMenu.kind, atMenu.at_menu, atMenu.topics.map((/** @type {{topic: string, state: string}} */ { topic, state }) => [topic, state]), drawn(['--tab', 'all']).roadmap], [
+      'epic', true, [['note-model', 'next'], ['sync', 'not-started']], [{ horizon: 'later', items: [{ title: 'A hosted sync service', from: null }] }],
+    ], '20.S17: the map approved, the cleared conversation at the epic\'s menu shows its page, every topic not started and the first next, and All work\'s roadmap holds what the map parked');
+
+    epicPick(sim, wu, 'note-model');
+    enterEntry(sim, wu, 'discussion', 'note-model');
+    const inTopic = drawn([]);
+    const decided = discussed(sim, wu, 'note-model');
+    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
+    follow(sim, decided.next);
+    sim.handOver();
+    epicMenuAt(sim, wu);
+    const back = drawn([]);
+    assert.deepStrictEqual([[inTopic.kind, inTopic.topic], [back.kind, back.at_menu, back.topics[0].state]], [['discussion', 'note-model'], ['epic', true, 'decided']],
+      '20.S9: opened from the epic\'s menu, This session is the topic\'s discussion; back at the menu, the epic\'s page again');
   });
 
   it('epic: a message lands in the topic\'s one mailbox, raised at the entry and answered by the question it raised; one to the decided topic sets it back in progress', () => {

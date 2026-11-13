@@ -62,6 +62,24 @@ WAITING ON YOU ───────────────── 1 · asked in
     )
   })
 
+  test('20.S32: WAITING ON YOU lists what the epic\'s menu lists — a topic\'s decided and a decided topic a changed answer holds, each opening its topic, and a verdict, opening nothing', () => {
+    const waiting = [
+      { kind: 'decided', id: 'note-window', text: 'Decided: what Note window decided, for your yes', page: 'topic:note-window' },
+      { kind: 'affected', id: 'space-homing', text: 'Space homing: a decision it relies on changed', page: 'topic:space-homing' },
+      { kind: 'verdict', id: 'k3Vd8q', text: 'Verdict on a call you changed: Notes open where made', page: null },
+    ]
+    const page = drawn(EPIC, { ...FUMI, waiting } as View, { now: NOW })
+
+    expect(page.text.slice(6, 10)).toEqual([
+      'WAITING ON YOU ───────────────── 3 · asked in the conversation',
+      '⚑ Decided: what Note window decided, for your yes',
+      '⚑ Space homing: a decision it relies on changed',
+      '⚑ Verdict on a call you changed: Notes open where made',
+    ])
+    expect(waiting.map(({ id }) => pressOf(page.lines, `unit:waiting:${id}`))).toEqual(['page:topic:note-window', 'page:topic:space-homing', undefined])
+    expect(ownMarkOf(page.lines, 'unit:waiting:k3Vd8q')).toEqual({ text: `${MARK.needs} `, color: COLOUR.needs })
+  })
+
   test('N4: a title too long for the head gives way with "…", the type and "at its menu" kept whole', () => {
     const long = 'Token-aware diff sizing plus graceful handling of oversized diffs'
 

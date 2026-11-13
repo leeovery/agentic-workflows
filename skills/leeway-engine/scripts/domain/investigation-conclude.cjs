@@ -41,8 +41,10 @@
 //   in the verdict queue (16.10.11). Its
 //   DATA names the areas this project's bugfixes have recorded, each as
 //   first spelt (bug-records.cjs), so Claude names an area alike. While
-//   the screen stands on what is staged, its yes waits on the person, as
-//   the board lists it (`concludeDraws`).
+//   its showing is held (showing-hold.cjs) — from its draw to the
+//   person's pick of a row that leaves it, keep going among them — and the
+//   screen stands on what is staged, its yes waits on the person, as the
+//   board lists it (`concludeDraws`).
 // - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
 //   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
 //   unit whose code it fixes — a unit of the project but this one — left
@@ -91,7 +93,8 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { filled, shaped, readPayload, stage, stagedAt, refusing, stands } = require('./staged-payload.cjs');
 const { concludeScreen } = require('./projections/investigation.cjs');
-const { investigationStep } = require('./investigation.cjs');
+const { investigationStep, investigationPlace } = require('./investigation.cjs');
+const { heldShowing } = require('./showing-hold.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Rested} Rested */
 /** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
@@ -99,6 +102,7 @@ const { investigationStep } = require('./investigation.cjs');
 const PHASE = 'investigation';
 const CONCLUDE_USAGE = 'investigation conclude <bugfix>';
 const SURFACE_USAGE = 'render conclude <bugfix> [--file <recap.json>]';
+const CONCLUDE_GATE = 'conclude gate';
 
 /**
  * What the bug is in: the unit whose code it fixes, and the feature map's
@@ -245,14 +249,14 @@ function stagedFor(cwd, unit, rootCause, fix) {
 }
 
 /**
- * Whether the conclude's yes waits on the person, as `render conclude`
- * stands on it: its recap staged against the root cause and the fix as
- * they stand, the investigation able to close — what the board lists
- * waiting on the person.
+ * Whether the conclude's yes waits on the person (the header's): its
+ * showing held, and `render conclude` standing on its recap, staged against
+ * the root cause and the fix as they stand, the investigation able to close
+ * — what the board lists waiting on the person.
  * @param {string} cwd @param {string} unit
  */
 function concludeDraws(cwd, unit) {
-  if (!fs.existsSync(stagedFile(cwd, unit))) return false;
+  if (heldShowing(stateRoot(cwd), CONCLUDE_GATE, investigationPlace(unit)) === null) return false;
   return stands(() => {
     const { rootCause, fix } = closing(cwd, unit, 'render conclude', []);
     stagedFor(cwd, unit, rootCause, fix);
@@ -347,7 +351,7 @@ const respells = (earlier, recap) => isDeepStrictEqual(spelt(earlier), spelt(rec
  * it where `check`, opening no hold.
  * @param {string} cwd @param {string} unit @param {string} stagedAt @param {{check?: boolean}} [how]
  */
-const concludeStep = (cwd, unit, stagedAt, how = {}) => investigationStep(cwd, unit, 'conclude gate', stagedAt, how);
+const concludeStep = (cwd, unit, stagedAt, how = {}) => investigationStep(cwd, unit, CONCLUDE_GATE, stagedAt, how);
 
 /**
  * `render conclude <bugfix> [--file <recap.json>]`: the conclude, Claude's

@@ -5,9 +5,11 @@
 // progress, its roadmap, its inbox and its units complete — and the banner
 // at the start menu or a project-level place.
 //
-// - Each unit's phase, and what waits on the person in it, counted, are its
-//   standing's (board-standing.cjs), as its tab and its banner have them,
-//   and the project's total sums them.
+// - Each unit's phase is its standing's (board-standing.cjs), as its tab
+//   and its banner have it. What waits on the person in it is counted from
+//   its one list as the start menu's row counts it (start-menu.cjs, 18.2.3),
+//   never its verdicts, and its conclude besides (20.12.5); the project's
+//   total sums them.
 // - How far a unit has come, by the phase it is in: the gate ending it
 //   waiting on the person, by its name — finish, a quick-fix's close, or an
 //   investigation's conclude; an epic's discovery its topics on the map,
@@ -38,11 +40,13 @@ const { discoverInbox } = require('../start.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { roadmapItems, itemWaiting, itemPostponedFrom, topicTitle, buildByCut, quickFixBuild, tasksBegun } = require('../derivations.cjs');
+const { counts } = require('../start-menu.cjs');
 const { buildView, buildWords } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { groupByHorizon } = require('./roadmap.cjs');
 const { specDoing } = require('./board-spec.cjs');
-const { nowOf, waitingOn, standingOf } = require('./board-standing.cjs');
+const { waitingOn, standingOf } = require('./board-standing.cjs');
+const { nowOf } = require('../unit-phases.cjs');
 const { investigationHowFar } = require('./board-investigation.cjs');
 const { quickFixWords } = require('./board-quick-fix.cjs');
 const { AT_THE_CUT, epicMeasure } = require('../progress.cjs');
@@ -76,6 +80,13 @@ const HOW_FAR = Object.freeze({
   cut: () => AT_THE_CUT,
 });
 
+/** What waits on the person in a unit, counted (the header's). @param {BoardAt} at */
+function waitingCount(at) {
+  const waits = waitingOn(at);
+  const { gates, questions, topics } = counts(waits);
+  return gates + questions + topics + waits.filter(({ kind }) => kind === 'conclude').length;
+}
+
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */
 function workStanding(at, phase) {
   const gate = waitingOn(at).find(({ kind }) => GATES.includes(kind));
@@ -97,7 +108,7 @@ function workLine(at, here, others) {
     type: at.manifest.work_type,
     phase,
     standing: workStanding(at, phase),
-    waiting: waitingOn(at).length,
+    waiting: waitingCount(at),
     session: own ? 'this' : others.has(at.unit) ? 'other' : null,
   };
 }

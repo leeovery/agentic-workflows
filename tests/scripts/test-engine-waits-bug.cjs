@@ -22,7 +22,7 @@ const assert = require('node:assert');
 const { ok, okSectionsAsync, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers, leaningCall, MADE } = require('./ledger-world.cjs');
-const { waitsIn, progress, door, wait } = require('./waits-world.cjs');
+const { waitsIn, progress, door, wait, sealed } = require('./waits-world.cjs');
 
 const BUGS = ['kill-all', 'empty-save'];
 const HUNT = 'sess-hunt';
@@ -58,13 +58,13 @@ describe('a bug\'s investigation (18.2.3, N1)', () => {
     const waiting = (session) => waitsIn(dir, BUGS, { config: config(), session });
     const read = { here: waiting(HUNT), elsewhere: waiting('sess-cleared'), nowhere: waiting() };
     ok(dir, ['raise', 'answer', killAll.raise, '--pick', '1'], { env: as(), stdin: JSON.stringify({ why: 'Every session is lost.' }) });
-    /** The question raised at `bug`, waiting. @param {string} bug @param {string} id */
-    const raised = (bug, id) => wait('question', id, `What does ${bug} lose?`, door('leeway-investigation-process', 'bugfix', bug));
+    /** The question raised at `bug`, waiting as its raise. @param {string} bug @param {{asked: string, raise: string}} at */
+    const raised = (bug, { asked, raise }) => sealed(wait('raise', asked, `What does ${bug} lose?`, door('leeway-investigation-process', 'bugfix', bug)), raise);
     const none = { [BUGS[0]]: [], [BUGS[1]]: [] };
 
     assert.deepStrictEqual([read, waiting(HUNT), progress(dir, BUGS[0])], [
-      { here: { [BUGS[0]]: [raised(BUGS[0], killAll.asked)], [BUGS[1]]: [raised(BUGS[1], emptySave.asked)] }, elsewhere: none, nowhere: none },
-      { [BUGS[0]]: [], [BUGS[1]]: [raised(BUGS[1], emptySave.asked)] },
+      { here: { [BUGS[0]]: [raised(BUGS[0], killAll)], [BUGS[1]]: [raised(BUGS[1], emptySave)] }, elsewhere: none, nowhere: none },
+      { [BUGS[0]]: [], [BUGS[1]]: [raised(BUGS[1], emptySave)] },
       'investigation',
     ]);
   });

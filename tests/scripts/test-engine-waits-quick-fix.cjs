@@ -23,7 +23,7 @@ const { ok, okSections, okSectionsAsync, cleanupFixture } = require('./engine-ha
 const { ledgerHelpers, ledgerReadHelpers, leaningCall, MADE } = require('./ledger-world.cjs');
 const { UNIT: TYPO, PLACE } = require('./quick-fix-world.cjs');
 const { SESSION, CALL, made, working, closable, quickFixBoard } = require('./quick-fix-board-world.cjs');
-const { waitsIn, progress, door, wait } = require('./waits-world.cjs');
+const { waitsIn, progress, door, wait, sealed } = require('./waits-world.cjs');
 
 describe('a quick-fix\'s questions and its close (18.2.3, N1)', () => {
   /** @type {string} */
@@ -34,8 +34,8 @@ describe('a quick-fix\'s questions and its close (18.2.3, N1)', () => {
   const waiting = (session) => waitsIn(dir, [TYPO], { config: env().LEEWAY_CONFIG_DIR, session });
   const intoFixes = door('leeway-quick-fix-process', 'quick-fix', TYPO);
   const PROPOSAL = { ...leaningCall('Entering marks the row.', 'Entering marks nothing.'), question: 'What should the README say entering does?' };
-  /** The replacement of Claude's call `call` on the README, waiting. @param {string} call */
-  const replacingWait = (call) => wait('question', call, PROPOSAL.question, intoFixes);
+  /** The replacement of Claude's call `call` on the README, waiting as its raise `raise`. @param {string} call @param {string} raise */
+  const replacingWait = (call, raise) => sealed(wait('raised', call, PROPOSAL.question, intoFixes), raise);
 
   /** Claude's replacement of its call `call` on the README raised in this conversation: the raise's id. @param {string} call */
   const replacing = async (call) => (await okSectionsAsync(dir, ['raise', PLACE, '--replaces', call, '--reason', 'was-wrong'], { env: env(), stdin: JSON.stringify(PROPOSAL) })).res.raise;
@@ -47,10 +47,10 @@ describe('a quick-fix\'s questions and its close (18.2.3, N1)', () => {
     const raise = await replacing(made.call);
     const read = { here: waiting(SESSION), cleared: waiting('sess-cleared'), none: waiting() };
     ok(dir, ['raise', 'answer', raise, '--pick', 'keep'], { env: env(), stdin: JSON.stringify({ why: 'The README is right.' }) });
-    const ASKED = wait('question', asked, CALL.question, intoFixes);
+    const ASKED = wait('raised', asked, CALL.question, intoFixes);
 
     assert.deepStrictEqual([read, waiting(SESSION)], [
-      { here: { [TYPO]: [ASKED, replacingWait(made.call)] }, cleared: { [TYPO]: [ASKED] }, none: { [TYPO]: [ASKED] } },
+      { here: { [TYPO]: [ASKED, replacingWait(made.call, raise)] }, cleared: { [TYPO]: [ASKED] }, none: { [TYPO]: [ASKED] } },
       { [TYPO]: [ASKED] },
     ]);
   });
@@ -68,9 +68,9 @@ describe('a quick-fix\'s questions and its close (18.2.3, N1)', () => {
     const { ask, decide } = ledgerReadHelpers(() => dir);
     const call = decide(PLACE, ask(PLACE, 'What does the README say entering does?'), 'The README says entering marks the row');
     const closing = waiting(SESSION);
-    await replacing(call);
+    const raise = await replacing(call);
     const CLOSE = wait('finish', 'finish', 'Close', intoFixes);
 
-    assert.deepStrictEqual([closing, waiting(SESSION), waiting('sess-cleared'), progress(dir, TYPO)], [{ [TYPO]: [CLOSE] }, { [TYPO]: [replacingWait(call)] }, { [TYPO]: [CLOSE] }, 'implementation']);
+    assert.deepStrictEqual([closing, waiting(SESSION), waiting('sess-cleared'), progress(dir, TYPO)], [{ [TYPO]: [CLOSE] }, { [TYPO]: [replacingWait(call, raise)] }, { [TYPO]: [CLOSE] }, 'implementation']);
   });
 });

@@ -1,0 +1,22 @@
+// The start menu as engine render start-menu answers it under the gate surface — its printed line, the gate stated, then the menu — held to it by tests/scripts/test-engine-start-menu.cjs.
+export default [
+  "=== DISPLAY: start-menu (emit verbatim as a text code block (```text fence)) ===",
+  "Inbox: empty",
+  "=== GATE (json for a gate surface — never display) ===",
+  "{\"gate\":\"start menu\",\"question\":\"What would you like to do?\",\"statement\":\"\",\"options\":[{\"key\":\"1\",\"word\":null,\"head\":\"Continue feature: Solo\",\"tail\":\"discussion\",\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"2\",\"word\":null,\"head\":\"Continue epic: Fumi\",\"tail\":\"discussion, 0 of 2 topics decided\",\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"p\",\"word\":\"product\",\"head\":\"Talk about the product\",\"tail\":null,\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"s\",\"word\":\"start\",\"head\":\"Start something new — describe it, and we'll find what kind of work it is\",\"tail\":null,\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"t\",\"word\":\"triage\",\"head\":\"Triage the inbox\",\"tail\":null,\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"r\",\"word\":\"roadmap\",\"head\":\"Open the product roadmap\",\"tail\":null,\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"m\",\"word\":\"manage\",\"head\":\"Manage work units\",\"tail\":null,\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"h\",\"word\":\"help\",\"head\":\"How Leeway works\",\"tail\":null,\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false}],\"typed\":[]}",
+  "=== MENU: start menu (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+  "· · · · · · · · · · · ·",
+  "**`◆ What would you like to do?`**",
+  "",
+  "**`1`**         → Continue feature: Solo — *discussion*",
+  "**`2`**         → Continue epic: Fumi — *discussion, 0 of 2 topics*",
+  "            *decided*",
+  "**`p/product`** → Talk about the product",
+  "**`s/start`**   → Start something new — describe it, and we'll find",
+  "            what kind of work it is",
+  "**`t/triage`**  → Triage the inbox",
+  "**`r/roadmap`** → Open the product roadmap",
+  "**`m/manage`**  → Manage work units",
+  "**`h/help`**    → How Leeway works",
+  "",
+].join('\n')

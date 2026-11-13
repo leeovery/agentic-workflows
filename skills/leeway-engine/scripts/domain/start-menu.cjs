@@ -54,11 +54,11 @@ const { mailPhases } = require('./derivations.cjs');
 /** The kinds of wait each count takes in (18.2.3). @type {Readonly<Record<keyof Waiting, readonly Wait['kind'][]>>} */
 const COUNTED = Object.freeze({
   gates: Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish'])),
-  questions: Object.freeze(/** @type {const} */ (['question'])),
+  questions: Object.freeze(/** @type {const} */ (['gap', 'question', 'raise', 'raised'])),
   topics: Object.freeze(/** @type {const} */ (['affected'])),
 });
 
-/** What waits in a unit, counted (the header's). @param {Wait[]} waits @returns {Waiting} */
+/** What waits in a unit, counted (the header's). @param {Pick<Wait, 'kind'>[]} waits @returns {Waiting} */
 const counts = (waits) => ({
   gates: waits.filter(({ kind }) => COUNTED.gates.includes(kind)).length,
   questions: waits.filter(({ kind }) => COUNTED.questions.includes(kind)).length,

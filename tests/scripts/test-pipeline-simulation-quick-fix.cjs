@@ -26,7 +26,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  Sim, answerGate, carryOn, writeTasks, finishClosed, fixBuilt, workTheSet, startThisWork, shapedInTheProduct, startRow, startMenu,
+  Sim, answerGate, carryOn, writeTasks, finishClosed, fixBuilt, workTheSet, startThisWork, shapedInTheProduct, startRow, startMenu, follow,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -35,7 +35,7 @@ describe('pipeline simulation: quick-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: three items picked in triage and worked as one go through discovery into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8)', async () => {
+  it('quick-fix: three items picked in triage and worked as one go through discovery into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8), then onto the start menu in a cleared conversation, This session All work with the quick-fix under COMPLETE (20.S24)', async () => {
     const wu = 'typo';
     const place = `${wu}.implementation`;
     const items = ['flag', 'help', 'docs'].map((what) => sim.write(`.leeway/.inbox/quickfixes/2026-01-01--${what}-says-color.md`, `# The ${what} says --color\n`));
@@ -96,6 +96,10 @@ describe('pipeline simulation: quick-fix', () => {
     sim.render(['finish', wu], { expect: 'content' });
     const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
+    follow(sim, yes.next);
+    sim.handOver();
+    const rows = startMenu(sim);
+    const allWork = sim.board().view;
 
     assert.deepStrictEqual([first.task, parked.parked, parked.task, receipt], ['1.1', 'Q1', '1.2', 'Q1 answered · task 1.2 builds again · nothing waiting on you']);
     assert.notStrictEqual(sim.env.CLAUDE_CODE_SESSION_ID, conversation);
@@ -104,6 +108,8 @@ describe('pipeline simulation: quick-fix', () => {
     assert.deepStrictEqual(waiting.filter(({ kind }) => kind === 'raised').map(({ text }) => text), ['Does the changelog name the rename?'], 'the board draws it waiting after the /clear');
     assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[['1.1', '1.3', '1.2']], 'completed']);
-    assert.ok(!startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`), 'closed, it leaves the start menu');
+    assert.ok(!rows.some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`), 'closed, it leaves the start menu');
+    assert.deepStrictEqual([yes.next, allWork.kind, allWork.at_start, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'handoff', skill: 'leeway', args: [] }, 'all', true, [wu]],
+      '20.S24: closed, the cleared conversation at the start menu shows All work, the quick-fix under COMPLETE');
   });
 });

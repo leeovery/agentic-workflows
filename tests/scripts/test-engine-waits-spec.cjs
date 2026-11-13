@@ -38,7 +38,7 @@ describe('a spec\'s gaps and ready to build (18.2.3)', () => {
     createManifest(dir(), PAYMENTS, manifest);
     const reopened = waitsIn(dir(), [PAYMENTS]);
     createManifest(dir(), PAYMENTS, { ...readManifest(dir(), PAYMENTS), build: { position: 'auto' } });
-    const GAPS = { [PAYMENTS]: [wait('question', asked, 'Is a refund ever split?', intoSpec), wait('question', specMade.where, 'Back to the card.', intoSpec)] };
+    const GAPS = { [PAYMENTS]: [wait('gap', asked, 'Is a refund ever split?', intoSpec), wait('gap', specMade.where, 'Back to the card.', intoSpec)] };
 
     assert.deepStrictEqual([gaps, reopened, waitsIn(dir(), [PAYMENTS])], [GAPS, GAPS, { [PAYMENTS]: [] }]);
   });
@@ -52,7 +52,7 @@ describe('a spec\'s gaps and ready to build (18.2.3)', () => {
 
     assert.deepStrictEqual([ready, waitsIn(dir(), [PAYMENTS]), progress(dir(), PAYMENTS)], [
       { [PAYMENTS]: [wait('ready', 'ready-to-build', 'Ready to build', intoSpec)] },
-      { [PAYMENTS]: [wait('question', asked, 'Is a refund ever split?', intoSpec)] },
+      { [PAYMENTS]: [wait('gap', asked, 'Is a refund ever split?', intoSpec)] },
       'specification',
     ]);
   });

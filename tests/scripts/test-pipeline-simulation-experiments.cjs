@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, mapTopics, sessionLog, handoffEntry, enterEntry, handoff, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicPick,
+  Sim, mappedEpic, handoffEntry, enterEntry, handoff, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicMenuAt, epicPick,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -35,14 +35,9 @@ describe('pipeline simulation: experiments, in an epic', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic experiments: spawn, the walk to verdict, splits, releases, series continuation', () => {
+  it('epic experiments: spawn, the walk to verdict and the epic\'s menu after it (20.S22), splits, releases, series continuation', () => {
     const wu = 'lab';
-    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Measured decisions', '--session-log-file', sessionLog(sim, wu)]);
-    mapTopics(sim, wu, [
-      { name: 'timing', summary: 'Timing behaviour' },
-      { name: 'layout', summary: 'Layout rules' },
-    ]);
-    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+    mappedEpic(sim, wu, ['timing', 'layout']);
     for (const topic of ['timing', 'layout']) {
       epicPick(sim, wu, topic);
       enterEntry(sim, wu, 'discussion', topic);
@@ -79,8 +74,8 @@ describe('pipeline simulation: experiments, in an epic', () => {
     // Each topic with an experiment waiting is one row into the laboratory —
     // which record to work resolves inside the phase, never in the row.
     assert.deepStrictEqual([epicRow(sim, wu, 'Timing'), epicRow(sim, wu, 'Layout')], [
-      '2 → Continue "Timing" in the laboratory — 1 experiment waiting',
-      '1 → Continue "Layout" in the laboratory — 1 experiment waiting (recommended)',
+      '1 → Continue "Timing" in the laboratory — 1 experiment waiting (recommended)',
+      '2 → Continue "Layout" in the laboratory — 1 experiment waiting',
     ]);
 
     // Neither waiting conversation answers the question its experiment
@@ -138,8 +133,20 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.strictEqual(verdict.item_status, 'completed', 'timing\'s records are all terminal — the item closes itself');
     sim.run(['commit', wu, '-m', `experiment(${wu}/timing): conclude E1 — adopted`, '--topic', 'experiment/timing']);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.timing.awaiting_experiments, undefined);
-    // Back in the conversation, the review that ran beside the laboratory
+    // The verdict in and nothing live, the laboratory's leave takes the
+    // cleared conversation onto the epic's menu, where timing's row says
+    // its report waits (20.S22).
+    sim.refuses(['render', 'experiment-next-gate', `${wu}.experiment.timing`], /no live experiments/);
+    follow(sim, { kind: 'engine', argv: ['handoff', 'unit', wu] });
+    sim.handOver();
+    epicMenuAt(sim, wu);
+    const atMenu = sim.board().view;
+    assert.deepStrictEqual([atMenu.kind, atMenu.at_menu, atMenu.topics.find((/** @type {{topic: string}} */ { topic }) => topic === 'timing').experiment], ['epic', true, { id: 'E1', running: false }],
+      '20.S22: once the verdict is in, This session follows the session to the epic\'s menu, timing saying its report waits');
+    // Back in timing's discussion, the review that ran beside the laboratory
     // is taken in, the measured question answered, and timing decided.
+    epicPick(sim, wu, 'timing');
+    enterEntry(sim, wu, 'discussion', 'timing');
     sim.write(review.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'timing']);
     sim.run(['agent', 'ack', wu, 'discussion', 'timing', review.id, '--clean']);

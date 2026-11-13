@@ -66,6 +66,9 @@ function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
   return { unit, title: topicTitle(manifest, unit), hunt, warnings, given: readPayload(cwd, file) };
 }
 
+/** The place of a bugfix's investigation, where its learned gates show. @param {string} unit @returns {import('./learned-gates.cjs').Place} */
+const investigationPlace = (unit) => ({ unit, phase: 'investigation', topic: unit });
+
 /**
  * The decision point's step on the investigation's learned gate `gate`
  * (19.4.19), at the investigation's place, on the showing `key` tells — as
@@ -74,7 +77,7 @@ function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
  * @returns {import('./learned-gates.cjs').GateStep}
  */
 function investigationStep(cwd, unit, gate, key, { check = false } = {}) {
-  return decisionPoint.gateStep(gate, { cwd, place: { unit, phase: 'investigation', topic: unit }, key, check });
+  return decisionPoint.gateStep(gate, { cwd, place: investigationPlace(unit), key, check });
 }
 
 /** A gate's screen, what the read passed over said ahead of it. @param {string[]} warnings @param {string} screen */
@@ -132,4 +135,4 @@ function investigationCheckInSurface(cwd, args) {
   });
 }
 
-module.exports = { investigationPlanSurface, investigationCheckInSurface, investigationStep };
+module.exports = { investigationPlanSurface, investigationCheckInSurface, investigationStep, investigationPlace };
