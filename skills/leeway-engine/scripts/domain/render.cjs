@@ -968,7 +968,8 @@ function absorbContinuationSurface(cwd, args) {
 // a learned gate (8.8.12). No address: the refusal names paths, and the work
 // unit it was aimed at may not exist yet (the work-type commit's own landing
 // refuses before creation), so the decision point steps it at no place, each
-// showing told from another by the paths it names.
+// showing told from another by when the place the conversation sits at was
+// entered and the paths it names.
 
 /** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
 function importRepromptSurface(cwd, { file }) {

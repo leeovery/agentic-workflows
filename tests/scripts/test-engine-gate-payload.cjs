@@ -10,7 +10,8 @@ require('./hermetic-env.cjs');
 // without the announcement sees the bytes it always saw. A learned gate run
 // as an automatic step states none, and leaves no gate shown to answer, the
 // step logged as a step; the import reprompt's showing, set aside, is held
-// at no place for the paths it names alone.
+// at no place for the paths it names alone, and told from another by when
+// the place the conversation sits at was entered and its paths.
 
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
@@ -19,14 +20,18 @@ const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 
-const { ok, output, refusedPristine } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, FROZEN_MS } = require('./engine-harness.cjs');
 const { DAY, lines, history, shownIn, showingAnswers } = require('./trust-world.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { menuBlock } = require('../../skills/leeway-engine/scripts/gateway.cjs');
 const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
-const { showingOf } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
+const { showingOf, drawnBlind } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
+
+const HOUR = 60 * 60 * 1000;
+// Where the import reprompt comes: nowhere.
+const NOWHERE = Object.freeze({ unit: null, phase: null, topic: null });
 
 const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
 
@@ -259,7 +264,7 @@ describe('gate payload — a learned gate run as an automatic step', () => {
     assert.match(out, /^Paths that could not be landed skipped \[auto\]\. Landing the rest\.\n$/m, 'the report says the rest lands');
     assert.strictEqual(refused, 'gate: no gate has been shown in this conversation — render the gate, then answer it');
     assert.deepStrictEqual(logged.map(({ type, gate, row, showing }) => ({ type, gate, row, showing })), [
-      { type: 'step', gate: 'import reprompt', row: 's', showing: showingOf({ unit: null, phase: null, topic: null }, ['/notes/sketch.png']) },
+      { type: 'step', gate: 'import reprompt', row: 's', showing: showingOf(NOWHERE, null, ['/notes/sketch.png']) },
     ]);
   });
 });
@@ -294,8 +299,45 @@ describe('gate payload — the import reprompt\'s showing, held at no place (N1,
     const afresh = reprompt(['/screens/tax-form.png'], 'next');
     ok(dir, ['gate', 'import reprompt', '--pick', 's'], { env: as('next') });
 
-    const NOWHERE = { unit: null, phase: null, topic: null };
-    assert.deepStrictEqual([held, afresh, showingAnswers(config, 'import reprompt')], [showingOf(NOWHERE, ['/notes/sketch.png']), showingOf(NOWHERE, ['/screens/tax-form.png']), [[null, null, 's'], [0, 0, 1]]]);
+    assert.deepStrictEqual([held, afresh, showingAnswers(config, 'import reprompt')], [showingOf(NOWHERE, null, ['/notes/sketch.png']), showingOf(NOWHERE, null, ['/screens/tax-form.png']), [[null, null, 's'], [0, 0, 1]]]);
+  });
+
+  it('3.2.7, 16.21.3: its showing is told by when the place the conversation\'s position names was entered and the paths it names — the reprompt over the same paths in two entries of the product\'s conversation two showings, each run as a step under an id of its own; where the position names no place, the roadmap or none at all, by its paths alone', (t) => {
+    const as = (/** @type {string} */ session) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
+    const log = path.join(config, 'trust.jsonl');
+    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+    const skipped = history({ project, start: Date.now() - DAY });
+    for (let i = 0; i < 13; i += 1) skipped.gate('import reprompt', { picked: 's' });
+    fs.writeFileSync(log, lines(...skipped.events));
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
+    const missing = ['/notes/sketch.png'];
+    /** The reprompt over `missing` drawn in `session`. @param {string} session */
+    const reprompt = (session) => output(dir, ['render', 'import-reprompt', '--file', createFile(dir, '.leeway/.cache/product/discovery/product/import-reprompt.json', JSON.stringify({ missing }))], { env: as(session) });
+    /** The product's conversation entered in `session`, the clock at `ms`: when it was entered, as recorded. @param {number} ms @param {string} session */
+    const entered = (ms, session) => {
+      t.mock.timers.enable({ apis: ['Date'], now: ms });
+      try {
+        ok(dir, ['enter', 'discovery', 'product'], { env: as(session) });
+      } finally {
+        t.mock.timers.reset();
+      }
+      return JSON.parse(fs.readFileSync(path.join(dir, '.leeway/.cache/product/discovery/product/entered.json'), 'utf8')).at;
+    };
+
+    const first = entered(FROZEN_MS, 'sess-1');
+    reprompt('sess-1');
+    const second = entered(FROZEN_MS + HOUR, 'sess-1');
+    reprompt('sess-1');
+    ok(dir, ['session', 'label', 'roadmap'], { env: as('at-the-roadmap') });
+    reprompt('at-the-roadmap');
+    reprompt('placeless');
+    const steps = fs.readFileSync(log, 'utf8').split('\n').slice(skipped.events.length, -1).map((line) => JSON.parse(line)).filter(({ type }) => type === 'step');
+
+    assert.deepStrictEqual([first, second], [new Date(FROZEN_MS).toISOString(), new Date(FROZEN_MS + HOUR).toISOString()]);
+    const showings = [showingOf(NOWHERE, first, missing), showingOf(NOWHERE, second, missing), showingOf(NOWHERE, null, missing)];
+    assert.deepStrictEqual(showings.map((showing) => drawnBlind('import reprompt', showing)), [false, false, false]);
+    assert.deepStrictEqual(steps.map(({ showing }) => showing), [showings[0], showings[1], showings[2], showings[2]]);
+    assert.deepStrictEqual(new Set(steps.map(({ id }) => id)).size, 3);
   });
 });
 

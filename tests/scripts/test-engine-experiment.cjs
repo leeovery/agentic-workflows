@@ -217,7 +217,7 @@ describe('the spawn commits its record and hands the conversation on', () => {
       engine(dir, ['gate', 'experiment spawn gate', '--pick', 'l'], { env: as('next') });
 
       const LAB = { unit: 'lab', phase: 'discussion', topic: 'timing' };
-      assert.deepStrictEqual([held, afresh, showingAnswers(config, 'experiment spawn gate')], [showingOf(LAB, 'E1'), showingOf(LAB, 'E2'), [[null, null, 'l'], [0, 0, 1]]]);
+      assert.deepStrictEqual([held, afresh, showingAnswers(config, 'experiment spawn gate')], [showingOf(LAB, null, 'E1'), showingOf(LAB, null, 'E2'), [[null, null, 'l'], [0, 0, 1]]]);
     } finally {
       fs.rmSync(config, { recursive: true, force: true });
     }

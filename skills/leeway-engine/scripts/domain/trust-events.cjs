@@ -89,8 +89,8 @@
 //   by the gate's name, the row it ran and the showing it ran on — no
 //   answer, so nothing that counts the person's answers reads it, and the
 //   gate's own bound least of all; a replay decides it again (replay.cjs).
-//   Its id is drawn from the gate and its showing, so a redraw of the same
-//   showing is read once (decision-point.cjs).
+//   Its id is drawn from the project, the gate and its showing, so a redraw
+//   of the same showing is read once (decision-point.cjs).
 // - care-drop: a care entry dropped from the record of the person (16.5.2,
 //   person-verbs.cjs), in the project the event is keyed by: its kind, and
 //   when it was added, as the record held it — hand-editable, so the event

@@ -198,11 +198,11 @@ function ledgerHelpers(dir) {
   /**
    * Claude's decision carried over, answering `question` at `address`, as
    * the migration alone writes one (ledger-carry.cjs), appended in process:
-   * its short id.
+   * its short id. An address naming no topic places it at its unit's phase.
    * @param {string} address @param {string} question @param {string} text
    */
   function carriedOver(address, question, text) {
-    const [unit, phase, topic] = address.split('.');
+    const [unit, phase, topic = null] = address.split('.');
     const id = newId();
     appendEntry(statePath(dir()), {
       event: 'decided', unit, topic, phase, session: SESSION_ID, ...MADE, answers: full(question), text, why: 'Carried over.', rules_out: [], relies_on: [],

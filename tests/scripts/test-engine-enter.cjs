@@ -382,6 +382,33 @@ describe('where the conversation is working', () => {
     assert.deepStrictEqual(position(), { name: EPIC, phase: 'discussion', topic: 'licence' });
   });
 
+  it('records when it entered the place, beside its presence, afresh at each entry — the product\'s conversation at product/discovery/product — and nothing on an entry that asks first', (t) => {
+    /** The place entered, `args`, the clock at `ms`. @param {string[]} args @param {number} ms */
+    const enterAt = (args, ms) => {
+      t.mock.timers.enable({ apis: ['Date'], now: ms });
+      try {
+        return enter(args);
+      } finally {
+        t.mock.timers.reset();
+      }
+    };
+    /** When the place was last entered, as recorded; null where it is not. @param {string} unit @param {string} phase @param {string} topic */
+    const entered = (unit, phase, topic) => {
+      try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, 'entered.json')), 'utf8')); } catch { return null; }
+    };
+    const later = Date.parse(FROZEN_AT) + 60 * 60 * 1000;
+
+    enterAt(['discussion', EPIC, 'licence'], Date.parse(FROZEN_AT));
+    const first = entered(EPIC, 'discussion', 'licence');
+    enterAt(['discussion', EPIC, 'licence'], later);
+    enterAt(['discovery', 'product'], later);
+    runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'onboarding'], 'peer', PEER);
+    const asked = enter(['discussion', EPIC, 'onboarding']).res.entered;
+
+    assert.deepStrictEqual([first, entered(EPIC, 'discussion', 'licence'), entered('product', 'discovery', 'product')], [{ at: FROZEN_AT }, { at: new Date(later).toISOString() }, { at: new Date(later).toISOString() }]);
+    assert.deepStrictEqual([asked, entered(EPIC, 'discussion', 'onboarding')], [false, null]);
+  });
+
   it('beats the topic\'s presence as this process\'s', () => {
     enter(['discussion', EPIC, 'licence']);
     assert.deepStrictEqual(ok(dir, ['presence', 'scan', EPIC], { env: env() }).sessions.map((s) => [s.phase, s.topic, s.held, s.session_id, s.pid]), [['discussion', 'licence', true, 'sess-1', process.pid]]);

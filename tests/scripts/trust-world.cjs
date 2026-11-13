@@ -12,10 +12,11 @@
 // the project's id it keys them by (`trustLogHelpers`). And what the ask
 // rule's suites share (test-engine-trust-counts.cjs,
 // test-engine-ask-rule.cjs, test-engine-raise-rule.cjs), convergence's
-// (test-engine-convergence.cjs) and the matrix's (test-engine-matrix.cjs): a
-// history of the log's events built in memory, each a second after the
-// last, an answer naming the ledger entry it landed as where a suite places
-// it (`history`), and questions' ids the blind draw reads each way. And what
+// (test-engine-convergence.cjs) and the matrix's (test-engine-matrix.cjs,
+// test-engine-matrix-replay.cjs): a history of the log's events built in
+// memory, each a second after the last, an answer naming the ledger entry
+// it landed as where a suite places it (`history`), and questions' ids the
+// blind draw reads each way. And what
 // the suites holding a learned gate's showing through its surface share: the
 // gate a conversation was shown (`shownIn`), and the answers logged at the
 // gate's showings, each by the event it is (`showingAnswers`).

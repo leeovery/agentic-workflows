@@ -30,13 +30,14 @@
 // - The change is the unit's description, pinned by the note it began
 //   from — the inbox's or the roadmap's, else none.
 // - CLAUDE'S CALLS are every current decision made in the quick-fix that
-//   stands Claude's, read through the person's latest keep (ledger-fold.cjs,
-//   `decidedNow`), but each a blind question waits on, held back until the
-//   person has answered (16.17.2, questions.cjs); REPLACES, for each current
-//   decision made there, the decision made in another unit its chain of
-//   replacements goes back to, past those made in the quick-fix, with its
-//   words, whose it was, as it stood decided (ledger-fold.cjs, `decidedNow`),
-//   and the unit's title; both read in one read of the ledger.
+//   stands Claude's (ledger-events.cjs, `claudesCall`), read through the
+//   person's latest keep (ledger-fold.cjs, `decidedNow`), but each a blind
+//   question waits on, held back until the person has answered (16.17.2,
+//   questions.cjs); REPLACES, for each current decision made there, the
+//   decision made in another unit its chain of replacements goes back to,
+//   past those made in the quick-fix, with its words, whose it was, as it
+//   stood decided (ledger-fold.cjs, `decidedNow`), and the unit's title;
+//   both read in one read of the ledger.
 // - THE RECORD is `summary.md`'s, each fix's under its title, once every
 //   fix has ended and one at least is done.
 // ---------------------------------------------------------------------------
@@ -44,6 +45,7 @@
 const { fact, placeFact } = require('../board-model.cjs');
 const { readShown } = require('../ledger-read.cjs');
 const { factsOf, madeOn, isCurrent, decidedNow } = require('../ledger-fold.cjs');
+const { claudesCall } = require('../ledger-events.cjs');
 const { heldBackIn } = require('../questions.cjs');
 const { pairPassed, beingRead } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
@@ -118,7 +120,7 @@ const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at
   };
   const held = heldBackIn(folded, entryAt, at.unit);
   return {
-    calls: made.filter((id) => decidedNow(folded, id).by === 'claude' && replacing(id) === null && !held.has(id)).map((id) => ({ id: short(id), text: String(show(id).text) })),
+    calls: made.filter((id) => claudesCall(decidedNow(folded, id)) && replacing(id) === null && !held.has(id)).map((id) => ({ id: short(id), text: String(show(id).text) })),
     replaces: made.flatMap((id) => {
       const replaced = replacing(id);
       if (replaced === null) return [];
