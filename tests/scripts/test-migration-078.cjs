@@ -1221,15 +1221,19 @@ describe('migration 078: a small project', () => {
   });
 
 
-  it('puts the runner\'s record and journals, written in a plain .leeway/ before the move, inside the state worktree, the journals ignored', () => {
+  it('puts the runner\'s record and journals, written in a plain .leeway/ before the move, inside the state worktree, the journals ignored, and keeps on the project\'s manifest the checklist a directive closed there', () => {
     dir = tempProject('migration-078-record-');
     try {
       feature();
-      write(dir, '.leeway/.state/migrations', '001\n073\n');
+      const checklists = { directive: { '076-legacy-split': { items: {}, closed: '2026-01-01T00:00:00Z' } } };
+      write(dir, '.leeway/.state/migrations', '001\n073\n076\n');
       write(dir, '.leeway/.cache/migrate/pending-tally.json', '{"ran":["073"]}\n');
+      write(dir, '.leeway/manifest.json', json({ checklists }));
       run(dir);
       const state = path.join(dir, '.leeway');
-      assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n');
+      const { project_id: _id, ...project } = movedProject();
+      assert.deepStrictEqual(project, { work_units: { tally: { work_type: 'feature' } }, checklists });
+      assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n076\n');
       assert.strictEqual(fs.readFileSync(path.join(state, '.cache/migrate/pending-tally.json'), 'utf8'), '{"ran":["073"]}\n');
       assert.doesNotThrow(() => git(state, ['check-ignore', '--quiet', '.cache/migrate/pending-tally.json']), 'the journal ignored in the state');
       assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');

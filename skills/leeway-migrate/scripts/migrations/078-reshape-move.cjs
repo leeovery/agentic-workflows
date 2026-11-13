@@ -40,7 +40,9 @@
 // branch.
 //
 // The project: its manifest is carried, with the project's id minted on it
-// (21.5.20) — kept where a move cut short already minted one — less the
+// (21.5.20) — kept where a move cut short already minted one — and the
+// checklists a directive closed before the move (the split's, 076) kept on
+// it, less the
 // baseline's status fields, a recorded `native`, `skipped` or `completed`
 // kept as `brownfield_offer`, the brownfield offer's remembered answer, in
 // today's words — the offer is made once per project, and a completed
@@ -1263,13 +1265,18 @@ function reshapedProject(project, relocations) {
 
 /**
  * The project's manifest reshaped, with its id minted first — kept where a
- * move cut short already minted one.
+ * move cut short already minted one — and the checklists a directive closed
+ * before the move kept.
  * @param {string} state @param {Record<string, any>} project @param {Relocations} relocations
  */
 function writeProjectManifest(state, project, relocations) {
   const moved = path.join(state, 'manifest.json');
-  const minted = fs.existsSync(moved) ? readManifest(moved).project_id : undefined;
-  writeWhole(scratchOf(state), moved, jsonText({ project_id: typeof minted === 'string' ? minted : newId(), ...reshapedProject(project, relocations) }));
+  const { project_id: minted, checklists } = fs.existsSync(moved) ? readManifest(moved) : {};
+  writeWhole(scratchOf(state), moved, jsonText({
+    project_id: typeof minted === 'string' ? minted : newId(),
+    ...reshapedProject(project, relocations),
+    ...(isObject(checklists) ? { checklists } : {}),
+  }));
 }
 
 /** The user-level folder today's skills read. */
