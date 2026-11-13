@@ -12,13 +12,14 @@
 // gate event is built from, the gate shown and the gate mod's last press,
 // which the mod writes by no tool of Claude's (gate.cjs); each conversation's
 // sealed raises, which hold Claude's lean before the person answers
-// (raise.cjs); each conversation's proposal for the record of the person,
-// held for the person's yes as it was shown them (person-verbs.cjs); each
-// conversation's briefs, the folder and every file in it, which the hook
-// before Agent and SendMessage hands over as issued (brief-guard.cjs), and
-// that hook's refusals; the one-decision check's log
-// (ledger-one-decision.cjs); the settings file and the record of the person
-// (person.cjs).
+// (raise.cjs); each conversation's boot stamp and its lock, which the verbs
+// that touch work refuse without (boot-stamp.cjs); each conversation's
+// proposal for the record of the person, held for the person's yes as it
+// was shown them (person-verbs.cjs); each conversation's briefs, the folder
+// and every file in it, which the hook before Agent and SendMessage hands
+// over as issued (brief-guard.cjs), and that hook's refusals; the
+// one-decision check's log (ledger-one-decision.cjs); the settings file and
+// the record of the person (person.cjs).
 // In each project folder of Claude Code's projects directory, the files of
 // its own the trust log reads the model from (conversation.cjs): a
 // conversation's transcript, and a subagent's transcript and its record.
@@ -48,6 +49,9 @@ const RAISE_SHOWN = 'raise-shown.json';
 
 /** The gate mod's record of its last press (conversation.cjs). */
 const PRESSED = 'pressed.json';
+
+/** Boot's stamp on a conversation, which every verb that touches work refuses without (boot-stamp.cjs). */
+const BOOTED = 'booted.json';
 
 /** The one-decision check's runs, in the system config directory (ledger-one-decision.cjs). */
 const DECISION_CHECKS = 'decision-checks.jsonl';
@@ -79,6 +83,8 @@ function userFiles() {
     conversationFile(SHOWN, 'the record of the gate a conversation was shown'),
     conversationFile(PRESSED, 'the gate mod\'s record of a conversation\'s last press'),
     conversationFile(RAISE_SHOWN, 'a conversation\'s sealed raises'),
+    conversationFile(BOOTED, 'boot\'s stamp on a conversation'),
+    conversationFile(`${BOOTED}.lock`, 'the lock on boot\'s stamp on a conversation'),
     configFile(BRIEF_REFUSALS, 'the brief hook\'s refusals'),
     configFile(DECISION_CHECKS, 'the one-decision check\'s log'),
     configFile(SETTINGS_FILE, 'the settings file'),
@@ -144,4 +150,4 @@ function userLevelRefusal(file, fold, below) {
   return userRefusal(file, fold, below) ?? briefRefusal(file, fold, below) ?? claudeRefusal(file, fold, below);
 }
 
-module.exports = { TRUST_LOG, PENDING, SHOWN, RAISE_SHOWN, PRESSED, DECISION_CHECKS, PERSON, PROPOSAL, userLevelRefusal };
+module.exports = { TRUST_LOG, PENDING, SHOWN, RAISE_SHOWN, PRESSED, BOOTED, DECISION_CHECKS, PERSON, PROPOSAL, userLevelRefusal };

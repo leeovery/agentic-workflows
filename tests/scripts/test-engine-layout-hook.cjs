@@ -300,6 +300,8 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     'conversations/0001-0002/gate-shown.json': 'the record of the gate a conversation was shown',
     'conversations/0001-0002/pressed.json': 'the gate mod\'s record of a conversation\'s last press',
     'conversations/0001-0002/raise-shown.json': 'a conversation\'s sealed raises',
+    'conversations/0001-0002/booted.json': 'boot\'s stamp on a conversation',
+    'conversations/0001-0002/booted.json.lock': 'the lock on boot\'s stamp on a conversation',
     'brief-refusals.jsonl': 'the brief hook\'s refusals',
     'decision-checks.jsonl': 'the one-decision check\'s log',
     'config.json': 'the settings file',

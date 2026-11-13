@@ -113,6 +113,12 @@ const sentAt = (id: string) => inFolder(id, 'sent.json')
 /** Where a press leaves the row it sent, for the engine: beside the send's record. */
 const pressedAt = (id: string) => inFolder(id, 'pressed.json')
 
+/** Where the engine stamps the conversation `id` as booted. */
+const bootedAt = (id: string) => inFolder(id, 'booted.json')
+
+/** A boot stamp's bytes, which the mod carries and never parses: the engine owns its format. */
+const STAMP = 'the engine’s own bytes, not JSON the mod could parse\n'
+
 const COMMIT = 'Commit and continue to next task'
 const AUTH = 'Continue "Auth"'
 const HOLDER = 'in session (last active 4m ago)'
@@ -4052,6 +4058,54 @@ describe('register', () => {
     expect(sentIn(files, AFTER_CLEAR)).toEqual({ answer: CONTINUATION, line: WHERE })
     expect(files.has(sentAt('s0')), 'the conversation it left records nothing').toBe(false)
     expect(files.has(pressedAt(AFTER_CLEAR)), 'a handoff is no press').toBe(false)
+  })
+
+  test('a handoff carries the engine’s boot stamp into the new conversation’s folder byte for byte, before the send records anything, the one it left keeping its own', async ($, on) => {
+    const { files, submitted, clock } = world($, on, HANDED_OFF)
+
+    files.set(bootedAt('s0'), STAMP)
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    const kept = [...files.keys()]
+
+    expect(files.get(bootedAt(AFTER_CLEAR))).toBe(STAMP)
+    expect(files.get(bootedAt('s0'))).toBe(STAMP)
+    expect(kept.indexOf(bootedAt(AFTER_CLEAR)), 'carried before the send').toBeLessThan(kept.indexOf(sentAt(AFTER_CLEAR)))
+    expect(submitted).toEqual([CONTINUATION])
+  })
+
+  test('a send the session drops leaves the carried boot stamp standing, as it waits in the prompt box', async ($, on) => {
+    const { files, filled, clock } = world($, on, HANDED_OFF, {
+      drops: 'the prompt was queued',
+    })
+
+    files.set(bootedAt('s0'), STAMP)
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(filled).toEqual([CONTINUATION])
+    expect(files.get(bootedAt(AFTER_CLEAR))).toBe(STAMP)
+  })
+
+  test('a clear that fails carries no boot stamp: the work goes on in the conversation that holds it', async ($, on) => {
+    const { calls, files, clock } = world($, on, HANDED_OFF, { clears: false })
+
+    files.set(bootedAt('s0'), STAMP)
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual(CARRIED)
+    expect(files.has(bootedAt(AFTER_CLEAR))).toBe(false)
   })
 
   test("a subagent's handoff is cut out of what it reads, and never carried", async ($, on) => {

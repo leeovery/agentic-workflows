@@ -105,9 +105,9 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { OLD_STATE, owed } = require('./old-layout.cjs');
+const { MIGRATIONS_DIR, migrationId, isMigration } = require('./migration-ids.cjs');
 
 const SCRIPT_DIR = __dirname;
-const MIGRATIONS_DIR = path.join(SCRIPT_DIR, 'migrations');
 
 // The engine's side of the directives, which runs a directive's check.
 const ENGINE_DIRECTIVES = path.join(SCRIPT_DIR, '..', '..', 'leeway-engine', 'scripts', 'domain', 'directives.cjs');
@@ -170,7 +170,6 @@ const OLD_RECORD = path.join(OLD_STATE, '.state', 'migrations');
 const SEED_JOURNAL = 'record-seed.tmp';
 
 const DIRECTIVE = '.md';
-const CHECK = '.check.cjs';
 
 /** @param {string} journals @param {string} journal */
 function journalPath(journals, journal) {
@@ -235,12 +234,6 @@ function pathOf(cwd, args, flag) {
   const given = at === -1 ? undefined : args[at + 1];
   if (!given) fail(USAGE);
   return path.resolve(cwd, given);
-}
-
-/** Leading digits of a filename, or '' when none. @param {string} scriptPath */
-function migrationId(scriptPath) {
-  const m = path.basename(scriptPath).match(/^[0-9]+/);
-  return m ? m[0] : '';
 }
 
 /** Numeric-prefix comparator, lexical tie-break — one strict ordering across
@@ -327,11 +320,6 @@ function runGuard(script) {
 /** End the run at the guard's refusal, printing its facts. @param {object} refused */
 function refuse(refused) {
   process.stdout.write(`---REFUSED: ${RESHAPE_GUARD}---\n${JSON.stringify(refused)}\n`);
-}
-
-/** Whether a file in the migrations folder is a migration: a directive's check is its directive's. @param {string} name */
-function isMigration(name) {
-  return /\.(sh|cjs|md)$/.test(name) && !name.endsWith(CHECK);
 }
 
 /**

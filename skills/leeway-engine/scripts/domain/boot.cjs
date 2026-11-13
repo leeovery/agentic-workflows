@@ -78,6 +78,12 @@
 // (kernel/code-root), whichever folder boot was called from, recording into
 // the state's migrations record.
 //
+// Boot stamps the calling conversation as booted for the project (22.1.7,
+// boot-stamp.cjs) where it reaches the work — ready, or restarted — and at a
+// directive's stop, whose steps call verbs; never at the git, repo, lost,
+// guard or merge stops, where nothing may touch the work. The verbs those
+// stops run go through without it (engine.cjs, `BOOT_EXEMPT`).
+//
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone, and no
 // trust log event waits in it. Every boot appends the events any
@@ -116,6 +122,7 @@ const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks
 const { gateSurface } = require('./gate-surface.cjs');
 const { gitShortfall } = require('./git-floor.cjs');
 const { tidyConversations } = require('./conversation.cjs');
+const { stampBoot } = require('./boot-stamp.cjs');
 const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
 const { leavePosition } = require('./position.cjs');
 const { brownfieldOffer, baselineSignal } = require('./brownfield.cjs');
@@ -342,7 +349,7 @@ function boot(cwd, { startAgain = false } = {}) {
     const { cause, unit, phase, topic, active } = migrated.refused;
     return { state: 'guard', cause, unit, phase, topic, active, warnings };
   }
-  if ('directive' in migrated) return { state: 'directive', ...directiveStopped(cwd, migrated.directive), warnings };
+  if ('directive' in migrated) return stamped(cwd, { state: 'directive', ...directiveStopped(cwd, migrated.directive), warnings });
   const { migrations, migrationsCommitted } = migrated;
 
   renderLedgerCopies(cwd, warnings);
@@ -368,7 +375,19 @@ function boot(cwd, { startAgain = false } = {}) {
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.
   if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
-  return result;
+  return stamped(cwd, result);
+}
+
+/**
+ * Boot's answer, the calling conversation stamped first as booted for the
+ * project, where Claude Code handed the call a session id (boot-stamp.cjs).
+ * @template {BootResult|DirectiveStop} T
+ * @param {string} cwd @param {T} answer @returns {T}
+ */
+function stamped(cwd, answer) {
+  const session = handedSession();
+  if (session !== null) stampBoot(cwd, session);
+  return answer;
 }
 
 /**

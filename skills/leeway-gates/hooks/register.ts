@@ -19,8 +19,9 @@
  *
  * The module carries the workflows' handoffs too: a move into work the engine
  * names arms off the Bash result that carried it, cut out of what the model
- * reads, and once the turn ends the module clears the conversation and sends
- * the continuation into the new one, an Esc on that turn carrying nothing.
+ * reads, and once the turn ends the module clears the conversation, carries
+ * the engine's boot stamp into the new one and sends the continuation there,
+ * an Esc on that turn carrying nothing.
  *
  * The module also sets Claude Code's harness for the workflows: every session
  * gets the SendUserMessage tool, kept behind ToolSearch, and a conversation
@@ -120,6 +121,12 @@ const HANDED_OFF_TOAST_MS = 8_000
 
 /** The file a conversation's band is kept in for a resume. */
 const KEPT = 'gate.json'
+
+/**
+ * The engine's stamp that boot has run in a conversation, which a handoff
+ * carries into the conversation it clears into: the engine owns its format.
+ */
+const BOOTED = 'booted.json'
 
 /**
  * The entrypoints the mod runs under, as the engine's boot reads them:
@@ -402,19 +409,51 @@ const submit = async ($: EngineInterface, gate: Gate, option: Option) => {
 const took = (attempt: Promise<boolean>) => attempt.catch(() => false)
 
 /**
- * Carries a handoff: the conversation cleared, then the continuation sent into
- * the new one, recorded with its line in that conversation's folder first,
- * and a toast saying where the work went. A clear that fails sends in place,
- * so the work still goes on; a send that fails or is dropped waits in the
- * prompt box for Enter; where the box refuses it too, the toast holds the
+ * Copies the engine's boot stamp from the conversation `left` into the one
+ * the session goes on as, byte for byte and never read, so the work goes on
+ * booted; nothing where the session is still `left`, or `left` holds no
+ * stamp the copy can take, and the conversation boots again before it works.
+ */
+async function carryStamp($: EngineInterface, left: string) {
+  const now = await $.session.id()
+
+  if (now === left) {
+    return
+  }
+
+  const [from, to] = [await folderOf($, left), await folderOf($, now)]
+
+  if (from === null || to === null) {
+    return
+  }
+
+  try {
+    await $.fs.write(inFolder(to, BOOTED), await $.fs.read(inFolder(from, BOOTED)))
+  } catch {
+    // No stamp carried: the engine refuses the work until boot runs there.
+  }
+}
+
+/**
+ * Carries a handoff: the conversation cleared, the engine's boot stamp
+ * carried into the new one, then the continuation sent into it, recorded
+ * with its line in that conversation's folder first, and a toast saying
+ * where the work went. The stamp is carried before the send, so it stands
+ * whatever becomes of the send. A clear that fails sends in place, so the
+ * work still goes on; a send that fails or is dropped waits in the prompt
+ * box for Enter; where the box refuses it too, the toast holds the
  * continuation for the person to send.
  */
 async function handOff($: EngineInterface, { text, line }: Handoff) {
+  const left = await $.session.id()
+
   try {
     await $.command.run({ command: 'clear' })
   } catch {
     // Not cleared: the continuation goes on in this conversation.
   }
+
+  await carryStamp($, left)
 
   const isCarried =
     (await took(deliver($, text, { [SENT]: { answer: text, line } }))) ||

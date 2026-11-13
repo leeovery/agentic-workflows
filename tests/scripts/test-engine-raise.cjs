@@ -31,7 +31,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { ok, okSectionsAsync, refuses, refusesAsync, output, initRepo, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, refuses, refusesAsync, output, initRepo, cleanupFixture, stampBooted } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { SESSION: WRITER, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
@@ -596,11 +596,15 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
   });
 
   it('a seal that cannot be written', async () => {
-    fs.mkdirSync(path.join(config(), 'conversations'));
-    fs.writeFileSync(path.join(config(), 'conversations', SESSION), 'a file where the folder goes');
+    const folder = path.join(config(), 'conversations', SESSION);
+    stampBooted(dir, SESSION, config());
+    fs.chmodSync(folder, 0o555);
+    try {
+      const { error } = await refusesAsync(dir, ['raise', NOTE, '--answers', asked.where], { env: conversation(), stdin: JSON.stringify(CALL) });
 
-    const { error } = await refusesAsync(dir, ['raise', NOTE, '--answers', asked.where], { env: conversation(), stdin: JSON.stringify(CALL) });
-
-    assert.match(error, /^raise: the raise could not be sealed in the conversation's folder — nothing drawn: /);
+      assert.match(error, /^raise: the raise could not be sealed in the conversation's folder — nothing drawn: /);
+    } finally {
+      fs.chmodSync(folder, 0o755);
+    }
   });
 });

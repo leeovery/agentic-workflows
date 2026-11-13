@@ -58,7 +58,8 @@ const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
 const { archiveItems, closeItems, restoreItems, deleteItems, fileItem } = require('./domain/inbox.cjs');
 const { CAPTURE_USAGE, captureItem } = require('./domain/inbox-capture.cjs');
 const agentState = require('./domain/agent-state.cjs');
-const { boot } = require('./domain/boot.cjs');
+const { BOOT_STOPS, boot } = require('./domain/boot.cjs');
+const { unbootedRefusal } = require('./domain/boot-stamp.cjs');
 const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
@@ -2588,6 +2589,58 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   trust: ['threshold', 'build-threshold'],
 }));
 
+// Every command dispatched refuses, writing nothing, in a conversation boot
+// has not stamped for the project the call is in at this version (22.1.7,
+// domain/boot-stamp.cjs) — but the ones named here, `*` for every sub-verb or
+// the sub-verbs alone: boot, and what its stops run before it stamps — `boot
+// --start-again`, `state-merge pick`, the migration review's verbs, a stop's
+// screen and the answer to its gate, each gate by its name (a directive's
+// verbs run on the stamp its stop writes); the targets of Claude Code's
+// hooks and of the gate mod (`conversation`, `board`), run for any
+// conversation; the capture line and the retry its note names, run from a
+// project the conversation may never boot (22.1.8, 18.6.8), each commit by
+// its scope's flag; and the walkthrough's and help's screens. Nothing refuses
+// a call with no session id, no conversation's, or one from a folder in no
+// project (domain/boot-stamp.cjs).
+const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} */ (Object.freeze({
+  boot: '*',
+  'state-merge': ['pick'],
+  render: Object.freeze([
+    ...Object.values(BOOT_STOPS), 'directive-stop', 'migrations-applied', 'migration-gate',
+    'walkthrough-offer', 'walkthrough-screen', 'walkthrough-home', 'walkthrough-topics', 'walkthrough-topic', 'help',
+  ]),
+  gate: ['state lost gate', 'state merge gate', 'migration gate'],
+  commit: ['--migrations', '--inbox'],
+  presence: ['cleanup'],
+  session: ['cleanup', 'resume'],
+  conversation: '*',
+  layout: ['guard'],
+  brief: ['guard'],
+  shell: ['guard'],
+  board: '*',
+  inbox: ['capture'],
+}));
+
+/** Whether a command goes through before boot has run (`BOOT_EXEMPT`). @param {string[]} argv @returns {boolean} */
+function bootExempt([command, ...rest]) {
+  const exempt = Object.hasOwn(BOOT_EXEMPT, command) ? BOOT_EXEMPT[command] : [];
+  if (exempt === '*') return true;
+  if (command === 'commit') return rest.some((word) => exempt.includes(word));
+  return exempt.includes(command === 'gate' ? parseArgs(rest).positional.join(' ') : rest[0]);
+}
+
+/**
+ * Refuse a command boot's stamp does not let through (`BOOT_EXEMPT`); one
+ * the engine does not dispatch is runCli's to answer.
+ * @param {Call} call @param {string[]} argv
+ */
+function refuseUnbooted(call, argv) {
+  const session = handedSession();
+  if (session === null || !Object.hasOwn(COMMANDS, argv[0]) || bootExempt(argv)) return;
+  const refused = unbootedRefusal(call.cwd, session);
+  if (refused !== null) failJson(call, new Error(`${argv[0]}: ${refused}`));
+}
+
 /** @param {string[]} argv @returns {boolean} */
 function takesWriterLock([command, sub, ...rest]) {
   if (command === 'manifest') return !isRead(sub);
@@ -2635,18 +2688,24 @@ const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).jo
 
 /**
  * One command against a bound call, answering its exit code — later, for
- * the argv `ANSWERS_LATER` says waits. Whatever the exit, a command
- * the conversation ran marks it as one that runs the workflows — but a
- * hook's, the mod's or the capture line's, run for any conversation; one that
- * answered records the gate its MENU stated as the gate the conversation was
- * shown, where a failed one showed none. Both after the command, which may
- * take the folder both live in: boot's tidy-up deletes one whose transcript
- * is gone. Its git runners share one read of the config's hooks at each
- * cwd (kernel/isolated-git).
+ * the argv `ANSWERS_LATER` says waits. One boot's stamp does not let through
+ * is refused before anything runs, and marks nothing. Whatever the exit of
+ * any other, a command the conversation ran marks it as one that runs the
+ * workflows — but a hook's, the mod's or the capture line's, run for any
+ * conversation; one that answered records the gate its MENU stated as the
+ * gate the conversation was shown, where a failed one showed none. Both
+ * after the command, which may take the folder both live in: boot's tidy-up
+ * deletes one whose transcript is gone. Its git runners share one read of
+ * the config's hooks at each cwd (kernel/isolated-git).
  * @param {Call} call @param {string[]} argv @returns {number|Promise<number>}
  */
 function dispatch(call, argv) {
   return withVerbReads(() => {
+    try {
+      refuseUnbooted(call, argv);
+    } catch (err) {
+      return exitCodeOf(call, err);
+    }
     openGate();
     const settle = (/** @type {number} */ code) => {
       if (marks(argv)) markConversation(call.cwd);
@@ -2807,4 +2866,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { parseArgs, run, runAsync, COMMANDS, WRITER_LOCK_EXEMPT };
+module.exports = { parseArgs, run, runAsync, COMMANDS, WRITER_LOCK_EXEMPT, BOOT_EXEMPT, bootExempt };

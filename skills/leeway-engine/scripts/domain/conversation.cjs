@@ -10,15 +10,17 @@
 // directory. Each conversation that runs the workflows has one folder beside
 // the system config, `{config}/conversations/{session-id}/`, found by the
 // session id Claude Code hands every command it runs, wherever the command
-// runs, and each concern writes a file of its own there — the one file two
-// write is the mod's `sent.json`, which the rows mod spends:
+// runs, and each concern writes a file of its own there — the files two
+// write are the mod's `sent.json`, which the rows mod spends, and boot's
+// stamp, which the mod copies across a handoff's clear:
 //
 //   workflow       the mark that the conversation runs the workflows, which
 //                  the gate mod reads to set the workflow harness, to say the
 //                  phase in its spinner, to answer a compaction and to
 //                  record each task's builder and reviewers — written by
 //                  every engine call that carries a session id, run in a
-//                  project whose state already exists
+//                  project whose state already exists, but one refused
+//                  until boot has run
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
 //   position.json  where in the workflows the conversation is working, and
@@ -56,6 +58,12 @@
 //                  where it was raised and the question it answers, and its
 //                  answer once given — what `raise show` draws again
 //                  (raise.cjs)
+//   booted.json    boot's stamp that the conversation booted each project,
+//                  by its main checkout, at the installed version, which
+//                  every verb that touches work refuses without — written
+//                  by boot under the lock beside it (boot-stamp.cjs), and
+//                  copied, unread, by the gate mod into the conversation a
+//                  handoff's clear goes on as
 //   raise-checked.json
 //                  each raise the ask rule sent Claude to check, by the
 //                  raise checked — the question it answers, or the decision

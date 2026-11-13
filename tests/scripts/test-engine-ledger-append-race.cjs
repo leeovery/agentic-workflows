@@ -17,7 +17,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const { ENGINE, stateGit, statePath, layout, ledgerEntries, cleanupFixture } = require('./engine-harness.cjs');
+const { ENGINE, stateGit, statePath, layout, ledgerEntries, cleanupFixture, stampBooted } = require('./engine-harness.cjs');
 const { NOTE, ID, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 /** @type {string} */
@@ -46,7 +46,9 @@ describe('two processes appending at once (5.S2)', () => {
     ].join('\n');
     const WRITER_TIMEOUT_MS = 30000;
     const READS = 6000;
-    const writers = ['session-a', 'session-b'].map((session) => {
+    const sessions = ['session-a', 'session-b'];
+    for (const session of sessions) stampBooted(dir, session);
+    const writers = sessions.map((session) => {
       const child = spawn('node', ['-e', script, ENGINE, dir, session], { stdio: ['ignore', 'ignore', 'pipe'], timeout: WRITER_TIMEOUT_MS, killSignal: 'SIGKILL' });
       let stderr = '';
       child.stderr.on('data', (chunk) => { stderr += chunk; });

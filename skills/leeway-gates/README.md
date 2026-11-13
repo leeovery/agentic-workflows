@@ -128,19 +128,22 @@ the continuation to send (``Invoke `/<skill> <args>`.``) and that line. The
 payload on a Bash result of the conversation's own call — never a subagent's —
 arms the handoff, and every call has it cut from what the model reads; the
 line and the skill stay. As the turn ends the mod clears the conversation and,
-in the conversation that follows, leaves what it sends with the line as
-`sent.json` in that conversation's folder, then sends the continuation, which
-Claude acts on there, and shows a toast naming where the work went
-(`Handed off → Specification · auth-flow`) for eight seconds. The clear runs from
-a timer started at the turn's end, whatever else there fails: a mod cannot run
-a command inside a hook the turn waits on. A send that is dropped or fails
-goes into the prompt box for Enter instead; where the box will not take it
-either, the toast holds the continuation for the person to send, and stays
-longer. A clear that fails sends in place, so the work still goes on. Esc on
-the turn that handed off carries nothing: Esc means stop.
-`leeway-gates-rows` draws the continuation's transcript row as the line.
-Where the mod does not announce, the engine says so and the workflows invoke
-the skill in the same conversation.
+in the conversation that follows, copies in the engine's stamp that boot has
+run, `booted.json`, from the folder of the conversation it cleared — byte for
+byte, never read, since the engine owns its format, and before the send, so
+it stands whatever becomes of the send — then leaves what it sends with the
+line as `sent.json` in that conversation's folder, and sends the
+continuation, which Claude acts on there, and shows a toast naming where the
+work went (`Handed off → Specification · auth-flow`) for eight seconds. The
+clear runs from a timer started at the turn's end, whatever else there fails:
+a mod cannot run a command inside a hook the turn waits on. A send that is
+dropped or fails goes into the prompt box for Enter instead; where the box
+will not take it either, the toast holds the continuation for the person to
+send, and stays longer. A clear that fails sends in place, so the work still
+goes on. Esc on the turn that handed off carries nothing: Esc means stop.
+`leeway-gates-rows` draws the continuation's transcript row as the line. Where
+the mod does not announce, the engine says so and the workflows invoke the
+skill in the same conversation.
 
 ## What it sets in Claude Code
 

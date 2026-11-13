@@ -63,26 +63,30 @@ describe('the catch-up at boot (4.7.8)', () => {
     assert.strictEqual(fs.readFileSync(mark, 'utf8').trim(), moved, 'the migrations ran over the state already caught up');
   });
 
-  it('a merge stopped by a field both clones changed ends boot there, with no migrations run; the screen and the pick answer it, and the next boot carries on', () => {
+  it('a merge stopped by a field both clones changed ends boot there, with no migrations run and the conversation unstamped; the screen and the pick answer it, and the next boot carries on', () => {
     const { bare, there, here } = twoClones();
     git(here.main, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
     commitOnState(here.root, { [layout.projectManifest]: JSON.stringify({ defaults: { plan_format: 'tick' } }, null, 2) + '\n' });
     git(here.main, ['config', '--unset', 'remote.origin.pushurl']);
     commitOnState(there.root, { [layout.projectManifest]: JSON.stringify({ defaults: { plan_format: 'linear' } }, null, 2) + '\n' });
     const mark = path.join(world(), 'migrated');
+    const conversation = { CLAUDE_CODE_SESSION_ID: 'merging', LEEWAY_CONFIG_DIR: path.join(world(), 'config') };
+    const stamp = path.join(conversation.LEEWAY_CONFIG_DIR, 'conversations', 'merging', 'booted.json');
 
-    assert.deepStrictEqual(boot(here.main, { STUB_MIGRATE_MARK: mark }), { ok: true, state: 'merge', warnings: [] });
+    assert.deepStrictEqual(boot(here.main, { STUB_MIGRATE_MARK: mark, ...conversation }), { ok: true, state: 'merge', warnings: [] });
     assert.ok(!fs.existsSync(mark), 'the migrations ran past the stop');
+    assert.ok(!fs.existsSync(stamp), 'nothing may touch the work at the stop (22.1.7)');
 
-    const screen = engine.output(here.main, ['render', 'state-merge-gate']);
+    const screen = engine.output(here.main, ['render', 'state-merge-gate'], { env: conversation });
     assert.match(screen, /⚑ The state merge stopped: one field changed on both machines/);
     const choice = /^choice: (\S+)$/m.exec(screen);
     assert.ok(choice !== null);
-    const picked = engine.ok(here.main, ['state-merge', 'pick', '1', choice[1]]);
+    const picked = engine.ok(here.main, ['state-merge', 'pick', '1', choice[1]], { env: conversation });
     assert.strictEqual(picked.action, 'merged');
 
-    const res = boot(here.main, { STUB_MIGRATE_MARK: mark });
+    const res = boot(here.main, { STUB_MIGRATE_MARK: mark, ...conversation });
     assert.strictEqual(res.state, 'ready');
+    assert.ok(fs.existsSync(stamp), 'the next boot stamps the conversation');
     assert.strictEqual(JSON.parse(readState(here.main, layout.projectManifest)).defaults.plan_format, 'tick');
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
     assert.strictEqual(fs.readFileSync(mark, 'utf8').trim(), tip(here.main, STATE_BRANCH));
@@ -105,7 +109,7 @@ describe('the catch-up at boot (4.7.8)', () => {
     commitOnState(there.root, { [layout.manifest('fumi')]: JSON.stringify({ name: 'fumi', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { 'note-window': { status: 'in-progress' } } } } }) });
     const ask = (/** @type {string} */ dir, /** @type {string} */ text) => engine.ok(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text }) });
     ask(there.main, 'Asked first?');
-    boot(here.main);
+    boot(here.main, SESSION);
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
     createFile(wrapper, 'git', `#!/bin/sh\ncase "$*" in *commit-tree*) kill -9 "$PPID"; exit 1 ;; esac\nexec "${real}" "$@"\n`);

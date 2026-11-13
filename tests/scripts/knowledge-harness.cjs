@@ -30,6 +30,7 @@ const { ENGINE_COMMAND, launcher } = require('../../skills/leeway-engine/scripts
 const { before, after } = require('node:test');
 const assert = require('node:assert');
 const { createManifest, statePath } = require('./discovery-test-utils.cjs');
+const { callAsync } = require('./engine-harness.cjs');
 
 /** The knowledge settings a door suite sets up most. */
 const KEYWORD_ONLY = { provider: null };
@@ -93,7 +94,7 @@ async function embeddingEndpoint(dimensions) {
  * @returns {Promise<{code: number, stdout: string, stderr: string}>}
  */
 function engineKnowledge(root, args, env = {}, input = '') {
-  return engine.runAsync(['knowledge', ...args], { cwd: root, env, stdin: input });
+  return callAsync(root, ['knowledge', ...args], { env, stdin: input });
 }
 
 /**

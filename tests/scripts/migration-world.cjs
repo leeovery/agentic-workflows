@@ -85,7 +85,7 @@ function directiveEngine() {
   fs.cpSync(path.dirname(SCRIPTS), path.join(skills, 'leeway-engine'), { recursive: true });
   const migrations = path.join(skills, 'leeway-migrate/scripts/migrations');
   fs.cpSync(FIXTURES, migrations, { recursive: true });
-  for (const script of ['migrate.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(RUNNER), script), path.join(skills, 'leeway-migrate/scripts', script));
+  for (const script of ['migrate.cjs', 'migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(RUNNER), script), path.join(skills, 'leeway-migrate/scripts', script));
   const at = path.join(skills, 'leeway-engine/scripts/engine.cjs');
   engine = { ...harness.harness(at), path: at, migrations };
   return engine;
