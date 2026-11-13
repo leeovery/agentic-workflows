@@ -140,6 +140,16 @@ in the same header:
 - `migrations/reshape/` is what the reshape's released steps share: it is
   frozen with them, and holds its own reading of the layout. The
   runtime's is `old-layout.cjs`, free to change. Neither loads the other.
+- The reshape's finish (081) stages the code side's drops — `.workflows/`
+  and each task driver's `preLeewayStore` — out of the index, left on
+  disk, and journals them in the state's cache,
+  `.leeway/.cache/migrate/finish.json`, `{staged, drops}`, so the engine
+  names neither. Boot then answers `finish`, committing nothing, and the
+  migration's commit, `engine commit --migrations` on the person's yes,
+  makes the state branch's first commit, then the code branch's, and
+  takes the drops off disk (`domain/migration-commit.cjs`). Until that
+  commit, a run that completes keeps the handbacks it journaled, so every
+  boot's review reads them.
 
 ## Prose tests
 

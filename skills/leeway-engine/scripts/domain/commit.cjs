@@ -237,13 +237,15 @@ function commitInRepo(repo, paths, message, committed) {
 
 /**
  * `commitStaged` in the code root under the commit lock: stage everything
- * under the pathspecs and commit exactly them as the index records them.
+ * under the pathspecs and commit exactly them as the index records them,
+ * with `asStaged` as the index records it, never staged.
  * @param {string} cwd @param {readonly string[]} specs as the code root names them @param {string} message
+ * @param {readonly string[]} [asStaged] as the code root names them
  * @returns {string|null}
  */
-function commitStagedScoped(cwd, specs, message) {
+function commitStagedScoped(cwd, specs, message, asStaged = []) {
   const root = codeRoot(cwd);
-  return withCommitLock(root, () => commitStaged(root, [...specs], message));
+  return withCommitLock(root, () => commitStaged(root, [...specs], message, [...asStaged]));
 }
 
 /**

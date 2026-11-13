@@ -47,7 +47,10 @@
 //   on a `leeway-state` with no commit yet, and the migration's commit makes
 //   its first (21.9.3). Until then every commit is held — held to the
 //   layout as ever, the writes stay in the worktree, nothing is committed or
-//   pushed, for that commit to take.
+//   pushed, for that commit to take. The first commit has a door of its
+//   own (`commitFirst`), which only the migration's commit calls: the whole
+//   worktree as it stands, held to the layout, a commit with no parent,
+//   then the worktree's own index brought into line with it, and pushed.
 // - The backstop: every state commit is the engine's, so a commit reads the
 //   state worktree's changes once, untracked files among them, ignored ones
 //   not, and holds each against the layout (layout.cjs), its names spelled
@@ -995,6 +998,45 @@ function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, co
 }
 
 /**
+ * The state branch's first commit, the migration's (21.9.2): while the
+ * migration runs — `leeway-state` with no commit yet — the whole state
+ * worktree as it stands, every write the held commits left there among it,
+ * held to the layout, committed with no parent; then the worktree's own
+ * index brought into line with it, and the branch pushed. The files the
+ * person's tools leave beside the state's, and a file place's staging, stay
+ * out, as every state commit leaves them. The caller holds the writer lock
+ * (`withStateLock`). Refuses, committing nothing, where git cannot open the
+ * state worktree, where it has another branch checked out, where the branch
+ * has a commit already, and where a file in it has no place in the layout.
+ * @param {string} root
+ * @param {string} message
+ * @param {{pushTimeoutMs?: number}} [opts]
+ * @returns {CommitOutcome & {commit: string}}
+ */
+function commitFirst(root, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
+  const worktree = openWorktree(root);
+  if (!worktree.opened) throw new Error(`git cannot open the state worktree at ${root}: ${worktree.why} — nothing committed`);
+  if (worktree.head !== BRANCH_REF || worktree.at !== null) {
+    throw new Error(`the state worktree at ${root} is not on a ${STATE_BRANCH} with no commit yet, so it takes no first commit — nothing committed`);
+  }
+  const changes = placedChanges(worktree);
+  refuseOutsideLayout(root, changes);
+  const heldOut = [...SIDECARS_HELD_OUT, ...changes.filter((change) => change.staging).map(({ rel }) => `:(exclude,literal)${rel}`)];
+  const { git } = worktree;
+  const commit = withPrivateIndex(worktree.index, (env) => {
+    git.run(['read-tree', '--empty'], { env });
+    git.run(['add', '--all', '--', '.', ...heldOut], { env });
+    const tree = git.run(['write-tree'], { env }).trim();
+    const made = git.run(['commit-tree', tree, '-m', message]).trim();
+    git.run(['update-ref', '-m', `commit: ${message.split('\n')[0]}`, BRANCH_REF, made, '']);
+    return made;
+  });
+  const aligned = alignIndex(git, STATE_BRANCH, 'HEAD', ['.']);
+  const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
+  return { commit, pushed: pushed.pushed, warnings: [...aligned, ...pushed.warnings] };
+}
+
+/**
  * Push `leeway-state` as it stands — what a failed push left behind, or a
  * branch the remote lost.
  * @param {string} root
@@ -1040,6 +1082,7 @@ module.exports = {
   withIgnored,
   commitHere,
   commitState,
+  commitFirst,
   pushState,
   pushRefusal,
 };

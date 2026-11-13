@@ -23,7 +23,9 @@
 //   - What the runs since the last that completed owe it is journaled in
 //     the folder the caller names (`--journals <dir>`; boot names one in the
 //     state's cache, which no state commit takes): each migration's
-//     handbacks and the run's tally, kept as the migration records.
+//     handbacks and the run's tally, kept as the migration records, each
+//     written whole — beside it, then renamed in — so a run killed as it
+//     writes one loses nothing the journal held.
 //
 // Migration contracts:
 //   - `*.sh`: sourced in a spawned bash with report_update / report_skip helper
@@ -96,6 +98,13 @@
 //     runner in the project's folder in the main checkout, wherever boot was
 //     called from: the copy the move reads, which the migration's commit
 //     drops.
+//   - Its handbacks kept. A run that completes while the reshape is owed
+//     emits what the runs journaled — the handbacks and the tally — and
+//     keeps them, so every boot until the migration's commit hands the
+//     review the same: the migration's commit clears the journals folder
+//     (leeway-engine/scripts/domain/migration-commit.cjs). Its finish step
+//     (081) journals there too, `finish.json`, what it staged for the
+//     commit's code side.
 //
 // The bash binary used for `*.sh` migrations is `bash` on PATH, overridable via
 // LEEWAY_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
@@ -176,10 +185,12 @@ function journalPath(journals, journal) {
   return path.join(journals, journal);
 }
 
-/** Write a journal, its folder made where missing. @param {string} file @param {unknown} content */
+/** Write a journal whole, its folder made where missing: beside it, then renamed in. @param {string} file @param {unknown} content */
 function writeJournal(file, content) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(content) + '\n');
+  const staged = `${file}.tmp`;
+  fs.writeFileSync(staged, JSON.stringify(content) + '\n');
+  fs.renameSync(staged, file);
 }
 
 /** @param {string} file @returns {Record<string, string|null>[]} */
@@ -505,17 +516,19 @@ function main() {
   }
 
   // A fully successful run emits everything journaled — this run's entries
-  // plus any stranded by an earlier aborted run — and clears each journal.
+  // plus any stranded by an earlier aborted run — and clears each journal,
+  // but while the reshape is owed, when the migration waits on its commit.
+  const kept = owed(cwd);
   for (const { marker, journal } of HANDBACKS) {
     const file = journalPath(journals, journal);
     const entries = readJournal(file);
     if (entries.length === 0) continue;
     process.stdout.write(marker + '\n');
     process.stdout.write(JSON.stringify(entries) + '\n');
-    try { fs.unlinkSync(file); } catch { /* already gone */ }
+    if (!kept) fs.rmSync(file, { force: true });
   }
 
-  try { fs.unlinkSync(tallyFile); } catch { /* none journaled */ }
+  if (!kept) fs.rmSync(tallyFile, { force: true });
   process.stdout.write(MIGRATIONS_RUN_MARKER + '\n');
   process.stdout.write(JSON.stringify({ ran: tally.ran }) + '\n');
 }

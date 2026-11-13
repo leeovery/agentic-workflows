@@ -42,12 +42,15 @@ function migrationsApplied({ summary, notices, counts }) {
 }
 
 /**
- * The migration confirm gate — after the summary of what the migrations did.
+ * The migration confirm gate — after the summary of what the migrations did;
+ * where the reshape's commit is part made, saying only the code branch's
+ * remains (21.9.5).
+ * @param {{codeOnly?: boolean}} [opts]
  * @returns {string}
  */
-function migrationGate() {
+function migrationGate({ codeOnly = false } = {}) {
   const body = menu(
-    '',
+    codeOnly ? "The state branch's first commit is made: only the code branch's commit remains." : '',
     [
       cmdOption('y', 'yes', 'Proceed'),
       promptOption('Ask', 'Ask questions about the changes'),

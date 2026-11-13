@@ -240,7 +240,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const env = { STUB_MIGRATE_MODE: 'reshape', STUB_MIGRATE_RUNS: runs };
     const before = git(main, ['for-each-ref']);
 
-    assert.deepStrictEqual([boot(code, env).state, boot(code, env).state], ['ready', 'ready']);
+    assert.deepStrictEqual([boot(code, env).state, boot(code, env).state], ['finish', 'finish']);
 
     assert.deepStrictEqual(runsOf(runs), [
       { at: 'start', cwd: main, boot: true, writer: false }, { at: 'end', cwd: main, boot: true, writer: false },
@@ -254,7 +254,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const main = owingProject();
     git(main, ['worktree', 'add', '-q', '--detach', '--no-checkout', STATE_DIR_NAME, 'HEAD']);
 
-    assert.strictEqual(boot(main, { STUB_MIGRATE_MODE: 'reshape' }).state, 'ready');
+    assert.strictEqual(boot(main, { STUB_MIGRATE_MODE: 'reshape' }).state, 'finish');
 
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
   });
@@ -319,7 +319,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     await until(() => runsOf(runs).length === 1);
     const attempts = lockAttempts(t, path.join(main, '.git/leeway-boot.lock'), (taken) => { if (taken === 1) fs.writeFileSync(go, ''); });
 
-    assert.strictEqual(boot(main, env).state, 'ready');
+    assert.strictEqual(boot(main, env).state, 'finish');
 
     assert.strictEqual(await firstEnded, 0);
     assert.strictEqual(attempts[0], 'taken', 'the second boot found the lock held');

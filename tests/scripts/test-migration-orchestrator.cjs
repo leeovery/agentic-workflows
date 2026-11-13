@@ -11,14 +11,16 @@
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
 //     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
 //     failure-aborts-without-recording (both extensions), delete-log-reruns,
+//     a run killed as it writes a journal losing nothing journaled before,
 //     the code-tree fleet recorded unrun where there is no code-tree state;
 //     a directive stopping the run, recorded unrun in the reshape's sequence
 //     where there is no code-tree state, and a run with nothing pending
 //     reading the migrations folder once (21.10.4; the engine's side is
 //     test-migration-directives.cjs's); a refusal from any migration but the
 //     reshape's guard failing the run.
-//   - The reshape's contract, over the synthetic fleet: the guard run first
-//     while the reshape is owed, its refusal writing nothing, and the record
+//   - The reshape's contract, over the synthetic fleet: the handbacks kept
+//     while the reshape is owed; the guard run first while it is owed, its
+//     refusal writing nothing, and the record
 //     seeded from the old one, whole, a kill at the seed's rename included
 //     (the real guard is test-migration-074.cjs's); and its frozen steps and
 //     the runtime's old-layout.cjs never loading each other.
@@ -410,6 +412,27 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.ok(!third.stdout.includes('---VERIFY_ADDENDA---'), 'emitted once, never again');
   });
 
+  it('a run killed as it writes a journal loses nothing the journals held: the next run\'s review holds every hand-back journaled before the kill, and the tally', () => {
+    const telling = (/** @type {string} */ id) => `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', info: 'What ${id} does.',\n  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check ${id} by hand.', notice: '${id} ran.' }; } };\n`;
+    const { migrate, root } = synthFleet({ '001-a.cjs': telling('001'), '002-b.cjs': telling('002') });
+    const project = freshProject();
+    const kill = path.join(root, 'kill-journal.cjs');
+    fs.writeFileSync(kill, "const fs = require('fs');\nconst path = require('path');\nconst real = fs.writeFileSync;\nlet writes = 0;\nfs.writeFileSync = (file, data, ...rest) => { if (path.basename(String(file)).startsWith('pending-verify.json') && ++writes === 2) { real(file, String(data).slice(0, 10)); process.exit(9); } return real(file, data, ...rest); };\n");
+
+    assert.strictEqual(run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` }).status, 9);
+    const again = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([
+      markerPayload(again.stdout, '---VERIFY_ADDENDA---'),
+      markerPayload(again.stdout, '---MIGRATION_NOTICES---'),
+      again.stdout.split('\n').filter((line) => /^\d+ migration\(s\) applied/.test(line)),
+    ], [
+      [{ id: '001', description: 'telling 001', info: 'What 001 does.', verify: 'Check 001 by hand.' }],
+      [{ id: '001', description: 'telling 001', notice: '001 ran.' }],
+      ['2 migration(s) applied, 2 file(s) updated.'],
+    ]);
+  });
+
   it('emits no addenda when no executed migration declares verify', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002') });
     const project = freshProject();
@@ -689,6 +712,22 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
 
     assert.deepStrictEqual([fs.readFileSync(path.join(seeded, 'order.log'), 'utf8'), trackingLog(seeded)], ['003\n', '001\n002\n003\n']);
     assert.deepStrictEqual([fs.readFileSync(path.join(held, 'order.log'), 'utf8'), trackingLog(held)], ['002\n003\n', '001\n002\n003\n']);
+  });
+
+  it('a run that completes while the reshape is owed emits what the runs journaled and keeps it — so every run until the migration\'s commit hands the review the same — where a run of a project that owes none emits it once', () => {
+    const telling = `'use strict';\nmodule.exports = { id: '001', description: 'telling 001', info: 'What 001 does.',\n  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check 001 by hand.', notice: '001 ran.' }; } };\n`;
+    const owing = owingProject();
+    const settled = freshProject();
+    const handedBack = (/** @type {string} */ stdout) => [markerPayload(stdout, '---VERIFY_ADDENDA---'), markerPayload(stdout, '---MIGRATION_NOTICES---'), stdout.split('\n').filter((line) => /^\d+ migration\(s\) applied/.test(line))];
+    const told = [
+      [{ id: '001', description: 'telling 001', info: 'What 001 does.', verify: 'Check 001 by hand.' }],
+      [{ id: '001', description: 'telling 001', notice: '001 ran.' }],
+      ['1 migration(s) applied, 1 file(s) updated.'],
+    ];
+
+    const runs = [owing, owing, settled, settled].map((project) => run(synthFleet({ '001-a.cjs': telling }).migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).stdout);
+
+    assert.deepStrictEqual(runs.map(handedBack), [told, told, told, [undefined, undefined, []]]);
   });
 
   it('the reshape\'s frozen steps and the runtime never load each other: nothing in migrations/ loads old-layout.cjs, and nothing outside it loads migrations/reshape/', () => {

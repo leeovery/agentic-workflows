@@ -2,11 +2,20 @@
 
 //
 // What the reshape's steps share — the guard (074), the legacy split
-// (075–077, through split.cjs beside it) and the move (078): the layout's
-// names before and after it, git as they run it, a file written whole, and
-// the state worktree put in place. Released with them, it is frozen with
-// them: the runtime's own knowledge of the layout before Leeway is the
+// (075–077, through split.cjs beside it), the move (078) and finish (081):
+// the layout's names before and after it, git as they run it, a file
+// written whole, the state worktree put in place, and where a project from
+// before Leeway kept a tracker's store. Released with them, it is frozen
+// with them: the runtime's own knowledge of the layout before Leeway is the
 // migrate skill's `old-layout.cjs`, and neither loads the other.
+//
+// The tracker's stores (`preLeewayStores`): the steps name no tracker, and
+// read no driver's live contract either, which a later release may change.
+// A task driver that knew today's projects declares, once and for good,
+// where a project from before Leeway keeps its store — `preLeewayStore`,
+// the store's files and the ones its tool keeps local, project-relative,
+// the latter as ignore patterns. Each task driver's module is loaded on its
+// own, and one that fails to load, or declares none, is passed by.
 //
 // The state worktree put in place for the reshape (`placeStateWorktree`):
 // `.leeway/` in the main checkout, on an unborn `leeway-state`, locked as
@@ -28,6 +37,8 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+
+const TASK_DRIVERS = path.join(__dirname, '../../../../leeway-engine/scripts/drivers/task');
 
 const OLD_STATE = '.workflows';
 const STATE_DIR = '.leeway';
@@ -147,7 +158,29 @@ function placeStateWorktree(main) {
   return root;
 }
 
+/** @param {unknown} value @returns {value is string[]} */
+const isPaths = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+
+/**
+ * Where a project from before Leeway keeps a tracker's store, as each task
+ * driver that knew one declares it: the store's files and the ones its
+ * tool keeps local, project-relative.
+ * @returns {{files: string[], localFiles: string[]}[]}
+ */
+function preLeewayStores() {
+  return fs.readdirSync(TASK_DRIVERS).sort().flatMap((name) => {
+    let declared;
+    try {
+      declared = require(path.join(TASK_DRIVERS, name, 'driver.cjs')).preLeewayStore;
+    } catch {
+      return [];
+    }
+    const ok = declared !== null && typeof declared === 'object' && isPaths(declared.files) && isPaths(declared.localFiles);
+    return ok ? [{ files: declared.files, localFiles: declared.localFiles }] : [];
+  });
+}
+
 module.exports = {
   OLD_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV,
-  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole,
+  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLeewayStores,
 };

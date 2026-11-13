@@ -68,6 +68,7 @@ const { stateRoot, statePath, outsideRepository } = require('../kernel/state-roo
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
 const { directiveStopSurface } = require('./directives.cjs');
+const { finishing } = require('./migration-commit.cjs');
 const { OLD_STATE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -1093,7 +1094,7 @@ const SURFACES = {
   'walkthrough-topics': walkthroughTopicsSurface,
   'walkthrough-topic': walkthroughTopicSurface,
   'migrations-applied': migrationsAppliedSurface,
-  'migration-gate': () => migrationGate(),
+  'migration-gate': (cwd) => migrationGate({ codeOnly: finishing(cwd)?.commits.includes('state') === false }),
   'state-lost-gate': (cwd) => stateLostGate(projectName(cwd)),
   'git-floor-stop': () => gitFloorStopSurface(),
   'repo-stop': repoStopSurface,

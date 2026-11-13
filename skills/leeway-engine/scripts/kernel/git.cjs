@@ -494,18 +494,22 @@ function commitMerge(cwd, specs, message, nested = []) {
  * and out of the commit. Each path is taken literally. A path git refuses
  * to stage — one an ignore rule holds out, one beyond a symbolic link — is
  * left as it is, never forced in, and one matching nothing is dropped.
+ * The paths in `asStaged` are committed as the index records them and never
+ * staged here: a folder whose removal a migration staged, its files left on
+ * disk, which staging would take straight back.
  * Refuses while a merge, cherry-pick, revert or rebase is in progress,
  * touching nothing.
  * @param {string} cwd project root
  * @param {string[]} specs
  * @param {string} message
+ * @param {string[]} [asStaged]
  * @returns {string|null} the short commit sha, or null when the paths are clean
  */
-function commitStaged(cwd, specs, message) {
+function commitStaged(cwd, specs, message, asStaged = []) {
   refuseMidOperation(cwd);
   const addable = stageableSpecs(cwd, specs).filter((p) => !addRefused(cwd, p));
   if (addable.length > 0) gitIndexed(cwd, ['add', '--all', '--', ...literally(addable)]);
-  return commitIndexEntries(cwd, specs, message);
+  return commitIndexEntries(cwd, [...specs, ...asStaged], message);
 }
 
 /**

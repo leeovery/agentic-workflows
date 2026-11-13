@@ -152,8 +152,8 @@ describe('engine migrate check (21.10.7)', () => {
       'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }',
       'migrate check: 092-failing\'s check failed: the old manifests could not be read',
       'migrate check: 093-unanswered\'s check answered no list of { name, problems }',
-      'Usage: engine migrate check <id>',
-      'Usage: engine migrate check <id>',
+      'Usage: engine migrate check <id> | engine migrate review',
+      'Usage: engine migrate check <id> | engine migrate review',
     ]);
   });
 });
@@ -203,7 +203,7 @@ describe('a directive\'s checklist (6.4.5, 6.4.11, 6.S23)', () => {
 });
 
 describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
-  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both, with nothing committed', () => {
+  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both to the migration waiting on its commit, with nothing committed', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
     writeState(dir, layout.cache('migration', 'onboarding.md'), '# Onboarding\n\nPermissions: decided, a half-written entry.\n');
@@ -221,9 +221,9 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
 
     for (const topic of ['licensing', 'search', 'onboarding']) writeState(dir, layout.topic(UNIT, topic, 'log.md'), `# ${topic}\n`);
     ok(['checklist', 'close', 'directive', LOGS]);
-    const ready = ok(['boot']);
+    const finished = ok(['boot']);
 
-    assert.deepStrictEqual([ready.state, ready.migrations.ran, recorded(dir)], ['ready', 0, [...RECORDED, '079', '080']]);
+    assert.deepStrictEqual([finished.state, finished.migrations.ran, recorded(dir)], ['finish', 0, [...RECORDED, '079', '080']]);
     assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code], 'nothing was committed before the migration\'s commit');
   });
 
@@ -231,9 +231,9 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
     writeState(dir, layout.migrations, ['079', ...RECORDED].map((id) => `${id}\n`).join(''));
     fs.rmSync(statePath(dir, UNIT), { recursive: true });
 
-    const ready = ok(['boot']);
+    const finished = ok(['boot']);
 
-    assert.deepStrictEqual([ready.state, recorded(dir)], ['ready', ['079', ...RECORDED, '080']]);
+    assert.deepStrictEqual([finished.state, recorded(dir)], ['finish', ['079', ...RECORDED, '080']]);
   });
 
   it('stops at a directive whose every piece is done all the same, for the session to close', () => {

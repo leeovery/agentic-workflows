@@ -242,9 +242,8 @@ const path = require('path');
 const crypto = require('crypto');
 const linters = require('./073-environment-linters.cjs');
 const {
-  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole,
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLeewayStores,
 } = require('./reshape/shared.cjs');
-const TASK_DRIVERS = path.join(__dirname, '../../../leeway-engine/scripts/drivers/task');
 
 const CODE_GITIGNORE = '.gitignore';
 const STATE_IGNORE_LINE = `${STATE_DIR}/`;
@@ -1108,32 +1107,10 @@ function dropIncludeLines(project, state) {
   stage(project, WORKTREE_INCLUDE);
 }
 
-/** @param {unknown} value @returns {value is string[]} */
-const isPaths = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
-
-/**
- * Where a project from before Leeway keeps a tracker's store, as each task
- * driver that knew one declares it, frozen: the store's files and the ones
- * its tool keeps local, project-relative. Each driver's module is loaded on
- * its own, so the move names no tracker (7.1.10) and leans on no driver's
- * live contract; one that fails to load, or declares none, is passed by.
- * @returns {{files: string[], localFiles: string[]}[]}
- */
-function preLeewayStores() {
-  return fs.readdirSync(TASK_DRIVERS).sort().flatMap((name) => {
-    let declared;
-    try {
-      declared = require(path.join(TASK_DRIVERS, name, 'driver.cjs')).preLeewayStore;
-    } catch {
-      return [];
-    }
-    return isObject(declared) && isPaths(declared.files) && isPaths(declared.localFiles) ? [{ files: declared.files, localFiles: declared.localFiles }] : [];
-  });
-}
-
 /**
  * Each declared store the project folder holds carried into the state as it
- * is (21.5.18); finish drops it from the default branch.
+ * is (21.5.18), the move naming no tracker (7.1.10); finish drops it from
+ * the default branch.
  * @param {string} project @param {string} state
  * @returns {string[]} the files their tools keep local, for the state to ignore beside the stores (7.5.4); none where there is no store
  */

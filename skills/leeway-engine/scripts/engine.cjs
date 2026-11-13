@@ -36,7 +36,8 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
-const { commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
+const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD } = require('./domain/commit.cjs');
+const { commitMigrations } = require('./domain/migration-commit.cjs');
 const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
@@ -321,7 +322,7 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   ${SWEEP_USAGE}
   ${READY_TO_BUILD_USAGE}
 ${VERIFY_USAGE.replace(/^/gm, '  ')}
-  ${MIGRATE_USAGE}
+${MIGRATE_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -1510,7 +1511,8 @@ function runBoard(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// migrate — a directive of the migration checked (domain/directives.cjs).
+// migrate — a directive of the migration checked, and what the migration
+// review reads (domain/directives.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -2253,8 +2255,10 @@ function runCommit(call, argv) {
       // The reviewed migration commit: the whole state, and every path the
       // workflows own in the code tree taken as the index records it — a
       // migration may stage a removal there that the working tree cannot
-      // show. One commit on each side that changed.
-      respond(call, bothSides(commitStateScoped(cwd, '.', message), commitStagedScoped(cwd, OWNED_PATHS, message)));
+      // show. One commit on each side that changed; the reshape's two while
+      // it finishes (domain/migration-commit.cjs).
+      const { state, code } = commitMigrations(cwd, message);
+      respond(call, bothSides(state, code));
       return;
     } else if (inbox) {
       scope = '.inbox';
@@ -2553,7 +2557,8 @@ const COMMANDS = Object.freeze({
 // settings file, outside the project; and the rest read:
 // `layout guard` among them, run before every file Claude writes, `brief
 // guard`, before every dispatch of an agent, `shell guard`, before every
-// shell command, `checklist show`, `migrate check`, `measures` and `board`.
+// shell command, `checklist show`, `migrate check` and `review`, `measures`
+// and `board`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2579,7 +2584,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   raise: '*',
   brief: ['guard'],
   checklist: ['show'],
-  migrate: ['check'],
+  migrate: ['check', 'review'],
   verify: '*',
   measures: '*',
   board: '*',

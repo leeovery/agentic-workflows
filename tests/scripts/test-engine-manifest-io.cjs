@@ -599,6 +599,7 @@ const EXEMPT_CALLS = [
   ['brief', 'guard'],
   ['checklist', 'show', 'decided', 'payments', 'auth-flow'],
   ['render', 'migration-gate'],
+  ['migrate', 'review'],
   ['gate', 'migration gate', '--pick', 'y'],
   ['measures', 'findings'],
   ['board', 'sess-1'],

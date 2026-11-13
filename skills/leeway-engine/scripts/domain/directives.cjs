@@ -28,6 +28,13 @@
 //   of them, which `render directive-stop` draws (21.10.11). A session that
 //   died part-way may leave what the check trips on (21.10.9): the stop then
 //   answers without the counts, and `migrate check` names what failed.
+// - `migrate review` is what the migration review reads before the gate
+//   whose yes makes the migration's commit (migration-commit.cjs): the
+//   state's folder and the code side's, absolute, so the review reads them
+//   from any checkout; and, while the reshape finishes, what its summary is
+//   written from, since the state branch has no commit to diff against yet
+//   (21.9.4) — the commits the yes still makes, the units moved, the topics
+//   carried, the directives done, and the code files the commit takes.
 // - Known edges: held commits and the trust log's silence key on the state
 //   branch having no commit yet (state-worktree.cjs, trust-log.cjs), which
 //   only the reshape's migration leaves; a directive met later, on a branch
@@ -43,6 +50,9 @@ const { messageOf } = require('../kernel/call.cjs');
 const { directiveStop } = require('./projections/boot.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
+const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
+const { topicsOf } = require('./ledger-units.cjs');
+const { MIGRATION_JOURNALS, finishing, projectInMain, codeStaged } = require('./migration-commit.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
 const MIGRATE_SCRIPTS = path.resolve(__dirname, '..', '..', '..', 'leeway-migrate', 'scripts');
@@ -53,13 +63,9 @@ const MIGRATIONS = path.join(MIGRATE_SCRIPTS, 'migrations');
 // writes and a directive's close appends to.
 const MIGRATIONS_RECORD = '.state/migrations';
 
-// Where the runner journals what its runs owe the run that completes,
-// state-relative: in the cache, which no state commit takes.
-const MIGRATION_JOURNALS = '.cache/migrate';
-
 const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-const MIGRATE_USAGE = 'migrate check <id>';
+const MIGRATE_USAGE = ['migrate check <id>', 'migrate review'].join('\n');
 
 /** A directive the migrations hold: its id, the number its record line is, and its two files. @typedef {{id: string, number: string, file: string, check: string}} Directive */
 
@@ -254,13 +260,62 @@ function directiveStopSurface(cwd, args) {
 }
 
 /**
- * `migrate check <id>`: the directive's check run.
+ * The directives the migrations record holds, by id, in their order.
+ * @param {string} cwd @returns {string[]}
+ */
+function directivesDone(cwd) {
+  const record = statePath(cwd, MIGRATIONS_RECORD);
+  const held = new Set(fs.existsSync(record) ? fs.readFileSync(record, 'utf8').split('\n') : []);
+  return fs.readdirSync(MIGRATIONS).filter((name) => name.endsWith('.md')).map((name) => name.slice(0, -'.md'.length)).filter((id) => {
+    const named = DIRECTIVE_ID.exec(id);
+    return named !== null && held.has(named[1]);
+  }).sort();
+}
+
+/**
+ * What the reshape's summary is written from while its commit is owed:
+ * the commits the yes still makes, the units moved, the topics they
+ * carry, the directives done, and the code files the commit takes, named
+ * from the project's folder.
+ * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, directives: string[], staged: string[]}} ReshapeReview
+ */
+
+/**
+ * `migrate review`: the state's folder and the folder the code side's
+ * commit lands in, both absolute — and, while the reshape finishes, what
+ * its summary is written from (`ReshapeReview`).
+ * @param {string} cwd
+ * @returns {{state: string, code: string, reshape?: ReshapeReview}}
+ */
+function reviewMigration(cwd) {
+  const finish = finishing(cwd);
+  const state = stateRoot(cwd);
+  if (finish === null) return { state, code: codeRoot(cwd) };
+  const code = projectInMain(cwd);
+  const units = listWorkUnitManifests(cwd);
+  return {
+    state,
+    code,
+    reshape: {
+      commits: finish.commits,
+      units: units.length,
+      topics: units.reduce((sum, manifest) => sum + topicsOf(manifest).length, 0),
+      directives: directivesDone(cwd),
+      staged: codeStaged(code, finish.journal),
+    },
+  };
+}
+
+/**
+ * `migrate check <id>`: the directive's check run; `migrate review`: what
+ * the migration review reads.
  * @param {string} cwd @param {string[]} argv
- * @returns {Checked}
+ * @returns {Checked|ReturnType<typeof reviewMigration>}
  */
 function runMigrateVerb(cwd, argv) {
   const [verb, id, ...rest] = argv;
-  if (verb !== 'check' || id === undefined || rest.length > 0) throw new Error(`Usage: engine ${MIGRATE_USAGE}`);
+  if (verb === 'review' && argv.length === 1) return reviewMigration(cwd);
+  if (verb !== 'check' || id === undefined || rest.length > 0) throw new Error(`Usage: ${MIGRATE_USAGE.split('\n').map((form) => `engine ${form}`).join(' | ')}`);
   try {
     return checkDirective(cwd, id);
   } catch (err) {
