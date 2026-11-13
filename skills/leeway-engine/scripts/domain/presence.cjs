@@ -58,9 +58,6 @@ const CODE_PHASES = ['implementation', 'review'];
 // The corpora the epic-wide analyses read. A held session in any other phase
 // is no reason to defer an analysis that never looks at its material.
 const SOURCE_PHASES = ['discussion'];
-// The phases whose document a specification extracts from — what the
-// spec-side held-doc check looks for a holder on.
-const DOCUMENT_PHASES = ['discussion', 'investigation'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -292,19 +289,6 @@ function heldSources(sessions) {
 }
 
 /**
- * The freshest held row a peer holds on one document — the spec-side
- * held-doc gate's read, naming the holder's last-active age. Null when no
- * peer holds it.
- * @param {string} cwd @param {string} workUnit @param {string} doc  the document's topic name
- * @returns {PresenceRow|null}
- */
-function heldDocument(cwd, workUnit, doc) {
-  const rows = scanPresence(cwd, workUnit).sessions
-    .filter((r) => r.held && r.topic === doc && DOCUMENT_PHASES.includes(r.phase) && !ownsRow(r));
-  return rows[0] || null;
-}
-
-/**
  * Every heartbeat in the work unit's cache, the held verdict applied — the
  * one read every consumer shares. `held` answers "does a session hold this
  * topic open", unbounded by time; `age_seconds` says how long since it last
@@ -437,6 +421,6 @@ function deferralSection(scan) {
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
-  scanPresence, scanProject, heldCodeSessions, heldDocument, peerHold, cleanupPresence, deferralSection,
+  scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence, deferralSection,
   fmtAge, ownsRow, CODE_PHASES, SOURCE_PHASES,
 };

@@ -42,9 +42,9 @@ const LEGACY_PHASES = Object.freeze([LEGACY_PLANNING]);
 // Per-work-type pipeline order — the phases a unit of that type moves through
 // after discovery (the universal first phase; a map, not a pipeline phase, so
 // it never appears here). The one home for pipeline order: detail builders,
-// dashboards, gateways, and the simulation all read these arrays, never a
-// local copy. A quick-fix's review runs only once the person asks for one at
-// its close (19.5.14).
+// dashboards and the simulation all read these arrays, never a local copy.
+// A quick-fix's review runs only once the person asks for one at its close
+// (19.5.14).
 const WORK_TYPE_PIPELINES = {
   epic:            ['experiment', 'discussion', 'specification', 'implementation', 'review'],
   feature:         ['experiment', 'discussion', 'specification', 'implementation', 'review'],
@@ -167,10 +167,6 @@ function assertLegalName(kind, name) {
 // spawning discussion's own item, `awaiting_experiments`.
 const EXPERIMENT_SPAWN_PHASES = ['discussion'];
 
-// A walk's gate mode (`analysis_staging.<name>.gate_mode`): `auto` runs the
-// walk to its end.
-const VALID_GATE_MODES = ['gated', 'auto'];
-
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
 // The build's positions (3.3.1), auto first, the default. The unit's
@@ -250,7 +246,6 @@ module.exports = {
   illegalNameReason,
   assertLegalName,
   EXPERIMENT_SPAWN_PHASES,
-  VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   BUILD_POSITIONS,
   TERMINAL_STATUSES,

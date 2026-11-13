@@ -2,16 +2,15 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: shared derivations — phase joins, topic lifecycle, next-phase
-// computation, map ordering, and analysis-cache status. Pure over loaded
-// manifests: same input, same answer. Generic loads come from domain/reads —
-// derivations may require reads; never the reverse.
+// computation and map ordering. Pure over loaded manifests: same input,
+// same answer. Generic loads come from domain/reads — derivations may
+// require reads; never the reverse.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs');
+const { loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, LEGACY_PHASES, LEGACY_PLANNING, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
@@ -922,66 +921,6 @@ function lastCompletedPhase(manifest, pipeline) {
   return last;
 }
 
-/**
- * The sorted set of existing input files for an analysis kind — the record
- * copies of the decided discussions. The one collection both cache sides
- * checksum — the read (computeAnalysisCacheStatus) and the write (`engine
- * cache stamp`) — so they can never drift. Returns absolute paths, sorted.
- */
-function collectAnalysisInputs(manifest, stateDir, kind) {
-  if (!manifest || !manifest.name || !(kind in ANALYSIS_KINDS)) return [];
-  return phaseItems(manifest, 'discussion')
-    .filter((it) => it.status === 'completed')
-    .map((it) => path.join(stateDir, RECORDS_DIR, manifest.name, `${it.name}.md`))
-    .filter((p) => fileExists(p))
-    .sort();
-}
-
-// Per-kind config for computeAnalysisCacheStatus: where the cache object
-// lives, the field on it listing the cached file names where the stamp
-// records them, and the two kind-specific reason strings. The body is
-// otherwise one path for every kind — the same read the write side
-// checksums (collectAnalysisInputs).
-const ANALYSIS_KINDS = {
-  'gap-analysis': {
-    cacheOf: (manifest) => ((manifest.phases || {}).discovery || {}).gap_analysis_cache,
-    filesField: 'input_files',
-    reasonNoInputs: 'no decided discussion records',
-    reasonStale: 'decided discussions have changed since gap analysis was generated',
-  },
-};
-
-function computeAnalysisCacheStatus(manifest, stateDir, kind) {
-  if (!manifest || !manifest.name) return { status: 'absent', stamped: false, generated: null, files: [] };
-
-  const cfg = ANALYSIS_KINDS[kind];
-  if (!cfg) return { status: 'absent', stamped: false, generated: null, files: [] };
-
-  const cache = cfg.cacheOf(manifest);
-  const inputPaths = collectAnalysisInputs(manifest, stateDir, kind);
-  const cachedFiles = () => (cache && cfg.filesField && Array.isArray(cache[cfg.filesField])) ? cache[cfg.filesField] : [];
-
-  if (!cache || !cache.checksum) {
-    return inputPaths.length > 0
-      ? { status: 'stale', stamped: false, generated: null, files: [], reason: 'no cache exists' }
-      : { status: 'absent', stamped: false, generated: null, files: [] };
-  }
-
-  if (inputPaths.length === 0) {
-    return { status: 'absent', stamped: true, generated: cache.generated || null, files: cachedFiles(), reason: cfg.reasonNoInputs };
-  }
-
-  const currentChecksum = filesChecksum(inputPaths);
-  const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
-  return {
-    status,
-    stamped: true,
-    generated: cache.generated || null,
-    files: cachedFiles(),
-    reason: status === 'valid' ? 'checksums match' : cfg.reasonStale,
-  };
-}
-
 const TIER_RANK = { '✓': 0, '◐': 1, '○': 2, '⊘': 3, '⊖': 4 };
 
 // Shared row comparator for the discovery map: tier rank first — decided
@@ -1381,8 +1320,7 @@ function mailPhases(stateDir, manifest) {
  * The discovery-map rows for one epic manifest: each discovery item joined to
  * its per-phase lifecycle, sorted by tier → order → name, with the map summary
  * and the sequencing flag. The single builder every discovery-map surface
- * reads — the epic detail and the discovery-session gateway consume the same
- * rows, so the two can never silently disagree.
+ * reads, so no two can silently disagree.
  *
  * Each row carries the superset of fields any surface needs. `summary` and
  * `description_present` follow the normalised reading — a whitespace-only or
@@ -1486,8 +1424,6 @@ module.exports = {
   settleItemStatus,
   computeNextPhase,
   lastCompletedPhase,
-  collectAnalysisInputs,
-  computeAnalysisCacheStatus,
   computeTopicLifecycle,
   computeNextAction,
   CONVERSATION_ACTIONS,
@@ -1501,7 +1437,6 @@ module.exports = {
   compareMapRows,
   computeNeedsSequencing,
   buildDiscoveryMap,
-  ownNamedItems,
   mailPhase,
   topicDir,
   mailboxDir,

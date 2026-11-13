@@ -4,9 +4,8 @@
 // ---------------------------------------------------------------------------
 // Engine CLI — the shell door into the engine.
 //
-// Skills' .md files call this at prescribed points; scripts should prefer the
-// in-process library (lib.cjs). Domain commands (transitions, queries) land
-// here as they're built.
+// Skills' .md files call this at prescribed points. Domain commands
+// (transitions, queries) land here as they're built.
 //
 // The `render` command group serves two audiences: the surface catalogue
 // (domain/render.cjs) — named runtime surfaces skill flows call at prescribed
@@ -58,7 +57,6 @@ const { topicLog } = require('./domain/topic-log.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
 const { archiveItems, closeItems, restoreItems, deleteItems, fileItem } = require('./domain/inbox.cjs');
 const { CAPTURE_USAGE, captureItem } = require('./domain/inbox-capture.cjs');
-const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { stateMergeCommand } = require('./domain/state-merge.cjs');
@@ -353,7 +351,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   roadmap horizon merge <from> --into <to>
   roadmap horizon split <name> --new <name> --items <a,b,…> [--position <n>]
   roadmap horizon remove <name>
-  cache stamp <work-unit> gap-analysis
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
@@ -370,15 +367,12 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   code diff   [--subject <prefix>]
   code status
   render backlog-gate     <wu.phase.topic> --file <payload.json>
-  render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
   render send-closed-target <wu.discovery.target>
   render experiment-register <wu.experiment.topic>
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
-  render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
-  render phase-completed   <wu> --phase <phase>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render cancel-gate       <wu.discovery.name> | <wu>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
@@ -386,21 +380,13 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render absorb-receipt    <epic> --topic <name> [--moved seeds,assets,spikes] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
-  render absorb-continuation <epic> --feature <name>
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
-  render pivot-continuation <wu>
   render absorb-target     <feature>
   render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
   render archived-delete-gate --path <archived path> [--file <pick.json>]
   render inbox-restore-receipt --path <live path> [--unclaimed <wu>]
   render inbox-delete-receipt --path <archived path>
-  render completed-actions <wu>
-  render revisit-phases    <wu>
-  render roadmap-view
-  render roadmap-add-gate --horizon <name>
   render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]
-  render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
-  render roadmap-parks-gate
   render query-failure-gate --file <payload.json>
   render brownfield-offer-gate
   render walkthrough-offer [--menu-only]
@@ -476,10 +462,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
 // (set/push/pull/delete) answer with the engine's one-line JSON response.
 //
 // No field write heartbeats. A three-segment `set` looks self-referential and
-// frequently is not: the gap analysis's `source` stamp and a brief's
-// `brief_incorporated` mark both write a discovery item from another
-// phase's session, and a beat there manufactures a hold on a topic nobody
-// is in (P8).
+// frequently is not: a brief's `brief_incorporated` mark writes a
+// discovery item from another phase's session, and a beat there
+// manufactures a hold on a topic nobody is in (P8).
 // The session's cadence commit is its heartbeat; `apply`, the cross-topic
 // batch door, never beat either.
 // ---------------------------------------------------------------------------
@@ -1754,25 +1739,6 @@ function runRoadmap(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// cache — analysis-cache stamping. Checksums the current completed inputs
-// exactly as the read side does and writes the cache object. No git commit —
-// the calling flow's commit cadence picks the manifest change up.
-// ---------------------------------------------------------------------------
-
-/** @param {Call} call @param {string[]} argv */
-function runCache(call, argv) {
-  const [command, workUnit, kind] = argv;
-  try {
-    if (command !== 'stamp' || !workUnit || !kind) {
-      throw new Error('Usage: engine cache stamp <work-unit> gap-analysis');
-    }
-    respond(call, stampAnalysisCache(call.cwd, workUnit, kind));
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // agent — the background-agent lifecycle store (domain/agent-state.cjs).
 // The write verbs address the session's own topic — dispatching and walking
 // its own agents' findings — so every one heartbeats. `scan` is a read,
@@ -2269,7 +2235,7 @@ function runCommit(call, argv) {
     }
 
     // `--state` names two scopes by whether a work unit rides with it: the
-    // unit's own analysis dir, or the global one.
+    // unit's manifest, or the state's own `.state`.
     const globalState = stateScope && workUnit === null;
     const scopeCount = [inbox, workflows, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [topicSpec !== null, discovery, stateScope && workUnit !== null].filter(Boolean).length;
@@ -2341,11 +2307,11 @@ function runCommit(call, argv) {
         return;
       }
       if (stateScope) {
-        // --state: the work unit's analysis dir plus its manifest — the scope
-        // the epic's gap analysis writes. It runs beside live topic sessions
-        // whose half-written documents sit in the same work unit, so it
-        // slices its own paths and never theirs.
-        respond(call, stateCommitted(commitStateScoped(cwd, [`${wu}/.state`, `${wu}/manifest.json`], message)));
+        // --state: the work unit's manifest — the retry a verb's pending note
+        // names. It runs beside live topic sessions whose half-written
+        // documents sit in the same work unit, so it slices its own path and
+        // never theirs.
+        respond(call, stateCommitted(commitStateScoped(cwd, [`${wu}/manifest.json`], message)));
         return;
       }
       if (discovery) {
@@ -2522,7 +2488,6 @@ const COMMANDS = Object.freeze({
   roadmap: runRoadmap,
   brownfield: runBrownfield,
   walkthrough: runWalkthrough,
-  cache: runCache,
   agent: runAgent,
   commit: runCommit,
   code: runCode,
@@ -2780,9 +2745,8 @@ function answersLater([command, ...rest]) {
  * rather than taken from the process. Answers what the spawned CLI answered —
  * the same bytes on the same two streams, the same exit code — and never
  * exits, chdirs, or leaves the environment moved. Callers are test harnesses
- * that want the engine's answers without a process per answer; skills' own
- * scripts take the library (lib.cjs). A command that answers later is
- * runAsync's, refused here before it runs.
+ * that want the engine's answers without a process per answer. A command
+ * that answers later is runAsync's, refused here before it runs.
  *
  * The cwd is a parameter rather than a chdir because `process.chdir` is
  * refused inside a worker thread, and the prose world builder runs in one.

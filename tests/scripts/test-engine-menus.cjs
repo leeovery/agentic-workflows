@@ -144,9 +144,6 @@ describe('the menus\' registry', () => {
     });
   });
 
-  it('23.2.4: every menu\'s help tells exactly the rows it registers', () => {
-    assert.deepStrictEqual(menusDrift(), []);
-  });
 });
 
 describe('the frame (E1, 18.9.1, 18.9.4, 23.2.1)', () => {

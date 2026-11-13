@@ -1307,7 +1307,7 @@ const THE_PERSON = /\b(the person|the user)\b/i;
 /** Whether a sentence tells a session to write the project's CLAUDE.md. @param {string} sentence */
 const writesClaudeMd = (sentence) => /CLAUDE\.md/.test(sentence) && WRITE_VERB.test(sentence) && !NEGATED.test(sentence) && !THE_PERSON.test(sentence);
 
-/** The shipped code: the engine's, the gateways' and the mods', comments left out. */
+/** The shipped code: the engine's and the mods', comments left out. */
 function codeFiles(root = REPO) {
   const out = [];
   const walk = (dir) => {

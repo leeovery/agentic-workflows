@@ -17,8 +17,8 @@
 //                  the gate mod reads to set the workflow harness, to say the
 //                  phase in its spinner, to answer a compaction and to
 //                  record each task's builder and reviewers — written by
-//                  every engine and gateway call that carries a session id,
-//                  run in a project whose state already exists
+//                  every engine call that carries a session id, run in a
+//                  project whose state already exists
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
 //   position.json  where in the workflows the conversation is working, and

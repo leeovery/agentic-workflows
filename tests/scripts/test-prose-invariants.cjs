@@ -108,13 +108,6 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
 
-  it('counts a gateway call as consulting state, as the prose does', () => {
-    const rows = [
-      bash('cd . && node .claude/skills/leeway/scripts/gateway.cjs view'),
-      wrote('./.workflows/pay/manifest.json'),
-    ];
-    assert.equal(invariants.check(rows, declared)[0].ok, true);
-  });
 });
 
 describe('calls_include / calls_exclude', () => {

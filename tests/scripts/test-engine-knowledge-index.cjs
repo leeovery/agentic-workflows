@@ -26,7 +26,7 @@ const {
 refuseLaunches();
 
 /** The door's refusal of a state-relative path no identity derives from. @param {string} rel */
-const noIdentity = (rel) => `Cannot derive identity from path: ${rel}\nExpected path matching: .knowledge/records/..., {work_unit}/summary.md or {work_unit}/.state/...`;
+const noIdentity = (rel) => `Cannot derive identity from path: ${rel}\nExpected path matching: .knowledge/records/... or {work_unit}/summary.md`;
 
 /** A section of prose long enough to be a chunk of its own. @param {string} heading @param {string} body */
 const section = (heading, body) => `## ${heading}\n\n${body}\n\n${Array.from({ length: 30 }, (_, i) => `Line ${i} of the reasoning.`).join('\n')}\n`;
@@ -47,12 +47,10 @@ describe('engine knowledge index <file>', () => {
 
   it('writes each kind of artifact at the identity its path derives, its phase\'s confidence and its unit\'s type, each beside the others, a topic\'s record among them', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
-    knowledgeUnit(root, 'payments', 'epic');
     knowledgeUnit(root, 'login', 'bugfix');
     const artifacts = [
       [layout.record('auth', 'auth'), 'auth', 'bugfix', 'record', 'auth', 'high'],
       [layout.summary('login'), 'login', 'bugfix', 'summary', '.unit', 'high'],
-      ['payments/.state/discovery-gap-analysis.md', 'payments', 'epic', 'analysis', 'gap-analysis', 'low'],
     ];
     for (const [rel] of artifacts) {
       write(rel, `# ${rel}\n\nWhat ${rel} settled.\n`);
@@ -80,7 +78,7 @@ describe('engine knowledge index <file>', () => {
 
   it('re-indexes an unchanged file to the same chunks, whatever its kind', async () => {
     knowledgeUnit(root, 'payments', 'epic');
-    for (const rel of [layout.record('payments', 'ledger'), layout.summary('payments'), 'payments/.state/discovery-gap-analysis.md']) {
+    for (const rel of [layout.record('payments', 'ledger'), layout.summary('payments')]) {
       write(rel, `# Notes\n\n${section('One', 'First.')}\n${section('Two', 'Second.')}`);
       await knowledge('index', `.leeway/${rel}`);
       const first = storedChunks(root).map((c) => c.id);
@@ -160,17 +158,14 @@ describe('engine knowledge index <file>', () => {
       knowledgeUnit(root, 'auth', 'bugfix');
       const DOTS = 'dots are not allowed. Work-unit and topic names double as manifest dot-path and knowledge-identity segments, '
         + 'so a dot leaves the artifact indexable but unreachable by status, remove, and discovery.';
-      const CACHES = 'only analysis caches (discovery-gap-analysis) are indexable.';
       for (const [rel, said] of [
         ...[
           'auth/planning/auth/planning.md', 'auth/investigation/auth.md', 'auth/imports/notes.md', 'auth/discussion/auth.md',
           'auth/specification/auth/specification.md', 'auth/spec.md', 'auth/topics/auth/log.md', 'auth/discovery/session-001.md',
           '.product/sessions/session-001.md', '.product/assets/market.md',
+          'auth/.state/discovery-gap-analysis.md', 'auth/.state/migrations.md',
         ].map((rel) => [rel, noIdentity(rel)]),
         ['.hidden/summary.md', 'Invalid work unit name: ".hidden"'],
-        ['.hidden/.state/discovery-gap-analysis.md', 'Invalid work unit name: ".hidden"'],
-        ['auth/.state/discussion-consolidation-analysis.md', `Refusing to index .state file "discussion-consolidation-analysis.md" — ${CACHES}`],
-        ['auth/.state/migrations.md', `Refusing to index .state file "migrations.md" — ${CACHES}`],
         ['dot.unit/summary.md', `Invalid work unit name "dot.unit": ${DOTS}`],
         [layout.record('auth', 'a.b'), `Invalid topic name "a.b": ${DOTS}`],
       ]) {

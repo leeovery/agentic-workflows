@@ -1,7 +1,7 @@
 ---
 name: leeway-continue-epic
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 An epic's menu: what waits on the person in it, its topics, and the way on.

@@ -490,9 +490,9 @@ describe('phase chunking configs', () => {
     });
   }
 
-  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline, nor the spec, nor the old investigation file or imports, nor a seed (8.14.7, 9.2.2, 11.1.2, 22.6.12)', () => {
+  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline, nor the spec, nor the old investigation file or imports, nor a seed, nor the gap analysis (4.11.16, 8.14.7, 9.2.2, 11.1.2, 22.6.12)', () => {
     assert.ok(phases.includes('record'));
-    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline', 'specification', 'investigation', 'imports', 'seeds']) {
+    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline', 'specification', 'investigation', 'imports', 'seeds', 'analysis']) {
       assert.ok(!phases.includes(phase), phase);
       assert.strictEqual(fs.existsSync(path.join(chunkingDir, phase + '.json')), false, phase);
     }
@@ -513,67 +513,6 @@ describe('phase chunking configs', () => {
     assert.strictEqual(chunk(copy, HEADING).length, 1);
   });
 
-  it('analysis.json declares low confidence (analysis caches are surfacing aids, not source of truth)', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
-    );
-    assert.strictEqual(cfg.confidence, 'low');
-  });
-
-  it('analysis config preserves H3-section content under a single H2 (Topics)', () => {
-    // Real analysis caches have one H2 (## Topics) with H3 subsections per theme.
-    // The config's primary_level=2 keeps the Topics section whole when small;
-    // assert chunks are emitted and the H3 content survives intact.
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
-    );
-    const src = [
-      '# discovery-gap-analysis',
-      '',
-      '## Topics',
-      '',
-      '### Caching Layer',
-      '',
-      '- **Summary**: Recurring caching theme.',
-      '- **Sources**: discussion/foo.md',
-      '',
-      '### Rate Limiting',
-      '',
-      '- **Summary**: Per-service vs edge gateway.',
-      '- **Sources**: discussion/baz.md',
-      '',
-    ].join('\n');
-    const chunks = chunk(src, cfg);
-    assert.ok(chunks.length >= 1, 'expected at least one chunk emitted');
-    const combined = chunks.map((c) => c.content).join('\n');
-    assert.ok(/Caching Layer/.test(combined), 'expected Caching Layer content preserved');
-    assert.ok(/Rate Limiting/.test(combined), 'expected Rate Limiting content preserved');
-  });
-
-  it('analysis config falls back to H3 splitting when the H2 section is over the budget', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
-    );
-    const body = (tag) => Array.from({ length: 120 }, (_, i) => tag + ' line ' + (i + 1) + ' ' + 'y'.repeat(60)).join('\n');
-    const src = [
-      '# discovery-gap-analysis',
-      '',
-      '## Topics',
-      '',
-      '### Caching Layer',
-      '',
-      body('caching'),
-      '',
-      '### Rate Limiting',
-      '',
-      body('rate'),
-      '',
-    ].join('\n');
-    const chunks = chunk(src, cfg);
-    const openers = chunks.map((c) => c.content.split('\n')[0]);
-    assert.ok(openers.includes('### Caching Layer'), 'expected a Caching Layer chunk');
-    assert.ok(openers.includes('### Rate Limiting'), 'expected a Rate Limiting chunk');
-  });
 });
 
 describe('knowledge chunker — real fixtures', () => {

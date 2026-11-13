@@ -1,15 +1,17 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the reshape retired (1.S9, 3.S1): the release ships no research,
+// What the reshape retired (1.S9, 3.S1, 6.S3): the release ships no research,
 // planning, scoping or baseline skill, no plan format, and no cross-cutting
-// type a unit can be made as; and the engine's phase tables hold discovery,
+// type a unit can be made as; the engine's phase tables hold discovery,
 // discussion, experiment and investigation in Discovery, specification in
 // Definition, implementation and review in Delivery, with the item names
-// older units carry in a list outside the tables.
+// older units carry in a list outside the tables; and the command catalogue
+// has the new families with their verbs and the kept ones, and no verb for
+// what the release removes.
 //
-// Layer: unit. World: none — the shipped skills folder and the schema
-// module, read.
+// Layer: unit. World: none — the shipped skills folder, the schema module
+// and the engine's usage, read.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -17,9 +19,11 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const schema = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { run, COMMANDS } = require('../../skills/leeway-engine/scripts/engine.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
 
@@ -87,5 +91,49 @@ describe('the engine\'s phase tables (3.S1)', () => {
     for (const [table, names] of Object.entries(TABLES)) {
       assert.deepStrictEqual(names.filter((name) => schema.LEGACY_PHASES.includes(name)), [], table);
     }
+  });
+});
+
+describe('the command catalogue (6.S3)', () => {
+  // The catalogue as the engine says it to a call it does not know: each
+  // usage line's family and its verb, a render's surface among them.
+  const usage = String(run(['nope'], { cwd: os.tmpdir() }).stderr).split('\n').filter((line) => /^ {2}[a-z]/.test(line));
+  /** @type {Record<string, string[]>} */
+  const verbs = {};
+  for (const line of usage) {
+    const [family, verb] = line.trim().split(/\s+/);
+    (verbs[family] ??= []).push(verb);
+  }
+
+  /** The verbs 6.1.4 to 6.1.13, 6.1.15 and 6.1.20 name, by family; a family with none named is its one door. */
+  const NEW = {
+    ledger: ['ask', 'find', 'decide', 'replace', 'hold', 'move', 'merge', 'record', 'map', 'product', 'since', 'affected'],
+    raise: ['answer'],
+    verdict: ['queue', 'give'],
+    task: ['note'],
+    land: ['open', 'chain', 'phase', 'finish'],
+    brief: [],
+    checklist: ['show', 'done', 'skip', 'close'],
+    asset: ['add', 'status', 'lift'],
+    verify: ['run', 'setup', 'mutants'],
+    gate: [],
+    inbox: ['archive', 'restore', 'delete', 'close', 'file'],
+    cut: [],
+  };
+  /** The families 6.1.16 keeps. */
+  const KEPT = ['topic', 'workunit', 'roadmap', 'discovery-session', 'experiment', 'agent', 'knowledge', 'commit', 'render', 'handoff', 'conversation', 'presence', 'session', 'boot'];
+  /** What the release removes (6.1.17): research threads, the discussion map, routing, build order, analysis cycles, plan formats, grouping, staleness, promotion to cross-cutting. */
+  const RETIRED = /research(?!er)|thread|discussion-map|rout(e|ing)|build-order|analys|cache|cycle|format|group|stale|reconcile|promot|cross-cutting/;
+
+  it('has the new families with the verbs they name, and the kept families, each a command the engine dispatches', () => {
+    for (const family of [...Object.keys(NEW), ...KEPT]) {
+      assert.ok(Object.hasOwn(COMMANDS, family) && Object.hasOwn(verbs, family), `${family} is in the catalogue`);
+    }
+    assert.deepStrictEqual(Object.entries(NEW).flatMap(([family, named]) => named.filter((verb) => !verbs[family].includes(verb)).map((verb) => `${family} ${verb}`)), []);
+  });
+
+  it('has no verb serving what the release removes — no family, verb or surface named for it', () => {
+    assert.deepStrictEqual(Object.entries(verbs).flatMap(([family, said]) => [family, ...said.map((verb) => `${family} ${verb}`)]).filter((name) => RETIRED.test(name)), []);
+    assert.deepStrictEqual(Object.keys(COMMANDS).filter((family) => RETIRED.test(family)), []);
   });
 });

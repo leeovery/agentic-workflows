@@ -8,8 +8,7 @@
 // a retired type's unit waiting on the cut — and every way into their work is
 // closed until 29.17's migration cuts them: Continue refuses each but an
 // epic, which goes onto its menu, where the migration's line stands with no
-// way into the build, manage never offers to mark them done, and the revisit
-// list refuses them.
+// way into the build, and manage never offers to mark them done.
 // A retired type's unit is listed with the
 // features, by its own type, waiting on the cut whatever it has in flight,
 // the board placing it there too; its manifest is read by every verb, and no
@@ -155,10 +154,8 @@ describe('a unit built under the old plan reads its items and waits on the migra
     ]);
   });
 
-  it('manage offers it no done — cancel alone, a feature not past its spec its pivot — and the revisit list refuses it', () => {
+  it('manage offers it no done — cancel alone, a feature not past its spec its pivot', () => {
     assert.deepStrictEqual(Object.fromEntries(LIVE.map((name) => [name, manageUnitScreen(dir, loadManifest(dir, name)).rows.map(({ key }) => key)])), KEYS_IN_MANAGE);
-    assert.strictEqual(JSON.parse(call(dir, ['render', 'revisit-phases', 'built-feature']).stderr).error,
-      'render revisit-phases: "built-feature" has no completed earlier phase to revisit');
   });
 
   it('the lifecycle verbs refuse it as before', () => {

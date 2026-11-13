@@ -96,7 +96,7 @@ describe('engine harness — the shapes', () => {
   });
 
   it('output answers the whole stdout of a call that must succeed', () => {
-    const rendered = output(dir, ['render', 'phase-completed', 'pay', '--phase', 'investigation']);
+    const rendered = output(dir, ['render', 'phase-note', 'pay.investigation.pay', '--verb', 'Resuming']);
     assert.match(rendered, /^=== /, 'the render surface, sections and all');
     assert.strictEqual(output(dir, ['manifest', 'get', 'pay.investigation.pay', 'status']), 'in-progress\n',
       'a bare read is its raw stdout, trailing newline included');

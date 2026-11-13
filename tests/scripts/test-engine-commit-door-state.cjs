@@ -219,24 +219,21 @@ describe('engine commit --product: the product\'s conversation\'s scope', () => 
   });
 });
 
-describe('engine commit --state: the analysis scopes', () => {
+describe('engine commit --state: the unit\'s manifest, and the state\'s own .state', () => {
   let dir;
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the work unit form takes its analysis dir and its manifest', () => {
-    writeState(dir, layout.unitState('payments', 'discussion-consolidation-analysis.md'), '# Groupings\n');
+  it('the work unit form takes its manifest alone — the retry a verb\'s pending note names', () => {
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
     // A live peer mid-write, in the same work unit — the theft this scope closes.
     writeState(dir, layout.brief('payments', 'topic-b'), '# Topic B\npeer session dirt\n');
     writeState(dir, layout.unit('payments', 'spec.md'), '# Spec\nhalf written\n');
 
-    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
+    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
-    const files = headFiles(dir);
-    assert.ok(files.includes(layout.unitState('payments', 'discussion-consolidation-analysis.md')), 'the analysis rides');
-    assert.ok(files.includes(layout.manifest('payments')), 'so does the manifest it wrote');
+    assert.deepStrictEqual(headFiles(dir), [layout.manifest('payments')]);
     assert.deepStrictEqual(
       statusLines(dir).sort(),
       [` M ${layout.brief('payments', 'topic-b')}`, `?? ${layout.unit('payments', 'spec.md')}`],
@@ -272,9 +269,9 @@ describe('engine commit --state: the analysis scopes', () => {
     assert.match(refuses(dir, ['commit', 'no-such-unit', '--state', '-m', 'x']).error, /no work unit directory/);
   });
 
-  it('never beats — an analysis is not a session sitting in a topic', () => {
-    writeState(dir, layout.unitState('payments', 'discussion-consolidation-analysis.md'), '# Groupings\n');
-    ok(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
+  it('never beats — a retry is not a session sitting in a topic', () => {
+    writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('payments'))), 'no heartbeat anywhere');
   });
 });

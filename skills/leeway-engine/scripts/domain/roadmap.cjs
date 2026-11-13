@@ -85,23 +85,13 @@ const DEFAULT_KIND = /** @type {RoadmapKind} */ ('idea');
 /**
  * Whether an item becomes a topic when it meets an epic — an idea alone; a
  * bug or a quick-fix rides with its unit as material, never a topic. The one
- * predicate behind pull-forward, absorb's re-aim, and discovery's anti-twin
- * flag (its gateway, through the library).
+ * predicate behind pull-forward, absorb's re-aim, the map's binds and
+ * discovery's seeds.
  * @param {{kind?: unknown}} item
  * @returns {boolean}
  */
 function becomesTopic(item) {
   return item.kind === 'idea';
-}
-
-/**
- * The kind a display names — none for the default kind, the one a reader
- * assumes.
- * @param {RoadmapKind} kind
- * @returns {RoadmapKind|null}
- */
-function markedKind(kind) {
-  return kind === DEFAULT_KIND ? null : kind;
 }
 
 /**
@@ -402,8 +392,8 @@ function joinState(cwd, item) {
  */
 
 /**
- * The whole roadmap, derived — the read every consumer shares (gateways,
- * render surfaces, tests). Absent or malformed state reads as no roadmap:
+ * The whole roadmap, derived — the read every consumer shares (render
+ * surfaces, verbs, tests). Absent or malformed state reads as no roadmap:
  * `{exists: false}` with empty collections, the never-born state the JIT
  * birth keys on; a product session's log alone gives a roadmap that exists
  * and holds nothing yet. Items come back horizon-ordered (list order, then insertion
@@ -1619,7 +1609,6 @@ function reaimAbsorbed(cwd, fromUnit, { into, topic, relocations }) {
 module.exports = {
   DEFAULT_KIND,
   becomesTopic,
-  markedKind,
   validateKind,
   planRoadmapBatch,
   roadmapState,
@@ -1657,5 +1646,4 @@ module.exports = {
   requireSourcesOnDisk,
   isNote,
   nameTakenRefusal,
-  addNameRefusal,
 };

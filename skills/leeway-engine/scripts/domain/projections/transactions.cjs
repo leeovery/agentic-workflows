@@ -228,40 +228,6 @@ function importReprompt(missing, step) {
   ].join('\n');
 }
 
-/**
- * The pivot continuation menu — the manage flow's post-pivot decision.
- * @param {string} workUnit
- * @returns {string}
- */
-function pivotContinuationMenu(workUnit) {
-  const name = titlecase(workUnit);
-  return section(
-    'MENU: pivot continuation',
-    MENU_INSTRUCTION,
-    menu(`**${name}** converted from feature to epic.`, [
-      cmdOption('c', 'continue', `Continue ${name} as epic`),
-      cmdOption('b', 'back', 'Return to previous view'),
-    ], { question: 'What next?' }),
-  );
-}
-
-/**
- * The absorb continuation menu — the manage flow's post-absorption decision.
- * @param {string} feature @param {string} epic
- * @returns {string}
- */
-function absorbContinuationMenu(feature, epic) {
-  const name = titlecase(epic);
-  return section(
-    'MENU: absorb continuation',
-    MENU_INSTRUCTION,
-    menu(`**${titlecase(feature)}** absorbed into **${name}**.`, [
-      cmdOption('c', 'continue', `Continue ${name} as epic`),
-      cmdOption('b', 'back', 'Return to previous view'),
-    ], { question: 'What next?' }),
-  );
-}
-
 /** @typedef {import('../discovery-map.cjs').MapChange} MapChange */
 /** @typedef {import('../discovery-map.cjs').SequenceResult} SequenceResult */
 
@@ -334,4 +300,4 @@ function captureReceipt(kind, title, project) {
   return confirmation(`Logged ${kind}${project === null ? '' : ` in ${project}`}: "${title}"`);
 }
 
-module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt, captureReceipt };
+module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt, captureReceipt };

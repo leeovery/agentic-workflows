@@ -14,9 +14,9 @@
 //   key with its label, whether the person answers it in words, and what it
 //   leads to; the time it was drawn and the time its showing opened, a
 //   learned gate's showing (learned-gates.cjs), and its answer once given. The engine's
-//   dispatch and a skill's gateway write it once the command has answered,
-//   never as the MENU is built; a command that states no gate, or fails,
-//   leaves the last one standing. Nothing is kept for a command Claude
+//   dispatch writes it once the command has answered, never as the MENU is
+//   built; a command that states no gate, or fails, leaves the last one
+//   standing. Nothing is kept for a command Claude
 //   Code handed no session id; a record that cannot be written costs the
 //   command nothing. It is kept for a conversation not yet marked as
 //   running the workflows too, its folder made for it, so a gate before the

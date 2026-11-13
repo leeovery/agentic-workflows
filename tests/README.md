@@ -140,7 +140,7 @@ A suite names no driver and no tool: it runs against every shipped driver of its
 ## 11. The pipeline simulation
 
 - **A scenario** replays, in order, the engine calls the skill prose makes for one path through the work.
-- **The oracle** runs after every mutation and checks the state across verbs: every manifest parses and is schema-valid, every derivation computes, every gateway and render reads the state and states its menu whole in its gate payload, the ledger holds, and the trust log holds a line for each call, reversal and verdict the ledger and the verdicts given call for, with nothing left waiting in a conversation — after a refusal too.
+- **The oracle** runs after every mutation and checks the state across verbs: every manifest parses and is schema-valid, every derivation computes, every render reads the state and states its menu whole in its gate payload, the ledger holds, and the trust log holds a line for each call, reversal and verdict the ledger and the verdicts given call for, with nothing left waiting in a conversation — after a refusal too.
 - **What a verb answers belongs in the verb's suite.** A scenario's calls stay, since each buys the oracle's audit; a scenario never re-asserts a verb's response, its refusal text or its render, which the verb's suite owns.
 - **The files:** the oracle is `pipeline-oracle.cjs`; the world, `Sim` and the steps the prose takes are `pipeline-world.cjs`; the scenarios sit in `test-pipeline-simulation-{subject}.cjs`, one file per work type or subject, each within 30 s. A new scenario goes in its work type's or its subject's file, and a file past 30 s splits by subject.
 

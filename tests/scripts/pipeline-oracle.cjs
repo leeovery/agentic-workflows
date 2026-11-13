@@ -12,11 +12,10 @@
 //     throwing for every item,
 //   - every navigation menu (the start menu, an epic's) reads and renders
 //     the state without throwing,
-//   - every menu a gateway draws, and every menu a render draws, states
-//     itself whole in its gate payload once the gate surface is announced,
-//     and the gate a render's menu states is the one its conversation was
-//     shown, which an answer through `gate` adds one line to the trust log
-//     for,
+//   - every menu a render draws states itself whole in its gate payload
+//     once the gate surface is announced, and the gate a render's menu
+//     states is the one its conversation was shown, which an answer through
+//     `gate` adds one line to the trust log for,
 //   - the ledger's projections and its copies hold to the events,
 //   - the trust log holds a line for each call, raise, reversal and verdict
 //     the ledger and the verdicts given call for, every verdict on a
@@ -46,8 +45,7 @@ const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/kno
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
 const { isId, idFrom } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
-const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
-const { openGate, gateShown } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
+const { openGate, gateShown, menuSection, MENU_INSTRUCTION } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { MENUS, menuBody } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/menus.cjs'));
 const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
@@ -1113,7 +1111,7 @@ function auditRoutes(dir, keys, label) {
 function auditStartMenu(dir, label) {
   const at = `${label} — the start menu`;
   const m = MENUS['start-menu'];
-  auditGate(announcedRender(() => LIB.gateway.menuBlock(m.gate, menuBody(m, {}, startMenuScreen(startMenuRead(dir, { waits: false }))))), at);
+  auditGate(announcedRender(() => menuSection(m.gate, MENU_INSTRUCTION, menuBody(m, {}, startMenuScreen(startMenuRead(dir, { waits: false }))))), at);
   for (const { key, next } of /** @type {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
     if (next?.kind === 'handoff') auditRoutes(dir, [{ route: [`/${next.skill}`, ...next.args].join(' ') }], `${at} — ${key}`);
     if (next?.kind === 'engine' && next.argv[0] === 'handoff') auditContinue(dir, next.argv, `${at} — ${key}`);
@@ -1135,7 +1133,7 @@ function auditContinue(dir, argv, label) {
   }
 }
 
-/** One gateway render with the gate surface announced, collected from its start. @param {() => string} render */
+/** One render with the gate surface announced, collected from its start. @param {() => string} render */
 function announcedRender(render) {
   return announced(() => {
     openGate();

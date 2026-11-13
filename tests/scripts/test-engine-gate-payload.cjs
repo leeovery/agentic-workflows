@@ -18,14 +18,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFile } = require('child_process');
 
 const { ok, output, refusedPristine, FROZEN_MS } = require('./engine-harness.cjs');
 const { DAY, lines, history, shownIn, showingAnswers } = require('./trust-world.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
-const { menuBlock } = require('../../skills/leeway-engine/scripts/gateway.cjs');
 const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
 const { showingOf, drawnBlind } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
 
@@ -85,6 +83,9 @@ function seedInvestigation(dir) {
   createManifest(dir, 'auth', { work_type: 'bugfix', phases: { investigation: { items: { auth: { status: 'in-progress' } } } } });
 }
 
+/** The phase note over that investigation — a display, no menu. */
+const PHASE_NOTE = ['render', 'phase-note', 'auth.investigation.auth', '--verb', 'Resuming'];
+
 /**
  * A topic's session held by a live peer, last active four minutes ago.
  * @param {string} dir @param {string} wu @param {string} phase @param {string} topic
@@ -141,23 +142,11 @@ describe('gate payload — a render surface', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('an auto candidate gate arms nothing — its DISPLAY is not a gate', () => {
-    createManifest(dir, 'pay', {
-      work_type: 'epic',
-      phases: { discovery: { items: {}, analysis_staging: { 'discovery-gap-analysis': { gate_mode: 'auto', candidates: { 'data-export': { status: 'pending' } } } } } },
-    });
-    const file = createFile(dir, '.leeway/.cache/pay/candidate.json', JSON.stringify({ name: 'data-export', summary: 'The export.' }));
-    const out = output(dir, ['render', 'candidate-gate', 'pay', '--file', file], { env: ANNOUNCED });
-
-    assert.match(out, /^=== DISPLAY: candidate approved/m);
-    assert.strictEqual(gateOf(out), null);
-  });
-
   it('a display-only surface carries no gate', () => {
     seedInvestigation(dir);
-    const out = output(dir, ['render', 'phase-completed', 'auth', '--phase', 'investigation'], { env: ANNOUNCED });
+    const out = output(dir, PHASE_NOTE, { env: ANNOUNCED });
 
-    assert.match(out, /^=== DISPLAY: phase completed/);
+    assert.match(out, /^=== DISPLAY: phase note/);
     assert.strictEqual(gateOf(out), null);
   });
 
@@ -186,27 +175,12 @@ describe('gate payload — a render surface', () => {
     ]);
   });
 
-  it('a metadata tail is stated apart from the head, its italics gone', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'bugfix',
-      next_phase: 'specification',
-      completed_phases: ['discovery', 'investigation'],
-      phases: { investigation: { items: { auth: { status: 'completed' } } } },
-    });
-    const gate = gateOf(output(dir, ['render', 'revisit-phases', 'auth'], { env: ANNOUNCED }));
-
-    assert.strictEqual(gate.gate, 'revisit phases');
-    assert.deepStrictEqual(gate.options[0], { key: '1', word: null, head: 'Investigation', tail: 'completed', cue: null, holder: null, detail: null, struck: false, recommended: false });
-    assert.deepStrictEqual(gate.options.at(-1), { key: 'b', word: 'back', head: 'Return to the previous menu', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false });
-  });
-
   it('each render starts from nothing — neither a menu before it nor a menu-less one leaks rows in', () => {
     seedCancel(dir);
     seedInvestigation(dir);
-    createFile(dir, '.leeway/.cache/pay/names.json', JSON.stringify({ names: ['billing-core'] }));
     const first = output(dir, CANCEL, { env: ANNOUNCED });
-    output(dir, ['render', 'summary-backfill-gate', 'pay', '--variant', 'unsourced', '--file', '.leeway/.cache/pay/names.json'], { env: ANNOUNCED });
-    output(dir, ['render', 'phase-completed', 'auth', '--phase', 'investigation'], { env: ANNOUNCED });
+    output(dir, ['render', 'walkthrough-offer'], { env: ANNOUNCED });
+    output(dir, PHASE_NOTE, { env: ANNOUNCED });
     const last = output(dir, CANCEL, { env: ANNOUNCED });
 
     assert.deepStrictEqual(gateOf(last), gateOf(first));
@@ -367,10 +341,8 @@ describe('gate payload — the statement', () => {
   });
 
   it('every line above the question is statement, in order', () => {
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    createFile(dir, '.leeway/.cache/v1/names.json', JSON.stringify({ names: ['billing-core', 'auth'] }));
-    const gate = gateOf(output(dir, ['render', 'summary-backfill-gate', 'v1', '--variant', 'unsourced',
-      '--file', '.leeway/.cache/v1/names.json'], { env: ANNOUNCED }));
+    const label = ['2 topic(s) have no source file to draft from:', '', '- Billing Core', '- Auth'].join('\n');
+    const gate = collect(() => menu(label, [cmdOption('l', 'leave', 'Leave them unset')], { question: 'How do you want to handle them?' }));
 
     assert.strictEqual(gate.question, 'How do you want to handle them?');
     assert.strictEqual(gate.statement, '2 topic(s) have no source file to draft from:\n- Billing Core\n- Auth');
@@ -404,25 +376,8 @@ describe('gate payload — a menu', () => {
   });
 });
 
-describe('gate payload — every gateway verb', () => {
-  const SKILLS = path.resolve(__dirname, '../../skills');
-  const ENGINE_GATEWAY = path.join(SKILLS, 'leeway-engine/scripts/gateway.cjs');
-
-  /** @typedef {{args: string[], gated: boolean, refused?: boolean}} GatewayCall */
-
-  /** A call the gateway refuses — a usage error, no payload. @param {...string} args @returns {GatewayCall} */
-  const refused = (...args) => ({ args, gated: false, refused: true });
-
-  // Every verb each gateway's runGateway table dispatches (`index` is the
-  // bare call, `fallback` an unmatched one), called over the one world below.
-  /** @type {Record<string, Record<string, GatewayCall[]>>} */
-  const CALLS = {
-    'leeway': {
-      index: [refused()],
-    },
-  };
-
-  // The shapes the menu builders draw, each met by at least one call's
+describe('gate payload — every row shape', () => {
+  // The shapes the menu builders draw, each met by at least one menu's
   // payload. The world's titles carry `_ * [ ]` wherever it holds a title.
   /** @type {Record<string, (gate: import('./gate-audit.cjs').GatePayload) => boolean>} */
   const SHAPES = {
@@ -435,14 +390,11 @@ describe('gate payload — every gateway verb', () => {
   };
 
   /**
-   * One project holding every state the gateway menus draw from: an
-   * archive, a roadmap with items waiting, an epic whose discussion a
-   * peer holds while a message waits in its mailbox, and one not started
-   * with a message waiting — beside a completed topic whose input moved, a
-   * cancelled topic, a topic
-   * postponed to the roadmap and a blocked plan — a unit of each
-   * linear type ready for its next phase, a feature with a message waiting,
-   * and closed units.
+   * One project holding every state the menus draw from: an archive, a
+   * roadmap with items waiting, and an epic whose discussion a peer holds
+   * while a message waits in its mailbox, and one not started with a
+   * message waiting — beside a completed topic whose input moved, a
+   * cancelled topic, a topic postponed to the roadmap and a blocked plan.
    * @param {string} dir
    */
   function seedEveryRowShape(dir) {
@@ -486,41 +438,9 @@ describe('gate payload — every gateway verb', () => {
     createFile(dir, '.leeway/v1/topics/auth/mail/001.md', '# A message\n');
     createFile(dir, '.leeway/v1/topics/tax/mail/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
-
-    /** A linear unit whose one phase concluded. @param {string} name @param {string} workType @param {string} phase @param {string} next */
-    const concluded = (name, workType, phase, next) => createManifest(dir, name, {
-      work_type: workType,
-      phases: { [phase]: { items: { [name]: { status: 'completed' } } } },
-      completed_phases: ['discovery', phase],
-      next_phase: next,
-    });
-    concluded('checkout', 'feature', 'discussion', 'specification');
-    concluded('crash-fix', 'bugfix', 'investigation', 'specification');
-    createManifest(dir, 'payments', { phases: { discussion: { items: { payments: { status: 'in-progress' } } } } });
-    createFile(dir, '.leeway/payments/topics/payments/mail/001.md', '# A message\n');
-    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    createManifest(dir, 'old-bug', { work_type: 'bugfix', status: 'cancelled' });
-  }
-
-  /**
-   * A skill adapter run as its own process, answered whatever its exit.
-   * @param {string} dir @param {string} gateway @param {string[]} args
-   * @param {{env?: Record<string, string>, node?: string[]}} [opts]
-   * @returns {Promise<{code: number, stdout: string, stderr: string}>}
-   */
-  function spawnGateway(dir, gateway, args, { env = {}, node = [] } = {}) {
-    const script = path.join(SKILLS, gateway, 'scripts/gateway.cjs');
-    return new Promise((resolve) => {
-      execFile('node', [...node, script, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...env } },
-        (err, stdout, stderr) => resolve({ code: err ? Number(err.code) || 1 : 0, stdout, stderr }));
-    });
   }
 
   let dir;
-  /** @type {Record<string, string[]>} */
-  let tables;
-  /** @type {Map<GatewayCall, {code: number, stdout: string, stderr: string}>} */
-  let responses;
   /** The epic's menu over the same world, which the engine draws. @type {string} */
   let epicMenu;
   /** The archived items over the same world, which the engine draws. @type {string} */
@@ -528,47 +448,17 @@ describe('gate payload — every gateway verb', () => {
   /** The roadmap's harvest over the same world, which the engine draws. @type {string} */
   let harvest;
 
-  before(async () => {
+  before(() => {
     dir = setupFixture();
     seedEveryRowShape(dir);
-    // Each script run with runGateway handing its table back instead of
-    // dispatching it — the verbs as the script registers them.
-    const preload = createFile(dir, 'gateway-verbs.cjs',
-      `require(${JSON.stringify(ENGINE_GATEWAY)}).runGateway = (handlers) => process.stdout.write(JSON.stringify(Object.keys(handlers)));\n`);
-    const gateways = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'scripts/gateway.cjs')));
-    const calls = Object.entries(CALLS).flatMap(([gateway, verbs]) => Object.values(verbs).flat().map((call) => ({ gateway, call })));
-    const [verbs, answers] = await Promise.all([
-      Promise.all(gateways.map((g) => spawnGateway(dir, g, [], { node: ['--require', preload] }))),
-      Promise.all(calls.map(({ gateway, call }) => spawnGateway(dir, gateway, call.args, { env: ANNOUNCED }))),
-    ]);
-    tables = Object.fromEntries(gateways
-      .map((g, i) => [g, verbs[i].stdout])
-      .filter(([, out]) => out !== '')
-      .map(([g, out]) => [g, JSON.parse(out).sort()]));
-    responses = new Map(calls.map(({ call }, i) => [call, answers[i]]));
     epicMenu = output(dir, EPIC_MENU, { env: ANNOUNCED });
     archived = output(dir, ['render', 'archived'], { env: ANNOUNCED });
     harvest = output(dir, ['render', 'roadmap-harvest', '--file', 'proposed.json'], { env: ANNOUNCED });
   });
   after(() => { cleanupFixture(dir); });
 
-  it('calls every verb every gateway dispatches — a verb added without a call here fails', () => {
-    assert.deepStrictEqual(tables, Object.fromEntries(Object.entries(CALLS).map(([g, verbs]) => [g, Object.keys(verbs).sort()])));
-  });
-
-  for (const [gateway, verbs] of Object.entries(CALLS)) {
-    it(`${gateway}: each verb announced states the menu it draws whole, and a response with none states nothing`, () => {
-      for (const call of Object.values(verbs).flat()) {
-        const label = `${gateway} ${call.args.join(' ')}`.trim();
-        const { code, stdout, stderr } = /** @type {{code: number, stdout: string, stderr: string}} */ (responses.get(call));
-        assert.strictEqual(code === 0, !call.refused, `[${label}] exit ${code}\n${stderr}`);
-        assert.strictEqual(auditGate(stdout, label) !== null, call.gated, `[${label}] ${call.gated ? 'draws no gate' : 'draws a gate'}\n${stdout}`);
-      }
-    });
-  }
-
-  it('the world reaches every row shape the menu builders draw, the epic\'s menu, the archived items and the roadmap\'s harvest among the gateways\'', () => {
-    const gates = [...[...responses.values()].map(({ stdout }) => stdout), epicMenu, archived, harvest].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
+  it('the world reaches every row shape the menu builders draw, over the epic\'s menu, the archived items and the roadmap\'s harvest', () => {
+    const gates = [epicMenu, archived, harvest].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
     for (const [shape, drawn] of Object.entries(SHAPES)) {
       assert.ok(gates.some(drawn), `no menu drew ${shape}`);
     }
@@ -691,16 +581,6 @@ describe('gate payload — escaped text', () => {
 });
 
 describe('gate payload — a menu that draws nothing', () => {
-  it('states no gate', () => {
-    const out = announced(() => {
-      openGate();
-      return menuBlock('empty menu', '');
-    });
-
-    assert.ok(!out.includes(GATE_MARKER), out);
-    assert.strictEqual(auditGate(out, 'empty menu'), null);
-  });
-
   it('a render that composed no frame and no row takes nothing', () => {
     const out = announced(() => {
       openGate();

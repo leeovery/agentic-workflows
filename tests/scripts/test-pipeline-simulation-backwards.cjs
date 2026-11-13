@@ -2,14 +2,13 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's backwards walk: a feature's discussion closed
-// into its spec, the revisit list offering no way back into it, its close voided
-// as its discussion goes on before the spec is written — the discussion
-// entered again, in the entry's commit, a message sent to it while the spec
-// is entered — the spec waiting each time until it closes again (11.2.1,
-// 9.7.9); once the spec is written, before its one screen is answered and
-// after, the topic takes no entry, no message and no ledger write, the spec
-// is never reopened, and the build's places stand by its cut, reopened by no
-// topic verb.
+// into its spec, its close voided as its discussion goes on before the spec
+// is written — the discussion entered again, in the entry's commit, a
+// message sent to it while the spec is entered — the spec waiting each time
+// until it closes again (11.2.1, 9.7.9); once the spec is written, before
+// its one screen is answered and after, the topic takes no entry, no message
+// and no ledger write, the spec is never reopened, and the build's places
+// stand by its cut, reopened by no topic verb.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -33,9 +32,6 @@ describe('pipeline simulation: backwards', () => {
     const wu = 'revisit';
     startUnit(sim, 'feature', wu, 'Revisit flow');
     discussed(sim, wu, wu);
-
-    // No way back into the closed discussion: the revisit list holds nothing.
-    sim.refuses(['render', 'revisit-phases', wu], /has no completed earlier phase to revisit/);
 
     // Entered again, the discussion goes on, so its close is void in the
     // entry's own commit: the spec waits until it closes again.

@@ -274,8 +274,6 @@ const layout = Object.freeze({
   summary: (unit) => `${unit}/summary.md`,
   /** A unit's seed, an inbox item it was started from. @param {string} unit @param {string} name the file's stem */
   seed: (unit, name) => `${unit}/seeds/${name}.md`,
-  /** A unit's analysis file. @param {string} unit @param {string} name */
-  unitState: (unit, name) => `${unit}/.state/${name}`,
   /** A scenario's verification run, or its runs folder. @param {string} unit @param {string} scenario @param {string} [number] zero-padded */
   run: (unit, scenario, number) => `${unit}/build/runs/${scenario}${number === undefined ? '' : `/run-${number}.json`}`,
 });

@@ -25,9 +25,6 @@
 //   it — a name already on the roadmap, archived or not, an illegal name or
 //   horizon, a source not on disk; Keep shaping carries on in the
 //   conversation.
-// - The Roadmap view and the add-to-joined-horizon gate, over every item
-//   with its lifecycle as a `↳ state` note, joins named — a bug or a
-//   quick-fix naming its kind ahead of it, an idea unmarked.
 //
 // Horizons are the person's own release labels, drawn as they wrote them;
 // position carries the semantics, so groups render in list order.
@@ -35,9 +32,9 @@
 
 const { renderTree, wrap, TAG_GAP } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
-const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
+const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { section, dataSection, menu, cmdOption, promptOption, emitAs, clipped, MENU_INSTRUCTION } = require('./surfaces.cjs');
-const { markedKind, planRoadmapBatch, roadmapState } = require('../roadmap.cjs');
+const { planRoadmapBatch, roadmapState } = require('../roadmap.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { readPayload, refusing } = require('../staged-payload.cjs');
 const { MENUS, drawMenu } = require('../menus.cjs');
@@ -45,44 +42,6 @@ const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
 
 /** @typedef {import('../roadmap.cjs').RoadmapItemRow} RoadmapItemRow */
 /** @typedef {ReturnType<import('../roadmap.cjs').roadmapState>} RoadmapState */
-
-// State glyphs — the conventions vocabulary read through the join: waiting is
-// fresh-shaped, in-flight in-progress-shaped, shipped done, orphaned the
-// warning cue.
-const ROADMAP_GLYPH = /** @type {Record<string, string>} */ ({
-  waiting: '○',
-  'in-flight': '◐',
-  shipped: '✓',
-  orphaned: '⚑',
-});
-
-/** The `↳ state` note for one row — joins named. @param {RoadmapItemRow} row */
-function roadmapStateLabel(row) {
-  if (row.state === 'in-flight') return `in flight: ${row.work_unit}`;
-  if (row.state === 'shipped') return `shipped: ${row.work_unit}`;
-  if (row.state === 'orphaned') return `orphaned — work unit "${row.work_unit}" is missing or cancelled`;
-  return 'waiting';
-}
-
-/** The row's `↳` note — its kind, where marked, ahead of its state. @param {RoadmapItemRow} row */
-function roadmapNote(row) {
-  const kind = markedKind(row.kind);
-  return kind ? `${kind} · ${roadmapStateLabel(row)}` : roadmapStateLabel(row);
-}
-
-// Item rows as kernel tree nodes: glyph + name; a waiting (or orphaned) row
-// carries its summary — a joined row is a window onto the work unit, so the
-// join note alone is the truth worth printing.
-/** @param {RoadmapItemRow[]} rows */
-function roadmapNodes(rows) {
-  return rows.map((row) => ({
-    title: title({ glyph: ROADMAP_GLYPH[row.state] || '', label: titlecase(row.name) }),
-    body: [
-      ...(row.state === 'waiting' && row.summary ? [row.summary] : []),
-      stateNote(roadmapNote(row)),
-    ],
-  }));
-}
 
 /** The label rows on no horizon of the list go under, in a display and a DATA line alike. */
 const NO_HORIZON = '(no horizon)';
@@ -100,100 +59,6 @@ function groupByHorizon(horizons, rows) {
   const strays = rows.filter((r) => typeof r.horizon !== 'string' || !horizons.includes(r.horizon));
   if (strays.length > 0) groups.push({ horizon: NO_HORIZON, rows: strays });
   return groups.filter((g) => g.rows.length > 0);
-}
-
-// Totals categories in display order; the breakdown is omitted when only one
-// is non-zero (the rows already say it).
-const BREAKDOWN = /** @type {const} */ ([
-  ['in_flight', 'in flight'],
-  ['waiting', 'waiting'],
-  ['shipped', 'shipped'],
-  ['orphaned', 'orphaned'],
-]);
-
-/** @param {RoadmapState['totals']} totals */
-function breakdown(totals) {
-  const present = BREAKDOWN.filter(([key]) => totals[key] > 0);
-  if (present.length <= 1) return '';
-  return ' — ' + present.map(([key, label]) => `${totals[key]} ${label}`).join(' · ');
-}
-
-// Horizon labels render as stored — they are the user's own release words
-// ("MVP", "v1.5", "someday"), never recased. Item names stay titlecased,
-// matching the discovery map's display convention for topics.
-/** Horizon-grouped item trees. @param {string[]} horizons @param {RoadmapItemRow[]} rows */
-function horizonTrees(horizons, rows) {
-  const parts = [];
-  for (const g of groupByHorizon(horizons, rows)) {
-    parts.push(g.horizon);
-    parts.push(renderTree(roadmapNodes(g.rows), { width: TREE_WIDTH, gap: true }));
-  }
-  return parts;
-}
-
-/**
- * The Roadmap display block — the anchor render ("show roadmap", the manage
- * view, the pull ceremony's backdrop): header with the join breakdown, one
- * horizon group per non-empty horizon.
- * @param {RoadmapState} state
- * @returns {string}
- */
-function roadmapMapView(state) {
-  const head = treeHeader(`Roadmap (${state.totals.items} item${state.totals.items === 1 ? '' : 's'}`
-    + `${breakdown(state.totals)})`) + '\n';
-  if (state.items.length === 0) return head + '  (empty)\n';
-  return head + horizonTrees(state.horizons, state.items).join('\n');
-}
-
-/**
- * The add-to-joined-horizon routed confirm (design/product-roadmap.md
- * decision 28). Delivery is a new topic, so it is an epic in flight a member
- * was pulled into — a bugfix, quick-fix or feature takes no topic, nor does
- * finished work. A horizon wholly in such epics takes the strict two-way
- * menu (into the epic / another horizon — no waiting side-door into a
- * release that is now an epic); any other member — waiting, or pulled
- * elsewhere — keeps the three-way (waiting beside them is how a release is
- * composed). `units` names the epics the delivery row pulls into. A horizon
- * with no member in an epic underway — a new one among them — is a plain
- * add, and has no gate: null.
- * @param {RoadmapState} state @param {string} horizon
- * @returns {{units: string[], menu: string}|null}
- */
-function roadmapAddGate(state, horizon) {
-  const members = state.items.filter((r) => r.horizon === horizon);
-  const inEpic = members.filter((r) => r.state === 'in-flight' && r.work_type === 'epic');
-  const waiting = members.filter((r) => r.state === 'waiting');
-  if (inEpic.length === 0) return null;
-  const units = [...new Set(inEpic.map((r) => /** @type {string} */ (r.work_unit)))];
-  const deliveryLabel = units.length === 1
-    ? `Into the work underway — a new topic in "${units[0]}"`
-    : 'Into the work underway — a new topic in one of its work units (name which)';
-  const wholly = inEpic.length === members.length;
-
-  const options = [cmdOption('d', 'delivery', deliveryLabel)];
-  if (!wholly) {
-    const beside = waiting.length > 0 ? ` with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}` : '';
-    options.push(cmdOption('w', 'waiting', { head: `On the roadmap in "${horizon}", waiting${beside}` }));
-  }
-  options.push(cmdOption('h', 'horizon', 'Another horizon (name it)'));
-  options.push(promptOption('Ask', 'Talk it through first'));
-
-  const statement = wholly
-    ? `"${horizon}" is being built right now.`
-    : `"${horizon}" is partly being built.`;
-  return { units, menu: menu(statement, options, { question: 'Where does this go?' }) };
-}
-
-// The static gate menu — engine-rendered like every menu, fetched by the
-// prose at the point it is displayed.
-
-/** The epic synthesis' parks-only confirm — the whole sort is the roadmap's. */
-function roadmapParksGate() {
-  return menu('', [
-    cmdOption('y', 'yes', 'Add these items to the roadmap and conclude'),
-    cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
-    promptOption('Adjust', 'Tell me what to change (move between horizons, rename, re-word)'),
-  ], { question: 'Park these on the roadmap?' });
 }
 
 /** @typedef {import('../menus.cjs').MenuRow} MenuRow */
@@ -323,9 +188,6 @@ function roadmapHarvestSurface(cwd, file) {
 
 module.exports = {
   groupByHorizon,
-  roadmapMapView,
-  roadmapAddGate,
-  roadmapParksGate,
   roadmapScreen,
   roadmapSurface,
   roadmapHarvestSurface,

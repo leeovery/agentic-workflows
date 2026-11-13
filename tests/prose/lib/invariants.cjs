@@ -68,7 +68,7 @@
 
 const { SEND } = require('./transcripts.cjs');
 
-const ENGINE_CALL = /\/(engine|gateway)\.cjs\b/;
+const ENGINE_CALL = /\/engine\.cjs\b/;
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
 const WORKFLOWS = '.workflows/';
 // A file is not only written through the write tools. A walker reaches
