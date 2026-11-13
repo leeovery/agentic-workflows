@@ -13,7 +13,10 @@
 // holds the fixture directives the boot suites never reach. And the records
 // directive's world (`recordsMigration`), made once and copied: four units
 // as today's layout left them and as the move wrote them, with the old agent
-// store the move leaves.
+// store the move leaves. And the legacy split's (`splitProject`,
+// `splitMigration`), each made once and copied: an epic shaped as
+// codeintel's was before its split, on today's layout with no state, and
+// as the reshape's guard leaves it; with the plans its interview stages.
 
 require('./hermetic-env.cjs');
 
@@ -22,7 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { git, initRepo, createFile, statePath, layout, treeSnapshot } = harness;
-const { templateFolder, copyWorld, STATE_DIR_NAME } = require('./discovery-test-utils.cjs');
+const { templateFolder, copyWorld, filesUnder, STATE_DIR_NAME } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_GITIGNORE, STATE_LOCK_REASON, BRANCH_REF } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -31,6 +34,7 @@ const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 
 const FIXTURES = path.join(__dirname, '../fixtures/directives');
 const RUNNER = path.join(SCRIPTS, '../../leeway-migrate/scripts/migrate.cjs');
+const GUARD = require(path.join(SCRIPTS, '../../leeway-migrate/scripts/migrations/074-reshape-guard.cjs'));
 
 const UNIT = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
@@ -292,6 +296,155 @@ function recordsMigration(dir) {
   return copyWorld(recordsTemplate, dir);
 }
 
+// The legacy split's world (075–077): an epic shaped as codeintel's was
+// before its split — six sources 038 seeded onto its map, still in
+// progress, one naming the seeding among other sources, and beside them an
+// item short of qualifying by each of the detection's rules in turn — with
+// an epic not in progress and a feature that hold a source's shape, all on
+// today's layout. And the plans the interview stages for the six: the
+// exploration split into two themes, one of them a name the map dismissed;
+// four kept on as one theme of their own name; and session capture kept
+// whole.
+const SPLIT_EPIC = 'codeintel';
+const SPLIT_SOURCES = Object.freeze(['competitive-landscape', 'cost-economics', 'exploration', 'knowledge-model', 'multi-repo-architecture', 'session-capture']);
+const SEEDED = Object.freeze({ routing: 'research', source: 'migration-seeded' });
+const IN_PROGRESS = Object.freeze({ status: 'in-progress' });
+
+/** @param {string} title @param {string[]} sections */
+const researchDoc = (title, sections) => `# Research: ${title}\n\n${sections.map((section) => `## ${section}\n\n${section} notes.\n`).join('\n')}`;
+
+const SPLIT_OLD = Object.freeze({
+  'README.md': '# Codeintel\n',
+  '.workflows/manifest.json': jsonText({ work_units: { codeintel: { work_type: 'epic' }, atlas: { work_type: 'epic' }, billing: { work_type: 'feature' } } }),
+  '.workflows/codeintel/manifest.json': jsonText({
+    name: SPLIT_EPIC, work_type: 'epic', status: 'in-progress', created: '2026-04-01',
+    phases: {
+      discovery: {
+        items: {
+          exploration: SEEDED,
+          'competitive-landscape': SEEDED,
+          'cost-economics': SEEDED,
+          'knowledge-model': SEEDED,
+          'multi-repo-architecture': SEEDED,
+          'session-capture': { routing: 'research', source: 'discovery,migration-seeded' },
+          pricing: { routing: 'research', source: 'discovery', summary: 'Pricing tiers' },
+          glossary: { routing: 'discussion', source: 'migration-seeded' },
+          'prior-art': SEEDED,
+          roadmap: SEEDED,
+          telemetry: SEEDED,
+          'api.v2': SEEDED,
+          onboarding: { ...SEEDED, legacy_split_state: 'in-progress' },
+        },
+        dismissed: ['tech-stack'],
+      },
+      research: {
+        items: {
+          exploration: IN_PROGRESS,
+          'competitive-landscape': IN_PROGRESS,
+          'cost-economics': IN_PROGRESS,
+          'knowledge-model': { status: 'in-progress', threads: { 'graph-size': { question: 'How big does the graph grow?', status: 'open', origin: 'seed', parent: null } } },
+          'multi-repo-architecture': IN_PROGRESS,
+          'session-capture': IN_PROGRESS,
+          pricing: IN_PROGRESS,
+          glossary: IN_PROGRESS,
+          'prior-art': { status: 'completed' },
+          telemetry: IN_PROGRESS,
+          'api.v2': IN_PROGRESS,
+          onboarding: IN_PROGRESS,
+        },
+      },
+      discussion: { items: { glossary: IN_PROGRESS } },
+    },
+  }),
+  '.workflows/codeintel/discovery/sessions/session-001.md': '# Initial Framing — Pre-Inception Migration\n',
+  '.workflows/codeintel/research/exploration.md': researchDoc('Exploration', ['Product Vision', 'Tech Stack']),
+  '.workflows/codeintel/research/competitive-landscape.md': researchDoc('Competitive Landscape', ['Rivals']),
+  '.workflows/codeintel/research/cost-economics.md': researchDoc('Cost Economics', ['Tokens']),
+  '.workflows/codeintel/research/knowledge-model.md': researchDoc('Knowledge Model', ['Graph']),
+  '.workflows/codeintel/research/multi-repo-architecture.md': researchDoc('Multi Repo Architecture', ['Workspaces']),
+  '.workflows/codeintel/research/session-capture.md': researchDoc('Session Capture', ['Transcripts']),
+  '.workflows/codeintel/research/pricing.md': researchDoc('Pricing', ['Tiers']),
+  '.workflows/codeintel/research/glossary.md': researchDoc('Glossary', ['Terms']),
+  '.workflows/codeintel/research/prior-art.md': researchDoc('Prior Art', ['Tools']),
+  '.workflows/codeintel/research/roadmap.md': researchDoc('Roadmap', ['Milestones']),
+  '.workflows/codeintel/research/api.v2.md': researchDoc('Api V2', ['Endpoints']),
+  '.workflows/codeintel/research/onboarding.md': researchDoc('Onboarding', ['First Run']),
+  '.workflows/codeintel/discussion/glossary.md': '# Discussion: Glossary\n',
+  '.workflows/atlas/manifest.json': jsonText({
+    name: 'atlas', work_type: 'epic', status: 'completed', created: '2026-01-01',
+    phases: { discovery: { items: { notes: SEEDED } }, research: { items: { notes: IN_PROGRESS } } },
+  }),
+  '.workflows/atlas/research/notes.md': researchDoc('Notes', ['Findings']),
+  '.workflows/billing/manifest.json': jsonText({
+    name: 'billing', work_type: 'feature', status: 'in-progress', created: '2026-02-01',
+    phases: { discovery: { items: { billing: SEEDED } }, research: { items: { billing: IN_PROGRESS } } },
+  }),
+  '.workflows/billing/research/billing.md': researchDoc('Billing', ['Invoices']),
+});
+
+/** A theme of a plan, its summary and description its name's. @param {string} name */
+const themeOf = (name) => ({ kebab_name: name, summary: `${name} in a line.`, description: `What ${name} covers.` });
+
+/** A source's plan staged, its themes' research beside it, by path from the state. @param {string} source @param {Record<string, string>} themes */
+function stagedPlan(source, themes) {
+  const at = `.cache/migrate/split/${SPLIT_EPIC}/${source}`;
+  return {
+    [`${at}/plan.json`]: jsonText({ themes: Object.keys(themes).map(themeOf) }),
+    ...Object.fromEntries(Object.entries(themes).map(([name, research]) => [`${at}/${name}.md`, research])),
+  };
+}
+
+const SPLIT_PLANS = Object.freeze({
+  ...stagedPlan('exploration', { 'product-vision': '## Product Vision\n\nProduct Vision notes.\n', 'tech-stack': '## Tech Stack\n\nTech Stack notes.\n' }),
+  ...stagedPlan('competitive-landscape', { 'competitive-landscape': '## Rivals\n\nRivals notes.\n' }),
+  ...stagedPlan('cost-economics', { 'cost-economics': '## Tokens\n\nTokens notes.\n' }),
+  ...stagedPlan('knowledge-model', { 'knowledge-model': '## Graph\n\nGraph notes.\n' }),
+  ...stagedPlan('multi-repo-architecture', { 'multi-repo-architecture': '## Workspaces\n\nWorkspaces notes.\n' }),
+  [`.cache/migrate/split/${SPLIT_EPIC}/session-capture/plan.json`]: jsonText({ whole: true }),
+});
+
+/** Codeintel's repository at `{folder}/codeintel`, its `.workflows/` committed on `main`. @param {string} folder */
+function buildSplitProject(folder) {
+  const main = initRepo(path.join(folder, SPLIT_EPIC));
+  for (const [rel, text] of Object.entries(SPLIT_OLD)) createFile(main, rel, text);
+  git(main, ['add', '-A']);
+  git(main, ['commit', '-q', '-m', 'the old layout']);
+  return main;
+}
+
+/** Codeintel on today's layout, with no state: the folder it is copied into, its repository `{dir}/codeintel`. */
+const splitProject = harness.folderFrom('split-project-', buildSplitProject);
+
+// The migrations a project the reshape's guard passed has recorded.
+const GUARDED = [...new Set(fs.readdirSync(path.join(SCRIPTS, '../../leeway-migrate/scripts/migrations'))
+  .filter((name) => /^[0-9]+-/.test(name) && !name.endsWith('.check.cjs'))
+  .map((name) => name.slice(0, name.indexOf('-'))))].filter((id) => Number(id) <= 74).sort();
+
+/**
+ * Codeintel as the reshape's guard (074) leaves it, the chain before the
+ * split run: its state worktree in place on an unborn `leeway-state`,
+ * holding the state's `.gitignore` and the record through the guard. The
+ * folder it is copied into; its repository `{dir}/codeintel`.
+ */
+const splitMigration = harness.folderFrom('split-migration-', (folder) => {
+  const main = buildSplitProject(folder);
+  fs.appendFileSync(path.join(main, '.git/info/exclude'), `/${STATE_DIR_NAME}/\n`);
+  GUARD.run({ projectDir: main, reportUpdate: () => {}, reportSkip: () => assert.fail('the guard found no reshape owed') });
+  createFile(path.join(main, STATE_DIR_NAME), layout.migrations, GUARDED.map((id) => `${id}\n`).join(''));
+});
+
+/**
+ * Every file under `dir` but git's own, by its path from `dir`, with its
+ * text: a project's tree as the migration leaves it, its state among it.
+ * @param {string} dir @returns {Record<string, string>}
+ */
+function projectTree(dir) {
+  return Object.fromEntries(filesUnder(dir).map((file) => path.relative(dir, file))
+    .filter((rel) => !rel.split(path.sep).includes('.git'))
+    .sort()
+    .map((rel) => [rel, fs.readFileSync(path.join(dir, rel), 'utf8')]));
+}
+
 /** Whether the project's `leeway-state` has no commit yet. @param {string} dir */
 function stateUnborn(dir) {
   return git(dir, ['for-each-ref', BRANCH_REF]).trim() === '';
@@ -356,4 +509,5 @@ function refusedKeeping(dir, args, kept, opts = { env: SESSION }) {
 
 module.exports = {
   UNIT, SESSION, DECIDED, RECORDED, FIXTURES, directiveEngine, midMigration, recordsMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
+  SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, GUARDED, themeOf, stagedPlan, splitProject, splitMigration, projectTree,
 };

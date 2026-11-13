@@ -1,11 +1,12 @@
 'use strict';
 
 //
-// What the reshape's steps share — the guard (074) and the move (078): the
-// layout's names before and after it, git as they run it, and the state
-// worktree put in place. Released with them, it is frozen with them: the
-// runtime's own knowledge of the layout before Leeway is the migrate
-// skill's `old-layout.cjs`, and neither loads the other.
+// What the reshape's steps share — the guard (074), the legacy split
+// (075–077, through split.cjs beside it) and the move (078): the layout's
+// names before and after it, git as they run it, a file written whole, and
+// the state worktree put in place. Released with them, it is frozen with
+// them: the runtime's own knowledge of the layout before Leeway is the
+// migrate skill's `old-layout.cjs`, and neither loads the other.
 //
 // The state worktree put in place for the reshape (`placeStateWorktree`):
 // `.leeway/` in the main checkout, on an unborn `leeway-state`, locked as

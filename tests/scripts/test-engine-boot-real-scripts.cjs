@@ -244,7 +244,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     ]);
   });
 
-  it('21.S2: a project at 070 runs the guard, then the chain from the old record, 071 on, then the move — 072\'s kind on the moved roadmap — to the records directive; a run killed once the guard has placed the state is carried on by the next boot', () => {
+  it('21.S2: a project at 070 runs the guard, then the chain from the old record, 071 on, then the split, nothing in it to split, and the move — 072\'s kind on the moved roadmap — to the records directive; a run killed once the guard has placed the state is carried on by the next boot', () => {
     const kill = path.join(root, 'kill-after-guard.cjs');
     fs.writeFileSync(kill, "const fs = require('fs');\nconst real = fs.appendFileSync;\nfs.appendFileSync = (file, data, ...rest) => { real(file, data, ...rest); if (String(file).endsWith('.state/migrations') && data === '074\\n') process.exit(9); };\n");
 
@@ -254,7 +254,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     const stopped = runEngine(real, project, ['boot'], env);
 
     assert.deepStrictEqual([stopped.state, stopped.id], ['directive', '079-records']);
-    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '078']);
+    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '075', '076', '077', '078']);
     assert.strictEqual(JSON.parse(fs.readFileSync(statePath(project, layout.projectManifest), 'utf8')).roadmap.items['dark-mode'].kind, 'idea');
     assert.strictEqual(git(project, ['for-each-ref', 'refs/heads/leeway-state']), '', 'nothing committed before the migration\'s commit');
   });
