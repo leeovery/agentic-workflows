@@ -23,14 +23,18 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const path = require('path');
 
-const { ok, output, refusedPristine, sectionOf, readManifest, statePath } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePath, layout, FROZEN_MS, FROZEN_AT } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerHelpers } = require('./ledger-world.cjs');
 const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
-const { showingOf } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
-const { showingAnswers } = require('./trust-world.cjs');
+const { showingOf, drawnBlind } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
+const { idFrom } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
+const { DAY, lines, history, showingAnswers } = require('./trust-world.cjs');
+
+const HOUR = 60 * 60 * 1000;
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, screen, staged, answer, run, reverse } = decidedHelpers(dir);
@@ -265,8 +269,41 @@ describe('the wait for agents (9.7.8, 9.S63)', () => {
     lands(next);
     const none = wait();
 
-    assert.deepStrictEqual([kept, afresh, none, held()], [showingOf(place, [dive, review]), showingOf(place, [next]), '', null]);
+    assert.deepStrictEqual([kept, afresh, none, held()], [showingOf(place, null, [dive, review]), showingOf(place, null, [next]), '', null]);
     assert.deepStrictEqual(showingAnswers(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'wait for agents'), [['w', 'w'], [0, 1]]);
+  });
+
+  it('3.2.7, 16.21.3: a showing is one occurrence of the wait at the topic — drawn at a pause and drawn again within that entry, it is one step; drawn at the close once the topic is entered again, the same agent running, it is a showing of its own, its step under an id of its own and its blind draw its own', (t) => {
+    const config = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+    const { project_id: project } = JSON.parse(readState(dir(), layout.projectManifest));
+    const went = history({ project, start: Date.now() - DAY });
+    for (let i = 0; i < 13; i += 1) went.gate('wait for agents', { picked: 'g' });
+    fs.writeFileSync(path.join(config, 'trust.jsonl'), lines(...went.events));
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
+    const { id } = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review'], { env: RUNNING });
+    /** The topic entered, the clock at `ms`: when it was entered, as recorded. @param {number} ms */
+    const entered = (ms) => {
+      t.mock.timers.enable({ apis: ['Date'], now: ms });
+      try {
+        ok(dir(), ['enter', 'discussion', UNIT, 'note-window'], { env: SESSION });
+      } finally {
+        t.mock.timers.reset();
+      }
+      return JSON.parse(fs.readFileSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'entered.json'), 'utf8')).at;
+    };
+    const place = { unit: UNIT, phase: 'discussion', topic: 'note-window' };
+    const showing = (/** @type {string} */ at) => showingOf(place, at, [id]);
+
+    const paused = entered(FROZEN_MS);
+    const [pause, again] = [wait(), wait()];
+    const reopened = entered(FROZEN_MS + HOUR);
+    const closing = wait();
+    const steps = fs.readFileSync(path.join(config, 'trust.jsonl'), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter(({ type }) => type === 'step');
+
+    assert.deepStrictEqual([paused, reopened], [FROZEN_AT, new Date(FROZEN_MS + HOUR).toISOString()]);
+    assert.deepStrictEqual([pause, again, closing].map((out) => /^automatic step: wait for agents$/m.test(out)), [true, true, true]);
+    assert.deepStrictEqual([...new Map(steps.map((step) => [step.id, step.showing]))], [paused, reopened].map((at) => [idFrom('step', project, 'wait for agents', showing(at)), showing(at)]));
+    assert.deepStrictEqual([paused, reopened].map((at) => drawnBlind('wait for agents', showing(at))), [false, false]);
   });
 
   it('9.S47, 3.S11: is a learned gate, stepped by the decision point at the topic\'s discussion, each showing told by the agents it waits on — run as a step on its go, its report stands in its menu\'s place and its DATA carries the go\'s next — and none is asked while nothing runs', (t) => {

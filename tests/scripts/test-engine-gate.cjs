@@ -464,7 +464,7 @@ describe('gate (6.6, 6.S18)', () => {
   });
 
   it('a learned gate\'s answer logs the showing it was drawn on, so a replay draws its blind ask again; any other gate\'s logs none', () => {
-    const showing = showingOf({ unit: 'pay', phase: 'investigation', topic: 'pay' }, ['H1']);
+    const showing = showingOf({ unit: 'pay', phase: 'investigation', topic: 'pay' }, null, ['H1']);
     inConversation(() => {
       openGate();
       section('MENU: plan gate', MENU_INSTRUCTION, menu('', [cmdOption('y', 'yes', 'Approve the plan')], { question: 'Approve this plan?' }), shows('plan gate', showing));

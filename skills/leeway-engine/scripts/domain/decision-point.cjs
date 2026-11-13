@@ -39,7 +39,9 @@
 // shows, or runs as an automatic step on one of its rows (3.2.7). Every
 // surface that draws one asks it, at the gate's place — its unit, phase and
 // topic — with the key it draws the gate's showing from, and draws what it
-// answers (projections/surfaces.cjs). A showing held at the gate's place
+// answers (projections/surfaces.cjs). The showing is drawn from the place,
+// when it was last entered — for a gate at no place, the place the
+// conversation sits at (place-entry.cjs) — and the key. A showing held at the gate's place
 // (showing-hold.cjs) — waiting for its answer, set aside by free text, or
 // left open by a row that shows the gate again — shows again on its hold
 // and is never drawn again, the person having engaged with it, while it is
@@ -70,6 +72,7 @@ const { trustSettings } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
 const { learnedGate, heldFor, showingOf, shows, stepOf } = require('./learned-gates.cjs');
 const { heldShowing, holdShowing, endShowing } = require('./showing-hold.cjs');
+const { enteredAt, sittingPlace } = require('./place-entry.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -140,9 +143,10 @@ function gateStep(name, at) {
 
 /**
  * The gate `gate` at its place: shown on the showing held there, while it is
- * of the subject `key` names; else drawn on the showing its key tells, as
- * `decides` steps it, a surface's draw opening its hold where it shows and
- * logging the step where it runs as one — a verb's check does neither.
+ * of the subject `key` names; else drawn on the showing its place's entry
+ * and its key tell, as `decides` steps it, a surface's draw opening its
+ * hold where it shows and logging the step where it runs as one — a verb's
+ * check does neither.
  * @param {string} gate @param {GateAt} at @param {(showing: string, root: string) => GateStep} decides
  * @returns {GateStep}
  */
@@ -150,7 +154,7 @@ function drawn(gate, { cwd, place, key, check = false }, decides) {
   const root = stateRoot(cwd);
   const held = standing(root, gate, place, key);
   if (held !== null) return shows(gate, held.showing, { place, opened: held.opened });
-  const showing = showingOf(place, key);
+  const showing = showingOf(place, enteredAt(cwd, place.unit === null ? sittingPlace() : place), key);
   const step = decides(showing, root);
   if (check) return step;
   if (step.step === 'automatic') return stepLogged(cwd, root, step);

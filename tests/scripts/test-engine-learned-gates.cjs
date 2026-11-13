@@ -10,9 +10,10 @@
 // and its `learned`, what it decides once switched, over the trust log and
 // the showing held at the gate's place (domain/showing-hold.cjs), which no
 // other gate, raise or conversation ends, and a draw of a subject other than
-// its own does; and a learned gate's MENU drawn as
-// its step says (domain/projections/surfaces.cjs) by each of the projections
-// that draw one.
+// its own does — each showing one occurrence of the gate at its place, told
+// by when the place was entered (domain/place-entry.cjs); and a learned
+// gate's MENU drawn as its step says (domain/projections/surfaces.cjs) by
+// each of the projections that draw one.
 //
 // Layer: unit. World: a gate's count from events built in memory a day before
 // the frozen clock (trust-world.cjs, `history`); `learned`'s tests keep the log
@@ -44,6 +45,8 @@ const { countsFrom, gateCount, stateOf } = require(path.join(SCRIPTS, 'domain/tr
 const { openGate, gateShown, gateStepped, section, menu, cmdOption, MENU_INSTRUCTION } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { recordGateShown, answerGate, lastShown, clearGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { heldShowing } = require(path.join(SCRIPTS, 'domain/showing-hold.cjs'));
+const { recordEntry } = require(path.join(SCRIPTS, 'domain/place-entry.cjs'));
+const { recordPosition } = require(path.join(SCRIPTS, 'domain/position.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { idFrom } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { readPersonEvents } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -61,7 +64,13 @@ const NOWHERE = Object.freeze({ unit: null, phase: null, topic: null });
 const HUNT = Object.freeze({ unit: 'pay', phase: 'investigation', topic: 'pay' });
 const CARDS = Object.freeze({ unit: 'pay', phase: 'discussion', topic: 'cards' });
 // A showing no gate here draws blind.
-const SHOWING = showingOf(HUNT, ['H1']);
+const SHOWING = showingOf(HUNT, null, ['H1']);
+// When pay's discussion of cards was entered: at a pause, opened again, and once more, the wait over a1's showing then asked blind.
+const PAUSED_MS = FROZEN_MS - 3 * 60 * 60 * 1000;
+const REOPENED_MS = FROZEN_MS - 2 * 60 * 60 * 1000;
+const BLIND_MS = FROZEN_MS - 60 * 1000;
+// A plan at pay's investigation, entered at no time recorded, whose showing the plan gate asks blind.
+const PLAN_BLIND = Object.freeze([Object.freeze(['H3', 'H1', 'H2', 'H5']), null]);
 
 /** Each learned gate drawn by its projection, as it is stepped. @type {Readonly<Record<string, (step: GateStep) => string>>} */
 const DRAWN = Object.freeze({
@@ -160,26 +169,26 @@ describe('whether a learned gate shows or runs as a step (16.20.2)', () => {
     /** @param {string} gate @param {string[]} showings */
     const rate = (gate, showings) => showings.filter((showing) => drawnBlind(gate, showing)).length / showings.length;
     const rates = [
-      rate('import reprompt', range(4000).map((i) => showingOf(NOWHERE, [`/notes/sketch-${i}.png`]))),
-      rate('experiment spawn gate', range(4000).map((i) => showingOf(CARDS, `E${i + 1}`))),
-      rate('check-in gate', range(1000).flatMap((i) => range(4).map((n) => showingOf({ unit: `bug-${i}`, phase: 'investigation', topic: `bug-${i}` }, [`H${n + 1}`])))),
+      rate('import reprompt', range(4000).map((i) => showingOf(NOWHERE, null, [`/notes/sketch-${i}.png`]))),
+      rate('experiment spawn gate', range(4000).map((i) => showingOf(CARDS, null, `E${i + 1}`))),
+      rate('check-in gate', range(1000).flatMap((i) => range(4).map((n) => showingOf({ unit: `bug-${i}`, phase: 'investigation', topic: `bug-${i}` }, null, [`H${n + 1}`])))),
     ];
 
     assert.ok(rates.every((rate) => Math.abs(rate - BLIND_ASK) < 0.01), `drawn blind: ${rates.join(', ')}`);
   });
 
   it('draws a showing alike however often it is drawn, and afresh where any part of it differs — the gate\'s name, its unit, phase or topic, its surface\'s key; a showing\'s digest pinned, so a replay draws a past showing from the log as it was drawn (E3)', () => {
-    const key = [['H1', 'H2', 'H3', 'H4'], null];
-    const one = showingOf(HUNT, key);
+    const key = PLAN_BLIND;
+    const one = showingOf(HUNT, null, key);
     const state = stateIn(pressed(13));
 
-    assert.deepStrictEqual([one, showingOf(HUNT, key), stepOf('plan gate', state, one)], ['bf3bd2639c2e9dff', one, shows('plan gate', one)]);
+    assert.deepStrictEqual([one, showingOf(HUNT, null, key), stepOf('plan gate', state, one)], ['07e6bc930f720357', one, shows('plan gate', one)]);
     assert.deepStrictEqual([
       drawnBlind('check-in gate', one),
-      drawnBlind('plan gate', showingOf({ ...HUNT, unit: 'other' }, key)),
-      drawnBlind('plan gate', showingOf({ ...HUNT, phase: 'discussion' }, key)),
-      drawnBlind('plan gate', showingOf({ ...HUNT, topic: 'other' }, key)),
-      drawnBlind('plan gate', showingOf(HUNT, [key[0], 'H5 was ruled out'])),
+      drawnBlind('plan gate', showingOf({ ...HUNT, unit: 'other' }, null, key)),
+      drawnBlind('plan gate', showingOf({ ...HUNT, phase: 'discussion' }, null, key)),
+      drawnBlind('plan gate', showingOf({ ...HUNT, topic: 'other' }, null, key)),
+      drawnBlind('plan gate', showingOf(HUNT, null, [key[0], 'H4 was ruled out'])),
     ], [false, false, false, false, false]);
   });
 });
@@ -198,6 +207,24 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     const answers = fs.readFileSync(logPath(), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter((event) => event.type === 'gate' && event.showing !== null);
     return [answers.map((event) => event.picked), new Set(answers.map((event) => event.id)).size];
   };
+
+  /** The steps the trust log holds. @returns {Record<string, any>[]} */
+  const loggedSteps = () => fs.readFileSync(logPath(), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter((event) => event.type === 'step');
+
+  /**
+   * `place` of the project at `dir` entered as `enter` enters it, the clock
+   * at `ms`: the time it was entered.
+   * @param {import('node:test').TestContext} t @param {string} dir @param {import('../../skills/leeway-engine/scripts/domain/learned-gates.cjs').Place} place @param {number} ms
+   */
+  function entering(t, dir, { unit, phase, topic }, ms) {
+    t.mock.timers.enable({ apis: ['Date'], now: ms });
+    try {
+      recordEntry(dir, /** @type {string} */ (unit), /** @type {string} */ (phase), /** @type {string} */ (topic));
+    } finally {
+      t.mock.timers.reset();
+    }
+    return new Date(ms).toISOString();
+  }
 
   /** The wait for agents at pay's discussion of cards, the agents `running` running. @param {string} dir @param {string[]} [running] */
   const waiting = (dir, running = ['a1']) => ({ cwd: dir, place: CARDS, key: running });
@@ -220,7 +247,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
 
   it('shows every gate until the learned gates are switched on (29.19.2), whatever its count, on the showing its surface draws, its hold opened', () => {
     logged(pressed(13, { gate: 'wait for agents', row: 'g' }));
-    const showing = showingOf(CARDS, ['a1']);
+    const showing = showingOf(CARDS, null, ['a1']);
 
     assert.deepStrictEqual(withFrozenClock(() => [gateStep('wait for agents', waiting(project('off'))), learned('wait for agents', waiting(project('on')))]),
       [shows('wait for agents', showing, { place: CARDS, opened: FROZEN_AT }), ran('wait for agents', 'g', showing)]);
@@ -234,7 +261,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     /** The wait drawn in a project of its own, so no showing is held there, the agents `running` running. @param {string} name @param {string[]} [running] */
     const fresh = (name, running) => learned('wait for agents', waiting(project(name), running));
     const thirteen = withFrozenClock(() => fresh('thirteen'));
-    const blind = withFrozenClock(() => fresh('blind', ['a22']));
+    const blind = withFrozenClock(() => fresh('blind', ['a28']));
     const before = withFrozenClock(() => {
       const now = Date.now;
       Date.now = () => twelfth + 500;
@@ -245,28 +272,61 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
       }
     });
     fs.writeFileSync(path.join(folder(), 'config', 'config.json'), JSON.stringify({ trust: { threshold: 0.15 } }));
-    const showing = showingOf(CARDS, ['a1']);
+    const showing = showingOf(CARDS, null, ['a1']);
     const held = { place: CARDS, opened: FROZEN_AT };
 
-    assert.deepStrictEqual([drawnBlind('wait for agents', showing), drawnBlind('wait for agents', showingOf(CARDS, ['a22']))], [false, true]);
+    assert.deepStrictEqual([drawnBlind('wait for agents', showing), drawnBlind('wait for agents', showingOf(CARDS, null, ['a28']))], [false, true]);
     assert.deepStrictEqual([thirteen, blind, before, withFrozenClock(() => fresh('lower'))],
-      [ran('wait for agents', 'g', showing), shows('wait for agents', showingOf(CARDS, ['a22']), held), shows('wait for agents', showing, held), shows('wait for agents', showing, held)]);
+      [ran('wait for agents', 'g', showing), shows('wait for agents', showingOf(CARDS, null, ['a28']), held), shows('wait for agents', showing, held), shows('wait for agents', showing, held)]);
   });
 
-  it('a surface\'s draw that runs a gate as a step logs the step in the trust log — the gate, the row it ran and its showing, under the id the project, the gate and the showing draw, so a redraw of the showing is one step — and a verb\'s check of the step logs none (3.2.7)', () => {
+  it('a surface\'s draw that runs a gate as a step logs the step in the trust log — the gate, the row it ran and its showing, under the id the project, the gate and the showing draw, so a redraw within one entry of its place, the same agents running, is one step — and a verb\'s check of the step logs none (3.2.7)', (t) => {
     const dir = project('mint');
     logged(pressed(13, { gate: 'wait for agents', row: 'g' }));
+    const opened = entering(t, dir, CARDS, PAUSED_MS);
     const answered = fs.readFileSync(logPath(), 'utf8');
     const checked = withFrozenClock(() => learned('wait for agents', { ...waiting(dir), check: true }));
     const unlogged = fs.readFileSync(logPath(), 'utf8') === answered;
     withFrozenClock(() => [learned('wait for agents', waiting(dir)), learned('wait for agents', waiting(dir))]);
-    const steps = fs.readFileSync(logPath(), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter((event) => event.type === 'step');
-    const showing = showingOf(CARDS, ['a1']);
+    const steps = loggedSteps();
+    const showing = showingOf(CARDS, opened, ['a1']);
 
     assert.deepStrictEqual([checked, unlogged], [ran('wait for agents', 'g', showing), true]);
     assert.deepStrictEqual([...new Map(steps.map(({ id, project: keyed, gate, row, showing: on }) => [id, { id, project: keyed, gate, row, showing: on }])).values()], [
       { id: idFrom('step', PROJECT_ID, 'wait for agents', showing), project: PROJECT_ID, gate: 'wait for agents', row: 'g', showing },
     ]);
+  });
+
+  it('a showing is one occurrence of the gate at its place: the wait drawn at a pause, then again at the close once the topic is entered again, the same agents running, is two showings — two steps under two ids, each its own blind draw, so an entry whose showing draws blind shows the gate — and a redraw within one entry is one (3.2.7, 16.20.2, 16.21.3)', (t) => {
+    const dir = project('mint');
+    logged(pressed(13, { gate: 'wait for agents', row: 'g' }));
+    const at = (/** @type {string} */ entered) => showingOf(CARDS, entered, ['a1']);
+
+    const paused = entering(t, dir, CARDS, PAUSED_MS);
+    const atPause = withFrozenClock(() => [learned('wait for agents', waiting(dir)), learned('wait for agents', waiting(dir))]);
+    const reopened = entering(t, dir, CARDS, REOPENED_MS);
+    const atClose = withFrozenClock(() => learned('wait for agents', waiting(dir)));
+    const blindly = entering(t, dir, CARDS, BLIND_MS);
+    const blind = withFrozenClock(() => learned('wait for agents', waiting(dir)));
+
+    assert.deepStrictEqual([paused, reopened, blindly].map((entered) => drawnBlind('wait for agents', at(entered))), [false, false, true]);
+    assert.deepStrictEqual([...atPause, atClose, blind], [ran('wait for agents', 'g', at(paused)), ran('wait for agents', 'g', at(paused)), ran('wait for agents', 'g', at(reopened)), shows('wait for agents', at(blindly), { place: CARDS, opened: FROZEN_AT })]);
+    assert.deepStrictEqual([...new Map(loggedSteps().map(({ id, showing }) => [id, showing]))], [paused, reopened].map((entered) => [idFrom('step', PROJECT_ID, 'wait for agents', at(entered)), at(entered)]));
+  });
+
+  it('the import reprompt, at no place, is told by when the place the conversation sits at was entered: drawn in a bugfix\'s investigation, as in discovery, each entry of it a showing of its own (3.2.7)', (t) => {
+    const dir = project('mint');
+    const missing = ['/notes/sketch.png'];
+    const drawnIn = () => inConversation(dir, () => {
+      recordPosition(dir, 'pay', 'investigation', 'pay');
+      return gateStep('import reprompt', { cwd: dir, place: NOWHERE, key: missing, check: true }).showing;
+    });
+
+    const opened = entering(t, dir, HUNT, PAUSED_MS);
+    const first = drawnIn();
+    const reopened = entering(t, dir, HUNT, REOPENED_MS);
+
+    assert.deepStrictEqual([first, drawnIn()], [showingOf(NOWHERE, opened, missing), showingOf(NOWHERE, reopened, missing)]);
   });
 
   it('logs another project\'s step on a showing drawn alike — a unit of the same name, the same agents running — as a step of its own, so the trust log reads both (3.2.7)', () => {
@@ -280,7 +340,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     readPersonEvents(stateRoot(dirs[0]), (event) => {
       if (event.type === 'step') read.push([event.project, event.id]);
     });
-    const showing = showingOf(CARDS, ['a1']);
+    const showing = showingOf(CARDS, null, ['a1']);
 
     assert.deepStrictEqual([stepped, read], [['automatic', 'automatic'], [PROJECT_ID, aircon].map((keyed) => [keyed, idFrom('step', keyed, 'wait for agents', showing)])]);
   });
@@ -293,7 +353,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     const { out } = opened(() => DRAWN['wait for agents'](step));
     const warning = `the trust log was not written: ${NO_SPACE} — the event waits in the conversation, appended first by its next record`;
 
-    assert.deepStrictEqual(step, { ...ran('wait for agents', 'g', showingOf(CARDS, ['a1'])), warnings: [warning] });
+    assert.deepStrictEqual(step, { ...ran('wait for agents', 'g', showingOf(CARDS, null, ['a1'])), warnings: [warning] });
     assert.deepStrictEqual(out.split('\n').slice(1, 5), ['automatic step: wait for agents', 'ran: g', 'next: {"kind":"continue"}', `warning: ${warning}`]);
   });
 
@@ -351,19 +411,19 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
   it('a showing set aside by a Comment shows again however its surface draws it now, and the gate shown keeps the time its showing opened and the showing it was first drawn on (S2)', () => {
     const dir = project('mint');
     logged(pressed(20, { start: Date.now() - DAY }));
-    const first = [['H1', 'H2', 'H3', 'H4'], null];
+    const first = PLAN_BLIND;
 
     const [steps, kept] = inConversation(dir, () => {
       const blind = drawn('plan gate', { cwd: dir, place: HUNT, key: first });
       const { opened } = /** @type {{opened: string}} */ (lastShown(SESSION));
       answerGate(dir, 'plan gate', { typed: 'comment' });
-      const reordered = drawn('plan gate', planned(dir, ['H4', 'H1', 'H2', 'H3']));
+      const reordered = drawn('plan gate', planned(dir, ['H3', 'H1', 'H5', 'H2']));
       const shown = /** @type {{opened: string, showing: string}} */ (lastShown(SESSION));
       return [[blind.step, reordered.step], [shown.opened === opened, shown.showing]];
     });
 
-    assert.deepStrictEqual([steps, kept], [['show', 'show'], [true, showingOf(HUNT, first)]]);
-    assert.strictEqual(drawnBlind('plan gate', showingOf(HUNT, [['H4', 'H1', 'H2', 'H3'], null])), false, 'drawn afresh, the reordered plan would run as a step');
+    assert.deepStrictEqual([steps, kept], [['show', 'show'], [true, showingOf(HUNT, null, first)]]);
+    assert.strictEqual(drawnBlind('plan gate', showingOf(HUNT, null, [['H3', 'H1', 'H5', 'H2'], null])), false, 'drawn afresh, the reordered plan would run as a step');
   });
 
   it('a showing redrawn while it waits shows again though what its surface draws it from changed meanwhile — an agent finished — on the showing it was drawn on', () => {
@@ -371,13 +431,13 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     logged(pressed(13, { gate: 'wait for agents', row: 'g', start: Date.now() - DAY }));
 
     const [steps, showing] = inConversation(dir, () => {
-      const both = drawn('wait for agents', waiting(dir, ['a40', 'a41']));
-      const one = drawn('wait for agents', waiting(dir, ['a41']));
+      const both = drawn('wait for agents', waiting(dir, ['a21', 'b21']));
+      const one = drawn('wait for agents', waiting(dir, ['b21']));
       return [[both.step, one.step], lastShown(SESSION)?.showing];
     });
 
-    assert.deepStrictEqual([steps, showing], [['show', 'show'], showingOf(CARDS, ['a40', 'a41'])]);
-    assert.strictEqual(drawnBlind('wait for agents', showingOf(CARDS, ['a41'])), false, 'drawn afresh, the wait over one agent would run as a step');
+    assert.deepStrictEqual([steps, showing], [['show', 'show'], showingOf(CARDS, null, ['a21', 'b21'])]);
+    assert.strictEqual(drawnBlind('wait for agents', showingOf(CARDS, null, ['b21'])), false, 'drawn afresh, the wait over one agent would run as a step');
   });
 
   it('paths typed at the import reprompt answer it, ending its showing: the reprompt a refused re-land draws, though over the same paths, is a showing of its own, and its answer an event of its own', () => {
@@ -410,7 +470,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
         drawn(gate, { cwd: dir, place: HUNT, key: then });
         const { showing } = /** @type {{showing: string}} */ (lastShown(SESSION));
         answerGate(dir, gate, { pick: 'y' });
-        return showing === showingOf(HUNT, first);
+        return showing === showingOf(HUNT, null, first);
       });
     });
 
@@ -434,7 +494,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
       const dir = project(`subject-${i}`);
       gateStep(gate, { cwd: dir, place, key: held });
       const { showing } = gateStep(gate, { cwd: dir, place, key });
-      return [gate, ['the hold', 'afresh'][[showingOf(place, held), showingOf(place, key)].indexOf(showing)]];
+      return [gate, ['the hold', 'afresh'][[showingOf(place, null, held), showingOf(place, null, key)].indexOf(showing)]];
     });
 
     assert.deepStrictEqual(shownOn, [
@@ -452,10 +512,10 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     const dir = project('mint');
     logged(pressed(20, { gate: 'wait for agents', row: 'g', start: Date.now() - DAY }));
 
-    const steps = [['a3', 'b3'], ['a1']].map((running) => learned('wait for agents', waiting(dir, running)).step);
+    const steps = [['a19', 'b19'], ['a1']].map((running) => learned('wait for agents', waiting(dir, running)).step);
 
     assert.deepStrictEqual([steps, heldShowing(stateRoot(dir), 'wait for agents', CARDS)], [['show', 'automatic'], null]);
-    assert.deepStrictEqual([drawnBlind('wait for agents', showingOf(CARDS, ['a3', 'b3'])), drawnBlind('wait for agents', showingOf(CARDS, ['a1']))], [true, false]);
+    assert.deepStrictEqual([drawnBlind('wait for agents', showingOf(CARDS, null, ['a19', 'b19'])), drawnBlind('wait for agents', showingOf(CARDS, null, ['a1']))], [true, false]);
   });
 
   it('a showing set aside keeps its hold when a raise drawn meanwhile clears the gate shown: free text read as its usual answer tips its count quiet, yet the gate drawn after shows on its hold, and its answers are one event (S1)', () => {
@@ -473,7 +533,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     });
 
     assert.deepStrictEqual([steps, showingAnswers()], [['show', 'show'], [[null, 'y'], 1]]);
-    assert.strictEqual(drawnBlind('plan gate', showingOf(HUNT, at.key)), false, 'drawn afresh, the plan would run as a step');
+    assert.strictEqual(drawnBlind('plan gate', showingOf(HUNT, null, at.key)), false, 'drawn afresh, the plan would run as a step');
   });
 
   it('a showing set aside by a Comment, the gate shown cleared by a raise, then picked, is one event under one id (S1)', () => {
@@ -551,13 +611,13 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
       return lastShown(next)?.showing;
     }, next);
 
-    assert.strictEqual(showing, showingOf(HUNT, [later, null]));
+    assert.strictEqual(showing, showingOf(HUNT, null, [later, null]));
   });
 
   it('a showing held at one place leaves the same gate at another place drawn afresh (S1)', () => {
     const dir = project('mint');
     logged(pressed(30, { start: Date.now() - DAY }));
-    const key = [['H1', 'H2', 'H3', 'H4'], null];
+    const key = PLAN_BLIND;
     const tax = { unit: 'tax', phase: 'investigation', topic: 'tax' };
 
     const steps = inConversation(dir, () => {
@@ -567,7 +627,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     });
 
     assert.deepStrictEqual(steps, ['show', 'automatic', 'show']);
-    assert.deepStrictEqual([drawnBlind('plan gate', showingOf(HUNT, key)), drawnBlind('plan gate', showingOf(tax, key)), drawnBlind('plan gate', showingOf(HUNT, [['H1', 'H2'], null]))], [true, false, false]);
+    assert.deepStrictEqual([drawnBlind('plan gate', showingOf(HUNT, null, key)), drawnBlind('plan gate', showingOf(tax, null, key)), drawnBlind('plan gate', showingOf(HUNT, null, [['H1', 'H2'], null]))], [true, false, false]);
   });
 
   it('a showing held is its own gate\'s: another gate drawn at the same place is drawn afresh, on its own showing (N2)', () => {
@@ -580,7 +640,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
       return learned('check-in gate', { cwd: dir, place: HUNT, key: ['H1'] });
     });
 
-    assert.deepStrictEqual(step, ran('check-in gate', 'y', showingOf(HUNT, ['H1'])));
+    assert.deepStrictEqual(step, ran('check-in gate', 'y', showingOf(HUNT, null, ['H1'])));
   });
 
   it('the wait\'s wait leaves its showing open: the wait its next draws over the agents left shows on it, never drawn, and a go there ends it as the same event — the next wait drawn afresh (N1)', () => {
@@ -588,15 +648,15 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     logged(pressed(20, { gate: 'wait for agents', row: 'g', start: Date.now() - DAY }));
 
     const steps = inConversation(dir, () => {
-      const both = drawn('wait for agents', waiting(dir, ['a3', 'b3']));
+      const both = drawn('wait for agents', waiting(dir, ['a19', 'b19']));
       answerGate(dir, 'wait for agents', { pick: 'w' });
-      const left = drawn('wait for agents', waiting(dir, ['b3']));
+      const left = drawn('wait for agents', waiting(dir, ['b19']));
       answerGate(dir, 'wait for agents', { pick: 'g' });
-      return [both, left, learned('wait for agents', waiting(dir, ['b3']))].map(({ step }) => step);
+      return [both, left, learned('wait for agents', waiting(dir, ['b19']))].map(({ step }) => step);
     });
 
     assert.deepStrictEqual([steps, showingAnswers()], [['show', 'show', 'automatic'], [['w', 'g'], 1]]);
-    assert.deepStrictEqual([drawnBlind('wait for agents', showingOf(CARDS, ['a3', 'b3'])), drawnBlind('wait for agents', showingOf(CARDS, ['b3']))], [true, false]);
+    assert.deepStrictEqual([drawnBlind('wait for agents', showingOf(CARDS, null, ['a19', 'b19'])), drawnBlind('wait for agents', showingOf(CARDS, null, ['b19']))], [true, false]);
   });
 });
 

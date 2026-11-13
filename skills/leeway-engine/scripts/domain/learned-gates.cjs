@@ -26,9 +26,14 @@
 //   — the Comment at the investigation's gates, the wait's wait — and any
 //   other pick answers it, the reprompt's paths in the person's words among
 //   them. Its digest (`showingOf`) hashes the gate's place — unit, phase and
-//   topic — with the key its surface draws it from out of its own state, the
-//   same on every redraw of one showing and different between showings. Its
-//   answer logs it, and so does the step run on it, as no answer
+//   topic — when that place was last entered (place-entry.cjs; for the
+//   reprompt, at no place, the place the conversation sits at) and the key
+//   its surface draws it from out of its own state: each draw after an entry
+//   a showing of its own, so the wait drawn at a pause and again at the
+//   close after the topic is opened again is two, and a redraw within one
+//   entry the same. Known edge: a pause the person carries on from in the
+//   same conversation, with no new entry, stays one entry, so its next draw
+//   on the same key is the same showing. Its answer logs it, and so does the step run on it, as no answer
 //   (trust-events.cjs), so a replay draws a past showing again as it was
 //   drawn: `drawnBlind(gate, showing)` (replay.cjs).
 // - A showing held keeps its key, so a gate whose key names its subject
@@ -152,12 +157,13 @@ function heldFor(name, held, key) {
 const digest = (value) => crypto.createHash('sha1').update(JSON.stringify(value)).digest();
 
 /**
- * The showing of a gate at `place` that its surface draws from `key`, its
- * own state: a digest, the same for the same place and key.
- * @param {Place} place @param {unknown} key @returns {string}
+ * The showing of a gate at `place`, entered at `entered` (null where no
+ * entry is recorded), that its surface draws from `key`, its own state: a
+ * digest, the same for the same place, entry and key.
+ * @param {Place} place @param {string|null} entered @param {unknown} key @returns {string}
  */
-function showingOf({ unit, phase, topic }, key) {
-  return digest([unit, phase, topic, key]).toString('hex').slice(0, SHOWING_DIGITS);
+function showingOf({ unit, phase, topic }, entered, key) {
+  return digest([unit, phase, topic, entered, key]).toString('hex').slice(0, SHOWING_DIGITS);
 }
 
 /** Whether the gate `name`'s showing `showing` draws its blind ask (E3). @param {string} name @param {string} showing */
