@@ -115,6 +115,18 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render migration-guard-stop
 
 **STOP.** Do not proceed — terminal condition.
 
+#### If `state` is `checks`
+
+If the boot response carries `warnings`, surface them first. Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render migration-checks-stop
+```
+
+Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written, with folder = `{folder}`.
+
+→ On return, run **Step 0.1** again.
+
 #### If `state` is `directive`
 
 Load **[migration-directive.md](references/migration-directive.md)** and follow its instructions as written, with directive = `{id}` and file = `{file}`.

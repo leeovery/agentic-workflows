@@ -4,7 +4,8 @@
 // The migration's directives (21.10): a directive's head, linted over every
 // directive the migrations hold (21.S34; the format is the header of
 // leeway-migrate/scripts/migrate.cjs, the lint directive-lint.cjs); `engine
-// migrate check`, its check run (domain/directives.cjs); its checklist,
+// migrate check`, its check run (domain/directives.cjs); `engine migrate
+// checked`, the checks before the reshape's move recorded made; its checklist,
 // whose one item is the check, the engine's, and whose close records the
 // directive (domain/checklist.cjs; 6.4.11, 21.S36); boot's stop at a
 // directive not yet done, and past it once it is, one start meeting several,
@@ -152,9 +153,20 @@ describe('engine migrate check (21.10.7)', () => {
       'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }',
       'migrate check: 092-failing\'s check failed: the old manifests could not be read',
       'migrate check: 093-unanswered\'s check answered no list of { name, problems }',
-      'Usage: engine migrate check <id> | engine migrate review',
-      'Usage: engine migrate check <id> | engine migrate review',
+      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review',
+      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review',
     ]);
+  });
+});
+
+describe('engine migrate checked (21.10.13)', () => {
+  it('records the checks before the reshape\'s move made, the line once however often it is called, committing nothing', () => {
+    const code = codeHead(dir);
+
+    assert.deepStrictEqual([ok(['migrate', 'checked']), ok(['migrate', 'checked'])], [{ ok: true }, { ok: true }]);
+
+    assert.deepStrictEqual(recorded(dir), [...RECORDED, 'old-chain-checks']);
+    assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code]);
   });
 });
 

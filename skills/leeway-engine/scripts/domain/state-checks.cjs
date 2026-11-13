@@ -33,10 +33,13 @@
 //   lost its state, and boot stops there, starting again only on the
 //   person's yes (4.4.5, 4.5.2).
 // - The migration under way: its state worktree checked out on a
-//   `leeway-state` with no commit yet, the reshape still owed until the
-//   migration's commit (21.5.11). The worktree is locked where it is not,
-//   and boot goes on to the migrations with nothing pushed: the branch is
-//   the migration's to begin (21.9.3).
+//   `leeway-state` with no commit yet, its files standing at the code
+//   commit it was added at, until the migration's commit — whatever the
+//   code branch holds meanwhile, a commit of the person's own among it
+//   (21.5.11). A branch lost under its folder stands at a commit of the
+//   state's, and is restored or refused as above. The worktree is locked where it is not, and boot goes on to the
+//   migrations with nothing pushed: the branch is the migration's to begin
+//   (21.9.3).
 // - A remote out of reach is never read as holding nothing, so never as lost
 //   state or a branch to push back: boot works on what this clone holds —
 //   its own branch, or the remote's as last fetched — and, holding neither,
@@ -52,7 +55,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { titlecase } = require('./conventions.cjs');
 const {
   STATE_BRANCH, trackingRef, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote,
-  createStateBranchAt, folderCommit, lockStateWorktree, askStateRemote, fetchStateTip, fetchRemoteBranches, refuseCodeHistory, pushState, withBootLock,
+  createStateBranchAt, folderCommit, standsAtCodeCommit, lockStateWorktree, askStateRemote, fetchStateTip, fetchRemoteBranches, refuseCodeHistory, pushState, withBootLock,
 } = require('./state-worktree.cjs');
 const { holdsTrace, keepStateExcluded } = require('./code-trace.cjs');
 const { owed } = require('../../../leeway-migrate/scripts/old-layout.cjs');
@@ -170,12 +173,12 @@ function startState(cwd, root, answer, startAgain, warnings) {
 
 /**
  * Whether the migration is under way: no local branch, and the state
- * worktree checked out on `leeway-state`, which has no commit yet, with the
- * reshape still owed.
- * @param {string} cwd @param {StateInspection} seen
+ * worktree checked out on `leeway-state`, which has no commit yet, its
+ * files standing at the code commit it was added at.
+ * @param {string} root @param {StateInspection} seen
  */
-function migrationUnderWay(cwd, seen) {
-  return !seen.branch && seen.folder === 'linked' && seen.worktree?.branch === STATE_BRANCH && owed(codeRoot(cwd));
+function migrationUnderWay(root, seen) {
+  return !seen.branch && seen.folder === 'linked' && seen.worktree?.branch === STATE_BRANCH && standsAtCodeCommit(root);
 }
 
 /**
@@ -244,7 +247,7 @@ function placeState(cwd, { startAgain = false } = {}) {
     const warnings = keepStateExcluded(cwd);
     const answer = askStateRemote(root);
     const seen = inspectState(root);
-    if (migrationUnderWay(cwd, seen)) {
+    if (migrationUnderWay(root, seen)) {
       if (!seen.worktree?.locked) lockStateWorktree(root);
       return { made: null, migrating: true, listing: undefined, warnings };
     }

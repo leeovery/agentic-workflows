@@ -16,11 +16,11 @@ Files were updated, a migration handed over checks its code could not perform, a
 
    It answers `state`, the state's folder, and `code`, the folder the code side's commit lands in, both absolute.
 
-   **If it answers `reshape`**, the migration into Leeway waits on its commit: the summary is written from `reshape` — `units` moved, `topics` carried, the `directives` done, and the code files the commit takes, `staged`, named from `code` — with the files the move left in `.workflows/`, as its addendum in `migrations.verify` names them. The state branch has no commit to compare with yet, so read no diff of it.
+   **If it answers `reshape`**, the migration into Leeway waits on its commit: the summary is written from `reshape` — `units` moved, `topics` carried, the `directives` done, and `files`, the code files the commit takes, named from `code` — with the files the move left in `.workflows/`, as its addendum in `migrations.verify` names them. Read no diff of the state: the state branch's first commit takes it whole.
 
    **Otherwise**, see what changed on both sides the commit below takes: run `git -C {state} status --short` and `git -C {state} diff HEAD` for the state, and `git -C {code} status --short -- .claude/settings.json .worktreeinclude .gitignore` and `git -C {code} diff HEAD -- .claude/settings.json .worktreeinclude .gitignore` for the files the workflows own in the code tree. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
 
-   **If nothing changed and `migrations.notices` is empty** (the migrations skipped everything and verification found nothing to fix):
+   **If it answers no `reshape`, nothing changed, and `migrations.notices` is empty** (the migrations skipped everything and verification found nothing to fix):
 
    > *Output the next fenced block as a text code block (```text fence):*
 
@@ -49,7 +49,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render migration-gate
 
 **If `yes`:**
 
-Commit the migration changes — one commit on each side that changed, or, for the migration into Leeway, the state branch's first commit and then the code branch's:
+Commit the migration changes — one commit on each side that changed, or, for the migration into Leeway, each commit `reshape` named in `commits`:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs commit --migrations -m "chore: apply workflow migrations"

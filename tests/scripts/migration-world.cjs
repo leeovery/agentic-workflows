@@ -22,9 +22,9 @@
 // (`finishedMigration`), made once and copied: the project the migration
 // is under way in with every fixture migration recorded, the tracker's
 // store on its code branch where a project from before Leeway kept it and
-// a file its tool keeps local beside it, the state's ignore line staged in
-// its `.gitignore` as the move stages it, a decision held in the ledger,
-// and the reshape's finish (081) run over it — its drops staged and
+// a file its tool keeps local beside it, the state's ignore line in its
+// `.gitignore`, unstaged, as the move writes it, a decision held in the
+// ledger, and the reshape's finish (081) run over it — its drops
 // journaled; and one nested in its repository, made for each call
 // (`nestedFinished`).
 
@@ -462,7 +462,7 @@ function projectTree(dir) {
 // Where a project from before Leeway kept the tracker's store, as the task
 // driver that declares it says, read as the finish reads it: its file, and
 // a file its tool keeps local, named from the first pattern.
-const [PRE_LEEWAY] = preLeewayStores();
+const [PRE_LEEWAY] = preLeewayStores().stores;
 const [OLD_STORE] = PRE_LEEWAY.files;
 const OLD_LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
 
@@ -476,7 +476,6 @@ function buildFinished(dir) {
   git(dir, ['commit', '-q', '-m', 'the tracker\'s store']);
   createFile(dir, OLD_LOCAL, 'local\n');
   createFile(dir, '.gitignore', '.leeway/\n');
-  git(dir, ['add', '--', '.gitignore']);
   createFile(statePath(dir), layout.migrations, ALL_RECORDED.map((id) => `${id}\n`).join(''));
   enter(dir, 'licensing', 'trial-length');
   FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
@@ -502,8 +501,8 @@ function finishedMigration(dir) {
  * A project nested in its repository at `{dir}/app`, waiting on the
  * migration's commit: its `.workflows/` committed in its folder, the state
  * worktree at the repository's top as the move left it, the state's ignore
- * line staged in the project's own `.gitignore`, and the reshape's finish
- * run there. Made for each call.
+ * line in the project's own `.gitignore`, and the reshape's finish run
+ * there. Made for each call.
  * @param {string} dir
  * @returns {string} the project's folder
  */
@@ -514,7 +513,6 @@ function nestedFinished(dir) {
   });
   const app = path.join(dir, 'app');
   createFile(app, '.gitignore', '.leeway/\n');
-  git(dir, ['add', '--', 'app/.gitignore']);
   FINISH.run({ projectDir: app, reportUpdate: () => {}, reportSkip: () => {} });
   return app;
 }

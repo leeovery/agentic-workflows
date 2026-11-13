@@ -156,6 +156,24 @@ function directiveStop({ project, step, progress }) {
 }
 
 /**
+ * Boot's stop before the reshape's move (21.10.13): earlier migrations
+ * handed back checks their code could not make, or something for the
+ * person; the checks fix files the move reads, so this session makes them
+ * first, and no session works in the project until the migration is done.
+ * @returns {string}
+ */
+function migrationChecksStop() {
+  return [
+    section('DISPLAY: migration checks stop', emitAs('properties'), '⚑ The migration stopped before its move, for what earlier migrations handed back'),
+    section('DISPLAY: migration checks account', emitAs('markdown'), [
+      "> Earlier migrations of this project handed back checks their code couldn't make, or something to tell you. The checks fix files the move into Leeway reads, so they come first. No session works in this project until the migration is done.",
+      '>',
+      '> This session takes them up now; the start menu follows once the migration is done and committed.',
+    ].join('\n')),
+  ].join('\n');
+}
+
+/**
  * Boot's stop where the reshape's guard refused the migration (21.3.4):
  * another session live in the project — its unit, its phase, and its topic
  * where the unit has topics of its own, and how long ago it was last active
@@ -382,4 +400,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

@@ -31,7 +31,7 @@ const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -1107,6 +1107,7 @@ const SURFACES = {
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,
   'migration-guard-stop': migrationGuardStopSurface,
+  'migration-checks-stop': () => migrationChecksStop(),
   'send-report': (cwd, { dotpath, sent }) => sendReportOf(cwd, dotpath, sent),
   'map': mapSurface,
   'decided': decidedSurface,

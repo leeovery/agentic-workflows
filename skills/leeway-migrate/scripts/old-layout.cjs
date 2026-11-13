@@ -10,7 +10,17 @@
 // Whether the project owes the reshape (`owed`): the main checkout's HEAD
 // holds the project's `.workflows/` — in its own folder, nested in its
 // repository or at the top — and `leeway-state` has no commit. A folder in
-// no repository, or in one with no main checkout, owes nothing.
+// no repository, or in one with no main checkout, owes nothing. Whether the
+// reshape is owed or under way (`reshaping`): owed, or its state worktree
+// checked out at the main checkout's `.leeway/` on a `leeway-state` with
+// no commit yet, whatever the code branch holds — which the runner meets
+// only while the migration runs, since boot restores a branch lost under
+// its folder, or refuses it, before any run.
+//
+// The line the migrations record holds once the session has made the
+// checks the chain before the reshape handed back, which the runner's stop
+// before the move waits on and `engine migrate checked` writes
+// (`CHECKS_DONE`).
 //
 // What the reshape leaves behind where boot ran in another checkout
 // (`unmoved`): it moves the main checkout's copy of `.workflows/`, the one
@@ -27,6 +37,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const OLD_STATE = '.workflows';
+const STATE_DIR = '.leeway';
+const CHECKS_DONE = 'old-chain-checks';
 const STATE_BRANCH = 'leeway-state';
 
 const REPOSITORY_ENV = [
@@ -57,16 +69,44 @@ function projectInMain(dir, main) {
   return path.resolve(main, git(dir, ['rev-parse', '--show-prefix']).stdout.trim());
 }
 
+/** The main checkout of the repository `dir` is in, where its `leeway-state` has no commit; else null. @param {string} dir @returns {string|null} */
+function unbornMain(dir) {
+  const main = mainCheckout(dir);
+  return main === null || git(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${STATE_BRANCH}`]).ok ? null : main;
+}
+
+/** Whether the main checkout's HEAD holds the project's `.workflows/`. @param {string} projectDir @param {string} main */
+function holdsOldState(projectDir, main) {
+  const listed = git(projectInMain(projectDir, main), ['ls-tree', '--name-only', 'HEAD', '--', OLD_STATE]);
+  return listed.ok && listed.stdout.trim() !== '';
+}
+
+/** Whether the state worktree at the main checkout's `.leeway/` has `leeway-state` checked out. @param {string} main */
+function stateCheckedOut(main) {
+  const root = path.join(main, STATE_DIR);
+  if (!fs.existsSync(path.join(root, '.git'))) return false;
+  const head = git(root, ['symbolic-ref', '--quiet', 'HEAD']);
+  return head.ok && head.stdout.trim() === `refs/heads/${STATE_BRANCH}`;
+}
+
 /**
  * Whether the project at `projectDir` owes the reshape.
  * @param {string} projectDir
  * @returns {boolean}
  */
 function owed(projectDir) {
-  const main = mainCheckout(projectDir);
-  if (main === null || git(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${STATE_BRANCH}`]).ok) return false;
-  const listed = git(projectInMain(projectDir, main), ['ls-tree', '--name-only', 'HEAD', '--', OLD_STATE]);
-  return listed.ok && listed.stdout.trim() !== '';
+  const main = unbornMain(projectDir);
+  return main !== null && holdsOldState(projectDir, main);
+}
+
+/**
+ * Whether the project at `projectDir` owes the reshape, or has it under way.
+ * @param {string} projectDir
+ * @returns {boolean}
+ */
+function reshaping(projectDir) {
+  const main = unbornMain(projectDir);
+  return main !== null && (stateCheckedOut(main) || holdsOldState(projectDir, main));
 }
 
 /** The files under `.workflows/` in the project's folder `project` the old state does not ignore, by their path there. @param {string} project */
@@ -102,4 +142,4 @@ function unmoved(here) {
   });
 }
 
-module.exports = { OLD_STATE, owed, unmoved };
+module.exports = { OLD_STATE, CHECKS_DONE, owed, reshaping, unmoved };

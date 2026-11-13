@@ -433,6 +433,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render ledger-stop
   render directive-stop --directive <id>
   render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>]
+  render migration-checks-stop
   render help <menu> [<arg>] [--<name> <value> …]
   render verdicts [--unit <unit>]
   render start-menu
@@ -1511,8 +1512,9 @@ function runBoard(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// migrate — a directive of the migration checked, and what the migration
-// review reads (domain/directives.cjs).
+// migrate — a directive of the migration checked, the checks before the
+// reshape's move recorded made, and what the migration review reads
+// (domain/directives.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

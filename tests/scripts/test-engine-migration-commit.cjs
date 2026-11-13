@@ -6,16 +6,27 @@
 // stop in domain/boot.cjs, `migrate review` in domain/directives.cjs and
 // the state branch's first commit in domain/state-worktree.cjs): boot
 // answering `finish` with nothing committed, the ledger's copies rendered
-// and the records indexed (21.9.1, 21.S24, 21.S47); the yes making the state
-// branch's first commit, the layout whole with the held writes, pushed
-// where there is a remote, then the code branch's, and the drops going
-// from disk once both land (21.9.2, 21.S18, P5); a kill before, between and
-// after the two, the next boot answering `finish` and the yes making what
-// is left (21.9.5); the refusals, nothing committed (21.9.3); the review's
-// read (21.9.4); a project nested in its repository, its commit called
-// from a code worktree; the board reading the project meanwhile; and a code
-// migration after the reshape handing back its check and notice as today
-// (21.10.13, 21.S48). The ordinary `commit --migrations` is
+// and the records indexed (21.9.1, 21.S24, 21.S47 — its other half, the
+// store the move left never read, is test-migration-078.cjs's: the
+// knowledge config carried, never the store); the yes making the state
+// branch's first commit, the layout whole with the held writes and none of
+// the tools' sidecars, pushed where there is a remote, then the code
+// branch's, taking the drops out through its own index, and the drops going
+// from disk once both land (21.9.2, 21.S18, P5); a commit of the person's
+// own before the yes taking none of the migration's changes, one taking
+// `.workflows/` off the code branch by hand leaving the migration under way,
+// and a `git add -A` or `git reset` between the stop and the yes leaving no
+// drop on the branch; a kill before and between the two, the next boot
+// answering `finish` and the yes making what is left, and after the code
+// commit, the next boot taking the drops off itself and answering `ready`
+// (21.9.5); the refusals, nothing committed (21.9.3); the review's read,
+// once the code commit has landed among it (21.9.4); a project nested in
+// its repository, its commit called from a code worktree; the board reading
+// the project meanwhile; a code migration after the reshape handing back
+// its check and notice as today (21.10.13, 21.S48); and, through the real
+// chain, the stop before the move for the checks the chain before the
+// guard handed back, the fix made in `.workflows/` carried by the move
+// (21.10.13). The ordinary `commit --migrations` is
 // test-engine-commit-door-state.cjs's.
 //
 // Layer: git. World: the migration's harness (migration-world.cjs) — the
@@ -41,7 +52,6 @@ const { legacyProject, real } = require('./boot-world.cjs');
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, commitFirst } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
-const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 const engine = directiveEngine();
 const MESSAGE = 'chore: apply workflow migrations';
@@ -97,14 +107,8 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
     assert.match(readState(dir, layout.knowledge('product.md')), /^## Finding: Search runs offline\.$/m);
   });
 
-  it('21.S47: boot indexes the records into the checkout\'s store, the store the move left in .workflows/ never read — none of its chunks comes back', () => {
+  it('21.S47: boot indexes the records into the checkout\'s store', () => {
     keywordOnlyKnowledge(dir);
-    const old = store.createStore();
-    store.insertDocument(old, {
-      id: 'old-1', content: 'zebrawindow licensing', heading_path: '', work_unit: UNIT, work_type: 'epic', phase: 'discussion', topic: 'licensing', confidence: 'high', source_file: `${UNIT}/discussion/licensing.md`, timestamp: 1700000000000,
-    });
-    fs.mkdirSync(path.join(dir, '.workflows/.knowledge'));
-    store.saveStore(old, path.join(dir, '.workflows/.knowledge/store.bin'));
 
     ok(['boot']);
 
@@ -145,7 +149,7 @@ describe('the review\'s read (21.9.4)', () => {
         units: 1,
         topics: 3,
         directives: ['079-records', '080-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'],
-        staged: ['.gitignore', '.workflows', OLD_STORE],
+        files: ['.gitignore', '.workflows', OLD_STORE],
       },
     });
 
@@ -169,6 +173,16 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     assert.deepStrictEqual([onDisk('.workflows'), onDisk(OLD_STORE), onDisk(OLD_LOCAL), onDisk(path.dirname(OLD_STORE)), fs.existsSync(statePath(dir, JOURNALS))], [false, false, false, false, false]);
     assert.deepStrictEqual([git(dir, ['status', '--porcelain']), stateGit(dir, ['status', '--porcelain'])], ['', '']);
     assert.strictEqual(ok(['boot']).state, 'ready');
+  });
+
+  it('the state branch\'s first commit takes none of the tools\' sidecars in the state, which stay on disk', () => {
+    writeState(dir, '.DS_Store', 'Finder\n');
+    writeState(dir, `${UNIT}/.notes.md.swp`, 'Vim\n');
+
+    ok(COMMIT);
+
+    assert.deepStrictEqual(stateGit(dir, ['ls-tree', '-r', '--name-only', STATE_BRANCH]).trim().split('\n'), FIRST_COMMIT);
+    assert.deepStrictEqual([fs.existsSync(statePath(dir, '.DS_Store')), fs.existsSync(statePath(dir, `${UNIT}/.notes.md.swp`))], [true, true]);
   });
 
   it('pushes the state branch\'s first commit where the project has a remote, which holds nothing of it before the yes', () => {
@@ -222,15 +236,26 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     assert.deepStrictEqual([stateGit(dir, ['rev-parse', STATE_BRANCH]).trim(), codeCommit(dir).parent, onDisk('.workflows')], [first, code, false]);
   });
 
-  it('killed once the code commit lands: boot answers finish again, and the yes commits nothing, taking the drops off disk', () => {
+  it('killed once the code commit lands, before the drops: the review reads no commit left and no file to take, and boot takes the drops off disk and clears the journals itself, answering ready', () => {
     killedAt({ method: 'rmSync', file: '.workflows', when: 'before' }, dir, COMMIT, { env: SESSION });
-    const heads = [stateGit(dir, ['rev-parse', STATE_BRANCH]).trim(), codeHead(dir)];
+    const tip = stateGit(dir, ['rev-parse', STATE_BRANCH]).trim();
 
-    assert.deepStrictEqual(ok(['boot']), NOTHING_RAN);
-    assert.deepStrictEqual(ok(COMMIT), { ok: true, committed: null, note: 'nothing to commit', code_committed: null });
+    assert.deepStrictEqual(ok(['migrate', 'review']).reshape, { commits: [], units: 1, topics: 3, directives: ['079-records', '080-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'], files: [] });
 
-    assert.deepStrictEqual([stateGit(dir, ['rev-parse', STATE_BRANCH]).trim(), codeHead(dir)], heads);
-    assert.deepStrictEqual([onDisk('.workflows'), onDisk(OLD_STORE), fs.existsSync(statePath(dir, JOURNALS))], [false, false, false]);
+    assert.strictEqual(ok(['boot']).state, 'ready');
+
+    assert.strictEqual(stateGit(dir, ['rev-parse', STATE_BRANCH]).trim(), tip);
+    assert.deepStrictEqual([onDisk('.workflows'), onDisk(OLD_STORE), onDisk(OLD_LOCAL), fs.existsSync(statePath(dir, JOURNALS))], [false, false, false, false]);
+  });
+
+  it('killed partway through the drops: boot takes the rest off disk and clears the journals itself, answering ready', () => {
+    killedAt({ method: 'rmSync', file: OLD_STORE, when: 'before' }, dir, COMMIT, { env: SESSION });
+
+    assert.deepStrictEqual([onDisk('.workflows'), onDisk(OLD_STORE)], [false, true]);
+
+    assert.strictEqual(ok(['boot']).state, 'ready');
+
+    assert.deepStrictEqual([onDisk(OLD_STORE), onDisk(OLD_LOCAL), onDisk(path.dirname(OLD_STORE)), fs.existsSync(statePath(dir, JOURNALS))], [false, false, false, false]);
   });
 
   it('the state branch\'s first commit is made on a state branch with no commit alone: on one born it refuses, committing nothing', () => {
@@ -240,6 +265,50 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     assert.throws(() => commitFirst(statePath(dir), MESSAGE), /is not on a leeway-state with no commit yet, so it takes no first commit — nothing committed$/);
     assert.strictEqual(stateGit(dir, ['rev-parse', STATE_BRANCH]).trim(), tip);
   });
+});
+
+describe('the person\'s own git between the finish stop and the yes', () => {
+  it('a commit of the person\'s own takes none of the migration\'s changes; boot answers finish after it, and the yes makes both commits over it', () => {
+    ok(['boot']);
+    createFile(dir, 'src/app.js', 'code\n');
+    git(dir, ['add', '--', 'src/app.js']);
+    git(dir, ['commit', '-q', '-m', 'my own work']);
+    const own = codeHead(dir);
+
+    assert.deepStrictEqual(codeCommit(dir).changes, ['A\tsrc/app.js']);
+    assert.deepStrictEqual(ok(['boot']), FINISH);
+
+    ok(COMMIT);
+
+    assert.deepStrictEqual(codeCommit(dir), { parent: own, changes: ['A\t.gitignore', `D\t${OLD_STORE}`, `D\t.workflows/${UNIT}/manifest.json`].sort() });
+    assert.deepStrictEqual([stateCommits().length, onDisk('.workflows'), git(dir, ['status', '--porcelain'])], [1, false, '']);
+  });
+
+  it('a commit of the person\'s own taking .workflows/ off the code branch by hand leaves the migration under way: every boot answers finish with the handbacks journaled, and the yes makes both commits', () => {
+    const notice = { id: '078', description: 'move the project', notice: 'The user-level folder moved.' };
+    writeState(dir, `${JOURNALS}/pending-notices.json`, `${JSON.stringify([notice])}\n`);
+    git(dir, ['rm', '-r', '-q', '--cached', '--', '.workflows']);
+    git(dir, ['commit', '-q', '-m', 'the old state off the branch']);
+    const own = codeHead(dir);
+
+    assert.deepStrictEqual([ok(['boot']), ok(['boot'])].map((booted) => [booted.state, booted.migrations.notices]), [['finish', [notice]], ['finish', [notice]]]);
+
+    ok(COMMIT);
+
+    assert.deepStrictEqual(codeCommit(dir), { parent: own, changes: ['A\t.gitignore', `D\t${OLD_STORE}`].sort() });
+    assert.deepStrictEqual([stateCommits().length, onDisk('.workflows'), onDisk(OLD_STORE), git(dir, ['status', '--porcelain'])], [1, false, false, '']);
+  });
+
+  for (const [what, args] of /** @type {[string, string[]][]} */ ([['git add -A', ['add', '-A']], ['git reset', ['reset', '-q']]])) {
+    it(`a ${what} between the stop and the yes: the code commit takes every drop off the branch, and none goes from disk out of step`, () => {
+      git(dir, args);
+
+      ok(COMMIT);
+
+      assert.deepStrictEqual(git(dir, ['ls-tree', '--name-only', 'HEAD', '--', '.workflows', OLD_STORE, OLD_LOCAL]), '');
+      assert.deepStrictEqual([onDisk('.workflows'), onDisk(OLD_STORE), onDisk(OLD_LOCAL), git(dir, ['status', '--porcelain'])], [false, false, false, '']);
+    });
+  }
 });
 
 describe('a project nested in its repository, its commit called from a code worktree', () => {
@@ -288,6 +357,28 @@ describe('a code migration after the reshape (21.10.13)', () => {
 
 describe('the reshape\'s real sequence through its commit (21.S18)', () => {
   const folder = useTempFolder('migration-commit-real-');
+
+  it('a project at 070 whose discussion parks a concern in its triage section stops before the move for 071\'s check, every boot until it is recorded made; the fix made in .workflows/, uncommitted, the next boot carries on, and the move carries the fixed files (21.10.13)', () => {
+    const project = legacyProject(folder());
+    const env = { WORKFLOWS_CONFIG_DIR: path.join(folder(), 'no-workflows-config') };
+    const discussion = '.workflows/payments/discussion/payments.md';
+    createFile(project, discussion, '# Payments\n\nHow refunds settle.\n\n## Triage\n\n### Refund timing\n\nBilling asks when refunds settle.\n');
+    git(project, ['commit', '-q', '-am', 'a concern parked in triage']);
+
+    const stopped = [real.ok(project, ['boot'], { env }), real.ok(project, ['boot'], { env })];
+
+    assert.deepStrictEqual(stopped.map(({ state, folder: at, verify, notices }) => ({ state, at, checks: verify.map((entry) => entry.id), notices })), [1, 2].map(() => ({ state: 'checks', at: project, checks: ['071'], notices: [] })));
+    assert.match(real.output(project, ['render', 'migration-checks-stop'], { env }), /^⚑ The migration stopped before its move, for what earlier migrations handed back$/m);
+    assert.ok(!fs.existsSync(path.join(project, '.leeway/payments')), 'nothing moved yet');
+
+    createFile(project, discussion, '# Payments\n\nHow refunds settle.\n\n## Triage\n\n(none)\n');
+    createFile(project, '.workflows/payments/discussion/.mailbox/payments/001-refund-timing.md', '### Refund timing\n\nBilling asks when refunds settle.\n');
+    assert.deepStrictEqual(real.ok(project, ['migrate', 'checked'], { env }), { ok: true });
+
+    assert.strictEqual(real.ok(project, ['boot'], { env }).state, 'directive');
+    assert.match(readState(project, 'payments/topics/payments/log.md'), /^### Triage\n\n\(none\)\n$/m);
+    assert.strictEqual(readState(project, 'payments/topics/payments/mail/001-refund-timing.md'), '### Refund timing\n\nBilling asks when refunds settle.\n');
+  });
 
   it('a project at 070 with no units, the tracker\'s store beside its .workflows/, boots through the guard, the chain, the move and finish to the migration waiting on its commit, nothing committed; the yes makes the two commits, and the next boot is ready', () => {
     const project = legacyProject(folder());

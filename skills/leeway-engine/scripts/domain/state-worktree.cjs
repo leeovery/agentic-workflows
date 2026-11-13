@@ -557,6 +557,20 @@ function folderCommit(root) {
 }
 
 /**
+ * Whether the files of the state folder at `root` stand last at a commit of
+ * the code's, as its registration's HEAD log reads: the migration's state
+ * worktree, added at the code's HEAD and never committed on. A branch lost
+ * under its folder stands at a commit of the state's, or where its log is
+ * gone, at none it can tell.
+ * @param {string} root
+ * @returns {boolean}
+ */
+function standsAtCodeCommit(root) {
+  const at = folderCommit(root);
+  return at !== null && codeBranchSharing(root, at) !== null;
+}
+
+/**
  * Make the local `leeway-state` at `commit` — the repair for a branch lost
  * under a folder still there, made where the folder's files stand, so they
  * are what the catch-up moves on from.
@@ -1072,6 +1086,7 @@ module.exports = {
   fetchStateTip,
   fetchRemoteBranches,
   codeBranchSharing,
+  standsAtCodeCommit,
   refuseCodeHistory,
   stateRemoteName,
   stateRemoteUrl,

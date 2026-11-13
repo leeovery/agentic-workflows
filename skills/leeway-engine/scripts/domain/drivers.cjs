@@ -160,10 +160,11 @@ const METHODS = Object.freeze({
  * answers it as one more conflict, naming the names made twice and what
  * to make again by phase, and the engine stops on it and keeps this machine's
  * whole copy beside. A copy it cannot read is refused with a MergeError
- * naming the side and the line. A driver whose tracker projects used
- * before Leeway may declare where they kept its store, `preLeewayStore`
- * (`{files, localFiles}`, project-relative): frozen, since migration 078
- * reads it from the module alone, outside this loader.
+ * naming the side and the line. Each task driver's folder declares where a
+ * project from before Leeway kept its tracker's store, `pre-leeway-store.json`
+ * beside its module (`{files, localFiles}`, project-relative, both empty
+ * for a tracker that kept none): frozen, since the reshape's migrations
+ * read it with fs alone, outside this loader.
  * @typedef {DriverDeclaration & MethodsOf<typeof METHODS.task> & {
  *   ensureStore: (root: string) => boolean,
  *   storeFiles: () => string[],
