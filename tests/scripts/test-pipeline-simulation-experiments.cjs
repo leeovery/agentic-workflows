@@ -20,6 +20,8 @@ const path = require('path');
 const {
   Sim, mappedEpic, handoffEntry, enterEntry, handoff, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicMenuAt, epicPick,
 } = require('./pipeline-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+const { trustLines } = require('./pipeline-oracle.cjs');
 
 /**
  * Claude's answer to a question on the topic's map, once nothing measures it.
@@ -35,7 +37,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic experiments: spawn, the walk to verdict and the epic\'s menu after it (20.S22), splits, releases, series continuation', () => {
+  it('epic experiments: spawn, the walk to verdict and the epic\'s menu after it (20.S22), splits, releases, series continuation, and a question raised while its experiment runs', async () => {
     const wu = 'lab';
     mappedEpic(sim, wu, ['timing', 'layout']);
     for (const topic of ['timing', 'layout']) {
@@ -144,13 +146,16 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.deepStrictEqual([atMenu.kind, atMenu.at_menu, atMenu.topics.find((/** @type {{topic: string}} */ { topic }) => topic === 'timing').experiment], ['epic', true, { id: 'E1', running: false }],
       '20.S22: once the verdict is in, This session follows the session to the epic\'s menu, timing saying its report waits');
     // Back in timing's discussion, the review that ran beside the laboratory
-    // is taken in, the measured question answered, and timing decided.
+    // is taken in, the measured question answered — raised once its
+    // experiment concluded, so its raise names none (9.1.11) — and timing
+    // decided.
     epicPick(sim, wu, 'timing');
     enterEntry(sim, wu, 'discussion', 'timing');
     sim.write(review.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'timing']);
     sim.run(['agent', 'ack', wu, 'discussion', 'timing', review.id, '--clean']);
-    claudeDecides(sim, wu, 'timing', placement, 'Where the last window closed.');
+    const placed = await sim.runAsync(['raise', `${wu}.discussion.timing`, '--answers', placement], null, JSON.stringify(leaningCall('Where the last window closed.', 'Centred on the screen.')));
+    sim.run(['raise', 'answer', placed.raise, '--pick', '1'], null, JSON.stringify({ why: 'E1 placed every layout correctly.' }));
     decideTopic(sim, wu, 'timing');
 
     // Series continuation: a message reopens the decided topic, and the next
@@ -246,9 +251,13 @@ describe('pipeline simulation: experiments, in an epic', () => {
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/layout/problem.md`, '# Problem — follow-up\n')]);
     assert.strictEqual(revived.id, 'E2', 'the revival allocates the next id over the closed rows');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'in-progress');
+    // Raised while the follow-up measures it, the question's raise names it
+    // (9.1.11); the person settles it there, and the follow-up is dropped.
+    const { raise } = await sim.runAsync(['raise', `${wu}.discussion.layout`, '--answers', scale], null, JSON.stringify(leaningCall('It holds.', 'It breaks past a thousand windows.')));
+    sim.run(['raise', 'answer', raise, '--pick', '1'], null, JSON.stringify({ why: 'The person has seen it at scale.' }));
+    assert.deepStrictEqual(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'raise').map(({ measured }) => measured), [null, 'E2']);
     const settled = sim.run(['experiment', 'abandon', wu, 'layout', 'E2', '--reason', 'settled without the follow-up']);
     assert.strictEqual(settled.item_status, 'completed');
-    claudeDecides(sim, wu, 'layout', scale, 'It holds.');
     decideTopic(sim, wu, 'layout');
   });
 });

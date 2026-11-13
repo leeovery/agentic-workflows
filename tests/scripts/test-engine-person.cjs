@@ -34,9 +34,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, okSections, output, refuses, screenOf, statePath, withFrozenClock, FROZEN_MS } = require('./engine-harness.cjs');
+const { NO_SPACE, ok, okSections, output, refuses, screenOf, statePath, withFrozenClock, failingTrustAppends, FROZEN_MS } = require('./engine-harness.cjs');
 const { filesUnder } = require('./discovery-test-utils.cjs');
-const { idOf, PROJECT_ID, SESSION, DAY, MODEL, UNDRAWN, lines, useTrustWorld, history } = require('./trust-world.cjs');
+const { idOf, PROJECT_ID, SESSION, DAY, MODEL, UNDRAWN, lines, waitingPath, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -693,6 +693,21 @@ describe('a care entry dropped, in the trust log (16.5.2, 16.15.3)', () => {
       [{ project: PROJECT_ID, kind: 'look', added: BEFORE }],
       [{ project: PROJECT_ID, kind: 'look', added: BEFORE }, { project: PROJECT_ID, kind: 'words', added }],
     ]);
+  });
+
+  it('dropped where the log cannot be appended to, the answer warns, and the drop waits in the conversation for its next record — on Claude\'s proposal and on the person\'s own pick (16.13.3)', (t) => {
+    const fumi = project('fumi');
+    careStanding(['Fumi', 'look', PROJECT_ID], ['Fumi', 'words', PROJECT_ID]);
+    propose(fumi, DROP_LOOK, ['--drop']);
+    pick(fumi, 'record drop', 'y');
+    failingTrustAppends(t);
+
+    const answers = [person(fumi, ['drop']), dropCare(fumi, 'words')];
+
+    const waits = `the trust log was not written: ${NO_SPACE} — the event waits in the conversation, appended first by its next record`;
+    const waiting = fs.readFileSync(waitingPath(), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line)).filter(({ type }) => type === 'care-drop');
+    assert.deepStrictEqual(answers.map(({ warnings }) => warnings), [[waits], [waits]]);
+    assert.deepStrictEqual([waiting.map(({ kind, added }) => ({ kind, added })), dropsLogged()], [[{ kind: 'look', added: BEFORE }, { kind: 'words', added: BEFORE }], []]);
   });
 });
 

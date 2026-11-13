@@ -294,7 +294,7 @@ function gatesSays(view) {
   const { questions, more, gates: { showings, changed, overruled } } = replayed;
   if (showings === 0) return null;
   const where = 'at the gates that learn from your answers';
-  const at = questions === 0 ? `${periodSays(replayed)}${replayed.whole ? '' : ','} ${where}, ${settingOf(view).named} would have` : `${where[0].toUpperCase()}${where.slice(1)}, it would have`;
+  const at = questions === 0 ? `${periodSays(replayed)} ${where}, ${settingOf(view).named} would have` : `${where[0].toUpperCase()}${where.slice(1)}, it would have`;
   const of = `${changed === 0 ? 'none' : changed} of the ${counted(showings, 'stop')}`;
   if (more) return `${at} stopped at ${of} I went on past.`;
   return `${at} gone on past ${of} you answered${changed === 0 ? '' : `; you'd have picked otherwise at ${overruled === 0 ? 'none' : overruled} of them`}.`;

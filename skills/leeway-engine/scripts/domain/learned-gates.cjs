@@ -59,8 +59,9 @@ const crypto = require('crypto');
  * A gate's step: shown, or run as an automatic step on one of its rows —
  * each for the gate it was drawn for, on the showing it was drawn on, none
  * for a gate off the list; shown, with the showing's hold, none where the
- * decision point holds none.
- * @typedef {{step: 'show', gate: string, showing: string|null, hold: Hold|null} | {step: 'automatic', gate: string, row: string, showing: string}} GateStep
+ * decision point holds none; run, with the warnings of logging it where its
+ * append failed.
+ * @typedef {{step: 'show', gate: string, showing: string|null, hold: Hold|null} | {step: 'automatic', gate: string, row: string, showing: string, warnings?: string[]}} GateStep
  */
 
 /** Each learned gate by its name: the report of each row that may run as an automatic step. @type {Readonly<Record<string, Readonly<Record<string, string>>>>} */

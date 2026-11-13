@@ -35,12 +35,12 @@
 //   logged no drop, so the replay reads it as never having stood.
 // - Where the rule lets a question go ahead, the blind draw draws it again,
 //   by the draw's own function on the question's id its raise logged, at the
-//   share the counts gave then (decision-point.cjs `drawsBlind`): one drawn
-//   blind is asked, never skipped. A call that went ahead logs no id to
-//   draw, and needs none: it went ahead undrawn, or drawn blind on a call
-//   cheap to undo mid-build, which goes ahead while its question waits
-//   (16.17.6) — alike at either setting, the draw being the same — so only
-//   the rule tells the two settings apart on it.
+//   share the counts gave then (blind-draw.cjs): one drawn blind is asked,
+//   never skipped. A call that went ahead logs no id to draw, and needs
+//   none: it went ahead undrawn, or drawn blind on a call cheap to undo
+//   mid-build, which goes ahead while its question waits (16.17.6) — alike
+//   at either setting, the draw being the same — so only the rule tells the
+//   two settings apart on it.
 // - Each showing is decided again by its gate's count as it stood just
 //   before, for the model of the session it came in, at the threshold
 //   proposed and at the person's own, its blind ask drawn again from its
@@ -69,7 +69,7 @@ const { rule } = require('./ask-rule.cjs');
 const { countsFrom, gateCount, stateOf } = require('./trust-counts.cjs');
 const { evidenceIn } = require('./trust-evidence.cjs');
 const { midBuild } = require('./trust-settings.cjs');
-const { drawsBlind } = require('./decision-point.cjs');
+const { drawsBlind } = require('./blind-draw.cjs');
 const { stepOf } = require('./learned-gates.cjs');
 
 /** @typedef {import('./ask-rule.cjs').Context} Context */

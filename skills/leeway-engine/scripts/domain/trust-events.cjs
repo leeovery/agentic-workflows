@@ -47,12 +47,14 @@
 //   (16.5.7); Claude's mark that it always asks, null for none (19.4.20,
 //   19.4.22); the experiment still running that measured its question, by
 //   its id, null for none (9.1.11); and the question's id its blind draw
-//   hashes, the first entry of its chain, null for a replacement, which is
-//   never drawn (16.17.4, E3); and when the rule decided it, as sealed: as
-//   it was raised in the conversation, or parked in the build — the event's
-//   own time is its answer's, which may come long after; and whether it was
-//   asked blind, Claude's answer held back (16.17.2), so an answer given
-//   cold reads as one on its own, wherever its draw names.
+//   hashes, the first entry of its chain — on a blind question drawn on
+//   Claude's call gone ahead, the chain of the question that call answers —
+//   null on any other replacement, which is never drawn (16.17.4, E3); and
+//   when the rule decided it, as sealed: as it was raised in the
+//   conversation, or parked in the build — the event's own time is its
+//   answer's, which may come long after; and whether it was asked blind,
+//   Claude's answer held back (16.17.2), so an answer given cold reads as
+//   one on its own, wherever its draw names.
 //   Whether it was sent to check first is not logged: a call whose label
 //   says Claude could find it out never proceeds — the rule sends it to
 //   check, or asks — so a replay never counts it as one it would skip, and

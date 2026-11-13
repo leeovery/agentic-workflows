@@ -427,7 +427,7 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
  * @property {DecidedBy|null} replaced_by whose the decision it would replace is, null on a question
  * @property {Always|null} always Claude's mark that it always asks, null for none
  * @property {string|null} measured the experiment still running that measures its question, null for none
- * @property {string|null} chain the question's id its blind draw hashes, null on a replacement
+ * @property {string|null} chain the question's id its blind draw hashes, the first entry of its chain — on a blind question drawn on Claude's call gone ahead, the chain of the question that call answers — null on any other replacement
  * @property {string} reason
  * @property {boolean} blind whether it is asked blind, Claude's answer held back until the person's is given (16.17.2)
  * @property {string} at when it was shown

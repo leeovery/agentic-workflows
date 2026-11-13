@@ -106,17 +106,18 @@
 //   replace is, null for a question's answer (16.5.7); Claude's mark that
 //   it always asks, null for none (19.4.20, 19.4.22); the experiment still
 //   running that measures the question, by its id, null for none (9.1.11);
-//   the question's id its blind draw hashes, the first entry of its chain,
-//   null for a replacement (16.17.4); and whether it is asked blind,
-//   Claude's answer held back until the person's is given — a call the
-//   decision point would have let Claude make alone, drawn (16.17.2,
-//   raise.cjs) — a task joining it parks under all of it as the
-//   question's first park holds it. A fact only the person holds (16.3.8)
-//   parks in the same shape, as the ledger holds a fact's answer, with no
-//   lean: its call's lean, why and sort null, its rows any number, never
-//   labelled, decided under no model, marked with none and never blind. It
-//   names no maker, is no entry and is never replaced: it waits while what
-//   it is about stands open (questions.cjs).
+//   the question's id its blind draw hashes, the first entry of its chain —
+//   on a blind question drawn on Claude's call gone ahead, the chain of the
+//   question that call answers — null on any other replacement (16.17.4);
+//   and whether it is asked blind, Claude's answer held back until the
+//   person's is given — a call the decision point would have let Claude
+//   make alone, drawn (16.17.2, raise.cjs) — a task joining it parks under
+//   all of it as the question's first park holds it. A fact only the person
+//   holds (16.3.8) parks in the same shape, as the ledger holds a fact's
+//   answer, with no lean: its call's lean, why and sort null, its rows any
+//   number, never labelled, decided under no model, marked with none and
+//   never blind. It names no maker, is no entry and is never replaced: it
+//   waits while what it is about stands open (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
 //   unit that parked it (task-parks.cjs, questions.cjs): the task, as
 //   screens show it, and the parks naming it that it is taken off, by id —
