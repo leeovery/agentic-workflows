@@ -19,7 +19,8 @@
 // written, the review page's marks among it, and landed only once the
 // review has settled (8.S31, 8.10.2, 8.10.11). Between the yes and the
 // build's first task, nothing set up in the tracker yet, the board reads the
-// unit as the start menu's row does, writing nothing (20.16, 28.2.1).
+// unit as the start menu's row does, This session's build among it,
+// writing nothing (20.16, 28.2.1).
 //
 // Layer: verb. World: the ready to build world's feature, and the same with
 // the person's changes of Claude's calls (ready-to-build-world.cjs), copied
@@ -185,7 +186,7 @@ describe('the board between the yes and the build\'s first task (20.16, 28.2.1)'
       menu: progressWords(progressOf(dir(), readManifest(dir(), FEATURE))),
       all: `${phase}, ${standing}`,
       tab: `build, ${words}`,
-      here: here.kind === 'build' ? `build, phase ${here.progress.phase} of ${here.progress.phases}, ${here.phases[0].state}` : here.kind,
+      here: here.kind === 'build' ? `build, ${here.progress.untasked}` : here.kind,
     };
   }
 
@@ -200,7 +201,7 @@ describe('the board between the yes and the build\'s first task (20.16, 28.2.1)'
     const entered = drawn();
 
     const menu = 'build, phase 1 of 1, not yet written';
-    assert.deepStrictEqual([window, entered], [{ menu, all: menu, tab: menu, here: 'spec' }, { menu, all: menu, tab: menu, here: 'build, phase 1 of 1, not-written' }]);
+    assert.deepStrictEqual([window, entered], [{ menu, all: menu, tab: menu, here: 'spec' }, { menu, all: menu, tab: menu, here: menu }]);
     assert.deepStrictEqual([read, treeSnapshot(dir())], [yes, entry]);
   });
 });

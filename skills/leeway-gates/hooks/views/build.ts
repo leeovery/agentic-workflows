@@ -1,6 +1,8 @@
 /**
  * The build's This session (20.5.1–20.5.3): its header; the progress bar
- * with the tasks done of all, the phase of the cut and how many run, ending
+ * with the tasks done of all, the phase of the cut and how many run — before
+ * the tracker holds any task, how far the build has come as the start
+ * menu's row says it, in their place — ending
  * "⚑ stopped until you answer" once nothing can go on (D6), the line
  * wrapping under its facts (D11); WAITING ON YOU, the phase's own of the
  * unit's one list: the questions as the kit draws them, then every other
@@ -43,7 +45,7 @@ export type BuildView = View & {
   kind: 'build'
   title: string
   type: string
-  progress: { done: number; total: number; phase: number; phases: number; running: number; stopped: boolean }
+  progress: { done: number; total: number; phase: number; phases: number; running: number; stopped: boolean; untasked: string | null }
   waiting: Waiting[]
   phases: BuildPhase[]
 }
@@ -126,15 +128,16 @@ export const taskLineOf = (line: TaskLine, kit: Kit): Line => ({
   press: pageKey(`task:${line.task}`),
 })
 
-/** The progress bar's cells, done of all, filled in sage. */
+/** The progress bar's cells, done of all, filled in sage; none before the first task. */
 function barOf({ done, total }: BuildView['progress']): Part[] {
-  return [...progressBar(done, total, Math.min(BAR_CELLS, total)), { text: '  ' }]
+  return total === 0 ? [] : [...progressBar(done, total, Math.min(BAR_CELLS, total)), { text: '  ' }]
 }
 
 /** How far the build has come, wrapping under its facts so the stop shows whole. */
 function progressOf(progress: BuildView['progress']): Line {
-  const { done, total, phase, phases, running: runs, stopped } = progress
-  const facts = [`${done} of ${total} tasks done`, `phase ${phase} of ${phases}`, ...(runs > 0 ? [`${runs} running`] : [])]
+  const { done, total, phase, phases, running: runs, stopped, untasked } = progress
+  const far = untasked === null ? [`${done} of ${total} tasks done`, `phase ${phase} of ${phases}`] : [untasked]
+  const facts = [...far, ...(runs > 0 ? [`${runs} running`] : [])]
 
   return {
     key: 'build:progress',

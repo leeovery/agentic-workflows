@@ -80,7 +80,7 @@ describe('the build on the board (20.5)', () => {
         unit: UNIT,
         title: 'Pay',
         type: 'feature',
-        progress: { done: 0, total: 4, phase: 1, phases: 3, running: 0, stopped: false },
+        progress: { done: 0, total: 4, phase: 1, phases: 3, running: 0, stopped: false, untasked: null },
         waiting: [],
         phases: phasesWith(line('1.1', 'Take a card', 'at-gate')),
       },

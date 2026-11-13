@@ -51,7 +51,8 @@ export default {
       "phase": 6,
       "phases": 8,
       "running": 2,
-      "stopped": false
+      "stopped": false,
+      "untasked": null
     },
     "waiting": [
       {

@@ -115,6 +115,13 @@ describe('the build\'s This session (20.5)', () => {
     expect(rowsDrawn(progress!)).toEqual(['▰▰▰▰▰▰▰▱  62 of 68 tasks done · phase 6 of 8 · ⚑ stopped until', '          you answer'])
   })
 
+  test('before the tracker holds any task of the build, the progress says how far it has come as the start menu\'s row does, in place of its tasks done and its phase, with no bar', () => {
+    const progress = { done: 0, total: 0, phase: 1, phases: 1, running: 0, stopped: false, untasked: 'phase 1 of 1, not yet written' }
+    const [, line] = buildLines({ ...view, progress, waiting: [], phases: [{ phase: 1, name: 'Counting', state: 'not-written', done: 0, total: 0, tasks: [] }] } as View, kitAt(NOW))
+
+    expect(rowsDrawn(line!)).toEqual(['phase 1 of 1, not yet written'])
+  })
+
   test('the edge rule: in the header a 40-character title gives way with "…", its type and "· build phase" never do', () => {
     const [head] = buildLines({ ...view, title: 'Exclusion answers recorded per verb today', type: 'bugfix' } as View, kitAt(NOW))
 

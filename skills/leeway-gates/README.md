@@ -282,7 +282,8 @@ wraps under its mark or indent rather than lose them at the edge; a title
 gives way with "…". A topic under way that a session is in turns its ◐ in
 seafoam; one no session is in is sky blue and still.
 
-In the build, This session shows the build's progress, then what waits on you,
+In the build, This session shows the build's progress — before its first task,
+how far it has come as the start menu's row says it — then what waits on you,
 each question with its `▸ discuss`, then whatever else of the build's waits,
 asked in the conversation — a decided topic a changed answer holds, opening
 its topic — then the phases, each task on its line with

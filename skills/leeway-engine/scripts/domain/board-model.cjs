@@ -91,13 +91,14 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * The build's This session (20.5.1–20.5.3): the unit, its title and type;
  * the progress — tasks done of the tasks, the phase it is at of its phases,
- * how many run, and whether it has stopped, every task waiting on the
- * person; what waits on the person in the build, its questions and any
+ * how many run, whether it has stopped, every task waiting on the person,
+ * and, while the tracker holds none of its tasks, how far it has come as
+ * the start menu's row says it (progress.cjs), else null; what waits on the person in the build, its questions and any
  * other of the phase's own of the unit's one list; and every phase of the
  * cut, then of the review's fixes past it.
  * @typedef {{
  *   kind: 'build', unit: string, title: string, type: string,
- *   progress: {done: number, total: number, phase: number, phases: number, running: number, stopped: boolean},
+ *   progress: {done: number, total: number, phase: number, phases: number, running: number, stopped: boolean, untasked: string|null},
  *   waiting: WaitingLine[], phases: BuildPhase[],
  * }} BuildView
  */

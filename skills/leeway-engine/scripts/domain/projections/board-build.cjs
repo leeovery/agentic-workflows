@@ -50,9 +50,9 @@
 //   a task's page takes its task from that read.
 // - What waits on the person in the build is the phase's own of the unit's
 //   one list (board-standing.cjs), its questions among them.
-// - How far the build has come, as All work and the unit's tab say it, is
-//   the start menu's row's words while the tracker holds none of its tasks
-//   (progress.cjs), else its tasks done of all.
+// - How far the build has come, as This session, All work and the unit's
+//   tab say it, is the start menu's row's words while the tracker holds
+//   none of its tasks (progress.cjs), else its tasks done of all.
 // ---------------------------------------------------------------------------
 
 const { fact, placeFact } = require('../board-model.cjs');
@@ -244,6 +244,7 @@ function drawBuild(at) {
         phases: phases.length,
         running: lines.filter(running).length,
         stopped: stoppedOf(at, standing),
+        untasked: phases.some(({ tasks }) => tasks.length > 0) ? null : buildMeasure(at.manifest),
       },
       phases,
     },
@@ -482,9 +483,7 @@ function buildMoments(at) {
 }
 
 /** How far the build has come while the tracker holds none of its tasks yet, as the start menu says it (progress.cjs); null once it holds one. @param {BoardAt} at */
-function untasked(at) {
-  return buildRead(at).view.phases.some(({ tasks }) => tasks.length > 0) ? null : buildMeasure(at.manifest);
-}
+const untasked = (at) => buildRead(at).view.progress.untasked;
 
 /** How far the build has come, as All work says it: its tasks done of all, or the start menu's words before it has any. @param {BoardAt} at */
 function buildWords(at) {
