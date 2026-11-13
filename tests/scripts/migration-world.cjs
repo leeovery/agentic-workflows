@@ -145,10 +145,14 @@ function midMigration(dir) {
 // move folded into its log; the cross-cutting unit the promoted topic went
 // to, its import copied with it, one of its decisions settling two
 // subtopics, its review left behind in the epic's store folded into its log
-// too; an epic of one topic
-// whose building started, its spec still on the code branch, an import
-// come in from its discovery as a whole; and a cancelled feature, an import
-// come in from its discovery.
+// too; an epic of one topic whose building started, its two specs still in
+// `.workflows/`, one heading in both, an import come in from its discovery
+// as a whole; and a cancelled feature, an import come in from its discovery.
+const SHOP_SPECS = {
+  weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } },
+  wishlist: { status: 'completed', sources: { weights: { status: 'incorporated' } } },
+};
+
 const RECORDS_OLD = Object.freeze({
   'README.md': '# Fumi\n',
   '.workflows/fumi/manifest.json': jsonText({
@@ -197,12 +201,13 @@ const RECORDS_OLD = Object.freeze({
     imports: [{ path: 'imports/vision.md', imported_at: '2026-01-01T10:00:00Z', origin: 'discovery' }],
     phases: {
       discussion: { items: { weights: { status: 'completed', subtopics: { 'tie-break': { status: 'decided', parent: null } } } } },
-      specification: { items: { weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } } } },
+      specification: { items: SHOP_SPECS },
       implementation: { items: { weights: { status: 'in-progress' } } },
     },
   }),
   '.workflows/shop/specification/weights/specification.md':
     '# Specification: Weights\n\n## Ranking\n\nNewest first.\n\n### Detail\n\nBy day.\n\n## Corrigenda\n\nTies break by price, not by name.\n\n### Detail\n\nPrice before name.\n',
+  '.workflows/shop/specification/wishlist/specification.md': '# Specification: Wishlist\n\n## Saving\n\nOne tap.\n\n## Ranking\n\nNewest saved first.\n',
   '.workflows/gone/manifest.json': jsonText({
     name: 'gone', work_type: 'feature', status: 'cancelled',
     imports: [{ path: 'imports/notes.md', imported_at: '2026-01-01T10:00:00Z', origin: 'discovery' }],
@@ -251,7 +256,7 @@ const RECORDS_MOVED = Object.freeze({
     imports: [{ path: 'assets/vision.md', imported_at: '2026-01-01T10:00:00Z', origin: 'discovery' }],
     phases: {
       discussion: { items: { weights: { status: 'completed' } } },
-      specification: { items: { weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } } } },
+      specification: { items: SHOP_SPECS },
       implementation: { items: { weights: { status: 'in-progress' } } },
     },
   }),

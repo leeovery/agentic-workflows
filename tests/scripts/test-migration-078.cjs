@@ -6,41 +6,51 @@
 // The reshape's move (21.5) driven in process against a git project whose
 // `.workflows/` is today's shape, committed: an epic mid-discussion, an epic
 // whose building started, a feature, a bugfix, a completed quick-fix, a
-// quick-fix being built, a cross-cutting unit holding a topic the first epic
-// promoted, and a cancelled unit, with the project's inbox,
-// environment setup, cache — its old agent stores holding reviews never
-// folded in — old migrations record, roadmap and baseline
-// beside them, the tracker's store, settings hooks and `.worktreeinclude` in
-// its code tree, and today's user-level folder holding its config,
-// credentials and a conversation. The move runs once over that project, and
-// each test reads one rule off what it left: the state worktree on an unborn
-// `leeway-state`, locked, with nothing committed, nothing staged but the
-// project's own files, and `.workflows/` and the store untouched; each
+// quick-fix built with its review owed, two reopened after their review —
+// one's implementation, the other's scoping — two whose old pipeline
+// completed, one in progress and one cancelled, a cross-cutting unit
+// holding a topic the first epic promoted, and a cancelled unit, with the
+// project's inbox, environment setup, knowledge config and store, cache —
+// its old agent stores holding reviews never folded in — old migrations
+// record, roadmap and baseline beside them, the tracker's store, settings
+// hooks and `.worktreeinclude` in its code tree, and today's user-level
+// folder holding its config, credentials and a conversation. The move runs
+// once over that project, and each test reads one rule off what it left:
+// the state worktree on an unborn `leeway-state`, locked, with nothing
+// committed, nothing staged but the project's own files, and `.workflows/`
+// and the store untouched; each
 // unit's files in the layout, each review never folded in folded into its
 // topic's log, a person's files named for tracking or
 // analysis kept beside the reviews' tracking files dropped; nothing in a
 // topic's folder no topic owns; its manifest less research and the retired
 // state, the dead end off every topic — one whose work concluded keeping its
 // close, any other cancelled with its mail sent to the inbox; the project's manifest with its id, the baseline's skip its
-// brownfield answer and the roadmap's sources following their files; the
-// roadmap as the product, the baseline's docs its assets; the store in the
-// state; the hooks naming the engine's new path and the workflows' lines
+// brownfield answer, its retired defaults gone and the roadmap's sources
+// following their files; the roadmap as the product, the baseline's docs its
+// assets; the store and the knowledge config, never the knowledge store, in
+// the state; the hooks naming the engine's new path and the workflows' lines
 // gone from `.worktreeinclude`; the user-level folder moved and linked;
 // every file written in a place the layout holds; the files the layout has
 // no place for, named, the tools' sidecars not. A small project of its own
 // covers the runner's record and journals already in `.leeway/`, the
 // `.leeway/` ignore line staged with hooks off and the caller's git
-// environment cleared, the move run again over one cut short and over one
-// whose `.leeway/` the person removed, a project nested in its repository,
+// environment cleared, the move run again over one cut short, over one
+// whose `.leeway/` the person removed and over one killed writing each file
+// it reads back, a project nested in its repository,
 // a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
-// one under way, a `.worktreeinclude` of the workflows' lines alone,
+// one under way, defaults of the plan's format and the project skills alone,
+// read for its task driver after, a `.worktreeinclude` of the workflows' lines alone,
 // settings that do not parse, a user-level folder the engine's holds a
 // different copy of a file in, and one that is a link elsewhere. The
 // tracker's store is where its driver's frozen declaration says a project
 // from before Leeway keeps it, read as the move reads it.
 // Each test that runs the move points both user-level folders at its own,
 // never the machine's.
+//
+// Layer: migration. Budget: 8 s — each run of the move adds a worktree on an
+// unborn branch and stages in a real repository, and the suite runs it over
+// the whole project once and over a repository of its own for each edge.
 //
 
 require('./hermetic-env.cjs');
@@ -57,6 +67,8 @@ const { layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layou
 const { huntIn, HUNT_HEADINGS } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
 const { heardIn } = require('../../skills/leeway-engine/scripts/domain/discovery-log.cjs');
 const { withEntry } = require('../../skills/leeway-engine/scripts/domain/log-lists.cjs');
+const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { chosenDriver, listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const json = (/** @type {unknown} */ value) => JSON.stringify(value, null, 2) + '\n';
@@ -117,6 +129,10 @@ const USER_FOLDER = {
   'conversations/s1/position.json': '{"at":"workflows"}\n',
   '.DS_Store': 'sidecar\n',
 };
+
+// The checkout's knowledge config, naming a provider whose key this machine
+// resolves: per checkout, as today.
+const KNOWLEDGE_CONFIG = '{"knowledge":{"provider":"openai","model":"text-embedding-3-small"}}\n';
 
 /** @param {string} prefix */
 const tempProject = (prefix) => initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix))));
@@ -190,9 +206,11 @@ const moved = (title, sender) => `### ${title}\nFrom ${sender} · 1 Jan\n\nDetai
 const PROJECT_MANIFEST = {
   work_units: {
     core: { work_type: 'epic' }, shop: { work_type: 'epic' }, tally: { work_type: 'feature' }, stall: { work_type: 'bugfix' },
-    typo: { work_type: 'quick-fix' }, patch: { work_type: 'quick-fix' }, gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
+    typo: { work_type: 'quick-fix' }, patch: { work_type: 'quick-fix' }, redo: { work_type: 'quick-fix' }, rescope: { work_type: 'quick-fix' },
+    stale: { work_type: 'quick-fix' }, dropped: { work_type: 'quick-fix' },
+    gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
   },
-  defaults: { plan_format: 'sample-format', linters: [{ name: 'eslint', command: 'npx eslint .' }] },
+  defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }], tmux_labels: true },
   roadmap: {
     horizons: ['v1'],
     active_session: '002',
@@ -345,6 +363,9 @@ function todaysProject(dir) {
   w('.inbox/ideas/rough-notes.md', 'no item\'s name\n');
   w('.state/environment-setup.md', 'No special setup required.\n');
   w('.state/migrations', '001\n072\n');
+  w('.knowledge/config.json', KNOWLEDGE_CONFIG);
+  w('.knowledge/store.bin', 'the checkout\'s store\n');
+  w('.knowledge/metadata.json', '{"provider":null}\n');
   w('.cache/core/discussion/alpha/session.json', '{"live":true}\n');
   w('.cache/core/discussion/alpha/state.json', json({ agents: {
     'review-001': { id: 'review-001', kind: 'review', status: 'acknowledged' },
@@ -453,9 +474,23 @@ function todaysProject(dir) {
   w('typo/specification/typo/specification.md', '# Typo\n\nFix the typo in the header.\n');
   w('typo/planning/typo/planning.md', '# Plan: Typo\n');
 
-  w('patch/manifest.json', json(unit('patch', 'quick-fix', 'in-progress', quickFixPhases('patch', 'in-progress'))));
+  w('patch/manifest.json', json(unit('patch', 'quick-fix', 'in-progress', quickFixPhases('patch', 'completed'))));
   w('patch/specification/patch/specification.md', '# Patch\n');
   w('patch/planning/patch/planning.md', '# Plan: Patch\n');
+
+  for (const [wu, scoping, building] of [['redo', 'completed', 'in-progress'], ['rescope', 'in-progress', 'completed']]) {
+    w(`${wu}/manifest.json`, json(unit(wu, 'quick-fix', 'in-progress', {
+      ...quickFixPhases(wu, building), scoping: { items: { [wu]: { status: scoping } } }, review: { items: { [wu]: { status: 'completed' } } },
+    })));
+    w(`${wu}/specification/${wu}/specification.md`, `# ${wu}\n`);
+    w(`${wu}/planning/${wu}/planning.md`, `# Plan: ${wu}\n`);
+  }
+
+  for (const [wu, status] of [['stale', 'in-progress'], ['dropped', 'cancelled']]) {
+    w(`${wu}/manifest.json`, json(unit(wu, 'quick-fix', status, { ...quickFixPhases(wu, 'completed'), review: { items: { [wu]: { status: 'completed' } } } })));
+    w(`${wu}/specification/${wu}/specification.md`, `# ${wu}\n\nFixed.\n`);
+    w(`${wu}/planning/${wu}/planning.md`, `# Plan: ${wu}\n`);
+  }
 
   w('shared/manifest.json', json(unit('shared', 'cross-cutting', 'in-progress', {
     discussion: { items: { gamma: { status: 'completed' } } },
@@ -514,7 +549,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     });
 
     it('reports an update for the project and one for each unit, and hands back what it could not carry', () => {
-      assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 9, skips: 0 });
+      assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 13, skips: 0 });
       assert.deepStrictEqual(result.returned, {
         verify: 'These were not carried into .leeway/, the layout having no place for them: .workflows/.inbox/ideas/rough-notes.md, '
           + '.workflows/.roadmap/draft.txt, .workflows/.roadmap/notes/ideas/2026-01-03--points-expiry.md, '
@@ -527,14 +562,14 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the project (21.5.20, 21.11.2)', () => {
-    it('carries the manifest with the project\'s id minted first, the linters on its environment as 073 keeps them, the baseline\'s status gone, its skip the brownfield offer\'s answer, and the roadmap\'s open session the product\'s conversation\'s', () => {
+    it('8.S51, 21.S38, 21.S50: carries the manifest with the project\'s id minted first, the linters on its environment as 073 keeps them, the baseline\'s status gone, its skip the brownfield offer\'s answer, the plan\'s format and the project skills gone from its defaults, the rest kept, and the roadmap\'s open session the product\'s conversation\'s (22.3.1, 22.3.2)', () => {
       const project = JSON.parse(read('manifest.json'));
       assert.match(project.project_id, /^[0-9A-Za-z]{21}$/);
       const { items } = PROJECT_MANIFEST.roadmap;
       assert.deepStrictEqual(project, {
         project_id: project.project_id,
         work_units: PROJECT_MANIFEST.work_units,
-        defaults: { plan_format: 'sample-format' },
+        defaults: { tmux_labels: true },
         roadmap: {
           horizons: ['v1'],
           items: {
@@ -566,6 +601,11 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, STORE), 'utf8'), STORE_LINES, 'the code tree\'s store left for finish to drop');
     });
 
+    it('carries the checkout\'s knowledge config as it is, where the engine reads it, so the next boot builds the store with no setup question, and never the store or its metadata (P6, 21.9.6)', () => {
+      const files = knowledgeFiles(state);
+      assert.deepStrictEqual([fs.readFileSync(files.config, 'utf8'), fs.existsSync(files.store), fs.existsSync(files.metadata)], [KNOWLEDGE_CONFIG, false, false]);
+    });
+
     it('leaves the old cache and the old migrations record where they were, carrying neither (21.S17)', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/.cache/core/discussion/alpha/session.json'), 'utf8'), '{"live":true}\n');
       assert.deepStrictEqual(tree(state, '.cache'), [], 'no cache carried, no scratch file left');
@@ -574,7 +614,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the product (21.5.7, 21.11.1)', () => {
-    it('makes .roadmap/ .product/: its sessions as they are but for their headings, one level deeper, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, its dossiers gone', () => {
+    it('8.S51, 21.S38: makes .roadmap/ .product/: its sessions as they are but for their headings, one level deeper, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, its dossiers gone', () => {
       assert.deepStrictEqual(tree(state, '.product'), [
         'assets/baseline/agenda-auth.md',
         'assets/baseline/auth.md',
@@ -892,13 +932,28 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.deepStrictEqual(manifestOf('typo').phases, { implementation: { items: { typo: { status: 'completed' } } } });
     });
 
-    it('keeps a quick-fix being built\'s spec and plan as reference assets, and their items less the retired state', () => {
-      assert.deepStrictEqual(tree(state, 'patch'), ['assets/plans/patch/planning.md', 'assets/specs/patch.md', 'manifest.json']);
-      assert.deepStrictEqual(manifestOf('patch').phases, {
-        specification: { items: { patch: { status: 'completed' } } },
-        planning: { items: { patch: quickFixPlan('patch') } },
-        implementation: { items: { patch: { status: 'in-progress' } } },
-      });
+    it('keeps a quick-fix whose old pipeline is not done — built with its review still owed, or its implementation or its scoping reopened after its review — as one being built: its spec and plan reference assets, and their items less the retired state', () => {
+      const built = (/** @type {string} */ wu, /** @type {string} */ building, /** @type {boolean} */ reviewed) => [
+        [`assets/plans/${wu}/planning.md`, `assets/specs/${wu}.md`, 'manifest.json'], 'in-progress', {
+          specification: { items: { [wu]: { status: 'completed' } } },
+          planning: { items: { [wu]: quickFixPlan(wu) } },
+          implementation: { items: { [wu]: { status: building } } },
+          ...(reviewed ? { review: { items: { [wu]: { status: 'completed' } } } } : {}),
+        },
+      ];
+      assert.deepStrictEqual(['patch', 'redo', 'rescope'].map((wu) => [tree(state, wu), manifestOf(wu).status, manifestOf(wu).phases]), [
+        built('patch', 'completed', false),
+        built('redo', 'in-progress', true),
+        built('rescope', 'completed', true),
+      ]);
+    });
+
+    it('moves a quick-fix whose old pipeline completed — its scoping, implementation and review — as a completed one, whatever its status reads: its spec its summary, its plan and their items gone; in progress, it is completed; cancelled, it stays so (21.5.15, 21.5.14)', () => {
+      const done = (/** @type {string} */ wu) => ({ implementation: { items: { [wu]: { status: 'completed' } } }, review: { items: { [wu]: { status: 'completed' } } } });
+      assert.deepStrictEqual(['stale', 'dropped'].map((wu) => [tree(state, wu), read(`${wu}/summary.md`), manifestOf(wu).status, manifestOf(wu).phases]), [
+        [['manifest.json', 'summary.md'], '# stale\n\nFixed.\n', 'completed', done('stale')],
+        [['manifest.json', 'summary.md'], '# dropped\n\nFixed.\n', 'cancelled', done('dropped')],
+      ]);
     });
 
     it('drops every tracking and analysis file by its whole name, the review reports and the person\'s files named for tracking or analysis kept (21.S46)', () => {
@@ -943,7 +998,7 @@ describe('migration 078: a small project', () => {
   /** The project manifest the move wrote, from the project at `dir`. */
   const movedProject = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
 
-  it('keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way, the status fields gone either way (21.11.2, 8.12.11)', () => {
+  it('21.S50: keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way, the status fields gone either way (21.11.2, 8.12.11)', () => {
     const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', {}]]);
     for (const [status, answer] of cases) {
       dir = tempProject(`migration-078-baseline-${status}-`);
@@ -956,6 +1011,20 @@ describe('migration 078: a small project', () => {
       } finally {
         cleanupFixture(dir);
       }
+    }
+  });
+
+  it('7.S6: sets no driver, so the task driver its settings read is the default, the plan\'s format and the project skills gone and the defaults with them (7.1.11, 22.3.1, 22.3.2, 22.4.3)', () => {
+    dir = tempProject('migration-078-drivers-');
+    try {
+      write(dir, '.workflows/manifest.json', json({ work_units: {}, defaults: { plan_format: 'local-markdown', project_skills: [] } }));
+      commitAll(dir);
+      run(dir);
+      const { project_id: _id, ...project } = movedProject();
+      const { driver, set } = chosenDriver(dir, 'task');
+      assert.deepStrictEqual([project, driver.name, set], [{ work_units: {} }, listDrivers('task').find(({ isDefault }) => isDefault)?.name, false]);
+    } finally {
+      cleanupFixture(dir);
     }
   });
 
@@ -1170,23 +1239,26 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('run again over a move cut short — the worktree added but not locked, part written — writes the whole state, locked, its project id, idea and ignore line kept', () => {
+  it('run again over a move cut short — the worktree added but not locked, part written, its knowledge config among it — writes the whole state, locked, its project id, idea and ignore line kept', () => {
     dir = tempProject('migration-078-again-');
     try {
+      write(dir, '.workflows/.knowledge/config.json', KNOWLEDGE_CONFIG);
       feature(dir, 'cancelled');
       const state = path.join(dir, '.leeway');
       git(dir, ['worktree', 'add', '--quiet', '--detach', '--no-checkout', '.leeway', 'HEAD']);
       git(state, ['switch', '--quiet', '--orphan', 'leeway-state']);
       write(state, 'manifest.json', json({ project_id: 'CutShort0123456789abc', work_units: {} }));
       write(state, `.inbox/ideas/${TODAY}--dropped.md`, DROPPED_IDEA);
+      write(state, '.knowledge/config.json', KNOWLEDGE_CONFIG.slice(0, 12));
       write(state, 'tally/topics/tally/log.md', '## Disc');
       write(dir, '.gitignore', '.leeway/\n');
       run(dir);
       assert.deepStrictEqual(tree(state).filter((rel) => rel !== '.git'), [
-        '.gitignore', `.inbox/ideas/${TODAY}--dropped.md`, 'manifest.json', 'tally/manifest.json', 'tally/topics/tally/log.md',
+        '.gitignore', `.inbox/ideas/${TODAY}--dropped.md`, '.knowledge/config.json', 'manifest.json', 'tally/manifest.json', 'tally/topics/tally/log.md',
       ]);
       assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(state, 'manifest.json'), 'utf8')),
         { project_id: 'CutShort0123456789abc', work_units: { tally: { work_type: 'feature' } } });
+      assert.strictEqual(fs.readFileSync(path.join(state, '.knowledge/config.json'), 'utf8'), KNOWLEDGE_CONFIG);
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.strictEqual(fs.readFileSync(path.join(state, `.inbox/ideas/${TODAY}--dropped.md`), 'utf8'), DROPPED_IDEA);
       assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
@@ -1238,20 +1310,40 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('writes the project manifest whole or not at all, so a run killed mid-write is run again', () => {
+  it('writes each file a run again reads back whole or not at all — the project\'s own files, its manifest, and the linters carried onto it — so a run killed writing each, part of it written or none, is run again to what a whole run leaves', () => {
     dir = tempProject('migration-078-torn-');
     const realWrite = fs.writeFileSync;
+    const part = (/** @type {string} */ text) => text.slice(0, Math.floor(text.length / 2));
+    const none = () => '';
     try {
+      write(dir, '.gitignore', 'node_modules/\n');
+      write(dir, '.claude/settings.json', json({ permissions: { allow: ['Edit(.workflows/**)'] } }));
+      write(dir, '.worktreeinclude', '.env.local\n.workflows/.knowledge/store.bin\n');
       feature();
-      fs.writeFileSync = (/** @type {any} */ file, /** @type {any} */ content, /** @type {any[]} */ ...rest) => {
-        if (!String(content).includes('"project_id"')) return realWrite(file, content, ...rest);
-        realWrite(file, String(content).slice(0, 12));
-        throw new Error('killed mid-write');
-      };
-      assert.throws(() => run(dir), /killed mid-write/);
-      fs.writeFileSync = realWrite;
+      write(dir, '.workflows/manifest.json', json({ work_units: { tally: { work_type: 'feature' } }, defaults: { linters: ['eslint'] } }));
+      commitAll(dir);
+      for (const { holding, torn } of [
+        { holding: 'node_modules/', torn: part },
+        { holding: '.leeway/**', torn: none },
+        { holding: '.env.local', torn: part },
+        { holding: '"defaults"', torn: part },
+        { holding: '"environment"', torn: none },
+      ]) {
+        fs.writeFileSync = (/** @type {any} */ file, /** @type {any} */ content, /** @type {any[]} */ ...rest) => {
+          if (!String(content).includes(holding)) return realWrite(file, content, ...rest);
+          realWrite(file, torn(String(content)));
+          throw new Error('killed mid-write');
+        };
+        assert.throws(() => run(dir), /killed mid-write/, holding);
+        fs.writeFileSync = realWrite;
+      }
       run(dir);
-      assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'))), ['project_id', 'work_units']);
+      assert.deepStrictEqual(
+        ['.gitignore', '.claude/settings.json', '.worktreeinclude'].map((rel) => fs.readFileSync(path.join(dir, rel), 'utf8')),
+        ['node_modules/\n.leeway/\n', json({ permissions: { allow: ['Edit(.leeway/**)'] } }), '.env.local\n'],
+      );
+      const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+      assert.deepStrictEqual([Object.keys(project), project.environment], [['project_id', 'work_units', 'environment'], { linters: [{ name: 'eslint', command: 'eslint' }] }]);
     } finally {
       fs.writeFileSync = realWrite;
       cleanupFixture(dir);

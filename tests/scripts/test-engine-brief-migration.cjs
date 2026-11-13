@@ -6,8 +6,8 @@
 // 21.10.7): `engine brief migration-topic|migration-verifier --topic
 // <unit.phase.topic> --directive <id>`. The per-topic agent's brief — the
 // topic as the move left it, its files but its mail, and as the records
-// directive's check reads them its specs, grouped under another name or on
-// the code branch where its building started, its old map from HEAD, its
+// directive's check reads them its specs, grouped under another name or
+// under `.workflows/` where its building started, its old map there, its
 // research's threads still open and its reviews never folded in, a
 // promoted topic's where it was promoted from, all read in the main
 // checkout from a linked worktree too; the unit's assets with where each
@@ -87,7 +87,7 @@ const licensingDrawn = () => [
   '',
   '- fumi/assets/specs/commerce.md',
   '',
-  '## Its old map, as the code branch\'s HEAD holds it',
+  '## Its old map, as `.workflows/` holds it',
   '',
   '- trial-length: decided',
   '',
@@ -131,17 +131,21 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'migration-topic', agent: 'leeway-migration-topic', unit: null, task: null, topic: null });
   });
 
-  it('a topic\'s research threads still open and its map\'s undecided subtopics; a building unit\'s spec read on the code branch and cited as its spec.md', () => {
+  it('a topic\'s research threads still open and its map\'s undecided subtopics; a building unit\'s spec read under `.workflows/` and cited as its spec.md', () => {
     const search = issued(['migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records']).brief;
     const weights = issued(['migration-topic', '--topic', 'shop.discussion.weights', '--directive', '079-records']).brief;
 
     assert.ok(search.includes([
       '## Its specs', '', 'None recorded.', '',
-      '## Its old map, as the code branch\'s HEAD holds it', '', '- ranking: decided', '- typo-tolerance: exploring', '- synonyms: deferred', '',
+      '## Its old map, as `.workflows/` holds it', '', '- ranking: decided', '- typo-tolerance: exploring', '- synonyms: deferred', '',
       '## Its research\'s threads still open', '', '- index-size, digging: How big does the index grow?', '',
       '## The unit\'s assets', '',
     ].join('\n')), search);
-    assert.ok(weights.includes('## Its specs\n\n- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md\n'), weights);
+    assert.ok(weights.includes([
+      '## Its specs', '',
+      '- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md',
+      '- .workflows/shop/specification/wishlist/specification.md, cited as shop/spec.md', '',
+    ].join('\n')), weights);
   });
 
   it('a promoted topic\'s research threads, read where it was promoted from', () => {

@@ -1093,7 +1093,7 @@ function drawMigratedTopic(filling) {
     '',
     listed(sources.specs.map((spec) => (spec.read === spec.cite ? `- ${spec.read}` : `- ${spec.read}, cited as ${spec.cite}`))),
     '',
-    '## Its old map, as the code branch\'s HEAD holds it',
+    '## Its old map, as `.workflows/` holds it',
     '',
     listed(sources.map.map(({ item, status }) => `- ${item}: ${status}`)),
     '',

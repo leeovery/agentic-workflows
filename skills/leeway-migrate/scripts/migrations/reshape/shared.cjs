@@ -9,7 +9,9 @@
 //
 // The state worktree put in place for the reshape (`placeStateWorktree`):
 // `.leeway/` in the main checkout, on an unborn `leeway-state`, locked as
-// the engine locks it, its `.gitignore` written where it holds none. Git
+// the engine locks it, its `.gitignore` written where it holds none, whole
+// or not at all: its scratch is in the repository's git folder, which no
+// commit takes, so the state's root holds the `.gitignore` alone. Git
 // 2.40 has no `worktree add --orphan`, so the worktree is added detached
 // with nothing checked out, and `switch --orphan` empties it onto the
 // unborn branch. A plain `.leeway/` already there is set aside while the
@@ -39,6 +41,21 @@ const REPOSITORY_ENV = [
   'GIT_PREFIX', 'GIT_QUARANTINE_PATH', 'GIT_REPLACE_REF_BASE', 'GIT_SHALLOW_FILE', 'GIT_WORK_TREE',
 ];
 const HOOKS_OFF = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor='];
+
+/**
+ * `file` written whole or not at all, for a step run again reads it back:
+ * through a scratch in `scratch`, a folder on its disk that no commit takes,
+ * renamed into place.
+ * @param {string} scratch @param {string} file @param {string|Buffer} content @param {number} [mode]
+ */
+function writeWhole(scratch, file, content, mode) {
+  const temp = path.join(scratch, `reshape-${process.pid}-${path.basename(file)}`);
+  fs.mkdirSync(scratch, { recursive: true });
+  fs.writeFileSync(temp, content);
+  if (mode !== undefined) fs.chmodSync(temp, mode);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.renameSync(temp, file);
+}
 
 /** The process's environment, less the variables that point git at a repository. @returns {NodeJS.ProcessEnv} */
 function withoutRepository() {
@@ -125,11 +142,11 @@ function placeStateWorktree(main) {
   putBack(aside, root);
   if (!/^locked(?: |$)/m.test(registration(main, root) ?? '')) mustGit(main, ['worktree', 'lock', '--reason', STATE_LOCK_REASON, STATE_DIR]);
   const ignore = path.join(root, '.gitignore');
-  if (!fs.existsSync(ignore)) fs.writeFileSync(ignore, STATE_GITIGNORE);
+  if (!fs.existsSync(ignore)) writeWhole(path.join(main, '.git'), ignore, STATE_GITIGNORE);
   return root;
 }
 
 module.exports = {
   OLD_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV,
-  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree,
+  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole,
 };

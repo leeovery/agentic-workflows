@@ -19,19 +19,19 @@
 //     records, or a file of the unit's `assets/` — a spec kept there, an
 //     import — or, cited as `{unit}/spec.md` in a unit whose building
 //     started, where the state has none yet, a heading of the unit's specs
-//     the code branch's HEAD holds under `.workflows/`, which the cut and
-//     the merges join into it verbatim (21.8.5); nothing in the cache, and
-//     nothing of another topic's. A heading its file holds more than once
-//     names no one section (21.12.7);
+//     under `.workflows/`, which the cut and the merges join into it
+//     verbatim (21.8.5); nothing in the cache, and nothing of another
+//     topic's. A heading its file holds more than once names no one section
+//     (21.12.7);
 //   - every subtopic its old discussion map shows decided — in the unit's
-//     manifest as HEAD holds it, which the move dropped the map from
+//     manifest under `.workflows/`, which the move dropped the map from
 //     (21.5.8) — named by an entry's map item, and every one it shows still
 //     pending, exploring, converging or deferred by an open question's: a
 //     question of the record no decision of it answers (21.6.7); an entry's
 //     map item is a subtopic's name, or a list of them where one entry
 //     settles several;
-//   - every thread of its research the register shows still open or digging,
-//     as HEAD holds it, named by an open question's thread, a name or a list;
+//   - every thread of its research the register shows still open or digging
+//     named by an open question's thread, a name or a list;
 //   - every import that came in from the topic, as the unit's manifest
 //     lists it, whose file the state holds, linked from one of its entries
 //     (21.5.7), a record of none included — in a unit of one topic that is
@@ -53,18 +53,19 @@
 // started is carried in discovery, where nothing is decided (8.3.4): its
 // points stay open questions on it, which its first opening reads.
 //
-// `.workflows/` is read where the move read it: the project's folder in the
-// repository's main checkout, whichever checkout the session runs in (4.1.4).
-// It reads and changes nothing, and calls no model. Beside the check it
-// answers a topic's sources as the rules read them, which the per-topic
-// agent's brief draws (brief-records.cjs).
+// `.workflows/` is read where the move read it: the working tree of the
+// project's folder in the repository's main checkout, whichever checkout
+// the session runs in (4.1.4), which holds what the old chain and the split
+// changed there in the same run, none of it committed (21.5.8). It reads
+// and changes nothing, and calls no model. Beside the check it answers a
+// topic's sources as the rules read them, which the per-topic agent's
+// brief draws (brief-records.cjs).
 //
-// Known edges: a unit's manifest left dirty in the working tree is moved
-// from there but read here as HEAD holds it; a log with CRLF endings has no
-// heading this reads, nor does a fence nested in a four-backtick block end
-// where it should; the joined spec's headings are counted over every
-// `specification.md` HEAD holds for the unit, superseded and cancelled ones
-// among them, as the cut and the merges (080) are to join them; the carried
+// Known edges: a log with CRLF endings has no heading this reads, nor does
+// a fence nested in a four-backtick block end where it should; the joined
+// spec's headings are counted over every `specification.md` `.workflows/`
+// holds for the unit, superseded and cancelled ones among them, as the cut
+// and the merges (080) are to join them; the carried
 // file sits in the cache, where a per-topic agent, which may write files,
 // could overwrite it; and an epic's imports from its discovery as a whole,
 // `discovery`, are owed by no topic, staying in `assets/` unlinked until a
@@ -155,15 +156,20 @@ function topicsOf(manifest) {
   return [...new Set(TOPIC_PHASES.flatMap((phase) => Object.keys(itemsOf(manifest.phases?.[phase]?.items))))].filter((topic) => !promoted.has(topic)).sort();
 }
 
+/** The folders in `dir`, by name, sorted; none where it is no folder. @param {string} dir @returns {string[]} */
+const foldersIn = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort() : []);
+
 /**
  * The project as the rules read it: its folder in the main checkout, the
- * state, and each unit's manifest as HEAD holds it, read once.
- * @typedef {{dir: string, stateDir: string, before: (name: string) => Record<string, any>|null, headUnits: () => string[]}} Project
+ * state, and, read once, the units `.workflows/` holds there and each one's
+ * manifest.
+ * @typedef {{dir: string, stateDir: string, before: (name: string) => Record<string, any>|null, oldUnits: () => string[]}} Project
  */
 
 /** @param {string} projectDir @param {string} stateDir @returns {Project} */
 function projectOf(projectDir, stateDir) {
   const dir = mainProject(projectDir);
+  const old = path.join(dir, CODE_TREE_STATE);
   /** @type {Map<string, Record<string, any>|null>} */
   const befores = new Map();
   /** @type {string[]|null} */
@@ -172,30 +178,28 @@ function projectOf(projectDir, stateDir) {
     dir,
     stateDir,
     before: (name) => {
-      if (!befores.has(name)) {
-        const held = git(dir, ['show', `HEAD:./${CODE_TREE_STATE}/${name}/manifest.json`]);
-        befores.set(name, held === null ? null : JSON.parse(held));
-      }
+      if (!befores.has(name)) befores.set(name, readJson(path.join(old, name, 'manifest.json')));
       return befores.get(name) ?? null;
     },
-    headUnits: () => {
-      units ??= (git(dir, ['ls-tree', '--name-only', 'HEAD', `${CODE_TREE_STATE}/`]) ?? '').split('\n').filter(Boolean).map((entry) => path.posix.basename(entry));
+    oldUnits: () => {
+      units ??= foldersIn(old);
       return units;
     },
   };
 }
 
 /**
- * A unit as the rules read it: its manifest in the state, and as HEAD held
- * it before the move; whether its building started; and, read once, how
- * many times each heading of its specs in HEAD is there, which its spec.md
- * joins.
+ * A unit as the rules read it: its manifest in the state, and as
+ * `.workflows/` holds it, from before the move; whether its building
+ * started; and, read once, how many times each heading of its specs under
+ * `.workflows/` is there, which its spec.md joins.
  * @typedef {{name: string, manifest: Record<string, any>, before: Record<string, any>|null, built: boolean, joined: () => Map<string, number>}} Unit
  */
 
 /** @param {Project} project @param {string} name @returns {Unit} */
 function unitOf(project, name) {
   const before = project.before(name);
+  const specs = path.join(project.dir, CODE_TREE_STATE, name, 'specification');
   /** @type {Map<string, number>|null} */
   let joined = null;
   return {
@@ -204,22 +208,19 @@ function unitOf(project, name) {
     before,
     built: buildingStarted(before),
     joined: () => {
-      if (joined !== null) return joined;
-      const listed = git(project.dir, ['ls-tree', '-r', '--name-only', 'HEAD', '--', `${CODE_TREE_STATE}/${name}/specification/`]) ?? '';
-      joined = headingCounts(listed.split('\n').filter((file) => file.endsWith('/specification.md'))
-        .map((file) => git(project.dir, ['show', `HEAD:./${file}`]) ?? '').join('\n'));
+      joined ??= headingCounts(foldersIn(specs).map((spec) => readText(path.join(specs, spec, 'specification.md')) ?? '').join('\n'));
       return joined;
     },
   };
 }
 
 /**
- * The units a topic's research is read from: its own, and each unit HEAD
- * shows promoted the topic to it, which kept it (078).
+ * The units a topic's research is read from: its own, and each unit
+ * `.workflows/` shows promoted the topic to it, which kept it (078).
  * @param {Project} project @param {Unit} unit @param {string} topic @returns {string[]}
  */
 function homesOf(project, unit, topic) {
-  const from = project.headUnits().filter((name) => name !== unit.name && project.before(name)?.phases?.discussion?.items?.[topic]?.promoted_to === unit.name);
+  const from = project.oldUnits().filter((name) => name !== unit.name && project.before(name)?.phases?.discussion?.items?.[topic]?.promoted_to === unit.name);
   return [unit.name, ...from];
 }
 
@@ -230,10 +231,10 @@ function sourceNames(sources) {
 }
 
 /**
- * The topic's specs, as HEAD's manifest names them — each whose sources
- * name the topic, or that bears its name: where the state keeps it, in
- * `assets/specs/`, while the unit's building has not started, or the code
- * branch's file, cited as `{unit}/spec.md`, once it has.
+ * The topic's specs, as the unit's manifest under `.workflows/` names them —
+ * each whose sources name the topic, or that bears its name: where the state
+ * keeps it, in `assets/specs/`, while the unit's building has not started,
+ * or its file under `.workflows/`, cited as `{unit}/spec.md`, once it has.
  * @param {Project} project @param {Unit} unit @param {string} topic
  * @returns {{name: string, read: string, cite: string}[]}
  */
