@@ -17,8 +17,8 @@
 // The state comes first, before anything writes it (state-checks.cjs): the
 // state folder kept out of every branch, the branch and its worktree put in
 // place — or set up, or, lost, the stop whose yes is `boot --start-again`,
-// or, on the layout before the state branch, the stop for the migration —
-// then, under the writer lock, the ledger's entries a killed write left
+// or left to the migration where the project owes the reshape — then, under
+// the writer lock, the ledger's entries a killed write left
 // uncommitted committed, a warning counting them, and the catch-up from the
 // remote, which carries them, whose stop on a field both clones changed ends
 // boot there for the person's pick (state-merge.cjs). Then the session's own
@@ -38,11 +38,26 @@
 // committing nothing (21.10.10): the stop names the directive, its file,
 // and its pieces done of all of them, where its check can say.
 //
+// Where the project owes the reshape (21.1.2), boot runs the migrations
+// before anything else writes, and the reshape's guard runs first of them
+// (21.2.1): where another session is live in the project, or its old state
+// has uncommitted changes, the guard refuses and boot stops there — the
+// `guard` stop, its facts the screen's (21.3.4) — with nothing written to
+// the state or the code but the exclude line boot keeps. On a pass the
+// guard puts the state worktree in place, and the migration is under way.
+// The run holds the boot lock from the state's checks to its end, and the
+// writer lock with it once the state worktree is there, so a second boot
+// meanwhile waits, then finds it done or stopped. It runs in the project's
+// folder in the main checkout, wherever boot was called from: the copy the
+// reshape moves. Called from another checkout, boot warns of each file of
+// that checkout's old state the reshape leaves where it is, differing from
+// the main checkout's (the migrate skill's old-layout.cjs, `unmoved`).
+//
 // While the migration is under way — its state worktree checked out on a
 // `leeway-state` with no commit yet — nothing is committed before the
 // migration's commit (21.9.3): no ledger tail, no catch-up, no ignore line
 // in the code tree, and no settings commit; every state commit is held
-// (state-worktree.cjs). The migrations run as ever.
+// (state-worktree.cjs).
 //
 // The knowledge directory — the store, its metadata, the knowledge config,
 // beside them the store's lock and the fill's claim — sits in the one state
@@ -59,8 +74,9 @@
 // record holds removed (ledger-copies.cjs), so the pass indexes what the
 // ledger says now; a render that fails is a warning too.
 //
-// The migrations run from the code root (kernel/code-root), whichever folder
-// boot was called from, recording into the state's migrations record.
+// Outside the reshape, the migrations run from the code root
+// (kernel/code-root), whichever folder boot was called from, recording into
+// the state's migrations record.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone, and no
@@ -79,14 +95,16 @@
 // keeps it from launching is a warning.
 // ---------------------------------------------------------------------------
 
+const path = require('path');
 const { spawnSync } = require('../kernel/spawn.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
 const { commitStateScoped } = require('./commit.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
+const { withStateLock, withBootLock, migrationRuns } = require('./state-worktree.cjs');
 const { placeState } = require('./state-checks.cjs');
 const { catchUpState } = require('./state-merge.cjs');
 const { keepStateIgnored } = require('./code-trace.cjs');
@@ -105,6 +123,7 @@ const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
+const { unmoved } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
@@ -132,6 +151,11 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
 // The line migrate.cjs ends a run on where it stops at a directive.
 const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
+
+// The line migrate.cjs ends a run on where the reshape's guard (074) refused
+// to run, before the one-line JSON of the refusal's facts; the run recorded
+// nothing.
+const GUARD_REFUSED = '---REFUSED: 074---';
 
 /**
  * @typedef {object} SystemConfigReport
@@ -161,18 +185,32 @@ const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
  * than the engine's floor, or none, read before anything else runs; `repo`,
  * the folder in no git repository, read next; `lost`, the state branch gone
  * here and on the remote in a project holding the workflows' trace, its
- * yes `boot --start-again`; `migrate`, the project on the layout before the
- * state branch, its state in `.workflows/` on its code branch, with no
- * screen — the reshape's migration moves it; `merge`, the catch-up stopped
- * by a field both clones changed, each row's answer its `state-merge pick`.
+ * yes `boot --start-again`; `guard`, the reshape's guard refusing the
+ * migration (`GuardStop`); `merge`, the catch-up stopped by a field both
+ * clones changed, each row's answer its `state-merge pick`.
  */
-const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', lost: 'state-lost-gate', migrate: null, merge: 'state-merge-gate' });
+const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', lost: 'state-lost-gate', guard: 'migration-guard-stop', merge: 'state-merge-gate' });
 
 /**
  * Boot stopped before anything wrote the state (`BOOT_STOPS`).
  * @typedef {object} BootStop
- * @property {keyof typeof BOOT_STOPS} state
+ * @property {Exclude<keyof typeof BOOT_STOPS, 'guard'>} state
  * @property {string[]} warnings
+ */
+
+/**
+ * Why the reshape's guard refused the migration, and the facts its screen
+ * states (21.3.4): `live`, another session working in the project — the
+ * unit, phase and topic of the presence written last, and how long ago, in
+ * whole seconds; `dirty`, uncommitted changes in the project's old state,
+ * the other four null.
+ * @typedef {{cause: 'live'|'dirty', unit: string|null, phase: string|null, topic: string|null, active: number|null}} Refusal
+ */
+
+/**
+ * Boot stopped at the reshape's guard, with nothing written to the state or
+ * the code.
+ * @typedef {{state: 'guard', warnings: string[]} & Refusal} GuardStop
  */
 
 /**
@@ -279,7 +317,7 @@ function trimReport(stdout) {
  * person's yes at the lost-state stop: a state still lost is started again.
  * @param {string} cwd project root
  * @param {{startAgain?: boolean}} [opts]
- * @returns {BootResult|BootStop|DirectiveStop}
+ * @returns {BootResult|BootStop|GuardStop|DirectiveStop}
  */
 function boot(cwd, { startAgain = false } = {}) {
   if (gitShortfall() !== null) return { state: 'git', warnings: [] };
@@ -288,21 +326,22 @@ function boot(cwd, { startAgain = false } = {}) {
   /** @type {string[]} */
   const warnings = [];
   appendWaiting(cwd, warnings);
-  const placed = placeState(cwd, { startAgain });
-  warnings.push(...placed.warnings);
-  if ('stop' in placed) return { state: placed.stop, warnings };
   const root = stateRoot(cwd);
-  const migrated = withStateLock(root, () => {
-    if (!placed.migrating) {
-      commitLedgerTail(root, warnings);
-      const caught = catchUpState(root, { listing: placed.listing });
-      warnings.push(...caught.warnings);
-      if (caught.action === 'stopped') return null;
-      keepStateIgnored(cwd, warnings);
-    }
-    return runMigrations(cwd, warnings);
+  const { placed, migrated: reshaping } = placeAndReshape(cwd, root, startAgain, warnings);
+  if ('stop' in placed) return { state: placed.stop, warnings };
+  const migrated = reshaping ?? withStateLock(root, () => {
+    commitLedgerTail(root, warnings);
+    const caught = catchUpState(root, { listing: placed.listing });
+    warnings.push(...caught.warnings);
+    if (caught.action === 'stopped') return null;
+    keepStateIgnored(cwd, warnings);
+    return runMigrations(cwd, codeRoot(cwd), warnings);
   });
   if (migrated === null) return { state: 'merge', warnings };
+  if ('refused' in migrated) {
+    const { cause, unit, phase, topic, active } = migrated.refused;
+    return { state: 'guard', cause, unit, phase, topic, active, warnings };
+  }
   if ('directive' in migrated) return { state: 'directive', ...directiveStopped(cwd, migrated.directive), warnings };
   const { migrations, migrationsCommitted } = migrated;
 
@@ -333,6 +372,38 @@ function boot(cwd, { startAgain = false } = {}) {
 }
 
 /**
+ * The state's checks, under the boot lock, and where they leave the state
+ * to the migration, the migrations run in the project's folder in the main
+ * checkout before the lock is let go — under the writer lock too once the
+ * state worktree is there to hold it.
+ * @param {string} cwd @param {string} root @param {boolean} startAgain @param {string[]} warnings
+ * @returns {{placed: import('./state-checks.cjs').Placed, migrated: Migrated|undefined}}
+ */
+function placeAndReshape(cwd, root, startAgain, warnings) {
+  return withBootLock(root, () => {
+    const placed = placeState(cwd, { startAgain });
+    warnings.push(...placed.warnings);
+    if ('stop' in placed || !placed.migrating) return { placed, migrated: undefined };
+    const here = codeRoot(cwd);
+    const from = folderUnder(placeOf(here), path.dirname(root));
+    warnUnmoved(here, from, warnings);
+    const run = () => runMigrations(cwd, from, warnings);
+    return { placed, migrated: migrationRuns(root) ? withStateLock(root, run) : run() };
+  });
+}
+
+/**
+ * Where boot ran in another checkout than the main one, the warning naming
+ * each file of its old state the reshape, run from `from`, leaves where it is.
+ * @param {string} here @param {string} from @param {string[]} warnings
+ */
+function warnUnmoved(here, from, warnings) {
+  const left = unmoved(here);
+  if (left.length === 0) return;
+  warnings.push(`the migration moves the project's state as the main checkout holds it, in ${from}; where boot ran, in ${here}, these differ from it and stay where they are: ${left.join(', ')}`);
+}
+
+/**
  * Commit the ledger's entries a write appended and a kill, or a commit git
  * refused, left uncommitted, so the catch-up carries them (4.7.8). A commit
  * that fails is a warning: the entries stand in the ledger.
@@ -349,20 +420,41 @@ function commitLedgerTail(root, warnings) {
 }
 
 /**
- * Run the migrations into the state's migrations record and, where no
- * reviewed commit will carry it, commit the record; or answer the directive
- * the run stopped at, committing nothing.
- * @param {string} cwd @param {string[]} warnings
- * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{directive: string}}
+ * What a run of the migrations left: the run, its record committed where no
+ * reviewed commit will carry it; the directive it stopped at; or the
+ * refusal it stopped on.
+ * @typedef {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{directive: string}|{refused: Refusal}} Migrated
  */
-function runMigrations(cwd, warnings) {
-  const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD), '--journals', statePath(cwd, MIGRATION_JOURNALS)], { cwd: codeRoot(cwd), encoding: 'utf8' });
+
+/**
+ * The guard's refusal a run printed, or undefined where it printed none.
+ * @param {string} stdout
+ * @returns {Refusal|undefined}
+ */
+function refusalIn(stdout) {
+  const lines = stdout.split('\n');
+  const at = lines.indexOf(GUARD_REFUSED);
+  return at === -1 ? undefined : JSON.parse(lines[at + 1]);
+}
+
+/**
+ * Run the migrations from the folder `from` into the state's migrations
+ * record and, where no reviewed commit will carry it, commit the record; or
+ * answer the directive the run stopped at, or the refusal it stopped on,
+ * committing nothing.
+ * @param {string} cwd @param {string} from @param {string[]} warnings
+ * @returns {Migrated}
+ */
+function runMigrations(cwd, from, warnings) {
+  const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD), '--journals', statePath(cwd, MIGRATION_JOURNALS)], { cwd: from, encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error
       ? mig.error.message
       : `exit ${mig.status}: ${(mig.stderr || mig.stdout || '').trim()}`;
     throw new Error(`migrate.cjs failed — migrations must never half-run silently (${detail})`);
   }
+  const refused = refusalIn(mig.stdout || '');
+  if (refused !== undefined) return { refused };
   const stopped = DIRECTIVE_MARKER.exec(mig.stdout || '');
   if (stopped !== null) return { directive: stopped[1] };
 

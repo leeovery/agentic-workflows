@@ -6,8 +6,12 @@
 // branch checked out at .leeway/ and locked, pushed where there is a remote,
 // then the ignore line committed through the code door; a boot cut short
 // leaving no trace; the line kept in a nested project's .gitignore and the
-// exclude file; a boot from a code worktree; and the layout before the state
-// branch stopping for its migration.
+// exclude file; a boot from a code worktree; and a project owing the
+// reshape, whose migration boot runs in the main checkout's project folder
+// under its lock — its guard's refusal a stop with nothing written, boot
+// reading that refusal alone and only its facts, a warning naming what a
+// boot from another checkout leaves unmoved, and a second boot meanwhile
+// waiting for the run to end.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -21,17 +25,39 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { TEMPLATE_DATE, createFile, readFile } = require('./discovery-test-utils.cjs');
-const { git, commitCode, initRepo, tip, remoteTip, STATE_DIR_NAME, statePath, layout } = harness;
+const { git, commitCode, initRepo, tip, remoteTip, lockAttempts, STATE_DIR_NAME, statePath, layout } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const { useWorld, remoteProject, OWN_SETTINGS, STUB_ENGINE, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, OWN_SETTINGS, STUB_ENGINE, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
 
 const world = useWorld();
+
+/** A project on the layout before Leeway's, its `.workflows/` and the workflows' hooks committed: its main checkout. */
+function owingProject() {
+  const main = projectInWorld();
+  createFile(main, '.workflows/payments/manifest.json', '{}\n');
+  createFile(main, '.claude/settings.json', OWN_SETTINGS);
+  commitCode(main, 'the old layout');
+  return main;
+}
+
+/** Each line the stand-in runner recorded of its runs. @param {string} file @returns {Record<string, unknown>[]} */
+function runsOf(file) {
+  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
+}
+
+/** Resolved once `holds` answers true, polled; rejected after twenty seconds. @param {() => boolean} holds */
+async function until(holds) {
+  for (const giveUp = Date.now() + 20000; !holds();) {
+    if (Date.now() > giveUp) throw new Error('waited twenty seconds for what never came');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
 
 // --- setting the state up ---------------------------------------------------
 
@@ -206,19 +232,96 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(!fs.existsSync(path.join(code, STATE_DIR_NAME)));
   });
 
-  it('a project on the layout before the state branch stops for the migration: boot writes nothing — and the next boot stops again', () => {
-    const main = projectInWorld();
-    createFile(main, '.workflows/payments/manifest.json', '{}\n');
-    createFile(main, '.claude/settings.json', OWN_SETTINGS);
-    commitCode(main, 'the old layout');
+  it('a project owing the reshape runs the migration in the main checkout\'s project folder, wherever boot was called from — under boot\'s lock, before the state is there to take the writer lock in, then under both while it runs (21.1.2, 21.1.3)', () => {
+    const main = owingProject();
+    const code = path.join(world(), 'portal-feature');
+    git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    const runs = path.join(world(), 'runs.jsonl');
+    const env = { STUB_MIGRATE_MODE: 'reshape', STUB_MIGRATE_RUNS: runs };
     const before = git(main, ['for-each-ref']);
 
-    assert.deepStrictEqual(boot(main), { ok: true, state: 'migrate', warnings: [] });
+    assert.deepStrictEqual([boot(code, env).state, boot(code, env).state], ['ready', 'ready']);
 
-    assert.strictEqual(git(main, ['for-each-ref']), before);
-    assert.ok(!fs.existsSync(statePath(main)));
-    assert.strictEqual(git(main, ['status', '--porcelain']), '');
-    assert.deepStrictEqual(boot(main), { ok: true, state: 'migrate', warnings: [] });
+    assert.deepStrictEqual(runsOf(runs), [
+      { at: 'start', cwd: main, boot: true, writer: false }, { at: 'end', cwd: main, boot: true, writer: false },
+      { at: 'start', cwd: main, boot: true, writer: true }, { at: 'end', cwd: main, boot: true, writer: true },
+    ]);
+    assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
+    assert.strictEqual(git(main, ['for-each-ref']), before, 'nothing made or committed on any branch');
+  });
+
+  it('a placement the migration cut short — the state worktree added, not yet on its branch — is the migration\'s to finish: boot runs it, and the state is in place', () => {
+    const main = owingProject();
+    git(main, ['worktree', 'add', '-q', '--detach', '--no-checkout', STATE_DIR_NAME, 'HEAD']);
+
+    assert.strictEqual(boot(main, { STUB_MIGRATE_MODE: 'reshape' }).state, 'ready');
+
+    assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
+  });
+
+  it('a refusal of the reshape\'s guard stops boot with its facts, nothing written but the exclude line — and the next boot runs the guard again', () => {
+    const main = owingProject();
+    const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
+    const env = { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: JSON.stringify(refused) };
+    const before = untouched(main, null);
+
+    assert.deepStrictEqual(boot(main, env), { ok: true, state: 'guard', ...refused, warnings: [] });
+
+    assert.deepStrictEqual(untouched(main, null), before);
+    assert.ok(!fs.existsSync(statePath(main)), 'no state folder, so no record, lock or journal');
+    assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
+    assert.strictEqual(boot(main, env).state, 'guard');
+  });
+
+  it('reads the guard\'s refusal alone, and of it only the facts its stop states: no fact overwrites the stop, and another migration\'s refusal marker is none of boot\'s', () => {
+    const owing = owingProject();
+    const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
+    const facts = JSON.stringify({ ...refused, ok: false, state: 'ready', warnings: ['a fact'], more: true });
+    const settled = projectInWorld({ name: 'shop' });
+    boot(settled);
+
+    assert.deepStrictEqual(boot(owing, { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: facts }), { ok: true, state: 'guard', ...refused, warnings: [] });
+    const other = boot(settled, { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSED: '075', STUB_MIGRATE_REFUSAL: facts });
+    assert.deepStrictEqual([other.state, other.migrations.output], ['ready', `---REFUSED: 075---\n${facts}`]);
+  });
+
+  it('called from another checkout, warns of each file of its .workflows/ that differs from the main checkout\'s, which the migration leaves where it is — the files the old state ignores aside; called from the main checkout, of none', () => {
+    const main = owingProject();
+    createFile(main, '.workflows/.gitignore', '.cache/\n');
+    createFile(main, '.workflows/payments/discussion/payments.md', '# Payments\n');
+    commitCode(main, 'a discussion');
+    const code = path.join(world(), 'portal-feature');
+    git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    createFile(code, '.workflows/payments/discussion/payments.md', '# Payments, as the branch has it\n');
+    commitCode(code, 'the branch\'s discussion');
+    createFile(code, '.workflows/payments/research/payments.md', '# Research\n');
+    fs.rmSync(path.join(code, '.workflows/payments/manifest.json'));
+    createFile(code, '.workflows/.cache/payments/discussion/payments/presence', '{}\n');
+    const env = { STUB_MIGRATE_MODE: 'reshape' };
+    const unmoved = (/** @type {{warnings: string[]}} */ booted) => booted.warnings.filter((warning) => warning.startsWith('the migration moves'));
+
+    assert.deepStrictEqual(unmoved(boot(code, env)), [
+      `the migration moves the project's state as the main checkout holds it, in ${main}; where boot ran, in ${code}, these differ from it and stay where they are: `
+        + '.workflows/payments/discussion/payments.md, .workflows/payments/manifest.json, .workflows/payments/research/payments.md',
+    ]);
+    assert.deepStrictEqual(unmoved(boot(main, env)), []);
+  });
+
+  it('a second boot meanwhile waits on boot\'s lock until the first boot\'s run ends, then runs the migration under way itself', async (t) => {
+    const main = owingProject();
+    const runs = path.join(world(), 'runs.jsonl');
+    const go = path.join(world(), 'go');
+    const env = { STUB_MIGRATE_MODE: 'reshape', STUB_MIGRATE_RUNS: runs, STUB_MIGRATE_HOLD: go };
+    const first = spawn(process.execPath, [STUB_ENGINE, 'boot'], { cwd: main, env: { ...process.env, ...env }, stdio: 'ignore', timeout: 30000, killSignal: 'SIGKILL' });
+    const firstEnded = new Promise((resolve) => first.on('close', resolve));
+    await until(() => runsOf(runs).length === 1);
+    const attempts = lockAttempts(t, path.join(main, '.git/leeway-boot.lock'), (taken) => { if (taken === 1) fs.writeFileSync(go, ''); });
+
+    assert.strictEqual(boot(main, env).state, 'ready');
+
+    assert.strictEqual(await firstEnded, 0);
+    assert.strictEqual(attempts[0], 'taken', 'the second boot found the lock held');
+    assert.deepStrictEqual(runsOf(runs).map((run) => [run.at, run.writer]), [['start', false], ['end', false], ['start', true], ['end', true]]);
   });
 
   it('the old layout beside a remote holding leeway-state is a clone to bring the state into, not refused', () => {

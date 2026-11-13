@@ -17,11 +17,11 @@
 //           which no lifecycle verb removes (review-tree.cjs), and what
 //           a move set aside of the type a unit was, in its topic's
 //           folder (workunit-move.cjs);
-//   engine  a file only the engine writes — the manifests, the ledger, a
-//           topic's brief, the record of the person's review of the spec,
-//           the record of the sweep taken, a quick-fix's short record after
-//           the work, the notes for later, a task's
-//           figures and the settlement of its failed round, a
+//   engine  a file only the engine writes — the manifests, the ledger, the
+//           migrations record, a topic's brief, the record of the person's
+//           review of the spec, the record of the sweep taken, a
+//           quick-fix's short record after the work, the notes for later, a
+//           task's figures and the settlement of its failed round, a
 //           verification run, a review round's record, its report and its
 //           checks — with what it is and the verb that writes it, where
 //           one does;
@@ -110,7 +110,7 @@ const LAYOUT = Object.freeze([
   place('file', '.product/notes/{YYYY-MM-DD}--{slug}.md', '4.11.16'),
   place('free', '.product/spikes/{NNN}-{slug}', '4.11.16'),
   place('free', '.product/assets', '4.11.16'),
-  place('file', '.state/migrations', '4.7.4'),
+  engineFile('.state/migrations', '4.7.4', 'the migrations record', 'boot|checklist close directive'),
   place('free', '.knowledge', '4.11.10'),
   place('free', '.cache/.set-aside/{unit}', '4.11.3'),
   place('free', '.cache', '4.11.3'),

@@ -44,7 +44,7 @@ const DRAWN = Object.freeze({
   '.product/notes/2026-10-30--smart-retry.md': 'file .product/notes/{YYYY-MM-DD}--{slug}.md',
   '.product/spikes/001-pricing-page/round-1/index.html': 'free .product/spikes/{NNN}-{slug}',
   '.product/assets/brand/logo.svg': 'free .product/assets',
-  '.state/migrations': 'file .state/migrations',
+  '.state/migrations': 'engine .state/migrations',
   '.knowledge/records/pay/auth.md': 'free .knowledge',
   '.knowledge/.copies-live.json': 'free .knowledge',
   '.cache/pay/topics/auth/draft.md': 'free .cache',

@@ -31,7 +31,7 @@ const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -68,6 +68,7 @@ const { stateRoot, statePath, outsideRepository } = require('../kernel/state-roo
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
 const { directiveStopSurface } = require('./directives.cjs');
+const { OLD_STATE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { helpSurface } = require('./projections/help.cjs');
@@ -931,6 +932,27 @@ function repoStopSurface(cwd) {
   return repoStop(folder);
 }
 
+const GUARD_FACTS = Object.freeze(['unit', 'phase', 'topic', 'active']);
+
+/**
+ * Boot's `guard` stop, from the facts its response carries: `--cause
+ * live` with the session's `--unit`, `--phase`, `--topic` and `--active`,
+ * its seconds since last active; `--cause dirty` with none of them.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function migrationGuardStopSurface(_cwd, args) {
+  const { cause, unit, phase, topic, active } = args;
+  if (cause === 'dirty') {
+    const given = GUARD_FACTS.filter((fact) => args[fact] !== undefined);
+    if (given.length > 0) throw new Error(`render migration-guard-stop: --${given[0]} names the live session a refusal for uncommitted changes has none of`);
+    return migrationGuardStop({ cause, folder: OLD_STATE });
+  }
+  if (cause !== 'live') throw new Error(`render migration-guard-stop: --cause is live or dirty, as boot's guard stop answers it, got "${cause ?? ''}"`);
+  if (!isFilled(unit) || !isFilled(phase) || !isFilled(topic)) throw new Error('render migration-guard-stop: --cause live names the live session by --unit, --phase and --topic');
+  if (active === undefined || !/^(0|[1-9][0-9]*)$/.test(active)) throw new Error(`render migration-guard-stop: --active takes the seconds since the live session was last active, got "${active ?? ''}"`);
+  return migrationGuardStop({ cause, unit, phase, topic, active: Number(active) });
+}
+
 // ---------------------------------------------------------------------------
 // The brownfield offer — project-level, no address, drawn only while the
 // offer is unanswered (domain/brownfield.cjs).
@@ -1083,6 +1105,7 @@ const SURFACES = {
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,
+  'migration-guard-stop': migrationGuardStopSurface,
   'send-report': (cwd, { dotpath, sent }) => sendReportOf(cwd, dotpath, sent),
   'map': mapSurface,
   'decided': decidedSurface,

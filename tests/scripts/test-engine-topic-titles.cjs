@@ -329,6 +329,7 @@ describe('every screen names a topic through one helper', () => {
       'state-merge-rules.cjs › conflictLabel › unit',
       'topic-map.cjs › goneTo › where.unit',
       'verdict.cjs › placeName › unit',
+      'projections/boot.cjs › migrationGuardStop › unit',
     ],
     'a phase, or a work type': [
       'handoff.cjs › phaseTarget › phase',
@@ -360,6 +361,9 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a spike, by its folder\'s slug': [
       "projections/board-discovery.cjs › spikesAt › spike.replace(/^\\d+-/, '')",
+    ],
+    'a topic of the layout before the state branch, which gave none a title': [
+      'projections/boot.cjs › migrationGuardStop › topic',
     ],
   };
 

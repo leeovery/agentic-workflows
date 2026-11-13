@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's sessions: background agents from dispatch to
 // incorporation; the migration gate's yes;
-// and boot's stops — an old git, a folder in no repository, lost state and
-// its yes through the gate — and the GitHub offer. Concurrent sessions are
+// and boot's stops — an old git, a folder in no repository, a project
+// whose reshape the guard refuses, lost state and its yes through the gate
+// — and the GitHub offer. Concurrent sessions are
 // test-pipeline-simulation-concurrency.cjs.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -21,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const { githubOffline, git, stateGit } = require('./engine-harness.cjs');
+const { githubOffline, git, stateGit, initRepo, createFile, commitCode } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn, answerGate } = require('./pipeline-world.cjs');
 
@@ -180,7 +181,7 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', wu]).trim(), '', 'the question\'s commit carries the log along');
   });
 
-  it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {
+  it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own, and a project whose reshape the guard refuses at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {
     // A machine whose git is older than the engine's floor stops before
     // anything runs.
     const bin = fs.mkdtempSync(path.join(sim.configDir, 'old-git-'));
@@ -193,6 +194,16 @@ describe('pipeline simulation: sessions', () => {
     const plain = fs.mkdtempSync(path.join(sim.configDir, 'plain-'));
     assert.strictEqual(sim.runIn(plain, ['boot']).state, 'repo');
     sim.render(['repo-stop'], { expect: 'content', cwd: plain });
+
+    // A project on the layout before Leeway's, a change in its old state not
+    // committed: the reshape's guard refuses, and boot stops at its screen.
+    const legacy = initRepo(fs.mkdtempSync(path.join(sim.configDir, 'legacy-')));
+    createFile(legacy, '.workflows/shop/manifest.json', '{}\n');
+    commitCode(legacy, 'the old layout');
+    createFile(legacy, '.workflows/shop/draft.md', '# Draft\n');
+    const guarded = sim.runIn(legacy, ['boot']);
+    assert.deepStrictEqual([guarded.state, guarded.cause], ['guard', 'dirty']);
+    assert.match(sim.render(['migration-guard-stop', '--cause', guarded.cause], { expect: 'content', cwd: legacy }), /\.workflows\/ has uncommitted changes/);
 
     // The state branch and its worktree gone, the code tree still ignoring
     // the state: lost, here and with no remote to restore it from.

@@ -24,17 +24,19 @@
 //   and a folder whose link broke is relinked — the project folder moved, or
 //   was copied, the copy's state becoming its own and the original's left
 //   alone.
-// - No branch here or on the remote: a project being set up gets the orphan
-//   branch; one whose repository holds the workflows' trace — on any branch,
-//   the remote's fetched first, or in any tree checked out — lost its state,
-//   and boot stops there, starting again only on the person's yes (4.4.5,
-//   4.5.2); one on the layout before the state branch stops for the
-//   migration, and boot writes nothing.
+// - No branch here or on the remote: a project that owes the reshape — which
+//   the migrate skill answers (leeway-migrate/scripts/old-layout.cjs, `owed`)
+//   — goes on to the migration, which puts its state in place, whatever
+//   folder a migration cut short left there; a project being set up gets
+//   the orphan branch; one whose repository holds the workflows' trace — on
+//   any branch, the remote's fetched first, or in any tree checked out —
+//   lost its state, and boot stops there, starting again only on the
+//   person's yes (4.4.5, 4.5.2).
 // - The migration under way: its state worktree checked out on a
-//   `leeway-state` with no commit yet, `.workflows/` still on the code
-//   branch until the migration's commit (21.5.11). The worktree is locked
-//   where it is not, and boot goes on to the migrations with nothing
-//   pushed: the branch is the migration's to begin (21.9.3).
+//   `leeway-state` with no commit yet, the reshape still owed until the
+//   migration's commit (21.5.11). The worktree is locked where it is not,
+//   and boot goes on to the migrations with nothing pushed: the branch is
+//   the migration's to begin (21.9.3).
 // - A remote out of reach is never read as holding nothing, so never as lost
 //   state or a branch to push back: boot works on what this clone holds —
 //   its own branch, or the remote's as last fetched — and, holding neither,
@@ -46,25 +48,27 @@
 const fs = require('fs');
 const path = require('path');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 const { titlecase } = require('./conventions.cjs');
 const {
   STATE_BRANCH, trackingRef, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote,
   createStateBranchAt, folderCommit, lockStateWorktree, askStateRemote, fetchStateTip, fetchRemoteBranches, refuseCodeHistory, pushState, withBootLock,
 } = require('./state-worktree.cjs');
-const { holdsTrace, onLegacyLayout, keepStateExcluded } = require('./code-trace.cjs');
+const { holdsTrace, keepStateExcluded } = require('./code-trace.cjs');
+const { owed } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./state-worktree.cjs').RemoteAnswer} RemoteAnswer */
 /** @typedef {import('./state-worktree.cjs').StateInspection} StateInspection */
 
 /**
  * What boot's checks left: a stop, with nothing written to the state or the
- * code — the state `lost`, or the project on the layout before the state
- * branch, owing the `migrate`ion; or the state in place — made by this boot
- * where `made` says so, or the migration's, under way, where `migrating` —
- * with the remote's answer the catch-up starts from, none where a push this
- * boot made left it behind, or the migration has nothing to catch up.
- * Either way, what went wrong on the way that boot carries on past.
- * @typedef {{stop: 'lost'|'migrate', warnings: string[]}
+ * code — the state `lost`; or the state in place — made by this boot where
+ * `made` says so — or the migration's to put in place or under way, where
+ * `migrating`, with the remote's answer the catch-up starts from, none
+ * where a push this boot made left it behind, or the migration has nothing
+ * to catch up. Either way, what went wrong on the way that boot carries on
+ * past.
+ * @typedef {{stop: 'lost', warnings: string[]}
  *   | {made: 'created'|'restarted'|null, migrating: boolean, listing: RemoteAnswer|undefined, warnings: string[]}} Placed
  */
 
@@ -129,16 +133,18 @@ function restoreBranch(root, seen, answer) {
 }
 
 /**
- * The state branch is neither here nor on the remote: set the state up —
- * on a project being set up, or on the person's yes where it was lost — or
- * stop. Which of the two it is, the trace says, read across the repository
- * once the remote's branches are fetched: a fetch that fails stops boot
- * rather than read as a project being set up. The orphan branch comes
- * first, and the trace after it.
+ * The state branch is neither here nor on the remote: leave the state to
+ * the migration where the project owes the reshape; else set the state up
+ * — on a project being set up, or on the person's yes where it was lost —
+ * or stop. Which of the two it is, the trace says, read across the
+ * repository once the remote's branches are fetched: a fetch that fails
+ * stops boot rather than read as a project being set up. The orphan branch
+ * comes first, and the trace after it.
  * @param {string} cwd @param {string} root @param {RemoteAnswer} answer @param {boolean} startAgain @param {string[]} warnings
  * @returns {Placed}
  */
 function startState(cwd, root, answer, startAgain, warnings) {
+  if (owed(codeRoot(cwd))) return { made: null, migrating: true, listing: undefined, warnings };
   if (fs.existsSync(root)) {
     throw new Error(
       `the state folder ${root} is still there, but ${STATE_BRANCH} is gone — from this clone, and from ${answer.remote ?? 'any remote'} — ` +
@@ -147,7 +153,6 @@ function startState(cwd, root, answer, startAgain, warnings) {
       `otherwise move ${root} aside, keeping what it holds, and boot again`,
     );
   }
-  if (onLegacyLayout(cwd)) return { stop: 'migrate', warnings };
   if (answer.remote !== null) {
     const failed = fetchRemoteBranches(root, answer.remote);
     if (failed !== null) {
@@ -165,12 +170,12 @@ function startState(cwd, root, answer, startAgain, warnings) {
 
 /**
  * Whether the migration is under way: no local branch, and the state
- * worktree checked out on `leeway-state`, which has no commit yet, with
- * `.workflows/` still on the code branch.
+ * worktree checked out on `leeway-state`, which has no commit yet, with the
+ * reshape still owed.
  * @param {string} cwd @param {StateInspection} seen
  */
 function migrationUnderWay(cwd, seen) {
-  return !seen.branch && seen.folder === 'linked' && seen.worktree?.branch === STATE_BRANCH && onLegacyLayout(cwd);
+  return !seen.branch && seen.folder === 'linked' && seen.worktree?.branch === STATE_BRANCH && owed(codeRoot(cwd));
 }
 
 /**
@@ -222,11 +227,11 @@ function pushBack(root, answer, warnings) {
  * Boot's checks: the state folder kept out of every branch, then the state
  * branch and its worktree put in place, set up on a project being set up,
  * and started again on a lost one where the person said yes (`startAgain`),
- * or the migration's, under way, locked; or the stop where it is lost, or
- * where the project is on the layout before the state branch. Held one
- * boot at a time. Refuses, with nothing written to the state or the code,
- * where the remote is out of reach and this clone holds no state, where
- * the remote's branches cannot be fetched to read the trace from, where a
+ * or the migration's, under way, locked, or left to it where the project
+ * owes the reshape; or the stop where it is lost. Held one boot at a time.
+ * Refuses, with nothing written to the state or the code, where the remote
+ * is out of reach and this clone holds no state, where the remote's
+ * branches cannot be fetched to read the trace from, where a
  * `leeway-state` holds code history, and where the state's folder is there
  * in a shape boot cannot account for.
  * @param {string} cwd

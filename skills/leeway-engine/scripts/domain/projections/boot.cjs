@@ -4,9 +4,9 @@
 // Domain ring: leeway's boot gates — the menus Step 0 puts to the
 // user before any work is on the table: the state lost, the GitHub rule's
 // offer, the migration confirm, the label opt-in, the brownfield offer — the
-// stops on a git below the engine's floor, in a folder in no git repository
-// and at a directive of the migration not yet done, and the knowledge gate's
-// displays. Pure renderers; none reads state (the calling prose branches on
+// stops on a git below the engine's floor, in a folder in no git repository,
+// at the reshape's guard and at a directive of the migration not yet done,
+// and the knowledge gate's displays. Pure renderers; none reads state (the calling prose branches on
 // the boot response and fetches the gate at its display point, and the
 // render surface reads what a display names).
 // ---------------------------------------------------------------------------
@@ -16,6 +16,8 @@ const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
+const { titlecase } = require('../conventions.cjs');
+const { fmtAge } = require('../presence.cjs');
 
 const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
@@ -147,6 +149,38 @@ function directiveStop({ project, step, progress }) {
   return [
     section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
     section('DISPLAY: directive account', emitAs('markdown'), account.join('\n')),
+  ].join('\n');
+}
+
+/**
+ * Boot's stop where the reshape's guard refused the migration (21.3.4):
+ * another session live in the project — its unit, its phase, and its topic
+ * where the unit has topics of its own, and how long ago it was last active
+ * — or uncommitted changes in the old state's folder; nothing changed
+ * either way, and what the person does before running `/leeway` again.
+ * @param {{cause: 'live', unit: string, phase: string, topic: string, active: number} | {cause: 'dirty', folder: string}} refused
+ * @returns {string}
+ */
+function migrationGuardStop(refused) {
+  if (refused.cause === 'dirty') {
+    return [
+      section('DISPLAY: migration guard stop', emitAs('properties'), `⚑ The migration can't run: ${refused.folder}/ has uncommitted changes`),
+      section('DISPLAY: migration guard account', emitAs('markdown'), [
+        "> The migration's commit would sweep them in with its own, so nothing has been changed.",
+        '>',
+        '> Commit or discard them, then run `/leeway` here again.',
+      ].join('\n')),
+    ].join('\n');
+  }
+  const { unit, phase, topic, active } = refused;
+  const where = topic === unit ? `in its ${phase}` : `in the ${phase} of ${titlecase(topic)}`;
+  return [
+    section('DISPLAY: migration guard stop', emitAs('properties'), "⚑ The migration can't run while another session is live here"),
+    section('DISPLAY: migration guard account', emitAs('markdown'), [
+      `> Another session is working in this project: ${escapeMarkdown(`${titlecase(unit)}, ${where}`)}, last active ${fmtAge(active)} ago. A major upgrade never runs under a live session, so nothing has been changed.`,
+      '>',
+      '> End that session, then run `/leeway` here again.',
+    ].join('\n')),
   ].join('\n');
 }
 
@@ -345,4 +379,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

@@ -105,9 +105,13 @@ Each row's `next` is the person's pick, which leaves the merge at its next quest
 
 → Once the pick has run, run **Step 0.1** again.
 
-#### If `state` is `migrate`
+#### If `state` is `guard`
 
-If the boot response carries `warnings`, surface them first. Say `This project is on the layout before Leeway's: the reshape's migration moves it, and nothing runs here until it has.`
+If the boot response carries `warnings`, surface them first. Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen and emit its sections verbatim per their markers — where `cause` is `live`, with the response's `unit`, `phase`, `topic` and `active`:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render migration-guard-stop --cause {cause:[live|dirty]} [--unit {unit} --phase {phase} --topic {topic} --active {active}]
+```
 
 **STOP.** Do not proceed — terminal condition.
 
