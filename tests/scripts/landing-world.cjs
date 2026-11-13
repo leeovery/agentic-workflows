@@ -1031,6 +1031,6 @@ function mergedInto(dir, branch, from = 'main', settled = 'ours', forward = true
 module.exports = {
   UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pointersOn, extUpstream, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, finishReady, phaseReviewed,
   landedHere, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped,
-  refusedMoving, alreadyMoving, commandsOf, followRemedy, followedOn,
+  refusedMoving, alreadyMoving, wordsOf, commandsOf, rebaseStopped, followRemedy, followedOn,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

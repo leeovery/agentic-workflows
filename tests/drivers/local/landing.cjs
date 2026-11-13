@@ -103,11 +103,19 @@ module.exports = {
     'a fast-forward of its branch': (dir, branch, into) => onMain(dir, [['merge', '-q', '--ff-only', branch]], into),
     'a merge commit of its branch': mergeCommit,
   },
+  /** The default branch here brought to the host's: nothing to bring, the repository landing in itself. */
+  pulled: () => {},
+  /** The default branch here pushed to the host: nowhere to push it. */
+  pushed: () => {},
+  /** A pull request merged by hand on the host: none, there being no host. */
+  mergedOnHost: null,
   /** A branch deleted, the checkout first put on the default branch `into` where it has the branch out. @param {string} dir @param {string} branch @param {string} [into] */
   deleted: (dir, branch, into = 'main') => {
     if (git(dir, ['symbolic-ref', '-q', '--short', 'HEAD']).trim() === branch) git(dir, ['switch', '-q', into]);
     git(dir, ['branch', '-q', '-D', branch]);
   },
+  /** The push a way on that remakes a branch ends with, over its copy on the host: none, there being no host. */
+  pushedOver: () => null,
   /** A commit cherry-picked by hand onto the default branch `into`, in the person's own terminal. @param {string} dir @param {string} commit @param {string} [into] */
   picked: (dir, commit, into) => onMain(dir, [['cherry-pick', commit]], into),
   /** The ways a person lands a phase's branch onto main in their own terminal, the checkout put back where it was. */

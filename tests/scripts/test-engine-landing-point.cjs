@@ -5,10 +5,13 @@
 // shipped driver in turn, where it is read off its line, the task squashed
 // by hand: its line's squash matched as its landing, or its record's where
 // a verb read the landing first, then the file it added deleted, deleted
-// and added back, or its branch rewritten (F1) — and the way on of a change
-// conflicting with a later landing. Every other kind of landing
-// is test-engine-landing-point-kinds.cjs's; the rows and what each holds,
-// landing-point-world.cjs's. Conformance layer.
+// and added back, or, that landing read, its branch rewritten (F1), or its
+// last commit dropped, its branch then behind its landing: landed, nothing
+// new, its record kept. Every other kind of landing is
+// test-engine-landing-point-kinds.cjs's; the way on of a change
+// conflicting with a later landing, test-engine-landing-point-conflicts.cjs's;
+// the rows and what each holds, landing-point-world.cjs's. Conformance
+// layer.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -21,6 +24,6 @@ landingPoints('a task squashed by hand, its landing point the one source of ever
   ['a squash by hand', 'the file it added deleted', false],
   ['a squash by hand', 'the file it added deleted', true],
   ['a squash by hand', 'that file deleted, then added back', false],
-  ['a squash by hand', 'its branch rewritten', false],
   ['a squash by hand', 'its branch rewritten', true],
-], ['a squash by hand'], { describe, it, afterEach });
+  ['a squash by hand', 'its last commit dropped, its branch behind its landing', true],
+], [], { describe, it, afterEach });

@@ -12,7 +12,7 @@
 // driver's side names for it — opening each task, landing the phase,
 // landing it again and finishing — the settle reusing the verb's own
 // reads, git's own transport children left out, which a git release may
-// add or drop. A recorded task's branch rewritten past its
+// add or drop. A recorded task's branch given a commit past its
 // landing is changed after it, and land finish lands its change and reads
 // it landed after, the record moved to that landing, `first` kept (R29,
 // R30). A read for display records nothing. A verb that refuses, and a
@@ -111,13 +111,13 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual(ran.filter(([, verb, count]) => count > side.gitCalls[verb]), [], `the git commands each verb ran: ${JSON.stringify(ran)}`);
     });
 
-    it('a recorded task\'s branch rewritten past its landing, its last commit made again: changed after its landing, land finish lands its change and reads it landed after, the record moved to that landing by the engine at its branch\'s tip, its first landing kept (R29, R30)', () => {
+    it('a recorded task\'s branch given a commit past its landing: changed after its landing, land finish lands its change and reads it landed after, the record moved to that landing by the engine at its branch\'s tip, its first landing kept (R29, R30)', () => {
       const at = project();
       ok(at, openArgs(card));
       ok(at, ['land', 'phase', UNIT, '1']);
       const subject = recorded(at)[`${UNIT}-1-1`][1];
       const first = readManifest(at, UNIT).landings[`${UNIT}-1-1`]['.'].commit;
-      commitFiles(at, card.branch, `${card.branch}^`, { ...card.files, 'card-more.txt': 'more\n' });
+      commitFiles(at, card.branch, card.branch, { 'card-more.txt': 'more\n' });
       const landed = () => unitLanded(at, UNIT, projectRepos(at), null).landed({ unit: UNIT, phase: 1, n: 1 });
       const before = landed();
       finishReady(at);

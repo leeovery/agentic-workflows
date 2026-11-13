@@ -61,7 +61,7 @@ const METHODS = Object.freeze({
   },
   landing: {
     required: /** @type {const} */ (['serves', 'taken', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint']),
-    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'finished', 'protectBranch', 'setSquashDefault']),
+    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'pushedOver', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
 
@@ -224,8 +224,12 @@ const METHODS = Object.freeze({
  * it — the seam reads the local branch's tip where it does not.
  * `taken` answers the commit it took each of the unit's tasks at, by its
  * internal id — where its branch stood as it opened, its pull request's
- * head — writing nothing, which the seam reads where each task stands
- * against its landing (landing.cjs); a driver decides that of no task.
+ * head — each a commit the repository holds, writing nothing but heads
+ * fetched, which the seam reads where each task stands against its landing
+ * (landing.cjs); a driver decides that of no task. A driver landing
+ * through a host answers the command a way on that remakes a task's
+ * branch here ends with, pushing it over its copy there (`pushedOver`),
+ * null where the host holds none.
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
  * null where the task's phase's stack holds it already; `holds`, whether it
@@ -277,6 +281,7 @@ const METHODS = Object.freeze({
  *   assertServes?: (ctx: LandingContext) => void,
  *   landsOn?: (ctx: LandingContext) => string,
  *   landsOnAsFetched?: (ctx: LandingContext) => string,
+ *   pushedOver?: (ctx: LandingContext, branch: string) => string|null,
  *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
  *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,

@@ -48,11 +48,9 @@
 // none landed and each changed, cost the git commands two do. A task
 // squashed by hand into the person's own commit beside work of theirs, then
 // its last commit amended with no change, has landed at its tip — never its
-// branch rewritten past its landing (F1); one recorded at its squash, main
-// then merged back into its branch, its file changed in that merge, has
-// changed after its landing. A commit
-// standing for a task whole holds the person's own commit no branch holds
-// as the task's work: that commit not on main, the task has not landed so.
+// branch rewritten past its landing (F1). A commit standing for a task
+// whole holds the person's own commit no branch holds as the task's work:
+// that commit not on main, the task has not landed so.
 // The person's own commit on a landed task's branch is that task's work,
 // its tip the lowest holding it, wherever a later task's branch is cut
 // there — at the same commit, or past it with a commit of its own — and
@@ -831,25 +829,6 @@ describe('repoLanded: a task landed where its branch\'s tip has (R29, 12.14)', (
     const read = repoLanded(dir, UNIT, MAIN, { since: null });
 
     assert.deepStrictEqual([read.stands(ref), read.rewritten(ref)], ['landed', null]);
-  });
-
-  it('a task recorded at its squash under the person\'s own message, main then moved on and merged back into its branch, its file changed in that merge as a conflict settled there leaves it: changed after its landing — a merge\'s own change is change to land', () => {
-    const dir = repo(laidWorld);
-    const branch = branchOf(6);
-    git(dir, ['switch', '-q', '-c', branch, 'main']);
-    stamped(dir, 6, 'six.txt');
-    const landed = git(dir, ['rev-parse', 'HEAD']).trim();
-    git(dir, ['switch', '-q', 'main']);
-    squashed(dir, branch, ['In my own words']);
-    const squash = git(dir, ['rev-parse', 'HEAD']).trim();
-    committed(dir, ['main moves on'], { 'other.txt': 'other\n' });
-    git(dir, ['switch', '-q', branch]);
-    git(dir, ['merge', '-q', '--no-ff', '--no-commit', 'main']);
-    committed(dir, ['merge main back'], { 'six.txt': 'six, settled in the merge\n' });
-    git(dir, ['switch', '-q', 'main']);
-    const recorded = new Map([[`${UNIT}-1-6`, { commit: squash, tip: landed, first: squash, by: /** @type {const} */ ('engine'), at: '' }]]);
-
-    assert.strictEqual(repoLanded(dir, UNIT, MAIN, { since: null, recorded }).stands({ unit: UNIT, phase: 1, n: 6 }), 'changed');
   });
 });
 

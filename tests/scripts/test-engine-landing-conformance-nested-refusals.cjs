@@ -9,7 +9,10 @@
 // repository leaves those before it merged and those after it untouched,
 // the refusal naming it and what merged where; landing again merges the
 // rest, each once; and a task pinning the submodule where it lands nothing
-// then keeps its pin. A task whose branch in one repository does not
+// then keeps its pin. A landing by hand under its default message that a
+// merge before the refusal brought to the default branch there is left to
+// the next verb's read, the refusal recording only what merged before it
+// (landing-record.cjs, 7.2.22). A task whose branch in one repository does not
 // descend from its chain's tip there opens nowhere. The walk itself is
 // test-engine-landing-conformance-nested.cjs's. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies each repository, refuses a
@@ -23,7 +26,8 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { NESTED, NESTED_TASKS, openArgs, cutTask, commitFiles, nestedConformance } = require('./landing-world.cjs');
+const { NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, nestedConformance } = require('./landing-world.cjs');
+const { git, readManifest } = require('./engine-harness.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { rates, show } = NESTED_TASKS;
@@ -47,6 +51,22 @@ for (const { name } of listDrivers('landing')) {
       ok(at.dir, ['land', 'phase', 'pay', '4']);
       assert.strictEqual(pointer(at), release);
       assert.deepStrictEqual(tasksLanded(at), { '.': ['pay-1-1', 'pay-1-2', 'pay-4-1'], ext: ['pay-1-1'], lib: ['pay-1-1'] });
+    });
+
+    it('a merge refused in one repository after one in ext brought there a task\'s landing by hand under its default message: the refusal records only what merged before it, that landing left to the next verb\'s read', () => {
+      const at = project();
+      const word = track(at.dir, '4.2', 'feat', 'Word ext');
+      git(at.dir, ['branch', word.branch, 'main']);
+      git(at.lib, ['branch', word.branch, NESTED.lib.into]);
+      commitFiles(at.ext, word.branch, NESTED.ext.into, { 'ext-word.txt': 'word\n' });
+      for (const task of [word, rates, show]) ok(at.dir, openArgs(task));
+      side.byHandUnpulled(at.ext, word.branch);
+      const { env: refusing, undo } = side.refuseMerge(at.lib);
+      refuses(at.dir, ['land', 'phase', 'pay', '1'], refusing);
+      undo();
+      const recorded = Object.entries(readManifest(at.dir, 'pay').landings ?? {}).filter(([, byRepo]) => 'ext' in byRepo).map(([id]) => id);
+
+      assert.deepStrictEqual(recorded, ['pay-1-1']);
     });
 
     it('a task whose branch in one repository does not descend from its chain\'s tip there opens nowhere — refused before anything opens, naming the repository', () => {

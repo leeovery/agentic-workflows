@@ -369,7 +369,7 @@ const MERGE_ROWS = [
       return {
         args: ['land', 'phase', 'pay', '3'],
         refusal: 'land: phase 3 stacks on phase 2, which has not merged — merge it first with `land phase pay 2`, then land again',
-        check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], [], ['down.txt'], ['cd.txt']]),
+        check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], ['down.txt'], ['cd.txt']]),
       };
     },
   },

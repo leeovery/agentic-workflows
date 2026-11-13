@@ -11,7 +11,15 @@
 // lands that commit; its branch rewritten instead, that verb records it so
 // from the commit its driver took; landed so under its default message,
 // which names it, `land phase` brings that landing here and lands the
-// commit, the record at the engine's merge, the newest commit naming it.
+// commit, the record at the engine's merge, the newest commit naming it,
+// its first landing the one by hand, read where the engine's merge was
+// made onto, never that merge. An opened task given another commit, then
+// merged by hand by a merge commit, is recorded at the tip the default
+// branch holds, never at the commit its driver took, so a commit taking
+// that one back lands. An opened task squashed by hand in the person's
+// terminal, outside what the driver opened, lands nothing again: `land
+// phase` leaves the default branch where it stands, its record the read's
+// at that squash.
 // A phase squashed by hand under the person's own message, its task then
 // changed, lands that change by the engine with its first landing kept the
 // person's squash, the review's change drawing the task's part from before
@@ -40,6 +48,7 @@ for (const { name } of listDrivers('landing')) {
    * @type {{
    *   env: Record<string, string|undefined>, prepare: (dir: string) => void, holds: (dir: string) => string[],
    *   byHandUnpulled: (dir: string, branch: string) => void, phaseByHand: Record<string, (dir: string, phase: number) => void>,
+   *   defaultTip: (dir: string) => string, mergedHere: (dir: string, branch: string) => void, squashedHere: (dir: string, branch: string) => void,
    * }}
    */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
@@ -88,15 +97,41 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual([by, recorded], ['read', landed]);
     });
 
-    it('a task landed by hand under its default message, which names it, the default branch here not brought to it, then a commit of its own past it: land phase brings that landing here and lands the commit, the record at the engine\'s merge, the newest commit naming it', () => {
+    it('a task landed by hand under its default message, which names it, the default branch here not brought to it, then a commit of its own past it: land phase brings that landing here and lands the commit, the record at the engine\'s merge, the newest commit naming it, its first landing the one by hand (N1)', () => {
       const at = (dir = world());
       ok(at, openArgs(card));
       side.byHandUnpulled(at, card.branch);
+      const landed = side.defaultTip(at);
       commitFiles(at, card.branch, card.branch, { 'card-more.txt': 'more\n' });
       ok(at, ['land', 'phase', UNIT, '1']);
-      const { by, commit } = cardRecord(at);
+      const { by, commit, first } = cardRecord(at);
 
-      assert.deepStrictEqual([by, commit], ['engine', tip(at, 'main')]);
+      assert.deepStrictEqual([by, commit, first], ['engine', tip(at, 'main'), landed]);
+    });
+
+    it('an opened task squashed by hand in the person\'s terminal: land phase lands nothing again, the default branch where it stood, its record the read\'s at that squash', () => {
+      const at = (dir = world());
+      ok(at, openArgs(card));
+      side.squashedHere(at, card.branch);
+      const landed = side.defaultTip(at);
+      ok(at, ['land', 'phase', UNIT, '1']);
+      const { by, first } = cardRecord(at);
+
+      assert.deepStrictEqual([side.defaultTip(at), by, first], [landed, 'read', landed]);
+    });
+
+    it('an opened task given another commit, then merged by hand by a merge commit: land phase records it at the tip the default branch holds, never at the commit its driver took, and a commit then taking that one back lands (N5)', () => {
+      const at = (dir = world());
+      ok(at, openArgs(card));
+      commitFiles(at, card.branch, card.branch, { 'extra.txt': 'extra\n' });
+      const held = tip(at, card.branch);
+      side.mergedHere(at, card.branch);
+      ok(at, ['land', 'phase', UNIT, '1']);
+      const recorded = cardRecord(at).tip;
+      commitFiles(at, card.branch, card.branch, {}, { removed: ['extra.txt'] });
+      ok(at, ['land', 'phase', UNIT, '1']);
+
+      assert.deepStrictEqual([recorded, side.holds(at).includes('extra.txt')], [held, false]);
     });
 
     it('a phase squashed by hand under the person\'s own message, its task then changed: land phase lands the change by the engine, its first landing kept the person\'s squash, and the review\'s change draws its part from before that squash', () => {

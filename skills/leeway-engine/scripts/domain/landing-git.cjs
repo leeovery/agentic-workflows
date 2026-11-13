@@ -242,16 +242,6 @@ function isAncestor(root, ancestor, commit) {
 }
 
 /**
- * Whether the branch here once stood at `sha`, as its reflog names it — as
- * a branch rewritten past a landing leaves it; never where it keeps no
- * reflog.
- * @param {string} root @param {string} branch @param {string} sha
- */
-function heldOnce(root, branch, sha) {
-  return (tryGit(root, ['reflog', 'show', '--format=%H', `${HEADS}${branch}`, '--']) ?? '').split('\n').includes(sha);
-}
-
-/**
  * Where among `commits`, each in full, the first stands that every other is
  * an ancestor of — the tip of the one line they make — or -1 where none
  * is; read in one call however many are given.
@@ -408,7 +398,7 @@ function heldIn(listed, from) {
   return held;
 }
 
-/** A commit `commitGraph` lists: its parents, the values of the trailer it carries, and the time it was committed, in milliseconds. @typedef {{sha: string, parents: string[], values: string[], committed: number}} GraphCommit */
+/** A commit `commitGraph` lists: its tree, its parents, the values of the trailer it carries, and the time it was committed, in milliseconds. @typedef {{sha: string, tree: string, parents: string[], values: string[], committed: number}} GraphCommit */
 
 /**
  * The commits any of `revs` holds, committed at or after the time `since`
@@ -421,10 +411,10 @@ function heldIn(listed, from) {
 function commitGraph(root, revs, since, key) {
   if (revs.length === 0) return [];
   const bound = since === null ? [] : [`--since=${since}`];
-  const read = git(root, ['log', '-z', '--topo-order', '--reverse', `--format=%H%x1f%ct%x1f%P%x1f%(trailers:key=${key},valueonly,separator=%x1f)`, ...bound, ...revs, '--']);
+  const read = git(root, ['log', '-z', '--topo-order', '--reverse', `--format=%H%x1f%T%x1f%ct%x1f%P%x1f%(trailers:key=${key},valueonly,separator=%x1f)`, ...bound, ...revs, '--']);
   return read.split('\0').filter(Boolean).map((entry) => {
-    const [sha, time, parents, ...values] = entry.split('\x1f');
-    return { sha, parents: parents.split(' ').filter(Boolean), values: values.map((value) => value.trim()).filter(Boolean), committed: Number(time) * 1000 };
+    const [sha, tree, time, parents, ...values] = entry.split('\x1f');
+    return { sha, tree, parents: parents.split(' ').filter(Boolean), values: values.map((value) => value.trim()).filter(Boolean), committed: Number(time) * 1000 };
   });
 }
 
@@ -501,29 +491,78 @@ function holdsCopy(root, tip, commit) {
 /**
  * Whether each of `pairs` holds its change, as `holdsChange` reads one:
  * merging `theirs` into `ours`, whose tree is `tree`, over `base` where it
- * names one, else over their merge base, changes nothing, meeting no
- * conflict but at submodules' pointers that hold it (`pointersHold`) — the
- * git calls the same however many pairs.
+ * names one, else over their merge base, changes nothing (`mergeTrees`,
+ * `heldMerges`) — the git calls the same however many pairs.
  * @param {string} root @param {{ours: string, tree: string, theirs: string, base?: string}[]} pairs
  * @returns {boolean[]}
  */
-function holdChanges(root, pairs) {
+const holdChanges = (root, pairs) => heldMerges(root, mergeTrees(root, pairs));
+
+/**
+ * A merge of `pairs`' each — `theirs` into `ours`, over `base` where it
+ * names one, else over their merge base — in one call, none where none is
+ * asked: whether it met no conflict, the tree it gives, and the paths it
+ * met one at, with the tree `ours` has.
+ * @param {string} root @param {{ours: string, tree: string, theirs: string, base?: string}[]} pairs
+ * @returns {Merge[]}
+ */
+function mergeTrees(root, pairs) {
   if (pairs.length === 0) return [];
   const input = pairs.map(({ ours, theirs, base }) => `${base === undefined ? '' : `${base} -- `}${ours} ${theirs}\n`).join('');
   const args = [...PINNED, 'merge-tree', '--write-tree', '--stdin', '-z', '--name-only', '--no-messages', '--allow-unrelated-histories'];
   const res = gitRun(root, args, undefined, input);
   if (res.error || res.status !== 0) throw new GitError(`git merge-tree failed: ${(res.error?.message ?? res.stderr).trim()}`);
   const fields = res.stdout.split('\0');
-  const read = pairs.map(({ ours, tree, theirs }) => {
+  return pairs.map(({ ours, tree, theirs }) => {
     const clean = fields.shift() === '1';
-    const held = fields.shift() === tree;
+    const merged = /** @type {string} */ (fields.shift());
     /** @type {string[]} */
     const conflicted = [];
     for (let field = fields.shift(); field !== undefined && field !== ''; field = fields.shift()) conflicted.push(field);
-    return { ours, theirs, conflicted, clean, held };
+    return { ours, theirs, tree, clean, merged, conflicted };
   });
-  const pointed = pointersHold(root, read.filter(({ clean, held }) => held && !clean));
-  return read.map((pair) => pair.held && (pair.clean || pointed.has(pair)));
+}
+
+/** A merge `mergeTrees` made. @typedef {{ours: string, theirs: string, tree: string, clean: boolean, merged: string, conflicted: string[]}} Merge */
+
+/**
+ * Whether each of `merges` changes nothing: it gives the tree `ours` has,
+ * meeting no conflict but at submodules' pointers that hold it
+ * (`pointersHold`).
+ * @param {string} root @param {Merge[]} merges
+ * @returns {boolean[]}
+ */
+function heldMerges(root, merges) {
+  const pointed = pointersHold(root, merges.filter(({ clean, merged, tree }) => merged === tree && !clean));
+  return merges.map((merge) => merge.merged === merge.tree && (merge.clean || pointed.has(merge)));
+}
+
+/**
+ * The paths at which each of `pairs`' trees, `merged` and `tree`, differ,
+ * by the pair — read in one call, none where none is asked.
+ * @template {{merged: string, tree: string}} Pair
+ * @param {string} root @param {Pair[]} pairs
+ * @returns {Map<Pair, string[]>}
+ */
+function pathsApart(root, pairs) {
+  if (pairs.length === 0) return new Map();
+  const asked = [...new Set(pairs.map(({ merged, tree }) => `${merged} ${tree}\n`))];
+  let rest = git(root, ['diff-tree', '-r', '-z', '--name-only', '--no-renames', '--stdin'], asked.join(''));
+  /** @type {Map<string, string[]>} */
+  const byTrees = new Map();
+  for (const [at, trees] of asked.entries()) {
+    rest = rest.slice(trees.length);
+    const next = asked[at + 1];
+    /** @type {string[]} */
+    const paths = [];
+    while (rest !== '' && (next === undefined || !rest.startsWith(next))) {
+      const end = rest.indexOf('\0');
+      paths.push(rest.slice(0, end));
+      rest = rest.slice(end + 1);
+    }
+    byTrees.set(trees, paths);
+  }
+  return new Map(pairs.map((pair) => [pair, /** @type {string[]} */ (byTrees.get(`${pair.merged} ${pair.tree}\n`))]));
 }
 
 /**
@@ -1380,6 +1419,53 @@ function quoted(word) {
  */
 const rebasedSince = (branch, onto, landed) => `rebase ${plain(branch)}'s commits since its landing onto ${plain(onto)}, settling the conflict in the rebase, with \`git rebase --onto ${quoted(onto)} ${short(landed)} ${quoted(branch)}\``;
 
+/**
+ * The way on of a task whose change, laid onto the chain's tip `onto` from
+ * `from` (landing.cjs, `laidFrom`), conflicts there: its branch's commits
+ * past `from` rebased onto it.
+ * @param {string} branch @param {string} onto @param {string} from
+ */
+const rebasedPast = (branch, onto, from) => `rebase ${plain(branch)}'s commits past ${short(from)} onto ${plain(onto)}, settling the conflict in the rebase, with \`git rebase --onto ${quoted(onto)} ${short(from)} ${quoted(branch)}\``;
+
+/**
+ * The way on of a task's branch behind its landing with work of its own
+ * (task-landed.cjs, `behindWith`): that work laid on its tip at that
+ * landing, `landed`, which the default branch's landing holds.
+ * @param {string} branch @param {string} landed
+ */
+const laidOn = (branch, landed) => `lay ${plain(branch)}'s own work on that commit with \`git rebase ${short(landed)} ${quoted(branch)}\``;
+
+/**
+ * The way on of a task's branch merged into past its landing
+ * (task-landed.cjs, `mergedPast`): its own commits since, `commits`
+ * (`ownLinePast`), made again on the default branch, `onto` — the branch
+ * cut again there, then each picked — so neither the merge nor what it
+ * brought in is replayed.
+ * @param {string} branch @param {string} onto @param {string[]} commits
+ */
+function madeAgainOn(branch, onto, commits) {
+  const switched = `\`git switch --no-track -C ${quoted(branch)} ${quoted(onto)}\``;
+  return commits.length === 0
+    ? `make ${plain(branch)} again on ${plain(onto)}, leaving out the merge and what it brought in — it holds no commit of its own since that one — with ${switched}`
+    : `make ${plain(branch)} again on ${plain(onto)} with its own commits since that one, leaving out the merge and what it brought in, with ${switched} then \`git cherry-pick ${commits.map(short).join(' ')}\``;
+}
+
+/**
+ * The commits of `branch`'s first-parent line past `from`, oldest first,
+ * its merges left out: its own work since, without what a merge brought in.
+ * @param {string} root @param {string} from @param {string} branch @returns {string[]}
+ */
+function ownLinePast(root, from, branch) {
+  return git(root, ['rev-list', '--reverse', '--no-merges', '--first-parent', `${from}..${HEADS}${branch}`, '--']).split('\n').filter(Boolean);
+}
+
+/**
+ * The push of a branch over its copy on a remote, leased on the commit the
+ * remote held, `held`, so it replaces nothing moved since.
+ * @param {string} remote @param {string} branch @param {string} held
+ */
+const forcePushed = (remote, branch, held) => `git push --force-with-lease=${quoted(`${HEADS}${branch}:${held}`)} ${quoted(remote)} ${quoted(branch)}`;
+
 /** A repository as a line names it: its folder, or nothing for the project's own. @param {string} repo as answers name it, `.` for the project's own */
 const inRepoWords = (repo) => (repo === '.' ? '' : ` in ${plain(repo)}`);
 
@@ -1854,6 +1940,28 @@ function fetchBranch(root, remote, branch) {
   return { commit: git(root, ['rev-parse', tracking]).trim() };
 }
 
+/**
+ * Each of `branches` as `remote` holds it, by its name, read in one call,
+ * fetching and writing nothing — one it holds not left out, every one
+ * where it cannot be read.
+ * @param {string} root @param {string} remote @param {string[]} branches
+ * @returns {Map<string, string>}
+ */
+function remoteHeads(root, remote, branches) {
+  if (branches.length === 0) return new Map();
+  let said;
+  try {
+    said = networkGit(root, ['ls-remote', remote, ...branches.map((branch) => `${HEADS}${branch}`)], FETCH_TIMEOUT_MS);
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    return new Map();
+  }
+  return new Map(said.split('\n').filter(Boolean).map((line) => {
+    const [sha, ref] = line.split('\t');
+    return [ref.slice(HEADS.length), sha];
+  }));
+}
+
 /** A remote's branch's commit as last fetched, fetching nothing; null where it never has been. @param {string} root @param {string} remote @param {string} branch @returns {string|null} */
 const trackedTip = (root, remote, branch) => tryGit(root, ['rev-parse', '--verify', '--quiet', `refs/remotes/${remote}/${branch}^{commit}`])?.trim() ?? null;
 
@@ -1940,8 +2048,8 @@ function landingBranch(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, heldOnce, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
-  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, landingBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, trackedTip, fetchedCommit, nothingPast,
+  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
+  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
+  defaultBranch, landingBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

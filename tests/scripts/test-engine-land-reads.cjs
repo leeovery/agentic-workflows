@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // What the local landing driver (leeway-engine/scripts/drivers/landing/
 // local/driver.cjs) records, and the shapes of landing it reads: where each
-// task's branch stood when it opened, kept once its phase lands and
-// dropped only when its phase's stack begins again without it, or the unit
-// finishes; a task
+// task's branch stood when it opened, and the commit its opening made on
+// its phase's branch, kept once its phase lands and dropped only when its
+// phase's stack begins again without it, or the unit finishes; a task
 // landed by hand, which nothing records, passed over; a task its phase
 // holds already, and a phase merged, answered as done already, a task with
 // no commit past the chain's tip refused, and a branch the tip holds, or a
@@ -38,13 +38,18 @@ const { card, total, rounding } = TASKS;
 const project = useLandingWorld('engine-land-reads-');
 
 describe('land: what the local driver records, and the shapes of landing it reads', () => {
-  it('records where a task\'s branch stood when it opened, kept while its phase\'s branch is gone and once its phase lands — replayed or fast-forwarded — and dropped when its phase\'s stack begins again without it, or at finish', () => {
+  it('records where a task\'s branch stood when it opened, and the commit its opening made, kept while its phase\'s branch is gone and once its phase lands — replayed or fast-forwarded — and dropped when its phase\'s stack begins again without it, or at finish', () => {
     const dir = project();
-    const opened = () => git(dir, ['for-each-ref', '--format=%(refname:lstrip=4) %(objectname)', 'refs/leeway/opened/pay/']).split('\n').filter(Boolean);
+    /** The unit's refs under `kind`, each task's shown name and commit. @param {string} kind */
+    const refs = (kind) => git(dir, ['for-each-ref', '--format=%(refname:lstrip=4) %(objectname)', `refs/leeway/${kind}/pay/`]).split('\n').filter(Boolean);
+    const opened = () => refs('opened');
+    const made = () => refs('phase-commit').map((line) => line.split(' ')[0]);
     git(dir, ['checkout', '-q', '-b', 'wip']);
     ok(dir, openArgs(card));
     ok(dir, openArgs(rounding));
-    assert.deepStrictEqual(opened(), [`1.1 ${tip(dir, card.branch)}`, `2.1 ${tip(dir, rounding.branch)}`]);
+    assert.deepStrictEqual([opened(), refs('phase-commit')], [
+      [`1.1 ${tip(dir, card.branch)}`, `2.1 ${tip(dir, rounding.branch)}`], [`1.1 ${tip(dir, 'feat/pay-phase-1')}`, `2.1 ${tip(dir, 'feat/pay-phase-2')}`],
+    ]);
     const landing = tip(dir, 'feat/pay-phase-1');
     git(dir, ['branch', '-D', 'feat/pay-phase-1']);
     commitFiles(dir, 'main', 'main', { 'other.txt': 'other\n' }, { message: 'other work' });
@@ -58,7 +63,7 @@ describe('land: what the local driver records, and the shapes of landing it read
     const more = cutTask(dir, '1.4', 'feat', 'More', 'main', { 'more.txt': 'more\n' });
     ok(dir, openArgs(more));
     const fours = [`1.4 ${tip(dir, more.branch)}`, rounded];
-    assert.deepStrictEqual(opened(), fours);
+    assert.deepStrictEqual([opened(), made()], [fours, ['1.4', '2.1']]);
     const forward = tip(dir, 'feat/pay-phase-1');
     assert.strictEqual(own(ok(dir, ['land', 'phase', 'pay', '1'])).commit, forward);
     assert.deepStrictEqual(opened(), fours);
@@ -66,7 +71,7 @@ describe('land: what the local driver records, and the shapes of landing it read
     git(dir, ['branch', '-D', 'feat/pay-phase-5']);
     finishReady(dir);
     assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).repos, []);
-    assert.deepStrictEqual(opened(), []);
+    assert.deepStrictEqual([opened(), made()], [[], []]);
   });
 
   it('passes over a task landed by hand, which nothing records the opening of: its gone branch is made again at the commit a task holds with its tree, and its phase merges', () => {

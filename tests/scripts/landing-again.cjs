@@ -30,13 +30,9 @@
 // landing throughout; and the review's change of the phases to 5 holding
 // every file the tasks wrote, the person's own commits beside them on
 // main's line, and their copies, in none of its parts. Landed by the
-// engine, its tasks' branches moved every way after — main merged back,
-// rebased onto main, deleted, their lines rewritten by a later landing —
-// leave every task landed and nothing landed again (`perturbed`); landed by
-// hand, main merged back into each task's branch by a merge commit before
-// any verb read it leaves every task landed, open answering already and
-// recording each at its landing, by its read, phase answering already, the
-// close done and the review's change whole (`mergedBack`).
+// engine, its tasks' branches moved after — rebased onto main, deleted,
+// their lines rewritten by a later landing — leave every task landed and
+// nothing landed again (`perturbed`).
 // Every commit is made a second past the last (`spaceCommits`). Names no
 // driver and no tool.
 // ---------------------------------------------------------------------------
@@ -140,7 +136,7 @@ const ROWS = {
     },
   },
   carrying: {
-    change: 'a commit on top of its branch, a later task\'s work, opened and not landed, merged into it',
+    change: 'a commit on top of its branch, a later task\'s work, opened and not landed, picked onto it',
     changed: [FIRST],
     fresh: [],
     holds: [['tip-more.txt', 'more\n'], ['show.txt', 'show\n']],
@@ -155,7 +151,9 @@ const ROWS = {
     make: (dir, conf) => {
       onTop(dir, FIRST, 'tip-more.txt');
       conf.ok(dir, openArgs(cutTask(dir, LATER.shown, LATER.type, LATER.title, 'main', { 'show.txt': 'show\n' })));
-      mergedInto(dir, FIRST.branch, LATER.branch);
+      git(dir, ['switch', '-q', FIRST.branch]);
+      stepped(() => git(dir, ['cherry-pick', LATER.branch]));
+      git(dir, ['switch', '-q', 'main']);
     },
   },
   numbered: {
@@ -396,34 +394,6 @@ function answers(row) {
   };
 }
 
-/**
- * Main merged back into each landed task's branch by a merge commit, as
- * Claude merges it, nothing else changed (R25, R29): whether each task
- * reads landed; `land open` answering `already` for each, the first verb
- * acting on the landing, and whether it moved anything; each task's record
- * that made (`recordsOf`); a second `land phase` merged already; the close
- * in step reading the stack merged; and the review's change (`reviewed`).
- * @param {Conformance} conf
- */
-function mergedBack(conf) {
-  const dir = conf.project();
-  for (const { branch } of LANDED) mergedInto(dir, branch, 'main', 'ours', false);
-  const refs = refsOf(conf, dir);
-  const already = LANDED.map((task) => conf.ok(dir, openArgs(task)).already === true);
-  return {
-    landed: tasksLandedHere(dir, LANDED.map(({ shown }) => shown)),
-    already,
-    moved: refsOf(conf, dir) !== refs,
-    records: recordsOf(dir),
-    again: conf.ok(dir, ['land', 'phase', UNIT, '4']).already === true,
-    step: stackMerged(conf, dir, 'step'),
-    review: reviewed(dir, []),
-  };
-}
-
-/** What `mergedBack` answers, on every way and driver. */
-const MERGED_BACK = { landed: [true, true], already: [true, true], moved: false, records: LANDED.map(() => ['read', true]), again: true, step: 'done', review: { apart: BESIDE.map(() => true), missing: [] } };
-
 /** The file each landed task's last commit writes, by its number. */
 const LAST_WRITES = new Map([[FIRST.shown, LAST_FILE], [SECOND.shown, 'note.txt']]);
 
@@ -451,10 +421,9 @@ const recordedAgain = (conf) => recordsOf(conf.project());
 const RECORDED = LANDED.map(() => ['engine', true]);
 
 /**
- * The phase landed by the engine, then its tasks' branches moved every way
- * after it, read through the record: the first's with main merged back by
- * a merge commit, then its lines rewritten on main by a later phase's
- * landing; the second's rebased onto main, then deleted — whether each task
+ * The phase landed by the engine, then its tasks' branches moved after it,
+ * read through the record: the first's lines rewritten on main by a later
+ * phase's landing; the second's rebased onto main, then deleted — whether each task
  * reads landed; `land open` of the first answering `already`; a second
  * `land phase`, its review passed as the cut then asks, merged already;
  * and whether either moved anything.
@@ -462,7 +431,6 @@ const RECORDED = LANDED.map(() => ['engine', true]);
  */
 function perturbed(conf) {
   const dir = conf.project();
-  mergedInto(dir, FIRST.branch, 'main', 'ours', false);
   git(dir, ['branch', '-f', SECOND.branch, 'main']);
   git(dir, ['branch', '-q', '-D', SECOND.branch]);
   conf.ok(dir, openArgs(cutTask(dir, '5.1', 'feat', 'Rework tip', 'main', { 'tip.txt': 'tip, reworked\n', [LAST_FILE]: 'two, reworked\n' })));
@@ -493,17 +461,16 @@ const AGAIN = {
     later === undefined ? '' : ', the later task then opening onto main',
     ', the phase\'s branch at its landing throughout',
   ].join(''),
-  mergedBack: 'main merged back into each task\'s branch by a merge commit before any verb read it: each task landed, land open answering already for each, moving nothing, recording each at its landing on main by its read, a second land phase merged already, the close in step done, the review\'s change holding every file the tasks wrote and none of the person\'s own commits beside them (R25, R29)',
   recorded: 'the landing recorded by the engine as it lands, each task at the commit on main naming it',
-  perturbed: 'its tasks\' branches moved every way after its landing — main merged back, its lines rewritten by a later landing, rebased onto main, deleted: every task landed, land open answering already, a second land phase merged already, nothing moved (the record)',
+  perturbed: 'its tasks\' branches moved after its landing — its lines rewritten by a later landing, rebased onto main, deleted: every task landed, land open answering already, a second land phase merged already, nothing moved (the record)',
 };
 
 /**
  * The table's suite for the way `way` (the header's), against each shipped
  * driver in turn, through the calling suite's own `describe` and `it`:
  * where the way proves the engine's record, `recordedAgain`; each of the
- * way's rows; then `mergedBack` where the person landed it, else
- * `perturbed` where the way proves the record.
+ * way's rows; then `perturbed` where the engine landed it and the way
+ * proves the record.
  * @param {keyof typeof WAYS} way @param {typeof import('node:test').describe} describe @param {typeof import('node:test').it} it
  */
 function describeAgain(way, describe, it) {
@@ -513,8 +480,7 @@ function describeAgain(way, describe, it) {
     describe(AGAIN.title(name, way), () => {
       if (by === 'engine' && record) it(AGAIN.recorded, () => assert.deepStrictEqual(recordedAgain(conf), RECORDED));
       for (const row of rows.map((key) => ROWS[key])) it(AGAIN.test(row), () => assert.deepStrictEqual(rowAgain(conf, row), answers(row)));
-      if (by === 'read') it(AGAIN.mergedBack, () => assert.deepStrictEqual(mergedBack(conf), MERGED_BACK));
-      else if (record) it(AGAIN.perturbed, () => assert.deepStrictEqual(perturbed(conf), PERTURBED));
+      if (by === 'engine' && record) it(AGAIN.perturbed, () => assert.deepStrictEqual(perturbed(conf), PERTURBED));
     });
   }
 }

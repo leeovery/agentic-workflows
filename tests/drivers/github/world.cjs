@@ -14,20 +14,23 @@
 // (hermetic-env.cjs).
 // What a person might do by hand on GitHub — close a pull request, merge
 // one, delete a merged one's branch, or a branch with its pull request,
-// commit on the site, open a pull request no unit opened, from a fork or
+// commit on the site, or merge main into a branch there with its "Update
+// branch", open a pull request no unit opened, from a fork or
 // not, change GitHub's default branch or its squash default — is done to
 // the fake's state here, as is how many reads GitHub takes to work out
 // whether a pull request can merge once it moves. The fake starts with
 // GitHub's own squash default, and works it out at once.
 // The verbs its suites call go through and refuse under `GH_ENV` (`ok`,
-// `refused`), and a phase of two is built the one way (`stackOfTwo`).
+// `refused`), a phase of two is built the one way (`stackOfTwo`), and a
+// task squashed by hand on the site, its phase landed, the one way
+// (`squashedByHand`).
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { git, bareRepo, githubOffline, createFile, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
-const { TASKS, openArgs, mergeBack } = require('../../scripts/landing-world.cjs');
+const { TASKS, openArgs, mergeBack, cutTask, phaseReviewed } = require('../../scripts/landing-world.cjs');
 const { STATE_BRANCH } = require('../../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 const stub = require('./gh-stub.cjs');
 
@@ -200,22 +203,44 @@ function lagOnGithub(dir, reads, { stale = false } = {}) {
 const tipOnGithub = (dir, branch) => git(bareOf(dir), ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
 
 /**
- * A commit made on GitHub on `branch`, as the site makes one — a review's
- * suggestion, an edit on its page — `files` written in it: its sha.
- * @param {string} dir @param {string} branch @param {Record<string, string>} files @param {string} subject
+ * `branch` on GitHub moved as its site moves it, `make` run in a checkout
+ * of it there, each pull request open on the branch holding its new tip as
+ * its own ref, as GitHub's does: that tip.
+ * @param {string} dir @param {string} branch @param {(tree: string) => void} make
  */
-function madeOnGithub(dir, branch, files, subject) {
+function onSite(dir, branch, make) {
   const bare = bareOf(dir);
   const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-site-'));
   git(bare, ['worktree', 'add', '-q', tree, branch]);
-  for (const [file, text] of Object.entries(files)) {
-    createFile(tree, file, text);
-    git(tree, ['add', file]);
-  }
-  git(tree, ['commit', '-q', '-m', subject]);
+  make(tree);
   git(bare, ['worktree', 'remove', '--force', tree]);
-  return tipOnGithub(dir, branch);
+  const sha = tipOnGithub(dir, branch);
+  for (const pull of github(dir).pulls) if (pull.state === 'OPEN' && pull.head === branch && pull.fork === undefined) git(bare, ['update-ref', `refs/pull/${pull.number}/head`, sha]);
+  return sha;
 }
+
+/**
+ * A commit made on GitHub on `branch`, as the site makes one — a review's
+ * suggestion, an edit on its page — `files` written in it (`onSite`): its
+ * sha.
+ * @param {string} dir @param {string} branch @param {Record<string, string>} files @param {string} subject
+ */
+function madeOnGithub(dir, branch, files, subject) {
+  return onSite(dir, branch, (tree) => {
+    for (const [file, text] of Object.entries(files)) {
+      createFile(tree, file, text);
+      git(tree, ['add', file]);
+    }
+    git(tree, ['commit', '-q', '-m', subject]);
+  });
+}
+
+/**
+ * The site's "Update branch" on `branch`: GitHub's default branch, main,
+ * merged into it there (`onSite`): the merge's sha.
+ * @param {string} dir @param {string} branch
+ */
+const updatedOnGithub = (dir, branch) => onSite(dir, branch, (tree) => git(tree, ['merge', '-q', '--no-edit', '-m', `Merge branch 'main' into ${branch}`, 'main']));
 
 /** The pull requests GitHub holds, each its number, state and base. @param {string} dir */
 const pulls = (dir) => github(dir).pulls.map(({ number, state, base }) => ({ number, state, base }));
@@ -235,7 +260,20 @@ function stackOfTwo(dir) {
   ok(dir, ['land', 'chain', 'pay', '1.2']);
 }
 
+/** Task 4.1, its commit stamped as the door stamps it, opened, squashed by hand on GitHub's site, and phase 4 landed. @param {string} dir */
+function squashedByHand(dir) {
+  const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLeeway-Task: pay-4-1' });
+  ok(dir, openArgs(task));
+  mergeByHand(dir, 1, undefined, 'squash');
+  phaseReviewed(dir, 4, 'auto');
+  ok(dir, ['land', 'phase', 'pay', '4']);
+  return task;
+}
+
+/** The pull requests opened and merged since the call count `from`. @param {string} dir @param {number} from */
+const madeSince = (dir, from) => calls(dir).slice(from).filter((made) => /^pr (create|merge)/.test(made));
+
 module.exports = {
   REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, strangerPull, branchDeleted, headDeleted, defaultOnGithub, squashFromPullRequests, lagOnGithub,
-  tipOnGithub, madeOnGithub, pulls, ok, refused, stackOfTwo,
+  tipOnGithub, madeOnGithub, updatedOnGithub, pulls, ok, refused, stackOfTwo, squashedByHand, madeSince,
 };

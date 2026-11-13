@@ -17,8 +17,9 @@
 // cherry-picked onto main by hand, its copy carrying the door's stamp, has
 // not landed — its stack open — until `land phase` merges its pull request;
 // a task of one commit cherry-picked so, its pull request open beneath
-// another's, has landed and has not changed since, so `land phase` merges
-// the stack bringing neither pull request up to main (R29); one changed
+// another's, has landed and has not changed since, so `land phase` closes
+// its pull request as landed, never merging it, and merges the later
+// task's, bringing neither up to main (R29, N3); one changed
 // after its pull request merged is test-landing-again.cjs's (7.2.23). A
 // task's last
 // commit is its branch's tip: one moved since it opened, kept aside and put
@@ -37,7 +38,7 @@ const assert = require('node:assert');
 
 const { openArgs, own, cutTask, commitFiles, useLandingWorld, phaseReviewed, followRemedy } = require('../../scripts/landing-world.cjs');
 const side = require('./landing.cjs');
-const { GH_ENV, bareOf, mergeByHand, onGithub, ok, refused, squashFromPullRequests } = require('./world.cjs');
+const { GH_ENV, bareOf, mergeByHand, onGithub, ok, refused, squashFromPullRequests, pulls } = require('./world.cjs');
 const { git, withEnv, datedAt } = require('../../scripts/engine-harness.cjs');
 const { changeOf } = require('../../../skills/leeway-engine/scripts/domain/review-change.cjs');
 const { unitLanded } = require('../../../skills/leeway-engine/scripts/domain/task-landed.cjs');
@@ -128,7 +129,7 @@ describe('a feature\'s task read by its content alone, the door\'s stamp never n
     assert.deepStrictEqual([before, [merged.merged, merged.pull_requests], git(bareOf(dir), ['show', 'main:b.txt']), stackMerged(dir, 4)], [[false, 'open'], [['4.1'], [1]], 'b\n', 'done']);
   });
 
-  it('a task of one commit cherry-picked onto main by hand, its pull request open beneath a later task\'s: landed, never changed after its landing — land phase merges the stack, bringing neither pull request up to main', () => {
+  it('a task of one commit cherry-picked onto main by hand, its pull request open beneath a later task\'s: landed, never changed after its landing — land phase closes its pull request as landed and merges the later task\'s, bringing neither up to main (N3)', () => {
     const dir = project();
     const first = cutTask(dir, '4.1', 'feat', 'Add a', 'main', { 'a.txt': 'a\n' }, { message: 'feat(pay): add a\n\nLeeway-Task: pay-4-1' });
     const second = cutTask(dir, '4.2', 'feat', 'Add b', first.branch, { 'b.txt': 'b\n' }, { message: 'feat(pay): add b\n\nLeeway-Task: pay-4-2' });
@@ -138,8 +139,8 @@ describe('a feature\'s task read by its content alone, the door\'s stamp never n
     phaseReviewed(dir, 4, 'auto');
     const merged = own(ok(dir, ['land', 'phase', 'pay', '4']));
 
-    assert.deepStrictEqual([merged.merged, [first, second].map(({ branch }) => git(bareOf(dir), ['rev-parse', branch]).trim()), git(bareOf(dir), ['show', 'main:b.txt'])], [
-      ['4.1', '4.2'], heads, 'b\n',
+    assert.deepStrictEqual([merged.merged, pulls(dir).map(({ state }) => state), [first, second].map(({ branch }) => git(bareOf(dir), ['rev-parse', branch]).trim()), git(bareOf(dir), ['show', 'main:b.txt'])], [
+      ['4.2'], ['CLOSED', 'MERGED'], heads, 'b\n',
     ]);
   });
 });

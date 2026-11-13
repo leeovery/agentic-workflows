@@ -3,14 +3,20 @@
 // ---------------------------------------------------------------------------
 // A task changed after its landing landed again over its tip at that
 // landing (task-landed.cjs, `landingBase`, R29), through `land phase`,
-// against each shipped driver in turn: just its change since lands, what it
-// takes back of its own work among it — its file deleted, gone from the
-// default branch; a line it added rewritten, landed with no conflict — the
-// record's tip moved to its branch's; a task landed by hand and changed
-// before any verb recorded it lands over the tip that landed, its landing
-// recorded first. A recorded task's branch rewritten past its landing is
-// test-engine-landing-conformance-record.cjs's; one moved with no change of
-// its own, test-engine-land-local-record-moved.cjs's.
+// against each shipped driver in turn — its branch given plain commits on
+// that tip, the one shape read after a landing: just its change since
+// lands, what it takes back of its own work among it — its file deleted,
+// gone from the default branch; a line it added rewritten, landed with no
+// conflict — the record's tip moved to its branch's; a task landed by hand
+// and changed before any verb recorded it lands over the tip that landed,
+// its landing recorded first. Landed by hand by a squash or a merge commit,
+// never opened, then changed, and opened while another task of its phase
+// stands opened and not landed, its change is laid from that landing onto
+// the phase's tip, never its branch's whole tree, and the phase lands both
+// tasks' work (S1). A branch rewritten or merged into past its landing is
+// refused, test-engine-landing-conformance-record-rewritten.cjs's and
+// -merged-past.cjs's; one behind it, -behind.cjs's; one moved with no
+// change of its own, test-engine-land-local-record-moved.cjs's.
 // Conformance layer: the landing world (landing-world.cjs), built once per
 // driver and copied for each test.
 // ---------------------------------------------------------------------------
@@ -27,13 +33,15 @@ const { git, tip, fixtureFrom, cleanupFixture, readManifest } = harness;
 const { UNIT, TASKS, openArgs, own, commitFiles, buildLanding } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
-const { card } = TASKS;
+const { card, total } = TASKS;
+const PHASE = ['land', 'phase', UNIT, '1'];
 
 for (const { name } of listDrivers('landing')) {
   /**
    * @type {{
    *   env: Record<string, string|undefined>, prepare: (dir: string) => void, on: (dir: string) => string,
    *   holds: (dir: string) => string[], byHand: Record<string, (dir: string, branch: string) => void>,
+   *   squashedHere: (dir: string, branch: string) => void, mergedHere: (dir: string, branch: string) => void,
    * }}
    */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
@@ -66,6 +74,9 @@ for (const { name } of listDrivers('landing')) {
     return [answer.merged, answer.landed_empty ?? [], cardOnMain(at), cardRecord(at).tip === tip(at, card.branch)];
   };
 
+  /** The ways a person lands card's branch by hand in their terminal, pushed where there is a host. @type {Record<string, (dir: string, branch: string) => void>} */
+  const BY_HAND = { 'a squash': side.squashedHere, 'a merge commit': side.mergedHere };
+
   describe(`the ${name} landing driver's task changed after its landing, landed again over its tip then (R29)`, () => {
     it('its file deleted on its branch after its landing: land phase lands the deletion, nothing landed empty, the record\'s tip moved to its branch\'s', () => {
       const at = landedCard();
@@ -90,5 +101,19 @@ for (const { name } of listDrivers('landing')) {
 
       assert.deepStrictEqual([...landedAgain(at), cardRecord(at).first === landing], [['1.1'], [], 'a card\n', true, true]);
     });
+
+    for (const [how, land] of Object.entries(BY_HAND)) {
+      it(`landed by ${how} by hand, never opened, then changed, and opened while 1.2 stands opened and not landed: land phase lands both tasks' work, the record the engine's, and a second answers already (S1)`, () => {
+        const at = (dir = world());
+        ok(at, openArgs(total));
+        land(at, card.branch);
+        commitFiles(at, card.branch, card.branch, { 'fix.txt': 'fix\n' });
+        ok(at, openArgs(card));
+        ok(at, PHASE);
+        const work = ['card.txt', 'fix.txt', 'total.txt'];
+
+        assert.deepStrictEqual([work.filter((file) => side.holds(at).includes(file)), cardRecord(at).by, ok(at, PHASE).already], [work, 'engine', true]);
+      });
+    }
   });
 }

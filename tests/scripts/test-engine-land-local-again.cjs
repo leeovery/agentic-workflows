@@ -13,7 +13,10 @@
 // phase's branch staying at its landing, so each later change of any task
 // it landed lands too, a later phase landed between; tasks changed together
 // land oldest first, one whose change is on main already answered landed
-// empty. Its phase landed by hand is test-engine-land-local-again-by-hand
+// empty. Landed by hand while another task of its phase stands opened,
+// then changed and opened, its change is laid on the phase's branch over
+// that task's, never its branch's whole tree, which lacks that task's work.
+// Its phase landed by hand is test-engine-land-local-again-by-hand
 // .cjs's; its tasks read off its branch's top,
 // test-engine-land-local-again-top.cjs's; every verb's answer on each
 // driver, the conformance table's (landing-again.cjs); submodules,
@@ -29,7 +32,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { ok, git, tip, readManifest, commitOnState, statePath, layout } = require('./engine-harness.cjs');
-const { openArgs, own, cutTask, commitFiles, useLandingWorld, refusedMoving, alreadyMoving, finishReady, landedHere, heldOn, mergedInto, followedOn, short } = require('./landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, useLandingWorld, refusedMoving, alreadyMoving, finishReady, landedHere, heldOn, mergedInto, followedOn, short } = require('./landing-world.cjs');
 
 const project = useLandingWorld('engine-land-local-again-');
 
@@ -73,7 +76,6 @@ describe('land: a task changed after its phase landed, on the local driver (7.2.
     const dir = project();
     const { first } = phaseOfTwo(dir);
     commitFiles(dir, first.branch, first.branch, { 'tip.txt': 'tip, changed\n' });
-    mergedInto(dir, first.branch);
     finishReady(dir);
     const finished = own(ok(dir, ['land', 'finish', 'pay']));
 
@@ -141,5 +143,15 @@ describe('land: a task changed after its phase landed, on the local driver (7.2.
     git(dir, ['branch', '-q', '-D', task.branch]);
 
     assert.deepStrictEqual(refusedMoving(dir, ['land', 'phase', 'pay', '4']), `land: task 4.1 changed since phase 4 landed on main, and its branch is gone — make it again with \`git branch ${task.branch} ${changed.slice(0, 7)}\` and land again`);
+  });
+
+  it('landed by a merge commit by hand while another task of its phase stands opened, then changed and opened: its change is laid on the phase\'s branch over that task\'s, never its branch\'s whole tree, which lacks that task\'s work', () => {
+    const dir = project();
+    ok(dir, openArgs(TASKS.total));
+    mergedInto(dir, 'main', TASKS.card.branch, 'ours', false);
+    commitFiles(dir, TASKS.card.branch, TASKS.card.branch, { 'card.txt': 'a card\n' });
+    ok(dir, openArgs(TASKS.card));
+
+    assert.deepStrictEqual(['card.txt', 'total.txt'].map((file) => heldOn(dir, file, 'feat/pay-phase-1')), ['a card\n', 'total\n']);
   });
 });
