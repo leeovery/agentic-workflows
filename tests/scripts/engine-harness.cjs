@@ -488,6 +488,34 @@ function failingTrustAppends(t, lands = false) {
 }
 
 /**
+ * `fn` run with every state commit failing, as git refuses one while a peer
+ * holds the state branch's ref mid-update: what `fn` answered.
+ * @template T @param {string} dir @param {() => T} fn @returns {T}
+ */
+function failingStateCommits(dir, fn) {
+  const held = path.join(dir, '.git', 'refs', 'heads', 'leeway-state.lock');
+  fs.writeFileSync(held, '');
+  try {
+    return fn();
+  } finally {
+    fs.rmSync(held, { force: true });
+  }
+}
+
+/**
+ * The retry a failed tail commit's note names, run as written: the files its
+ * commit took, and what the state's tree holds uncommitted after it.
+ * @param {string} dir @param {Record<string, unknown>} answer
+ * @returns {{took: string[], left: string}}
+ */
+function retried(dir, answer) {
+  const [, scope] = /^commit pending — state saved; retry with: engine commit (.+) -m "<message>"$/.exec(String(answer.note)) ?? [];
+  assert.ok(scope, `a retry is named: ${answer.note}`);
+  ok(dir, ['commit', ...scope.split(' '), '-m', 'the retry']);
+  return { took: touched(statePath(dir), 'HEAD'), left: stateGit(dir, ['status', '--porcelain', '--untracked-files=all']) };
+}
+
+/**
  * A temp world — the git repo, its state worktree, a test identity and no
  * signing — that an engine commit lands in. Content is the suite's own;
  * `cleanupFixture` removes it.
@@ -993,6 +1021,6 @@ module.exports = {
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs, accountFiles, accountTaken,
-  NO_SPACE, failingTrustAppends, completeUnit, startItem,
+  NO_SPACE, failingTrustAppends, failingStateCommits, retried, completeUnit, startItem,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment,
 };

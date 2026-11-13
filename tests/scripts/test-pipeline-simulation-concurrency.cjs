@@ -152,10 +152,8 @@ describe('pipeline simulation: concurrency', () => {
     assert.strictEqual(docRow.session_id, 'investigation-session', "A's heartbeat carries A's identity");
     assert.strictEqual(talkRow.session_id, 'discussion-session', "B's heartbeat carries B's identity");
     assert.ok(docRow.held && talkRow.held, 'both document sessions read held');
-    assert.deepStrictEqual([sim.run(['presence', 'scan', bug]), sim.run(['presence', 'scan', wu])].map((scan) => [scan.held, scan.held_sources]), [[1, 0], [1, 1]],
-      'only the discussion counts as a source — a held investigation session defers no analysis');
-    assert.ok(sim.sections.includes('=== DISPLAY: presence deferral') && sim.sections.replace(/\n +/g, ' ').includes('discussion/ranking (last active'),
-      `the deferral section rides the scan the dispatch prose reads it from: ${sim.sections}`);
+    assert.deepStrictEqual([sim.run(['presence', 'scan', bug]), sim.run(['presence', 'scan', wu])].map((scan) => scan.held), [1, 1],
+      'each unit\'s scan holds its own session');
 
     // --- the code slot ------------------------------------------------------
     // The slot is taken at the build's entry, not at the first commit: the
@@ -189,10 +187,9 @@ describe('pipeline simulation: concurrency', () => {
     docFinds('Ties break on arrival.');
     confined('A3', docScope, [CODE_FILE, TALK_FILE]);
 
-    // Three sessions hold, one of them code; the source count is unmoved.
+    // Three sessions hold, one of them code.
     const holding = sim.run(['presence', 'scan']);
     assert.strictEqual(holding.held, 3, 'two document sessions and one code session hold');
-    assert.strictEqual(sim.run(['presence', 'scan', wu]).held_sources, 1, 'a held code session defers no analysis either');
     assert.strictEqual(rowOf(holding, 'implementation', built).session_id, 'code-session');
 
     // --- the dead peer's leavings ------------------------------------------

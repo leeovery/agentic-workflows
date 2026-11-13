@@ -534,6 +534,17 @@ function named(cwd, point, args, reads = new Map()) {
 }
 
 /**
+ * The commit that takes what a checklist's change wrote, where its own
+ * failed: the project's files only the engine writes, or the unit's; the
+ * unit's whole scope where records Claude writes ride beside the manifest.
+ * @param {string|null} unit @param {string[]} beside
+ */
+function retryOf(unit, beside) {
+  if (unit === null) return '--state';
+  return beside.length > 0 ? unit : `${unit} --state`;
+}
+
+/**
  * Change a named checklist's record, its work's manifest read again and
  * saved under that manifest's lock — the change seeing the checklist as
  * read there, and throwing to write nothing — then commit the manifest,
@@ -559,7 +570,7 @@ function changeRecord(checklist, done, change, result, beside = []) {
   const outcome = commitStateTail(cwd, [unit === null ? PROJECT_MANIFEST_SPEC : `${unit}/manifest.json`, ...beside], `${scope}: ${nameOf(checklist)} ${done}`, warnings);
   result.committed = outcome.committed;
   if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome, unit === null ? undefined : `${unit} --state`);
+  noteCommitOutcome(result, outcome, retryOf(unit, beside));
   return result;
 }
 

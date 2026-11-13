@@ -873,47 +873,6 @@ describe('render backlog-gate', () => {
   });
 });
 
-describe('render — the adopted cross-flow static gates', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  it('query-failure-gate: the error output and its diagnosis above retry or proceed without context', () => {
-    const file = writePayload(dir, '.leeway/.cache/pay/discussion/pay/query-failure.json', {
-      error: 'Error: metadata.json missing but store exists. Run the rebuild to fix it before the next query.\n  Provide the key and retry:\n\n    • export OPENAI_API_KEY=...\n',
-    });
-    assert.strictEqual(renderSurface(dir, 'query-failure-gate', { file }), [
-      '=== DISPLAY: query failure (emit verbatim as a text code block (```text fence), directly above the menu) ===',
-      '⚑ Knowledge query failed',
-      '  Error: metadata.json missing but store exists. Run the rebuild',
-      '  to fix it before the next query.',
-      '    Provide the key and retry:',
-      '',
-      '      • export OPENAI_API_KEY=...',
-      '',
-      "  Likely causes: a knowledge config that can't be read or names a",
-      "  provider it can't use, or a store that can't be read or has",
-      '  lost its metadata. Run this to diagnose:',
-      '',
-      '    node .claude/skills/leeway-engine/scripts/engine.cjs knowledge status',
-      '',
-      "=== MENU: query failure gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ How should I proceed?`**',
-      '',
-      "**`r/retry`** → I'll fix the issue; retry the query",
-      '**`s/skip`**  → Proceed without knowledge context for this phase',
-      '',
-    ].join('\n'));
-  });
-
-  it('query-failure-gate: refuses without the error output it shows', () => {
-    assert.throws(() => renderSurface(dir, 'query-failure-gate', {}), /--file <payload\.json> is required/);
-    const blank = writePayload(dir, '.leeway/.cache/pay/discussion/pay/query-failure.json', { error: '  ' });
-    assert.throws(() => renderSurface(dir, 'query-failure-gate', { file: blank }), /"error" must be the query's error output, a non-empty string/);
-  });
-});
-
 describe('render import-reprompt', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -968,50 +927,5 @@ describe('render import-reprompt', () => {
     assert.throws(bad('m.json', {}), /"missing" must be a non-empty array of the refused paths/);
     assert.throws(bad('e.json', { missing: [] }), /"missing" must be a non-empty array of the refused paths/);
     assert.throws(bad('b.json', { missing: ['ok', ''] }), /missing\[1\] must be a non-empty string/);
-  });
-});
-
-describe('render send-closed-target', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', {
-      phases: {
-        discovery: {
-          items: {
-            'legacy-bits': { source: 'discovery' },
-            live: { source: 'discovery' },
-          },
-        },
-        discussion: { items: { 'legacy-bits': { status: 'cancelled' } } },
-      },
-    });
-  });
-  afterEach(() => teardown(dir));
-
-  it('renders the cancelled target byte-exactly — the statement, then the ask over three destinations', () => {
-    assert.strictEqual(renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.legacy-bits' }), [
-      "=== MENU: closed target gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '"legacy-bits" is cancelled, so it won\'t pick up messages.',
-      '',
-      '**`◆ Where should the message go?`**',
-      '',
-      '**`o/open`**      → Reactivate it and send the message there — the',
-      `${NB(14)}topic returns to its previous state and counts as`,
-      `${NB(14)}open again`,
-      '**`e/elsewhere`** → Pick a different target',
-      "**`d/drop`**      → Don't send it; it stays with the current topic",
-      '',
-    ].join('\n'));
-  });
-
-  it('refuses a live target, an unknown name, and a non-discovery address', () => {
-    assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.live' }),
-      /"live" is "fresh", not cancelled — the gate serves cancelled targets/);
-    assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.ghost' }),
-      /render send-closed-target: no topic "ghost" — the map's topics are live$/);
-    assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discussion.legacy-bits' }),
-      /address must be <work_unit>\.discovery\.<target>, got phase "discussion"/);
   });
 });

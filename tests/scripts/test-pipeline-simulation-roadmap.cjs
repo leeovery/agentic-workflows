@@ -259,14 +259,6 @@ describe('pipeline simulation: roadmap', () => {
     const placed = sim.run(answerGate(sim, 'horizon pick', '--pick', '1').next.argv);
     assert.deepStrictEqual([placed.horizon, placed.next], [sim.run(['roadmap', 'state']).horizons[0], { kind: 'continue' }]);
 
-    // A failed query's error output rides the failure gate's payload,
-    // verbatim, written to the roadmap session's own cache.
-    const queryFailure = sim.write('.leeway/.cache/roadmap/query-failure.json',
-      { error: 'Error: loadStore: corrupted store file at .leeway/.knowledge/store.bin\n' });
-    const failureGate = sim.render(['query-failure-gate', '--file', queryFailure], { expect: 'content' });
-    assert.match(failureGate, /⚑ Knowledge query failed\n {2}Error: loadStore: corrupted store file/);
-    assert.match(failureGate, /MENU: query failure gate/);
-
     // The roadmap's `b/back`: the start menu drawn again, the session
     // working nowhere.
     roadmapMenu(sim);

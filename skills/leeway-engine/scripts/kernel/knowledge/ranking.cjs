@@ -2,8 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Kernel: ranking — each framing's keyword and vector searches blended by
-// score, the framings merged by each chunk's best, then re-ranked by decay,
-// boosts and the confidence tier; and the account `--explain` prints.
+// score, the framings merged by each chunk's best, then re-ranked by decay
+// and boosts; and the account `--explain` prints.
 // ---------------------------------------------------------------------------
 
 const store = require('./store.cjs');
@@ -13,12 +13,6 @@ const VECTOR_WEIGHT = 0.6;
 const OVER_FETCH = 2;
 
 const BOOST_AMOUNT = 0.1;
-const TIER_STEP = 0.01;
-const CONFIDENCE_RANK = {
-  'high': 4,
-  'medium': 3,
-  'low': 1,
-};
 
 const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% down)
 
@@ -42,7 +36,6 @@ const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% d
  * @property {number} cut  the length every framing's hits were cut to
  * @property {number} [decay]
  * @property {number} [boost]
- * @property {number} [tier]
  */
 
 /**
@@ -134,10 +127,9 @@ function retrievability(progressElapsed, stability) {
 
 /**
  * Application-level re-ranking, best first: each result's score decayed by
- * its retrievability, then its boosts (+0.1 per matching directive) and its
- * confidence tier (+0.01 per step) added — undimmed by the decay. A decayed
- * chunk sinks but is never removed. Each result's scoring records what the
- * three did.
+ * its retrievability, then its boosts (+0.1 per matching directive) added —
+ * undimmed by the decay. A decayed chunk sinks but is never removed. Each
+ * result's scoring records what the two did.
  * @param {Array<Record<string, any>>} results  each may carry `progressElapsed`
  *        (attached by the query pipeline; absent → 0 → no decay)
  * @param {Array<{field: string, value: string}>} boosts  normalised boost list
@@ -150,8 +142,7 @@ function rerank(results, boosts, stability) {
       const decay = retrievability(r.progressElapsed || 0, stability);
       const matching = boosts.filter(({ field, value }) => r[field] === value);
       const boosted = matching.reduce((score) => score + BOOST_AMOUNT, (r.score || 0) * decay);
-      const tier = (CONFIDENCE_RANK[r.confidence] || 0) * TIER_STEP;
-      return { ...r, score: boosted + tier, scoring: { ...r.scoring, decay, boost: matching.length * BOOST_AMOUNT, tier } };
+      return { ...r, score: boosted, scoring: { ...r.scoring, decay, boost: matching.length * BOOST_AMOUNT } };
     })
     .sort((a, b) => b.score - a.score);
 }
@@ -172,8 +163,8 @@ function framingLine({ parts, score }) {
 
 /**
  * The lines `query --explain` prints beneath a ranked result: its score in
- * every framing, then the framing it kept, worked through decay, the boosts
- * and the tier.
+ * every framing, then the framing it kept, worked through decay and the
+ * boosts.
  * @param {Ranked} result
  * @returns {string[]}
  */
@@ -183,7 +174,7 @@ function explanation({ score, scoring }) {
   return [
     ...scoring.framings.map((framing, at) => `Framing ${at + 1}: ${framing ? framingLine(framing) : unlisted}`),
     `Score: kept framing ${scoring.kept}'s ${shown(kept.score)} × ${shown(scoring.decay)} decay`
-      + ` + ${shown(scoring.boost)} boost + ${shown(scoring.tier)} tier = ${shown(score)}`,
+      + ` + ${shown(scoring.boost)} boost = ${shown(score)}`,
   ];
 }
 

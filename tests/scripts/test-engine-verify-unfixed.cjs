@@ -25,7 +25,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, cleanupFixture, readState, createFile, commitCode, git, stateGit, lastMessage,
+  ok, refusedPristine, cleanupFixture, readState, createFile, commitCode, git, stateGit, lastMessage, failingStateCommits, retried,
 } = require('./engine-harness.cjs');
 const {
   UNIT, TEST, branchOf, testRuns, tipOf, scratchOf, unfixedArgs, buildFinished, unproven, proven,
@@ -66,6 +66,14 @@ describe('verify run --unfixed: the reproducing test on the unfixed code (15.5.2
     assert.deepStrictEqual([2, 3, 4, 5].map((n) => runAt(n)), Array(4).fill(null).map((_, at) => ({ ...first, at: runAt(at + 2).at })));
     assert.deepStrictEqual([lastMessage(dir), stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n')], [`verify(${UNIT}): 1.S1 on the unfixed code, five failures`, files]);
     assert.ok(takenApart(), 'the scratch worktree is taken apart');
+  });
+
+  it('a series whose commit fails names the retry that commits it, which leaves nothing uncommitted', () => {
+    dir = unproven();
+    const res = failingStateCommits(dir, () => ok(dir, unfixedArgs()));
+
+    assert.strictEqual(res.committed, null);
+    assert.deepStrictEqual(retried(dir, res), { took: runFiles(1, 5).map((file) => `A\t${file}`), left: '' });
   });
 
   it('15.5.3: a pass stops the series at once and proves nothing, said with the way on; run again at the same commits, the series carries on, the pass in it standing', () => {

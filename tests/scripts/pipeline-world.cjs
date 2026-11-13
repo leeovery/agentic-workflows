@@ -130,9 +130,8 @@ class Sim {
 
   // Transactions answer with pure JSON — display artifacts belong to render
   // surfaces fetched at their display point. The section-bearing commands
-  // left are presence, whose scan is a read-only snapshot whose deferral
-  // advisory rides the dump, the view-family pattern; a raise's draw and
-  // show — every raise command but its answer, an aside and the questions
+  // left are a raise's draw and show — every raise command but its answer,
+  // an aside and the questions
   // waiting — whose sections are the screen the raise is drawn as, none
   // where it parks its task or proceeds; the answer to a raise sealed
   // blind, `blind`, whose section is its reveal, and no other answer's;

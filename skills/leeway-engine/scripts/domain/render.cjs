@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
+const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
@@ -34,7 +34,7 @@ const {
 const { migrationsApplied, migrationGate, stateLostGate, repoStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
-const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
@@ -169,37 +169,6 @@ function discoveryMapSurface(cwd, { dotpath }) {
   const { map, summary } = buildDiscoveryMap(manifest, stateRoot(cwd));
   const rows = map.map((row) => (row.lifecycle === 'fresh' ? { ...row, brief: statePath(cwd, briefFile(workUnit, row.name)) } : row));
   return discoveryMapScreen(workUnit, { rows, summary }, dismissedNames(manifest));
-}
-
-// send-closed-target — the send's stop over a cancelled target, which no
-// future session will surface. The address names the target and the surface
-// derives its lifecycle with the same join every other map consumer uses.
-// The statement names the target; the ask beneath it is fixed.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function sendClosedTarget(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'send-closed-target');
-  if (phase !== 'discovery') {
-    throw new Error(`render send-closed-target: address must be <work_unit>.discovery.<target>, got phase "${phase}"`);
-  }
-  if (!itemOf(manifest, 'discovery', topic)) {
-    throw new Error(`render send-closed-target: ${noTopicRefusal(manifest, topic)}`);
-  }
-  const { lifecycle } = computeTopicLifecycle(manifest, topic);
-  if (lifecycle !== 'cancelled') {
-    throw new Error(`render send-closed-target: "${topic}" is "${lifecycle}", not cancelled — the gate serves cancelled targets`);
-  }
-  // The reopen row states its consequence: choosing it does not only land the
-  // message, it puts the topic back in front of every convergence read.
-  return section('MENU: closed target gate', MENU_INSTRUCTION, menu(`"${topic}" is cancelled, so it won't pick up messages.`, [
-    cmdOption('o', 'open', 'Reactivate it and send the message there — the topic returns to its previous state and counts as open again'),
-    cmdOption('e', 'elsewhere', 'Pick a different target'),
-    cmdOption('d', 'drop', "Don't send it; it stays with the current topic"),
-  ], { question: 'Where should the message go?' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -962,45 +931,6 @@ function repoStopSurface(cwd) {
   return repoStop(folder);
 }
 
-/**
- * A command's error output beneath a callout heading: each line two columns
- * in, keeping its own indentation, wrapped at the display width.
- * @param {string} output @returns {string[]}
- */
-function errorOutputLines(output) {
-  const lines = output.replace(/\s+$/, '').split('\n').map((l) => l.trimEnd());
-  while (lines.length > 0 && lines[0] === '') lines.shift();
-  return lines.flatMap((line) => {
-    if (line === '') return [''];
-    const own = /** @type {RegExpMatchArray} */ (line.match(/^\s*/))[0];
-    return indentedBody([line.slice(own.length)], { indent: `  ${own}` });
-  });
-}
-
-/**
- * The knowledge query-failure gate — the failed query's error output and how
- * to diagnose it, then retry or proceed without context.
- * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function queryFailureGateSurface(cwd, { file }) {
-  if (!file) throw new Error('render query-failure-gate: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'query-failure-gate');
-  if (!isFilled(p.error)) throw new Error('render query-failure-gate: "error" must be the query\'s error output, a non-empty string');
-  const display = section('DISPLAY: query failure', emitAs('text', ', directly above the menu'), [
-    '⚑ Knowledge query failed',
-    ...errorOutputLines(p.error),
-    '',
-    ...indentedBody(["Likely causes: a knowledge config that can't be read or names a provider it can't use, or a store that can't be read or has lost its metadata. Run this to diagnose:"]),
-    '',
-    `    ${ENGINE_COMMAND} knowledge status`,
-  ].join('\n'));
-  const gate = section('MENU: query failure gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('r', 'retry', "I'll fix the issue; retry the query"),
-    cmdOption('s', 'skip', 'Proceed without knowledge context for this phase'),
-  ], { question: 'How should I proceed?' }));
-  return [display, gate].join('\n');
-}
-
 // ---------------------------------------------------------------------------
 // The brownfield offer — project-level, no address, drawn only while the
 // offer is unanswered (domain/brownfield.cjs).
@@ -1116,7 +1046,6 @@ function knowledgeReadySurface(cwd) {
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'backlog-gate': backlogGate,
-  'send-closed-target': sendClosedTarget,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
@@ -1135,7 +1064,6 @@ const SURFACES = {
   'inbox-restore-receipt': inboxRestoreReceiptSurface,
   'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'horizon-pick': horizonPick,
-  'query-failure-gate': queryFailureGateSurface,
   'brownfield-offer-gate': brownfieldOfferGateSurface,
   'walkthrough-offer': walkthroughOfferSurface,
   'walkthrough-screen': walkthroughScreenSurface,

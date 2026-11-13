@@ -384,4 +384,4 @@ function stopScreen(standing, finished, quickFix = false) {
   return markerSection(standing, quickFix) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
 }
 
-module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen, currentPhase };
+module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen };

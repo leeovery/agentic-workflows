@@ -96,7 +96,7 @@ const { MEASURES_USAGE, runMeasuresVerb } = require('./domain/measures.cjs');
 const { BOARD_USAGE, boardOf } = require('./domain/board.cjs');
 const { SCRATCH_USAGE, runScratchVerb } = require('./domain/scratch.cjs');
 const { QUICK_FIX_USAGE, runQuickFixVerb } = require('./domain/quick-fix-record.cjs');
-const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
 const { recordBuilder, positionReads, positionSections } = require('./domain/position.cjs');
@@ -241,6 +241,7 @@ ${RAISE_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   ${LATE_CHECK_USAGE}
+  ${CARRY_USAGE}
 ${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
 ${PERSON_USAGE.replace(/^/gm, '  ')}
@@ -367,7 +368,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   code diff   [--subject <prefix>]
   code status
   render backlog-gate     <wu.phase.topic> --file <payload.json>
-  render send-closed-target <wu.discovery.target>
   render experiment-register <wu.experiment.topic>
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
@@ -387,7 +387,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render inbox-restore-receipt --path <live path> [--unclaimed <wu>]
   render inbox-delete-receipt --path <archived path>
   render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]
-  render query-failure-gate --file <payload.json>
   render brownfield-offer-gate
   render walkthrough-offer [--menu-only]
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
@@ -915,16 +914,7 @@ function runPresence(call, argv) {
       if (rest.length === 1 && !workUnit) {
         throw new Error('Usage: engine presence scan [work-unit] — an empty work unit is refused; omit the argument for the project-wide read');
       }
-      // Work-unit-less: the project-wide read the code gate takes. The
-      // deferral section is the analysis dispatch's, which always scans one
-      // work unit — a project scan renders nothing.
-      if (!workUnit) {
-        respond(call, scanProject(call.cwd));
-        return;
-      }
-      const res = scanPresence(call.cwd, workUnit);
-      respond(call, res);
-      respondSections(call, deferralSection(res));
+      respond(call, workUnit ? scanPresence(call.cwd, workUnit) : scanProject(call.cwd));
       return;
     }
     if (command === 'cleanup') {
@@ -2235,7 +2225,8 @@ function runCommit(call, argv) {
     }
 
     // `--state` names two scopes by whether a work unit rides with it: the
-    // unit's manifest, or the state's own `.state`.
+    // unit's files only the engine writes and the project's, or the
+    // project's and its own `.state` — the retry a verb's pending note names.
     const globalState = stateScope && workUnit === null;
     const scopeCount = [inbox, workflows, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [topicSpec !== null, discovery, stateScope && workUnit !== null].filter(Boolean).length;
@@ -2248,7 +2239,8 @@ function runCommit(call, argv) {
     if (globalState) {
       // `.state` — the migrations ledger: project-level bookkeeping
       // written from inside whatever session happened to need it.
-      scope = '.state';
+      respond(call, stateCommitted(commitStateScoped(cwd, '.state', message, { owned: [null] })));
+      return;
     } else if (workflows) {
       scope = '.';
     } else if (migrationsScope) {
@@ -2307,11 +2299,10 @@ function runCommit(call, argv) {
         return;
       }
       if (stateScope) {
-        // --state: the work unit's manifest — the retry a verb's pending note
-        // names. It runs beside live topic sessions whose half-written
-        // documents sit in the same work unit, so it slices its own path and
-        // never theirs.
-        respond(call, stateCommitted(commitStateScoped(cwd, [`${wu}/manifest.json`], message)));
+        // It runs beside live topic sessions whose half-written documents sit
+        // in the same work unit; only the engine's verbs write its files, so
+        // it takes none of theirs.
+        respond(call, stateCommitted(commitStateScoped(cwd, [], message, { owned: [wu, null] })));
         return;
       }
       if (discovery) {

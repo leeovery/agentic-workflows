@@ -3,9 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: session presence — a per-topic heartbeat file in the topic's
 // cache directory. Awareness, never mutual exclusion: the epic view marks
-// topics another session holds open, the analysis dispatch defers an epic-wide
-// analysis while a peer session holds a source topic, the conclude sweep
-// leaves a held peer's dirt alone, the code gate reads the whole project's
+// topics another session holds open, the conclude sweep leaves a held peer's
+// dirt alone, the code gate reads the whole project's
 // rows and stamps the entrant's when the slot is free, and the spec-side
 // resolution flow checks the target discussion before editing its document in
 // place. The file records the owning Claude process's identity (pid + start
@@ -45,8 +44,6 @@ const fs = require('fs');
 const path = require('path');
 const { callerIdentity, startTimeReader, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { PRODUCT, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
-const { ENGINE_COMMAND } = require('../kernel/call.cjs');
-const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { workTree } = require('../kernel/isolated-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -55,9 +52,6 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const PHASES = VALID_PHASES;
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
-// The corpora the epic-wide analyses read. A held session in any other phase
-// is no reason to defer an analysis that never looks at its material.
-const SOURCE_PHASES = ['discussion'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -278,23 +272,12 @@ function peerHold(cwd, workUnit, phase, topic) {
 }
 
 /**
- * The held rows an epic-wide analysis would read over — a peer's, never the
- * caller's own: a session that parked its own discussion and stepped back
- * to the menu is not mid-conversation on it, and a deferral naming that row
- * would wait on the session reading it.
- * @param {PresenceRow[]} sessions
- */
-function heldSources(sessions) {
-  return sessions.filter((r) => r.held && SOURCE_PHASES.includes(r.phase) && !ownsRow(r));
-}
-
-/**
  * Every heartbeat in the work unit's cache, the held verdict applied — the
  * one read every consumer shares. `held` answers "does a session hold this
  * topic open", unbounded by time; `age_seconds` says how long since it last
  * wrote, and is shown, never judged.
  * @param {string} cwd @param {string} workUnit
- * @returns {{work_unit: string, held: number, held_sources: number, sessions: PresenceRow[]}}
+ * @returns {{work_unit: string, held: number, sessions: PresenceRow[]}}
  */
 function scanPresence(cwd, workUnit) {
   assertArgs(cwd, workUnit, undefined);
@@ -302,10 +285,6 @@ function scanPresence(cwd, workUnit) {
   return {
     work_unit: workUnit,
     held: sessions.filter((r) => r.held).length,
-    // The analyses read discussion; `held_sources` is the count
-    // that decides a deferral, so a held planning or spec session never holds
-    // one up.
-    held_sources: heldSources(sessions).length,
     sessions,
   };
 }
@@ -398,29 +377,8 @@ function cleanupPresence(cwd, sessionId) {
   return { session_id: sessionId, cleared };
 }
 
-/**
- * The deferral callout, rendered engine-side so calling flows emit it
- * verbatim (only where an analysis defers — the marker says so). Counts the
- * source phases alone, like the deferral itself, naming each held row with
- * its last-active age. Empty when no source session is held.
- * @param {{work_unit: string, sessions: PresenceRow[]}} scan
- * @returns {string}
- */
-function deferralSection(scan) {
-  const held = heldSources(scan.sessions);
-  if (held.length === 0) return '';
-  const names = held.map((r) => `${r.phase}/${r.topic} (last active ${fmtAge(r.age_seconds)} ago)`).join(', ');
-  const [first] = held;
-  const release = `${ENGINE_COMMAND} presence clear ${scan.work_unit} ${first.phase} ${first.topic}`;
-  return section(
-    'DISPLAY: presence deferral',
-    timedInstruction('text', 'only at an analysis deferral', CONTINUE_CLAUSE),
-    callout(`Analyses deferred — ${held.length} session(s): ${names}. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with \`${release}\`.`),
-  );
-}
-
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
-  scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence, deferralSection,
-  fmtAge, ownsRow, CODE_PHASES, SOURCE_PHASES,
+  scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence,
+  fmtAge, ownsRow,
 };

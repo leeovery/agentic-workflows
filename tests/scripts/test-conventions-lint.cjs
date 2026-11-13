@@ -2136,7 +2136,7 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       '',
       'Draw each diagram in a text code block (```text fence). Then emit the `MENU: task gate` section verbatim per its marker.',
       '',
-      'Read the `sessions` rows only — the response\'s deferral section is the analysis dispatch\'s and is not emitted here.',
+      'Read the `sessions` rows only — the response\'s receipt is the map\'s and is not emitted here.',
       '',
       'Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted.',
       '',

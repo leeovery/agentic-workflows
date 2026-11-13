@@ -54,9 +54,9 @@
 //   Then it writes `build: {position}` on the unit's manifest — the first
 //   pick of the position, its record the gate's answer (E14) — concluding
 //   the spec (P7), and commits the manifest with the record, if any, and the
-//   roadmap the candidates parked on, a failed commit retried in the unit's
-//   scope, which holds both. Its `next` hands off into the build, whatever
-//   the unit's type (24.1.2).
+//   roadmap the candidates parked on, a failed commit retried by the unit's
+//   `commit --state`, which takes each: files only the engine writes. Its
+//   `next` hands off into the build, whatever the unit's type (24.1.2).
 // - A switch of position is stated intent (3.3.7): `workunit position`
 //   writes the build's new position and logs a `position-switch` event in
 //   the trust log, and commits the manifest. It refuses a quick-fix, which
@@ -279,7 +279,7 @@ function readyToBuildYes(cwd, unit, position, marks) {
   /** @type {Record<string, unknown>} */
   const result = { unit, position, record: settled.record, ...closing, committed: outcome.committed, next: nextAfterYes(manifest) };
   if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome, unit);
+  noteCommitOutcome(result, outcome, `${unit} --state`);
   return result;
 }
 

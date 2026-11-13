@@ -5,12 +5,13 @@
 // the record of the gate shown — every MENU's gate stated through
 // `section()` (surfaces.cjs), the command's MENU kept for the calling
 // conversation by the engine's dispatch, with the mod announced or not,
-// never for a command that failed, a menu drawn as an illustration, a raise's menu, or a command without a session — and
-// `engine gate`, which logs the answer to the trust log by the gate's name
-// (3.2.6, 16.11.9): the row the engine recommended and the row picked, a
-// typed row, or free text, its words read by the separate call for the row
-// they pick and dropped (16.S40, 16.S68); pressed only where the mod's record of its last
-// press names this gate and row after it was shown — whatever the rows mod
+// never for a command that failed, a menu drawn as an illustration, a
+// raise's menu, or a command without a session — and `engine gate`, which
+// logs the answer to the trust log by the gate's name (3.2.6, 16.11.9): the
+// row the engine recommended and the row picked, a typed row, or free text,
+// its words read by the separate call for the row they pick and dropped
+// (16.S40, 16.S68); pressed only where the mod's record of its last press
+// names this gate and row after it was shown — whatever the rows mod
 // did with the send's own record — typed otherwise and always with the mod
 // off (6.6.3, 6.6.4); what the row leads to returned and never performed
 // (6.6.2); a rerun after a kill read once; each refusal logging nothing, a

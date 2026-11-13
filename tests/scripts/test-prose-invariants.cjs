@@ -107,7 +107,6 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     const rows = [bash('cd . && cat notes.md > /tmp/out.txt && ls .workflows/')];
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
-
 });
 
 describe('calls_include / calls_exclude', () => {

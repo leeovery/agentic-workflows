@@ -38,6 +38,7 @@ const path = require('path');
 const crypto = require('crypto');
 const {
   ok, refusedPristine, git, commitCode, commitAll, initRepo, cleanupFixture, statePath, layout, createFile, readState, writeState, lastMessage, touched, stateGit, output, holdLock, lockAttempts,
+  failingStateCommits, retried,
   FROZEN_MS, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, partsRan, fiveParts, setupFile, setupArgs, unrecorded, world } = require('./verify-world.cjs');
@@ -111,6 +112,14 @@ describe('verify setup: recorded once it runs end to end (15.2.5, 15.2.7, 15.2.1
     assert.deepStrictEqual(partsRan(dir), fiveParts('1.S1', dir));
     assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD')], ['verify(pay): the verify setup recorded', ['M\tmanifest.json']]);
     assert.strictEqual(fs.existsSync(statePath(dir, layout.run(UNIT, '1.S1'))), false, 'the trial is no run');
+  });
+
+  it('a setup whose commit fails names the retry that commits it, which leaves nothing uncommitted', () => {
+    steering(dir, 'verdict', 'fail\n');
+    const res = failingStateCommits(dir, () => JSON.parse(output(dir, setupArgs(dir, SETUP))));
+
+    assert.strictEqual(res.committed, null);
+    assert.deepStrictEqual(retried(dir, res), { took: ['M\tmanifest.json'], left: '' });
   });
 
   it('15.2.7: a drive that writes no verdict, or evidence a run cannot hold, keeps the setup from counting — refused, nothing recorded', () => {
@@ -226,6 +235,14 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     assert.deepStrictEqual(run, { verdict: 'pass', unfixed: false, at: run.at, checkout: dir, commits: [{ repo: '.', commit: codeHead(dir) }], task: null, evidence: [], recordings: [] });
     assert.deepStrictEqual(partsRan(dir), fiveParts('1.S2', dir));
     assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD')], ['verify(pay): 1.S2 pass', [`A\t${file}`]]);
+  });
+
+  it('a run whose commit fails names the retry that commits it, which leaves nothing uncommitted', () => {
+    steering(dir, 'verdict', 'pass\n');
+    const res = failingStateCommits(dir, () => ok(dir, ['verify', 'run', UNIT, '1.S2']));
+
+    assert.strictEqual(res.committed, null);
+    assert.deepStrictEqual(retried(dir, res), { took: [`A\t${layout.run(UNIT, '1.S2', '001')}`], left: '' });
   });
 
   it('a run proves committed code: a checkout holding a change not committed, tracked or untracked, is refused before any part runs, naming each file; a nested repository\'s HEAD is recorded beside the root\'s', () => {

@@ -262,12 +262,11 @@ describe('queryStore', () => {
     const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, loaded({ provider: 'axis' }), axis);
     const keyword = Object.fromEntries(store.searchKeyword(blended, { term: 'receipts' }).map((h) => [h.work_unit, h.score]));
     const best = Math.max(...Object.values(keyword));
-    const confidence = 0.04;
     const results = Object.fromEntries((await query(blended, { terms: ['receipts'], settings })).map((r) => [r.work_unit, r.score]));
     assert.deepStrictEqual(Object.keys(results), ['both', 'keyword', 'vector']);
-    assert.strictEqual(results.both, 0.4 * (keyword.both / best) + 0.6 + confidence);
-    assert.strictEqual(results.keyword, 0.4 * (keyword.keyword / best) + confidence);
-    assert.ok(Math.abs(results.vector - (0.6 * 0.6 + confidence)) < 1e-6, 'a vector hit alone, its cosine over the best');
+    assert.strictEqual(results.both, 0.4 * (keyword.both / best) + 0.6);
+    assert.strictEqual(results.keyword, 0.4 * (keyword.keyword / best));
+    assert.ok(Math.abs(results.vector - 0.6 * 0.6) < 1e-6, 'a vector hit alone, its cosine over the best');
   });
 
   it('finds by meaning in full mode a chunk sharing no word with the query', async () => {
@@ -445,7 +444,7 @@ describe('knowledge query — `engine knowledge query`', () => {
         `^Source: ${literal(statePath(root, layout.record(unit, unit)))}:L1-3`,
         `Framing 1: keyword ${score}`,
         `Framing 2: keyword ${score}`,
-        `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0400 tier = ${score}$`,
+        `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost = ${score}$`,
       ].join('\n'), 'm'));
     }
     assert.strictEqual(explained.replace(/^(?:Framing \d+|Score): .*\n/gm, ''), await knowledge('query', 'token refresh', 'rate window'));

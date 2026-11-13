@@ -393,8 +393,8 @@ describe('gate payload — every row shape', () => {
    * One project holding every state the menus draw from: an archive, a
    * roadmap with items waiting, and an epic whose discussion a peer holds
    * while a message waits in its mailbox, and one not started with a
-   * message waiting — beside a completed topic whose input moved, a
-   * cancelled topic, a topic postponed to the roadmap and a blocked plan.
+   * message waiting — beside a completed topic, a cancelled topic and a
+   * topic postponed to the roadmap.
    * @param {string} dir
    */
   function seedEveryRowShape(dir) {
@@ -432,7 +432,6 @@ describe('gate payload — every row shape', () => {
             search: { status: 'cancelled', previous_status: 'in-progress' },
           },
         },
-        planning: { items: { tmpl: { status: 'in-progress', external_dependencies: { billing: { description: 'the ledger', state: 'unresolved' } } } } },
       },
     });
     createFile(dir, '.leeway/v1/topics/auth/mail/001.md', '# A message\n');

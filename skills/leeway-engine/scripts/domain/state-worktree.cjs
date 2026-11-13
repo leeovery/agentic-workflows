@@ -938,13 +938,17 @@ function push(git, timeoutMs) {
  * Of `kept`, what is on disk is taken as additions and edits alone, never a
  * removal: a ledger commit's files its asset links name (ledger.cjs); and so
  * is what each changed log links in a spike or the assets (log-links.cjs).
+ * Of each scope in `owned` — a unit, or null for the project's own files
+ * beside the units — every file only the engine writes that changed is taken
+ * too: the engine's verbs commit each such file they write, so one changed
+ * is a commit still to make.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{contents?: Record<string, Change>, kept?: string[]}} [opts] `contents` by path as `paths` gives one; `kept` as `paths` gives one
+ * @param {{contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[]}} [opts] `contents` by path as `paths` gives one; `kept` as `paths` gives one
  * @returns {{commit: string|null, held?: true, warnings: string[]}}
  */
-function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
+function commitHere(root, paths, message, { contents = {}, kept = [], owned = [] } = {}) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
   const specs = paths.map((given) => fromRoot(root, given));
   const keptSpecs = kept.map((given) => fromRoot(root, given));
@@ -956,7 +960,7 @@ function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
     throw new Error(`the state worktree at ${root} has ${checkedOut} checked out, not ${STATE_BRANCH} — nothing committed`);
   }
   const taken = [...specs, ...Object.keys(given)];
-  if (taken.length === 0) return { commit: null, warnings: [] };
+  if (taken.length === 0 && owned.length === 0) return { commit: null, warnings: [] };
   if (worktree.at === null) {
     refuseOutsideLayout(root, placedChanges(worktree));
     return { commit: null, held: true, warnings: [] };
@@ -966,10 +970,12 @@ function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
   const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
+  const engines = changes.filter(({ rel, at }) => at?.kind === 'engine' && owned.some((scope) => (scope === null ? !rel.includes('/') : rel.startsWith(`${scope}/`))))
+    .map(({ rel }) => rel);
   const keeps = [...keptSpecs, ...logLinks(root, logs)];
   const staging = changes.filter((change) => change.staging).map(({ rel }) => rel);
-  const commit = commitPaths(worktree, recorded ? headAt(worktree.git) : worktree.at, [...specs, ...logs], message, given, keeps, staging);
-  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs, ...keeps])] };
+  const commit = commitPaths(worktree, recorded ? headAt(worktree.git) : worktree.at, [...specs, ...logs, ...engines], message, given, keeps, staging);
+  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs, ...engines, ...keeps])] };
 }
 
 /**
@@ -978,11 +984,11 @@ function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>, kept?: string[]}} [opts] `contents` and `kept` as `commitHere` takes them
+ * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[]}} [opts] `contents`, `kept` and `owned` as `commitHere` takes them
  * @returns {CommitOutcome}
  */
-function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {}, kept = [] } = {}) {
-  const { commit, held, warnings } = commitHere(root, paths, message, { contents, kept });
+function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {}, kept = [], owned = [] } = {}) {
+  const { commit, held, warnings } = commitHere(root, paths, message, { contents, kept, owned });
   if (commit === null) return { commit: null, pushed: false, ...(held ? { held } : {}), warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };

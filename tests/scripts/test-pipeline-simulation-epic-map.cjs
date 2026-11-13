@@ -229,8 +229,7 @@ describe('pipeline simulation: epic map', () => {
     const present = sim.run(['presence', 'scan', wu]);
     assert.strictEqual(rowOf(present, 'discussion', 'alpha').held, true);
     assert.ok(!('live' in rowOf(present, 'discussion', 'alpha')), 'held is the one verdict — idle time is shown, never judged');
-    assert.strictEqual(present.held_sources, 0, 'a session\'s own rows never defer it');
-    assert.strictEqual(sim.sections, '', 'and no deferral section rides its scan');
+    assert.strictEqual(sim.sections, '', 'a scan answers its JSON alone');
     sim.run(['presence', 'clear', wu, 'discussion', 'alpha']);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'alpha'), undefined);
     // The project-wide scan is the code gate's read: every work unit's rows,

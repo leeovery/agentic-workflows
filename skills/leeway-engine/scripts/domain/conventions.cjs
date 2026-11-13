@@ -64,15 +64,6 @@ function derivedFrom(text) {
   return { text: '↳ ' + capitalise(String(text).trim()), hang: PROVENANCE_HANG };
 }
 
-// The `MATERIAL` block — what a work unit carries alongside its own work:
-// the inbox seed it was spawned from. An annotation, so it takes the quiet
-// `·` marker; under a header, so it hangs off something rather than opening
-// a display at an indent. Empty string when the unit carries none.
-/** @param {number} seeds @returns {string} */
-function materialBlock(seeds) {
-  return seeds > 0 ? 'MATERIAL\n  · seeded from the inbox' : '';
-}
-
 // `↳ state` line — a row's computed lifecycle spelled out beneath its summary,
 // same marker and hang as provenance. The discovery views carry no tag column;
 // state rides here instead.
@@ -162,7 +153,7 @@ const SPEC_LEGEND = {
 };
 
 module.exports = {
-  TREE_WIDTH, treeHeader, capitalise, titlecase, tag, derivedFrom, stateNote, title, materialBlock,
+  TREE_WIDTH, treeHeader, capitalise, titlecase, tag, derivedFrom, stateNote, title,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
   WORKLIST_GLYPH, SPEC_LEGEND,
 };

@@ -514,6 +514,13 @@ describe('work-unit completion — finish\'s, in process', () => {
       /not "cancelled" — the cancel has not run/);
   });
 
+  it('the receipt refuses an address that is no bare work unit, and a unit the project does not hold', () => {
+    assert.deepStrictEqual(['auth-flow.discussion.auth-flow', 'ghost'].map((address) => engineFails(dir, ['render', 'workunit-receipt', address, '--verb', 'cancel']).error), [
+      'render workunit-receipt: address must be a bare <work_unit>, got "auth-flow.discussion.auth-flow"',
+      'render workunit-receipt: work unit "ghost" not found',
+    ]);
+  });
+
   it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
     completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
     assert.throws(() => completeUnit(dir, 'auth-flow', 'again'), /already completed/);

@@ -100,4 +100,4 @@ function codeGate(holders, { back, take } = {}) {
   ].join('\n');
 }
 
-module.exports = { entrySections, heldStatement, heldGate, codeGate };
+module.exports = { entrySections, heldGate, codeGate };
