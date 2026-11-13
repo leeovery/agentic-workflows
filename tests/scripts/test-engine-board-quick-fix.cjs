@@ -202,6 +202,15 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     assert.deepStrictEqual([handed, board().view.calls], [[{ id: made.call, text: CALL_TEXT }], []]);
   });
 
+  it('21.1.5: a decision of Claude\'s a migration carried over without its maker, made in the quick-fix, is never among Claude\'s calls', () => {
+    dir = working();
+    atTheFixes();
+    const { ask } = ledgerReadHelpers(() => dir);
+    ledgerHelpers(() => dir).carriedOver(PLACE, ask(PLACE, 'Does --colour take a value?'), 'It takes none.');
+
+    assert.deepStrictEqual(board().view.calls, [{ id: made.call, text: CALL_TEXT }]);
+  });
+
   it('a question proposing to replace Claude\'s call, parking its fix, holds nothing back: the call stands among Claude\'s calls while it waits', () => {
     dir = working();
     atTheFixes();
