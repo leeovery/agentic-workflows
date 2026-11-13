@@ -9,9 +9,9 @@
 // - The authority gates waiting: approve the map while a map is staged
 //   (approve-map.cjs); an epic's topic's decided once its screen draws
 //   (decided.cjs); ready to build once its screen draws, the spec's gaps all
-//   answered (ready-to-build.cjs); an investigation's conclude once its
-//   screen draws (investigation-conclude.cjs, 20.12.5); finish once its
-//   screen draws — a quick-fix's close — which it never does while a
+//   answered (ready-to-build.cjs); an investigation's conclude from its
+//   draw to the person's pick (investigation-conclude.cjs, 20.12.5); finish
+//   once its screen draws — a quick-fix's close — which it never does while a
 //   question of the build waits (D18, finish.cjs), and is never listed
 //   while a question of this conversation waits.
 // - The questions waiting, each read by the module that owns its rule, each
@@ -74,8 +74,9 @@ const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready
 /**
  * A wait (the header's): its kind; its id — a question's number or short
  * id, a topic's name, a gate's own; its words; the topic it is about, where
- * it is a topic's; and its door.
- * @typedef {{kind: WaitKind, id: string, text: string, topic: string|null, next: Next}} Wait
+ * it is a topic's; its door; and a raise the conversation sealed, the seal
+ * it waits as.
+ * @typedef {{kind: WaitKind, id: string, text: string, topic: string|null, next: Next, seal?: Seal}} Wait
  */
 
 /**
@@ -123,7 +124,7 @@ function sealedWaits({ shower: { folded, short }, session }, manifest, asked) {
   if (session === null) return [];
   return raisePlaces(manifest).flatMap((place) => sealsAt(session, place)).sort((a, b) => a.at.localeCompare(b.at))
     .filter((seal) => seal.parks === null && (seal.answers === null || !asked.has(factsOf(folded, seal.answers).root)) && sealWaits(folded, seal))
-    .map((seal) => wait(raiseKind(seal.place), short(subjectOf(seal)), seal.call.question, intoPhase(manifest, seal.place.phase)));
+    .map((seal) => ({ ...wait(raiseKind(seal.place), short(subjectOf(seal)), seal.call.question, intoPhase(manifest, seal.place.phase)), seal }));
 }
 
 /**
@@ -168,7 +169,7 @@ function finishGate(cwd, manifest) {
   return [wait('finish', 'finish', quickFixBuild(manifest) ? 'Close' : 'Finish', intoPhase(manifest, buildPlace(manifest)))];
 }
 
-/** An investigation's conclude once its screen draws, its door the investigation. @param {string} cwd @param {Record<string, any>} manifest @returns {Wait[]} */
+/** An investigation's conclude while its yes waits, its door the investigation. @param {string} cwd @param {Record<string, any>} manifest @returns {Wait[]} */
 function concludeGate(cwd, manifest) {
   if (!investigationUnderWay(manifest) || !concludeDraws(cwd, manifest.name)) return [];
   return [wait('conclude', 'conclude', 'Conclude', intoPhase(manifest, 'investigation'))];

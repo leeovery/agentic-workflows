@@ -89,7 +89,7 @@ const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, 
 const { reviewView, reviewBanner, roundWords, findingPage, checkPage } = require('./projections/board-review.cjs');
 const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
 const { specView, specBanner, sectionPage, passPage, specFindingPage } = require('./projections/board-spec.cjs');
-const { waitingOn, holds, waitsFacts, tasksStopped } = require('./projections/board-standing.cjs');
+const { waitingOn, phaseWaiting, holds, waitsFacts, tasksStopped } = require('./projections/board-standing.cjs');
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
 const { experimentView, experimentBanner, reportPage } = require('./projections/board-experiment.cjs');
 const { investigationView, investigationBanner, huntPage, optionPage } = require('./projections/board-investigation.cjs');
@@ -217,14 +217,14 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shar
 const PHASE_VIEWS = Object.freeze({
   implementation: [
     { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
-    { read: (at) => quickFixView(at, waitingOn(at)), banner: (at, view) => quickFixBanner(view, tasksStopped(at)) },
+    { read: (at) => quickFixView(at, phaseWaiting(at)), banner: (at, view) => quickFixBanner(view, tasksStopped(at)) },
   ],
-  review: [{ read: (at) => reviewView(at, waitingOn(at)), banner: (at, view) => reviewBanner(view, roundWords(at), waitingOn(at)) }],
+  review: [{ read: (at) => reviewView(at, phaseWaiting(at)), banner: (at, view) => reviewBanner(view, roundWords(at), phaseWaiting(at)) }],
   discussion: [{ read: discussionView, banner: (_, view) => discussionBanner(view) }],
-  specification: [{ read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) }],
-  discovery: [{ read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' }],
+  specification: [{ read: (at) => specView(at, phaseWaiting(at)), banner: (at) => specBanner(at, phaseWaiting(at)) }],
+  discovery: [{ read: (at) => discoveryView(at, phaseWaiting(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' }],
   experiment: [{ read: experimentView, banner: (_, view) => experimentBanner(view) }],
-  investigation: [{ read: (at) => investigationView(at, waitingOn(at)), banner: (_, view) => investigationBanner(view) }],
+  investigation: [{ read: (at) => investigationView(at, phaseWaiting(at)), banner: (_, view) => investigationBanner(view) }],
 });
 
 /** The view a phase draws for a type, null where the unit's page stands for it. @param {string} type @param {string|null} phase @returns {PhaseView|null} */
@@ -254,13 +254,14 @@ function sessionRead(at) {
 /**
  * The banner's state and facts with what waits on the person in the unit,
  * from its one list (board-standing.cjs): counted after the place's facts —
- * flagged in a phase, the banner then waiting on the person where it is
- * asked in the conversation, and unflagged at a menu (D40).
+ * in a phase the phase's own (`phaseWaiting`), flagged, the banner then
+ * waiting on the person where it is asked in the conversation; at a menu
+ * the whole list, unflagged (D40).
  * @param {BoardAt} at @param {Banned} banned @returns {Banned}
  */
 function withWaits(at, banned) {
-  const waiting = waitingOn(at);
   const atMenu = at.place.phase === null;
+  const waiting = atMenu ? waitingOn(at) : phaseWaiting(at);
   const state = !atMenu && waiting.some(holds) ? 'needs' : banned.state;
   return { state, facts: [...banned.facts, ...waitsFacts(waiting, atMenu)] };
 }
@@ -358,22 +359,34 @@ function ownRead(here, warnings) {
  * `readOnce`).
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @returns {Board}
  */
-const boardOf = (cwd, positional, opts) => withOneCheck(() => {
-  /** @type {string[]} */
-  const warnings = [];
-  return readOnce(stateRoot(cwd), warnings, () => boardRead(cwd, positional, opts, warnings));
-});
+function boardOf(cwd, positional, opts) {
+  const asked = askedOf(positional, opts);
+  return withOneCheck(() => {
+    /** @type {string[]} */
+    const warnings = [];
+    return readOnce(stateRoot(cwd), warnings, () => boardRead(cwd, asked, opts, warnings));
+  });
+}
 
-/** @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @param {string[]} warnings @returns {Board} */
-function boardRead(cwd, positional, opts, warnings) {
+/** What a board call asks for: its conversation, its tab, and the page it opens, null where none. @typedef {{session: string, tab: Board['tab'], page: ReturnType<typeof pageOf>|null}} Asked */
+
+/**
+ * What a board call asks for, its arguments refused before anything is
+ * read.
+ * @param {string[]} positional @param {Record<string, string>} opts @returns {Asked}
+ */
+function askedOf(positional, opts) {
   if (positional.length !== 1) throw new Error(`Usage: engine ${BOARD_USAGE}`);
-  const [session] = positional;
   const tab = /** @type {Board['tab']} */ (opts.tab ?? 'this');
   if (!TABS.includes(tab)) throw new Error(`--tab is this, unit or all, not "${tab}"`);
   if (opts['page-unit'] !== undefined && opts.page === undefined) throw new Error('--page-unit names the unit a page was opened in, and goes with --page');
+  return { session: positional[0], tab, page: opts.page === undefined ? null : pageOf(tab, opts.page, opts['page-unit']) };
+}
+
+/** @param {string} cwd @param {Asked} asked @param {Record<string, string>} opts @param {string[]} warnings @returns {Board} */
+function boardRead(cwd, { session, tab, page }, opts, warnings) {
   const position = readPosition(session);
   const place = placeOf(stateRoot(cwd), position);
-  const page = opts.page === undefined ? null : pageOf(tab, opts.page, opts['page-unit']);
   const tabUnit = opts.unit ?? place.unit;
   if (tab === 'unit' && tabUnit === null) throw new Error('the unit\'s tab is at no unit, whose page it would show — --unit names one');
   const pageUnit = page === null ? null : page.unit ?? opts['page-unit'] ?? (tab === 'unit' ? tabUnit : place.unit);

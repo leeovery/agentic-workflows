@@ -10,9 +10,11 @@
 // a menu's row says it (domain/progress.cjs; 7.4.1). The spec's: test-
 // engine-waits-spec.cjs; a bug's: test-engine-waits-bug.cjs; the build's,
 // and the read's cost: test-engine-waits-build.cjs; a quick-fix's:
-// test-engine-waits-quick-fix.cjs.
+// test-engine-waits-quick-fix.cjs. Reading what waits loads nothing of
+// the board.
 //
-// Layer: verb, the reads called in process. World: the decided suites'
+// Layer: verb, the reads called in process; what the waits load, in a
+// process of its own. World: the decided suites'
 // (decided-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
@@ -21,6 +23,8 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const path = require('path');
+const { execFileSync } = require('child_process');
 
 const { ok, output, readManifest, writeState, statePath } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
@@ -134,5 +138,14 @@ describe('an epic\'s gates, the topics a changed answer holds, and the verdicts 
     made('atlas', 'epic');
 
     assert.deepStrictEqual([progress(dir(), 'atlas'), progress(dir(), FUMI), progress(dir(), SOLO)], ['discovery, 0 topics on the map', 'discussion, 0 of 2 topics decided', 'discussion']);
+  });
+});
+
+describe('the waits, read apart from the board', () => {
+  it('reading what waits loads nothing of the board: where a unit has come to is read from the unit alone (unit-phases.cjs)', () => {
+    const waits = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/waits.cjs');
+    const loaded = execFileSync(process.execPath, ['-e', `require(${JSON.stringify(waits)}); console.log(JSON.stringify(Object.keys(require.cache).filter((file) => /board/.test(require('path').basename(file)))))`], { encoding: 'utf8' });
+
+    assert.deepStrictEqual(JSON.parse(loaded), []);
   });
 });

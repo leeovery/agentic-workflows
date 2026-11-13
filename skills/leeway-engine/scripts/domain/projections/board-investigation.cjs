@@ -31,9 +31,11 @@
 // - What waits on the person, while it is under way, is the hunt's share
 //   of the unit's one list (waits.cjs): each raise this conversation sealed
 //   at its places still waiting — asked in the conversation, never queued
-//   (20.12.1) — then the conclude once its screen draws, whose yes waits on
-//   the person as every gate that ends a phase does. Each raise says what
-//   raised it, read from the latest seal asking about its decision: the
+//   (20.12.1) — then the conclude, whose yes waits on the person as every
+//   gate that ends a phase does, from its draw to the person's pick
+//   (investigation-conclude.cjs). Each raise
+//   is named by the decision it asks about, as the list names it, and says
+//   what raised it, read from the seal the list has it wait as: the
 //   validation one of whose findings was surfaced as it, whatever that
 //   validation's row now stands at — asked as its question, or raised
 //   replacing its decision (`agent surface`); else the fix direction where
@@ -73,7 +75,6 @@ const { readShown, answerMap } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
 const { factsOf, questionStands } = require('../ledger-fold.cjs');
 const { everyUnitEntries } = require('../unit-entries.cjs');
-const { shortId } = require('../ledger-ids.cjs');
 const { rowStanding, answersOn } = require('../topic-map.cjs');
 const { agentRows, surfacedAs } = require('../agent-state.cjs');
 const { ROLES } = require('../brief-names.cjs');
@@ -185,24 +186,20 @@ function leanAmong(seal, rows) {
   return rows[0]?.key === lean ? 'first' : 'marked';
 }
 
-/** The decision a raise asks the person about: the question it answers, or the decision it would replace. @param {Seal} seal */
-const subjectOf = (seal) => /** @type {string} */ (seal.answers ?? seal.replaces?.entry);
-
 /**
- * A raise waiting on the person, as the hunt holds it (the header's), read
- * from the latest seal asking about the decision the unit's one list names
- * it by: by the raise's id, short among the ledger's; what raised it, and
- * for the fix direction's how many options it sets out and where Claude's
- * lean stands among them (`leanAmong`).
+ * A raise waiting on the person, as the hunt holds it (the header's), from
+ * the seal the unit's one list has it wait as: by the decision it asks
+ * about, as the list names it; what raised it, and for the fix direction's
+ * how many options it sets out and where Claude's lean stands among them
+ * (`leanAmong`).
  * @param {BoardAt} at @param {Wait} wait @returns {HuntWait}
  */
 function raiseLine(at, wait) {
-  const ids = [...ledgerAt(at).folded.facts.keys()];
-  const seal = /** @type {Seal} */ (ledgerAt(at).seals.filter((sealed) => shortId(subjectOf(sealed), ids) === wait.id).at(-1));
+  const seal = /** @type {Seal} */ (wait.seal);
   const rows = fixSeal(at, seal) && !seal.fact ? drawnRows(seal) : null;
   return {
     kind: 'raise',
-    id: shortId(seal.id, ids),
+    id: wait.id,
     text: wait.text,
     page: null,
     raised_by: raisedBy(at, seal),

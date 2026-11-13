@@ -9,7 +9,10 @@
 // with its clock (20.S18); the person's ruling theirs, a hypothesis it made
 // intended, and the fix direction's step back and options, Claude's lean
 // marked (20.S19); nothing of earlier fixes (20.S20); each decision read
-// where its chain stands now; the investigation dated by its close on the
+// where its chain stands now; a raise named by the decision it asks about,
+// drawn again the same line; the conclude waiting from its draw to the
+// person's pick, never on the start menu's count; a call refused before the
+// ledger is read; the investigation dated by its close on the
 // unit's tab, opened there once concluded, the hunt's moments in its
 // LATELY, and how far it has come on All work; the hunt's pages (20.12.2). The mod's fixtures are held to the
 // engine's answers here.
@@ -31,7 +34,8 @@ const os = require('os');
 const path = require('path');
 const { ok, okSectionsAsync, refuses, output, readManifest, writeState, commitAll, fixtureFrom, cleanupFixture, layout } = require('./engine-harness.cjs');
 const { createManifest, withEnv } = require('./discovery-test-utils.cjs');
-const { boardOf } = require('../../skills/leeway-engine/scripts/domain/board.cjs');
+const { boardOf, BOARD_USAGE } = require('../../skills/leeway-engine/scripts/domain/board.cjs');
+const { startMenuRead } = require('../../skills/leeway-engine/scripts/domain/start-menu.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
 
@@ -185,10 +189,10 @@ async function fixReplaced() {
   return { fix, raise };
 }
 
-/** A wait by its words, its id the raise's short form. @param {{id: string}} wait @param {string} raise */
-function byRaise(wait, raise) {
-  assert.ok(raise.startsWith(wait.id) && wait.id.length > 0, `${wait.id} is the short form of ${raise}`);
-  return { ...wait, id: raise };
+/** A wait by its words, its id the short form of the decision it asks about. @param {{id: string}} wait @param {string} subject */
+function bySubject(wait, subject) {
+  assert.ok(subject.startsWith(wait.id) && wait.id.length > 0, `${wait.id} is the short form of ${subject}`);
+  return { ...wait, id: subject };
 }
 
 /** The view's lists, each by what tells its entries apart. @param {any} view */
@@ -223,10 +227,10 @@ describe('This session in an investigation (20.12.1)', () => {
     surfaced(validation.id, 'F1', ['--question', made.keep]);
     const words = 'A session you kill: should restore ever bring it back?';
     const reworded = write('replace', ['--replaces', made.keep, '--reason', 'changed-mind'], { ...CLAUDE, drops: ['the old wording'], text: words }).id;
-    const again = await raised({ ...KEEP_CALL, question: words }, reworded);
+    await raised({ ...KEEP_CALL, question: words }, reworded);
     atTheHunt();
 
-    assert.deepStrictEqual(board().view.waiting.filter((/** @type {{id: string}} */ { id }) => again.startsWith(id)).map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by), ['root-cause']);
+    assert.deepStrictEqual(board().view.waiting.filter((/** @type {{id: string}} */ { id }) => reworded.startsWith(id)).map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by), ['root-cause']);
   });
 
   it('20.S18: a question the root-cause validation\'s one finding was surfaced as waits on the person, asked in the conversation, with what raised it and nothing more; while it waits the validation reads with its clock from its dispatch, though its row is taken in, the root cause being validated, the tab validating and All work not yet confirmed; the banner flags it; answered, the validation is done with what it found', async () => {
@@ -237,7 +241,7 @@ describe('This session in an investigation (20.12.1)', () => {
     atTheHunt();
     const { view, banner } = board();
 
-    assert.deepStrictEqual({ ...view, waiting: view.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)) }, {
+    assert.deepStrictEqual({ ...view, waiting: view.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.keep)) }, {
       kind: 'investigation',
       unit: BUG,
       title: 'Kill All',
@@ -245,7 +249,7 @@ describe('This session in an investigation (20.12.1)', () => {
       project: view.project,
       started: STARTED,
       standing: 'validating-root-cause',
-      waiting: [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }],
+      waiting: [{ kind: 'raise', id: made.keep, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }],
       decided: [],
       symptoms: ['sessions.json is overwritten with an empty index', 'Every saved scrollback file is removed'],
       hypotheses: [
@@ -315,14 +319,14 @@ describe('This session in an investigation (20.12.1)', () => {
       lists: listsOf(view),
       root: view.root_cause.validated,
       standing: view.standing,
-      waiting: view.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, fix)),
+      waiting: view.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.fix)),
       fix: view.fix_direction,
     }, {
       decided: [{ id: ruling, text: 'A session you kill never comes back' }],
       lists: { hypotheses: ['H1 intended', 'H2 ruled-out', 'H3 suspected'], validations: ['root-cause done', 'fix after'] },
       root: true,
       standing: 'fix-waits',
-      waiting: [{ kind: 'raise', id: fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'first' }],
+      waiting: [{ kind: 'raise', id: made.fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'first' }],
       fix: {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
@@ -354,8 +358,8 @@ describe('This session in an investigation (20.12.1)', () => {
     const { view } = board();
     const pages = ['1', '2'].map((key) => board(['--page', `option:${key}`]).view.state);
 
-    assert.deepStrictEqual([view.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, fix)), view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean), pages], [
-      [{ kind: 'raise', id: fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'held' }],
+    assert.deepStrictEqual([view.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.fix)), view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean), pages], [
+      [{ kind: 'raise', id: made.fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'held' }],
       [false, false],
       ['option', 'option'],
     ]);
@@ -431,7 +435,7 @@ describe('This session in an investigation (20.12.1)', () => {
 
 describe('each decision where its chain stands now', () => {
   it('S1: the fix the fix validation changes waits as the fix direction, raised by it, its rows as its screen draws them, the keep row among them, the fix validation still read and the fix not yet confirmed; picked, the pick and the fix are the replacement\'s, the first pick only an option, and the fix is validated again', async () => {
-    const { raise } = await fixReplaced();
+    const { fix, raise } = await fixReplaced();
     const waiting = board().view;
     const waitingFar = howFar();
     picked(raise, 'both');
@@ -439,9 +443,9 @@ describe('each decision where its chain stands now', () => {
     const page = (/** @type {string} */ key) => board(['--page', `option:${key}`]).view.state;
 
     assert.deepStrictEqual([waiting.validations[1].state, waitingFar], ['running', 'fix picked, not yet confirmed']);
-    assert.deepStrictEqual([waiting.standing, waiting.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)), waiting.fix_direction], [
+    assert.deepStrictEqual([waiting.standing, waiting.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, fix)), waiting.fix_direction], [
       'validating-fix',
-      [{ kind: 'raise', id: raise, text: REPLACE_CALL.question, page: null, raised_by: 'fix', options: 3, lean: 'first' }],
+      [{ kind: 'raise', id: fix, text: REPLACE_CALL.question, page: null, raised_by: 'fix', options: 3, lean: 'first' }],
       {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
@@ -476,7 +480,7 @@ describe('each decision where its chain stands now', () => {
     const fourth = await raisedOn(one('out', 'Make panes outlast the shutdown alone'), ['--replaces', third, '--reason', 'changed-mind']);
     const { view } = board();
 
-    assert.deepStrictEqual([view.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, fourth).raised_by), view.fix_direction.state], [['fix-direction'], 'asking']);
+    assert.deepStrictEqual([view.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, third).raised_by), view.fix_direction.state], [['fix-direction'], 'asking']);
   });
 
   it('the root cause replaced shows the replacement before it is logged again, being validated again, the old body not beneath it; the hypothesis a replaced ruling made intended stays so, DECIDED the ruling as it stands', async () => {
@@ -513,12 +517,13 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
 
     assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting.map((/** @type {{kind: string}} */ { kind }) => kind), ['gap'], 'the spec\'s gap waits on the unit');
     assert.deepStrictEqual(opened.waiting, []);
-    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-2).text], ['concluded', [], 'needs', 'concluded · the specification next']);
+    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded · the specification next']);
     assert.deepStrictEqual(tabRow(), { phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: '2026-08-20T15:00:00.000Z', session: 'this', page: true });
     assert.deepStrictEqual([opened.kind, opened.standing], ['investigation', 'concluded']);
   });
 
-  it('its conclude drawn, its yes waits on the person: This session, the banner, the tab and All work each say the conclude waits, flagged first and counted; the root cause replaced, logged and both validated again since, the recap drawn before it, it waits no longer', async () => {
+  /** The hunt brought to its conclude, both validated, and the conclude drawn with Claude's recap staged. */
+  async function concludeDrawn() {
     takenIn(dispatched('root-cause-validation', []).id);
     picked(await raised(FIX_CALL, made.fix), '1');
     run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
@@ -528,6 +533,11 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     fs.writeFileSync(recap, JSON.stringify({ hunt: 'Three hypotheses; killing every session emptied the save.' }));
     output(dir, ['render', 'conclude', BUG, '--file', recap], { env: env() });
     atTheHunt();
+  }
+
+  it('its conclude drawn, its yes waits on the person: This session, the banner, the tab and All work each say the conclude waits, flagged first and counted; the start menu\'s row counts it not, a learned gate (18.2.3); the root cause replaced, logged and both validated again since, the recap drawn before it, it waits no longer', async () => {
+    await concludeDrawn();
+    const started = withEnv(env(), () => startMenuRead(dir)).units.find(({ name }) => name === BUG)?.waiting;
     const { view, banner } = board();
     const standing = standingOn(board, BUG);
     const replaced = write('replace', ['--replaces', made.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'E6 showed it.' }).id;
@@ -546,6 +556,33 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
       banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     });
     assert.deepStrictEqual([stale.standing, stale.waiting], ['investigating', []]);
+    assert.deepStrictEqual(started, { gates: 0, questions: 0, topics: 0 });
+  });
+
+  it('20.12.5: the conclude waits from its draw to the person\'s pick — keep going ends the wait on every view, and its next draw opens it again', async () => {
+    await concludeDrawn();
+    const drawn = standingOn(board, BUG);
+    ok(dir, ['gate', 'conclude gate', '--pick', 'k'], { env: env() });
+    const kept = { this: board().view.waiting, ...standingOn(board, BUG) };
+    output(dir, ['render', 'conclude', BUG], { env: env() });
+    const again = standingOn(board, BUG);
+
+    assert.deepStrictEqual([drawn.all.standing, drawn.banner.state, again], ['conclude waits on you', 'needs', drawn]);
+    assert.deepStrictEqual(kept, {
+      this: [],
+      tab: { now: 'investigation', state: 'running', words: '3 hypotheses', waiting: [] },
+      all: { phase: 'investigation', standing: 'fix confirmed', waiting: 0, total: 0 },
+      banner: { state: 'running', waits: [] },
+    });
+  });
+
+  it('a raise drawn again for its question keeps its line, named by the question it asks', async () => {
+    atTheHunt();
+    await raised(KEEP_CALL, made.keep);
+    const first = board().view.waiting;
+    await raised(KEEP_CALL, made.keep);
+
+    assert.deepStrictEqual([first.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.keep).id), board().view.waiting], [[made.keep], first]);
   });
 
   it('under way, the tab says it investigates until a validation runs, validates while one does, and holds the raise on its one list with what raised it', async () => {
@@ -553,14 +590,14 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     const investigating = tabRow();
     const validation = dispatched('root-cause-validation', ['F1', 'F2']);
     const validating = tabRow();
-    const raise = await raised(KEEP_CALL, made.keep);
+    await raised(KEEP_CALL, made.keep);
     surfaced(validation.id, 'F1', ['--question', made.keep]);
     const { tab } = standingOn(board, BUG);
     const listed = board(['--tab', 'unit']).view.waiting;
 
     assert.deepStrictEqual([investigating.state, investigating.doing, validating.state, validating.doing], ['running', 'investigating', 'running', 'validating']);
     assert.deepStrictEqual({ ...tab, waiting: tab.waiting.map((/** @type {string} */ line) => line.split(' ')[0]) }, { now: 'investigation', state: 'waits', words: '3 hypotheses', waiting: ['raise'] });
-    assert.deepStrictEqual(listed.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)), [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }]);
+    assert.deepStrictEqual(listed.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.keep)), [{ kind: 'raise', id: made.keep, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }]);
   });
 
   it('20.15.1: the tab\'s LATELY holds the hunt\'s moments, each when its record dates it: each experiment by its name and title and the root cause written at the entries they rest on, the fix direction picked at the person\'s pick, the investigation concluded at its stamp; a hypothesis confirmed or ruled out, which nothing dates, is none', async () => {
@@ -622,6 +659,26 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
 
     assert.ok(one > 0, 'the call reads the ledger');
     assert.strictEqual(opens(), one);
+  });
+
+  it('a call the board refuses answers its usage before the ledger is read', (t) => {
+    atTheHunt();
+    let opened = 0;
+    const open = fs.openSync;
+    t.mock.method(fs, 'openSync', (/** @type {any[]} */ ...args) => {
+      if (String(args[0]).endsWith('.ledger.jsonl')) opened += 1;
+      return open(...args);
+    });
+    const refused = [[[], {}], [['sess-1'], { tab: 'calls' }], [['sess-1'], { 'page-unit': BUG }]].map(([positional, opts]) => {
+      try {
+        withEnv(env(), () => boardOf(dir, /** @type {string[]} */ (positional), /** @type {Record<string, string>} */ (opts)));
+        return null;
+      } catch (err) {
+        return /** @type {Error} */ (err).message.split(' — ')[0];
+      }
+    });
+
+    assert.deepStrictEqual([refused, opened], [[`Usage: engine ${BOARD_USAGE}`, '--tab is this, unit or all, not "calls"', '--page-unit names the unit a page was opened in, and goes with --page'], 0]);
   });
 
   it('a unit that is not a bugfix in its investigation has none of the hunt read, its log\'s headings like the hunt\'s never read as it', () => {

@@ -19,7 +19,7 @@
 //   flight, since nothing is done in it until the cut.
 // ---------------------------------------------------------------------------
 
-const { nowOf, unitRead } = require('./projections/board-standing.cjs');
+const { nowOf, unitRead } = require('./unit-phases.cjs');
 const { epicWords } = require('./projections/board-unit.cjs');
 const { mapCount } = require('./projections/board-discovery.cjs');
 const { counted } = require('./projections/map.cjs');

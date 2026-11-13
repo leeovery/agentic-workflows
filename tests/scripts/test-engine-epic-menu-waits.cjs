@@ -13,8 +13,10 @@
 // entered, the epic in its specification, an affected topic's door the
 // spec; a topic with experiments waiting leading into the laboratory,
 // struck by a hold there alone; the review's row standing aside for
-// finish; and the board at the menu listing what the menu lists (20.8.5).
-// The screen itself: test-engine-epic-menu.cjs.
+// finish; and the board at the menu listing what the menu lists (20.8.5),
+// no phase's banner counting the epic's own, each phase taking its own of
+// the list (20.2.4), and All work counting as the start menu's row does
+// (20.16). The screen itself: test-engine-epic-menu.cjs.
 //
 // Layer: verb — the render through the engine in process, and the screen
 // composed in process over the waits given. World: the decided suites'
@@ -30,12 +32,14 @@ const path = require('path');
 const { ok, output, screenOf, sectionOf, readManifest } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT: FUMI, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
-const { NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers, decidedBoardHelpers } = require('./decided-world.cjs');
+const { SOLO, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers, decidedBoardHelpers } = require('./decided-world.cjs');
 const { topicDoor, door, wait } = require('./waits-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { epicMenuScreen } = require(path.join(SCRIPTS, 'domain/projections/epic-menu.cjs'));
 const { drawLabel } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
+const { phaseWaiting, holds } = require(path.join(SCRIPTS, 'domain/projections/board-standing.cjs'));
+const { WAIT_KINDS } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/waits.cjs').Wait} Wait */
 
@@ -165,18 +169,56 @@ describe('what waits, drawn first (18.4.2)', () => {
     ]);
   });
 
-  it('20.8.5: in a topic\'s discussion, the affected topic and the verdict waiting are counted on the banner yet never hold the phase', () => {
+  it('20.2.4, 20.8.5, 20.11.1: the epic\'s own waits — the affected topic and the verdict — stand on its page and its tab alone: a phase\'s banner counts none of them, nor does discovery\'s WAITING ON YOU list them', () => {
     affected();
     const manifest = readManifest(dir(), FUMI);
     manifest.phases.discussion.items['note-window'].status = 'completed';
     createManifest(dir(), FUMI, manifest);
-    at([FUMI, 'discussion', 'space-homing']);
-    const { banner } = board();
-    const { waiting } = board(['--tab', 'unit']).view;
+    const { waiting } = board(['--tab', 'unit', '--unit', FUMI]).view;
+    /** The banner's state and facts at `place`, the session moved there, and This session's WAITING ON YOU where it has one. @param {string[]} place */
+    const inPlace = (place) => {
+      at(place);
+      const { banner, view, warnings } = board();
+      assert.deepStrictEqual(warnings, []);
+      return [banner.state, banner.facts.map((/** @type {{text: string}} */ { text }) => text), view.waiting ?? null];
+    };
 
-    assert.deepStrictEqual([waiting.map((/** @type {{kind: string}} */ { kind }) => kind), banner.state === 'needs', banner.facts.at(-1)], [
-      ['affected', 'verdict'], false, { text: '2 waiting on you', needs: true },
+    assert.deepStrictEqual([waiting.map((/** @type {{kind: string}} */ { kind }) => kind), ...[[FUMI, 'discussion', 'space-homing'], [FUMI, 'discovery', FUMI], [FUMI, 'specification', FUMI]].map(inPlace)], [
+      ['affected', 'verdict'],
+      ['running', ['epic', 'discussion', 'Space Homing', 'nothing of yours open'], null],
+      ['running', ['epic', 'discovery', '2 topics on the map'], []],
+      ['running', ['epic', 'specification', 'being written'], []],
     ]);
+  });
+
+  it('20.16, 18.2.3: All work counts what waits in the epic as the start menu\'s row does — the decided topic a replaced answer holds, never the verdict, which waits on the queue', () => {
+    affected();
+    const manifest = readManifest(dir(), FUMI);
+    manifest.phases.discussion.items['note-window'].status = 'completed';
+    createManifest(dir(), FUMI, manifest);
+    const { view } = board(['--tab', 'all']);
+
+    assert.deepStrictEqual([view.units.map((/** @type {{unit: string, waiting: number}} */ { unit, waiting }) => [unit, waiting]), view.waiting], [[[FUMI, 1], [SOLO, 0]], 1]);
+  });
+
+  it('20.2.4: what holds the phase the unit is in is what is asked in the conversation and holds it — the map, ready to build, the conclude, finish, a gap, an investigation\'s raise — never a build\'s question, a quick-fix\'s, a topic\'s decided, an affected topic or a verdict', () => {
+    assert.deepStrictEqual(WAIT_KINDS.filter((kind) => holds({ kind })), ['map', 'ready', 'conclude', 'finish', 'gap', 'raise']);
+  });
+
+  it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises and its conclude, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics, its affected ones and its verdicts no phase\'s', () => {
+    const list = WAIT_KINDS.map((kind) => ({ kind, id: kind, text: kind, page: null }));
+    /** The kinds a session in `phase` takes, over a list holding every kind. @param {string} phase */
+    const takes = (phase) => phaseWaiting(/** @type {any} */ ({ place: { phase }, once: () => list })).map(({ kind }) => kind);
+
+    assert.deepStrictEqual(Object.fromEntries(['discovery', 'discussion', 'experiment', 'investigation', 'specification', 'implementation', 'review'].map((phase) => [phase, takes(phase)])), {
+      discovery: ['map'],
+      discussion: [],
+      experiment: [],
+      investigation: ['conclude', 'raise'],
+      specification: ['map', 'ready', 'gap'],
+      implementation: ['finish', 'question', 'raised'],
+      review: ['finish', 'question', 'raised'],
+    });
   });
 
   it('20.15.2, 10.2.6: every topic decided and the spec not entered, the epic is in its specification — s/spec offered, an affected topic\'s door the spec', () => {

@@ -25,7 +25,7 @@
 
 const { resolveHandoff, phaseSkill } = require('./handoff.cjs');
 const { knownUnit, noUnit } = require('./topic-standing.cjs');
-const { nowOf, unitRead } = require('./projections/board-standing.cjs');
+const { nowOf, unitRead } = require('./unit-phases.cjs');
 const { awaitsCut, buildRefusal, mailPhase, openRecords } = require('./derivations.cjs');
 
 /** @typedef {import('./handoff.cjs').Handoff} Handoff */

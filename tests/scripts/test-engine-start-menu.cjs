@@ -137,7 +137,7 @@ describe('the start menu (18.2.12)', () => {
       '24.S16: each row continues its unit where it stands');
   });
 
-  it('18.2.3: every kind of wait lands in exactly one count — approve the map, decided, ready to build, an investigation\'s conclude and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
+  it('18.2.3: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict and an investigation\'s conclude, a learned gate, in none', () => {
     /** The count each kind of wait lands in. */
     const landsIn = Object.fromEntries(WAIT_KINDS.map((kind) => {
       const waiting = counts([/** @type {any} */ ({ kind })]);
@@ -145,7 +145,7 @@ describe('the start menu (18.2.12)', () => {
     }));
 
     assert.deepStrictEqual(landsIn, {
-      map: 'gates', decided: 'gates', ready: 'gates', conclude: 'gates', finish: 'gates', gap: 'questions', question: 'questions', raise: 'questions', raised: 'questions', affected: 'topics', verdict: null,
+      map: 'gates', decided: 'gates', ready: 'gates', conclude: null, finish: 'gates', gap: 'questions', question: 'questions', raise: 'questions', raised: 'questions', affected: 'topics', verdict: null,
     });
   });
 
