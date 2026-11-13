@@ -15,8 +15,10 @@
 // linter's shape left out and named in the verification addendum; the state
 // found from a folder below the main checkout and from a linked worktree;
 // one update per file changed; the skip with no old field, outside a
-// repository and with no state; idempotency; every other field kept; and a
-// unit manifest that cannot be read left alone.
+// repository and with no state; idempotency; every other field kept; a
+// unit manifest that cannot be read left alone; and a run killed writing
+// the project's manifest or a unit's — part of it written, or none — run
+// again to what a whole run leaves.
 //
 
 require('./hermetic-env.cjs');
@@ -171,6 +173,42 @@ describe('migration 073: the linters move to the project\'s environment', () => 
     assert.strictEqual(fs.readFileSync(statePath('pay/manifest.json'), 'utf8'), '{ not json');
     assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', defaults: { project_skills: [] } });
   });
+
+  /**
+   * A run killed at its `nth` file write, the write holding what `torn`
+   * keeps of what it was given.
+   * @param {number} nth @param {(text: string) => string} torn
+   */
+  function killedAt(nth, torn) {
+    const real = fs.writeFileSync;
+    let writes = 0;
+    fs.writeFileSync = (/** @type {any} */ file, /** @type {any} */ content, /** @type {any[]} */ ...rest) => {
+      writes += 1;
+      if (writes !== nth) return real(file, content, ...rest);
+      real(file, torn(String(content)), ...rest);
+      throw new Error('killed mid-write');
+    };
+    try {
+      assert.throws(() => run(), /killed mid-write/);
+    } finally {
+      fs.writeFileSync = real;
+    }
+  }
+
+  for (const { written, nth } of [{ written: 'the project manifest', nth: 1 }, { written: 'a unit manifest', nth: 2 }]) {
+    for (const { left, torn } of [{ left: 'part of it', torn: (/** @type {string} */ text) => text.slice(0, Math.floor(text.length / 2)) }, { left: 'none of it', torn: () => '' }]) {
+      it(`a run killed writing ${written}, ${left} written, is run again to what a whole run leaves`, () => {
+        writeState('manifest.json', { project_id: 'p1', defaults: { linters: ['eslint'] } });
+        unit('pay', { checkout: ['tsc'] });
+
+        killedAt(nth, torn);
+        run();
+
+        assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', environment: { linters: [{ name: 'eslint', command: 'eslint' }, { name: 'tsc', command: 'tsc' }] } });
+        assert.deepStrictEqual(readState('pay/manifest.json').phases.implementation.items, { checkout: { status: 'in-progress', current_task: null } });
+      });
+    }
+  }
 
   it('skips a folder in no repository, a repository with no state, and a project manifest that cannot be read', () => {
     const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-073-outside-')));

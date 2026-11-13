@@ -15,7 +15,7 @@
 // citing a heading its file holds once, in a file of its topic's own or the
 // unit's — its log and the reviews the move folded into it, its brief, an
 // experiment's record, the unit's assets, or its spec.md as its specs
-// under `.workflows/` hold, where its building started — never the
+// under `.workflows/` hold, joined, where its building started — never the
 // cache, another topic's or its mail; every subtopic its old map shows
 // decided carried, one entry settling several, every one still undecided
 // and every thread still open carried by an open question. A record
@@ -321,12 +321,16 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
   });
 
-  it('the unit\'s spec.md where its building never started; where it started, a heading its specs under `.workflows/` lack, or hold more than once', () => {
+  it('the unit\'s spec.md where its building never started; where it started, a heading its specs under `.workflows/` lack, or hold more than once between them, one spec\'s own heading cited', () => {
     const licensing = GOOD['fumi.discussion.licensing'];
     assert.strictEqual(refused('fumi.discussion.licensing', [...licensing.slice(0, 3), { ...licensing[3], cites: [{ path: 'fumi/spec.md', section: 'Corrigenda' }] }]),
       breaks('fumi', 'licensing', ['entry d2 cites fumi/spec.md, which the state does not hold']));
-    assert.strictEqual(refused('shop.discussion.weights', [{ ...GOOD['shop.discussion.weights'][0], cites: [{ path: 'shop/spec.md', section: 'Pricing' }, { path: 'shop/spec.md', section: 'Detail' }] }]),
-      breaks('shop', 'weights', ['entry q1 cites "Pricing" in shop/spec.md, which has no such heading', 'entry q1 cites "Detail" in shop/spec.md, which holds that heading 2 times — a cite names a heading its file holds once']));
+    assert.strictEqual(refused('shop.discussion.weights', [{ ...GOOD['shop.discussion.weights'][0], cites: ['Pricing', 'Detail', 'Saving', 'Ranking'].map((section) => ({ path: 'shop/spec.md', section })) }]),
+      breaks('shop', 'weights', [
+        'entry q1 cites "Pricing" in shop/spec.md, which has no such heading',
+        'entry q1 cites "Detail" in shop/spec.md, which holds that heading 2 times — a cite names a heading its file holds once',
+        'entry q1 cites "Ranking" in shop/spec.md, which holds that heading 2 times — a cite names a heading its file holds once',
+      ]));
   });
 });
 

@@ -16,8 +16,8 @@
 // and changes the old state ignores or outside it, refuse nothing. On a pass
 // it puts the state worktree in place on an unborn `leeway-state`, locked,
 // its `.gitignore` alone in it — a plain `.leeway/` set aside and put back
-// inside — and a run killed at each of the placement's writes is finished by
-// the next.
+// inside — and a run killed at each of the placement's writes, its
+// `.gitignore` part written among them, is finished by the next.
 //
 // The guard runs as a session in a time zone and locale of its own, the
 // rows' start times taken in UTC and the C locale, as the old skills took
@@ -25,7 +25,7 @@
 //
 // Layer: migration. World: a project on today's layout, made once per
 // process and copied for each test; a run killed at a write runs in a child.
-// Budget: 6 s — the placement is killed at eight points, each in a child
+// Budget: 6 s — the placement is killed at nine points, each in a child
 // process of its own, and the run finished by the next.
 //
 
@@ -268,14 +268,15 @@ describe('migration 074: the reshape\'s guard', () => {
   describe('a run killed at each of the placement\'s writes, finished by the next', () => {
     // The guard in a child that exits, status 9, at one of its file calls —
     // `method` on a path ending `file`, a rename by its destination —
-    // `before` or `after` it runs, or as one of its git commands finishes.
+    // `before` or `after` it runs, `mid` a write with part of it written, or
+    // as one of its git commands finishes.
     const KILLED = [
       'const [method, file, when, dir] = process.argv.slice(1);',
       "const fs = require('fs');",
       "if (method !== '-') {",
       '  const real = fs[method];',
       "  const hits = (a) => String(a[method === 'renameSync' ? 1 : 0]).endsWith(file);",
-      "  fs[method] = (...a) => { if (when === 'before' && hits(a)) process.exit(9); const done = real.apply(fs, a); if (when === 'after' && hits(a)) process.exit(9); return done; };",
+      "  fs[method] = (...a) => { if (when === 'before' && hits(a)) process.exit(9); if (when === 'mid' && hits(a)) { real.call(fs, a[0], String(a[1]).slice(0, 9)); process.exit(9); } const done = real.apply(fs, a); if (when === 'after' && hits(a)) process.exit(9); return done; };",
       '}',
       `require(${JSON.stringify(GUARD)}).run({ projectDir: dir, reportUpdate() {}, reportSkip() {} });`,
     ].join('\n');
@@ -289,7 +290,7 @@ describe('migration 074: the reshape\'s guard', () => {
       return `${bin}:${process.env.PATH}`;
     }
 
-    /** @typedef {{method?: string, file?: string, when?: 'before'|'after', git?: string}} KillPoint */
+    /** @typedef {{method?: string, file?: string, when?: 'before'|'after'|'mid', git?: string}} KillPoint */
 
     /** @param {KillPoint} at */
     const named = ({ method, file, when = 'after', git: args }) => (args === undefined ? `${when} ${method} ${file}` : `after git ${args}`);
@@ -306,7 +307,8 @@ describe('migration 074: the reshape\'s guard', () => {
       { git: 'worktree add' },
       { git: 'switch' },
       { git: 'worktree lock' },
-      { method: 'writeFileSync', file: `${STATE}/.gitignore`, when: 'before' },
+      { method: 'writeFileSync', file: '.gitignore', when: 'mid' },
+      { method: 'renameSync', file: `${STATE}/.gitignore`, when: 'before' },
     ])) {
       it(`killed ${named(at)}`, () => {
         const root = path.join(main, STATE);

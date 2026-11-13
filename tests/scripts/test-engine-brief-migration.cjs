@@ -141,7 +141,11 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## Its research\'s threads still open', '', '- index-size, digging: How big does the index grow?', '',
       '## The unit\'s assets', '',
     ].join('\n')), search);
-    assert.ok(weights.includes('## Its specs\n\n- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md\n'), weights);
+    assert.ok(weights.includes([
+      '## Its specs', '',
+      '- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md',
+      '- .workflows/shop/specification/wishlist/specification.md, cited as shop/spec.md', '',
+    ].join('\n')), weights);
   });
 
   it('a promoted topic\'s research threads, read where it was promoted from', () => {

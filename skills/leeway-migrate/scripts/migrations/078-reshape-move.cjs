@@ -20,8 +20,9 @@
 // guard does it (reshape/shared.cjs, `placeStateWorktree`); every git call
 // here runs with hooks off and the caller's repository environment cleared. A
 // `.leeway/` already on `leeway-state` is written again: a move cut short is
-// run again from the start, the project manifest written whole or not at
-// all.
+// run again from the start, each file it reads back — the project manifest,
+// an idea it sent to the inbox, the project's own files below — written
+// whole or not at all.
 //
 // The project's own files, in its folder in the main checkout, are taken to
 // the new names and staged for the migration's commit (21.5.19, 21.9.2):
@@ -240,7 +241,7 @@ const path = require('path');
 const crypto = require('crypto');
 const linters = require('./073-environment-linters.cjs');
 const {
-  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree,
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole,
 } = require('./reshape/shared.cjs');
 const TASK_DRIVERS = path.join(__dirname, '../../../leeway-engine/scripts/drivers/task');
 
@@ -408,17 +409,8 @@ function writeFile(file, content, mode) {
   if (mode !== undefined) fs.chmodSync(file, mode);
 }
 
-/**
- * A file a move run again reads back, written whole or not at all: through
- * a scratch file in the state's ignored cache, renamed into place.
- * @param {string} state @param {string} file @param {string} content
- */
-function writeWhole(state, file, content) {
-  const scratch = path.join(state, '.cache', `move-${process.pid}-${path.basename(file)}`);
-  writeFile(scratch, content);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.renameSync(scratch, file);
-}
+/** The state's ignored cache, where a file a move run again reads back is written before it is renamed into place. @param {string} state */
+const scratchOf = (state) => path.join(state, '.cache');
 
 /** @param {string} file */
 const modeOf = (file) => fs.statSync(file).mode & 0o7777;
@@ -859,7 +851,7 @@ function messageToInbox(move, rel, name) {
   const base = path.join(move.state, '.inbox', 'ideas', `${today()}--${slugOf(title) || slugOf(named)}`);
   for (let n = 1; ; n += 1) {
     const file = `${base}${n === 1 ? '' : `-${n}`}.md`;
-    if (!fs.existsSync(file)) return writeWhole(move.state, file, content);
+    if (!fs.existsSync(file)) return writeWhole(scratchOf(move.state), file, content);
     if (fs.readFileSync(file, 'utf8') === content) return undefined;
   }
 }
@@ -1021,13 +1013,14 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
  * it — the line added where none ignores it whole — and staged for the
  * migration's commit: a worktree with no commit checked out, unignored,
  * refuses `git add -A`.
- * @param {string} project
+ * @param {string} project @param {string} state
  */
-function ignoreState(project) {
+function ignoreState(project, state) {
   const file = path.join(project, CODE_GITIGNORE);
-  const held = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const exists = fs.existsSync(file);
+  const held = exists ? fs.readFileSync(file, 'utf8') : '';
   const ignored = held.split('\n').some((line) => !line.trim().startsWith('!') && [STATE_DIR, STATE_IGNORE_LINE].includes(line.trim().replace(/^\//, '')));
-  if (!ignored) writeFile(file, `${held}${held === '' || held.endsWith('\n') ? '' : '\n'}${STATE_IGNORE_LINE}\n`);
+  if (!ignored) writeWhole(scratchOf(state), file, `${held}${held === '' || held.endsWith('\n') ? '' : '\n'}${STATE_IGNORE_LINE}\n`, exists ? modeOf(file) : undefined);
   stage(project, CODE_GITIGNORE);
 }
 
@@ -1076,10 +1069,10 @@ function renameRules(settings) {
  * engine's new path, its permission rules `.leeway/` — and staged where
  * either changed (21.5.19); or, where the file does not parse, the sentence
  * saying it was left as it was.
- * @param {string} project
+ * @param {string} project @param {string} state
  * @returns {string|null}
  */
-function renameInSettings(project) {
+function renameInSettings(project, state) {
   const file = path.join(project, SETTINGS);
   if (!fs.existsSync(file)) return null;
   let settings;
@@ -1092,7 +1085,7 @@ function renameInSettings(project) {
   const hooks = renameHooks(settings);
   const rules = renameRules(settings);
   if (!hooks && !rules) return null;
-  writeFile(file, jsonText(settings), modeOf(file));
+  writeWhole(scratchOf(state), file, jsonText(settings), modeOf(file));
   stage(project, SETTINGS);
   return null;
 }
@@ -1101,16 +1094,16 @@ function renameInSettings(project) {
  * The workflows' lines gone from the project's `.worktreeinclude`, the file
  * with them where it holds nothing else, staged: every worktree reads the
  * one state, so nothing is copied into a worktree (21.5.19, 4.1.4).
- * @param {string} project
+ * @param {string} project @param {string} state
  */
-function dropIncludeLines(project) {
+function dropIncludeLines(project, state) {
   const file = path.join(project, WORKTREE_INCLUDE);
   if (!fs.existsSync(file)) return;
   const lines = fs.readFileSync(file, 'utf8').split('\n');
   const kept = lines.filter((line) => !WORKFLOWS_LINE.test(line.trim()));
   if (kept.length === lines.length) return;
   if (kept.every((line) => line.trim() === '')) fs.unlinkSync(file);
-  else writeFile(file, kept.join('\n'), modeOf(file));
+  else writeWhole(scratchOf(state), file, kept.join('\n'), modeOf(file));
   stage(project, WORKTREE_INCLUDE);
 }
 
@@ -1276,7 +1269,7 @@ function reshapedProject(project, relocations) {
 function writeProjectManifest(state, project, relocations) {
   const moved = path.join(state, 'manifest.json');
   const minted = fs.existsSync(moved) ? readManifest(moved).project_id : undefined;
-  writeWhole(state, moved, jsonText({ project_id: typeof minted === 'string' ? minted : newId(), ...reshapedProject(project, relocations) }));
+  writeWhole(scratchOf(state), moved, jsonText({ project_id: typeof minted === 'string' ? minted : newId(), ...reshapedProject(project, relocations) }));
 }
 
 /** The user-level folder today's skills read. */
@@ -1397,9 +1390,9 @@ function move(projectDir, reportUpdate, reportSkip) {
     throw new Error(`${stopped} is stopped in ${project}, where the move stages the ${STATE_IGNORE_LINE} line — finish or abort it, then start again`);
   }
   const state = placeStateWorktree(main);
-  ignoreState(project);
-  const settingsNote = renameInSettings(project);
-  dropIncludeLines(project);
+  ignoreState(project, state);
+  const settingsNote = renameInSettings(project, state);
+  dropIncludeLines(project, state);
   const manifestFile = path.join(from, 'manifest.json');
   const projectManifest = fs.existsSync(manifestFile) ? readManifest(manifestFile) : {};
   /** @type {Relocations} */

@@ -6,17 +6,19 @@
 // The reshape's move (21.5) driven in process against a git project whose
 // `.workflows/` is today's shape, committed: an epic mid-discussion, an epic
 // whose building started, a feature, a bugfix, a completed quick-fix, a
-// quick-fix built with its review owed, two whose old pipeline completed,
-// one in progress and one cancelled, a cross-cutting unit holding a topic
-// the first epic promoted, and a cancelled unit, with the project's inbox,
-// environment setup, knowledge config and store, cache — its old agent
-// stores holding reviews never folded in — old migrations record, roadmap
-// and baseline beside them, the tracker's store, settings hooks and `.worktreeinclude` in
-// its code tree, and today's user-level folder holding its config,
-// credentials and a conversation. The move runs once over that project, and
-// each test reads one rule off what it left: the state worktree on an unborn
-// `leeway-state`, locked, with nothing committed, nothing staged but the
-// project's own files, and `.workflows/` and the store untouched; each
+// quick-fix built with its review owed, two reopened after their review —
+// one's implementation, the other's scoping — two whose old pipeline
+// completed, one in progress and one cancelled, a cross-cutting unit
+// holding a topic the first epic promoted, and a cancelled unit, with the
+// project's inbox, environment setup, knowledge config and store, cache —
+// its old agent stores holding reviews never folded in — old migrations
+// record, roadmap and baseline beside them, the tracker's store, settings
+// hooks and `.worktreeinclude` in its code tree, and today's user-level
+// folder holding its config, credentials and a conversation. The move runs
+// once over that project, and each test reads one rule off what it left:
+// the state worktree on an unborn `leeway-state`, locked, with nothing
+// committed, nothing staged but the project's own files, and `.workflows/`
+// and the store untouched; each
 // unit's files in the layout, each review never folded in folded into its
 // topic's log, a person's files named for tracking or
 // analysis kept beside the reviews' tracking files dropped; nothing in a
@@ -32,8 +34,9 @@
 // no place for, named, the tools' sidecars not. A small project of its own
 // covers the runner's record and journals already in `.leeway/`, the
 // `.leeway/` ignore line staged with hooks off and the caller's git
-// environment cleared, the move run again over one cut short and over one
-// whose `.leeway/` the person removed, a project nested in its repository,
+// environment cleared, the move run again over one cut short, over one
+// whose `.leeway/` the person removed and over one killed writing each file
+// it reads back, a project nested in its repository,
 // a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
@@ -203,7 +206,8 @@ const moved = (title, sender) => `### ${title}\nFrom ${sender} · 1 Jan\n\nDetai
 const PROJECT_MANIFEST = {
   work_units: {
     core: { work_type: 'epic' }, shop: { work_type: 'epic' }, tally: { work_type: 'feature' }, stall: { work_type: 'bugfix' },
-    typo: { work_type: 'quick-fix' }, patch: { work_type: 'quick-fix' }, stale: { work_type: 'quick-fix' }, dropped: { work_type: 'quick-fix' },
+    typo: { work_type: 'quick-fix' }, patch: { work_type: 'quick-fix' }, redo: { work_type: 'quick-fix' }, rescope: { work_type: 'quick-fix' },
+    stale: { work_type: 'quick-fix' }, dropped: { work_type: 'quick-fix' },
     gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
   },
   defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }], tmux_labels: true },
@@ -474,6 +478,14 @@ function todaysProject(dir) {
   w('patch/specification/patch/specification.md', '# Patch\n');
   w('patch/planning/patch/planning.md', '# Plan: Patch\n');
 
+  for (const [wu, scoping, building] of [['redo', 'completed', 'in-progress'], ['rescope', 'in-progress', 'completed']]) {
+    w(`${wu}/manifest.json`, json(unit(wu, 'quick-fix', 'in-progress', {
+      ...quickFixPhases(wu, building), scoping: { items: { [wu]: { status: scoping } } }, review: { items: { [wu]: { status: 'completed' } } },
+    })));
+    w(`${wu}/specification/${wu}/specification.md`, `# ${wu}\n`);
+    w(`${wu}/planning/${wu}/planning.md`, `# Plan: ${wu}\n`);
+  }
+
   for (const [wu, status] of [['stale', 'in-progress'], ['dropped', 'cancelled']]) {
     w(`${wu}/manifest.json`, json(unit(wu, 'quick-fix', status, { ...quickFixPhases(wu, 'completed'), review: { items: { [wu]: { status: 'completed' } } } })));
     w(`${wu}/specification/${wu}/specification.md`, `# ${wu}\n\nFixed.\n`);
@@ -537,7 +549,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     });
 
     it('reports an update for the project and one for each unit, and hands back what it could not carry', () => {
-      assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 11, skips: 0 });
+      assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 13, skips: 0 });
       assert.deepStrictEqual(result.returned, {
         verify: 'These were not carried into .leeway/, the layout having no place for them: .workflows/.inbox/ideas/rough-notes.md, '
           + '.workflows/.roadmap/draft.txt, .workflows/.roadmap/notes/ideas/2026-01-03--points-expiry.md, '
@@ -920,13 +932,20 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.deepStrictEqual(manifestOf('typo').phases, { implementation: { items: { typo: { status: 'completed' } } } });
     });
 
-    it('keeps a quick-fix whose old pipeline is not done — built, its review still owed — as one being built: its spec and plan reference assets, and their items less the retired state', () => {
-      assert.deepStrictEqual(tree(state, 'patch'), ['assets/plans/patch/planning.md', 'assets/specs/patch.md', 'manifest.json']);
-      assert.deepStrictEqual([manifestOf('patch').status, manifestOf('patch').phases], ['in-progress', {
-        specification: { items: { patch: { status: 'completed' } } },
-        planning: { items: { patch: quickFixPlan('patch') } },
-        implementation: { items: { patch: { status: 'completed' } } },
-      }]);
+    it('keeps a quick-fix whose old pipeline is not done — built with its review still owed, or its implementation or its scoping reopened after its review — as one being built: its spec and plan reference assets, and their items less the retired state', () => {
+      const built = (/** @type {string} */ wu, /** @type {string} */ building, /** @type {boolean} */ reviewed) => [
+        [`assets/plans/${wu}/planning.md`, `assets/specs/${wu}.md`, 'manifest.json'], 'in-progress', {
+          specification: { items: { [wu]: { status: 'completed' } } },
+          planning: { items: { [wu]: quickFixPlan(wu) } },
+          implementation: { items: { [wu]: { status: building } } },
+          ...(reviewed ? { review: { items: { [wu]: { status: 'completed' } } } } : {}),
+        },
+      ];
+      assert.deepStrictEqual(['patch', 'redo', 'rescope'].map((wu) => [tree(state, wu), manifestOf(wu).status, manifestOf(wu).phases]), [
+        built('patch', 'completed', false),
+        built('redo', 'in-progress', true),
+        built('rescope', 'completed', true),
+      ]);
     });
 
     it('moves a quick-fix whose old pipeline completed — its scoping, implementation and review — as a completed one, whatever its status reads: its spec its summary, its plan and their items gone; in progress, it is completed; cancelled, it stays so (21.5.15, 21.5.14)', () => {
@@ -1291,20 +1310,40 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('writes the project manifest whole or not at all, so a run killed mid-write is run again', () => {
+  it('writes each file a run again reads back whole or not at all — the project\'s own files, its manifest, and the linters carried onto it — so a run killed writing each, part of it written or none, is run again to what a whole run leaves', () => {
     dir = tempProject('migration-078-torn-');
     const realWrite = fs.writeFileSync;
+    const part = (/** @type {string} */ text) => text.slice(0, Math.floor(text.length / 2));
+    const none = () => '';
     try {
+      write(dir, '.gitignore', 'node_modules/\n');
+      write(dir, '.claude/settings.json', json({ permissions: { allow: ['Edit(.workflows/**)'] } }));
+      write(dir, '.worktreeinclude', '.env.local\n.workflows/.knowledge/store.bin\n');
       feature();
-      fs.writeFileSync = (/** @type {any} */ file, /** @type {any} */ content, /** @type {any[]} */ ...rest) => {
-        if (!String(content).includes('"project_id"')) return realWrite(file, content, ...rest);
-        realWrite(file, String(content).slice(0, 12));
-        throw new Error('killed mid-write');
-      };
-      assert.throws(() => run(dir), /killed mid-write/);
-      fs.writeFileSync = realWrite;
+      write(dir, '.workflows/manifest.json', json({ work_units: { tally: { work_type: 'feature' } }, defaults: { linters: ['eslint'] } }));
+      commitAll(dir);
+      for (const { holding, torn } of [
+        { holding: 'node_modules/', torn: part },
+        { holding: '.leeway/**', torn: none },
+        { holding: '.env.local', torn: part },
+        { holding: '"defaults"', torn: part },
+        { holding: '"environment"', torn: none },
+      ]) {
+        fs.writeFileSync = (/** @type {any} */ file, /** @type {any} */ content, /** @type {any[]} */ ...rest) => {
+          if (!String(content).includes(holding)) return realWrite(file, content, ...rest);
+          realWrite(file, torn(String(content)));
+          throw new Error('killed mid-write');
+        };
+        assert.throws(() => run(dir), /killed mid-write/, holding);
+        fs.writeFileSync = realWrite;
+      }
       run(dir);
-      assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'))), ['project_id', 'work_units']);
+      assert.deepStrictEqual(
+        ['.gitignore', '.claude/settings.json', '.worktreeinclude'].map((rel) => fs.readFileSync(path.join(dir, rel), 'utf8')),
+        ['node_modules/\n.leeway/\n', json({ permissions: { allow: ['Edit(.leeway/**)'] } }), '.env.local\n'],
+      );
+      const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+      assert.deepStrictEqual([Object.keys(project), project.environment], [['project_id', 'work_units', 'environment'], { linters: [{ name: 'eslint', command: 'eslint' }] }]);
     } finally {
       fs.writeFileSync = realWrite;
       cleanupFixture(dir);

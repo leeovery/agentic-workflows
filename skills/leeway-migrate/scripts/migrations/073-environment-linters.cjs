@@ -25,7 +25,10 @@
 // git's common directory, wherever in the repository the migration runs; a
 // folder in no repository, or one with no state, has nothing to move.
 //
-// Idempotent: once moved, no old field is left to carry.
+// Idempotent: once moved, no old field is left to carry. Each manifest is
+// written whole or not at all, through a temp file beside it the state
+// ignores: the move (078) runs this over the manifest it wrote, and reads
+// it back when run again.
 //
 
 const fs = require('fs');
@@ -47,6 +50,17 @@ function isFilled(v) {
 /** @param {unknown} data */
 function jsonText(data) {
   return JSON.stringify(data, null, 2) + '\n';
+}
+
+/**
+ * A manifest written whole or not at all: through a temp file beside it, as
+ * the engine names one, renamed into place.
+ * @param {string} file @param {unknown} data
+ */
+function writeManifest(file, data) {
+  const temp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
+  fs.writeFileSync(temp, jsonText(data));
+  fs.renameSync(temp, file);
 }
 
 /**
@@ -175,11 +189,11 @@ module.exports = {
       return undefined;
     }
     if (projectChanged || carries) {
-      fs.writeFileSync(projectFile, jsonText(project));
+      writeManifest(projectFile, project);
       reportUpdate();
     }
     for (const { file, manifest } of units) {
-      fs.writeFileSync(file, jsonText(manifest));
+      writeManifest(file, manifest);
       reportUpdate();
     }
     const notes = [
