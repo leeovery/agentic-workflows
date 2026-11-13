@@ -72,10 +72,11 @@
 //   it, and its event's id is drawn from the showing, never the
 //   conversation. Any other gate's lasts while the conversation's gate shown
 //   is that gate's. The gate drawn after a pick is a new showing.
-// - A learned gate run as an automatic step (learned-gates.cjs) is no answer
-//   (E13): nothing is logged for it, it is never recorded as the gate shown,
-//   and the command clears the gate shown before it, as a raise's draw does,
-//   so `gate` refuses an answer to it.
+// - A learned gate run as an automatic step (learned-gates.cjs) is no answer:
+//   its draw logs it as a step (decision-point.cjs), never a gate's answer;
+//   it is never recorded as the gate shown, and the command clears the gate
+//   shown before it, as a raise's draw does, so `gate` refuses an answer to
+//   it.
 // - `gate` refuses, logging nothing, with no session, no gate shown,
 //   another gate's name, a key the gate lacks, free text with no words, and
 //   a gate already answered; each before the words are read. It writes no

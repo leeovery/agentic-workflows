@@ -145,11 +145,12 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     createFix(dir, 3, DOCS, as());
     run(['task', 'start', UNIT, '1.3']);
     const { ask, decide } = ledgerReadHelpers(() => dir);
-    const call = decide(PLACE, ask(PLACE, 'Do the docs name --color?'), 'They name --colour alone.', ['--task', '1.3'], { by: 'claude' });
+    const question = ask(PLACE, 'Do the docs name --color?');
+    const call = decide(PLACE, question, 'They name --colour alone.', ['--task', '1.3'], { by: 'claude' });
     appendEntry(statePath(dir), {
       event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: 'sess-1', number: 1,
       question: null, replaces: ledgerHelpers(() => dir).full(call), reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: '1.3',
-      call: RAISED, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: true,
+      call: RAISED, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ledgerHelpers(() => dir).full(question), blind: true,
     }, []);
     const building = refused(['render', 'finish', UNIT]);
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n');

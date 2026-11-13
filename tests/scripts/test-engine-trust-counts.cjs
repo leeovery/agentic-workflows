@@ -502,6 +502,15 @@ describe('a gate\'s count (16.20.2)', () => {
     ]);
   });
 
+  it('reads no step: the gate run as a step on its usual row, however often, moves neither its usual answer nor its bound (3.2.7)', () => {
+    const h = history();
+    for (let i = 0; i < 13; i += 1) h.gate('plan gate', { picked: 'y' });
+    const answered = standing(gateCount(countsIn(h), 'plan gate'));
+    for (let i = 0; i < 20; i += 1) h.step('plan gate', 'y', i.toString(16).padStart(16, '0'));
+
+    assert.deepStrictEqual(standing(gateCount(countsIn(h), 'plan gate')), answered);
+  });
+
   it('takes a typed answer by the row read from it, never the row recommended; never takes free text read as no row for the usual answer, however often it comes; and on a tie takes the row counted first', () => {
     const h = history();
     for (let i = 0; i < 2; i += 1) h.gate('plan gate', { reading: 'n' });

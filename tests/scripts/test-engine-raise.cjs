@@ -280,6 +280,8 @@ describe('the seal (P1, P6)', () => {
       blocks_build: false,
       replaced_by: null,
       always: null,
+      measured: null,
+      chain: full(asked.where),
       reason: EVERY_CALL_ASKS,
       blind: false,
       at: sealed.at,

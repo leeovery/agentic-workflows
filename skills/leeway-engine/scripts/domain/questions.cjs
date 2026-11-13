@@ -490,12 +490,23 @@ function waitingOn(cwd, unit, subject, warnings) {
 }
 
 /**
+ * What `held` — a park's line, or a raise's seal — holds of what its call
+ * was decided from beyond its label (raise.cjs, `DecidedFrom`).
+ * @param {Record<string, any>} held
+ * @returns {import('./raise.cjs').DecidedFrom}
+ */
+function decidedFromIn({ blocks_build: blocks, replaced_by: replacedBy, always, measured, chain }) {
+  return { blocks_build: blocks, replaced_by: replacedBy, always, measured, chain };
+}
+
+/**
  * The call a park's line holds as sealed (`Sealed`).
  * @param {Record<string, any>} line
  * @returns {Sealed}
  */
-function sealedOf({ call, rows_judged: judged, why_asking: whyAsking, label, model, blind, blocks_build: blocks, replaced_by: replacedBy, always }) {
-  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blind, blocks_build: blocks, replaced_by: replacedBy, always };
+function sealedOf(line) {
+  const { call, rows_judged: judged, why_asking: whyAsking, label, model, blind } = line;
+  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blind, ...decidedFromIn(line) };
 }
 
 /**
@@ -921,6 +932,6 @@ function parkingTask(root, unit, task, warnings) {
 }
 
 module.exports = {
-  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, sealedOf, parkedUnder, parkedQuestion, parkedOn, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
+  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, blocksBuild, numbered, parkedTasks, waitingOn, decidedFromIn, sealedOf, parkedUnder, parkedQuestion, parkedOn, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
   explainedReceipt, checkAnswerable, checkStillWaiting, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, waitingIn, parkingTask, askedOpenIds, askedOpen, heldBackIn, heldBack, heldUnwritten,
 };

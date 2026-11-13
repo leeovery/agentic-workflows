@@ -199,7 +199,7 @@ describe('pipeline simulation: the trust log', () => {
     sim.run(answerGate(sim, 'convergence offer', '--pick', 'y').next.argv);
     assert.deepStrictEqual(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'convergence').map(({ unit, topic }) => `${unit}.${topic}`), [`${wu}.note-window`]);
 
-    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, question: UNDRAWN }));
+    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: UNDRAWN }));
     const settled = await raise(open.float, FLOAT);
     const danger = await raise(open.bin, BIN);
     lean(danger.raise);

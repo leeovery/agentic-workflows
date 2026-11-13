@@ -24,7 +24,7 @@
 const { wrap } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { section, menu, cmdOption, MENU_INSTRUCTION } = require('./surfaces.cjs');
-const { CARE_KINDS } = require('../person.cjs');
+const { CARE_KINDS } = require('../event-fields.cjs');
 const { percent, against } = require('../ask-rule.cjs');
 const { ASK_AGAIN } = require('../trust-settings.cjs');
 

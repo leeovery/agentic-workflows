@@ -45,6 +45,7 @@ const { openGate, gateShown, gateStepped, section, menu, cmdOption, MENU_INSTRUC
 const { recordGateShown, answerGate, lastShown, clearGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { heldShowing } = require(path.join(SCRIPTS, 'domain/showing-hold.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
+const { idFrom } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { planScreen, checkInScreen, concludeScreen } = require(path.join(SCRIPTS, 'domain/projections/investigation.cjs'));
 const { waitAgents } = require(path.join(SCRIPTS, 'domain/projections/decided.cjs'));
 const { experimentSpawnGate } = require(path.join(SCRIPTS, 'domain/projections/experiment.cjs'));
@@ -249,6 +250,22 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     assert.deepStrictEqual([drawnBlind('wait for agents', showing), drawnBlind('wait for agents', showingOf(CARDS, ['a22']))], [false, true]);
     assert.deepStrictEqual([thirteen, blind, before, withFrozenClock(() => fresh('lower'))],
       [ran('wait for agents', 'g', showing), shows('wait for agents', showingOf(CARDS, ['a22']), held), shows('wait for agents', showing, held), shows('wait for agents', showing, held)]);
+  });
+
+  it('a surface\'s draw that runs a gate as a step logs the step in the trust log — the gate, the row it ran and its showing, under the id the gate and the showing draw, so a redraw of the showing is one step — and a verb\'s check of the step logs none (3.2.7)', () => {
+    const dir = project('mint');
+    logged(pressed(13, { gate: 'wait for agents', row: 'g' }));
+    const answered = fs.readFileSync(logPath(), 'utf8');
+    const checked = withFrozenClock(() => learned('wait for agents', { ...waiting(dir), check: true }));
+    const unlogged = fs.readFileSync(logPath(), 'utf8') === answered;
+    withFrozenClock(() => [learned('wait for agents', waiting(dir)), learned('wait for agents', waiting(dir))]);
+    const steps = fs.readFileSync(logPath(), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter((event) => event.type === 'step');
+    const showing = showingOf(CARDS, ['a1']);
+
+    assert.deepStrictEqual([checked, unlogged], [ran('wait for agents', 'g', showing), true]);
+    assert.deepStrictEqual([...new Map(steps.map(({ id, project: keyed, gate, row, showing: on }) => [id, { id, project: keyed, gate, row, showing: on }])).values()], [
+      { id: idFrom('step', 'wait for agents', showing), project: PROJECT_ID, gate: 'wait for agents', row: 'g', showing },
+    ]);
   });
 
   it('counts the answers on the session\'s own model line: a session on a model off the line counts those given on the current one at half, so 13 of them still show (E4)', () => {

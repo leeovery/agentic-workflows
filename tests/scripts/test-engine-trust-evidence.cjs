@@ -45,7 +45,10 @@ const { logPath, logText, project } = useTrustWorld('trust-evidence-');
 // A raise's fields, Claude's sealed answer row 1: answered with it, with
 // another row, in the person's own words — read as no row, as row 1 or as
 // row 2 — or not followed.
-const RAISE = Object.freeze({ kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, raised: '2026-01-01T00:00:00.000Z', blind: false });
+const RAISE = Object.freeze({
+  replaces: null, kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null,
+  measured: null, chain: idOf('Asked'), raised: '2026-01-01T00:00:00.000Z', blind: false,
+});
 const AGREES = Object.freeze({ ...RAISE, answer: '1' });
 const DEPARTS = Object.freeze({ ...RAISE, answer: '2' });
 const OWN_WORDS = Object.freeze({ ...RAISE, answer: null, via: 'typed', with_text: true });
@@ -73,7 +76,7 @@ const raised = (dir, entry, fields) => record('raise', { ...fields, entry }, fro
 const reversal = (dir, entry, reverses) => record('reversal', { entry, reverses }, from(dir));
 
 describe('where each answer stands (16.12.1, 16.10.1)', () => {
-  it('stands a raise answered with Claude\'s sealed answer, in the person\'s own words read as it, or with their "don\'t care", as an agreement, with another row or in the person\'s own words read as another or as none as a departure, one not followed as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict and a blind draw no answer', () => {
+  it('stands a raise answered with Claude\'s sealed answer, in the person\'s own words read as it, or with their "don\'t care", as an agreement, with another row or in the person\'s own words read as another or as none as a departure, one not followed as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict, a blind draw, a learned gate run as a step and a care entry dropped no answer', () => {
     const dir = project('fumi');
     const [agreed, departed, own, ownAgreed, ownDeparted, called, careless] = ['Agreed', 'Departed', 'Own', 'OwnAgreed', 'OwnDeparted', 'Called', 'Careless'].map(idOf);
     const answers = [
@@ -84,6 +87,8 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: null }, from(dir));
     record('verdict', { entry: departed, verdict: 'skip', point: 'decided' }, from(dir));
     record('blind-draw', { entry: idOf('Asked'), kind: null }, from(dir));
+    record('step', { gate: 'plan gate', row: 'y', showing: 'ec91f2a928f07b80' }, from(dir));
+    record('care-drop', { kind: 'look', added: '2026-01-01T00:00:00.000Z' }, from(dir));
 
     const read = evidence(dir);
 

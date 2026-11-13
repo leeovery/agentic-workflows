@@ -20,8 +20,9 @@
 //   - the ledger's projections and its copies hold to the events,
 //   - the trust log holds a line for each call, raise, reversal and verdict
 //     the ledger and the verdicts given call for, every verdict on a
-//     departure it holds, and nothing waits in a conversation, after a
-//     refusal too (auditTrust).
+//     departure it holds, each step a learned gate's and each care entry
+//     dropped gone from the record, and nothing waits in a conversation,
+//     after a refusal too (auditTrust).
 // This is the detector for the silent class of bug: state that writes fine,
 // raises nothing, and only breaks a menu three phases later.
 // ---------------------------------------------------------------------------
@@ -44,7 +45,7 @@ const knowledgeStore = require(path.join(ROOT, 'skills/leeway-engine/scripts/ker
 const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs'));
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
-const { isId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
+const { isId, idFrom } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { openGate, gateShown } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { MENUS, menuBody } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/menus.cjs'));
@@ -65,6 +66,8 @@ const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/leeway-engine/
 const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 const { kindOf, hardToUndo } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/labeller.cjs'));
+const { LEARNED } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/learned-gates.cjs'));
+const { PERSON } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/user-files.cjs'));
 
 // The words a shell makes of a route written into a command: split at spaces,
 // a double-quoted span one word without its quotes.
@@ -815,7 +818,15 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // waiting in a conversation, as no append fails. A raise answered and the
 // line it landed agree on whether the answer took Claude's lean — its row,
 // or the row the separate call read from the person's own words — the line
-// standing over the lean exactly where it did not (16.19.1). Every verdict
+// standing over the lean exactly where it did not (16.19.1). Each raise
+// names the decision it would replace as its answer's line does — the one
+// a replacement replaces or a keep keeps, Claude's call gone ahead on a
+// blind question — none for a question's answer; and its question's id,
+// the first wording of the question it answers, or for a blind question on
+// Claude's call gone ahead, of the question that call answers — none for a
+// replacement — and, where an experiment measured it, one of its unit's on
+// that question, by any wording, as its park says where it waited in the
+// build (9.1.11, 16.17.4). Every verdict
 // names a departure the trust log holds — a raise answered against the
 // lean, a keep among them, or a reversal — that the ledger holds as a
 // decision whose answer stood over the lean, or a keep (16.13.6), and none
@@ -829,7 +840,11 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // composes (16.17.5): one sealed in a conversation, naming its seal; one
 // parked, naming its first park — or, where its call went ahead, that call.
 // Each yes to the convergence offer names a topic of its unit's discussion
-// by its key (16.8.6).
+// by its key (16.8.6). Each learned gate run as a step names a row of the
+// gate that runs as one, under the id its gate and showing draw, so a
+// showing stepped is logged once (3.2.7). Each care entry dropped is gone
+// from the record of the person: none there of its project and kind added
+// when it says, nor dropped before it was added (16.5.2).
 /** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
 function auditTrust(sim, label, ran = []) {
   const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
@@ -917,28 +932,42 @@ function auditTrust(sim, label, ran = []) {
     assert.deepStrictEqual([firstParkOf(park).went_ahead, next === undefined ? null : answered(next)?.decision ?? null], [park.task, park.replaces],
       ctx(`the park ${park.id} holding task ${park.task} open is not its question's call gone ahead for it, answered at once`));
   }
-  /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked: a blind question's whose call went ahead, as that call was. @type {(first: Record<string, any>) => Record<string, unknown>} */
+  /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked: a blind question's whose call went ahead, as that call was, its question the call's. @type {(first: Record<string, any>) => Record<string, unknown>} */
   const parkDecidedFrom = (first) => (wentAhead(first)
-    ? { blocks_build: byId.get(first.replaces).task !== null, replaced_by: null, always: first.always }
-    : { blocks_build: first.task !== null, replaced_by: first.replaces === null ? null : whose(first.replaces, entries.indexOf(first)), always: first.always });
+    ? { blocks_build: byId.get(first.replaces).task !== null, replaced_by: null, always: first.always, measured: first.measured, chain: firstWording(byId.get(first.replaces).answers) }
+    : {
+      blocks_build: first.task !== null, replaced_by: first.replaces === null ? null : whose(first.replaces, entries.indexOf(first)), always: first.always, measured: first.measured,
+      chain: first.question === null ? null : firstWording(first.question),
+    });
   /** What a raise event says its call was decided from, of `fields`. @type {(event: Record<string, any>, fields: string[]) => Record<string, unknown>} */
   const decidedFrom = (event, fields) => Object.fromEntries(fields.map((f) => [f, event[f]]));
+  /** The experiments of `unit` measuring the question whose first wording is `chain`, by their ids. @type {(unit: string, chain: string|null) => string[]} */
+  const measuring = (unit, chain) => {
+    const file = statePath(sim.dir, unit, 'manifest.json');
+    const items = fs.existsSync(file) ? Object.values(JSON.parse(fs.readFileSync(file, 'utf8')).phases?.experiment?.items ?? {}) : [];
+    return items.flatMap((item) => Object.entries(/** @type {Record<string, any>} */ (item).experiments ?? {}))
+      .filter(([, record]) => chain !== null && typeof record.question === 'string' && firstWording(record.question) === chain).map(([id]) => id);
+  };
   for (const park of entries.filter((p) => p.event === 'parked')) {
-    assert.deepStrictEqual(decidedFrom(park, ['blocks_build', 'replaced_by', 'always']), parkDecidedFrom(firstParkOf(park)),
+    assert.deepStrictEqual(decidedFrom(park, ['blocks_build', 'replaced_by', 'always', 'measured', 'chain']), parkDecidedFrom(firstParkOf(park)),
       ctx(`the park ${park.id} does not hold what its question's first park was decided from`));
+    assert.ok(park.measured === null || measuring(park.unit, park.chain).includes(park.measured), ctx(`the park ${park.id} names ${park.measured}, no experiment of its unit on its question`));
   }
-  /** What an answer's raise was decided from, by the ledger: its question's first park's where it waited in the build, else no build work blocked and the decision it replaces or keeps whose it was. @type {(e: Record<string, any>) => Record<string, unknown>} */
+  /** What an answer's raise was decided from, by the ledger: its question's first park's where it waited in the build, else no build work blocked, the decision it replaces or keeps whose it was, and the question it answers by its first wording. @type {(e: Record<string, any>) => Record<string, unknown>} */
   const answerDecidedFrom = (e) => {
     const [first] = parksWaited(e);
     if (first !== undefined) return parkDecidedFrom(first);
-    const decision = answered(e)?.decision ?? null;
-    return { blocks_build: false, replaced_by: decision === null ? null : whose(decision, entries.indexOf(e)) };
+    const { question = null, decision = null } = answered(e) ?? {};
+    return { blocks_build: false, replaced_by: decision === null ? null : whose(decision, entries.indexOf(e)), chain: question };
   };
   const answers = ofType('raise').filter((e) => !e.didnt_follow);
   for (const raise of answers) {
-    const expected = answerDecidedFrom(/** @type {Record<string, any>} */ (answeredLine(raise)));
+    const line = /** @type {Record<string, any>} */ (answeredLine(raise));
+    const expected = answerDecidedFrom(line);
     assert.deepStrictEqual(decidedFrom(raise, Object.keys(expected)), expected,
       ctx(`the raise ${raise.id} does not log what its call was decided from, as the ledger holds it`));
+    assert.strictEqual(raise.replaces, answered(line)?.decision ?? null, ctx(`the raise ${raise.id} does not name the decision its answer's line replaces or keeps`));
+    assert.ok(raise.measured === null || measuring(line.unit, raise.chain).includes(raise.measured), ctx(`the raise ${raise.id} names ${raise.measured}, no experiment of its unit on its question`));
   }
   /** When an answer's call was decided: as its question's first park was made where it waited in the build, else as its seal was made, where the seal stands. @type {(raise: Record<string, any>) => string|undefined} */
   const decidedWhen = (raise) => parksWaited(byId.get(raise.entry))[0]?.at ?? sealed.find((s) => s.id === raise.entry)?.at;
@@ -960,9 +989,9 @@ function auditTrust(sim, label, ran = []) {
   const pressed = ran[0] === 'raise' && ran[1] === 'answer' && ran.includes('--didnt-follow') ? sealed.find((s) => s.id.startsWith(ran[2])) : undefined;
   if (pressed !== undefined && !pressed.fact && pressed.answered === null) {
     const expected = pressed.parks === null
-      ? { blocks_build: false, replaced_by: pressed.replaces === null ? null : whose(pressed.replaces.entry, entries.length) }
+      ? { blocks_build: false, replaced_by: pressed.replaces === null ? null : whose(pressed.replaces.entry, entries.length), chain: pressed.answers === null ? null : firstWording(pressed.answers) }
       : parkDecidedFrom(byId.get(pressed.parks.park));
-    assert.deepStrictEqual(decidedFrom(notFollowed.at(-1) ?? {}, Object.keys(expected)), expected,
+    assert.deepStrictEqual(decidedFrom(notFollowed.at(-1) ?? {}, [...Object.keys(expected), 'replaces']), { ...expected, replaces: pressed.replaces?.entry ?? null },
       ctx('the raise not followed does not log what its call was decided from, as the ledger holds it'));
   }
   const waiting = folders.filter((name) => fs.existsSync(path.join(conversations, name, PENDING)));
@@ -1007,6 +1036,16 @@ function auditTrust(sim, label, ran = []) {
     const unit = statePath(sim.dir, e.unit, 'manifest.json');
     const discussed = fs.existsSync(unit) ? JSON.parse(fs.readFileSync(unit, 'utf8')).phases.discussion?.items ?? {} : {};
     assert.ok(Object.hasOwn(discussed, e.topic), ctx(`the convergence ${e.id} names ${e.unit}.${e.topic}, no topic of its unit's discussion`));
+  }
+  for (const step of ofType('step')) {
+    assert.ok(Object.hasOwn(LEARNED[step.gate] ?? {}, step.row), ctx(`the step ${step.id} ran ${step.gate} on ${step.row}, no row of a learned gate that runs as a step`));
+    assert.strictEqual(step.id, idFrom('step', step.gate, step.showing), ctx(`the step ${step.id} is not logged under the id its gate and showing draw`));
+  }
+  const recordFile = path.join(sim.configDir, PERSON);
+  const record = fs.existsSync(recordFile) ? fs.readFileSync(recordFile, 'utf8') : '';
+  for (const drop of ofType('care-drop')) {
+    assert.ok(!record.includes(`: ${drop.kind} · ${project} · ${drop.added}`) && Date.parse(drop.added) <= Date.parse(drop.at),
+      ctx(`the care entry the drop ${drop.id} names, ${drop.kind} added ${drop.added}, still stands in the record, or was dropped before it was added`));
   }
   if (ran[0] === 'verdict' && ran[1] === 'give') {
     const [, , prefix, verdict, , point] = ran;

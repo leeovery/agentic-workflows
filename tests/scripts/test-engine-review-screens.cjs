@@ -212,7 +212,7 @@ describe('a blind question\'s call gone ahead, held back (16.17.2)', () => {
    * @param {string} id @param {string} task
    */
   function blindOn(id, task) {
-    const call = /** @type {{id: string}} */ (ledgerEntries(statePath(dir)).find((line) => String(line.id).startsWith(id))).id;
+    const { id: call, answers } = /** @type {{id: string, answers: string}} */ (ledgerEntries(statePath(dir)).find((line) => String(line.id).startsWith(id)));
     appendEntry(statePath(dir), {
       event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION_ID,
       question: null, replaces: call, reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: task, number: 1,
@@ -221,7 +221,7 @@ describe('a blind question\'s call gone ahead, held back (16.17.2)', () => {
         rows: [{ key: '1', name: 'Two', text: 'Two words.', notice: 'the label reads plainer' }, { key: '2', name: 'One', text: 'One word.', notice: 'the label is shorter' }],
         lean: '1', why: 'It reads plainer.', sort: 'several', mechanism: 'The label\'s text.', product_wide: false,
       },
-      rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, blind: true,
+      rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: answers, blind: true,
     }, []);
   }
 

@@ -30,10 +30,13 @@
 //   have skipped and those the person would have overruled; below it, the
 //   questions it would have asked of Claude's calls, and those the person
 //   overruled — the period's start the person's own day; or, with nothing
-//   to replay, that there is nothing; the lines it moves with it; then whether
-//   to use it — `y/yes` to `trust threshold` or `trust build-threshold`,
-//   `n/no` back to the matrix, keeping theirs, and Comment carrying on for
-//   another number.
+//   to replay, that there is nothing; for the threshold, where the period
+//   holds a showing of a learned gate, what it would have changed there —
+//   above theirs, the showings it would have gone on past and those the
+//   person picked otherwise at; below it, the steps it would have stopped
+//   at; the lines it moves with it; then whether to use it — `y/yes` to
+//   `trust threshold` or `trust build-threshold`, `n/no` back to the
+//   matrix, keeping theirs, and Comment carrying on for another number.
 // ---------------------------------------------------------------------------
 
 const { wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
@@ -254,12 +257,12 @@ function periodSays({ since, whole }) {
 /** `n` of `word`, a plural past one. @param {number} n @param {string} word */
 const counted = (n, word) => `${n} ${n === 1 ? word : `${word}s`}`;
 
-/** Nothing to replay, said for the replay `view` shows. @param {ReplayView} view */
-function nothingSays({ project, setting, replayed: { more } }) {
+/** No question to replay, said for the replay `view` shows: nothing to show, where no showing of a gate is replayed either. @param {ReplayView} view */
+function nothingSays({ project, setting, replayed: { more, gates } }) {
   const build = setting === 'build';
   const none = more ? `No call of mine has gone ahead${build ? ' in the build' : ''} in ${project} yet`
     : build ? `No question has blocked build work in ${project} yet` : `You haven't answered a question in ${project} yet`;
-  return `${none}, so a replay${build ? ' mid-build' : ''} has nothing to show.`;
+  return gates.showings === 0 ? `${none}, so a replay${build ? ' mid-build' : ''} has nothing to show.` : `${none}.`;
 }
 
 /** What the replay found, in a sentence: skipped where it asks less, asked where it asks more. @param {ReplayView} view */
@@ -277,6 +280,24 @@ function foundSays(view) {
   const blocking = build ? ' that blocked build work' : '';
   if (changed === 0) return `${opens} skipped none of the ${counted(questions, 'question')}${blocking} you answered.`;
   return `${opens} skipped ${counted(changed, 'question')}${blocking}; you'd have overruled ${among} of them.`;
+}
+
+/**
+ * What the replay found at the learned gates, where it replayed a showing,
+ * in a sentence: those it goes on past where it asks less, those it stops at
+ * where it asks more; else null. It opens with the period where no question
+ * was replayed to open it.
+ * @param {ReplayView} view
+ */
+function gatesSays(view) {
+  const { replayed } = view;
+  const { questions, more, gates: { showings, changed, overruled } } = replayed;
+  if (showings === 0) return null;
+  const where = 'at the gates that learn from your answers';
+  const at = questions === 0 ? `${periodSays(replayed)}${replayed.whole ? '' : ','} ${where}, ${settingOf(view).named} would have` : `${where[0].toUpperCase()}${where.slice(1)}, it would have`;
+  const of = `${changed === 0 ? 'none' : changed} of the ${counted(showings, 'stop')}`;
+  if (more) return `${at} stopped at ${of} I went on past.`;
+  return `${at} gone on past ${of} you answered${changed === 0 ? '' : `; you'd have picked otherwise at ${overruled === 0 ? 'none' : overruled} of them`}.`;
 }
 
 /** The lines the proposed setting moves. @param {ReplayView} view */
@@ -298,7 +319,7 @@ function replayScreen(view) {
   const yes = setting === 'threshold' ? ['trust', 'threshold', percentArg(proposed)] : ['trust', 'build-threshold', percentArg(proposed)];
   const question = setting === 'threshold' ? `Use ${percent(proposed)} as your threshold?` : `Use ${percent(proposed)} as your threshold mid-build?`;
   return titleSection(`Matrix · ${view.project} · Replay`)
-    + section('DISPLAY: matrix replay', emitAs('text'), [heading, ...indented(foundSays(view))].join('\n'))
+    + section('DISPLAY: matrix replay', emitAs('text'), [heading, ...[foundSays(view), gatesSays(view)].flatMap((says) => (says === null ? [] : indented(says)))].join('\n'))
     + section('MENU: matrix replay', MENU_INSTRUCTION, menu(wrap(movesSays(view), displayWidth()).join('\n'), [
       cmdOption('y', 'yes', `Use ${percent(proposed)} from now on`, { next: { kind: 'engine', argv: yes } }),
       cmdOption('n', 'no', `Keep ${percent(current)}`, { next: THE_MATRIX }),

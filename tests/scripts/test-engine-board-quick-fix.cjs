@@ -161,7 +161,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question: null, replaces: ledgerHelpers(() => dir).full(made.call), cause: null, relies_on: [], number: 1,
     call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
-    ...how,
+    measured: null, chain: ledgerHelpers(() => dir).full(made.asked), ...how,
   }, []);
 
   it('16.17.2: a call of Claude\'s a blind question waits on, gone ahead for its fix, is held back from Claude\'s calls while the question waits', () => {

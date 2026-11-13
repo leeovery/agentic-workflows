@@ -260,7 +260,8 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     t.after(() => fs.rmSync(log, { force: true }));
     const header = { id: newId(), at: FROZEN_AT, project: projectManifest(dir).project_id, project_name: path.basename(dir), model: null, session: null };
     fs.writeFileSync(log, `${JSON.stringify(trustEvent('raise', header, {
-      entry: newId(), kind: 'behaviour', label: null, sort: 'several', sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, raised: FROZEN_AT, blind: false,
+      entry: newId(), replaces: null, kind: 'behaviour', label: null, sort: 'several', sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false,
+      blocks_build: false, replaced_by: null, always: null, measured: null, chain: newId(), raised: FROZEN_AT, blind: false,
     }))}\n`);
     const counts = () => stateOf(countsOf(statePath(dir), { model: null, now: FROZEN_MS }).kinds.behaviour, THRESHOLD);
     const before = { log: fs.readFileSync(log, 'utf8'), counts: counts() };

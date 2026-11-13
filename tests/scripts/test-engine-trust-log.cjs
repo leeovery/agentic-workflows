@@ -57,13 +57,17 @@ const SENTENCE = 'rename the customers table to accounts';
 const NOT_LABEL = 'a call event cannot be recorded: its label is not a label: the labeller\'s model id, and its 12 answers, true or false, or null';
 const ENTRY = idOf('Entry');
 const REVERSED = idOf('Reversed');
+const QUESTION = idOf('Question');
 // A labeller's twelve answers (16.11.2).
 const ANSWERS = Object.freeze([true, false, true, true, false, false, false, false, true, false, false, true]);
 
 /** A well-formed event of every type, its own fields. */
 const SAMPLES = Object.freeze({
   gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: 'ec91f2a928f07b80' },
-  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null, raised: '2026-10-28T09:58:00.000Z', blind: false },
+  raise: {
+    entry: ENTRY, replaces: null, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false,
+    blocks_build: false, replaced_by: null, always: null, measured: 'E1.2', chain: QUESTION, raised: '2026-10-28T09:58:00.000Z', blind: false,
+  },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one', blocks_build: false },
   verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
   'blind-draw': { entry: ENTRY, kind: 'look' },
@@ -71,6 +75,8 @@ const SAMPLES = Object.freeze({
   'position-switch': { unit: 'fumi', to: 'step' },
   convergence: { unit: 'fumi', topic: 'note-window' },
   correction: { entry: ENTRY, kind: 'words', verdict: null },
+  step: { gate: 'plan gate', row: 'y', showing: 'ec91f2a928f07b80' },
+  'care-drop': { kind: 'look', added: '2026-10-20T08:00:00.000Z' },
 });
 
 const HEADER_FIELDS = ['v', 'id', 'at', 'type', 'project', 'project_name', 'model', 'session'];
@@ -109,13 +115,19 @@ describe('record (16.13.4)', () => {
     const dir = project('fumi');
     /** @type {[string, Record<string, unknown>, string][]} */
     const refusals = [
-      ['departure', { entry: ENTRY }, 'the trust log holds no departure event: gate, raise, call, verdict, blind-draw, reversal, position-switch, convergence, correction'],
+      ['departure', { entry: ENTRY }, 'the trust log holds no departure event: gate, raise, call, verdict, blind-draw, reversal, position-switch, convergence, correction, step, care-drop'],
       ['call', { entry: ENTRY, kind: null, label: null }, 'a call event cannot be recorded: the call event needs sort'],
       ['verdict', { ...SAMPLES.verdict, verdict: 'maybe' }, 'a verdict event cannot be recorded: its verdict is not one of nothing, fix, loss, skip'],
       ['raise', { ...SAMPLES.raise, blocks_build: null }, 'a raise event cannot be recorded: its blocks_build is not true or false'],
       ['raise', { ...SAMPLES.raise, replaced_by: 'builder' }, 'a raise event cannot be recorded: its replaced_by is not one of person, claude, your-call, dont-care, carried, or null'],
       ['raise', { ...SAMPLES.raise, always: 'urgent' }, 'a raise event cannot be recorded: its always is not one of design-problem, live-server, or null'],
       ['raise', { ...SAMPLES.raise, raised: 'last week' }, 'a raise event cannot be recorded: its raised is not a UTC time'],
+      ['raise', { ...SAMPLES.raise, replaces: 'Q1' }, 'a raise event cannot be recorded: its replaces is not an entry id, or null'],
+      ['raise', { ...SAMPLES.raise, measured: 'E0' }, 'a raise event cannot be recorded: its measured is not an experiment\'s id, or null'],
+      ['raise', { ...SAMPLES.raise, chain: 'Q1' }, 'a raise event cannot be recorded: its chain is not an entry id, or null'],
+      ['care-drop', { ...SAMPLES['care-drop'], kind: 'danger' }, 'a care-drop event cannot be recorded: its kind is not one of contract, scope, behaviour, look, words, process, internals'],
+      ['care-drop', { ...SAMPLES['care-drop'], added: 'yesterday' }, 'a care-drop event cannot be recorded: its added is not a UTC time'],
+      ['step', { gate: 'plan gate', row: 'y' }, 'a step event cannot be recorded: the step event needs showing'],
       ['call', { ...SAMPLES.call, blocks_build: 'yes' }, 'a call event cannot be recorded: its blocks_build is not true or false, or null'],
       ...[
         { labeller: 'claude-sonnet-5', answers: ANSWERS.slice(1) },
@@ -139,6 +151,9 @@ describe('record (16.13.4)', () => {
       ['gate', { ...SAMPLES.gate, recommended: 'keep-the-old-one-and-add-a-view' }, notKey('gate', 'recommended')],
       ['gate', { ...SAMPLES.gate, via: 'typed', picked: null, with_text: true, reading: 'the second' }, notKey('gate', 'reading')],
       ['gate', { ...SAMPLES.gate, showing: 'check the disk first' }, 'a gate event cannot be recorded: its showing is not a showing\'s digest: 16 hex digits, or null'],
+      ['step', { ...SAMPLES.step, row: 'carry on with the plan' }, 'a step event cannot be recorded: its row is not a key: letters, digits, - and _, up to 24 of them'],
+      ['step', { ...SAMPLES.step, showing: 'check the disk first' }, 'a step event cannot be recorded: its showing is not a showing\'s digest: 16 hex digits'],
+      ['step', { ...SAMPLES.step, gate: SENTENCE }, 'a step event cannot be recorded: its gate is not a gate\'s name: up to five lowercase words, 40 characters at most'],
       ['raise', { ...SAMPLES.raise, answer: 'use the existing table, it is fine' }, notKey('raise', 'answer')],
       ['raise', { ...SAMPLES.raise, sealed: 'option one' }, notKey('raise', 'sealed')],
       ['raise', { ...SAMPLES.raise, answer: null, via: 'typed', with_text: true, reading: 'the first one' }, notKey('raise', 'reading')],

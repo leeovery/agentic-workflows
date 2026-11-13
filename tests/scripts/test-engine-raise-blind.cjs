@@ -57,7 +57,7 @@ const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
-const { alikeOn, countsOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
+const { alikeOn, countsOf, ownOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const { movedRefusal } = require(path.join(SCRIPTS, 'domain/ledger-verdicts.cjs'));
 const { ID_FACTS, foldLedger, whoseDecision } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { liveness } = require(path.join(SCRIPTS, 'domain/ledger-units.cjs'));
@@ -160,7 +160,7 @@ const { conversation, inFolder, seals, logged, project, quietOn, labelledAs, rai
  * @param {import('node:test').TestContext} t
  */
 function drawingBlind(t) {
-  return t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, question: at.question === null ? null : DRAWN }));
+  return t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: at.chain === null ? null : DRAWN }));
 }
 
 /**
@@ -273,7 +273,7 @@ describe('the draw (16.17.1–16.17.5)', () => {
     await raised(NOTE, ['--answers', reworded], CALL, conversation());
     await raised(BUILD, ['--replaces', made.mine, '--reason', 'was-wrong', '--parks', '2.3'], SHADOWED, conversation());
 
-    assert.deepStrictEqual(decide.mock.calls.map(({ arguments: [, at] }) => at.question), [ASKED.note, ASKED.note, null]);
+    assert.deepStrictEqual(decide.mock.calls.map(({ arguments: [, at] }) => at.chain), [ASKED.note, ASKED.note, null]);
   });
 
   it('a replacement of Claude\'s call the rule lets proceed is never drawn blind: it proceeds, landing as Claude\'s, nothing parked and no draw logged — its rows Claude\'s proposals beside the decision as it stands, which would tell its lean', async (t) => {
@@ -295,7 +295,7 @@ describe('the draw (16.17.1–16.17.5)', () => {
     fs.rmSync(inFolder(RAISE_SHOWN));
     t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => {
       fs.writeFileSync(inFolder(RAISE_SHOWN), sealedMeanwhile);
-      return decisionPoint.ruled(call, { ...at, question: DRAWN });
+      return decisionPoint.ruled(call, { ...at, chain: DRAWN });
     });
 
     const raced = (await raised(NOTE, ['--answers', ASKED.note], CALL, env)).res;
@@ -334,7 +334,7 @@ describe('the reveal (16.17.7, 16.10.10)', () => {
   });
 
   it('16.17.2, 9.2.16: the person\'s "don\'t care" on a blind question outside the build names Claude\'s answer, which they never saw, as the builder\'s, in the reveal\'s display — no pick named; on a question asked with the lean shown, it shows nothing', async (t) => {
-    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ _call, /** @type {any} */ at) => (at.question === ASKED.note ? { decision: 'blind', reason: BLIND } : { decision: 'ask', reason: 'Ask.' }));
+    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ _call, /** @type {any} */ at) => (at.chain === ASKED.note ? { decision: 'blind', reason: BLIND } : { decision: 'ask', reason: 'Ask.' }));
     const env = labelledAs(CALL, 'behaviour');
     const blind = (await raised(NOTE, ['--answers', ASKED.note], CALL, env)).res.raise;
     const asked = (await raised(NOTE, ['--answers', ASKED.menu], CALL, env)).res.raise;
@@ -415,7 +415,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
    */
   const onTheKind = () => withEnv({ LEEWAY_CONFIG_DIR: config() }, () => {
     const model = logged().find((event) => event.session === SESSION)?.model ?? null;
-    return [alikeOn(evidenceOf(statePath(dir)).answers, 'behaviour'), countsOf(statePath(dir), { model, now: Date.now() }).kinds.behaviour.own];
+    return [alikeOn(evidenceOf(statePath(dir)).answers, 'behaviour'), ownOf(countsOf(statePath(dir), { model, now: Date.now() }).kinds.behaviour)];
   });
 
   /**
@@ -466,7 +466,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.deepStrictEqual(parked, {
       v: 1, event: 'parked', unit: BUILT, topic: null, phase: 'implementation',
       question: null, replaces: decided.id, reason: 'asked-blind', cause: null, relies_on: [full(made.mine)], task: null, went_ahead: '2.3',
-      call: MAIN_FIRST, rows_judged: [], why_asking: BLIND, model: null, blocks_build: true, replaced_by: null, always: null, blind: true,
+      call: MAIN_FIRST, rows_judged: [], why_asking: BLIND, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ASKED.where, blind: true,
     });
     assert.deepStrictEqual(loggedOf('blind-draw').map(({ entry, kind }) => [entry, kind]), [[decided.id, 'behaviour']]);
     const ahead = withEnv({ LEEWAY_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir))).answers.find(({ event }) => event.entry === decided.id);

@@ -28,8 +28,9 @@
 //   them. Its digest (`showingOf`) hashes the gate's place — unit, phase and
 //   topic — with the key its surface draws it from out of its own state, the
 //   same on every redraw of one showing and different between showings. Its
-//   answer logs it (trust-events.cjs), so a replay draws a past showing
-//   again as it was drawn: `drawnBlind(gate, showing)`.
+//   answer logs it, and so does the step run on it, as no answer
+//   (trust-events.cjs), so a replay draws a past showing again as it was
+//   drawn: `drawnBlind(gate, showing)` (replay.cjs).
 // - A showing held keeps its key, so a gate whose key names its subject
 //   tells a showing held of a subject gone (`heldFor`): the reprompt over
 //   other paths, the spawn gate for another experiment, the wait once none

@@ -178,7 +178,7 @@ const screen = (out, sections) => sections.flatMap((name) => (name === 'TITLE' ?
 function lookAt(dir, name) {
   return ruled(/** @type {any} */ ({ sort: 'several' }), {
     label: labelled('look'), place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false,
-    project: { root: statePath(dir), name }, model: MODEL, now: FROZEN_MS, question: UNDRAWN,
+    project: { root: statePath(dir), name }, model: MODEL, now: FROZEN_MS, chain: UNDRAWN,
   });
 }
 
@@ -667,6 +667,32 @@ describe('the care entries\' screens (16.5.6)', () => {
     for (const [args, error] of refusals) assert.strictEqual(refuses(fumi, ['render', ...args], { env: ENV }).error, error, args.join(' '));
     dropCare(fumi, 'look');
     assert.strictEqual(refuses(fumi, ['render', 'care-drop'], { env: ENV }).error, 'render care-drop: no care entry stands in Fumi to drop');
+  });
+});
+
+describe('a care entry dropped, in the trust log (16.5.2, 16.15.3)', () => {
+  /** The care entries the trust log says were dropped: each by its project, its kind and when it was added. */
+  const dropsLogged = () => (fs.existsSync(logPath()) ? fs.readFileSync(logPath(), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line)) : [])
+    .filter(({ type }) => type === 'care-drop').map(({ project: keyed, kind, added }) => ({ project: keyed, kind, added }));
+
+  it('is logged as dropped, by its kind and when it was added, in the project the entry named — dropped on Claude\'s proposal or on the person\'s own pick; an entry added, or a preference dropped, logs none', () => {
+    const fumi = project('fumi');
+    careStanding(['Fumi', 'look', PROJECT_ID]);
+    propose(fumi, DROP_LOOK, ['--drop']);
+    pick(fumi, 'record drop', 'y');
+    person(fumi, ['drop']);
+    addCare(fumi, 'words');
+    const [{ added }] = careEntries();
+    kept(fumi, SHOW_FIRST);
+    kept(fumi, { ...SHOW_FIRST, why: 'You let the tour run long.', examples: ['The tour asked for an account'] }, ['--drop']);
+    const before = dropsLogged();
+
+    dropCare(fumi, 'words');
+
+    assert.deepStrictEqual([before, dropsLogged()], [
+      [{ project: PROJECT_ID, kind: 'look', added: BEFORE }],
+      [{ project: PROJECT_ID, kind: 'look', added: BEFORE }, { project: PROJECT_ID, kind: 'words', added }],
+    ]);
   });
 });
 

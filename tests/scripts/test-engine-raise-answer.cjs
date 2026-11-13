@@ -84,7 +84,10 @@ afterEach(() => {
 });
 
 const { write, ledgerText, entries, full } = ledgerHelpers(() => dir);
-const { conversation, inFolder, seals: sealed, logText, logged, project, answer, lastEntry, raiseEvent } = raiseHelpers(() => dir, config, CALL);
+const { conversation, inFolder, seals: sealed, logText, logged, project, answer, lastEntry, raiseEvent: anyRaise } = raiseHelpers(() => dir, config, CALL);
+
+/** A raise event on the question where a note opens, `own` over the pick of the lean. @param {string|null} entry @param {Record<string, unknown>} [own] */
+const raiseEvent = (entry, own = {}) => anyRaise(entry, { chain: full(asked.where), ...own });
 
 /** The conversation's sealed raises, each test's drawn first. */
 const seals = () => /** @type {Record<string, any>} */ (sealed());
@@ -207,7 +210,7 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
       entryOf(ruling, asked.size, { who_moved_whom: 'person-moved-claude', text: 'Half the screen', rules_out: ['a fixed size'] }),
     ]);
     const own = { answer: null, with_text: true };
-    assert.deepStrictEqual(logged(), [raiseEvent(plain, own), raiseEvent(ruling, own)]);
+    assert.deepStrictEqual(logged(), [raiseEvent(plain, own), raiseEvent(ruling, { ...own, chain: full(asked.size) })]);
     assert.deepStrictEqual(seals()[plain].answered.answer, null);
   });
 
@@ -245,7 +248,7 @@ describe('the person\'s own words, read (16.19.1, 16.19.6)', () => {
       entryOf(departing, asked.size, { who_moved_whom: 'person-moved-claude', text: DEPARTS, rules_out: [] }),
     ]);
     const own = { answer: null, with_text: true, reading: MAIN.key };
-    assert.deepStrictEqual(logged(), [raiseEvent(agreeing, { ...own, sealed: MAIN.key }), raiseEvent(departing, own)]);
+    assert.deepStrictEqual(logged(), [raiseEvent(agreeing, { ...own, sealed: MAIN.key }), raiseEvent(departing, { ...own, chain: full(asked.size) })]);
     const queued = ok(dir, ['verdict', 'queue'], { env: conversation() }).departures.map((/** @type {{id: string}} */ d) => full(d.id));
     assert.deepStrictEqual(queued, [departing]);
     const options = CALL.rows.map((row) => `- ${row.key}: ${row.text}\n  What you'd notice — ${row.name}: ${row.notice}`).join('\n');
@@ -388,7 +391,7 @@ describe('once (E3)', () => {
 
       assert.strictEqual(res.already, undefined);
       assert.deepStrictEqual(entries().filter((entry) => entry.id === id).map((entry) => entry.text), [rowText(rerun)]);
-      assert.deepStrictEqual(logged().filter((event) => event.entry === id), [raiseEvent(id, { answer: rerun })]);
+      assert.deepStrictEqual(logged().filter((event) => event.entry === id), [raiseEvent(id, { answer: rerun, chain: full(question) })]);
     }
     assert.ok(!fs.existsSync(inFolder(PENDING)), 'an event the killed runs kept still waits');
   });

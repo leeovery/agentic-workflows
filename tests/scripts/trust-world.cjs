@@ -194,12 +194,15 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
    * A raise on `kind` answered `answer`, Claude's lean row 1, landed as
    * `entry` — the person's "don't care", typed, where `dontCare`; asked
    * blind where `blind`; blocking build work where `blocksBuild`;
-   * replacing a decision of `replacedBy`'s; under Claude's mark `always`;
-   * raised at `raised`, else as it is answered: its entry.
-   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string, blocksBuild?: boolean, replacedBy?: string|null, always?: string|null, raised?: number}} [opts] @param {Where} [where]
+   * replacing a decision of `replacedBy`'s, or the entry `replaces` names;
+   * under Claude's mark `always`; its question measured by the experiment
+   * `measured`; its question's id `chain`, one never drawn blind unless
+   * given, none for a replacement; raised at `raised`, else as it is
+   * answered: its entry.
+   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string, blocksBuild?: boolean, replacedBy?: string|null, replaces?: string|null, always?: string|null, measured?: string|null, chain?: string|null, raised?: number}} [opts] @param {Where} [where]
    */
-  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId(), blocksBuild = false, replacedBy = null, always = null, raised } = {}, where = {}) => /** @type {string} */ (log('raise', (at) => ({
-    entry, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: blocksBuild, replaced_by: replacedBy, always,
+  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId(), blocksBuild = false, replacedBy = null, replaces = null, always = null, measured = null, chain = replacedBy === null ? UNDRAWN : null, raised } = {}, where = {}) => /** @type {string} */ (log('raise', (at) => ({
+    entry, replaces, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: blocksBuild, replaced_by: replacedBy, always, measured, chain,
     raised: raised === undefined ? at : new Date(raised).toISOString(), blind,
   }), where).entry);
   const h = {
@@ -251,7 +254,7 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
     /** A raise on `kind` Claude sorted `sort`, which the person didn't follow. @param {string} sort @param {Kind} [kind] */
     unfollowed: (sort, kind = 'behaviour') => {
-      log('raise', (at) => ({ entry: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, raised: at, blind: false }));
+      log('raise', (at) => ({ entry: null, replaces: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, measured: null, chain: UNDRAWN, raised: at, blind: false }));
     },
     /** @param {string} entry @param {string} verdict @param {Where} [where] */
     verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),
@@ -265,12 +268,28 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     gate: (name, { picked, reading = null, showing = null }, where = {}) => log('gate', picked === undefined
       ? { gate: name, recommended: 'y', picked: null, via: 'typed', with_text: true, reading, showing }
       : { gate: name, recommended: 'y', picked, via: 'pressed', with_text: false, reading: null, showing }, where),
+    /** A blind question drawn on the ledger line `entry`, a call on `kind`. @param {string} entry @param {Kind} [kind] */
+    blindDraw: (entry, kind = 'behaviour') => log('blind-draw', { entry, kind }),
+    /**
+     * The learned gate `name` run as an automatic step on its row `row`, on
+     * the showing `showing`.
+     * @param {string} name @param {string} row @param {string} showing @param {Where} [where]
+     */
+    step: (name, row, showing, where = {}) => log('step', { gate: name, row, showing }, where),
+    /**
+     * The care entry on `kind` added at `added` dropped from the record of
+     * the person.
+     * @param {Kind} kind @param {number} added @param {Where} [where]
+     */
+    careDrop: (kind, added, where = {}) => log('care-drop', { kind, added: new Date(added).toISOString() }, where),
     /** The other events of the log, which answer nothing. */
     others: () => {
       h.unfollowed('several');
-      log('blind-draw', { entry: newId(), kind: 'behaviour' });
+      h.blindDraw(newId());
       log('position-switch', { unit: 'pay', to: 'step' });
       log('convergence', { unit: 'pay', topic: 'cards' });
+      h.step('plan gate', 'y', '0123456789abcdef');
+      h.careDrop('behaviour', clock);
     },
   };
   return h;

@@ -47,8 +47,8 @@ const CALL = Object.freeze({
   product_wide: false,
 });
 
-/** The entries `working` made, by short id: Claude's call, the earlier unit's decision, and Claude's replacing it. */
-const made = { call: '', ruled: '', replacing: '' };
+/** The entries `working` made, by short id: the question Claude's call answers and the call, the earlier unit's decision, and Claude's replacing it. */
+const made = { asked: '', call: '', ruled: '', replacing: '' };
 
 const working = fixtureFrom('engine-board-quick-fix-', (dir) => {
   quickFix(dir);
@@ -62,7 +62,8 @@ const working = fixtureFrom('engine-board-quick-fix-', (dir) => {
     createFix(dir, 1, FLAG, as);
     createFix(dir, 2, HELP, as);
     ok(dir, ['task', 'start', UNIT, '1.1'], as);
-    made.call = decide(PLACE, ask(PLACE, 'What does the README say entering does?'), CALL_TEXT);
+    made.asked = ask(PLACE, 'What does the README say entering does?');
+    made.call = decide(PLACE, made.asked, CALL_TEXT);
     made.replacing = ok(dir, ['ledger', 'replace', PLACE, '--replaces', made.ruled, '--reason', 'changed-mind'], {
       ...as, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Pressing m marks the highlighted row.', why: 'The note pins it.', drops: ['the empty set'] }),
     }).id;
