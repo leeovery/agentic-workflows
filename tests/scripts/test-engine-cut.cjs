@@ -12,7 +12,11 @@
 // replacing the whole cut until a
 // phase has started — its start's checklist closed, not merely open — then
 // keeping every phase to the last started, whatever order its fields are
-// given in, and changing only those after.
+// given in, and changing only those after. The migration's marks (21.8.6,
+// 21.8.8): a phase built, `{name, goal, built: true}`, placing and drawing on
+// nothing and read started, and a phase's tracker parent, each kept as the
+// migration's cut wrote it — a cut marking a phase after the last started
+// built, or naming a tracker parent the manifest's cut does not, refused.
 //
 // The cut's corridor: `engine brief phase-cut <unit>`, the phase cut's
 // agent briefed from the spec's outline, its scenarios each with its area,
@@ -203,8 +207,10 @@ describe('the refusals (11.5.9, 11.S31), nothing written', () => {
       assert.strictEqual(refused(given), `cut: ${file} holds no cut — a cut is {"phases": [{name, goal, scenarios, sections, relies_on}, …]}`);
     }
     const { goal, ...goalless } = CARDS;
-    assert.strictEqual(refused({ phases: [goalless, { ...REFUNDS, built: true }] }),
-      'cut: phase 1 is not {name, goal, scenarios, sections, relies_on}; phase 2 is not {name, goal, scenarios, sections, relies_on}');
+    assert.strictEqual(refused({ phases: [goalless, { ...REFUNDS, order: 2 }, { ...REFUNDS, built: true }] }),
+      'cut: phase 1 is not {name, goal, scenarios, sections, relies_on}; phase 2 is not {name, goal, scenarios, sections, relies_on}; phase 3 is not {name, goal, built}');
+    assert.strictEqual(refused({ phases: [{ name: 'Setup', goal: 'Set up.', built: false }, { ...CARDS, tracker: ' ' }, REFUNDS] }),
+      'cut: phase 1\'s built is not true; phase 2\'s tracker is not the tracker\'s id of its parent');
     assert.strictEqual(refused({ phases: [{ ...CARDS, name: ' ', scenarios: '1.S1' }, { ...REFUNDS, sections: ['3', '3'], relies_on: [0] }] }), [
       'cut: phase 1\'s name is not text', 'phase 1\'s scenarios is not a list of scenario ids, each once',
       'phase 2\'s sections is not a list of section addresses, each once', 'phase 2\'s relies_on is not a list of earlier phases by number and other units by name, each once',
@@ -212,8 +218,8 @@ describe('the refusals (11.5.9, 11.S31), nothing written', () => {
   });
 
   it('the usage, for arguments of another shape', () => {
-    const usage = 'Usage: engine cut <work-unit> [--file <cut.json>]';
-    for (const args of [['cut'], ['cut', UNIT, '--file'], ['cut', '--file', 'cut.json'], ['cut', UNIT, 'billing', '--file', 'cut.json'], ['cut', UNIT, '--file', 'cut.json', '--force', 'yes']]) {
+    const usage = 'Usage: engine cut <work-unit> [--file <cut.json>] | cut <work-unit> --migrating --file <plan.json>';
+    for (const args of [['cut'], ['cut', UNIT, '--file'], ['cut', '--file', 'cut.json'], ['cut', UNIT, 'billing', '--file', 'cut.json'], ['cut', UNIT, '--file', 'cut.json', '--force', 'yes'], ['cut', UNIT, '--migrating']]) {
       assert.strictEqual(refusedPristine(dir, args).error, usage);
     }
   });
@@ -279,6 +285,39 @@ describe('a second cut (E10)', () => {
 
     assert.deepStrictEqual(readManifest(dir, UNIT).cut, { phases: [sooner, REFUNDS] });
     assert.match(refused({ phases: [cards, REFUNDS] }), /^cut: phase 1 has started, and the cut changes phase 1 — /);
+  });
+});
+
+describe('the migration\'s marks: a phase built and a tracker parent (21.8.6, 21.8.8)', () => {
+  useWorld(world);
+
+  const SETUP = { name: 'Setup', goal: 'Set up before the migration.', built: true };
+  const TRACKED = { ...REFUNDS, relies_on: [2], tracker: 'old-7' };
+
+  /** The cut the migration's wrote, on the unit's manifest. @param {object[]} phases */
+  const migrated = (phases) => writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir, UNIT), cut: { phases } }, null, 2));
+
+  it('keeps a built phase and a tracker parent as the migration\'s cut wrote them, the built phase placing and drawing on nothing and read started, so a cut changes only the phases after it, a scenario in none read past it', () => {
+    migrated([SETUP, CARDS, TRACKED]);
+    const sooner = { ...CARDS, goal: 'Cards, sooner.' };
+
+    cut(/** @type {Phase[]} */ ([SETUP, sooner, { ...TRACKED, goal: 'Refunds, whole and part.' }]));
+
+    assert.deepStrictEqual(readManifest(dir, UNIT).cut, { phases: [SETUP, sooner, { ...TRACKED, goal: 'Refunds, whole and part.' }] });
+  });
+
+  it('refuses, writing nothing, a built phase changed, one marked built after it, and a tracker parent named, changed or dropped — only the migration\'s cut does those', () => {
+    migrated([SETUP, CARDS, TRACKED]);
+    const builtLater = { name: 'Refunds', goal: 'Refunds work.', built: true, tracker: 'old-7' };
+
+    assert.strictEqual(refused({ phases: [{ ...SETUP, goal: 'Set up.' }, CARDS, TRACKED] }), 'cut: phase 1 has started, and the cut changes phase 1 — a cut keeps every phase to 1 as it stands and changes only those after');
+    assert.strictEqual(refused({ phases: [SETUP, { ...CARDS, scenarios: ['1.S1', '3.S1', '3.S2'] }, builtLater] }), 'cut: phase 3 is marked built — only the migration\'s cut marks a phase built');
+    assert.strictEqual(refused({ phases: [SETUP, { ...CARDS, tracker: 'old-6' }, { ...TRACKED, tracker: 'old-8' }] }), [
+      'cut: phase 2 names the tracker parent old-6, and none was adopted for it — only the migration\'s cut names one',
+      'phase 3 names the tracker parent old-8, and old-7 was adopted for it — only the migration\'s cut names one',
+    ].join('; '));
+    const { tracker, ...untracked } = TRACKED;
+    assert.strictEqual(refused({ phases: [SETUP, CARDS, untracked] }), 'cut: phase 3 names no tracker parent, and old-7 was adopted for it — only the migration\'s cut names one');
   });
 });
 

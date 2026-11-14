@@ -14,8 +14,8 @@
 // none keeping every rule but the cites; every entry citing a heading its
 // file holds once, in a file of its topic's own or the unit's — its log and
 // the reviews the move folded into it, its brief, an experiment's record, the
-// unit's assets, or its spec.md as its specs under `.workflows/` hold,
-// joined, where its building started — never the cache, another topic's or
+// unit's assets, or its spec.md, its specs joined by the move where its
+// building started — never the cache, another topic's or
 // its mail; every subtopic its old map shows decided carried, one entry
 // settling several, every one still undecided and every thread still open
 // carried by an open question. A record breaking a rule is refused at the
@@ -274,7 +274,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
       'ledger carry: fumi\'s auth was promoted to platform, which carries its record');
   });
 
-  it('F1: reads `.workflows/` where the move read it, the working tree in the main checkout, which holds what the old chain and the split changed in the same run, never committed — the old map, the research\'s threads and the specs spec.md joins (21.5.8)', () => {
+  it('F1: reads `.workflows/` where the move read it, the working tree in the main checkout, which holds what the old chain and the split changed in the same run, never committed — the old map and the research\'s threads (21.5.8)', () => {
     /** A unit's old manifest changed in the working tree alone. @param {string} unit @param {(manifest: any) => void} edit */
     const reshape = (unit, edit) => {
       const file = path.join(dir, '.workflows', unit, 'manifest.json');
@@ -284,11 +284,9 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     };
     reshape('shop', (manifest) => { manifest.phases.discussion.items.weights.subtopics['by-price'] = { status: 'decided', parent: null }; });
     reshape('fumi', (manifest) => { manifest.phases.research.items.search.threads['stop-words'] = { question: 'Are stop words dropped?', status: 'open', origin: 'seed', parent: null }; });
-    fs.appendFileSync(path.join(dir, '.workflows/shop/specification/weights/specification.md'), '\n## Pricing\n\nBy price.\n');
-    const [q1, d1] = GOOD['shop.discussion.weights'];
 
     assert.deepStrictEqual([
-      refused('shop.discussion.weights', [q1, { ...d1, cites: [{ path: 'shop/spec.md', section: 'Pricing' }] }]),
+      refused('shop.discussion.weights', GOOD['shop.discussion.weights']),
       refused('fumi.discussion.search', GOOD['fumi.discussion.search']),
     ], [
       breaks('shop', 'weights', ['by-price is decided on its map, and no entry carries it']),
@@ -333,7 +331,8 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
   });
 
-  it('the unit\'s spec.md where its building never started; where it started, a heading its specs under `.workflows/` lack, or hold more than once between them, one spec\'s own heading cited', () => {
+  it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks, or holds more than once, one spec\'s heading and a heading two share among them — whatever its specs under `.workflows/` hold now', () => {
+    fs.appendFileSync(path.join(dir, '.workflows/shop/specification/weights/specification.md'), '\n## Pricing\n\nBy price.\n');
     const licensing = GOOD['fumi.discussion.licensing'];
     assert.strictEqual(refused('fumi.discussion.licensing', [...licensing.slice(0, 3), { ...licensing[3], cites: [{ path: 'fumi/spec.md', section: 'Corrigenda' }] }]),
       breaks('fumi', 'licensing', ['entry d2 cites fumi/spec.md, which the state does not hold']));

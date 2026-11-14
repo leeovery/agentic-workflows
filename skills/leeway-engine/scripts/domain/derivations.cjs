@@ -63,8 +63,17 @@ const closedIntoSpec = (manifest) => manifest.work_type === 'feature' && decided
 /** The key a phase's start or close keeps its checklist under (6.4.12). @param {number} number @param {'start'|'close'} end */
 const phaseKey = (number, end) => `phase-${number}-${end}`;
 
-/** Whether the checklist of a phase's start or close has closed. @param {Record<string, any>} manifest @param {number} number @param {'start'|'close'} end */
+/**
+ * Whether a phase of the unit's cut was built before the migration cut it,
+ * `built: true` on the phase (21.8.6): started, closed and merged wherever a
+ * phase is read, with no checklist of its own.
+ * @param {Record<string, any>} manifest @param {number} number
+ */
+const phaseBuilt = (manifest, number) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases[number - 1]?.built === true : false);
+
+/** Whether the checklist of a phase's start or close has closed, or the phase was built before the migration. @param {Record<string, any>} manifest @param {number} number @param {'start'|'close'} end */
 function phaseEnded(manifest, number, end) {
+  if (phaseBuilt(manifest, number)) return true;
   const record = isObject(manifest.checklists) ? manifest.checklists[phaseKey(number, end)] : undefined;
   return isObject(record) && record.closed !== undefined;
 }
@@ -75,8 +84,19 @@ const phaseStarted = (manifest, number) => phaseEnded(manifest, number, 'start')
 /** Whether a phase of the unit has closed: its close's checklist closed (6.4.9). @param {Record<string, any>} manifest @param {number} number */
 const phaseClosed = (manifest, number) => phaseEnded(manifest, number, 'close');
 
-/** The phases of the unit's cut, none where it has none. @param {Record<string, any>} manifest @returns {Array<{name?: string, sections: string[], scenarios: string[], relies_on: Array<number|string>}>} */
-const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases : []);
+/**
+ * A phase of a unit's cut as it is read: a built phase, which keeps its name
+ * and goal alone, read as placing, drawing on and relying on nothing.
+ * @typedef {{name?: string, goal?: string, sections: string[], scenarios: string[], relies_on: Array<number|string>, built?: true, tracker?: string}} CutPhase
+ */
+
+/** The phases of the unit's cut, none where it has none, each as it is read. @param {Record<string, any>} manifest @returns {CutPhase[]} */
+const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases)
+  ? manifest.cut.phases.map((/** @type {any} */ phase) => (phase?.built === true ? { scenarios: [], sections: [], relies_on: [], ...phase } : phase))
+  : []);
+
+/** Whether the unit's spec is its old specs joined by the migration, `spec.joined` (21.8.5): history, concluded and never corrected. @param {Record<string, any>} manifest */
+const specJoined = (manifest) => manifest.spec?.joined === true;
 
 /** How many phases the unit's cut holds, none where it has none. @param {Record<string, any>} manifest */
 const cutLength = (manifest) => cutPhases(manifest).length;
@@ -102,14 +122,16 @@ function isFixPhase(manifest, phase) {
   return (quickFixBuild(manifest) || buildFinished(manifest)) && phase > buildLength(manifest);
 }
 
+/** The phases whose items a unit built under the old plan keeps, which 29.17's cut takes (P12, cut-migrating.cjs). */
+const OLD_PLAN_PHASES = Object.freeze(['specification', ...LEGACY_PHASES, 'implementation']);
+
 /**
  * Whether the unit was built under the old plan: its old spec's,
- * planning's or implementation's items standing on its manifest, which
- * 29.17's cut takes (P12).
+ * planning's or implementation's items standing on its manifest.
  * @param {Record<string, any>} manifest
  */
 function legacyBuild(manifest) {
-  return ['specification', ...LEGACY_PHASES, 'implementation'].some((phase) => phaseItems(manifest, phase).length > 0);
+  return OLD_PLAN_PHASES.some((phase) => phaseItems(manifest, phase).length > 0);
 }
 
 /** A quick-fix's one phase, the fixes, each fix its own task (19.5.4, E4). */
@@ -1348,13 +1370,16 @@ module.exports = {
   startedOn,
   buildBegun,
   phaseKey,
+  phaseBuilt,
   phaseStarted,
   phaseClosed,
   buildFinished,
   cutPhases,
+  specJoined,
   cutLength,
   isFixPhase,
   legacyBuild,
+  OLD_PLAN_PHASES,
   awaitsCut,
   retiredRefusal,
   buildByCut,

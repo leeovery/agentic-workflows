@@ -26,7 +26,14 @@
 // the person's, its text from a file (13.11.3), the task marked changed after
 // the last round reported of its review, which its pair reads again
 // (round-report.cjs); a task not yet ended takes a new type, as the migration
-// gives one (21.5.21). A link holds a task after one of its own phase's or an
+// gives one (21.5.21). While the migration runs, and only then, a phase of a
+// plan the tracker held from before Leeway is adopted, its parent named by
+// the tracker's own id: it and its tasks take the engine's names, nothing
+// else of them changed (21.8.8, drivers.cjs); the migration's cut runs its
+// tracker steps here too (`migratedTracker`, cut-migrating.cjs), each phase
+// it names the parent of adopted — refused where a phase it marks built
+// holds a task neither done nor closed, the names given kept — then each
+// task neither done nor closed typed (21.5.21). A link holds a task after one of its own phase's or an
 // earlier phase's, still unfinished, and only a task not yet ended is linked
 // (12.6.4); ready answers every task waiting with nothing before it and no
 // question parking it (7.1.5, 13.4.6), and, in step or in a quick-fix, the
@@ -121,7 +128,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { resolveDriver, chosenDriver, settingOf, needsRefusal } = require('./drivers.cjs');
-const { ignoreInState, withIgnored } = require('./state-worktree.cjs');
+const { ignoreInState, withIgnored, migrationRuns } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = require('./task-file.cjs');
@@ -474,6 +481,47 @@ function typeTask(cwd, unit, given, type) {
     refuseEnded(driver, root, ref, 'only a task not yet ended is typed');
     driver.setType(root, ref, type);
     return { ...named(ref), type };
+  });
+}
+
+/**
+ * `task adopt`: a phase of a plan the tracker held from before Leeway given
+ * the engine's names (21.8.8), its parent named by the tracker's own id —
+ * only while the migration runs (E13).
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} parent
+ */
+function adoptPhase(cwd, unit, given, parent) {
+  const phase = parsePhase(given);
+  if (!migrationRuns(stateRoot(cwd))) throw new Error('a plan from before Leeway is adopted only while the migration runs — the state branch has its first commit, so the migration is done');
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, `adopt phase ${phase}`, (driver, root) => ({ phase, parent, tasks: driver.adopt(root, unit, phase, parent).map(shownTask) }));
+}
+
+/**
+ * The migration's cut's tracker steps, one tracker commit (the header's):
+ * each phase naming its parent adopted, then each task neither done nor
+ * closed given `type` where it has another. A run again adopts and types
+ * only what the last left out.
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean}[]} phases @param {string} type
+ * @returns {{adopted: {phase: number, tasks: string[]}[], typed: string[], committed?: string|null, note?: string, warnings?: string[]}}
+ */
+function migratedTracker(cwd, unit, phases, type) {
+  return withTracker(cwd, unit, 'adopt the plan', (driver, root) => {
+    const adopted = phases.map(({ phase, parent, built }) => {
+      const tasks = driver.adopt(root, unit, phase, parent);
+      const open = built ? (driver.list(root, unit, phase) ?? []).filter(({ status }) => !ENDED.includes(status)) : [];
+      if (open.length > 0) {
+        throw new TaskRefusal(`phase ${phase} is marked built, and the tracker holds ${open.map(({ ref }) => `task ${shownTask(ref)}`).join(', ')} neither done nor closed — the tracker wins: a phase built has every task ended`);
+      }
+      return { phase, tasks: tasks.map(shownTask) };
+    });
+    const typed = phases.flatMap(({ phase }) => (driver.tasks(root, unit, phase) ?? [])
+      .filter((task) => !ENDED.includes(task.status) && task.type !== type)
+      .map((task) => {
+        driver.setType(root, task.ref, type);
+        return shownTask(task.ref);
+      }));
+    return { adopted, typed };
   });
 }
 
@@ -1119,6 +1167,7 @@ const TASK_VERBS = Object.freeze({
   create: { usage: '<unit> <N> --file <path>', arity: 2, flags: ['file'], run: (cwd, [unit, phase], file) => createTask(cwd, unit, phase, file) },
   add: { usage: '<unit> <task> --file <path> --by <orchestrator|person>', arity: 2, flags: ['file', 'by'], run: (cwd, [unit, task], file, by) => addToTask(cwd, unit, task, file, by) },
   type: { usage: '<unit> <task> <type>', arity: 3, run: (cwd, [unit, task, type]) => typeTask(cwd, unit, task, type) },
+  adopt: { usage: '<unit> <N> --parent <tracker-id>', arity: 2, flags: ['parent'], run: (cwd, [unit, phase], parent) => adoptPhase(cwd, unit, phase, parent) },
   link: { usage: '<unit> <task> --after <task>', arity: 2, flags: ['after'], run: (cwd, [unit, task], after) => linkTask(cwd, unit, task, after) },
   ready: { usage: '<unit> [<N>]', arity: 1, optional: 1, run: (cwd, [unit, phase]) => readyTasks(cwd, unit, phase) },
   start: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => startTask(cwd, unit, task) },
@@ -1149,4 +1198,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };

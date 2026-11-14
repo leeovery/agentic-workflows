@@ -497,7 +497,7 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames, topicTitle, cutPhases, quickFixBuild } = require('./derivations.cjs');
+const { dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined } = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
@@ -1169,8 +1169,8 @@ function unitOf({ unit }) {
 const READ_SPECS = new WeakMap();
 
 /**
- * The unit's spec, read once a fill; refused where the unit has none or its
- * grammar refuses it.
+ * The unit's spec, read once a fill — as joined, where the migration joined
+ * it; refused where the unit has none or its grammar refuses it.
  * @param {Filling} filling @returns {ReadSpec}
  */
 function unitSpec(filling) {
@@ -1181,7 +1181,7 @@ function unitSpec(filling) {
   /** @type {Line[]} */
   let lines;
   try {
-    lines = specStatements(text);
+    lines = specStatements(text, specJoined(unitManifest(filling)));
   } catch (err) {
     throw new Error(`brief: ${unit}'s ${SPEC_FILE} does not read —\n${messageOf(err)}`);
   }
@@ -1612,7 +1612,7 @@ function drawProductCites(filling, warnings) {
   return listed([...cited].map(([id, numbers]) => `${entryLine(/** @type {UnitEntry} */ (entries.get(id)))}\n  Cited by ${numbers.join(', ')}`));
 }
 
-/** A phase of a unit's cut. @typedef {import('./cut.cjs').Phase} CutPhase */
+/** A phase of a unit's cut, as it is read. @typedef {import('./derivations.cjs').CutPhase} CutPhase */
 
 /**
  * The phase a phase's record is drawn for: its unit, its number, and every

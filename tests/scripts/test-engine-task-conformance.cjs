@@ -20,7 +20,14 @@
 // with the driver is refused here: a store it cannot read, or a line of it,
 // a link that would make a cycle, a name carried twice, and a unit or phase the person
 // ended in the tracker, cancelled or done — a parent the tracker ended itself
-// is reopened. 7.S5: the shipped task drivers are exactly one, the default.
+// is reopened. A plan the tracker held from before Leeway adopted phase by
+// phase (21.8.8): the engine's names added in the order the tracker made
+// its tasks, the unit's on the plan's root where it is free, nothing else
+// of a task changed and nothing made or reopened; a run again adding only
+// what the last left out; a parent the tracker lacks, a task named apart, a
+// name held elsewhere and a task holding all the refs the tracker keeps on
+// one refused, adding nothing; and ready across every
+// phase of the unit wherever its parent sits. 7.S5: the shipped task drivers are exactly one, the default.
 // The store merged between two clones (7.5.5–7.5.7): each side's changes
 // kept, a field both set differently the person's choice in the engine's
 // words, a name both made the remote's, this machine's set aside and named,
@@ -407,6 +414,94 @@ for (const driver of listDrivers('task')) {
       assert.throws(() => driver.list(root, UNIT, 1), /\btask 1\.2 of pay\b/);
       side.addRef(root, 'Write the ledger', ref(1, 3));
       assert.throws(() => driver.show(root, ref(1, 1)), /\btask 1\.1 of pay\b.*\btask 1\.3 of pay\b/);
+    });
+
+    describe('adopt (21.8.8): a plan the tracker held from before Leeway given the engine\'s names, phase by phase', () => {
+      const OLD = 'shop';
+      const PLAN = [
+        { title: 'The basket', tasks: ['Hold the basket', 'Price the basket', 'Empty the basket'] },
+        { title: 'The till', tasks: ['Open the till', 'Count the till', 'Close the till'] },
+      ];
+      /** @param {number} phase @param {number} n */
+      const old = (phase, n) => ({ unit: OLD, phase, n });
+      /** @type {{root: string, phases: string[]}} */
+      let plan;
+      /** @type {any} */
+      let side;
+      const store = () => driver.storeFiles().map((file) => fs.readFileSync(path.join(root, file), 'utf8'));
+      const adoptBoth = () => [driver.adopt(root, OLD, 1, plan.phases[0]), driver.adopt(root, OLD, 2, plan.phases[1])];
+
+      /** @type {string} */
+      let planned;
+
+      before(() => {
+        side = require(sideOf(driver.name));
+        planned = templateFolder(`task-conformance-${driver.name}-planned-`);
+        fs.cpSync(template, planned, { recursive: true });
+        plan = side.oldPlan(planned, OLD, PLAN);
+        side.linkBy(planned, 'Count the till', 'Open the till');
+        for (const [act, title] of [['done', 'Price the basket'], ['done', 'Hold the basket'], ['cancel', 'Empty the basket'], ['start', 'Open the till']]) side.taskByHand(planned, act, title);
+      });
+
+      beforeEach(() => {
+        fs.rmSync(root, { recursive: true });
+        fs.cpSync(planned, root, { recursive: true });
+      });
+
+      it('names the parent the phase written and its own tasks the phase\'s, in the order the tracker made them, each as it stood, read as the tracker itself answers', () => {
+        assert.deepStrictEqual(adoptBoth(), [[old(1, 1), old(1, 2), old(1, 3)], [old(2, 1), old(2, 2), old(2, 3)]]);
+        assert.deepStrictEqual([1, 2].map((phase) => driver.list(root, OLD, phase)?.map((row) => [row.title, row.status])), [
+          [['Hold the basket', 'done'], ['Price the basket', 'done'], ['Empty the basket', 'closed']],
+          [['Open the till', 'in-progress'], ['Count the till', 'open'], ['Close the till', 'open']],
+        ]);
+        assert.deepStrictEqual([driver.show(root, old(2, 2))?.after, shown(driver.ready(root, OLD, null))], [[old(2, 1)], ['2.3']]);
+        for (const phase of [1, 2, null]) {
+          const tool = side.toolAnswers(root, OLD, phase);
+          assert.deepStrictEqual({ list: phase === null ? tool.list : driver.list(root, OLD, phase), ready: driver.ready(root, OLD, phase) }, tool, `phase ${phase}`);
+        }
+        driver.setType(root, old(2, 2), 'fix');
+        assert.deepStrictEqual(driver.show(root, old(2, 2))?.type, 'fix');
+      });
+
+      it('adds to what each task holds, changing nothing else — its status, its history, its type and the old plan\'s refs — and makes and reopens nothing', () => {
+        const before = side.apartFromNames(root, OLD);
+        adoptBoth();
+        assert.deepStrictEqual(side.apartFromNames(root, OLD), before);
+        assert.deepStrictEqual(shown(driver.list(root, UNIT, 1) ?? []), ['1.1', '1.2', '1.3']);
+      });
+
+      it('a run again adds only what the last left out: a name added before a kill kept, the rest added, and a run over a whole adoption changing nothing', () => {
+        side.addRef(root, 'Price the basket', old(1, 2));
+        assert.deepStrictEqual(driver.adopt(root, OLD, 1, plan.phases[0]), [old(1, 1), old(1, 2), old(1, 3)]);
+        const once = store();
+        assert.deepStrictEqual(driver.adopt(root, OLD, 1, plan.phases[0]), [old(1, 1), old(1, 2), old(1, 3)]);
+        assert.deepStrictEqual([store(), driver.list(root, OLD, 1)?.map((row) => row.title)], [once, PLAN[0].tasks]);
+      });
+
+      it('names the plan\'s root the unit where the unit has none, so a phase written later is made under it; a second plan\'s root takes none, and ready answers every phase wherever its parent sits', () => {
+        const second = side.oldPlan(root, 'shop-extras', [{ title: 'The receipt', tasks: ['Print the receipt'] }]);
+        driver.adopt(root, OLD, 1, plan.phases[0]);
+        driver.adopt(root, OLD, 2, second.phases[0]);
+        assert.strictEqual(driver.createUnit(root, OLD), false);
+        driver.createPhase(root, OLD, 3, 'The post');
+        driver.createTask(root, old(3, 1), task('Post the receipt'));
+        assert.deepStrictEqual(driver.list(root, OLD, 3), side.toolAnswers(root, OLD, 3).list);
+        assert.deepStrictEqual(shown(driver.ready(root, OLD, null)), ['2.1', '3.1']);
+      });
+
+      it('refuses, adding nothing, a parent the tracker lacks, a task named apart from the name it would take, a name another task holds, and a task holding all the refs the tracker keeps on one', () => {
+        for (const [setUp, phase, parent, named] of /** @type {const} */ ([
+          [() => {}, 1, () => 'no-such-task', [phaseName(OLD, 1)]],
+          [() => side.fillRefs(root, 'Close the till'), 2, () => plan.phases[1], [taskName(old(2, 3))]],
+          [() => side.addRef(root, 'Count the till', old(1, 5)), 2, () => plan.phases[1], [taskName(old(1, 5)), taskName(old(2, 2))]],
+          [() => side.makeTask(root, 'Stray', old(1, 2)), 1, () => plan.phases[0], [taskName(old(1, 2))]],
+        ])) {
+          setUp();
+          const before = store();
+          assert.throws(() => driver.adopt(root, OLD, phase, parent()), (err) => err instanceof Error && named.every((name) => err.message.includes(name)), named.join(', '));
+          assert.deepStrictEqual(store(), before);
+        }
+      });
     });
 
     describe('the store merged between two clones (7.5, 29.14.9)', () => {

@@ -28,7 +28,8 @@
 // the parent however deep; the tasks ready are those Tick's `ready` gives,
 // by its own rule — open, no blocker the store holds that is not done or
 // cancelled, no child open or in progress, and no ancestor with such a
-// blocker; a task whole is its line, which holds every field Tick's show
+// blocker — under the phase, or under every phase of the unit, wherever its
+// parent sits; a task whole is its line, which holds every field Tick's show
 // gives; and when a task started is its first transition into progress,
 // which the store alone holds. Tick's own ids in a refusal it makes are put
 // in the engine's words. A task's text is its
@@ -43,6 +44,18 @@
 // person ended, cancelled or done, is theirs: the make is refused, reopening
 // nothing, and names every parent they must reopen, outermost first, the
 // ones Tick ended above theirs among them.
+//
+// A plan from before Leeway is adopted phase by phase (21.8.8): the task the
+// migration names as a phase's parent takes the phase's name, each of its
+// own children, in the order Tick made them (`seq`), the name of the
+// phase's next task, and the parent's own parent, the plan's root, the
+// unit's, where no task holds it and the root carries no name of the
+// engine's. Each name is added beside the refs the task has, through Tick's
+// update, which keeps its status and its history, and a name a task has
+// already is left: a run again adds only what the last left out. A task
+// holding another of the engine's names, a name another task holds, and a
+// task holding as many refs as Tick keeps on one, ten, are refused before
+// anything is added.
 //
 // The store's merge between two clones is merge.cjs's, given the driver's
 // names for what the store holds. It is loaded only as the store merges:
@@ -70,10 +83,11 @@ const {
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
 /** @typedef {{kind: 'unit', unit: string} | {kind: 'phase', unit: string, phase: number} | {kind: 'task', task: TaskRef}} Name */
 /**
- * A task as Tick records it in a line of its store.
+ * A task as Tick records it in a line of its store: its place in the order
+ * Tick made them, `seq`, among it.
  * @typedef {{
  *   id: string, title: string, status: string, refs?: string[], tags?: string[], description?: string,
- *   notes?: {text: string}[], blocked_by?: string[], parent?: string, transitions?: {to: string, at: string, auto?: boolean}[],
+ *   notes?: {text: string}[], blocked_by?: string[], parent?: string, transitions?: {to: string, at: string, auto?: boolean}[], seq?: number,
  * }} Held
  */
 /**
@@ -89,6 +103,7 @@ const STORE = '.tick';
 const TASKS = 'tasks.jsonl';
 const TIMEOUT_MS = 30000;
 const CLOSED = 'Closed: ';
+const MOST_REFS = 10;
 const ADDED = /^Added by the (orchestrator|person):\n([\s\S]*)$/;
 const REF = /^(unit|phase|task):(.+)$/;
 const PHASE_OF = /^(.+)-([1-9][0-9]*)$/;
@@ -345,12 +360,58 @@ function readyIn(ids, task) {
     && !ancestors(task).some(holds);
 }
 
+/** The parents of the unit's phases written, wherever each sits. @param {Ids} ids @param {string} unit @returns {string[]} */
+const phaseParents = (ids, unit) => [...ids.byId].flatMap(([id, name]) => (name.kind === 'phase' && name.unit === unit ? [id] : []));
+
 /** @param {string} root @param {string} unit @param {number|null} phase @returns {TaskRow[]|null} */
 function ready(root, unit, phase) {
   const ids = idsIn(root);
-  const parent = ids.byRef.get(phase === null ? unitRef(unit) : phaseRef(unit, phase));
-  if (parent === undefined) return phase === null ? [] : null;
-  return rowsOf(ids, descendants(ids, parent).filter((task) => readyIn(ids, task)));
+  const parents = phase === null ? phaseParents(ids, unit) : [ids.byRef.get(phaseRef(unit, phase))];
+  if (parents[0] === undefined) return phase === null ? [] : null;
+  return rowsOf(ids, parents.flatMap((parent) => descendants(ids, /** @type {string} */ (parent))).filter((task) => readyIn(ids, task)));
+}
+
+/** A task's own children, in the order Tick made them. @param {Ids} ids @param {string} parent @returns {Held[]} */
+const madeUnder = (ids, parent) => [...(ids.children.get(parent) ?? [])].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+
+/**
+ * The names a phase's adoption gives, each to Tick's id (the header's): the
+ * plan's root the unit's, where it may take it; the parent the phase's; and
+ * its children its tasks'.
+ * @param {Ids} ids @param {string} unit @param {number} phase @param {Held} parent @returns {[string, string][]}
+ */
+function adoptedNames(ids, unit, phase, parent) {
+  const root = parent.parent;
+  const rootTakes = root !== undefined && !ids.byRef.has(unitRef(unit)) && !ids.byId.has(root);
+  return [
+    ...(rootTakes ? /** @type {[string, string][]} */ ([[root, unitRef(unit)]]) : []),
+    [parent.id, phaseRef(unit, phase)],
+    ...madeUnder(ids, parent.id).map((child, at) => /** @type {[string, string]} */ ([child.id, taskRef({ unit, phase, n: at + 1 })])),
+  ];
+}
+
+/** @param {string} root @param {string} unit @param {number} phase @param {string} parent @returns {TaskRef[]} */
+function adopt(root, unit, phase, parent) {
+  const ids = idsIn(root);
+  const held = ids.held.get(parent);
+  if (held === undefined) throw new Error(`the tracker holds no task ${parent} to adopt as ${phaseName(unit, phase)}`);
+  const names = adoptedNames(ids, unit, phase, held);
+  for (const [id, ref] of names) {
+    const holder = ids.byRef.get(ref);
+    const own = ids.byId.get(id);
+    const name = /** @type {Name} */ (nameIn(ref));
+    if (holder !== undefined && holder !== id) throw new Error(`another task in the tracker is named ${said(name)} already — a name is carried once`);
+    if (own !== undefined && holder !== id) throw new Error(`the task to be named ${said(name)} is named ${said(own)} already — a task carries one name`);
+    const refs = /** @type {Held} */ (ids.held.get(id)).refs ?? [];
+    if (holder === undefined && refs.length >= MOST_REFS) throw new Error(`the task to be named ${said(name)} holds ${refs.length} refs, the most the tracker keeps on one — take one off it there to go on`);
+  }
+  for (const [id, ref] of names) {
+    if (ids.byRef.get(ref) !== id) tick(root, ['update', id, '--refs', [...(/** @type {Held} */ (ids.held.get(id)).refs ?? []), ref].join(',')]);
+  }
+  return names.flatMap(([, ref]) => {
+    const name = nameIn(ref);
+    return name?.kind === 'task' ? [name.task] : [];
+  });
 }
 
 /** @param {string} root @param {TaskRef} ref */
@@ -447,6 +508,7 @@ module.exports = {
   createUnit,
   createPhase,
   createTask,
+  adopt,
   add,
   setType,
   link,

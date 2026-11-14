@@ -54,7 +54,7 @@ const { projectRepos } = require('../kernel/repos.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
-const { phaseClosed, cutPhases, cutLength } = require('./derivations.cjs');
+const { phaseClosed, phaseBuilt, cutPhases, cutLength } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
 const { taskPassed, phaseReports } = require('./round-report.cjs');
@@ -154,8 +154,9 @@ const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseList
 /** What has landed of the unit's tasks (task-landed.cjs), read once a call. @param {Reading} at @returns {import('./task-landed.cjs').UnitLanded} */
 const landedOf = (at) => once(at, 'landed', () => unitLanded(at.cwd, at.unit, reposOf(at), dayBefore(at.manifest.created)));
 
-/** Whether the phase's stack has merged: every task not closed landed, one at least. @param {Reading} at @param {number} phase */
+/** Whether the phase's stack has merged: every task not closed landed, one at least — a phase built before the migration, on the default branch already. @param {Reading} at @param {number} phase */
 function phaseLanded(at, phase) {
+  if (phaseBuilt(at.manifest, phase)) return true;
   const rows = liveRows(at, phase);
   const { landed } = landedOf(at);
   return rows.length > 0 && rows.every(({ ref }) => landed(ref));

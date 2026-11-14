@@ -36,7 +36,9 @@
 // `.leeway/` ignore line written with hooks off and the caller's git
 // environment cleared, the move run again over one cut short, over one
 // whose `.leeway/` the person removed and over one killed writing each file
-// it reads back, a project nested in its repository,
+// it reads back, a project nested in its repository, the specs of a unit
+// whose building started joined into its spec — a completed one's too —
+// and the join killed at each write and run again,
 // a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
@@ -71,6 +73,7 @@ const { heardIn } = require('../../skills/leeway-engine/scripts/domain/discovery
 const { withEntry } = require('../../skills/leeway-engine/scripts/domain/log-lists.cjs');
 const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
 const { chosenDriver, listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { specReading } = require('../../skills/leeway-engine/scripts/domain/spec-sections.cjs');
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const json = (/** @type {unknown} */ value) => JSON.stringify(value, null, 2) + '\n';
@@ -889,7 +892,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('an epic whose building started (21.S49)', () => {
-    it('keeps its sessions, puts its plans and review folders in its assets with their files\' names, leaves its built spec for the cut, and drops implementation and tracking', () => {
+    it('keeps its sessions, puts its plans and review folders in its assets with their files\' names, joins its built spec into spec.md, and drops implementation and tracking', () => {
       assert.deepStrictEqual(tree(state, 'shop'), [
         'assets/plans/event-tracking/planning.md',
         'assets/plans/event-tracking/tasks/event-tracking-1-1.md',
@@ -906,9 +909,11 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         'assets/sketch.md',
         'discovery/session-001.md',
         'manifest.json',
+        'spec.md',
         'topics/event-tracking/log.md',
         'topics/ranking/log.md',
       ]);
+      assert.deepStrictEqual([read('shop/spec.md'), manifestOf('shop').spec], ['# Shop\n\n## 1. Ranking\n', { joined: true }]);
     });
 
     it('drops staging, review cycles, the spec\'s gate modes, plan review tracking and dependencies, keeping the build\'s standing and its spec items for the cut; its topics off the map put on it, every topic in the order', () => {
@@ -1043,6 +1048,110 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/.gitignore'), 'utf8'), STATE_GITIGNORE);
       assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.leeway)], [false, false]);
     } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  /**
+   * A building epic's specs as today's layout keeps them: three live, in
+   * build order 2, none and 1 — the one with none after — with headings at
+   * every level, a fenced block holding headings, one left open, a link to
+   * an import and a title of its own or none; a superseded and a cancelled
+   * one; and a live item with no spec.
+   * @param {string} at
+   */
+  const buildingSpecs = (at) => {
+    write(at, '.workflows/manifest.json', json({ work_units: { store: { work_type: 'epic' } } }));
+    write(at, '.workflows/store/manifest.json', json(unit('store', 'epic', 'in-progress', {
+      discussion: { items: Object.fromEntries(['cart', 'pay', 'stock', 'old-cart', 'dropped'].map((topic) => [topic, { status: 'completed' }])) },
+      specification: {
+        items: {
+          pay: { status: 'completed', order: 2 },
+          stock: { status: 'in-progress' },
+          'old-cart': { status: 'superseded', order: 3 },
+          cart: { status: 'completed', order: 1 },
+          dropped: { status: 'cancelled' },
+          unwritten: { status: 'in-progress', order: 4 },
+        },
+      },
+      implementation: { items: { cart: { status: 'completed' }, pay: { status: 'in-progress' } } },
+    })));
+    write(at, '.workflows/store/specification/cart/specification.md', '# Specification: Cart\n\nThe cart holds items.\n\n## Adding\n\nOne tap.\n\n### Limits\n\nTen at most.\n\n#### Deep\n\nAs deep as it goes.\n\n##### Deeper\n\nStill.\n');
+    write(at, '.workflows/store/specification/pay/specification.md', '# Specification: Pay\r\n\r\n## Cards\r\n\r\nSee [the sketch](../../imports/sketch.md).\r\n\r\n```text\r\n## not a heading\r\n```\r\n\r\n# A second title\r\n');
+    write(at, '.workflows/store/specification/stock/specification.md', 'Counts stock.\n\n## Counting\n\n```sh\n# a comment\n');
+    write(at, '.workflows/store/specification/old-cart/specification.md', '# Specification: Old Cart\n');
+    write(at, '.workflows/store/specification/dropped/specification.md', '# Specification: Dropped\n');
+    write(at, '.workflows/store/imports/sketch.md', '# Sketch\n');
+  };
+
+  /** The joined spec `buildingSpecs` leaves, as 078 writes it. */
+  const STORE_SPEC = [
+    '# Store', '',
+    '## 1. Cart', '', 'The cart holds items.', '', '#### Adding', '', 'One tap.', '', '##### Limits', '', 'Ten at most.', '', '###### Deep', '', 'As deep as it goes.', '', '###### Deeper', '', 'Still.', '',
+    '## 2. Pay', '', '#### Cards', '', 'See [the sketch](assets/sketch.md).', '', '```text', '## not a heading', '```', '', '#### A second title', '',
+    '## 3. Stock', '', 'Counts stock.', '', '#### Counting', '', '```sh', '# a comment', '```', '',
+  ].join('\n');
+
+  it('joins the live specs of a unit whose building started into its spec.md, one area each in build order — the old order, then those with none as the manifest lists them — its words kept but for its headings, demoted below the parts\' level outside a fenced block, a fence left open closed and its links to the imports pointed from spec.md; the spec titled with the unit\'s name, read with no fault as joined, the manifest marking it joined; its other specs reference assets (21.8.5, E5)', () => {
+    dir = tempProject('migration-078-join-');
+    try {
+      buildingSpecs(dir);
+      commitAll(dir);
+      run(dir);
+      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/store', rel), 'utf8');
+      const reading = specReading(at('spec.md'), true);
+      assert.deepStrictEqual([at('spec.md'), reading.faults, reading.headings.map(({ kind, title }) => `${kind} ${title}`)], [STORE_SPEC, [], ['area Cart', 'area Pay', 'area Stock']]);
+      assert.deepStrictEqual(JSON.parse(at('manifest.json')).spec, { joined: true });
+      assert.deepStrictEqual(tree(path.join(dir, '.leeway/store'), 'assets'), ['sketch.md', 'specs/dropped.md', 'specs/old-cart.md']);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('21.S32: joins a completed unit\'s specs, its two concluded discussions that never reached a spec still decided topics of the finished unit (21.8.11)', () => {
+    dir = tempProject('migration-078-completed-');
+    try {
+      write(dir, '.workflows/manifest.json', json({ work_units: { done: { work_type: 'epic' } } }));
+      write(dir, '.workflows/done/manifest.json', json(unit('done', 'epic', 'completed', {
+        discussion: { items: Object.fromEntries(['cart', 'pay', 'loyalty', 'gifts'].map((topic) => [topic, { status: 'completed' }])) },
+        specification: { items: { cart: { status: 'completed', order: 1 }, pay: { status: 'completed', order: 2 } } },
+        implementation: { items: { cart: { status: 'completed' }, pay: { status: 'completed' } } },
+      })));
+      for (const topic of ['cart', 'pay', 'loyalty', 'gifts']) write(dir, `.workflows/done/discussion/${topic}.md`, `# Discussion: ${topic}\n`);
+      write(dir, '.workflows/done/specification/cart/specification.md', '# Specification: Cart\n\nOne tap.\n');
+      write(dir, '.workflows/done/specification/pay/specification.md', '# Specification: Pay\n\nBy card.\n');
+      commitAll(dir);
+      run(dir);
+      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/done', rel), 'utf8');
+      const { status, phases, spec } = JSON.parse(at('manifest.json'));
+      assert.deepStrictEqual([at('spec.md'), spec, status], ['# Done\n\n## 1. Cart\n\nOne tap.\n\n## 2. Pay\n\nBy card.\n', { joined: true }, 'completed']);
+      assert.deepStrictEqual([phases.discussion.items.loyalty, phases.discussion.items.gifts, Object.keys(phases.discovery.items)], [{ status: 'completed' }, { status: 'completed' }, ['cart', 'pay', 'loyalty', 'gifts']]);
+      assert.ok(['loyalty', 'gifts'].every((topic) => fs.existsSync(path.join(dir, '.leeway/done/topics', topic, 'log.md'))));
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('joins a building unit\'s specs whole however a run is killed — writing the spec, part of it written or none, or writing the manifest marking it joined — a run again leaving what a whole run leaves', () => {
+    dir = tempProject('migration-078-join-torn-');
+    const realWrite = fs.writeFileSync;
+    try {
+      buildingSpecs(dir);
+      commitAll(dir);
+      for (const [holding, torn] of /** @type {const} */ ([['## 2. Pay', 'part'], ['## 1. Cart', 'none'], ['"joined"', 'part']])) {
+        fs.writeFileSync = (/** @type {any} */ file, /** @type {any} */ content, /** @type {any[]} */ ...rest) => {
+          if (!String(content).includes(holding)) return realWrite(file, content, ...rest);
+          realWrite(file, torn === 'part' ? String(content).slice(0, Math.floor(String(content).length / 2)) : '');
+          throw new Error('killed mid-write');
+        };
+        assert.throws(() => run(dir), /killed mid-write/, holding);
+        fs.writeFileSync = realWrite;
+      }
+      run(dir);
+      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/store', rel), 'utf8');
+      assert.deepStrictEqual([at('spec.md'), JSON.parse(at('manifest.json')).spec], [STORE_SPEC, { joined: true }]);
+    } finally {
+      fs.writeFileSync = realWrite;
       cleanupFixture(dir);
     }
   });

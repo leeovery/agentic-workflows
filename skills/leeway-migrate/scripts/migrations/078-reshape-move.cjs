@@ -138,9 +138,21 @@
 //   - plans go to `assets/plans/{topic}/` and review folders to
 //     `assets/reviews/{topic}/`, names kept; a spec goes to
 //     `assets/specs/{topic}.md` where the unit's building has not started —
-//     an implementation item in progress or completed — and, where it has,
-//     stays for the cut and the merges to join into `spec.md` (21.8.5); a
-//     quick-fix's spec goes to `assets/specs/` whatever its building, and
+//     an implementation item in progress or completed; where it has, every
+//     live spec — not cancelled, superseded, promoted or postponed — is
+//     joined into `spec.md`, read from the working tree (21.8.5, E5): each
+//     one area, `## N. {title}`, in build order, by the old order and then,
+//     for a spec with none, in the order its manifest lists them; its title
+//     its first line's after `Specification:`, or its topic's name where it
+//     opens with no title; its words kept but for each heading outside a
+//     fenced block, as the spec's reader reads one, demoted below the
+//     parts' level — level 4 at least, two deeper where it can go — a
+//     fenced block it leaves open closed, so the next area reads, and its
+//     links to the imports pointed from `spec.md`; the spec titled with the
+//     unit's name, and its manifest marking it joined, `spec: {joined:
+//     true}`, which every reader of it reads (spec-sections.cjs) — the
+//     migration's cut adds its scenarios (cut-migrating.cjs) — and the
+//     unit's other specs going to `assets/specs/`; a quick-fix's spec goes to `assets/specs/` whatever its building, and
 //     once the quick-fix is completed — its status says so, or every phase
 //     of its old pipeline, scoping, implementation and review, completed,
 //     whatever its status reads — its spec is its `summary.md` and its plan
@@ -300,7 +312,14 @@ const DELIVERY_PHASES = ['specification', 'planning', 'review'];
 // Folders carried whole under a name of the layout's, their files as they are.
 const CARRIED = { imports: 'assets', seeds: 'seeds' };
 const DROP = Symbol('drop');
-const STAYS = Symbol('stays');
+// A building unit's specs, joined (21.8.5).
+const JOINED_SPEC = 'spec.md';
+// The specs a building unit joins none of: those its build order left out.
+const UNJOINED_SPECS = ['cancelled', 'superseded', 'promoted', 'postponed'];
+const SPEC_TITLE = /^# (?:Specification: )?(.*\S)\s*$/;
+// A heading and a fence as the spec's reader reads them: at the line's start.
+const SPEC_HEADING = /^(#{1,6})(?= |$)/;
+const SPEC_FENCE = /^```/;
 
 const IMPORT_LINK = /(?:\.\.\/)+imports\/([A-Za-z0-9._-]+)/g;
 const MAILBOX_MESSAGE = /^(research|discussion|investigation)\/\.mailbox\/([^/]+)\/([^/]+\.md)$/;
@@ -656,7 +675,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   cancelled: Set<string>,
  *   quickFix: boolean,
  *   quickFixDone: boolean,
- *   built: boolean,
+ *   joined: string[],
  *   incoming: {topic: string, text: string}[],
  *   outgoing: Map<string, string>,
  *   promotedFrom: Map<string, string>,
@@ -876,9 +895,9 @@ function moveMail(move) {
 }
 
 /**
- * Where a spec, a plan or a review folder's file goes, unit-relative; DROP
- * for one that goes, STAYS for a spec left for the cut and the merges, or
- * null for one the layout has no place for.
+ * Where a spec not joined, a plan or a review folder's file goes,
+ * unit-relative; DROP for one that goes, or null for one the layout has no
+ * place for.
  * @param {UnitMove} move @param {string} top @param {string} topic @param {string} below
  * @returns {string|symbol|null}
  */
@@ -887,8 +906,65 @@ function deliveryPlace(move, top, topic, below) {
   if (top === 'planning') return move.quickFixDone ? DROP : `assets/plans/${topic}/${below}`;
   if (top === 'review') return `assets/reviews/${topic}/${below}`;
   if (below !== 'specification.md') return null;
-  if (move.quickFixDone) return 'summary.md';
-  return move.built && !move.quickFix ? STAYS : `assets/specs/${topic}.md`;
+  return move.quickFixDone ? 'summary.md' : `assets/specs/${topic}.md`;
+}
+
+/**
+ * The topics whose specs a unit whose building started joins, in build
+ * order: its live spec items with a spec, by their order, then those with
+ * none in the order the manifest lists them; none for any other unit, a
+ * quick-fix among them.
+ * @param {Record<string, any>} manifest @param {string[]} files unit-relative
+ * @returns {string[]}
+ */
+function joinedTopics(manifest, files) {
+  if (isQuickFix(manifest) || !buildingStarted(manifest)) return [];
+  const orderOf = (/** @type {Record<string, any>} */ item) => (Number.isInteger(item.order) ? item.order : Infinity);
+  return Object.entries(itemsOf(manifest, 'specification'))
+    .filter(([topic, item]) => isObject(item) && !UNJOINED_SPECS.includes(item.status) && files.includes(`specification/${topic}/specification.md`))
+    .map(([topic, item], at) => ({ topic, order: orderOf(item), at }))
+    .sort((a, b) => a.order - b.order || a.at - b.at)
+    .map(({ topic }) => topic);
+}
+
+/**
+ * An old spec's lines below its title, each heading outside a fenced block
+ * demoted below the parts' level, and a fenced block left open closed.
+ * @param {string[]} rows
+ */
+function belowParts(rows) {
+  let fenced = false;
+  const demotedRows = rows.map((row) => {
+    if (SPEC_FENCE.test(row)) fenced = !fenced;
+    const heading = fenced ? null : SPEC_HEADING.exec(row);
+    return heading === null ? row : `${'#'.repeat(Math.min(6, Math.max(4, heading[1].length + 2)))}${row.slice(heading[1].length)}`;
+  });
+  return fenced ? [...demotedRows, '```'] : demotedRows;
+}
+
+/** An old spec as an area of `spec.md`, numbered `number` (the header's). @param {string} text @param {number} number @param {string} topic */
+function asArea(text, number, topic) {
+  const rows = text.split(/\r\n?|\n/);
+  const title = SPEC_TITLE.exec(rows[0]);
+  const words = (title === null ? rows : rows.slice(1)).join('\n').replace(/^(?:[ \t]*\n)+/, '').trimEnd();
+  const body = belowParts(words.split('\n')).join('\n');
+  return `## ${number}. ${title === null ? titled(topic) : title[1]}${body === '' ? '' : `\n\n${body}`}`;
+}
+
+/**
+ * The unit's specs joined into `spec.md`, each relocated there and its links
+ * pointed from it; nothing where it joins none.
+ * @param {UnitMove} move
+ */
+function joinSpecs(move) {
+  if (move.joined.length === 0) return;
+  const at = `${move.unit}/${JOINED_SPEC}`;
+  const areas = move.joined.map((topic, i) => {
+    const rel = `specification/${topic}/specification.md`;
+    relocate(move, rel, at);
+    return asArea(takeDocument(move, rel, at), i + 1, topic);
+  });
+  put(move, JOINED_SPEC, `# ${titled(move.unit)}\n\n${areas.join('\n\n')}\n`);
 }
 
 /**
@@ -904,7 +980,7 @@ function briefPlace(move, folder, inside) {
 
 /**
  * Where a file of the unit's goes, unit-relative, by its place today: DROP,
- * STAYS, or null as `deliveryPlace` says.
+ * or null as `deliveryPlace` says.
  * @param {UnitMove} move @param {string} rel
  * @returns {string|symbol|null}
  */
@@ -960,12 +1036,13 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
   const from = path.join(workflows, unit);
   const topics = topicNames(manifest, unit);
   const reshaped = reshapedManifest(manifest, topics);
+  const files = filesUnder(from);
   /** @type {UnitMove} */
   const move = {
     unit,
     from,
     state,
-    files: filesUnder(from),
+    files,
     imported: importedNames(from),
     accounted: new Set(['manifest.json']),
     relocations,
@@ -973,7 +1050,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
     cancelled: cancelledTopics(reshaped),
     quickFix: isQuickFix(manifest),
     quickFixDone: quickFixDone(manifest),
-    built: buildingStarted(manifest),
+    joined: joinedTopics(manifest, files),
     incoming: promoted.filter(({ source, target, topic }) => target === unit && fs.existsSync(path.join(workflows, source, 'research', `${topic}.md`)))
       .map((entry) => promotedText(workflows, entry)),
     outgoing: new Map(promoted.filter(({ source }) => source === unit).map(({ topic, target }) => [topic, target])),
@@ -982,6 +1059,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
   };
   moveLogs(move);
   moveMail(move);
+  joinSpecs(move);
   for (const rel of move.files.filter((f) => !move.accounted.has(f))) {
     const at = placeOf(move, rel);
     if (at === null) continue;
@@ -995,7 +1073,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
     else put(move, at, takeDocument(move, rel, `${unit}/${at}`), mode);
     relocate(move, rel, `${unit}/${at}`);
   }
-  put(move, 'manifest.json', jsonText(reshaped));
+  put(move, 'manifest.json', jsonText(move.joined.length === 0 ? reshaped : { ...reshaped, spec: { joined: true } }));
   return move.files.filter((f) => !move.accounted.has(f));
 }
 

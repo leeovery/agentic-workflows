@@ -51,7 +51,7 @@
 
 const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
-const { specPath, specReading, SPEC_FILE } = require('../spec-sections.cjs');
+const { specPath, specReading, areaText, SPEC_FILE } = require('../spec-sections.cjs');
 const { reportedPasses, passesInFlight } = require('../agent-state.cjs');
 const { waitingGaps, sectionsToReview, changedSince, changedBetween, askedBy, gapsIn, raisedBy } = require('../spec-passes.cjs');
 const { findingText } = require('../spec-report.cjs');
@@ -59,7 +59,7 @@ const { currentsOf, answersOf, questionStands, decidedNow } = require('../ledger
 const { withUnitEntries } = require('../unit-entries.cjs');
 const { readShown } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
-const { cutPhases, buildBegun } = require('../derivations.cjs');
+const { cutPhases, buildBegun, specJoined } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { counted } = require('./map.cjs');
 
@@ -308,7 +308,7 @@ function specDoing(at, waiting) {
  */
 function specView(at, waiting) {
   const text = specText(at);
-  const reading = text === null ? null : specReading(text);
+  const reading = text === null ? null : specReading(text, specJoined(at.manifest));
   const reported = reportedOf(at);
   const out = passesInFlight(at.cwd, at.unit);
   const reads = text === null || out.length === 0 ? null : [...areasOf(sectionsToReview(at.cwd, at.unit, text).changed)];
@@ -353,17 +353,18 @@ function specBanner(at, waiting) {
 
 /**
  * A section of the spec read in full (20.9.2), by its number: the passes
- * that changed it, and its text; refused where the spec is not written or
- * holds no such section.
+ * that changed it, and its text — a joined spec's area as the old spec
+ * wrote it; refused where the spec is not written or holds no such section.
  * @param {BoardAt} at @param {string} number @returns {import('../board-model.cjs').SectionPage}
  */
 function sectionPage(at, number) {
   const text = specText(at);
-  const reading = text === null ? null : specReading(text);
+  const joined = specJoined(at.manifest);
+  const reading = text === null ? null : specReading(text, joined);
   const heading = reading?.headings.find((held) => held.kind === 'area' && String(held.number) === number);
-  if (reading === null || heading === undefined) throw new Error(`${at.unit}'s spec holds no section ${number}`);
+  if (text === null || reading === null || heading === undefined) throw new Error(`${at.unit}'s spec holds no section ${number}`);
   const changed = changedBy(changesOf(reportedOf(at), text));
-  return { kind: 'section', unit: at.unit, number, title: heading.title, changed_by: changed.get(number) ?? [], text: sectionProse(reading, number) };
+  return { kind: 'section', unit: at.unit, number, title: heading.title, changed_by: changed.get(number) ?? [], text: joined ? areaText(text, number) : sectionProse(reading, number) };
 }
 
 /**
@@ -421,7 +422,7 @@ function specFindingPage(at, said, id) {
   const finding = pass.findings.find((held) => held.id === id);
   if (finding === undefined) throw new Error(`${at.unit}'s pass ${said} holds no finding ${id}`);
   const text = specText(at);
-  const reading = text === null ? null : specReading(text);
+  const reading = text === null ? null : specReading(text, specJoined(at.manifest));
   const linked = pass.asked.find((held) => held.finding === id)?.entry ?? pass.raised.find((held) => held.finding === id)?.replaces ?? null;
   const sections = linked === null ? [] : withUnitEntries(at.cwd, at.unit, at.warnings, ({ folded, entries }) => {
     const entry = currentsOf(folded, linked).find((current) => entries.has(current)) ?? linked;

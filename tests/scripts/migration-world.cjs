@@ -172,9 +172,9 @@ function midMigration(dir) {
 // move folded into its log; the cross-cutting unit the promoted topic went
 // to, its import copied with it, one of its decisions settling two
 // subtopics, its review left behind in the epic's store folded into its log
-// too; an epic of one topic whose building started, its two specs still in
-// `.workflows/`, one heading in both, an import come in from its discovery
-// as a whole; and a cancelled feature, an import come in from its discovery.
+// too; an epic of one topic whose building started, its two specs joined
+// into its spec.md by the move, one heading in both, an import come in from
+// its discovery as a whole; and a cancelled feature, an import come in from its discovery.
 const SHOP_SPECS = {
   weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } },
   wishlist: { status: 'completed', sources: { weights: { status: 'incorporated' } } },
@@ -286,7 +286,13 @@ const RECORDS_MOVED = Object.freeze({
       specification: { items: SHOP_SPECS },
       implementation: { items: { weights: { status: 'in-progress' } } },
     },
+    spec: { joined: true },
   }),
+  [layout.unit('shop', 'spec.md')]: [
+    '# Shop', '', '## 1. Weights', '', '#### Ranking', '', 'Newest first.', '', '##### Detail', '', 'By day.', '',
+    '#### Corrigenda', '', 'Ties break by price, not by name.', '', '##### Detail', '', 'Price before name.', '',
+    '## 2. Wishlist', '', '#### Saving', '', 'One tap.', '', '#### Ranking', '', 'Newest saved first.', '',
+  ].join('\n'),
   [layout.topic('shop', 'weights', 'log.md')]: '## Discussion\n\n## Discussion: Weights\n\n### Tie Break\n\nBy name.\n',
   [layout.assets('shop', 'vision.md')]: '# Vision\n',
   [layout.manifest('gone')]: jsonText({

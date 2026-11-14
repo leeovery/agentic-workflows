@@ -60,7 +60,7 @@ const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { standingOf, buildPhases } = require('../build-entry.cjs');
 const { reviewStanding, reviewGoesOn, recordedRounds } = require('../review-phase.cjs');
-const { cutLength } = require('../derivations.cjs');
+const { cutLength, specJoined } = require('../derivations.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf, taskHead, runsAt } = require('../build-screens.cjs');
@@ -365,7 +365,7 @@ function taskPage(at, given) {
 function scenarioWording(at, scenario) {
   const lines = at.once('spec-lines', () => {
     const file = specPath(at.cwd, at.unit);
-    return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).lines : [];
+    return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8'), specJoined(at.manifest)).lines : [];
   });
   return lines.find(({ kind, number }) => kind === 'scenario' && number === scenario)?.wording.replace(DRAWS_ON, '').trimEnd() ?? null;
 }

@@ -118,6 +118,9 @@ function linesOf(text) {
   return lines.map((line, at) => ({ line, top: levels[at] === 1 || levels[at] === 2 }));
 }
 
+/** The first heading at level one or two a note's text holds, which would read as another note; null where it holds none. @param {string} text */
+const topHeading = (text) => linesOf(text).find(({ top }) => top)?.line.trim() ?? null;
+
 /**
  * A notes file's notes, in order; none before the first. Refused, naming the
  * fault, where it holds anything but notes numbered from 1.
@@ -183,8 +186,8 @@ function depositNote(cwd, unit, file, given) {
   const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
   if (manifest === null) refuse(`there is no work unit "${unit}"`);
   const text = refusing('task note', () => givenText(cwd, file, 'note'));
-  const heading = linesOf(text).find(({ top }) => top);
-  if (heading !== undefined) refuse(`a note holds no heading at level one or two, which would read as another note — "${heading.line.trim()}"`);
+  const heading = topHeading(text);
+  if (heading !== null) refuse(`a note holds no heading at level one or two, which would read as another note — "${heading}"`);
   const phase = given === undefined ? null : heldFor(cwd, unit, manifest, given);
   const notes = refusing('task note', () => readNotes(cwd, unit));
   const note = notes.length + 1;
@@ -331,5 +334,5 @@ function consolidationFaults(cwd, unit, phase) {
 }
 
 module.exports = {
-  notesPath, closeNotesPath, answeredAtClose, consolidationPath, notesOf, readNotes, notesAppended, depositNote, readConsolidation, renumberedReport, notesToTake, notesUntaken, notesHeldFor, consolidationFaults,
+  notesPath, closeNotesPath, answeredAtClose, consolidationPath, notesOf, readNotes, notesAppended, topHeading, depositNote, readConsolidation, renumberedReport, notesToTake, notesUntaken, notesHeldFor, consolidationFaults,
 };

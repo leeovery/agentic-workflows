@@ -64,6 +64,13 @@
 // three, or one closing an earlier block than the line's last; a bracket on
 // a scenario, or a scenario closing on no statements; a scenario drawing on
 // a statement the spec lacks; and a fence left open.
+//
+// A spec the migration joined (21.8.5; the manifest's `spec.joined`, which
+// each reader passes) is the unit's old specs, each an area, `## N. Title`,
+// verbatim but for its headings, all below the parts' level: an area's
+// blocks are its text, opening no line, and a scenario of the `## N-S.`
+// blocks the migration's cut adds may close on no statements, the spec
+// holding none. Its other rules stand.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -372,10 +379,10 @@ function blocksOf(lines, from) {
  * or scenario, which a screen follows, and the line whose blocks it is
  * gathering; the lines opened and the headings read; each statement's and
  * scenario's text line by its number; each line's screens and each place's
- * notes counted; and the faults found.
+ * notes counted; the faults found; and whether the spec is joined.
  * @typedef {{
  *   lines: string[], area: string|null, part: string|null, scenariosOf: string|null, last: string|null, open: Opened|null,
- *   opened: Opened[], headings: Heading[], given: Map<string, number>, counted: Map<string, number>, faults: string[],
+ *   opened: Opened[], headings: Heading[], given: Map<string, number>, counted: Map<string, number>, faults: string[], joined: boolean,
  * }} Reading
  */
 
@@ -506,9 +513,25 @@ function readOwned(reading, { at, closed }, part) {
   else reading.open.parts.push(part);
 }
 
+/** Whether the reading is in a joined spec's area, before its scenarios: where every block is the area's text. @param {Reading} reading */
+const inJoinedArea = ({ joined, area, scenariosOf }) => joined && area !== null && scenariosOf === null;
+
+/**
+ * A block of a joined spec's area that is not a heading: its text, opening
+ * no line, a heading in it not standing alone and a fence left open still
+ * faults.
+ * @param {Reading} reading @param {Block} block
+ */
+function readAreaText(reading, block) {
+  if (block.kind === 'text') headingFaults(reading, block);
+  else if (!block.closed) reading.faults.push(`the fenced block opened on line ${block.at + 1} is never closed`);
+}
+
 /** A block of the body read: a heading, a line opened, a screen, or a block the open line owns. @param {Reading} reading @param {Block} block */
 function readBlock(reading, block) {
   const text = reading.lines.slice(block.at, block.end).join('\n');
+  const areaText = inJoinedArea(reading) && !/^#{2,3} /.test(text);
+  if (areaText) return readAreaText(reading, block);
   if (block.kind === 'fence') return readOwned(reading, block, { kind: 'fence', text });
   headingFaults(reading, block);
   blankLineFaults(reading, block);
@@ -562,7 +585,7 @@ const noSource = () => ({ cites: [], builder: false, drawsOn: [] });
 /**
  * A scenario's source: the statements its last block that is not fenced
  * closes on, in parentheses; a fault where it carries a bracket, or closes
- * on none.
+ * on none but in a joined spec.
  * @param {Reading} reading @param {Opened} line @param {Part[]} parts @param {string|null} bracket
  * @returns {Pick<Line, 'cites'|'builder'|'drawsOn'>}
  */
@@ -570,7 +593,7 @@ function scenarioSource(reading, { number, line }, parts, bracket) {
   if (bracket !== null) reading.faults.push(`scenario ${number} on line ${line} ends in [${bracket}] — a scenario's source is the statements it draws on, in parentheses`);
   const drawsOn = DRAWS_ON.exec(parts[lastText(parts)]?.text ?? '');
   if (drawsOn === null) {
-    reading.faults.push(`scenario ${number} on line ${line} closes on no statements — a scenario ends in the statements it draws on, (N.M.K, …)`);
+    if (!reading.joined) reading.faults.push(`scenario ${number} on line ${line} closes on no statements — a scenario ends in the statements it draws on, (N.M.K, …)`);
     return noSource();
   }
   return { ...noSource(), drawsOn: drawsOn[1].split(',').map((drawn) => drawn.trim()) };
@@ -608,28 +631,29 @@ function finished(reading, opened) {
 }
 
 /**
- * The faults a spec read whole shows: no statement; a scenario drawing on a
- * statement it lacks.
- * @param {Line[]} lines @returns {string[]}
+ * The faults a spec read whole shows: no statement, but in a joined spec; a
+ * scenario drawing on a statement it lacks.
+ * @param {Line[]} lines @param {boolean} joined @returns {string[]}
  */
-function wholeFaults(lines) {
+function wholeFaults(lines, joined) {
   const numbers = new Set(lines.filter(({ kind }) => kind === 'statement').map(({ number }) => number));
   return [
-    ...(numbers.size === 0 ? ['the spec has no statement — a statement is a block opening N.M.K, in its part'] : []),
+    ...(numbers.size === 0 && !joined ? ['the spec has no statement — a statement is a block opening N.M.K, in its part'] : []),
     ...lines.flatMap(({ kind, number, drawsOn }) => (kind === 'scenario' ? drawsOn.filter((drawn) => !numbers.has(drawn)).map((drawn) => `scenario ${number} draws on statement ${drawn}, which the spec lacks`) : [])),
   ];
 }
 
 /**
  * A spec's lines and headings, in its order, as its page reads them, and
- * every fault that refuses it.
- * @param {string} text @returns {SpecReading}
+ * every fault that refuses it — a spec the migration joined read as one
+ * (the header's).
+ * @param {string} text @param {boolean} [joined] @returns {SpecReading}
  */
-function specReading(text) {
+function specReading(text, joined = false) {
   const lines = rowsOf(text);
   /** @type {Reading} */
   const reading = {
-    lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], headings: [], given: new Map(), counted: new Map(), faults: [],
+    lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], headings: [], given: new Map(), counted: new Map(), faults: [], joined,
   };
   if (!lines[0].startsWith('# ')) reading.faults.push('the spec does not open with its title — its first line is # Title');
   try {
@@ -641,16 +665,16 @@ function specReading(text) {
   if (body === -1) reading.faults.push('the spec has no area — an area is a heading ## N. Title');
   else for (const block of blocksOf(lines, body)) readBlock(reading, block);
   const read = reading.opened.map((opened) => finished(reading, opened));
-  return { lines: read, headings: reading.headings, faults: [...reading.faults, ...wholeFaults(read)] };
+  return { lines: read, headings: reading.headings, faults: [...reading.faults, ...wholeFaults(read, joined)] };
 }
 
 /**
  * A spec's statements, scenarios and screens, in its order. Refuses, naming
  * every fault, one per line, a spec the grammar cannot read.
- * @param {string} text @returns {Line[]}
+ * @param {string} text @param {boolean} [joined] whether the migration joined it @returns {Line[]}
  */
-function specStatements(text) {
-  const { lines, faults } = specReading(text);
+function specStatements(text, joined = false) {
+  const { lines, faults } = specReading(text, joined);
   if (faults.length > 0) throw new Error(faults.join('\n'));
   return lines;
 }
@@ -658,10 +682,20 @@ function specStatements(text) {
 /**
  * Every scenario a spec's text gives, by id, in the spec's order. Refuses
  * what `specStatements` does.
- * @param {string} text @returns {string[]}
+ * @param {string} text @param {boolean} [joined] whether the migration joined it @returns {string[]}
  */
-function specScenarios(text) {
-  return specStatements(text).filter(({ kind }) => kind === 'scenario').map(({ number }) => number);
+function specScenarios(text, joined = false) {
+  return specStatements(text, joined).filter(({ kind }) => kind === 'scenario').map(({ number }) => number);
+}
+
+/**
+ * An area's words as a joined spec holds them: its text under its heading,
+ * verbatim; '' for an area the spec lacks.
+ * @param {string} text @param {string} area
+ */
+function areaText(text, area) {
+  const section = specSections(text).get(area);
+  return section === undefined ? '' : section.text.split('\n').slice(1).join('\n').trim();
 }
 
 /**
@@ -707,5 +741,5 @@ function readCitedSections(cwd, unit, reference) {
 
 module.exports = {
   SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, readCitedSections,
-  specIntroduction, fencedLines, unclosedFence, DRAWS_ON,
+  specIntroduction, areaText, fencedLines, unclosedFence, rowsOf, specFencedLines, DRAWS_ON,
 };

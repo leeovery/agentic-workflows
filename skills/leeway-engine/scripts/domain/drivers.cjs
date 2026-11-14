@@ -54,7 +54,7 @@ const METHODS = Object.freeze({
   task: {
     required: /** @type {const} */ ([
       'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
-      'createUnit', 'createPhase', 'createTask', 'add', 'setType', 'link',
+      'createUnit', 'createPhase', 'createTask', 'adopt', 'add', 'setType', 'link',
       'ready', 'start', 'done', 'close', 'removePhase', 'list', 'show', 'tasks', 'started',
     ]),
     optional: /** @type {const} */ ([]),
@@ -153,7 +153,16 @@ const METHODS = Object.freeze({
  * `createUnit` makes the unit's parent where it is missing, answering
  * whether it did; a phase or a task is made under its parent whether or not
  * every task before it has ended, where it was the tracker that ended the
- * parent. `removePhase` takes a phase written out of the tracker for good,
+ * parent. `adopt` gives a plan the tracker held from before Leeway the
+ * engine's names for one phase (21.8.8): the parent the migration names, by
+ * the tracker's own id, is the phase written, its own tasks the phase's, in
+ * the order the tracker made them, and the parent above it the unit, where
+ * the unit has none and that parent no name of the engine's; it adds to what each holds, changing nothing else of
+ * it — its status, its history, any name of the person's — and answers the
+ * phase's tasks so named. A name a task holds already is left, so a run
+ * again adds only what the last left out; and it refuses, adding nothing,
+ * a parent the tracker lacks, a task named apart from the name it would
+ * take, and a name another task holds. `removePhase` takes a phase written out of the tracker for good,
  * every task under it with it and every link to them dropped, so it reads
  * as never written and its number and its tasks' names are made again as
  * new. `add` puts an addition onto a task, after any before it;
@@ -193,6 +202,7 @@ const METHODS = Object.freeze({
  *   createUnit: (root: string, unit: string) => boolean,
  *   createPhase: (root: string, unit: string, phase: number, title: string) => void,
  *   createTask: (root: string, ref: TaskRef, task: {title: string, type: string, text: string}) => void,
+ *   adopt: (root: string, unit: string, phase: number, parent: string) => TaskRef[],
  *   add: (root: string, ref: TaskRef, addition: TaskAddition) => void,
  *   setType: (root: string, ref: TaskRef, type: string) => void,
  *   link: (root: string, task: TaskRef, after: TaskRef) => void,

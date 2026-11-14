@@ -81,6 +81,7 @@ const { mapReceipt } = require('./domain/projections/transactions.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
+const { MIGRATING_USAGE, cutMigrating } = require('./domain/cut-migrating.cjs');
 const { SPEC_USAGE, landSpec } = require('./domain/spec-land.cjs');
 const { MARKS_USAGE, storeMarks } = require('./domain/spec-review.cjs');
 const { PAGE_USAGE, PUBLISHED_USAGE, PUSH_USAGE, buildPage, recordPublished, pushPage } = require('./domain/spec-page.cjs');
@@ -299,6 +300,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task create <work-unit> <N> --file <path>
   task add <work-unit> <task> --file <path> --by <orchestrator|person>
   task type <work-unit> <task> <type>
+  task adopt <work-unit> <N> --parent <tracker-id>
   task link <work-unit> <task> --after <task>
   task ready <work-unit> [<N>]
   task start <work-unit> <task>
@@ -316,6 +318,7 @@ ${LAND_USAGE.replace(/^/gm, '  ')}
 ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
   ${CUT_USAGE}
+  ${MIGRATING_USAGE}
   ${SPEC_USAGE}
   ${MARKS_USAGE}
   ${PAGE_USAGE}
@@ -1283,16 +1286,20 @@ function runBrief(call, argv) {
 
 // ---------------------------------------------------------------------------
 // cut — the phase cut written onto a unit's manifest from a file, checked
-// against its spec first (domain/cut.cjs).
+// against its spec first (domain/cut.cjs); with --migrating, a building
+// unit's plan applied whole by the migration (domain/cut-migrating.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runCut(call, argv) {
-  const { opts, positional } = parseArgs(argv);
+  const { opts, flags, positional } = parseArgs(argv, ['migrating']);
   try {
     const given = Object.keys(opts).join();
-    if (positional.length !== 1 || !['', 'file'].includes(given) || (given === 'file' && !opts.file)) throw new Error(`Usage: engine ${CUT_USAGE}`);
-    respond(call, writeCut(call.cwd, positional[0], opts.file));
+    const migrating = flags.has('migrating');
+    if (positional.length !== 1 || !['', 'file'].includes(given) || (given === 'file' && !opts.file) || (migrating && given === '')) {
+      throw new Error(`Usage: engine ${CUT_USAGE} | ${MIGRATING_USAGE}`);
+    }
+    respond(call, migrating ? cutMigrating(call.cwd, positional[0], opts.file) : writeCut(call.cwd, positional[0], opts.file));
   } catch (err) {
     failJson(call, err);
   }
