@@ -1,10 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the boot pipeline — the sequential entry checks Step 0 needs,
-// collapsed into one call: put the state in place and catch it up, run
-// migrations, probe the knowledge base, and when it is ready bring the
-// store's keyword side in line with the files, compact it, and hand the
+// Domain ring: the boot pipeline — the sequential entry checks the start
+// skill needs, collapsed into one call: put the state in place and catch it
+// up, run migrations, probe the knowledge base, and when it is ready bring
+// the store's keyword side in line with the files, compact it, and hand the
 // vectors it awaits to the background fill — a start never waits on
 // embedding.
 //
@@ -99,6 +99,15 @@
 // at finish, where a stamp a directive's stop wrote earlier stands. The
 // verbs those stops run go through without it (engine.cjs, `BOOT_EXEMPT`).
 //
+// Each stop names what the start skill does there (`STOPS`): the marker it
+// opens on, the screen it fetches and what follows — the start ending, the
+// person's answer at the screen's gate, or a reference loaded, then boot
+// again — so a stop joins without a word of prose. Past the stops, boot
+// takes the person's words, the bare command none, and answers where the
+// start goes and the setup gates due before it (boot-route.cjs), with the
+// facts those gates read: the session's effort as Claude Code hands it,
+// `CLAUDE_EFFORT`, and whether the gate mod runs, could, or cannot.
+//
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone, and no
 // trust log event waits in it. Every boot appends the events any
@@ -138,12 +147,13 @@ const { tidyConversations } = require('./conversation.cjs');
 const { stampBoot } = require('./boot-stamp.cjs');
 const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
 const { leavePosition } = require('./position.cjs');
-const { brownfieldOffer, baselineSignal } = require('./brownfield.cjs');
+const { brownfieldOffer, brownfieldSignal } = require('./brownfield.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
 const { finishOwed, projectInMain } = require('./migration-commit.cjs');
+const { entryOf, gatesDue } = require('./boot-route.cjs');
 const { unmoved } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
@@ -206,22 +216,67 @@ const GUARD_REFUSED = '---REFUSED: 074---';
  */
 
 /**
- * Boot's stops the start skill draws, each by the surface that draws it:
- * `git`, the git on the PATH older than the engine's floor, or none, read
- * before anything else runs; `repo`, the folder in no git repository, read
- * next; `lost`, the state branch gone here and on the remote in a project
- * holding the workflows' trace, its yes `boot --start-again`; `guard`, the
- * reshape's guard refusing the migration (`GuardStop`); `checks`, the
- * migration stopped before its move for the checks the chain before it
- * handed back (`ChecksStop`); `merge`, the catch-up stopped by a field both clones
- * changed, each row's answer its `state-merge pick`.
+ * What the start skill does at a stop (the header's): the marker it opens
+ * on, where it has one; the screen it fetches, `render {surface} {args}`,
+ * where it has one; and what follows — null, the start ends; `gate`, the
+ * screen's gate takes the person's answer, whose next is run, boot running
+ * again after it but where it was a boot or none; `load`, the start
+ * skill's reference by name, with what it is given, then boot again.
+ * @typedef {{kind: 'gate'} | {kind: 'load', reference: string, with?: Record<string, string>}} StopNext
+ * @typedef {{marker?: string, surface?: string, args?: string[], next: StopNext|null}} Stop
  */
-const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', lost: 'state-lost-gate', guard: 'migration-guard-stop', checks: 'migration-checks-stop', merge: 'state-merge-gate' });
+
+const MIGRATION = 'Migration';
+/** @type {StopNext} */
+const AT_THE_GATE = Object.freeze({ kind: 'gate' });
+/** @param {string} reference @returns {StopNext} */
+const loading = (reference) => Object.freeze({ kind: 'load', reference });
 
 /**
- * Boot stopped before anything wrote the state (`BOOT_STOPS`).
+ * Boot's stops, each as the start skill takes it (`Stop`): `git`, the git
+ * on the PATH older than the engine's floor, or none, read before anything
+ * else runs; `repo`, the folder in no git repository, read next; `lost`,
+ * the state branch gone here and on the remote in a project holding the
+ * workflows' trace, its yes `boot --start-again`; `guard`, the reshape's
+ * guard refusing the migration (`GuardStop`); `checks`, the migration
+ * stopped before its move for the checks the chain before it handed back
+ * (`ChecksStop`); `merge`, the catch-up stopped by a field both clones
+ * changed, each row's answer its `state-merge pick`; `directive`, the
+ * migration stopped at a directive the session carries out
+ * (`DirectiveStop`); `finish`, the migration waiting on its commit, which
+ * the review's gate makes (`FinishStop`).
+ * @type {Readonly<Record<string, Readonly<Stop>>>}
+ */
+const STOPS = Object.freeze({
+  git: Object.freeze({ surface: 'git-floor-stop', next: null }),
+  repo: Object.freeze({ surface: 'repo-stop', next: null }),
+  lost: Object.freeze({ surface: 'state-lost-gate', next: AT_THE_GATE }),
+  guard: Object.freeze({ marker: MIGRATION, surface: 'migration-guard-stop', next: null }),
+  checks: Object.freeze({ marker: MIGRATION, surface: 'migration-checks-stop', next: loading('migration-checks') }),
+  merge: Object.freeze({ surface: 'state-merge-gate', next: AT_THE_GATE }),
+  directive: Object.freeze({ next: loading('migration-directive') }),
+  finish: Object.freeze({ marker: MIGRATION, next: loading('migration-review') }),
+});
+
+/** Each stop that fetches a screen, by the surface that draws it. */
+const BOOT_STOPS = Object.freeze(Object.fromEntries(Object.entries(STOPS).flatMap(([state, { surface }]) => (surface === undefined ? [] : [[state, surface]]))));
+
+/**
+ * The stop `state` as the start skill takes it, the screen's arguments and
+ * the reference's inputs where this stop has them.
+ * @param {string} state @param {{args?: string[], given?: Record<string, string>}} [filled]
+ * @returns {Stop}
+ */
+function stopAt(state, { args, given } = {}) {
+  const { next, ...shown } = STOPS[state];
+  return { ...shown, ...(args === undefined ? {} : { args }), next: next?.kind === 'load' && given !== undefined ? { ...next, with: given } : next };
+}
+
+/**
+ * Boot stopped before anything wrote the state (`STOPS`).
  * @typedef {object} BootStop
- * @property {Exclude<keyof typeof BOOT_STOPS, 'guard'|'checks'>} state
+ * @property {'git'|'repo'|'lost'|'merge'} state
+ * @property {Stop} stop
  * @property {string[]} warnings
  */
 
@@ -237,7 +292,7 @@ const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', los
 /**
  * Boot stopped at the reshape's guard, with nothing written to the state or
  * the code.
- * @typedef {{state: 'guard', warnings: string[]} & Refusal} GuardStop
+ * @typedef {{state: 'guard', stop: Stop, warnings: string[]} & Refusal} GuardStop
  */
 
 /**
@@ -245,7 +300,7 @@ const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', los
  * (21.10.10): the directive's id and file, and its pieces done of all of
  * them where its check can say — `render directive-stop` draws the stop,
  * and the session carries the directive on.
- * @typedef {{state: 'directive', id: string, file: string, done?: number, of?: number, warnings: string[]}} DirectiveStop
+ * @typedef {{state: 'directive', id: string, file: string, done?: number, of?: number, stop: Stop, warnings: string[]}} DirectiveStop
  */
 
 /**
@@ -254,7 +309,7 @@ const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', los
  * whose `.workflows/` the old state's checks are made on, uncommitted, for
  * the move to carry — `render migration-checks-stop` draws the stop, the
  * session makes the checks and records them made (`migrate checked`).
- * @typedef {{state: 'checks', folder: string, verify: VerifyAddendum[], warnings: string[]}} ChecksStop
+ * @typedef {{state: 'checks', folder: string, verify: VerifyAddendum[], stop: Stop, warnings: string[]}} ChecksStop
  */
 
 /**
@@ -262,8 +317,19 @@ const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', los
  * report, its handbacks among it — none where the state branch's first
  * commit is made and only the code branch's remains, which no run precedes
  * — for the review whose gate's yes makes the commit.
- * @typedef {{state: 'finish', migrations: BootResult['migrations'], warnings: string[]}} FinishStop
+ * @typedef {{state: 'finish', migrations: BootResult['migrations'], stop: Stop, warnings: string[]}} FinishStop
  */
+
+/** Whether the gate mod runs, could, or cannot (22.2.4). @typedef {'running'|'could'|'cannot'} Mod */
+
+/** The mod's standing as boot reports it, by where the gate surface stands. @type {Readonly<Record<import('./gate-surface.cjs').GateSurface, Mod>>} */
+const MOD = Object.freeze({ on: 'running', 'not-running': 'could', unavailable: 'cannot', outdated: 'cannot' });
+
+/** The session's effort as Claude Code hands it (`CLAUDE_EFFORT`), lowercase; null where it hands none. @returns {string|null} */
+function sessionEffort() {
+  const level = (process.env.CLAUDE_EFFORT ?? '').trim().toLowerCase();
+  return level === '' ? null : level;
+}
 
 /**
  * @typedef {object} BootResult
@@ -279,10 +345,15 @@ const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', los
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, leeway's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end`, and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`), brief hook (`brief guard`, matcher `Agent|SendMessage`) and shell hook (`shell guard`, matcher `Bash`), for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
- * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod, which boot writes nothing for — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.287; where it can: `on` where it is running, its announcement in boot's own environment, and `not-running` where it is not — leeway shows a notice on `not-running` and carries on with typed menus, and stops on `outdated`
+ * @property {Mod} mod the gate mod, which boot writes nothing for: `running`, its announcement in boot's own environment; `could`, where it can run and is not running — the start's notice; `cannot`, where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read, or one older than the floor, which the `claude-code-floor` gate stops on)
+ * @property {string|null} effort the session's effort as Claude Code hands it every command (`CLAUDE_EFFORT`), lowercase; null where it hands none — the threshold is the start's prose (26.2.3)
+ * @property {'menu'|'route'|'pick'} go where the start goes once its gates are worked (boot-route.cjs): the start menu, on the bare command; the route the words make; or the pick between the pieces of work they name
+ * @property {import('./boot-route.cjs').Route} [route] where `go` is `route`: Start's type call with the words, or the unit or topic they name, and its next, the move invoked in this conversation
+ * @property {{surface: string, args: string[]}} [pick] where `go` is `pick`: its screen, `render {surface} {args}`
+ * @property {import('./boot-route.cjs').Gate[]} gates the setup gates due, in the order start works them
  * @property {import('./brownfield.cjs').BrownfieldOffer} brownfield_offer the answer to the brownfield offer from the project manifest — `none` means nothing recorded yet (leeway's one-time judgment: native, or the offer), `accepted` that its research is owed, which the product's conversation resumes at its next opening
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state leeway's one-time offer keys on
- * @property {import('./brownfield.cjs').BaselineSignal|null} [baseline_signal] present only while brownfield_offer is `none` — the repository facts the judgment is made from; null when there is no git history to read
+ * @property {import('./brownfield.cjs').BrownfieldSignal|null} [brownfield_signal] present only while brownfield_offer is `none` — the repository facts the judgment is made from; null when there is no git history to read
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
  */
 
@@ -359,20 +430,22 @@ function trimReport(stdout) {
 /**
  * Run the boot pipeline against the project at `cwd`. `startAgain` is the
  * person's yes at the lost-state stop: a state still lost is started again.
+ * `words` are the person's, as the start was given them: none on the bare
+ * command.
  * @param {string} cwd project root
- * @param {{startAgain?: boolean}} [opts]
+ * @param {{startAgain?: boolean, words?: string}} [opts]
  * @returns {BootResult|BootStop|GuardStop|DirectiveStop|ChecksStop|FinishStop}
  */
-function boot(cwd, { startAgain = false } = {}) {
-  if (gitShortfall() !== null) return { state: 'git', warnings: [] };
-  if (outsideRepository(cwd)) return { state: 'repo', warnings: [] };
+function boot(cwd, { startAgain = false, words = '' } = {}) {
+  if (gitShortfall() !== null) return { state: 'git', stop: stopAt('git'), warnings: [] };
+  if (outsideRepository(cwd)) return { state: 'repo', stop: stopAt('repo'), warnings: [] };
   leavePosition(handedSession());
   /** @type {string[]} */
   const warnings = [];
   appendWaiting(cwd, warnings);
   const root = stateRoot(cwd);
   const { placed, migrated: reshaping } = placeAndReshape(cwd, root, startAgain, warnings);
-  if ('stop' in placed) return { state: placed.stop, warnings };
+  if ('stop' in placed) return { state: placed.stop, stop: stopAt(placed.stop), warnings };
   const migrated = reshaping ?? withStateLock(root, () => {
     commitLedgerTail(root, warnings);
     const caught = catchUpState(root, { listing: placed.listing });
@@ -382,17 +455,20 @@ function boot(cwd, { startAgain = false } = {}) {
     const ran = runMigrations(cwd, codeRoot(cwd), warnings);
     return 'migrations' in ran ? { ...ran, migrationsCommitted: commitRecord(cwd, ran.migrations, warnings) } : ran;
   });
-  if (migrated === null) return { state: 'merge', warnings };
-  if ('refused' in migrated) {
-    const { cause, unit, phase, topic, active } = migrated.refused;
-    return { state: 'guard', cause, unit, phase, topic, active, warnings };
+  if (migrated === null) return { state: 'merge', stop: stopAt('merge'), warnings };
+  if ('refused' in migrated) return guardStop(migrated.refused, warnings);
+  if ('directive' in migrated) {
+    const stopped = directiveStopped(cwd, migrated.directive);
+    return stamped(cwd, { state: 'directive', ...stopped, stop: stopAt('directive', { given: { directive: stopped.id, file: stopped.file } }), warnings });
   }
-  if ('directive' in migrated) return stamped(cwd, { state: 'directive', ...directiveStopped(cwd, migrated.directive), warnings });
-  if ('checks' in migrated) return { state: 'checks', folder: projectInMain(cwd), verify: migrated.checks, warnings };
+  if ('checks' in migrated) {
+    const folder = projectInMain(cwd);
+    return { state: 'checks', folder, verify: migrated.checks, stop: stopAt('checks', { given: { folder } }), warnings };
+  }
 
   renderLedgerCopies(cwd, warnings);
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
-  if ('finish' in migrated) return { state: 'finish', migrations: migrated.migrations, warnings };
+  if ('finish' in migrated) return { state: 'finish', migrations: migrated.migrations, stop: stopAt('finish'), warnings };
   const { migrations, migrationsCommitted } = migrated;
 
   // While a reviewed migration commit follows, it takes every path the
@@ -404,16 +480,30 @@ function boot(cwd, { startAgain = false } = {}) {
   launchLateCheck(root, warnings);
 
   const brownfield = brownfieldOffer(cwd);
+  const surface = gateSurface(cwd);
+  const facts = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, mod: MOD[surface], effort: sessionEffort(), brownfield_offer: brownfield, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
+  const entry = entryOf(cwd, words);
   /** @type {BootResult} */
-  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), brownfield_offer: brownfield, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
+  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', ...facts, ...entry, gates: gatesDue(facts, { bare: entry.go === 'menu', outdated: surface === 'outdated' }) };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
-  if (brownfield === 'none') result.baseline_signal = baselineSignal(cwd);
+  if (brownfield === 'none') result.brownfield_signal = brownfieldSignal(cwd);
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.
   if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
   return stamped(cwd, result);
+}
+
+/**
+ * Boot stopped at the reshape's guard (`GuardStop`), its screen drawn from
+ * the refusal's facts: the live session's, or none for uncommitted changes.
+ * @param {Refusal} refused @param {string[]} warnings @returns {GuardStop}
+ */
+function guardStop(refused, warnings) {
+  const { cause, unit, phase, topic, active } = refused;
+  const facts = cause === 'live' ? ['--unit', String(unit), '--phase', String(phase), '--topic', String(topic), '--active', String(active)] : [];
+  return { state: 'guard', cause, unit, phase, topic, active, stop: stopAt('guard', { args: ['--cause', cause, ...facts] }), warnings };
 }
 
 /**
@@ -612,4 +702,4 @@ function installSessionHooks(cwd, commit, warnings) {
   return sync.changed;
 }
 
-module.exports = { BOOT_STOPS, boot, detectSystemConfig };
+module.exports = { BOOT_STOPS, STOPS, boot, detectSystemConfig };

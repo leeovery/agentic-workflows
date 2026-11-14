@@ -54,11 +54,13 @@ describe('engine boot: the conversation folders', () => {
     return file;
   }
 
-  it('deletes each folder whose transcript is gone, whatever it holds — one whose transcript is there, or that names none, stays', () => {
+  it('22.S31: deletes each folder whose transcript is gone, whatever it holds — one whose transcript is there stays however old, as does one that names none', () => {
     const live = transcript('app', 'live');
     conversation('gone', { workflow: '', transcript: transcriptPath('app', 'gone'), 'position.json': '{"name":"pay"}', 'gate.json': 'null' });
     conversation('live', { workflow: '', transcript: live });
     conversation('unnamed', { workflow: '' });
+    const yearsAgo = new Date('2020-01-01T00:00:00Z');
+    for (const file of [live, ...['workflow', 'transcript', ''].map((name) => path.join(folder('live'), name))]) fs.utimesSync(file, yearsAgo, yearsAgo);
 
     boot(fix.project);
 

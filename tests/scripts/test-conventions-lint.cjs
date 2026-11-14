@@ -21,7 +21,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { RENDER_FORMS: FORMS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
-const { BOOT_STOPS } = require('../../skills/leeway-engine/scripts/domain/boot.cjs');
+const { STOPS } = require('../../skills/leeway-engine/scripts/domain/boot.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -106,13 +106,6 @@ function parseFences(lines) {
   return { blocks, inFence };
 }
 
-// A fence is the leeway banner iff it contains an ASCII-art line
-// (pure slashes / underscores / pipes / spaces, 10+ chars). The corpus
-// contains exactly one such fence; no other display uses these glyphs alone.
-function isBannerFence(block) {
-  return block.lines.some((l) => l.text.trim() !== '' && /^[\s/\\_|]{10,}$/.test(l.text));
-}
-
 // First non-blank content line index after any YAML frontmatter.
 function firstContentIndex(lines) {
   let i = 0;
@@ -126,31 +119,23 @@ function firstContentIndex(lines) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 1 — Drawn phase-title borders are retired (banner excepted); the
-// markdown H1 chrome pins the ■ glyph
-// (● + 47 ─ + ●). The leeway banner block is the one documented
-// exception and is skipped.
+// Check 1 — Drawn phase-title borders (● + 47 ─ + ●) are retired; the
+// markdown H1 chrome pins the ■ glyph.
 // ---------------------------------------------------------------------------
 
 function checkBorders(files) {
   const out = [];
   for (const file of files) {
     const lines = readLines(file);
-    const { blocks } = parseFences(lines);
-    const bannerLines = new Set();
-    for (const b of blocks) {
-      if (isBannerFence(b)) b.lines.forEach((l) => bannerLines.add(l.n));
-    }
     lines.forEach((line, i) => {
       const t = line.trim();
       // Drawn borders are retired from prose — the phase title is markdown
-      // chrome (`# **`■ Title`**`). Only the leeway banner keeps its
-      // bordered art (documented exception).
-      if (/^●─+●$/.test(t) && !bannerLines.has(i)) {
+      // chrome (`# **`■ Title`**`).
+      if (/^●─+●$/.test(t)) {
         out.push({
           file,
           line: i + 1,
-          message: 'drawn phase-title borders are retired — use `# **`■ Title`**` markdown chrome (banner excepted)',
+          message: 'drawn phase-title borders are retired — use `# **`■ Title`**` markdown chrome',
         });
         return;
       }
@@ -1411,53 +1396,92 @@ function checkBuildProse(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 35 — the start skill draws every one of boot's stops. Its boot step
-// carries a branch for each stop boot answers (`BOOT_STOPS`), and the branch
-// fetches the surface that stop names: a stop with no branch falls through
-// to the start going on.
+// Check 35 — the start skill follows boot's stops as data. Boot names each
+// stop's screen and what follows it (`STOPS`), and one rule in the start
+// skill follows whatever it names: the skill surfaces boot's warnings before
+// it follows any stop, fetches the screen boot names, carries a load for
+// each reference a stop's next names, and gives no stop a heading of its own
+// — a stop joins without a word of prose.
 // ---------------------------------------------------------------------------
 
 const START_SKILL = 'leeway';
-const BOOT_STEP = /^### Step 0\.1\b/;
+const STOP_SCREEN = /engine\.cjs render \{surface\} \{args\}/;
+const BOOT_WARNINGS = /Surface the answer's `warnings` first/;
 
-/** The H4 branches of the start skill's boot step, each heading's stop and the lines under it. @param {string[]} lines */
-function bootBranches(lines) {
-  const from = lines.findIndex((line) => BOOT_STEP.test(line));
-  if (from === -1) return null;
-  const to = lines.findIndex((line, i) => i > from && /^#{1,3}\s/.test(line));
-  /** @type {Map<string, {line: number, body: string[]}>} */
-  const branches = new Map();
-  /** @type {string[]|null} */
-  let body = null;
-  for (let i = from + 1; i < (to === -1 ? lines.length : to); i++) {
-    const heading = /^#### If `state` is `([a-z]+)`$/.exec(lines[i]);
-    if (heading !== null) {
-      body = [];
-      branches.set(heading[1], { line: i + 1, body });
-    } else if (/^####\s/.test(lines[i])) {
-      body = null;
-    } else if (body !== null) {
-      body.push(lines[i]);
+/** Each reference a stop's next loads. @param {Record<string, {next: {kind: string, reference?: string}|null}>} stops */
+const stopLoads = (stops) => Object.values(stops).flatMap(({ next }) => (next?.kind === 'load' ? [String(next.reference)] : []));
+
+function checkBootStops(files, stops = STOPS) {
+  const out = [];
+  const named = new RegExp(`^#{1,6}\\s.*\`(${Object.keys(stops).join('|')})\``);
+  for (const file of files.filter((f) => skillNameOf(f) === START_SKILL && f.endsWith('SKILL.md'))) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    const screen = lines.findIndex((line, i) => inFence[i] && STOP_SCREEN.test(line));
+    const warned = lines.findIndex((line, i) => !inFence[i] && BOOT_WARNINGS.test(line));
+    if (screen === -1) out.push({ file, line: 1, message: 'the start skill fetches no stop\'s screen as boot names it — `render {surface} {args}`' });
+    if (warned === -1 || (screen !== -1 && warned > screen)) out.push({ file, line: 1, message: 'the start skill surfaces boot\'s `warnings` before it follows any stop' });
+    for (const reference of stopLoads(stops)) {
+      const load = `Load **[${reference}.md](references/${reference}.md)**`;
+      if (!lines.some((line, i) => !inFence[i] && line.includes(load))) out.push({ file, line: 1, message: `a stop loads \`${reference}\`, and the start skill has no load of references/${reference}.md` });
     }
+    lines.forEach((line, i) => {
+      const heading = inFence[i] ? null : named.exec(line);
+      if (heading !== null) out.push({ file, line: i + 1, message: `a heading of its own for boot's \`${heading[1]}\` stop — boot names the stop, and one rule follows it` });
+    });
   }
-  return { line: from + 1, branches };
+  return out;
 }
 
-function checkBootStops(files, stops = BOOT_STOPS) {
+// ---------------------------------------------------------------------------
+// Check 37 — a skill's description is all Claude sees of it until it is
+// invoked (18.2.16, 18.2.17). The start skill's opens with its trigger;
+// every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached
+// only through a Leeway handoff, never invoked directly.
+// ---------------------------------------------------------------------------
+
+const TRIGGER = /^Use (?:for|when)\b/;
+const HANDOFF_ONLY = /Reached only through a Leeway handoff, never invoked directly\b/;
+
+/** The frontmatter's `description`, and its line; null where it has none. @param {string[]} lines */
+function descriptionOf(lines) {
+  if (lines[0] !== '---') return null;
+  for (let i = 1; i < lines.length && lines[i] !== '---'; i++) {
+    const field = /^description:\s*(.*)$/.exec(lines[i]);
+    if (field !== null) return { text: field[1], line: i + 1 };
+  }
+  return null;
+}
+
+function checkDescriptions(files, targets = HANDOFF_TARGETS) {
   const out = [];
-  for (const file of files.filter((f) => skillNameOf(f) === START_SKILL)) {
-    const found = bootBranches(readLines(file));
-    if (found === null) {
-      out.push({ file, line: 1, message: 'the start skill has no boot step, Step 0.1' });
-      continue;
+  for (const file of files.filter((f) => f.endsWith('SKILL.md') && targets.includes(skillNameOf(f)))) {
+    const description = descriptionOf(readLines(file));
+    const line = description?.line ?? 1;
+    if (skillNameOf(file) === START_SKILL) {
+      if (!TRIGGER.test(description?.text ?? '')) out.push({ file, line, message: 'the start skill\'s description opens with its trigger — "Use for …"' });
+    } else if (!HANDOFF_ONLY.test(description?.text ?? '')) {
+      out.push({ file, line, message: 'a skill a handoff lands on says in its description it is reached only through a Leeway handoff, never invoked directly' });
     }
-    for (const [stop, surface] of Object.entries(stops)) {
-      const branch = found.branches.get(stop);
-      if (branch === undefined) out.push({ file, line: found.line, message: `boot's \`${stop}\` stop has no branch in Step 0.1` });
-      else if (!branch.body.some((line) => line.includes(`engine.cjs render ${surface}`))) {
-        out.push({ file, line: branch.line, message: `the \`${stop}\` branch does not fetch \`render ${surface}\`` });
-      }
-    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 38 — no skill keeps a section of its own on resuming after a
+// refresh (24.2.6): the engine's note carries the recovery whole.
+// ---------------------------------------------------------------------------
+
+const RESUME_HEADING = /^#{1,6}\s.*\b(?:refresh\w*|compaction|resum\w* after)\b/i;
+
+function checkNoResumeSections(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (!inFence[i] && RESUME_HEADING.test(line)) out.push({ file, line: i + 1, message: 'a section of its own on resuming — the engine\'s note carries the recovery whole' });
+    });
   }
   return out;
 }
@@ -1538,8 +1562,10 @@ const CHECKS = [
   ['32: a Bash grant names the state under .leeway/', checkGrantsNameTheStateRoot],
   ['33: nothing writes the project\'s CLAUDE.md', (files) => checkNoClaudeMdWrites(files, codeFiles())],
   ['34: the build\'s prose prescribes nothing the builder does unprompted', checkBuildProse],
-  ['35: the start skill draws every one of boot\'s stops', checkBootStops],
+  ['35: the start skill follows boot\'s stops as data', checkBootStops],
   ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
+  ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
+  ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1561,7 +1587,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process', 'leeway-quick-fix-process', 'leeway-continue-epic', 'leeway-roadmap']);
+const NEW_SHAPE_SKILLS = new Set(['leeway', 'leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process', 'leeway-quick-fix-process', 'leeway-continue-epic', 'leeway-roadmap']);
 
 function checkFooterlessLoads(files) {
   const out = [];
@@ -1660,7 +1686,7 @@ for (const [label, fn] of CHECKS) {
 // must NOT flag the sanctioned edge cases it is designed to permit.
 // ---------------------------------------------------------------------------
 
-test('check 1 (borders) — bans drawn borders, skips the banner, pins the H1 glyph', () => {
+test('check 1 (borders) — bans drawn borders, the start skill\'s included, pins the H1 glyph', () => {
   withTemp((dir) => {
     // any drawn border in prose is retired — width no longer matters
     const bad = write(
@@ -1671,13 +1697,13 @@ test('check 1 (borders) — bans drawn borders, skips the banner, pins the H1 gl
     const v1 = checkBorders([bad]);
     assert.strictEqual(v1.length, 2, `expected 2 border violations, got ${v1.length}`);
 
-    // banner: ascii art + a 67-wide ● border → must be skipped
+    // the banner is the engine's: art in the start skill's prose is no exception
     const banner = write(
       dir,
       'skills/leeway/SKILL.md',
       '```\n●' + '─'.repeat(65) + '●\n    ___   ____________\n   /   | / ____/ ___/\n●' + '─'.repeat(65) + '●\n```\n'
     );
-    assert.strictEqual(checkBorders([banner]).length, 0, 'banner border must be exempt');
+    assert.strictEqual(checkBorders([banner]).length, 2, 'a border beside ASCII art is caught all the same');
 
     // markdown phase title: ■ passes, any other family glyph is caught
     const good = write(dir, 'skills/y/SKILL.md', '```\n# **`■ Overview`**\n```\n');
@@ -2840,24 +2866,62 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
   });
 });
 
-test('check 35 (boot\'s stops) — catches a stop with no branch in the start skill\'s boot step and a branch that fetches no screen of its stop, and passes every other skill by', () => {
+test('check 35 (boot\'s stops as data) — catches a start skill that fetches no screen boot names, surfaces no warnings ahead of the stops or only after them, lacks a stop\'s load, or gives a stop a heading of its own, and passes every other skill and the start skill\'s references by', () => {
   withTemp((dir) => {
-    const stops = { lost: 'state-lost-gate', repo: 'repo-stop', merge: 'state-merge-gate', guard: 'migration-guard-stop' };
-    const skill = write(dir, 'skills/leeway/SKILL.md', [
-      '## Step 0: Initialisation', '', '### Step 0.1: Boot', '',
-      '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate', '```', '',
-      '#### If `state` is `repo`', '', 'Say the folder is in no repository.', '',
-      '#### If `state` is `guard`', '', 'node .claude/skills/leeway-engine/scripts/engine.cjs render migration-guard-stop --cause dirty', '',
-      '### Step 0.2: Setup', '', '#### If `state` is `merge`', '', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-merge-gate', '',
+    const stops = { lost: { next: { kind: 'gate' } }, checks: { next: { kind: 'load', reference: 'migration-checks' } }, finish: { next: { kind: 'load', reference: 'migration-review' } } };
+    const FETCH = ['```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render {surface} {args}', '```'];
+    const clean = write(dir, 'skills/leeway/SKILL.md', [
+      '## Boot', '', 'Surface the answer\'s `warnings` first, whatever else it says.', '', '## Boot\'s Stops', '', 'Boot names the stop it made in `stop`.', '', ...FETCH, '',
+      '- `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written.',
+      '- `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
     ].join('\n'));
-    const other = write(dir, 'skills/leeway-roadmap/SKILL.md', '### Step 0.1: Boot\n');
-    const v = checkBootStops([skill, other], stops);
-    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message]), [
-      ['skills/leeway/SKILL.md', 11, 'the `repo` branch does not fetch `render repo-stop`'],
-      ['skills/leeway/SKILL.md', 3, "boot's `merge` stop has no branch in Step 0.1"],
-    ], `a branch outside the boot step is none of it, got ${report(v)}`);
-    const stepless = write(dir, 'skills/leeway/SKILL.md', '## Step 0: Initialisation\n');
-    assert.deepStrictEqual(checkBootStops([stepless], stops).map((x) => x.message), ['the start skill has no boot step, Step 0.1']);
+    const reference = write(dir, 'skills/leeway/references/migration-review.md', '#### If `finish` answers\n');
+    const other = write(dir, 'skills/leeway-roadmap/SKILL.md', '#### If `state` is `lost`\n');
+    assert.deepStrictEqual(checkBootStops([clean, reference, other], stops), [], 'the rule, its loads, and headings outside the start skill are clean');
+    const late = write(dir, 'skills/leeway/SKILL.md', fs.readFileSync(clean, 'utf8').replace('Surface the answer\'s `warnings` first, whatever else it says.\n', '') + '\nSurface the answer\'s `warnings` first.\n');
+    assert.deepStrictEqual(checkBootStops([late], stops).map((x) => x.message), ['the start skill surfaces boot\'s `warnings` before it follows any stop'], 'warnings surfaced only after the stops are followed');
+
+    const branched = write(dir, 'skills/leeway/SKILL.md', [
+      '## Boot', '', '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate', '```', '',
+      '### At `finish`', '', 'Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
+      '```markdown', '#### If `state` is `checks`', '```', '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkBootStops([branched], stops).map((x) => [x.line, x.message]), [
+      [1, 'the start skill fetches no stop\'s screen as boot names it — `render {surface} {args}`'],
+      [1, 'the start skill surfaces boot\'s `warnings` before it follows any stop'],
+      [1, 'a stop loads `migration-checks`, and the start skill has no load of references/migration-checks.md'],
+      [3, 'a heading of its own for boot\'s `lost` stop — boot names the stop, and one rule follows it'],
+      [9, 'a heading of its own for boot\'s `finish` stop — boot names the stop, and one rule follows it'],
+    ], `got ${report(checkBootStops([branched], stops))}`);
+  });
+});
+
+test('check 37 (descriptions) — 18.S73: catches a start skill whose description opens on anything but its trigger or that has none, and a skill a handoff lands on whose description does not say it is reached only through one; passes every other skill by', () => {
+  withTemp((dir) => {
+    const skill = (name, description) => write(dir, `skills/${name}/SKILL.md`, ['---', `name: ${name}`, ...(description === null ? [] : [`description: ${description}`]), 'user-invocable: false', '---', '', 'Body.', ''].join('\n'));
+    const HANDED = 'Leeway\'s review phase. Reached only through a Leeway handoff, never invoked directly; work comes into Leeway through the leeway skill.';
+    const targets = ['leeway', 'leeway-review-process', 'leeway-roadmap'];
+    const clean = [skill('leeway', 'Use for any change to what this project\'s code does.'), skill('leeway-review-process', HANDED), skill('leeway-roadmap', HANDED), skill('leeway-log-idea', 'Capture an idea in the inbox.')];
+    assert.deepStrictEqual(checkDescriptions(clean, targets), [], `got ${report(checkDescriptions(clean, targets))}`);
+
+    const broken = [skill('leeway', 'Leeway\'s entry. Use for any change.'), skill('leeway-review-process', 'Leeway\'s review phase.'), skill('leeway-roadmap', null)];
+    assert.deepStrictEqual(checkDescriptions(broken, targets).map((x) => [skillNameOf(x.file), x.line]), [
+      ['leeway', 3],
+      ['leeway-review-process', 3],
+      ['leeway-roadmap', 1],
+    ], `got ${report(checkDescriptions(broken, targets))}`);
+  });
+});
+
+test('check 38 (no resume section) — 24.S14: catches a heading on resuming after a refresh or a compaction in a skill or a reference, at any level; passes a fenced example, a heading on resuming something else and prose that names resuming', () => {
+  withTemp((dir) => {
+    const skill = write(dir, 'skills/leeway-x/SKILL.md', ['# X', '', '## Resuming After Context Refresh', '', 'Re-read.', '', '### After a Compaction', '', '```markdown', '## Resuming after a refresh', '```', '', '## Resuming an Experiment', '', 'A topic resumes where it was.', ''].join('\n'));
+    const reference = write(dir, 'skills/leeway-x/references/work.md', '#### If the session refreshed\n');
+    assert.deepStrictEqual(checkNoResumeSections([skill, reference]).map((x) => [posix(path.relative(dir, x.file)), x.line]), [
+      ['skills/leeway-x/SKILL.md', 3],
+      ['skills/leeway-x/SKILL.md', 7],
+      ['skills/leeway-x/references/work.md', 1],
+    ], `got ${report(checkNoResumeSections([skill, reference]))}`);
   });
 });
 

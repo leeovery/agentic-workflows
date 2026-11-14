@@ -5,7 +5,7 @@
 // `brownfield record`, the offer's answer written and committed confined to
 // the project manifest — native, skipped or accepted once, while nothing is
 // recorded, and completed once an accepted offer's research has landed
-// (8.12.11, 8.12.13) — and the baseline signal, the code history from before
+// (8.12.11, 8.12.13) — and the brownfield signal, the code history from before
 // the workflows arrived, read across the project's repos (8.12.10).
 //
 // Layer: git. World: the project fixture for the verb; plain repositories
@@ -115,8 +115,8 @@ function bareProject(prefix) {
   return harness.initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix))));
 }
 
-describe('the baseline signal across the project\'s repos', () => {
-  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
+describe('the brownfield signal across the project\'s repos', () => {
+  const { brownfieldSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
   let dir;
   let api;
   beforeEach(() => {
@@ -147,7 +147,7 @@ describe('the baseline signal across the project\'s repos', () => {
     writeFile(dir, 'src/e.js', 'e\n');
     commitOn(dir, 'built on the workflows', '2025-11-01');
 
-    assert.deepStrictEqual(baselineSignal(dir), {
+    assert.deepStrictEqual(brownfieldSignal(dir), {
       root_date: '2025-01-15', workflows_date: '2025-09-01', commits_total: 5, commits_before: 3,
       history_before: ['2025-01-15  api: the first endpoints', '2025-03-01  initial', '2025-05-01  api: billing'],
       files_at_arrival: 5, tree_at_arrival: ['api/ (3)', '.gitignore', 'README.md'],
@@ -170,7 +170,7 @@ describe('the baseline signal across the project\'s repos', () => {
     beginState(dir, '2025-06-01');
 
     try {
-      assert.deepStrictEqual(baselineSignal(dir), {
+      assert.deepStrictEqual(brownfieldSignal(dir), {
         root_date: '2025-01-10', workflows_date: '2025-06-01', commits_total: 4, commits_before: 4,
         history_before: ['2025-01-10  sdk: the client', '2025-02-01  api: the first endpoints', '2025-03-01  initial', '2025-04-01  add vendor/sdk'],
         files_at_arrival: 6, tree_at_arrival: ['api/ (2)', '.gitignore', '.gitmodules', 'README.md', 'vendor/ (1)'],
@@ -192,7 +192,7 @@ describe('the baseline signal across the project\'s repos', () => {
     beginState(dir, '2025-06-01');
 
     try {
-      assert.deepStrictEqual(baselineSignal(dir), {
+      assert.deepStrictEqual(brownfieldSignal(dir), {
         root_date: '2025-03-01', workflows_date: '2025-06-01', commits_total: 1, commits_before: 1,
         history_before: ['2025-03-01  initial'],
         files_at_arrival: 4, tree_at_arrival: ['api/ (2)', '.gitignore', 'README.md'],
@@ -203,7 +203,7 @@ describe('the baseline signal across the project\'s repos', () => {
   });
 });
 
-describe('the baseline signal\'s failures', () => {
+describe('the brownfield signal\'s failures', () => {
   const reposModule = require.resolve('../../skills/leeway-engine/scripts/kernel/repos.cjs');
   const brownfieldModule = require.resolve('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
 
@@ -215,8 +215,8 @@ describe('the baseline signal\'s failures', () => {
     repos.projectRepos = () => [];
     delete require.cache[brownfieldModule];
     try {
-      const { baselineSignal } = require(brownfieldModule);
-      assert.throws(() => baselineSignal(dir), TypeError);
+      const { brownfieldSignal } = require(brownfieldModule);
+      assert.throws(() => brownfieldSignal(dir), TypeError);
     } finally {
       repos.projectRepos = projectRepos;
       delete require.cache[brownfieldModule];
@@ -225,8 +225,8 @@ describe('the baseline signal\'s failures', () => {
   });
 });
 
-describe('the baseline signal of a project inside a larger repository', () => {
-  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
+describe('the brownfield signal of a project inside a larger repository', () => {
+  const { brownfieldSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
   let dir;
   beforeEach(() => {
     dir = bareProject('engine-brownfield-nested-');
@@ -254,7 +254,7 @@ describe('the baseline signal of a project inside a larger repository', () => {
     writeFile(project, 'src/app.js', '2\n');
     commitOn('web: built on the workflows', '2025-06-01');
 
-    assert.deepStrictEqual(baselineSignal(project), {
+    assert.deepStrictEqual(brownfieldSignal(project), {
       root_date: '2025-02-01', workflows_date: '2025-04-01', commits_total: 2, commits_before: 1,
       history_before: ['2025-02-01  web: the app'],
       files_at_arrival: 1, tree_at_arrival: ['src/ (1)'],

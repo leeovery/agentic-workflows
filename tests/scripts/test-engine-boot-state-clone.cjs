@@ -85,7 +85,8 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
  */
 function twoBootsAtOnce(dir) {
   const one = () => new Promise((resolve) => {
-    const child = spawn(process.execPath, [STUB_ENGINE, 'boot'], { cwd: dir, env: process.env });
+    // Boot reads the person's words on stdin: a session's Bash hands it a closed one.
+    const child = spawn(process.execPath, [STUB_ENGINE, 'boot'], { cwd: dir, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
     child.stdout.on('data', (chunk) => { out += chunk; });

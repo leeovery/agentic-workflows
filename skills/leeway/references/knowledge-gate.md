@@ -203,7 +203,7 @@ Fetch the confirmation — it names the configuration this checkout's store was 
 node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-ready
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 0.6**.
+→ Return to caller.
 
 ## F. Terminal Wizard
 

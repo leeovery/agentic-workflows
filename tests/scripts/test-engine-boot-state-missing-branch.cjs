@@ -23,7 +23,7 @@ const { git, tip, remoteTip, statePath, layout, readState, commitOnState, traced
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const { useWorld, cloneInWorld, boot, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
+const { LOST, useWorld, cloneInWorld, boot, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
 
 useWorld();
 
@@ -62,7 +62,7 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
     git(here, ['worktree', 'remove', '--force', '--force', statePath(here)]);
     git(here, ['branch', '-D', STATE_BRANCH]);
 
-    assert.deepStrictEqual(boot(here), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(boot(here), LOST);
     assert.strictEqual(boot(other).state, 'ready');
     assert.strictEqual(remoteTip(bare), kept);
     assert.strictEqual(boot(here).state, 'ready');

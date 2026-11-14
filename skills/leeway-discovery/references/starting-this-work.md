@@ -9,10 +9,10 @@ The talk has settled on a piece of work. Settling its type is the last step of s
 ## The Type Call
 
 The work is a feature, an epic, a bugfix or a quick-fix:
-- **A feature** is one piece of work. Lean to it: a feature that grows pivots later.
+- **A feature** is one piece of work that needs real discussion, planning or exploration. Lean to it over an epic: a feature that grows pivots later.
 - **An epic** has parts that each need decisions of their own. The feature-or-epic boundary needs no more confidence than any other call.
-- **A bugfix** is something that worked and now fails, its cause still to find.
-- **A quick-fix** is a small, known, mechanical change: a known cause with a mechanical fix is a quick-fix, not a bugfix.
+- **A bugfix** is a bug whose cause is not known: something that worked and now fails, its cause still to find.
+- **A quick-fix** is settled work of any size, logic changes included: a tweak, an amendment, a quick update to an existing feature, a very small new feature needing no decision. Nothing in it waits on the person beyond a quick call, and a known cause with a settled fix is a quick-fix, not a bugfix. One that turns out to need a decision beyond a quick call moves to a feature or a bugfix.
 
 A pattern or principle for the whole project is never a type here: it is the product's conversation, decided in the first topic it bears on.
 

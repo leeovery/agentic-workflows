@@ -31,7 +31,8 @@ const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { pickRows } = require('./boot-route.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -956,6 +957,25 @@ function migrationGuardStopSurface(_cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
+// The start's own screens (boot-route.cjs): the banner the bare command
+// opens on, its version the one the release writes into the engine, and
+// the pick between the pieces of work the person's words name.
+// ---------------------------------------------------------------------------
+
+/** Where the release writes the installed version (`.mint.toml`). */
+const VERSION_FILE = path.join(__dirname, '..', '..', 'content', 'version.txt');
+
+/** @returns {string} */
+function bannerSurface() {
+  return banner(fs.readFileSync(VERSION_FILE, 'utf8').trim());
+}
+
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function workPickSurface(cwd, { matches }) {
+  return workPick(pickRows(cwd, matches));
+}
+
+// ---------------------------------------------------------------------------
 // The brownfield offer — project-level, no address, drawn only while the
 // offer is unanswered (domain/brownfield.cjs).
 // ---------------------------------------------------------------------------
@@ -1088,6 +1108,8 @@ const SURFACES = {
   'inbox-restore-receipt': inboxRestoreReceiptSurface,
   'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'horizon-pick': horizonPick,
+  banner: bannerSurface,
+  'work-pick': workPickSurface,
   'brownfield-offer-gate': brownfieldOfferGateSurface,
   'walkthrough-offer': walkthroughOfferSurface,
   'walkthrough-screen': walkthroughScreenSurface,

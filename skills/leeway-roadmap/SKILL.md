@@ -1,5 +1,6 @@
 ---
 name: leeway-roadmap
+description: Leeway's product roadmap. Reached only through a Leeway handoff, never invoked directly; work comes into Leeway through the leeway skill.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
@@ -28,7 +29,7 @@ The answer goes to `gate`; follow its `next`. The DATA names each number's item;
 
 ## Adding an Item
 
-`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a small mechanical change. The horizon is the one they named. Where they named none:
+`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a quick-fix, settled work needing no decision. The horizon is the one they named. Where they named none:
 
 Load **[choosing-a-horizon.md](../leeway-shared/references/choosing-a-horizon.md)** with names = `{name}` and follow its instructions as written.
 

@@ -1,252 +1,84 @@
 ---
 name: leeway
-disable-model-invocation: true
+description: Use for any change to what this project's code does, however small, and whenever the person asks to run something through Leeway — invoke it with their words. Comments, docs and formatting that change no behaviour go straight through; in doubt, use it.
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.
-
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
->
-> **⚠️ BANNER FIRST**: The session opens with Step 0's four display blocks — art, title, Initialisation heading, status line — emitted before anything else happens: before any tool call, before loading framework.md, before a single word of narration. No "I'll start by…" pre-line, ever. Emit the four blocks, then load framework.md, then run the boot.
+
+## Arguments
+
+- `$ARGUMENTS` — the person's words, whole: what they asked for in the conversation, or typed after the command. The bare command has none.
 
 ## Instructions
 
-Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written — after Step 0's four display blocks: the BANNER FIRST rule above governs the ordering, and this load comes second.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
----
+## Boot
 
-## Step 0: Initialisation
-
-> *Output the next fenced block as a properties code block (```properties fence) — it colours the art; the space between the two words is the token break that splits the colours, so emit every line byte-for-byte, the version stamp included:*
-
-```properties
-█▀█░█▀▀░█▀▀░█▀█░▀█▀░▀█▀░█▀▀ █░█░█▀█░█▀▄░█░█░█▀▀░█░░░█▀█░█░█░█▀▀
-█▀█░█░█░█▀▀░█░█░░█░░░█░░█░░ █▄█░█░█░█▀▄░█▀▄░█▀▀░█░░░█░█░█▄█░▀▀█
-▀░▀░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀ ▀░▀░▀▀▀░▀░▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀
-                                                        v0.8.18
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-# **`■ Leeway`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Initialisation`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking the workflow system — applying any pending migrations, making sure Claude Code is set up for the workflows, confirming the knowledge base, and scanning your active work.
-```
-
-### Step 0.1: Boot
-
-**Run the boot pipeline — this is mandatory. You must complete it before proceeding.**
-
-Run the boot command with sandbox disabled (migrations may need to modify `.claude/settings.json`) and capture its JSON response:
+Boot runs first, given the words, and its answer says where the start goes. A migration may change `.claude/settings.json`, so run it with the sandbox disabled, the words on stdin as they stand:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs boot
+node .claude/skills/leeway-engine/scripts/engine.cjs boot <<'WORDS'
+$ARGUMENTS
+WORDS
 ```
 
-**CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command.
+**CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command, and for every boot the start runs again.
 
-#### If the command fails (`ok: false` or non-zero exit)
+A failed boot (`ok: false`, or a non-zero exit) is a migration that must never half-run silently: surface its error. **STOP.** Do not proceed — terminal condition.
 
-Migrations must never half-run silently. Surface the reported error to the user.
+Surface the answer's `warnings` first, whatever else it says. Then follow it, branching on nothing else.
 
-**STOP.** Do not proceed — terminal condition.
+## Boot's Stops
 
-#### If `state` is `repo`
-
-Fetch the stop's screen and emit its sections verbatim per their markers:
+Boot names the stop it made in `stop`: what to show, and what follows. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**. Where it names a `surface`, fetch it with its `args` after it, in order, and emit its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render repo-stop
+node .claude/skills/leeway-engine/scripts/engine.cjs render {surface} {args}
 ```
 
-**STOP.** Do not proceed — terminal condition.
+Then its `next`:
+- **None** — the start ends there. **STOP.** Do not proceed — terminal condition.
+- **`gate`** — the screen asks the person, and their answer goes to `gate`. Run the `next` it returns: a boot runs as the one above, words and all, and its answer is followed afresh; anything else runs, then boot runs again; a null `next` ends the start.
+- **`load`** — load the reference it names, with what its `with` gives, then boot again:
+  - `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written, with folder = `{folder}`.
+  - `migration-directive`: Load **[migration-directive.md](references/migration-directive.md)** and follow its instructions as written, with directive = `{directive}` and file = `{file}`.
+  - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
 
-#### If `state` is `git`
+## The Opening
 
-Fetch the stop's screen and emit its sections verbatim per their markers:
+Past every stop, boot answers `go`. Where it is `menu`, the bare command, fetch the banner first and emit its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render git-floor-stop
+node .claude/skills/leeway-engine/scripts/engine.cjs render banner
 ```
 
-**STOP.** Do not proceed — terminal condition.
+Then work each of boot's `gates` in its order, as **The Setup Gates** says, and go where `go` says, as **Where the Start Goes** says.
 
-#### If `state` is `lost`
+## The Setup Gates
 
-If the boot response carries `warnings`, surface them first. Then fetch the stop's gate and emit its sections verbatim per their markers:
+- `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
+- `claude-code-floor`, `mod-notice`: Load **[claude-code-setup.md](references/claude-code-setup.md)** and follow its instructions as written, with gate = `{gate}`.
+- `effort`: where boot's `effort` is a level below medium, say ``This session runs at `{effort}` effort; Leeway recommends medium or above.`` once, and carry on. At medium or above, say nothing.
+- `walkthrough`: Load **[walkthrough-offer.md](references/walkthrough-offer.md)** and follow its instructions as written.
+- `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
+- `knowledge`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
+- `brownfield`: Load **[brownfield-offer.md](references/brownfield-offer.md)** and follow its instructions as written.
+- `github-rule`, `github-squash`: fetch the offer and emit its sections verbatim per their markers. The answer goes to `gate`; run the `next` it returns, which records it.
 
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate
-```
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs render {gate:[github-rule|github-squash]}-gate
+  ```
 
-A `next` is a boot: run it as this step runs boot, with `dangerouslyDisableSandbox: true`, and branch on its response from the top of **Step 0.1**. A null `next` ends the start: **STOP.** Do not proceed — terminal condition.
+## Where the Start Goes
 
-#### If `state` is `merge`
+- **`menu`**: Load **[start-menu.md](references/start-menu.md)** and follow its instructions as written.
+- **`route`**: boot routed the words to Start's type call, or into the work they name. Invoke the skill its `route`'s `next` names, with its `args`, here in this conversation: ``Invoke `/{skill} {args}`.``
 
-If the boot response carries `warnings`, surface them first. Then fetch the stop's gate and emit its sections verbatim per their markers:
+  This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+- **`pick`**: the words name work in progress among other words, or more than one piece of it. Fetch its `surface` with its `args` after it, in order, and emit its sections verbatim per their markers. The answer goes to `gate`, and the `next` it returns is a skill to invoke here, as a route's is.
 
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render state-merge-gate
-```
-
-Each row's `next` is the person's pick, which leaves the merge at its next question or finishes it.
-
-→ Once the pick has run, run **Step 0.1** again.
-
-#### If `state` is `guard`
-
-If the boot response carries `warnings`, surface them first. Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen and emit its sections verbatim per their markers — where `cause` is `live`, with the response's `unit`, `phase`, `topic` and `active`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render migration-guard-stop --cause {cause:[live|dirty]} [--unit {unit} --phase {phase} --topic {topic} --active {active}]
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If `state` is `checks`
-
-If the boot response carries `warnings`, surface them first. Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen and emit its sections verbatim per their markers:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render migration-checks-stop
-```
-
-Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written, with folder = `{folder}`.
-
-→ On return, run **Step 0.1** again.
-
-#### If `state` is `directive`
-
-Load **[migration-directive.md](references/migration-directive.md)** and follow its instructions as written, with directive = `{id}` and file = `{file}`.
-
-→ On return, run **Step 0.1** again.
-
-#### If `state` is `finish`
-
-If the boot response carries `warnings`, surface them first. Say the marker **`▪ Migration`** on a line of its own, then load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
-
-→ On return, run **Step 0.1** again.
-
-#### If `migrations.changed` is `true` or `migrations.verify` or `migrations.notices` is non-empty
-
-Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 0.2**.
-
-#### Otherwise
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-All documents up to date.
-```
-
-**Do not stop here.** No migrations were needed.
-
-→ Proceed to **Step 0.2**.
-
-### Step 0.2: Claude Code Setup
-
-Branch on the boot response's `gate_surface` — `on` and `unavailable` render nothing.
-
-#### If `gate_surface` is `not-running` or `outdated`
-
-Load **[claude-code-setup.md](references/claude-code-setup.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 0.3**.
-
-#### Otherwise
-
-→ Proceed to **Step 0.3**.
-
-### Step 0.3: Walkthrough
-
-Branch on the boot response's `walkthrough` — the one-time offer of a short walk through how the workflows work. A recorded answer (`walked` or `skipped`) never re-offers, and the walk stays reachable from the `h/help` row on the start menu either way.
-
-#### If `walkthrough` is `none`
-
-Load **[walkthrough-offer.md](references/walkthrough-offer.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 0.4**.
-
-#### Otherwise
-
-→ Proceed to **Step 0.4**.
-
-### Step 0.4: Session Labels
-
-Branch on the boot response's `tmux_labels` — `prompt` means the session runs inside tmux and the choice was never recorded. A recorded choice (`on`/`off`) never re-prompts; `no-tmux` records nothing, so a later session inside tmux still asks.
-
-#### If `tmux_labels` is `prompt`
-
-Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 0.5**.
-
-#### Otherwise
-
-→ Proceed to **Step 0.5**.
-
-### Step 0.5: Knowledge Gate
-
-Branch on the boot response — run no further commands (boot already brought the knowledge base in line with the files and compacted it when it was ready, building the store first where this checkout had none). If it carries `warnings`, surface them and continue — boot is complete.
-
-#### If `knowledge` is `not-ready`
-
-The response's `system_config` object carries what the gate needs to branch. Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
-
-#### If `knowledge` is `ready`
-
-→ Proceed to **Step 0.6**.
-
-### Step 0.6: Baseline Judgment
-
-Branch on the boot response's `brownfield_offer` — the one-time judgment on whether the project carries a codebase that predates the workflows, and the answer to the offer that follows it. A recorded answer never re-judges and never re-offers.
-
-#### If `brownfield_offer` is `none`
-
-Load **[baseline-judgment.md](references/baseline-judgment.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 0.7**.
-
-#### Otherwise
-
-A recorded answer — render nothing.
-
-→ Proceed to **Step 0.7**.
-
-### Step 0.7: Direct Open
-
-This skill receives two optional positional arguments — one not given is unset, whatever an earlier skill in this conversation held under the same name: `$0`, a work unit, held as `{work_unit}`, and `$1`, one of its topics, held as `{topic}`. Given both, the person typed `/leeway {work_unit} {topic}` to open that topic directly, as picking it from the menus would.
-
-#### If `$0` and `$1` are given
-
-Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `topic {work_unit} {topic}`.
-
-#### If only `$0` is given
-
-Say `To open one of {work_unit}'s topics directly, name it too: /leeway {work_unit} <topic>.`
-
-→ Proceed to **Step 1**.
-
-#### Otherwise
-
-→ Proceed to **Step 1**.
-
----
-
-## Step 1: The Start Menu
-
-Load **[start-menu.md](references/start-menu.md)** and follow its instructions as written.
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs render {surface} {args}
+  ```

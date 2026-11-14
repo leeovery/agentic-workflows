@@ -151,6 +151,9 @@ function untouched(main, bare) {
   };
 }
 
+/** Boot's answer at the lost state's stop: its gate drawn, the person's answer at it next. */
+const LOST = Object.freeze({ ok: true, state: 'lost', stop: { surface: 'state-lost-gate', next: { kind: 'gate' } }, warnings: [] });
+
 module.exports = {
-  useWorld, OWN_SETTINGS, STUB_ENGINE, engine, projectInWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach, untouched,
+  LOST, useWorld, OWN_SETTINGS, STUB_ENGINE, engine, projectInWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach, untouched,
 };

@@ -29,10 +29,10 @@ describe('the Claude Code floor', () => {
 
   it("is the version leeway's stop names to an older Claude Code", () => {
     const setup = fs.readFileSync(path.join(ROOT, 'skills/leeway/references/claude-code-setup.md'), 'utf8');
-    const branch = setup.split('#### If `gate_surface` is `outdated`')[1]?.split('\n####')[0];
-    assert.ok(branch, 'the Claude Code setup has its outdated branch');
+    const branch = setup.split('#### If gate is `claude-code-floor`')[1]?.split('\n####')[0];
+    assert.ok(branch, 'the Claude Code setup has its floor branch');
     const named = /Claude Code (\d+\.\d+\.\d+) or newer/.exec(branch);
-    assert.ok(named, 'the outdated stop names the version it needs');
+    assert.ok(named, 'the floor stop names the version it needs');
     assert.strictEqual(named[1], floor);
   });
 });

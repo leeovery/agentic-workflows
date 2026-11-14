@@ -49,6 +49,12 @@ describe('the release ships none of the retired skills, formats or types (1.S9)'
     assert.deepStrictEqual(HANDOFF_TARGETS.filter((skill) => RETIRED.test(skill)), []);
   });
 
+  it('8.S38: the start skill names no baseline — the judgment and the offer are its brownfield offer, pointing at the product\'s conversation', () => {
+    const start = walk(path.join(SKILLS, 'leeway')).filter((file) => file.endsWith('.md'));
+    assert.ok(start.some((file) => path.basename(file) === 'brownfield-offer.md'), 'the listing reads the start skill\'s files');
+    assert.deepStrictEqual(start.filter((file) => /baseline/i.test(fs.readFileSync(file, 'utf8'))).map((file) => path.relative(SKILLS, file)), []);
+  });
+
   it('lists no plan format — no output formats anywhere in the product', () => {
     assert.deepStrictEqual(walk(SKILLS).filter((file) => path.basename(file).startsWith('output-formats')), []);
   });

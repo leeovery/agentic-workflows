@@ -301,6 +301,7 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a work unit, or the project': [
       'board.cjs › unitAt › unit',
+      'boot-route.cjs › pickRows › unit',
       'inbox-set.cjs › archivedItems › closure.unit',
       'projections/board-quick-fix.cjs › ledgerAt › unit',
       'mail.cjs › sendReportOf › unit',

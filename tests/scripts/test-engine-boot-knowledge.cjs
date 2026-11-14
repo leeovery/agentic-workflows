@@ -53,7 +53,11 @@ describe('engine boot', () => {
       tmux_labels: 'prompt',
       label_repaired: false,
       session_hooks_installed: false,
-      gate_surface: 'unavailable',
+      mod: 'cannot',
+      effort: null,
+      // The bare command: the start menu, after the one-time offers nothing has answered.
+      go: 'menu',
+      gates: ['walkthrough', 'session-labels', 'brownfield'],
       brownfield_offer: 'none',
       walkthrough: 'none',
       github_rule_offer: false,
@@ -61,7 +65,7 @@ describe('engine boot', () => {
       // The fixture's first code commit, its `.gitignore` naming the state,
       // is the setup's own, in the second the state arrived: no history
       // came before the workflows.
-      baseline_signal: {
+      brownfield_signal: {
         root_date: '2026-01-01', workflows_date: '2026-01-01', commits_total: 2, commits_before: 0,
         history_before: [], files_at_arrival: 0, tree_at_arrival: [],
       },

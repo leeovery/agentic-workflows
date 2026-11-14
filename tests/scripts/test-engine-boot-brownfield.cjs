@@ -4,7 +4,7 @@
 // What boot reads of the project for the start menu
 // (leeway-engine/scripts/domain/boot.cjs): the brownfield offer's answer —
 // the one the reshape's move (078) carried from a project's baseline among
-// them — the walkthrough's recorded answer, and the baseline signal — the
+// them — the walkthrough's recorded answer, and the brownfield signal — the
 // code history from before the workflows arrived; and no worktree include
 // written.
 //
@@ -54,24 +54,24 @@ describe('engine boot', () => {
   beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('21.S50: brownfield_offer — a project moved with its baseline native, skipped or completed reads that answer, so boot hands over no signal and the judgment and the offer are not made again; accepted stands for the research owed (8.S78, 8.12.11)', () => {
+  it('21.S50, 8.S61: brownfield_offer — a project moved with its baseline native, skipped or completed reads that answer, so boot hands over no signal and the judgment and the offer are not made again, no brownfield gate due; accepted stands for the research owed (8.S78, 8.12.11)', () => {
     const projManifest = statePath(fix.project, layout.projectManifest);
     const manifests = [...movedWithBaselines(fix.root, ['native', 'skipped', 'completed']), JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' })];
 
     assert.deepStrictEqual(manifests.map((manifest) => {
       fs.writeFileSync(projManifest, manifest);
       const res = runEngine(stubbed, fix.project, ['boot']);
-      return [res.brownfield_offer, 'baseline_signal' in res];
-    }), [['native', false], ['skipped', false], ['completed', false], ['accepted', false]]);
+      return [res.brownfield_offer, 'brownfield_signal' in res, res.gates.includes('brownfield')];
+    }), [['native', false, false], ['skipped', false, false], ['completed', false, false], ['accepted', false, false]]);
   });
 
-  it('brownfield_offer: nothing recorded — no field, an unrecognised value, a malformed one, no project manifest — reads none, the signal attached', () => {
+  it('brownfield_offer: nothing recorded — no field, an unrecognised value, a malformed one, no project manifest — reads none, the signal attached and the brownfield gate due on the bare command', () => {
     const projManifest = statePath(fix.project, layout.projectManifest);
     for (const project of [{ work_units: {} }, { work_units: {}, brownfield_offer: 'in-progress' }, { work_units: {}, brownfield_offer: { status: 'native' } }, null]) {
       if (project === null) fs.rmSync(projManifest);
       else fs.writeFileSync(projManifest, JSON.stringify(project));
       const res = runEngine(stubbed, fix.project, ['boot']);
-      assert.deepStrictEqual([res.brownfield_offer, res.baseline_signal?.commits_total], ['none', 2], JSON.stringify(project));
+      assert.deepStrictEqual([res.brownfield_offer, res.brownfield_signal?.commits_total, res.gates.includes('brownfield')], ['none', 2, true], JSON.stringify(project));
     }
   });
 
@@ -121,7 +121,7 @@ describe('engine boot', () => {
     return { project, commit, arrive };
   }
 
-  it('baseline_signal: a codebase committed before `.leeway/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
+  it('brownfield_signal: a codebase committed before `.leeway/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
     // A brownfield repo: two commits of code (the skills install beside it,
     // which never counts as project code), then the workflows land.
     const { project, commit, arrive } = scratchRepo('brownfield');
@@ -133,8 +133,8 @@ describe('engine boot', () => {
 
     // No state yet — the workflows arriving now: the whole history predates
     // them, and the tree is HEAD's.
-    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
-    assert.deepStrictEqual(baselineSignal(project), {
+    const { brownfieldSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
+    assert.deepStrictEqual(brownfieldSignal(project), {
       root_date: '2025-03-01', workflows_date: null, commits_total: 2, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (2)', 'README.md'],
@@ -147,26 +147,26 @@ describe('engine boot', () => {
     commit('after the workflows', '2025-10-01');
     const res = runEngine(stubbed, project, ['boot']);
     assert.strictEqual(res.brownfield_offer, 'none');
-    assert.deepStrictEqual(res.baseline_signal, {
+    assert.deepStrictEqual(res.brownfield_signal, {
       root_date: '2025-03-01', workflows_date: '2025-09-01', commits_total: 3, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (2)', 'README.md'],
     });
   });
 
-  it('baseline_signal: the workflows arriving with the codebase\'s first commit report the tree they arrived into — a legacy codebase put under git at install is not a fresh start', () => {
+  it('brownfield_signal: the workflows arriving with the codebase\'s first commit report the tree they arrived into — a legacy codebase put under git at install is not a fresh start', () => {
     const { project, commit, arrive } = scratchRepo('legacy');
     for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) createFile(project, f, '# code\n');
     commit('import', '2025-01-01');
     arrive('2025-01-01T12:00:01Z');
     const res = runEngine(stubbed, project, ['boot']);
-    assert.deepStrictEqual(res.baseline_signal, {
+    assert.deepStrictEqual(res.brownfield_signal, {
       root_date: '2025-01-01', workflows_date: '2025-01-01', commits_total: 1, commits_before: 1, history_before: ['2025-01-01  import'],
       files_at_arrival: 5, tree_at_arrival: ['app/ (3)', 'config/ (1)', 'Gemfile'],
     });
   });
 
-  it('baseline_signal: the code before the arrival is the default branch\'s as it stood, never a side branch merged after', () => {
+  it('brownfield_signal: the code before the arrival is the default branch\'s as it stood, never a side branch merged after', () => {
     // main: root(Jan) → c2(Feb), the state arriving in Apr, then a merge(May)
     // of a side branch cut from root in Mar. Its commit is older than the
     // arrival, but main never held it until the merge.
@@ -183,21 +183,21 @@ describe('engine boot', () => {
     arrive('2025-04-01');
     execFileSync('git', ['merge', '-q', '--no-edit', 'side'], { cwd: project, env: { ...process.env, GIT_AUTHOR_DATE: '2025-05-01T12:00:00Z', GIT_COMMITTER_DATE: '2025-05-01T12:00:00Z' } });
     const res = runEngine(stubbed, project, ['boot']);
-    assert.deepStrictEqual(res.baseline_signal, {
+    assert.deepStrictEqual(res.brownfield_signal, {
       root_date: '2025-01-01', workflows_date: '2025-04-01', commits_total: 4, commits_before: 2,
       history_before: ['2025-01-01  root', '2025-02-01  main work'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (3)'],
     });
   });
 
-  it('baseline_signal: a long run keeps its head and tail around one elision line, and the tree its largest dozen entries', () => {
+  it('brownfield_signal: a long run keeps its head and tail around one elision line, and the tree its largest dozen entries', () => {
     const { project, commit, arrive } = scratchRepo('long');
     for (let i = 1; i <= 15; i += 1) {
       createFile(project, `dir${String(i).padStart(2, '0')}/f.js`, `${i}\n`);
       commit(`commit ${i}`, `2025-01-${String(i).padStart(2, '0')}`);
     }
     arrive('2025-02-01');
-    const sig = runEngine(stubbed, project, ['boot']).baseline_signal;
+    const sig = runEngine(stubbed, project, ['boot']).brownfield_signal;
     assert.strictEqual(sig.commits_before, 15);
     assert.strictEqual(sig.history_before.length, 8 + 1 + 4);
     assert.strictEqual(sig.history_before[8], '… 3 more …');
@@ -208,43 +208,43 @@ describe('engine boot', () => {
     assert.strictEqual(sig.tree_at_arrival[12], '… 3 more …');
   });
 
-  it('baseline_signal: reads the same through a signing user\'s `log.showSignature`', () => {
+  it('brownfield_signal: reads the same through a signing user\'s `log.showSignature`', () => {
     const { project, commit, arrive } = scratchRepo('signed');
     createFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
     arrive('2025-02-01');
-    const plain = runEngine(stubbed, project, ['boot']).baseline_signal;
+    const plain = runEngine(stubbed, project, ['boot']).brownfield_signal;
     git(project, ['config', 'log.showSignature', 'true']);
-    const signed = runEngine(stubbed, project, ['boot']).baseline_signal;
+    const signed = runEngine(stubbed, project, ['boot']).brownfield_signal;
     assert.deepStrictEqual(signed, plain);
     assert.strictEqual(plain.commits_before, 1);
   });
 
-  it('baseline_signal: a `.worktreeinclude` in the tree is the project\'s own file, counted as any other — boot writes none', () => {
+  it('brownfield_signal: a `.worktreeinclude` in the tree is the project\'s own file, counted as any other — boot writes none', () => {
     const { project, commit, arrive } = scratchRepo('included');
     createFile(project, 'src/a.js', 'a\n');
     createFile(project, '.worktreeinclude', '.env\n');
     commit('root', '2025-01-01');
     arrive('2025-02-01');
 
-    const sig = runEngine(stubbed, project, ['boot']).baseline_signal;
+    const sig = runEngine(stubbed, project, ['boot']).brownfield_signal;
 
     assert.deepStrictEqual([sig.files_at_arrival, sig.tree_at_arrival], [2, ['.worktreeinclude', 'src/ (1)']]);
   });
 
-  it('baseline_signal: a boot from inside the state worktree reads the code history, never the state branch\'s', () => {
+  it('brownfield_signal: a boot from inside the state worktree reads the code history, never the state branch\'s', () => {
     const { project, commit, arrive } = scratchRepo('inside');
     createFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
     arrive('2025-02-01');
-    const fromRoot = runEngine(stubbed, project, ['boot']).baseline_signal;
-    const fromState = runEngine(stubbed, statePath(project), ['boot']).baseline_signal;
+    const fromRoot = runEngine(stubbed, project, ['boot']).brownfield_signal;
+    const fromState = runEngine(stubbed, statePath(project), ['boot']).brownfield_signal;
 
     assert.deepStrictEqual(fromState, fromRoot);
     assert.deepStrictEqual(fromState.history_before, ['2025-01-01  root']);
   });
 
-  it('baseline_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
+  it('brownfield_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
     const empty = harness.initRepo(path.join(fix.root, 'empty'));
     createState(statePath(empty));
     // A hook refusing every code commit: boot's plumbing would otherwise
@@ -253,12 +253,12 @@ describe('engine boot', () => {
     fs.chmodSync(path.join(empty, '.git/hooks/pre-commit'), 0o755);
     const res = runEngine(stubbed, empty, ['boot']);
     assert.strictEqual(res.brownfield_offer, 'none');
-    assert.strictEqual(res.baseline_signal, null);
+    assert.strictEqual(res.brownfield_signal, null);
 
-    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
+    const { brownfieldSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
     const plain = path.join(fix.root, 'plain');
     fs.mkdirSync(plain, { recursive: true });
-    assert.strictEqual(baselineSignal(plain), null);
+    assert.strictEqual(brownfieldSignal(plain), null);
 
     // A shallow clone of a brownfield history looks like a root-commit
     // arrival; it is truncated, not fresh, so the signal says so.
@@ -270,7 +270,7 @@ describe('engine boot', () => {
     arrive('2025-03-01');
     const shallow = path.join(fix.root, 'shallow');
     execFileSync('git', ['clone', '-q', '--depth', '1', `file://${project}`, shallow]);
-    assert.strictEqual(baselineSignal(shallow), null);
+    assert.strictEqual(brownfieldSignal(shallow), null);
   });
 });
 

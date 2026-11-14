@@ -224,7 +224,7 @@ const homelessNames = (result) => (result.roadmap_horizon_gone ?? []).map(({ nam
 const USAGE = `Usage: engine <command> [args]
 
 Commands:
-  boot [--start-again]
+  boot [--start-again]               (the person's words on stdin)
   state-merge pick <1|2> <choice>
   github-rule <yes|no>
   github-squash <yes|no>
@@ -391,6 +391,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render inbox-restore-receipt --path <live path> [--unclaimed <wu>]
   render inbox-delete-receipt --path <archived path>
   render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]
+  render banner
+  render work-pick --matches <unit>[/<topic>],…
   render brownfield-offer-gate
   render walkthrough-offer [--menu-only]
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
@@ -1827,15 +1829,18 @@ function runAgent(call, argv) {
 // (hard error on failure; a directive not yet done stops it),
 // knowledge check (failure reports not-ready), and when ready the keyword
 // side brought in line, compacted and the vector fill launched
-// (warn-don't-block). `--start-again` is the person's yes at the lost-state
-// stop.
+// (warn-don't-block); then where the start goes, from the person's words on
+// stdin — none, or nothing but blanks, the bare command — so quoting never
+// breaks them. `--start-again` is the person's yes at the lost-state stop.
 // ---------------------------------------------------------------------------
+
+const BOOT_USAGE = 'Usage: engine boot [--start-again]   (the person\'s words on stdin)';
 
 /** @param {Call} call @param {string[]} argv */
 function runBoot(call, argv) {
   try {
-    if (argv.length > 1 || (argv.length === 1 && argv[0] !== '--start-again')) throw new Error('Usage: engine boot [--start-again]');
-    respond(call, boot(call.cwd, { startAgain: argv.length === 1 }));
+    if (argv.length > 1 || (argv.length === 1 && argv[0] !== '--start-again')) throw new Error(BOOT_USAGE);
+    respond(call, boot(call.cwd, { startAgain: argv.length === 1, words: call.stdin() }));
   } catch (err) {
     failJson(call, err);
   }

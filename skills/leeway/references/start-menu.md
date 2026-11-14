@@ -1,6 +1,6 @@
 # Start Menu
 
-*Reference for **[leeway](../SKILL.md)** — loaded by its Step 1, and by the back of the roadmap, help and the epic menu.*
+*Reference for **[leeway](../SKILL.md)** — loaded where boot answers the menu, and by the back of the roadmap, help and the epic menu.*
 
 ---
 

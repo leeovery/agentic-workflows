@@ -1,17 +1,19 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: leeway's boot gates — the menus Step 0 puts to the
+// Domain ring: leeway's boot gates — the menus the start puts to the
 // user before any work is on the table: the state lost, the GitHub rule's
-// offer, the migration confirm, the label opt-in, the brownfield offer — the
+// offer, the migration confirm, the label opt-in, the brownfield offer, and
+// the pick between the pieces of work the person's words name — the
 // stops on a git below the engine's floor, in a folder in no git repository,
 // at the reshape's guard and at a directive of the migration not yet done,
-// and the knowledge gate's displays. Pure renderers; none reads state (the calling prose branches on
-// the boot response and fetches the gate at its display point, and the
-// render surface reads what a display names).
+// the knowledge gate's displays, and the banner the bare command opens on.
+// Pure renderers; none reads state (the calling prose follows the boot
+// response and fetches the gate at its display point, and the render
+// surface reads what a display names).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, titleSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
@@ -263,19 +265,56 @@ function labelGate() {
 }
 
 /**
- * The one-time offer to research a codebase that predates the workflows.
+ * The one-time offer to have the product researcher read a codebase that
+ * predates Leeway, before the product's conversation opens on it.
  * @returns {string}
  */
 function brownfieldOfferGate() {
   const body = menu(
     '',
     [
-      cmdOption('y', 'yes', 'Start the assessment now'),
+      cmdOption('y', 'yes', 'Read it now, then talk the product through'),
       cmdOption('n', 'no', 'Skip — it is not offered again'),
     ],
-    { question: 'Run a baseline assessment?' },
+    { question: 'Have the existing code read first?' },
   );
   return section('MENU: brownfield offer', MENU_INSTRUCTION, body);
+}
+
+/** The banner's art, its two words split by the one space the properties fence colours them at. */
+const BANNER_ART = Object.freeze([
+  '█▀█░█▀▀░█▀▀░█▀█░▀█▀░▀█▀░█▀▀ █░█░█▀█░█▀▄░█░█░█▀▀░█░░░█▀█░█░█░█▀▀',
+  '█▀█░█░█░█▀▀░█░█░░█░░░█░░█░░ █▄█░█░█░█▀▄░█▀▄░█▀▀░█░░░█░█░█▄█░▀▀█',
+  '▀░▀░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀ ▀░▀░▀▀▀░▀░▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀',
+]);
+
+/**
+ * The banner the bare command opens on (18.2.15): the art, the installed
+ * version right-aligned beneath it, then the title.
+ * @param {string} version
+ * @returns {string}
+ */
+function banner(version) {
+  const width = Math.max(...BANNER_ART.map((line) => [...line].length));
+  return [
+    section('DISPLAY: banner', emitAs('properties'), [...BANNER_ART, version.padStart(width)].join('\n')),
+    titleSection('Leeway'),
+  ].join('\n');
+}
+
+/**
+ * The pick between the pieces of work the person's words name (O2): a row
+ * for each, and one for something new, each row's next its move, invoked in
+ * this conversation.
+ * @param {{key: string|number, word?: string, label: import('./surfaces.cjs').OptionLabel, next: import('./surfaces.cjs').Next}[]} rows
+ * @returns {string}
+ */
+function workPick(rows) {
+  return section('MENU: work pick', MENU_INSTRUCTION, menu(
+    'These words could carry on work in progress, or start something new.',
+    rows.map(({ key, word, label, next }) => cmdOption(String(key), word, label, { next })),
+    { question: 'Which piece of work?' },
+  ));
 }
 
 /**
@@ -400,4 +439,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

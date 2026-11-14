@@ -77,7 +77,7 @@ const researchOwed = (project) => answerOf(project) === 'accepted';
 // --- the signal -------------------------------------------------------------
 
 /**
- * @typedef {object} BaselineSignal
+ * @typedef {object} BrownfieldSignal
  * @property {string} root_date  author date of the earliest first commit across the project's repos (YYYY-MM-DD)
  * @property {string|null} workflows_date  author date of the state's first commit — null when the state holds none yet, so the whole history predates the workflows
  * @property {number} commits_total  every commit reachable from HEAD, summed across the repos — a project inside a larger repository counting the commits that touched its folder, a shallow nested clone none
@@ -309,9 +309,9 @@ function treeShape(paths) {
  * root, or a git read that failed — leaving the judgment to the tree. Any
  * other failure is a bug, and throws.
  * @param {string} cwd
- * @returns {BaselineSignal|null}
+ * @returns {BrownfieldSignal|null}
  */
-function baselineSignal(cwd) {
+function brownfieldSignal(cwd) {
   try {
     const [root, ...nested] = projectRepos(cwd);
     if (isShallow(root.path)) return null;
@@ -367,4 +367,4 @@ function recordBrownfield(cwd, answer) {
   return result;
 }
 
-module.exports = { brownfieldOffer, baselineSignal, recordBrownfield, researchOwed };
+module.exports = { brownfieldOffer, brownfieldSignal, recordBrownfield, researchOwed };
