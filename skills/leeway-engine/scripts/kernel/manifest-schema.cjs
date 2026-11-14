@@ -223,6 +223,25 @@ function workUnitNameRefusal(name) {
 // host behind the `land` verbs.
 const DRIVER_KINDS = /** @type {const} */ (['task', 'landing']);
 
+// The environment setup's parts, `environment.{part}` on the project
+// manifest (22.5.12, domain/environment.cjs), in the order its screen shows
+// them: how to run the product, the steps that prepare the environment,
+// what cannot run at once, the verify setup, the linters, and the person's
+// yes.
+const ENVIRONMENT_PARTS = Object.freeze(/** @type {const} */ (['run', 'prepare', 'concurrency', 'verify', 'linters', 'confirmed']));
+
+// How to run the product: the commands the setup's `run` holds.
+const RUN_COMMANDS = Object.freeze(/** @type {const} */ (['build', 'tests', 'run']));
+
+// When a step that prepares the environment runs (22.5.1): before the
+// build's first task, in each worktree a task runs in, or both.
+const PREPARE_WHEN = Object.freeze(/** @type {const} */ (['first', 'worktree', 'both']));
+
+// The setup's parts that are lists, each by the field naming its entries
+// once: two clones merge each as a set keyed so (4.7.5), keeping both
+// sides' entries, never one side's list over the other's.
+const ENVIRONMENT_SETS = Object.freeze({ prepare: 'name', concurrency: 'what', linters: 'name' });
+
 module.exports = {
   VALID_WORK_TYPES,
   LEGACY_WORK_TYPES,
@@ -256,4 +275,8 @@ module.exports = {
   workUnitNameRefusal,
   DRIVER_KINDS,
   BUILD_PHASES,
+  ENVIRONMENT_PARTS,
+  RUN_COMMANDS,
+  PREPARE_WHEN,
+  ENVIRONMENT_SETS,
 };
