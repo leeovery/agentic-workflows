@@ -150,8 +150,10 @@ describe('pipeline simulation: sessions', () => {
     sim.write('src/app.js', 'const x = 2;\n');
     git(sim.dir, ['add', '--', 'src/app.js']);
 
-    // The summary rides a payload in the cache, which the commit below never
+    // The review reads where the state and the code side are, then writes
+    // the summary in a payload in the cache, which the commit below never
     // carries, with every notice boot's migrations handed back for the person.
+    sim.run(['migrate', 'review']);
     const applied = sim.write('.leeway/.cache/migrations-applied.json', {
       summary: 'Restored the settings and the worktree include.',
       notices: ['A setting you may want back was removed.'],

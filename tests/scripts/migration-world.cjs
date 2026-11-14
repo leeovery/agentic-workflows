@@ -1,22 +1,32 @@
 'use strict';
 
 // The migration's harness (tests/README.md §9), what the suites of its
-// directives share: the engine copied, once per process, beside the real
-// runner and the fixture directives in tests/fixtures/directives/, so it
-// finds them as it finds the migrations installed (`directiveEngine`); and
-// a project the migration is under way in, made once per process and
-// copied (`midMigration`) — its `.workflows/` committed on its code branch
-// as today's layout leaves it, and its state worktree at `.leeway/`,
-// locked, on a `leeway-state` with no commit yet, holding what the move
-// writes: the state's `.gitignore`, the project's manifest and id, the
-// unit's manifest with its three topics, and the migrations record, which
-// holds the fixture directives the boot suites never reach. And the records
-// directive's world (`recordsMigration`), made once and copied: four units
-// as today's layout left them and as the move wrote them, with the old agent
-// store the move leaves. And the legacy split's (`splitProject`,
-// `splitMigration`), each made once and copied: an epic shaped as
-// codeintel's was before its split, on today's layout with no state, and
-// as the reshape's guard leaves it; with the plans its interview stages.
+// directives and its commit share: the engine copied, once per process,
+// beside the real runner and the fixture migrations in
+// tests/fixtures/directives/ — the directives, and a code migration after
+// the reshape — so it finds them as it finds the migrations installed
+// (`directiveEngine`); and a project the migration is under way in, made
+// once per process and copied (`midMigration`) — its `.workflows/`
+// committed on its code branch as today's layout leaves it, and its state
+// worktree at `.leeway/`, locked, on a `leeway-state` with no commit yet,
+// holding what the move writes: the state's `.gitignore`, the project's
+// manifest and id, the unit's manifest with its three topics, and the
+// migrations record, which holds the fixture migrations the boot suites
+// never reach there. The records directive's world (`recordsMigration`),
+// made once and copied: four units as today's layout left them and as the
+// move wrote them, with the old agent store the move leaves. The legacy
+// split's (`splitProject`, `splitMigration`), each made once and copied:
+// an epic shaped as codeintel's was before its split, on today's layout
+// with no state, and as the reshape's guard leaves it; with the plans its
+// interview stages. And the project waiting on the migration's commit
+// (`finishedMigration`), made once and copied: the project the migration
+// is under way in with every fixture migration recorded, the tracker's
+// store on its code branch where a project from before Leeway kept it and
+// a file its tool keeps local beside it, the state's ignore line in its
+// `.gitignore`, unstaged, as the move writes it, a decision held in the
+// ledger, and the reshape's finish (081) run over it — its drops
+// journaled; and one nested in its repository, made for each call
+// (`nestedFinished`).
 
 require('./hermetic-env.cjs');
 
@@ -35,6 +45,8 @@ const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const FIXTURES = path.join(__dirname, '../fixtures/directives');
 const RUNNER = path.join(SCRIPTS, '../../leeway-migrate/scripts/migrate.cjs');
 const GUARD = require(path.join(SCRIPTS, '../../leeway-migrate/scripts/migrations/074-reshape-guard.cjs'));
+const FINISH = require(path.join(path.dirname(RUNNER), 'migrations/081-reshape-finish.cjs'));
+const { preLeewayStores } = require(path.join(path.dirname(RUNNER), 'migrations/reshape/shared.cjs'));
 
 const UNIT = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
@@ -68,8 +80,10 @@ const MOVED_UNIT = {
   phases: { discussion: { items: { licensing: { status: 'in-progress' }, search: { status: 'in-progress' }, onboarding: { status: 'in-progress' } } } },
 };
 
-// The fixture directives whose checks are broken, recorded so no run stops at them.
-const RECORDED = ['090', '091', '092', '093'];
+// The fixture migrations the project the migration is under way in has
+// recorded: the directives whose checks are broken, so no run stops at
+// them, and the code migration after the reshape, which never runs in it.
+const RECORDED = ['090', '091', '092', '093', '094'];
 
 /** @type {(ReturnType<typeof harness.harness> & {path: string, migrations: string})|null} */
 let engine = null;
@@ -445,6 +459,64 @@ function projectTree(dir) {
     .map((rel) => [rel, fs.readFileSync(path.join(dir, rel), 'utf8')]));
 }
 
+// Where a project from before Leeway kept the tracker's store, as the task
+// driver that declares it says, read as the finish reads it: its file, and
+// a file its tool keeps local, named from the first pattern.
+const [PRE_LEEWAY] = preLeewayStores().stores;
+const [OLD_STORE] = PRE_LEEWAY.files;
+const OLD_LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
+
+// Every fixture migration, recorded: the runner has nothing left to run.
+const ALL_RECORDED = ['079', '080', ...RECORDED];
+
+/** @param {string} dir */
+function buildFinished(dir) {
+  createFile(dir, OLD_STORE, '{"id":"a1"}\n');
+  git(dir, ['add', '--', OLD_STORE]);
+  git(dir, ['commit', '-q', '-m', 'the tracker\'s store']);
+  createFile(dir, OLD_LOCAL, 'local\n');
+  createFile(dir, '.gitignore', '.leeway/\n');
+  createFile(statePath(dir), layout.migrations, ALL_RECORDED.map((id) => `${id}\n`).join(''));
+  enter(dir, 'licensing', 'trial-length');
+  FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
+}
+
+/** @type {string|null} */
+let finishedTemplate = null;
+
+/**
+ * The project waiting on the migration's commit, at `dir`.
+ * @param {string} dir
+ * @returns {string} dir, symbolic links resolved
+ */
+function finishedMigration(dir) {
+  if (finishedTemplate === null) {
+    finishedTemplate = midMigration(templateFolder('finished-migration-template-'));
+    buildFinished(finishedTemplate);
+  }
+  return copyWorld(finishedTemplate, dir);
+}
+
+/**
+ * A project nested in its repository at `{dir}/app`, waiting on the
+ * migration's commit: its `.workflows/` committed in its folder, the state
+ * worktree at the repository's top as the move left it, the state's ignore
+ * line in the project's own `.gitignore`, and the reshape's finish run
+ * there. Made for each call.
+ * @param {string} dir
+ * @returns {string} the project's folder
+ */
+function nestedFinished(dir) {
+  buildUnborn(dir, { 'README.md': '# The repository\n', [`app/.workflows/${UNIT}/manifest.json`]: jsonText(OLD_UNIT) }, {
+    [layout.manifest(UNIT)]: jsonText(MOVED_UNIT),
+    [layout.migrations]: ALL_RECORDED.map((id) => `${id}\n`).join(''),
+  });
+  const app = path.join(dir, 'app');
+  createFile(app, '.gitignore', '.leeway/\n');
+  FINISH.run({ projectDir: app, reportUpdate: () => {}, reportSkip: () => {} });
+  return app;
+}
+
 /** Whether the project's `leeway-state` has no commit yet. @param {string} dir */
 function stateUnborn(dir) {
   return git(dir, ['for-each-ref', BRANCH_REF]).trim() === '';
@@ -508,6 +580,7 @@ function refusedKeeping(dir, args, kept, opts = { env: SESSION }) {
 }
 
 module.exports = {
-  UNIT, SESSION, DECIDED, RECORDED, FIXTURES, directiveEngine, midMigration, recordsMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
+  UNIT, SESSION, DECIDED, RECORDED, ALL_RECORDED, FIXTURES, OLD_STORE, OLD_LOCAL,
+  directiveEngine, midMigration, recordsMigration, finishedMigration, nestedFinished, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
   SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, GUARDED, themeOf, stagedPlan, splitProject, splitMigration, projectTree,
 };

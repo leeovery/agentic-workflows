@@ -4,16 +4,18 @@
 // The migration's directives (21.10): a directive's head, linted over every
 // directive the migrations hold (21.S34; the format is the header of
 // leeway-migrate/scripts/migrate.cjs, the lint directive-lint.cjs); `engine
-// migrate check`, its check run (domain/directives.cjs); its checklist,
+// migrate check`, its check run (domain/directives.cjs); `engine migrate
+// checked`, the checks before the reshape's move recorded made; its checklist,
 // whose one item is the check, the engine's, and whose close records the
 // directive (domain/checklist.cjs; 6.4.11, 21.S36); boot's stop at a
 // directive not yet done, and past it once it is, one start meeting several,
 // at one whose every piece is done, and at one whose check fails on what a
-// session left, the runner recording one whose check answers no piece unrun
-// (domain/boot.cjs; 21.4.3, 21.10.9, 21.10.10, 21.S37, and the machinery of
-// 21.S33, which 29.17 proves on the real sequence); the stop's screen (21.10.11); and, while
-// the migration runs, a verb's commit held, held to the layout all the same
-// (21.9.3), and nothing told the trust log (21.1.5). The runner's side is
+// session left, the runner recording one whose check answers no piece
+// unrun, its unrun line beside it (domain/boot.cjs; 21.4.3, 21.10.9,
+// 21.10.10, 21.S37, and the machinery of 21.S33, which 29.17 proves on the
+// real sequence); the stop's screen (21.10.11); and, while the migration
+// runs, a verb's commit held, held to the layout all the same (21.9.3), and
+// nothing told the trust log (21.1.5). The runner's side is
 // test-migration-orchestrator.cjs's.
 //
 // Layer: verb, boot spawning the runner. World: the migration's harness
@@ -152,9 +154,20 @@ describe('engine migrate check (21.10.7)', () => {
       'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }',
       'migrate check: 092-failing\'s check failed: the old manifests could not be read',
       'migrate check: 093-unanswered\'s check answered no list of { name, problems }',
-      'Usage: engine migrate check <id>',
-      'Usage: engine migrate check <id>',
+      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review',
+      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review',
     ]);
+  });
+});
+
+describe('engine migrate checked (21.10.13)', () => {
+  it('records the checks before the reshape\'s move made, the line once however often it is called, committing nothing', () => {
+    const code = codeHead(dir);
+
+    assert.deepStrictEqual([ok(['migrate', 'checked']), ok(['migrate', 'checked'])], [{ ok: true }, { ok: true }]);
+
+    assert.deepStrictEqual(recorded(dir), [...RECORDED, 'old-chain-checks']);
+    assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code]);
   });
 });
 
@@ -203,7 +216,7 @@ describe('a directive\'s checklist (6.4.5, 6.4.11, 6.S23)', () => {
 });
 
 describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
-  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both, with nothing committed', () => {
+  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both to the migration waiting on its commit, with nothing committed', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
     writeState(dir, layout.cache('migration', 'onboarding.md'), '# Onboarding\n\nPermissions: decided, a half-written entry.\n');
@@ -221,19 +234,19 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
 
     for (const topic of ['licensing', 'search', 'onboarding']) writeState(dir, layout.topic(UNIT, topic, 'log.md'), `# ${topic}\n`);
     ok(['checklist', 'close', 'directive', LOGS]);
-    const ready = ok(['boot']);
+    const finished = ok(['boot']);
 
-    assert.deepStrictEqual([ready.state, ready.migrations.ran, recorded(dir)], ['ready', 0, [...RECORDED, '079', '080']]);
+    assert.deepStrictEqual([finished.state, finished.migrations.ran, recorded(dir)], ['finish', 0, [...RECORDED, '079', '080']]);
     assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code], 'nothing was committed before the migration\'s commit');
   });
 
-  it('records a directive whose check answers no piece at all unrun, never stopping at it: the session has nothing to do (21.4.3)', () => {
+  it('records a directive whose check answers no piece at all unrun, its unrun line beside it, never stopping at it: the session has nothing to do (21.4.3)', () => {
     writeState(dir, layout.migrations, ['079', ...RECORDED].map((id) => `${id}\n`).join(''));
     fs.rmSync(statePath(dir, UNIT), { recursive: true });
 
-    const ready = ok(['boot']);
+    const finished = ok(['boot']);
 
-    assert.deepStrictEqual([ready.state, recorded(dir)], ['ready', ['079', ...RECORDED, '080']]);
+    assert.deepStrictEqual([finished.state, recorded(dir)], ['finish', ['079', ...RECORDED, '080', '080 unrun']]);
   });
 
   it('stops at a directive whose every piece is done all the same, for the session to close', () => {

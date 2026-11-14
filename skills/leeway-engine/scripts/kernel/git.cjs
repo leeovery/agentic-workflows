@@ -494,18 +494,32 @@ function commitMerge(cwd, specs, message, nested = []) {
  * and out of the commit. Each path is taken literally. A path git refuses
  * to stage — one an ignore rule holds out, one beyond a symbolic link — is
  * left as it is, never forced in, and one matching nothing is dropped.
+ * The paths in `removed` are taken out of the commit, whatever the index
+ * holds of them, and left in the index and on disk: what a migration drops
+ * from the branch, the index its caller's to bring into line (`untrack`).
  * Refuses while a merge, cherry-pick, revert or rebase is in progress,
  * touching nothing.
  * @param {string} cwd project root
  * @param {string[]} specs
  * @param {string} message
+ * @param {string[]} [removed]
  * @returns {string|null} the short commit sha, or null when the paths are clean
  */
-function commitStaged(cwd, specs, message) {
+function commitStaged(cwd, specs, message, removed = []) {
   refuseMidOperation(cwd);
   const addable = stageableSpecs(cwd, specs).filter((p) => !addRefused(cwd, p));
   if (addable.length > 0) gitIndexed(cwd, ['add', '--all', '--', ...literally(addable)]);
-  return commitIndexEntries(cwd, specs, message);
+  return commitIndexEntries(cwd, specs, message, removed);
+}
+
+/**
+ * Take `paths` out of the index, whatever it holds of them, their files left
+ * on disk; a path it holds nothing of is passed over, so taking them out
+ * again changes nothing. Each path is taken literally.
+ * @param {string} cwd @param {string[]} paths
+ */
+function untrack(cwd, paths) {
+  if (paths.length > 0) gitIndexed(cwd, ['rm', '--cached', '-r', '-q', '-f', '--ignore-unmatch', '--', ...literally(paths)]);
 }
 
 /**
@@ -540,13 +554,13 @@ function headTree(cwd) {
 }
 
 /**
- * Commit HEAD's tree with `specs` as the real index records them, from a
- * scratch index. Null when that is HEAD's tree, or when there is no HEAD and
- * the index records nothing under them.
- * @param {string} cwd @param {string[]} specs @param {string} message
+ * Commit HEAD's tree with `specs` as the real index records them, and
+ * `removed` taken out, from a scratch index. Null when that is HEAD's tree,
+ * or when there is no HEAD and the index records nothing under them.
+ * @param {string} cwd @param {string[]} specs @param {string} message @param {string[]} [removed]
  * @returns {string|null}
  */
-function commitIndexEntries(cwd, specs, message) {
+function commitIndexEntries(cwd, specs, message, removed = []) {
   const head = headTree(cwd);
   // `--index-info` reads paths from the repository root, whatever the cwd.
   const entries = git(cwd, ['ls-files', '--stage', '-z', '--full-name', '--', ...literally(specs)]);
@@ -554,7 +568,7 @@ function commitIndexEntries(cwd, specs, message) {
   const env = { GIT_INDEX_FILE: gitPath(cwd, 'leeway-commit.index') };
   try {
     git(cwd, head === null ? ['read-tree', '--empty'] : ['read-tree', 'HEAD'], env);
-    git(cwd, ['rm', '--cached', '-r', '-q', '--ignore-unmatch', '--', ...literally(specs)], env);
+    git(cwd, ['rm', '--cached', '-r', '-q', '--ignore-unmatch', '--', ...literally([...specs, ...removed])], env);
     if (entries !== '') git(cwd, ['update-index', '-z', '--index-info'], env, entries);
     if (head !== null && git(cwd, ['write-tree'], env).trim() === head) return null;
     git(cwd, ['commit', '-q', '-m', message], env);
@@ -713,7 +727,7 @@ function diffWithUntracked(cwd, base, args, exclude) {
 }
 
 module.exports = {
-  READ_BUDGET_BYTES, OPERATION_MARKERS, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
+  READ_BUDGET_BYTES, OPERATION_MARKERS, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, untrack, dirtyEntries, hasCommits, commitsBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, mergeInProgress, unmergedPast, commitMerge,
 };

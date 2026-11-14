@@ -47,7 +47,10 @@
 //   on a `leeway-state` with no commit yet, and the migration's commit makes
 //   its first (21.9.3). Until then every commit is held — held to the
 //   layout as ever, the writes stay in the worktree, nothing is committed or
-//   pushed, for that commit to take.
+//   pushed, for that commit to take. The first commit has a door of its
+//   own (`commitFirst`), which only the migration's commit calls: the whole
+//   worktree as it stands, held to the layout, a commit with no parent,
+//   then the worktree's own index brought into line with it, and pushed.
 // - The backstop: every state commit is the engine's, so a commit reads the
 //   state worktree's changes once, untracked files among them, ignored ones
 //   not, and holds each against the layout (layout.cjs), its names spelled
@@ -332,6 +335,17 @@ function migrationRuns(root) {
   return git.tryRun(['rev-parse', '--quiet', '--verify', 'HEAD^{commit}']) === null && unbornHead(git) === BRANCH_REF;
 }
 
+/**
+ * Whether `leeway-state` has a commit, as the repository's refs hold it:
+ * read in the main checkout, never through the state worktree, which git
+ * cannot open once the project folder moved.
+ * @param {string} root
+ * @returns {boolean}
+ */
+function stateBorn(root) {
+  return isolatedGit(mainOf(root)).tryRun(['rev-parse', '--quiet', '--verify', `${BRANCH_REF}^{commit}`]) !== null;
+}
+
 /** @param {string} root @returns {StateFolder} */
 function folderAt(root) {
   if (!fs.existsSync(root)) return 'absent';
@@ -483,9 +497,10 @@ function registrationOf(root) {
  * registration it named, and anything of the project it was copied from,
  * are never read or written. The folder's contents and the registration's
  * lock stay as they are. The links are written without git, so what the
- * verb has read of git goes with them (kernel/git-reads). Refuses where the
- * folder holds no link, or this repository keeps no registration by its
- * name.
+ * verb has read of git goes with them (kernel/git-reads); boot's checks,
+ * which hold their own lock, are their one writer, so a temp file a killed
+ * relink left beside either is swept first. Refuses where the folder holds
+ * no link, or this repository keeps no registration by its name.
  * @param {string} root
  * @returns {Relinked}
  */
@@ -502,9 +517,9 @@ function repairStateWorktree(root) {
   let was = 'own';
   if (realpathOrSelf(named) !== realpathOrSelf(own)) {
     was = fs.existsSync(named) ? 'copied' : 'moved';
-    writeTextAtomic(dotgit, `gitdir: ${own}\n`);
+    writeTextAtomic(dotgit, `gitdir: ${own}\n`, { sole: true });
   }
-  writeTextAtomic(path.join(own, 'gitdir'), `${dotgit}\n`);
+  writeTextAtomic(path.join(own, 'gitdir'), `${dotgit}\n`, { sole: true });
   dropReads();
   return { was, from };
 }
@@ -551,6 +566,20 @@ function folderCommit(root) {
   if (moved.length === 0) return null;
   const commit = isolatedGit(mainOf(root)).tryRun(['rev-parse', '--quiet', '--verify', `${moved[moved.length - 1]}^{commit}`]);
   return commit === null ? null : commit.trim();
+}
+
+/**
+ * Whether the files of the state folder at `root` stand last at a commit of
+ * the code's, as its registration's HEAD log reads: the migration's state
+ * worktree, added at the code's HEAD and never committed on. A branch lost
+ * under its folder stands at a commit of the state's, or where its log is
+ * gone, at none it can tell.
+ * @param {string} root
+ * @returns {boolean}
+ */
+function standsAtCodeCommit(root) {
+  const at = folderCommit(root);
+  return at !== null && codeBranchSharing(root, at) !== null;
 }
 
 /**
@@ -995,6 +1024,47 @@ function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, co
 }
 
 /**
+ * The state branch's first commit, the migration's (21.9.2): while the
+ * migration runs — `leeway-state` with no commit yet — the whole state
+ * worktree as it stands, every write the held commits left there among it,
+ * held to the layout, committed with no parent; then the worktree's own
+ * index brought into line with it, and the branch pushed. The files the
+ * person's tools leave beside the state's, and a file place's staging, stay
+ * out, as every state commit leaves them. The caller holds the writer lock
+ * (`withStateLock`). Refuses, committing nothing, where git cannot open the
+ * state worktree, where it has another branch checked out, where the branch
+ * has a commit already, and where a file in it has no place in the layout.
+ * @param {string} root
+ * @param {string} message
+ * @param {{pushTimeoutMs?: number}} [opts]
+ * @returns {CommitOutcome & {commit: string}}
+ */
+function commitFirst(root, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
+  const worktree = openWorktree(root);
+  if (!worktree.opened) {
+    throw new Error(`git cannot open the state worktree at ${root}: ${worktree.why} — nothing committed. Start /leeway again: its boot relinks the state worktree where the project folder moved, and the migration gate is drawn again`);
+  }
+  if (worktree.head !== BRANCH_REF || worktree.at !== null) {
+    throw new Error(`the state worktree at ${root} is not on a ${STATE_BRANCH} with no commit yet, so it takes no first commit — nothing committed`);
+  }
+  const changes = placedChanges(worktree);
+  refuseOutsideLayout(root, changes);
+  const heldOut = [...SIDECARS_HELD_OUT, ...changes.filter((change) => change.staging).map(({ rel }) => `:(exclude,literal)${rel}`)];
+  const { git } = worktree;
+  const commit = withPrivateIndex(worktree.index, (env) => {
+    git.run(['read-tree', '--empty'], { env });
+    git.run(['add', '--all', '--', '.', ...heldOut], { env });
+    const tree = git.run(['write-tree'], { env }).trim();
+    const made = git.run(['commit-tree', tree, '-m', message]).trim();
+    git.run(['update-ref', '-m', `commit: ${message.split('\n')[0]}`, BRANCH_REF, made, '']);
+    return made;
+  });
+  const aligned = alignIndex(git, STATE_BRANCH, 'HEAD', ['.']);
+  const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
+  return { commit, pushed: pushed.pushed, warnings: [...aligned, ...pushed.warnings] };
+}
+
+/**
  * Push `leeway-state` as it stands — what a failed push left behind, or a
  * branch the remote lost.
  * @param {string} root
@@ -1018,6 +1088,7 @@ module.exports = {
   stateRemote,
   openWorktree,
   migrationRuns,
+  stateBorn,
   inspectState,
   createState,
   addStateWorktree,
@@ -1030,6 +1101,7 @@ module.exports = {
   fetchStateTip,
   fetchRemoteBranches,
   codeBranchSharing,
+  standsAtCodeCommit,
   refuseCodeHistory,
   stateRemoteName,
   stateRemoteUrl,
@@ -1040,6 +1112,7 @@ module.exports = {
   withIgnored,
   commitHere,
   commitState,
+  commitFirst,
   pushState,
   pushRefusal,
 };

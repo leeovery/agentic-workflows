@@ -19,7 +19,8 @@
 //   back (21.6.10).
 // - The runner asks a directive's pieces (`piecesOf`) as it meets it: a
 //   directive whose check answers none leaves the session nothing to do,
-//   and the runner records it unrun (21.4.3).
+//   and the runner records it unrun (21.4.3), its line and beside it the
+//   unrun line (`unrunLine`), which tells it from one a session carried out.
 // - The directive's checklist (checklist.cjs) holds one item, its check,
 //   the engine's: done while the check passes, never marked or skipped. Its
 //   close records the directive in the migrations record — the one way a
@@ -28,6 +29,21 @@
 //   of them, which `render directive-stop` draws (21.10.11). A session that
 //   died part-way may leave what the check trips on (21.10.9): the stop then
 //   answers without the counts, and `migrate check` names what failed.
+// - `migrate checked` records the checks the chain before the reshape
+//   handed back as made: the line the runner's stop before the move waits
+//   on (old-layout.cjs, `CHECKS_DONE`), appended to the migrations record
+//   where it is not there yet, as a directive's close records it — so a
+//   session killed before it meets the stop again, and the next run marks
+//   those checks made, for the review at the migration's end, and carries
+//   on past it.
+// - `migrate review` is what the migration review reads before the gate
+//   whose yes makes the migration's commit (migration-commit.cjs): the
+//   state's folder and the code side's, absolute, so the review reads them
+//   from any checkout; and, while the reshape finishes, what its summary is
+//   written from, since the state branch's first commit takes the whole
+//   state (21.9.4) — the commits the yes still makes, the units moved, the
+//   topics carried, the directives a session carried out, and the code
+//   files the commit takes.
 // - Known edges: held commits and the trust log's silence key on the state
 //   branch having no commit yet (state-worktree.cjs, trust-log.cjs), which
 //   only the reshape's migration leaves; a directive met later, on a branch
@@ -43,6 +59,10 @@ const { messageOf } = require('../kernel/call.cjs');
 const { directiveStop } = require('./projections/boot.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
+const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
+const { topicsOf } = require('./ledger-units.cjs');
+const { MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit.cjs');
+const { CHECKS_DONE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
 const MIGRATE_SCRIPTS = path.resolve(__dirname, '..', '..', '..', 'leeway-migrate', 'scripts');
@@ -53,13 +73,12 @@ const MIGRATIONS = path.join(MIGRATE_SCRIPTS, 'migrations');
 // writes and a directive's close appends to.
 const MIGRATIONS_RECORD = '.state/migrations';
 
-// Where the runner journals what its runs owe the run that completes,
-// state-relative: in the cache, which no state commit takes.
-const MIGRATION_JOURNALS = '.cache/migrate';
-
 const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-const MIGRATE_USAGE = 'migrate check <id>';
+/** The line the runner records beside a directive it recorded unrun. @param {string} number */
+const unrunLine = (number) => `${number} unrun`;
+
+const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review'].join('\n');
 
 /** A directive the migrations hold: its id, the number its record line is, and its two files. @typedef {{id: string, number: string, file: string, check: string}} Directive */
 
@@ -219,15 +238,23 @@ function progressOf(cwd, id) {
 }
 
 /**
+ * `line` appended to the migrations record, where it is not there yet.
+ * @param {string} cwd @param {string} line
+ */
+function recordLine(cwd, line) {
+  const record = statePath(cwd, MIGRATIONS_RECORD);
+  const held = fs.existsSync(record) ? fs.readFileSync(record, 'utf8') : '';
+  if (held.split('\n').includes(line)) return;
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.appendFileSync(record, `${held === '' || held.endsWith('\n') ? '' : '\n'}${line}\n`);
+}
+
+/**
  * Record the directive in the migrations record, where it is not there yet.
  * @param {string} cwd @param {Directive} directive
  */
 function recordDirective(cwd, { number }) {
-  const record = statePath(cwd, MIGRATIONS_RECORD);
-  const held = fs.existsSync(record) ? fs.readFileSync(record, 'utf8') : '';
-  if (held.split('\n').includes(number)) return;
-  fs.mkdirSync(path.dirname(record), { recursive: true });
-  fs.appendFileSync(record, `${held === '' || held.endsWith('\n') ? '' : '\n'}${number}\n`);
+  recordLine(cwd, number);
 }
 
 /**
@@ -254,13 +281,67 @@ function directiveStopSurface(cwd, args) {
 }
 
 /**
- * `migrate check <id>`: the directive's check run.
+ * The directives a session carried out, by id, in their order: each the
+ * migrations record holds, but those the runner recorded unrun.
+ * @param {string} cwd @returns {string[]}
+ */
+function directivesDone(cwd) {
+  const record = statePath(cwd, MIGRATIONS_RECORD);
+  const held = new Set(fs.existsSync(record) ? fs.readFileSync(record, 'utf8').split('\n') : []);
+  return fs.readdirSync(MIGRATIONS).filter((name) => name.endsWith('.md')).map((name) => name.slice(0, -'.md'.length)).filter((id) => {
+    const named = DIRECTIVE_ID.exec(id);
+    return named !== null && held.has(named[1]) && !held.has(unrunLine(named[1]));
+  }).sort();
+}
+
+/**
+ * What the reshape's summary is written from while its commit is owed:
+ * the commits the yes still makes, the units moved, the topics they
+ * carry, the directives done, and the code files the commit takes, named
+ * from the project's folder.
+ * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, directives: string[], files: string[]}} ReshapeReview
+ */
+
+/**
+ * `migrate review`: the state's folder and the folder the code side's
+ * commit lands in, both absolute — and, while the reshape finishes, what
+ * its summary is written from (`ReshapeReview`).
+ * @param {string} cwd
+ * @returns {{state: string, code: string, reshape?: ReshapeReview}}
+ */
+function reviewMigration(cwd) {
+  const finish = finishing(cwd);
+  const state = stateRoot(cwd);
+  if (finish === null) return { state, code: codeRoot(cwd) };
+  const units = listWorkUnitManifests(cwd);
+  return {
+    state,
+    code: finish.project,
+    reshape: {
+      commits: finish.commits,
+      units: units.length,
+      topics: units.reduce((sum, manifest) => sum + topicsOf(manifest).length, 0),
+      directives: directivesDone(cwd),
+      files: codeFiles(finish),
+    },
+  };
+}
+
+/**
+ * `migrate check <id>`: the directive's check run; `migrate checked`: the
+ * chain's checks before the reshape recorded as made; `migrate review`:
+ * what the migration review reads.
  * @param {string} cwd @param {string[]} argv
- * @returns {Checked}
+ * @returns {Checked|ReturnType<typeof reviewMigration>|{}}
  */
 function runMigrateVerb(cwd, argv) {
   const [verb, id, ...rest] = argv;
-  if (verb !== 'check' || id === undefined || rest.length > 0) throw new Error(`Usage: engine ${MIGRATE_USAGE}`);
+  if (verb === 'review' && argv.length === 1) return reviewMigration(cwd);
+  if (verb === 'checked' && argv.length === 1) {
+    recordLine(cwd, CHECKS_DONE);
+    return {};
+  }
+  if (verb !== 'check' || id === undefined || rest.length > 0) throw new Error(`Usage: ${MIGRATE_USAGE.split('\n').map((form) => `engine ${form}`).join(' | ')}`);
   try {
     return checkDirective(cwd, id);
   } catch (err) {
@@ -268,4 +349,4 @@ function runMigrateVerb(cwd, argv) {
   }
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };

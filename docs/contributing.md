@@ -107,7 +107,8 @@ format and its check's contract.
   directive is recorded only when
   `engine checklist close directive NNN-slug` finds it passing, or by
   the runner, unrun, where its check answers no piece at all: there is
-  nothing for the session to do.
+  nothing for the session to do, and the line `NNN unrun` beside its own
+  keeps it out of the review's directives done.
 - `tests/scripts/test-migration-directives.cjs` lints every directive's
   head and holds its check beside it; a directive's own suite drives its
   check over a project the migration is under way in
@@ -140,6 +141,32 @@ in the same header:
 - `migrations/reshape/` is what the reshape's released steps share: it is
   frozen with them, and holds its own reading of the layout. The
   runtime's is `old-layout.cjs`, free to change. Neither loads the other.
+- Where the chain before the guard hands back checks, the runner stops
+  before the move reads `.workflows/`, and boot answers `checks`: the
+  session makes each check where it says — the old state's on the main
+  checkout's `.workflows/`, uncommitted — and records them made with
+  `engine migrate checked`, a line in the migrations record, as a
+  directive's close is. The next run marks them `made` in their journal,
+  and the review at the migration's end lists them among what was done.
+  The chain's notices never stop it: they wait for that review.
+- No migration loads the engine: each task driver's folder declares where
+  a project from before Leeway kept its tracker's store as data,
+  `pre-leeway-store.json`, which the reshape's steps read with fs alone,
+  and a folder whose declaration is missing or does not read is named in
+  their notice.
+- The reshape's finish (081) journals the code side's drops —
+  `.workflows/` and each declared store — in the state's cache,
+  `.leeway/.cache/migrate/finish.json`, `{drops}`, staging nothing, so
+  the engine names neither and a commit of the person's own takes none of
+  them. Boot then answers `finish`, committing nothing, and the
+  migration's commit, `engine commit --migrations` on the person's yes,
+  makes the state branch's first commit, then the code branch's, taking
+  the drops out through its own index, and takes them out of the
+  person's index and off disk (`domain/migration-commit.cjs`); boot does
+  that last part itself where a kill after the code commit left it, and
+  relinks the state worktree where the project folder moved meanwhile.
+  Until that commit, a run that completes keeps the handbacks it
+  journaled, so every boot's review reads them.
 
 ## Prose tests
 

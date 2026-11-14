@@ -13,7 +13,8 @@
 // the copy `.workflows/` leaves the default branch from (21.5.11). A
 // rebase, merge, cherry-pick, revert or bisect stopped in the main checkout
 // aborts the run, unrecorded and with nothing written, until it is finished
-// or aborted, as boot waits these out.
+// or aborted, as boot waits these out: the files it would read may hold the
+// operation's conflicts.
 //
 // Where it writes: the state worktree on an unborn `leeway-state`, which
 // the guard (074) put in place, found there or put in place again as the
@@ -25,19 +26,20 @@
 // whole or not at all.
 //
 // The project's own files, in its folder in the main checkout, are taken to
-// the new names and staged for the migration's commit (21.5.19, 21.9.2):
-// `.gitignore`, where boot keeps the line, gains `.leeway/` at once — an
-// unignored worktree with no commit checked out refuses `git add -A`; in
+// the new names for the migration's commit (21.5.19, 21.9.2): `.gitignore`,
+// where boot keeps the line, gains `.leeway/` at once — an unignored
+// worktree with no commit checked out refuses `git add -A`; in
 // `.claude/settings.json`, each hook naming the engine at
 // `.claude/skills/workflow-engine/` names it at `.claude/skills/leeway-
 // engine/`, and each permission rule naming `.workflows/` names `.leeway/`,
 // every other key as it was; and `.worktreeinclude` loses the lines naming
-// `.workflows/`, the file going where it holds nothing else. Each is staged
-// only where it changed. Nothing is committed (21.9.3), and nothing in the
-// state is staged: the migration's commit, made at finish, takes the whole
-// state. `.workflows/` and the tracker's store stay where they are, read as
-// they stand, and are never changed; finish drops them from the default
-// branch.
+// `.workflows/`, the file going where it holds nothing else. Nothing is
+// staged or committed (21.9.3): the migration's commit, made at finish,
+// takes these files as they stand and the whole state, so the person's
+// index, and any commit of their own before it, carries none of the
+// migration's changes. `.workflows/` and the tracker's store stay where
+// they are, read as they stand, and are never changed; finish has the
+// migration's commit drop them from the default branch.
 //
 // The project: its manifest is carried, with the project's id minted on it
 // (21.5.20) — kept where a move cut short already minted one — and the
@@ -69,16 +71,15 @@
 // doc yet. Only the status fields go (21.11.1); the research dossiers there
 // go with the analysis (4.10.3).
 //
-// The tracker's store (21.5.18): the move names no tracker, and reads no
-// driver's live contract either, which a later release may change. A task
-// driver that knew today's projects declares, once and for good, where a
-// project from before Leeway keeps its store — `preLeewayStore`, the store's
-// files and the ones its tool keeps local; a released migration reads it, so
-// it never changes. Each task driver's module is loaded on its own, one that
-// fails to load passed by, and each declared store found in the project
-// folder is carried into the state as it is, the files its tool keeps local
-// ignored in the state's own `.gitignore`, written otherwise as the engine
-// writes it (7.5.4).
+// The tracker's store (21.5.18): the move names no tracker, and loads no
+// driver, whose code changes with the engine's. Each task driver's folder
+// declares, once and for good, where a project from before Leeway keeps its
+// store (reshape/shared.cjs, `preLeewayStores`); each declared store found
+// in the project folder is carried into the state as it is, the files its
+// tool keeps local ignored in the state's own `.gitignore`, written
+// otherwise as the engine writes it (7.5.4). A task driver's folder whose
+// declaration is missing or does not read is named in the notice the move
+// hands back.
 //
 // The user-level folder (21.5.19, P7): `WORKFLOWS_CONFIG_DIR` or
 // `~/.config/workflows/` moves into `LEEWAY_CONFIG_DIR` or
@@ -200,7 +201,6 @@
 //   - the state worktree's HEAD log records the code HEAD it was added at,
 //     which boot's repair of a lost branch would read — 29.17's wiring of the
 //     unborn branch;
-//   - staging `.gitignore` takes the person's own unstaged edits to it too;
 //   - a research item and its topic's discussion both waiting on
 //     experiments keep only the discussion's wait;
 //   - a branch's `.workflows/` work not on the main checkout is not moved;
@@ -214,9 +214,6 @@
 //   - a settings hook naming the old engine fails on every tool call between
 //     the skills' update and `/leeway`, where the move renames it — the
 //     guard (29.17) runs first;
-//   - staging the settings or `.worktreeinclude` takes the person's own
-//     unstaged edits to them too, and an untracked one ignored by the code
-//     tree aborts the run;
 //   - the tracker's store is read from the project folder, never from a
 //     folder above it a walk up would find;
 //   - two notes of one name under different kinds keep the first, the second
@@ -242,9 +239,8 @@ const path = require('path');
 const crypto = require('crypto');
 const linters = require('./073-environment-linters.cjs');
 const {
-  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole,
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLeewayStores, unreadStores,
 } = require('./reshape/shared.cjs');
-const TASK_DRIVERS = path.join(__dirname, '../../../leeway-engine/scripts/drivers/task');
 
 const CODE_GITIGNORE = '.gitignore';
 const STATE_IGNORE_LINE = `${STATE_DIR}/`;
@@ -1011,9 +1007,8 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
 
 /**
  * The project folder's `.gitignore` ignoring the state folder, as boot keeps
- * it — the line added where none ignores it whole — and staged for the
- * migration's commit: a worktree with no commit checked out, unignored,
- * refuses `git add -A`.
+ * it — the line added where none ignores it whole: a worktree with no
+ * commit checked out, unignored, refuses `git add -A`.
  * @param {string} project @param {string} state
  */
 function ignoreState(project, state) {
@@ -1022,18 +1017,6 @@ function ignoreState(project, state) {
   const held = exists ? fs.readFileSync(file, 'utf8') : '';
   const ignored = held.split('\n').some((line) => !line.trim().startsWith('!') && [STATE_DIR, STATE_IGNORE_LINE].includes(line.trim().replace(/^\//, '')));
   if (!ignored) writeWhole(scratchOf(state), file, `${held}${held === '' || held.endsWith('\n') ? '' : '\n'}${STATE_IGNORE_LINE}\n`, exists ? modeOf(file) : undefined);
-  stage(project, CODE_GITIGNORE);
-}
-
-/**
- * A file of the project folder's staged as it now stands — written, changed
- * or gone — for the migration's commit; one neither on disk nor tracked has
- * nothing to stage.
- * @param {string} project @param {string} rel
- */
-function stage(project, rel) {
-  const tracked = git(project, ['ls-files', '--', rel]).stdout !== '';
-  if (tracked || fs.existsSync(path.join(project, rel))) mustGit(project, ['add', '-A', '--', rel]);
 }
 
 /** Each hook a settings document holds. @param {unknown} settings @returns {Record<string, any>[]} */
@@ -1067,9 +1050,8 @@ function renameRules(settings) {
 
 /**
  * The project's settings taken to the new names — its hooks naming the
- * engine's new path, its permission rules `.leeway/` — and staged where
- * either changed (21.5.19); or, where the file does not parse, the sentence
- * saying it was left as it was.
+ * engine's new path, its permission rules `.leeway/` (21.5.19); or, where
+ * the file does not parse, the sentence saying it was left as it was.
  * @param {string} project @param {string} state
  * @returns {string|null}
  */
@@ -1087,14 +1069,13 @@ function renameInSettings(project, state) {
   const rules = renameRules(settings);
   if (!hooks && !rules) return null;
   writeWhole(scratchOf(state), file, jsonText(settings), modeOf(file));
-  stage(project, SETTINGS);
   return null;
 }
 
 /**
  * The workflows' lines gone from the project's `.worktreeinclude`, the file
- * with them where it holds nothing else, staged: every worktree reads the
- * one state, so nothing is copied into a worktree (21.5.19, 4.1.4).
+ * with them where it holds nothing else: every worktree reads the one
+ * state, so nothing is copied into a worktree (21.5.19, 4.1.4).
  * @param {string} project @param {string} state
  */
 function dropIncludeLines(project, state) {
@@ -1105,40 +1086,17 @@ function dropIncludeLines(project, state) {
   if (kept.length === lines.length) return;
   if (kept.every((line) => line.trim() === '')) fs.unlinkSync(file);
   else writeWhole(scratchOf(state), file, kept.join('\n'), modeOf(file));
-  stage(project, WORKTREE_INCLUDE);
-}
-
-/** @param {unknown} value @returns {value is string[]} */
-const isPaths = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
-
-/**
- * Where a project from before Leeway keeps a tracker's store, as each task
- * driver that knew one declares it, frozen: the store's files and the ones
- * its tool keeps local, project-relative. Each driver's module is loaded on
- * its own, so the move names no tracker (7.1.10) and leans on no driver's
- * live contract; one that fails to load, or declares none, is passed by.
- * @returns {{files: string[], localFiles: string[]}[]}
- */
-function preLeewayStores() {
-  return fs.readdirSync(TASK_DRIVERS).sort().flatMap((name) => {
-    let declared;
-    try {
-      declared = require(path.join(TASK_DRIVERS, name, 'driver.cjs')).preLeewayStore;
-    } catch {
-      return [];
-    }
-    return isObject(declared) && isPaths(declared.files) && isPaths(declared.localFiles) ? [{ files: declared.files, localFiles: declared.localFiles }] : [];
-  });
 }
 
 /**
  * Each declared store the project folder holds carried into the state as it
- * is (21.5.18); finish drops it from the default branch.
- * @param {string} project @param {string} state
+ * is (21.5.18), the move naming no tracker (7.1.10); finish drops it from
+ * the default branch.
+ * @param {string} project @param {string} state @param {{files: string[], localFiles: string[]}[]} stores
  * @returns {string[]} the files their tools keep local, for the state to ignore beside the stores (7.5.4); none where there is no store
  */
-function moveStores(project, state) {
-  return [...new Set(preLeewayStores().flatMap(({ files, localFiles }) => {
+function moveStores(project, state, stores) {
+  return [...new Set(stores.flatMap(({ files, localFiles }) => {
     const held = files.filter((rel) => fs.existsSync(path.join(project, rel)));
     for (const rel of held) {
       const file = path.join(project, rel);
@@ -1380,7 +1338,7 @@ function moveUserFolder() {
  * repository or at the top, as the main checkout holds it — into the state
  * worktree at the repository's main checkout.
  * @param {string} projectDir @param {() => void} reportUpdate @param {() => void} reportSkip
- * @returns {{verify: string}|undefined}
+ * @returns {{verify?: string, notice?: string}|undefined}
  */
 function move(projectDir, reportUpdate, reportSkip) {
   const here = path.resolve(projectDir);
@@ -1393,7 +1351,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   }
   const stopped = stoppedOperation(project);
   if (stopped !== null) {
-    throw new Error(`${stopped} is stopped in ${project}, where the move stages the ${STATE_IGNORE_LINE} line — finish or abort it, then start again`);
+    throw new Error(`${stopped} is stopped in ${project}, whose ${CODE_TREE_STATE}/ the move reads — finish or abort it, then start again`);
   }
   const state = placeStateWorktree(main);
   ignoreState(project, state);
@@ -1403,8 +1361,9 @@ function move(projectDir, reportUpdate, reportSkip) {
   const projectManifest = fs.existsSync(manifestFile) ? readManifest(manifestFile) : {};
   /** @type {Relocations} */
   const relocations = new Map();
+  const { stores, unread } = preLeewayStores();
   const projectLeft = [
-    ...moveProjectFiles(from, state, moveStores(project, state)),
+    ...moveProjectFiles(from, state, moveStores(project, state, stores)),
     ...moveProduct(from, state, relocations),
   ];
   reportUpdate();
@@ -1433,13 +1392,15 @@ function move(projectDir, reportUpdate, reportSkip) {
     userNote,
     carried && carried.verify ? carried.verify : null,
   ].filter((note) => note !== null);
-  return notes.length === 0 ? undefined : { verify: notes.join(' ') };
+  const notice = unreadStores(unread, 'the move carried no store declared there into the state: a store this project kept for such a tracker stays where it is');
+  if (notes.length === 0 && notice === null) return undefined;
+  return { ...(notes.length === 0 ? {} : { verify: notes.join(' ') }), ...(notice === null ? {} : { notice }) };
 }
 
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .leeway/, the state worktree on an unborn leeway-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/leeway/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; implementation folders, the reviews\' tracking files and the retired manifest state go. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, all staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; implementation folders, the reviews\' tracking files and the retired manifest state go. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return withoutRepositoryEnv(() => move(projectDir, reportUpdate, reportSkip));
   },

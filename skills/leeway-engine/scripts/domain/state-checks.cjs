@@ -33,10 +33,18 @@
 //   lost its state, and boot stops there, starting again only on the
 //   person's yes (4.4.5, 4.5.2).
 // - The migration under way: its state worktree checked out on a
-//   `leeway-state` with no commit yet, the reshape still owed until the
-//   migration's commit (21.5.11). The worktree is locked where it is not,
-//   and boot goes on to the migrations with nothing pushed: the branch is
-//   the migration's to begin (21.9.3).
+//   `leeway-state` with no commit yet, its files standing at the code
+//   commit it was added at, until the migration's commit — whatever the
+//   code branch holds meanwhile, a commit of the person's own among it
+//   (21.5.11). The worktree is relinked where its link broke, the project
+//   folder moved or copied meanwhile, as a born branch's is, and locked
+//   where it is not; boot goes on to the migrations with nothing pushed:
+//   the branch is the migration's to begin (21.9.3). A folder standing at
+//   no code commit is never the migration's worktree: one holding no link
+//   git can read — a plain `.leeway/` in a project owing the reshape — is
+//   left to the migration, whose guard sets it aside, and a branch lost
+//   under its folder stands at a commit of the state's, and is restored or
+//   refused as above.
 // - A remote out of reach is never read as holding nothing, so never as lost
 //   state or a branch to push back: boot works on what this clone holds —
 //   its own branch, or the remote's as last fetched — and, holding neither,
@@ -52,7 +60,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { titlecase } = require('./conventions.cjs');
 const {
   STATE_BRANCH, trackingRef, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote,
-  createStateBranchAt, folderCommit, lockStateWorktree, askStateRemote, fetchStateTip, fetchRemoteBranches, refuseCodeHistory, pushState, withBootLock,
+  createStateBranchAt, folderCommit, standsAtCodeCommit, lockStateWorktree, askStateRemote, fetchStateTip, fetchRemoteBranches, refuseCodeHistory, pushState, withBootLock,
 } = require('./state-worktree.cjs');
 const { holdsTrace, keepStateExcluded } = require('./code-trace.cjs');
 const { owed } = require('../../../leeway-migrate/scripts/old-layout.cjs');
@@ -170,12 +178,47 @@ function startState(cwd, root, answer, startAgain, warnings) {
 
 /**
  * Whether the migration is under way: no local branch, and the state
- * worktree checked out on `leeway-state`, which has no commit yet, with the
- * reshape still owed.
- * @param {string} cwd @param {StateInspection} seen
+ * worktree checked out on `leeway-state`, which has no commit yet, its
+ * files standing at the code commit it was added at.
+ * @param {string} root @param {StateInspection} seen
  */
-function migrationUnderWay(cwd, seen) {
-  return !seen.branch && seen.folder === 'linked' && seen.worktree?.branch === STATE_BRANCH && owed(codeRoot(cwd));
+function migrationUnderWay(root, seen) {
+  return !seen.branch && seen.folder === 'linked' && seen.worktree?.branch === STATE_BRANCH && standsAtCodeCommit(root);
+}
+
+/**
+ * Whether the state folder is there with its link broken: git cannot open
+ * it as this repository's, or this repository registers no worktree at it.
+ * @param {StateInspection} seen
+ */
+function linkBroken(seen) {
+  return seen.folder === 'unlinked' || (seen.folder === 'linked' && seen.worktree === null);
+}
+
+/**
+ * Relink the state worktree whose link broke — the project folder moved, or
+ * was copied, the copy's state becoming its own.
+ * @param {string} root
+ * @returns {string[]} warnings
+ */
+function relink(root) {
+  const { was, from } = repairStateWorktree(root);
+  return was === 'copied' ? [`this project is a copy of ${from}: its state worktree was linked to that project's, and is now this one's own — ${from} is untouched`] : [];
+}
+
+/**
+ * Where the state stands, the migration's worktree relinked first where its
+ * link broke while the migration was under way: a folder standing at the
+ * code commit it was added at. A folder holding no link git can read, or a
+ * branch lost under its folder, is left as found.
+ * @param {string} root @param {string[]} warnings
+ * @returns {StateInspection}
+ */
+function inspectRelinked(root, warnings) {
+  const seen = inspectState(root);
+  if (seen.branch || !linkBroken(seen) || !standsAtCodeCommit(root)) return seen;
+  warnings.push(...relink(root));
+  return inspectState(root);
 }
 
 /**
@@ -193,9 +236,8 @@ function placeWorktree(root, seen) {
   /** @type {string[]} */
   const warnings = [];
   let placed = seen;
-  if (placed.folder === 'unlinked' || placed.worktree === null) {
-    const { was, from } = repairStateWorktree(root);
-    if (was === 'copied') warnings.push(`this project is a copy of ${from}: its state worktree was linked to that project's, and is now this one's own — ${from} is untouched`);
+  if (linkBroken(placed)) {
+    warnings.push(...relink(root));
     placed = inspectState(root);
   }
   const { worktree } = placed;
@@ -243,8 +285,8 @@ function placeState(cwd, { startAgain = false } = {}) {
   return withBootLock(root, () => {
     const warnings = keepStateExcluded(cwd);
     const answer = askStateRemote(root);
-    const seen = inspectState(root);
-    if (migrationUnderWay(cwd, seen)) {
+    const seen = inspectRelinked(root, warnings);
+    if (migrationUnderWay(root, seen)) {
       if (!seen.worktree?.locked) lockStateWorktree(root);
       return { made: null, migrating: true, listing: undefined, warnings };
     }

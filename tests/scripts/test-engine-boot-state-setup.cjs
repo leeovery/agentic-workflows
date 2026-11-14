@@ -8,10 +8,10 @@
 // leaving no trace; the line kept in a nested project's .gitignore and the
 // exclude file; a boot from a code worktree; and a project owing the
 // reshape, whose migration boot runs in the main checkout's project folder
-// under its lock — its guard's refusal a stop with nothing written, boot
-// reading that refusal alone and only its facts, a warning naming what a
-// boot from another checkout leaves unmoved, and a second boot meanwhile
-// waiting for the run to end.
+// under its lock, a plain .leeway/ left to it to set aside — its guard's
+// refusal a stop with nothing written, boot reading that refusal alone and
+// only its facts, a warning naming what a boot from another checkout leaves
+// unmoved, and a second boot meanwhile waiting for the run to end.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -240,7 +240,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const env = { STUB_MIGRATE_MODE: 'reshape', STUB_MIGRATE_RUNS: runs };
     const before = git(main, ['for-each-ref']);
 
-    assert.deepStrictEqual([boot(code, env).state, boot(code, env).state], ['ready', 'ready']);
+    assert.deepStrictEqual([boot(code, env).state, boot(code, env).state], ['finish', 'finish']);
 
     assert.deepStrictEqual(runsOf(runs), [
       { at: 'start', cwd: main, boot: true, writer: false }, { at: 'end', cwd: main, boot: true, writer: false },
@@ -254,9 +254,19 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const main = owingProject();
     git(main, ['worktree', 'add', '-q', '--detach', '--no-checkout', STATE_DIR_NAME, 'HEAD']);
 
-    assert.strictEqual(boot(main, { STUB_MIGRATE_MODE: 'reshape' }).state, 'ready');
+    assert.strictEqual(boot(main, { STUB_MIGRATE_MODE: 'reshape' }).state, 'finish');
 
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
+  });
+
+  it('a plain .leeway/ in a project owing the reshape, holding no link git can read, is the migration\'s to set aside: boot runs it, the state is in place, and what the folder held is kept inside it', () => {
+    const main = owingProject();
+    createFile(main, path.join(STATE_DIR_NAME, 'notes.md'), 'kept\n');
+
+    assert.strictEqual(boot(main, { STUB_MIGRATE_MODE: 'reshape' }).state, 'finish');
+
+    assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
+    assert.strictEqual(readFile(main, path.join(STATE_DIR_NAME, 'notes.md')), 'kept\n');
   });
 
   it('a refusal of the reshape\'s guard stops boot with its facts, nothing written but the exclude line, the conversation unstamped — and the next boot runs the guard again', () => {
@@ -319,7 +329,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     await until(() => runsOf(runs).length === 1);
     const attempts = lockAttempts(t, path.join(main, '.git/leeway-boot.lock'), (taken) => { if (taken === 1) fs.writeFileSync(go, ''); });
 
-    assert.strictEqual(boot(main, env).state, 'ready');
+    assert.strictEqual(boot(main, env).state, 'finish');
 
     assert.strictEqual(await firstEnded, 0);
     assert.strictEqual(attempts[0], 'taken', 'the second boot found the lock held');

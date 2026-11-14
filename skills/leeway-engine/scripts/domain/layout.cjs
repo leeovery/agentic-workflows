@@ -110,7 +110,7 @@ const LAYOUT = Object.freeze([
   place('file', '.product/notes/{YYYY-MM-DD}--{slug}.md', '4.11.16'),
   place('free', '.product/spikes/{NNN}-{slug}', '4.11.16'),
   place('free', '.product/assets', '4.11.16'),
-  engineFile('.state/migrations', '4.7.4', 'the migrations record', 'boot|checklist close directive'),
+  engineFile('.state/migrations', '4.7.4', 'the migrations record', 'boot|checklist close directive|migrate checked'),
   place('free', '.knowledge', '4.11.10'),
   place('free', '.cache/.set-aside/{unit}', '4.11.3'),
   place('free', '.cache', '4.11.3'),

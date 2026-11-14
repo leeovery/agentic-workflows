@@ -17,8 +17,8 @@
 // folder holding its config, credentials and a conversation. The move runs
 // once over that project, and each test reads one rule off what it left:
 // the state worktree on an unborn `leeway-state`, locked, with nothing
-// committed, nothing staged but the project's own files, and `.workflows/`
-// and the store untouched; each
+// committed, nothing staged, and `.workflows/` and the store untouched;
+// each
 // unit's files in the layout, each review never folded in folded into its
 // topic's log, a person's files named for tracking or
 // analysis kept beside the reviews' tracking files dropped; nothing in a
@@ -33,14 +33,15 @@
 // every file written in a place the layout holds; the files the layout has
 // no place for, named, the tools' sidecars not. A small project of its own
 // covers the runner's record and journals already in `.leeway/`, the
-// `.leeway/` ignore line staged with hooks off and the caller's git
+// `.leeway/` ignore line written with hooks off and the caller's git
 // environment cleared, the move run again over one cut short, over one
 // whose `.leeway/` the person removed and over one killed writing each file
 // it reads back, a project nested in its repository,
 // a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
-// read for its task driver after, a `.worktreeinclude` of the workflows' lines alone,
+// read for its task driver after, a task driver's folder whose declaration
+// does not read, a `.worktreeinclude` of the workflows' lines alone,
 // settings that do not parse, a user-level folder the engine's holds a
 // different copy of a file in, and one that is a link elsewhere. The
 // tracker's store is where its driver's frozen declaration says a project
@@ -49,8 +50,9 @@
 // never the machine's.
 //
 // Layer: migration. Budget: 8 s — each run of the move adds a worktree on an
-// unborn branch and stages in a real repository, and the suite runs it over
-// the whole project once and over a repository of its own for each edge.
+// unborn branch in a real repository and reads git's status of it, and the
+// suite runs it over the whole project once and over a repository of its
+// own for each edge.
 //
 
 require('./hermetic-env.cjs');
@@ -76,10 +78,11 @@ const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0
 const STATE_GITIGNORE = '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n';
 
 // Where a project from before Leeway keeps the tracker's store, as the task
-// driver that declares it says, read from its module as the move reads it;
-// and one file its tool keeps local, named from the first pattern.
+// driver's folder declares it, read from its declaration as the move reads
+// it; and one file its tool keeps local, named from the first pattern.
 const TASK_DRIVERS = path.join(__dirname, '../../skills/leeway-engine/scripts/drivers/task');
-const [PRE_LEEWAY] = fs.readdirSync(TASK_DRIVERS).map((name) => require(path.join(TASK_DRIVERS, name, 'driver.cjs')).preLeewayStore).filter(Boolean);
+const [PRE_LEEWAY] = fs.readdirSync(TASK_DRIVERS).map((name) => path.join(TASK_DRIVERS, name, 'pre-leeway-store.json')).filter((file) => fs.existsSync(file))
+  .map((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
 const [STORE] = PRE_LEEWAY.files;
 const LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
 const STORE_LINES = '{"id":"a1","title":"Ranking"}\n{"id":"a2","title":"Ranking, phase 2"}\n';
@@ -537,10 +540,10 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
     });
 
-    it('commits nothing, stages nothing in the state, and leaves the default branch\'s .workflows/ as it was', () => {
+    it('commits nothing, stages nothing in the state or the code, and leaves the default branch\'s .workflows/ as it was', () => {
       assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), headBefore);
       assert.strictEqual(git(state, ['ls-files']).trim(), '', 'nothing staged in the state worktree');
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.claude/settings.json\n.gitignore\n.worktreeinclude', 'the project\'s own files, staged');
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'nothing staged in the code');
       assert.strictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows', STORE]).trim(), '', '.workflows/ and the tracker\'s store as they were');
     });
 
@@ -648,14 +651,12 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the project\'s own files (21.5.19, 21.S52)', () => {
-    it('names the engine by its new path in each settings hook and the state as .leeway/ in each permission rule, every other hook, rule and key as it was, staged', () => {
+    it('names the engine by its new path in each settings hook and the state as .leeway/ in each permission rule, every other hook, rule and key as it was', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json(settings(NEW_ENGINE, '.leeway')));
-      assert.strictEqual(git(dir, ['show', ':.claude/settings.json']), json(settings(NEW_ENGINE, '.leeway')));
     });
 
-    it('takes the workflows\' lines out of .worktreeinclude, the person\'s kept, staged', () => {
+    it('takes the workflows\' lines out of .worktreeinclude, the person\'s kept', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.worktreeinclude'), 'utf8'), '.env.local\n');
-      assert.strictEqual(git(dir, ['show', ':.worktreeinclude']), '.env.local\n');
     });
   });
 
@@ -1028,7 +1029,7 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('removes a .worktreeinclude that held only the workflows\' lines, the removal staged; renames the permission rules of settings holding no hook of the engine\'s, staged; ignores no tracker\'s files where there is no store; and makes no user-level folder or link where today\'s skills left none', () => {
+  it('removes a .worktreeinclude that held only the workflows\' lines; renames the permission rules of settings holding no hook of the engine\'s; ignores no tracker\'s files where there is no store; and makes no user-level folder or link where today\'s skills left none', () => {
     dir = tempProject('migration-078-include-');
     const user = homes('none');
     try {
@@ -1038,7 +1039,7 @@ describe('migration 078: a small project', () => {
       run(dir);
       assert.ok(!fs.existsSync(path.join(dir, '.worktreeinclude')));
       assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json({ permissions: { allow: ['Edit(.leeway/**)'] } }));
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-status']).trim(), 'M\t.claude/settings.json\nA\t.gitignore\nD\t.worktreeinclude');
+      assert.deepStrictEqual(git(dir, ['status', '--porcelain']).split('\n').filter(Boolean).sort(), [' D .worktreeinclude', ' M .claude/settings.json', '?? .gitignore']);
       assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/.gitignore'), 'utf8'), STATE_GITIGNORE);
       assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.leeway)], [false, false]);
     } finally {
@@ -1164,6 +1165,27 @@ describe('migration 078: a small project', () => {
     }
   });
 
+  it('names in its notice each task driver\'s folder whose declaration does not read, carrying no store of it', () => {
+    dir = tempProject('migration-078-unread-');
+    const skills = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-078-skills-')));
+    try {
+      const migrations = path.join(skills, 'leeway-migrate/scripts/migrations');
+      const drivers = path.join(skills, 'leeway-engine/scripts/drivers/task');
+      fs.cpSync(path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations'), migrations, { recursive: true });
+      fs.cpSync(TASK_DRIVERS, drivers, { recursive: true });
+      write(drivers, 'broken/pre-leeway-store.json', '{"files": ".broken/store", "localFiles": []}\n');
+      feature();
+      const copy = require(path.join(migrations, '078-reshape-move.cjs'));
+      const returned = copy.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
+      assert.deepStrictEqual(returned, {
+        notice: `The task driver folder ${path.join(drivers, 'broken')} holds no pre-leeway-store.json that reads, so the move carried no store declared there into the state: a store this project kept for such a tracker stays where it is.`,
+      });
+    } finally {
+      cleanupFixture(dir);
+      fs.rmSync(skills, { recursive: true, force: true });
+    }
+  });
+
   it('leaves settings that do not parse as they are, and says so', () => {
     dir = tempProject('migration-078-settings-');
     try {
@@ -1171,7 +1193,7 @@ describe('migration 078: a small project', () => {
       feature();
       const { returned } = run(dir);
       assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), `{ "hooks": ${OLD_ENGINE}`);
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.gitignore');
+      assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '?? .gitignore');
       assert.deepStrictEqual(returned, {
         verify: `${dir}/.claude/settings.json does not parse, so it was left naming the engine at .claude/skills/workflow-engine/scripts/engine.cjs and the state at .workflows/: `
           + 'once it parses, name .claude/skills/leeway-engine/scripts/engine.cjs in each hook and .leeway/ in each permission rule.',
@@ -1267,7 +1289,6 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(fs.readFileSync(path.join(state, `.inbox/ideas/${TODAY}--dropped.md`), 'utf8'), DROPPED_IDEA);
       assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.leeway/\n', 'the ignore line written once');
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.gitignore');
       const whole = Object.fromEntries(tree(state).map((rel) => [rel, fs.readFileSync(path.join(state, rel), 'utf8')]));
       run(dir);
       assert.deepStrictEqual(Object.fromEntries(tree(state).map((rel) => [rel, fs.readFileSync(path.join(state, rel), 'utf8')])), whole, 'run again over a whole move, its worktree locked, the same state');
@@ -1276,7 +1297,7 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('moves a project nested in its repository from its own folder, the state at the main checkout and the ignore line in the project\'s .gitignore, staged', () => {
+  it('moves a project nested in its repository from its own folder, the state at the main checkout and the ignore line in the project\'s .gitignore', () => {
     dir = tempProject('migration-078-nested-');
     try {
       write(dir, 'README.md', 'the repository\n');
@@ -1290,7 +1311,6 @@ describe('migration 078: a small project', () => {
       assert.ok(!fs.existsSync(path.join(app, '.leeway')), 'no state in the project folder');
       assert.strictEqual(fs.readFileSync(path.join(app, '.gitignore'), 'utf8'), '.leeway/\n');
       assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'the repository\'s top untouched');
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'app/.gitignore');
     } finally {
       cleanupFixture(dir);
     }
@@ -1375,7 +1395,7 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('ignores .leeway/ in the code tree\'s .gitignore, staged alone, with hooks off and the caller\'s git environment cleared', () => {
+  it('ignores .leeway/ in the code tree\'s .gitignore, staging nothing, with hooks off and the caller\'s git environment cleared', () => {
     dir = tempProject('migration-078-code-');
     const decoy = tempProject('migration-078-decoy-');
     const marker = path.join(decoy, 'hook-ran');
@@ -1404,7 +1424,7 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(git(path.join(dir, '.leeway'), ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
       assert.ok(!fs.existsSync(marker), 'no hook ran');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'node_modules/\n.leeway/\n');
-      assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean).sort(), [' M src/app.js', 'M  .gitignore']);
+      assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean).sort(), [' M .gitignore', ' M src/app.js']);
     } finally {
       cleanupFixture(dir);
       cleanupFixture(decoy);

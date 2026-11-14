@@ -13,9 +13,10 @@
 // Tracking:
 //   - Progress lives in the migrations record the caller names (`--record
 //     <path>`; boot names the state's `.state/migrations`), one numeric-only
-//     ID per line (e.g. "001", "047"). The ID is the filename's leading
-//     digits, extension-independent — .sh, .cjs and .md share the same ID
-//     space.
+//     ID per line (e.g. "001", "047") — beside a directive recorded unrun,
+//     its unrun line, and during the reshape, the line of the checks before
+//     its move (below). The ID is the filename's leading digits,
+//     extension-independent — .sh, .cjs and .md share the same ID space.
 //   - An ID recorded once is never re-run. Delete the log to force a full
 //     re-run. An ID is recorded only AFTER its migration completes; any
 //     failure aborts the whole run without recording (boot treats a non-zero
@@ -23,7 +24,9 @@
 //   - What the runs since the last that completed owe it is journaled in
 //     the folder the caller names (`--journals <dir>`; boot names one in the
 //     state's cache, which no state commit takes): each migration's
-//     handbacks and the run's tally, kept as the migration records.
+//     handbacks and the run's tally, kept as the migration records, each
+//     written whole — beside it, then renamed in — so a run killed as it
+//     writes one loses nothing the journal held.
 //
 // Migration contracts:
 //   - `*.sh`: sourced in a spawned bash with report_update / report_skip helper
@@ -70,10 +73,12 @@
 //     directive NNN-{slug}`, which its passing check alone lets through; the
 //     next run carries on past it. One start may meet several. A directive
 //     whose check answers no piece at all has nothing for the session to do
-//     (21.4.3): the runner records it unrun and carries on. The check is run
-//     through the engine's side of the directives (`piecesOf`,
-//     leeway-engine/scripts/domain/directives.cjs); one that cannot answer
-//     stops the run there, as one with pieces does.
+//     (21.4.3): the runner records it unrun — its ID, and beside it the
+//     engine's unrun line, `NNN unrun`, so the review lists only the
+//     directives a session carried out — and carries on. The check and the
+//     unrun line are the engine's side of the directives (`piecesOf`,
+//     `unrunLine`, leeway-engine/scripts/domain/directives.cjs); a check that
+//     cannot answer stops the run there, as one with pieces does.
 //
 // The reshape (21.2), whose runtime knowledge of the layout before it is
 // old-layout.cjs's:
@@ -96,6 +101,31 @@
 //     runner in the project's folder in the main checkout, wherever boot was
 //     called from: the copy the move reads, which the migration's commit
 //     drops.
+//   - The checks before its move. The chain before the guard hands back
+//     checks its code could not make, of `.workflows/` among them, which
+//     the move would carry past unmade. So where, while the reshape is owed
+//     or under way (`reshaping`) and `.workflows/` is there to read, the
+//     record does not hold the checks' line, `old-chain-checks`
+//     (old-layout.cjs, `CHECKS_DONE`), and the chain's checks journaled hold
+//     any, the run stops as it first meets a migration after the guard: it
+//     prints them under their marker, then `---CHECKS---`, and ends, the
+//     migrations before recorded and nothing after run. The session makes
+//     each check where it says — the old state's in `.workflows/` in the
+//     folder the runner runs in, each fix left uncommitted — and records the
+//     line (`engine migrate checked`, as a directive's close records its
+//     own); the next run marks the chain's checks `made` in their journal,
+//     for the review at the migration's end to list among what was done,
+//     and carries on past the stop. The chain's notices never stop it: they
+//     wait in their journal for that review, as every notice does.
+//   - Its handbacks kept. A run that completes while the reshape is owed
+//     or under way (`reshaping`: its state worktree on a `leeway-state`
+//     with no commit yet, whatever the code branch holds) emits what the
+//     runs journaled — the handbacks and the tally — and keeps them, so
+//     every boot until the migration's commit hands the review the same:
+//     the migration's commit clears the journals folder
+//     (leeway-engine/scripts/domain/migration-commit.cjs). Its finish step
+//     (081) journals there too, `finish.json`, what goes from the code side
+//     once the commit lands.
 //
 // The bash binary used for `*.sh` migrations is `bash` on PATH, overridable via
 // LEEWAY_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
@@ -104,7 +134,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { OLD_STATE, owed } = require('./old-layout.cjs');
+const { OLD_STATE, CHECKS_DONE, owed, reshaping } = require('./old-layout.cjs');
 const { MIGRATIONS_DIR, migrationId, isMigration } = require('./migration-ids.cjs');
 
 const SCRIPT_DIR = __dirname;
@@ -124,10 +154,8 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 // a fully successful run — a later migration aborting the run must never
 // cost an earlier migration's entry, whose ID is already recorded and will
 // never re-run.
-const HANDBACKS = [
-  { key: 'verify', marker: '---VERIFY_ADDENDA---', journal: 'pending-verify.json' },
-  { key: 'notice', marker: '---MIGRATION_NOTICES---', journal: 'pending-notices.json' },
-];
+const VERIFY = { key: 'verify', marker: '---VERIFY_ADDENDA---', journal: 'pending-verify.json' };
+const HANDBACKS = [VERIFY, { key: 'notice', marker: '---MIGRATION_NOTICES---', journal: 'pending-notices.json' }];
 
 // Marker preceding the one-line JSON report of what the runs recorded,
 // `{"ran": <migrations executed since the last run that completed>}`.
@@ -163,6 +191,10 @@ const LAST_CODE_TREE_DIRECTIVE = 81;
 // reshape is owed.
 const RESHAPE_GUARD = '074';
 
+// The line a run ends on where it stops for the checks the chain before the
+// guard handed back.
+const CHECKS_MARKER = '---CHECKS---';
+
 // The record the layout before the state branch kept, from the project's folder.
 const OLD_RECORD = path.join(OLD_STATE, '.state', 'migrations');
 
@@ -176,13 +208,15 @@ function journalPath(journals, journal) {
   return path.join(journals, journal);
 }
 
-/** Write a journal, its folder made where missing. @param {string} file @param {unknown} content */
+/** Write a journal whole, its folder made where missing: beside it, then renamed in. @param {string} file @param {unknown} content */
 function writeJournal(file, content) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(content) + '\n');
+  const staged = `${file}.tmp`;
+  fs.writeFileSync(staged, JSON.stringify(content) + '\n');
+  fs.renameSync(staged, file);
 }
 
-/** @param {string} file @returns {Record<string, string|null>[]} */
+/** @param {string} file @returns {Record<string, unknown>[]} */
 function readJournal(file) {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -322,6 +356,35 @@ function refuse(refused) {
   process.stdout.write(`---REFUSED: ${RESHAPE_GUARD}---\n${JSON.stringify(refused)}\n`);
 }
 
+/** Where a migration's numeric ID stands against the guard's: below zero for the chain before the reshape. @param {unknown} id */
+function againstTheGuard(id) {
+  return Number.parseInt(String(id), 10) - Number.parseInt(RESHAPE_GUARD, 10);
+}
+
+/** Whether a handback is the chain's before the guard. @param {Record<string, unknown>} entry */
+const beforeTheGuard = (entry) => againstTheGuard(entry.id) < 0;
+
+/**
+ * Where the run first meets a migration after the guard during the
+ * reshape: whether it stops for the checks the chain before the guard
+ * handed back — printing them under their marker, then the stop's line —
+ * while the record does not hold them made. Once it does, each is marked
+ * `made` in its journal.
+ * @param {string} journals @param {Set<string>} recorded
+ * @returns {boolean}
+ */
+function stopForChecks(journals, recorded) {
+  const file = journalPath(journals, VERIFY.journal);
+  const entries = readJournal(file);
+  const checks = entries.filter(beforeTheGuard);
+  if (!recorded.has(CHECKS_DONE)) {
+    if (checks.length === 0) return false;
+    process.stdout.write(`${VERIFY.marker}\n${JSON.stringify(checks)}\n${CHECKS_MARKER}\n`);
+    return true;
+  }
+  if (checks.some((entry) => entry.made !== true)) writeJournal(file, entries.map((entry) => (beforeTheGuard(entry) ? { ...entry, made: true } : entry)));
+  return false;
+}
 /**
  * Run a `*.sh` migration by sourcing it in a spawned bash. Returns the counter
  * deltas; a non-zero exit surfaces the migration's stderr and aborts the run.
@@ -429,8 +492,8 @@ function main() {
   const tallyFile = journalPath(journals, TALLY_JOURNAL);
   const tally = readTally(tallyFile);
   const recorded = recordedIds(record);
-  const noteRecorded = (/** @type {string} */ id) => {
-    fs.appendFileSync(record, id + '\n');
+  const noteRecorded = (/** @type {string} */ id, /** @type {string[]} */ ...beside) => {
+    fs.appendFileSync(record, [id, ...beside].map((line) => `${line}\n`).join(''));
     recorded.add(id);
   };
 
@@ -463,6 +526,7 @@ function main() {
 
   if (guarded !== null) settle(RESHAPE_GUARD, guarded);
 
+  let pastTheGuard = false;
   for (const script of scripts) {
     const id = migrationId(script);
     if (!id) {
@@ -477,10 +541,14 @@ function main() {
       noteRecorded(id);
       continue;
     }
+    if (codeTreeState && !pastTheGuard && againstTheGuard(id) > 0) {
+      pastTheGuard = true;
+      if (reshaping(cwd) && stopForChecks(journals, recorded)) return;
+    }
     if (directive) {
       const named = path.basename(script, DIRECTIVE);
       if (nothingToDo(cwd, named)) {
-        noteRecorded(id);
+        noteRecorded(id, require(ENGINE_DIRECTIVES).unrunLine(id));
         continue;
       }
       process.stdout.write(`---DIRECTIVE: ${named}---\n`);
@@ -505,17 +573,20 @@ function main() {
   }
 
   // A fully successful run emits everything journaled — this run's entries
-  // plus any stranded by an earlier aborted run — and clears each journal.
+  // plus any stranded by an earlier aborted run — and clears each journal,
+  // but while the reshape is owed or under way, when the migration waits on
+  // its commit.
+  const kept = reshaping(cwd);
   for (const { marker, journal } of HANDBACKS) {
     const file = journalPath(journals, journal);
     const entries = readJournal(file);
     if (entries.length === 0) continue;
     process.stdout.write(marker + '\n');
     process.stdout.write(JSON.stringify(entries) + '\n');
-    try { fs.unlinkSync(file); } catch { /* already gone */ }
+    if (!kept) fs.rmSync(file, { force: true });
   }
 
-  try { fs.unlinkSync(tallyFile); } catch { /* none journaled */ }
+  if (!kept) fs.rmSync(tallyFile, { force: true });
   process.stdout.write(MIGRATIONS_RUN_MARKER + '\n');
   process.stdout.write(JSON.stringify({ ran: tally.ran }) + '\n');
 }

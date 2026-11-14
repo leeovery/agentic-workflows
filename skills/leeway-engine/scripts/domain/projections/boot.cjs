@@ -42,12 +42,15 @@ function migrationsApplied({ summary, notices, counts }) {
 }
 
 /**
- * The migration confirm gate — after the summary of what the migrations did.
+ * The migration confirm gate — after the summary of what the migrations did;
+ * where the reshape's commit is part made, saying only the code branch's
+ * remains (21.9.5).
+ * @param {{codeOnly?: boolean}} [opts]
  * @returns {string}
  */
-function migrationGate() {
+function migrationGate({ codeOnly = false } = {}) {
   const body = menu(
-    '',
+    codeOnly ? "The state branch's first commit is made: only the code branch's commit remains." : '',
     [
       cmdOption('y', 'yes', 'Proceed'),
       promptOption('Ask', 'Ask questions about the changes'),
@@ -149,6 +152,24 @@ function directiveStop({ project, step, progress }) {
   return [
     section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
     section('DISPLAY: directive account', emitAs('markdown'), account.join('\n')),
+  ].join('\n');
+}
+
+/**
+ * Boot's stop before the reshape's move (21.10.13): earlier migrations left
+ * checks their code could not make, some fixing files the move carries, so
+ * this session makes them first, and no session works in the project until
+ * the migration is done.
+ * @returns {string}
+ */
+function migrationChecksStop() {
+  return [
+    section('DISPLAY: migration checks stop', emitAs('properties'), '⚑ The migration stopped before its move, for checks earlier migrations handed back'),
+    section('DISPLAY: migration checks account', emitAs('markdown'), [
+      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Leeway, so they come first. No session works in this project until the migration is done.",
+      '>',
+      '> This session takes them up now; the start menu follows once the migration is done and committed.',
+    ].join('\n')),
   ].join('\n');
 }
 
@@ -379,4 +400,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

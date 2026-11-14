@@ -11,17 +11,24 @@
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
 //     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
 //     failure-aborts-without-recording (both extensions), delete-log-reruns,
+//     a run killed as it writes a journal losing nothing journaled before,
 //     the code-tree fleet recorded unrun where there is no code-tree state;
 //     a directive stopping the run, recorded unrun in the reshape's sequence
 //     where there is no code-tree state, and a run with nothing pending
 //     reading the migrations folder once (21.10.4; the engine's side is
 //     test-migration-directives.cjs's); a refusal from any migration but the
 //     reshape's guard failing the run.
-//   - The reshape's contract, over the synthetic fleet: the guard run first
-//     while the reshape is owed, its refusal writing nothing, and the record
+//   - The reshape's contract, over the synthetic fleet: the handbacks kept
+//     while the reshape is owed; the guard run first while it is owed, its
+//     refusal writing nothing, and the record
 //     seeded from the old one, whole, a kill at the seed's rename included
-//     (the real guard is test-migration-074.cjs's); and its frozen steps and
-//     the runtime's old-layout.cjs never loading each other.
+//     (the real guard is test-migration-074.cjs's); the stop before the
+//     reshape's move for the checks the chain before the guard handed back,
+//     marked made once recorded so, its notices handed on to the run's end,
+//     and none where it handed back nothing or a notice alone, where the
+//     code tree holds no state, or for a handback after the guard; its
+//     frozen steps and the runtime's old-layout.cjs never loading each
+//     other; and no migration's requires reaching the engine.
 //
 // Layer: process.
 //
@@ -155,6 +162,24 @@ const FIRST_DIRECTIVE = REAL_DIRECTIVES[0].replace(/\.md$/, '');
 
 // The record the layout before the state branch kept, in the project's folder.
 const OLD_RECORD = '.workflows/.state/migrations';
+
+// A .cjs migration that hands back a check and a notice, each naming its id.
+const tellingMig = (/** @type {string} */ id) =>
+  `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', info: 'What ${id} does.',\n` +
+  `  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check ${id} by hand.', notice: '${id} ran.' }; } };\n`;
+
+// A .cjs migration that hands back a notice alone, as a telling one words it.
+const noticeMig = (/** @type {string} */ id) =>
+  `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', run({ reportUpdate }) { reportUpdate(); return { notice: '${id} ran.' }; } };\n`;
+
+// What a telling migration hands back, each kind as the runner journals it.
+const toldBy = (/** @type {string} */ id) => ({
+  verify: { id, description: `telling ${id}`, info: `What ${id} does.`, verify: `Check ${id} by hand.` },
+  notice: { id, description: `telling ${id}`, notice: `${id} ran.` },
+});
+
+// The line the record holds once the checks before the reshape's move are made.
+const CHECKS_DONE = 'old-chain-checks';
 
 // A .cjs migration that refuses to run, with the facts `refused`.
 const refusing = (/** @type {string} */ id, /** @type {object} */ refused) =>
@@ -408,6 +433,27 @@ describe('migrate.cjs — synthetic fleet', () => {
 
     const third = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
     assert.ok(!third.stdout.includes('---VERIFY_ADDENDA---'), 'emitted once, never again');
+  });
+
+  it('a run killed as it writes a journal loses nothing the journals held: the next run\'s review holds every hand-back journaled before the kill, and the tally', () => {
+    const telling = (/** @type {string} */ id) => `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', info: 'What ${id} does.',\n  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check ${id} by hand.', notice: '${id} ran.' }; } };\n`;
+    const { migrate, root } = synthFleet({ '001-a.cjs': telling('001'), '002-b.cjs': telling('002') });
+    const project = freshProject();
+    const kill = path.join(root, 'kill-journal.cjs');
+    fs.writeFileSync(kill, "const fs = require('fs');\nconst path = require('path');\nconst real = fs.writeFileSync;\nlet writes = 0;\nfs.writeFileSync = (file, data, ...rest) => { if (path.basename(String(file)).startsWith('pending-verify.json') && ++writes === 2) { real(file, String(data).slice(0, 10)); process.exit(9); } return real(file, data, ...rest); };\n");
+
+    assert.strictEqual(run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` }).status, 9);
+    const again = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([
+      markerPayload(again.stdout, '---VERIFY_ADDENDA---'),
+      markerPayload(again.stdout, '---MIGRATION_NOTICES---'),
+      again.stdout.split('\n').filter((line) => /^\d+ migration\(s\) applied/.test(line)),
+    ], [
+      [{ id: '001', description: 'telling 001', info: 'What 001 does.', verify: 'Check 001 by hand.' }],
+      [{ id: '001', description: 'telling 001', notice: '001 ran.' }],
+      ['2 migration(s) applied, 2 file(s) updated.'],
+    ]);
   });
 
   it('emits no addenda when no executed migration declares verify', () => {
@@ -689,6 +735,96 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
 
     assert.deepStrictEqual([fs.readFileSync(path.join(seeded, 'order.log'), 'utf8'), trackingLog(seeded)], ['003\n', '001\n002\n003\n']);
     assert.deepStrictEqual([fs.readFileSync(path.join(held, 'order.log'), 'utf8'), trackingLog(held)], ['002\n003\n', '001\n002\n003\n']);
+  });
+
+  it('a run that completes while the reshape is owed emits what the runs journaled and keeps it — so every run until the migration\'s commit hands the review the same — where a run of a project that owes none emits it once', () => {
+    const telling = `'use strict';\nmodule.exports = { id: '001', description: 'telling 001', info: 'What 001 does.',\n  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check 001 by hand.', notice: '001 ran.' }; } };\n`;
+    const owing = owingProject();
+    const settled = freshProject();
+    const handedBack = (/** @type {string} */ stdout) => [markerPayload(stdout, '---VERIFY_ADDENDA---'), markerPayload(stdout, '---MIGRATION_NOTICES---'), stdout.split('\n').filter((line) => /^\d+ migration\(s\) applied/.test(line))];
+    const told = [
+      [{ id: '001', description: 'telling 001', info: 'What 001 does.', verify: 'Check 001 by hand.' }],
+      [{ id: '001', description: 'telling 001', notice: '001 ran.' }],
+      ['1 migration(s) applied, 1 file(s) updated.'],
+    ];
+
+    const runs = [owing, owing, settled, settled].map((project) => run(synthFleet({ '001-a.cjs': telling }).migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).stdout);
+
+    assert.deepStrictEqual(runs.map(handedBack), [told, told, told, [undefined, undefined, []]]);
+  });
+
+  it('stops before the reshape\'s move where the chain before the guard handed back checks: printing them under their marker, then the stop\'s line, the chain recorded and nothing after it run, every run until the record holds the checks made; then the run marks them made and carries on past the stop, its end handing on the chain\'s checks marked made and its notices verbatim beside the rest (21.10.13)', () => {
+    const { migrate } = synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075'), '076-c.cjs': tellingMig('076') });
+    const project = owingProject();
+    const told = toldBy('050');
+    const stop = ['---VERIFY_ADDENDA---', JSON.stringify([told.verify]), '---CHECKS---', ''].join('\n');
+
+    const stopped = [1, 2].map(() => run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }));
+
+    assert.deepStrictEqual(stopped.map(({ status, stdout }) => ({ status, stdout })), [{ status: 0, stdout: stop }, { status: 0, stdout: stop }]);
+    assert.deepStrictEqual([trackingLog(project), fs.existsSync(path.join(project, 'order.log'))], ['050\n', false]);
+
+    fs.appendFileSync(path.join(project, RECORD), `${CHECKS_DONE}\n`);
+    const carried = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(carried.status, 0, carried.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '075\n');
+    assert.deepStrictEqual([markerPayload(carried.stdout, '---VERIFY_ADDENDA---'), markerPayload(carried.stdout, '---MIGRATION_NOTICES---')], [[{ ...told.verify, made: true }, toldBy('076').verify], [told.notice, toldBy('076').notice]]);
+    assert.ok(carried.stdout.includes('3 migration(s) applied, 3 file(s) updated.\n'), carried.stdout);
+    assert.deepStrictEqual(trackingLog(project), `050\n${CHECKS_DONE}\n075\n076\n`);
+  });
+
+  it('carries on past the guard with no stop where the chain before it handed back nothing, or a notice alone, which the run\'s end hands on, where the code tree holds no state, where no reshape is owed or under way, and for a handback after the guard', () => {
+    const quiet = owingProject();
+    const noticed = owingProject();
+    const stateless = tmp('mig-orch-none-');
+    const owesNone = freshProject();
+    const after = owingProject();
+
+    const told = run(synthFleet({ '050-a.cjs': noticeMig('050'), '075-b.cjs': cjsMig('075') }).migrate, noticed, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const runs = [
+      told,
+      run(synthFleet({ '050-a.cjs': cjsMig('050'), '075-b.cjs': cjsMig('075') }).migrate, quiet, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
+      run(synthFleet({ '073-a.cjs': tellingMig('073'), '075-b.cjs': cjsMig('075') }).migrate, stateless, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
+      run(synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075') }).migrate, owesNone, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
+    ];
+    const split = synthFleet({ '076-a.cjs': tellingMig('076'), '077-records.md': directive('Records'), '077-records.check.cjs': CHECK, '078-c.cjs': cjsMig('078') });
+    assert.strictEqual(run(split.migrate, after, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).stdout, '---DIRECTIVE: 077-records---\n');
+    fs.appendFileSync(path.join(after, RECORD), '077\n');
+    runs.push(run(split.migrate, after, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }));
+
+    assert.deepStrictEqual(runs.map(({ status, stdout }) => [status, stdout.includes('---CHECKS---'), runReport(stdout)]), [1, 2, 3, 4, 5].map(() => [0, false, { ran: 2 }]));
+    assert.deepStrictEqual([noticed, quiet, stateless, owesNone, after].map((project) => fs.readFileSync(path.join(project, 'order.log'), 'utf8')), ['075\n', '050\n075\n', '075\n', '075\n', '078\n']);
+    assert.deepStrictEqual(markerPayload(told.stdout, '---MIGRATION_NOTICES---'), [toldBy('050').notice]);
+  });
+
+  it('no migration loads the engine: every require on the paths from each migration is a literal, and none reaches skills/leeway-engine/', () => {
+    const scripts = path.dirname(REAL_MIGRATE);
+    const skills = path.resolve(scripts, '..', '..');
+    const engine = path.join(skills, 'leeway-engine') + path.sep;
+    const migrations = path.join(scripts, 'migrations');
+    /** @type {string[]} */
+    const found = [];
+    const seen = new Set();
+    const follow = (/** @type {string} */ file) => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      for (const [, arg] of fs.readFileSync(file, 'utf8').matchAll(/\brequire\(([^)]*)\)/g)) {
+        const literal = /^\s*(['"])([^'"]+)\1\s*$/.exec(arg);
+        if (literal === null) found.push(`${path.relative(skills, file)} requires ${arg.trim()}, which no scan can follow`);
+        else if (literal[2].startsWith('.')) {
+          const target = path.resolve(path.dirname(file), literal[2]);
+          if (target.startsWith(engine)) found.push(`${path.relative(skills, file)} loads ${path.relative(skills, target)}`);
+          else follow(target);
+        }
+      }
+    };
+    const entries = fs.readdirSync(migrations, { recursive: true, encoding: 'utf8' }).filter((rel) => rel.endsWith('.cjs')).map((rel) => path.join(migrations, rel));
+
+    for (const file of entries) follow(file);
+
+    assert.deepStrictEqual(found, []);
+    assert.ok(seen.has(path.join(migrations, 'reshape/shared.cjs')) && seen.has(path.join(migrations, '073-environment-linters.cjs')), 'the scan follows what the migrations load');
   });
 
   it('the reshape\'s frozen steps and the runtime never load each other: nothing in migrations/ loads old-layout.cjs, and nothing outside it loads migrations/reshape/', () => {

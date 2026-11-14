@@ -36,7 +36,8 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
-const { commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
+const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD } = require('./domain/commit.cjs');
+const { commitMigrations } = require('./domain/migration-commit.cjs');
 const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
@@ -321,7 +322,7 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   ${SWEEP_USAGE}
   ${READY_TO_BUILD_USAGE}
 ${VERIFY_USAGE.replace(/^/gm, '  ')}
-  ${MIGRATE_USAGE}
+${MIGRATE_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -432,6 +433,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render ledger-stop
   render directive-stop --directive <id>
   render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>]
+  render migration-checks-stop
   render help <menu> [<arg>] [--<name> <value> …]
   render verdicts [--unit <unit>]
   render start-menu
@@ -1510,7 +1512,9 @@ function runBoard(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// migrate — a directive of the migration checked (domain/directives.cjs).
+// migrate — a directive of the migration checked, the checks before the
+// reshape's move recorded made, and what the migration review reads
+// (domain/directives.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -2253,8 +2257,10 @@ function runCommit(call, argv) {
       // The reviewed migration commit: the whole state, and every path the
       // workflows own in the code tree taken as the index records it — a
       // migration may stage a removal there that the working tree cannot
-      // show. One commit on each side that changed.
-      respond(call, bothSides(commitStateScoped(cwd, '.', message), commitStagedScoped(cwd, OWNED_PATHS, message)));
+      // show. One commit on each side that changed; the reshape's two while
+      // it finishes (domain/migration-commit.cjs).
+      const { state, code } = commitMigrations(cwd, message);
+      respond(call, bothSides(state, code));
       return;
     } else if (inbox) {
       scope = '.inbox';
@@ -2553,7 +2559,8 @@ const COMMANDS = Object.freeze({
 // settings file, outside the project; and the rest read:
 // `layout guard` among them, run before every file Claude writes, `brief
 // guard`, before every dispatch of an agent, `shell guard`, before every
-// shell command, `checklist show`, `migrate check`, `measures` and `board`.
+// shell command, `checklist show`, `migrate check` and `review`, `measures`
+// and `board`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2579,7 +2586,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   raise: '*',
   brief: ['guard'],
   checklist: ['show'],
-  migrate: ['check'],
+  migrate: ['check', 'review'],
   verify: '*',
   measures: '*',
   board: '*',
@@ -2593,7 +2600,8 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // has not stamped for the project the call is in at this version (22.1.7,
 // domain/boot-stamp.cjs) — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone: boot, and what its stops run before it stamps — `boot
-// --start-again`, `state-merge pick`, the migration review's verbs, a stop's
+// --start-again`, `state-merge pick`, the migration review's verbs, `migrate
+// review` among them, the checks stop's record, `migrate checked`, a stop's
 // screen and the answer to its gate, each gate by its name (a directive's
 // verbs run on the stamp its stop writes); the targets of Claude Code's
 // hooks and of the gate mod (`conversation`, `board`), run for any
@@ -2611,6 +2619,7 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
   ]),
   gate: ['state lost gate', 'state merge gate', 'migration gate'],
   commit: ['--migrations', '--inbox'],
+  migrate: ['review', 'checked'],
   presence: ['cleanup'],
   session: ['cleanup', 'resume'],
   conversation: '*',

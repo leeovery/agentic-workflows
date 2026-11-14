@@ -2,11 +2,22 @@
 
 //
 // What the reshape's steps share — the guard (074), the legacy split
-// (075–077, through split.cjs beside it) and the move (078): the layout's
-// names before and after it, git as they run it, a file written whole, and
-// the state worktree put in place. Released with them, it is frozen with
-// them: the runtime's own knowledge of the layout before Leeway is the
+// (075–077, through split.cjs beside it), the move (078) and finish (081):
+// the layout's names before and after it, git as they run it, a file
+// written whole, the state worktree put in place, and where a project from
+// before Leeway kept a tracker's store. Released with them, it is frozen
+// with them: the runtime's own knowledge of the layout before Leeway is the
 // migrate skill's `old-layout.cjs`, and neither loads the other.
+//
+// The tracker's stores (`preLeewayStores`): the steps name no tracker, and
+// load no driver, whose code changes with the engine's. Each task driver's
+// folder declares, once and for good, where a project from before Leeway
+// keeps its store, as data — `pre-leeway-store.json`, `{files, localFiles}`,
+// the store's files and the ones its tool keeps local, project-relative, the
+// latter as ignore patterns, both empty for a tracker that kept none — read
+// here with fs alone. A folder whose declaration is missing or does not read
+// is answered by name, for the steps to tell the person (`unreadStores`),
+// never passed by.
 //
 // The state worktree put in place for the reshape (`placeStateWorktree`):
 // `.leeway/` in the main checkout, on an unborn `leeway-state`, locked as
@@ -28,6 +39,9 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+
+const TASK_DRIVERS = path.join(__dirname, '../../../../leeway-engine/scripts/drivers/task');
+const STORE_DECLARATION = 'pre-leeway-store.json';
 
 const OLD_STATE = '.workflows';
 const STATE_DIR = '.leeway';
@@ -147,7 +161,56 @@ function placeStateWorktree(main) {
   return root;
 }
 
+/** @param {unknown} value @returns {value is string[]} */
+const isPaths = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+
+/** Where a project from before Leeway kept a tracker's store. @typedef {{files: string[], localFiles: string[]}} PreLeewayStore */
+
+/** A task driver folder's declaration, or null where it is missing or does not read as one. @param {string} folder @returns {PreLeewayStore|null} */
+function declarationIn(folder) {
+  let declared;
+  try {
+    declared = JSON.parse(fs.readFileSync(path.join(folder, STORE_DECLARATION), 'utf8'));
+  } catch {
+    return null;
+  }
+  const ok = declared !== null && typeof declared === 'object' && isPaths(declared.files) && isPaths(declared.localFiles);
+  return ok ? { files: declared.files, localFiles: declared.localFiles } : null;
+}
+
+/**
+ * Where a project from before Leeway keeps a tracker's store, as each task
+ * driver's folder declares it, and the folders, by name, whose declaration
+ * is missing or does not read.
+ * @returns {{stores: PreLeewayStore[], unread: string[]}}
+ */
+function preLeewayStores() {
+  /** @type {PreLeewayStore[]} */
+  const stores = [];
+  /** @type {string[]} */
+  const unread = [];
+  const folders = fs.readdirSync(TASK_DRIVERS, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  for (const name of folders) {
+    const declared = declarationIn(path.join(TASK_DRIVERS, name));
+    if (declared === null) unread.push(name);
+    else stores.push(declared);
+  }
+  return { stores, unread };
+}
+
+/**
+ * The sentence naming the task driver folders whose declaration is missing
+ * or does not read, and what that cost (`cost`); null where there are none.
+ * @param {string[]} unread @param {string} cost
+ * @returns {string|null}
+ */
+function unreadStores(unread, cost) {
+  if (unread.length === 0) return null;
+  const folders = unread.map((name) => path.join(TASK_DRIVERS, name)).join(', ');
+  return `${unread.length === 1 ? 'The task driver folder' : 'The task driver folders'} ${folders} ${unread.length === 1 ? 'holds' : 'hold'} no ${STORE_DECLARATION} that reads, so ${cost}.`;
+}
+
 module.exports = {
   OLD_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV,
-  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole,
+  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLeewayStores, unreadStores,
 };

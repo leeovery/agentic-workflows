@@ -31,7 +31,7 @@ const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -68,6 +68,7 @@ const { stateRoot, statePath, outsideRepository } = require('../kernel/state-roo
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
 const { directiveStopSurface } = require('./directives.cjs');
+const { finishing } = require('./migration-commit.cjs');
 const { OLD_STATE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -1093,7 +1094,7 @@ const SURFACES = {
   'walkthrough-topics': walkthroughTopicsSurface,
   'walkthrough-topic': walkthroughTopicSurface,
   'migrations-applied': migrationsAppliedSurface,
-  'migration-gate': () => migrationGate(),
+  'migration-gate': (cwd) => migrationGate({ codeOnly: finishing(cwd)?.commits.includes('state') === false }),
   'state-lost-gate': (cwd) => stateLostGate(projectName(cwd)),
   'git-floor-stop': () => gitFloorStopSurface(),
   'repo-stop': repoStopSurface,
@@ -1106,6 +1107,7 @@ const SURFACES = {
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,
   'migration-guard-stop': migrationGuardStopSurface,
+  'migration-checks-stop': () => migrationChecksStop(),
   'send-report': (cwd, { dotpath, sent }) => sendReportOf(cwd, dotpath, sent),
   'map': mapSurface,
   'decided': decidedSurface,

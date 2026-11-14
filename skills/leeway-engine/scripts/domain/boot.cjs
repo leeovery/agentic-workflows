@@ -36,7 +36,12 @@
 // stranded. A run the runner stops at a directive — a migration the start
 // session carries out (directives.cjs) — stops boot there, past nothing,
 // committing nothing (21.10.10): the stop names the directive, its file,
-// and its pieces done of all of them, where its check can say.
+// and its pieces done of all of them, where its check can say. So does a
+// run the runner stops before the reshape's move, for the checks the chain
+// before it handed back (21.10.13): the `checks` stop carries them, and the
+// folder in the main checkout whose `.workflows/` they fix, uncommitted,
+// for the move to carry. Once made, they come back marked `made` with the
+// run that finishes the migration, beside the chain's notices.
 //
 // Where the project owes the reshape (21.1.2), boot runs the migrations
 // before anything else writes, and the reshape's guard runs first of them
@@ -57,7 +62,16 @@
 // `leeway-state` with no commit yet — nothing is committed before the
 // migration's commit (21.9.3): no ledger tail, no catch-up, no ignore line
 // in the code tree, and no settings commit; every state commit is held
-// (state-worktree.cjs).
+// (state-worktree.cjs). Once the runner has nothing left to run, the
+// migration waits on its commit, and boot stops there — the `finish` stop,
+// whatever the run changed — committing nothing, the migrations record
+// among it, so the start menu is never reached over a half-migrated
+// project; it stops there too while the reshape's commit is part made, the
+// state branch born and the code branch's still owed (migration-commit.cjs).
+// Before it stops, boot renders the ledger's copies and indexes the
+// records, as after any migration (21.9.1). Where a kill after the code
+// commit left the drops on disk, nothing is left for the person to decide:
+// boot takes them off, clears the journals, under its lock, and goes on.
 //
 // The knowledge directory — the store, its metadata, the knowledge config,
 // beside them the store's lock and the fill's claim — sits in the one state
@@ -81,8 +95,9 @@
 // Boot stamps the calling conversation as booted for the project (22.1.7,
 // boot-stamp.cjs) where it reaches the work — ready, or restarted — and at a
 // directive's stop, whose steps call verbs; never at the git, repo, lost,
-// guard or merge stops, where nothing may touch the work. The verbs those
-// stops run go through without it (engine.cjs, `BOOT_EXEMPT`).
+// guard, checks or merge stops, where nothing may touch the work, and never
+// at finish, where a stamp a directive's stop wrote earlier stands. The
+// verbs those stops run go through without it (engine.cjs, `BOOT_EXEMPT`).
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone, and no
@@ -101,12 +116,10 @@
 // keeps it from launching is a warning.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
 const { spawnSync } = require('../kernel/spawn.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
 const { commitStateScoped } = require('./commit.cjs');
@@ -130,6 +143,7 @@ const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
+const { finishOwed, projectInMain } = require('./migration-commit.cjs');
 const { unmoved } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
@@ -159,6 +173,10 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 // The line migrate.cjs ends a run on where it stops at a directive.
 const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
 
+// The line migrate.cjs ends a run on where it stops before the reshape's
+// move, for the checks the chain before it handed back.
+const CHECKS_MARKER = '---CHECKS---';
+
 // The line migrate.cjs ends a run on where the reshape's guard (074) refused
 // to run, before the one-line JSON of the refusal's facts; the run recorded
 // nothing.
@@ -177,6 +195,7 @@ const GUARD_REFUSED = '---REFUSED: 074---';
  * @property {string} description
  * @property {string|null} info   what the migration does — project-agnostic
  * @property {string} verify      what to check in this project
+ * @property {true} [made]        checked at the stop before the reshape's move: listed among what was done, never checked again
  */
 
 /**
@@ -187,21 +206,22 @@ const GUARD_REFUSED = '---REFUSED: 074---';
  */
 
 /**
- * Boot's stops before anything wrote the state, each by the surface that
- * draws it, which the start skill draws: `git`, the git on the PATH older
- * than the engine's floor, or none, read before anything else runs; `repo`,
- * the folder in no git repository, read next; `lost`, the state branch gone
- * here and on the remote in a project holding the workflows' trace, its
- * yes `boot --start-again`; `guard`, the reshape's guard refusing the
- * migration (`GuardStop`); `merge`, the catch-up stopped by a field both
- * clones changed, each row's answer its `state-merge pick`.
+ * Boot's stops the start skill draws, each by the surface that draws it:
+ * `git`, the git on the PATH older than the engine's floor, or none, read
+ * before anything else runs; `repo`, the folder in no git repository, read
+ * next; `lost`, the state branch gone here and on the remote in a project
+ * holding the workflows' trace, its yes `boot --start-again`; `guard`, the
+ * reshape's guard refusing the migration (`GuardStop`); `checks`, the
+ * migration stopped before its move for the checks the chain before it
+ * handed back (`ChecksStop`); `merge`, the catch-up stopped by a field both clones
+ * changed, each row's answer its `state-merge pick`.
  */
-const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', lost: 'state-lost-gate', guard: 'migration-guard-stop', merge: 'state-merge-gate' });
+const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', lost: 'state-lost-gate', guard: 'migration-guard-stop', checks: 'migration-checks-stop', merge: 'state-merge-gate' });
 
 /**
  * Boot stopped before anything wrote the state (`BOOT_STOPS`).
  * @typedef {object} BootStop
- * @property {Exclude<keyof typeof BOOT_STOPS, 'guard'>} state
+ * @property {Exclude<keyof typeof BOOT_STOPS, 'guard'|'checks'>} state
  * @property {string[]} warnings
  */
 
@@ -226,6 +246,23 @@ const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', los
  * them where its check can say — `render directive-stop` draws the stop,
  * and the session carries the directive on.
  * @typedef {{state: 'directive', id: string, file: string, done?: number, of?: number, warnings: string[]}} DirectiveStop
+ */
+
+/**
+ * Boot stopped before the reshape's move (21.10.13): the checks the chain
+ * before it handed back, and the project's folder in the main checkout,
+ * whose `.workflows/` the old state's checks are made on, uncommitted, for
+ * the move to carry — `render migration-checks-stop` draws the stop, the
+ * session makes the checks and records them made (`migrate checked`).
+ * @typedef {{state: 'checks', folder: string, verify: VerifyAddendum[], warnings: string[]}} ChecksStop
+ */
+
+/**
+ * Boot stopped where the migration waits on its commit (21.9): the run's
+ * report, its handbacks among it — none where the state branch's first
+ * commit is made and only the code branch's remains, which no run precedes
+ * — for the review whose gate's yes makes the commit.
+ * @typedef {{state: 'finish', migrations: BootResult['migrations'], warnings: string[]}} FinishStop
  */
 
 /**
@@ -324,7 +361,7 @@ function trimReport(stdout) {
  * person's yes at the lost-state stop: a state still lost is started again.
  * @param {string} cwd project root
  * @param {{startAgain?: boolean}} [opts]
- * @returns {BootResult|BootStop|GuardStop|DirectiveStop}
+ * @returns {BootResult|BootStop|GuardStop|DirectiveStop|ChecksStop|FinishStop}
  */
 function boot(cwd, { startAgain = false } = {}) {
   if (gitShortfall() !== null) return { state: 'git', warnings: [] };
@@ -342,7 +379,8 @@ function boot(cwd, { startAgain = false } = {}) {
     warnings.push(...caught.warnings);
     if (caught.action === 'stopped') return null;
     keepStateIgnored(cwd, warnings);
-    return runMigrations(cwd, codeRoot(cwd), warnings);
+    const ran = runMigrations(cwd, codeRoot(cwd), warnings);
+    return 'migrations' in ran ? { ...ran, migrationsCommitted: commitRecord(cwd, ran.migrations, warnings) } : ran;
   });
   if (migrated === null) return { state: 'merge', warnings };
   if ('refused' in migrated) {
@@ -350,18 +388,18 @@ function boot(cwd, { startAgain = false } = {}) {
     return { state: 'guard', cause, unit, phase, topic, active, warnings };
   }
   if ('directive' in migrated) return stamped(cwd, { state: 'directive', ...directiveStopped(cwd, migrated.directive), warnings });
-  const { migrations, migrationsCommitted } = migrated;
+  if ('checks' in migrated) return { state: 'checks', folder: projectInMain(cwd), verify: migrated.checks, warnings };
 
   renderLedgerCopies(cwd, warnings);
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
+  if ('finish' in migrated) return { state: 'finish', migrations: migrated.migrations, warnings };
+  const { migrations, migrationsCommitted } = migrated;
 
   // While a reviewed migration commit follows, it takes every path the
   // workflows own, so boot's own writes there ride it as the record does —
   // a confined commit of a file a migration also edited would carry that
-  // edit past the review under boot's message — as the migration's commit
-  // does while the migration is under way.
-  const commitOwn = !migrations.changed && !placed.migrating;
-  const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
+  // edit past the review under boot's message.
+  const sessionHooksInstalled = installSessionHooks(cwd, !migrations.changed, warnings);
   tidyConversations(holdsWaiting);
   launchLateCheck(root, warnings);
 
@@ -394,7 +432,10 @@ function stamped(cwd, answer) {
  * The state's checks, under the boot lock, and where they leave the state
  * to the migration, the migrations run in the project's folder in the main
  * checkout before the lock is let go — under the writer lock too once the
- * state worktree is there to hold it.
+ * state worktree is there to hold it; a run with nothing left to run leaves
+ * the migration waiting on its commit. Where the reshape's commit is part
+ * made, the state branch born, it waits on the rest, and nothing runs; where
+ * only the drops were left, they go, and boot goes on.
  * @param {string} cwd @param {string} root @param {boolean} startAgain @param {string[]} warnings
  * @returns {{placed: import('./state-checks.cjs').Placed, migrated: Migrated|undefined}}
  */
@@ -402,12 +443,14 @@ function placeAndReshape(cwd, root, startAgain, warnings) {
   return withBootLock(root, () => {
     const placed = placeState(cwd, { startAgain });
     warnings.push(...placed.warnings);
-    if ('stop' in placed || !placed.migrating) return { placed, migrated: undefined };
+    if ('stop' in placed) return { placed, migrated: undefined };
+    if (!placed.migrating) return { placed, migrated: finishOwed(cwd) === null ? undefined : { finish: true, migrations: nothingRan() } };
     const here = codeRoot(cwd);
-    const from = folderUnder(placeOf(here), path.dirname(root));
+    const from = projectInMain(cwd);
     warnUnmoved(here, from, warnings);
     const run = () => runMigrations(cwd, from, warnings);
-    return { placed, migrated: migrationRuns(root) ? withStateLock(root, run) : run() };
+    const ran = migrationRuns(root) ? withStateLock(root, run) : run();
+    return { placed, migrated: 'migrations' in ran ? { finish: true, migrations: ran.migrations } : ran };
   });
 }
 
@@ -439,11 +482,28 @@ function commitLedgerTail(root, warnings) {
 }
 
 /**
- * What a run of the migrations left: the run, its record committed where no
- * reviewed commit will carry it; the directive it stopped at; or the
- * refusal it stopped on.
- * @typedef {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{directive: string}|{refused: Refusal}} Migrated
+ * What a migration handed back beside its counts: the checks for the
+ * session, and the notices for the person.
+ * @typedef {{verify: VerifyAddendum[], notices: MigrationNotice[]}} Handbacks
  */
+
+/**
+ * What a run of the migrations left: the run; the directive it stopped at;
+ * the checks it stopped for before the reshape's move; or the refusal it
+ * stopped on.
+ * @typedef {{migrations: BootResult['migrations']}|{directive: string}|{checks: VerifyAddendum[]}|{refused: Refusal}} Ran
+ */
+
+/**
+ * What boot's migrations left: the run, its record committed where no
+ * reviewed commit will carry it; the migration waiting on its commit, with
+ * the run that finished it; the directive a run stopped at; the checks it
+ * stopped for before the reshape's move; or the refusal it stopped on.
+ * @typedef {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{finish: true, migrations: BootResult['migrations']}|{directive: string}|{checks: VerifyAddendum[]}|{refused: Refusal}} Migrated
+ */
+
+/** The report of no run at all. @returns {BootResult['migrations']} */
+const nothingRan = () => ({ changed: false, ran: 0, output: '', verify: [], notices: [] });
 
 /**
  * The guard's refusal a run printed, or undefined where it printed none.
@@ -457,12 +517,28 @@ function refusalIn(stdout) {
 }
 
 /**
+ * The checks and notices a run handed back, lifted out of its report's
+ * lines in place; an unreadable block is a warning, read as none.
+ * @param {string[]} lines @param {string[]} warnings
+ * @returns {Handbacks}
+ */
+function handbacksOf(lines, warnings) {
+  const addenda = liftMarker(lines, VERIFY_MARKER, 'verification addenda', warnings);
+  if (addenda !== undefined && !Array.isArray(addenda)) warnings.push('verification addenda unreadable: not an array');
+  const notices = liftMarker(lines, NOTICES_MARKER, 'migration notices', warnings);
+  if (notices !== undefined && !Array.isArray(notices)) warnings.push('migration notices unreadable: not an array');
+  return {
+    verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
+    notices: /** @type {MigrationNotice[]} */ (Array.isArray(notices) ? notices : []),
+  };
+}
+
+/**
  * Run the migrations from the folder `from` into the state's migrations
- * record and, where no reviewed commit will carry it, commit the record; or
- * answer the directive the run stopped at, or the refusal it stopped on,
- * committing nothing.
+ * record: the run, or the directive it stopped at, or the checks it stopped
+ * for, or the refusal it stopped on.
  * @param {string} cwd @param {string} from @param {string[]} warnings
- * @returns {Migrated}
+ * @returns {Ran}
  */
 function runMigrations(cwd, from, warnings) {
   const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD), '--journals', statePath(cwd, MIGRATION_JOURNALS)], { cwd: from, encoding: 'utf8' });
@@ -478,41 +554,39 @@ function runMigrations(cwd, from, warnings) {
   if (stopped !== null) return { directive: stopped[1] };
 
   const outLines = (mig.stdout || '').split('\n');
-  const addenda = liftMarker(outLines, VERIFY_MARKER, 'verification addenda', warnings);
-  if (addenda !== undefined && !Array.isArray(addenda)) warnings.push('verification addenda unreadable: not an array');
-  const notices = liftMarker(outLines, NOTICES_MARKER, 'migration notices', warnings);
-  if (notices !== undefined && !Array.isArray(notices)) warnings.push('migration notices unreadable: not an array');
+  const handbacks = handbacksOf(outLines, warnings);
+  if (outLines.includes(CHECKS_MARKER)) return { checks: handbacks.verify };
   const ran = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
   const stdout = outLines.join('\n');
 
-  const migrations = {
-    changed: stdout.includes(STOP_GATE_MARKER),
-    ran,
-    output: trimReport(stdout),
-    verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
-    notices: /** @type {MigrationNotice[]} */ (Array.isArray(notices) ? notices : []),
-  };
+  return { migrations: { changed: stdout.includes(STOP_GATE_MARKER), ran, output: trimReport(stdout), ...handbacks } };
+}
 
-  // A migration that ran while changing no document still wrote the record,
-  // and that write has no other path to a commit: with nothing to review the
-  // calling skill says "up to date" and never reaches its `commit
-  // --migrations`. So boot leaves the record clean whenever no reviewed commit
-  // will carry it — dirt this run recorded, and dirt an earlier boot left
-  // behind the same way. When the review gate does fire, its own commit takes
-  // the record in with the diff the user approved and boot stays out of the
-  // way. The migrations are already applied, so a commit failure is a warning.
-  /** @type {string|null} */
-  let migrationsCommitted = null;
-  if (!migrations.changed) {
-    try {
-      const committed = commitStateScoped(cwd, MIGRATIONS_RECORD, 'chore: record workflow migrations');
-      migrationsCommitted = committed.committed;
-      warnings.push(...committed.warnings);
-    } catch (err) {
-      warnings.push(`migrations record commit failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
+/**
+ * The migrations record committed where no reviewed commit will carry it:
+ * the commit's short sha, null where nothing was committed.
+ *
+ * A migration that ran while changing no document still wrote the record,
+ * and that write has no other path to a commit: with nothing to review the
+ * calling skill says "up to date" and never reaches its `commit
+ * --migrations`. So boot leaves the record clean whenever no reviewed commit
+ * will carry it — dirt this run recorded, and dirt an earlier boot left
+ * behind the same way. When the review gate does fire, its own commit takes
+ * the record in with the diff the user approved and boot stays out of the
+ * way. The migrations are already applied, so a commit failure is a warning.
+ * @param {string} cwd @param {BootResult['migrations']} migrations @param {string[]} warnings
+ * @returns {string|null}
+ */
+function commitRecord(cwd, migrations, warnings) {
+  if (migrations.changed) return null;
+  try {
+    const committed = commitStateScoped(cwd, MIGRATIONS_RECORD, 'chore: record workflow migrations');
+    warnings.push(...committed.warnings);
+    return committed.committed;
+  } catch (err) {
+    warnings.push(`migrations record commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
   }
-  return { migrations, migrationsCommitted };
 }
 
 /**

@@ -227,4 +227,5 @@ function changedUnits(root, before) {
 
 module.exports = {
   TOPIC_PHASES, hasItem, hasTopic, manifestOf, roadmapItemNamed, experimentWaits, measuredBy, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits,
+  topicsOf,
 };

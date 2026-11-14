@@ -1,0 +1,4 @@
+{
+  "files": [".tick/tasks.jsonl"],
+  "localFiles": ["/.tick/cache.db*", "/.tick/lock", "/.tick/.tasks-*.jsonl.tmp"]
+}
