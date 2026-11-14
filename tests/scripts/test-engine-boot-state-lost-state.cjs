@@ -70,14 +70,16 @@ function loseState(main, bare = null) {
 const WRAP = '\u00a0'.repeat(8);
 
 describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
-  it('gone here and on the remote, in a project whose committed settings hold the workflows\' hooks, stops boot with nothing written — and the next boot stops again', () => {
+  it('gone here and on the remote, in a project whose committed settings hold the workflows\' hooks, stops boot with nothing written, the conversation unstamped — and the next boot stops again', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const main = lostProject({ remote: bare, trace: { '.claude/settings.json': OWN_SETTINGS } });
     const before = untouched(main, bare);
+    const conversation = { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: path.join(world(), 'config') };
 
-    assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(boot(main, conversation), { ok: true, state: 'lost', warnings: [] });
     assert.deepStrictEqual(untouched(main, bare), before);
     assert.ok(!fs.existsSync(statePath(main)));
+    assert.ok(!fs.existsSync(path.join(conversation.LEEWAY_CONFIG_DIR, 'conversations', 'lost-state', 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
 
     assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
     assert.deepStrictEqual(untouched(main, bare), before);
@@ -293,14 +295,16 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.deepStrictEqual([next('y'), next('n')], [{ kind: 'engine', argv: ['boot', '--start-again'] }, null], 'the yes leads to the fresh start, the no to nothing');
   });
 
-  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again — the baseline signal reads all the code as before the workflows', () => {
+  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again, the conversation stamped — the baseline signal reads all the code as before the workflows', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const main = lostProject({ remote: bare });
     const code = tip(main, 'main');
+    const config = path.join(world(), 'config');
 
-    const res = engine.ok(main, ['boot', '--start-again']);
+    const res = engine.ok(main, ['boot', '--start-again'], { env: { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: config } });
 
     assert.strictEqual(res.state, 'restarted');
+    assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(config, 'conversations', 'lost-state', 'booted.json'), 'utf8'))), [main], 'the work goes on from here (22.1.7)');
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)]);
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));

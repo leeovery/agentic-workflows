@@ -34,7 +34,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ENGINE, ok, okSectionsAsync, output, refusedPristine, killedAt, contend, stateGit, layout, cleanupFixture,
+  ENGINE, ok, okSectionsAsync, output, refusedPristine, killedAt, contend, stateGit, layout, cleanupFixture, stampBooted,
 } = require('./engine-harness.cjs');
 const { useTempFolder, statePath, filesUnder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, askedWorld, ledgerHelpers } = require('./ledger-world.cjs');
@@ -473,8 +473,9 @@ function drawnAtOnce(questions, meet, count) {
     'atBarrier();',
     'require(engine).runAsync(args, { cwd, env: JSON.parse(env), stdin }).then(report);',
   ].join('\n');
-  const env = JSON.stringify(conversation({ CLAUDE_STUB_MEET: `${count}:${meet}` }));
-  return contend(questions.length, body, (i) => [ENGINE, dir, env, JSON.stringify(CALL), 'raise', NOTE, '--answers', questions[i]]);
+  const env = conversation({ CLAUDE_STUB_MEET: `${count}:${meet}` });
+  stampBooted(dir, env.CLAUDE_CODE_SESSION_ID, env.LEEWAY_CONFIG_DIR);
+  return contend(questions.length, body, (i) => [ENGINE, dir, JSON.stringify(env), JSON.stringify(CALL), 'raise', NOTE, '--answers', questions[i]]);
 }
 
 /** Until the folder `meet` holds `count` marks, five seconds at most. @param {string} meet @param {number} count */

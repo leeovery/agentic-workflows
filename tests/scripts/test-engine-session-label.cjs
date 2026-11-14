@@ -278,7 +278,7 @@ describe('engine session label — the position record', () => {
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     engine(['session', 'label', 'pay', 'specification', 'alpha']);
     assert.strictEqual(position('sess-1').phase, 'specification');
-    assert.deepStrictEqual(fs.readdirSync(conversation('sess-1')).sort(), ['position.json', 'workflow']);
+    assert.deepStrictEqual(fs.readdirSync(conversation('sess-1')).sort(), ['booted.json', 'position.json', 'workflow']);
   });
 
   it('a no-op label records the position all the same — disabled, outside tmux, a tmux error, a failed rename', () => {

@@ -10,10 +10,10 @@
 // and a call that cannot run, or fails in any way, lands the entry
 // unchecked; a write its links refuse makes no call, the label's neither;
 // then, at a later start,
-// boot launches the late check, detached and one at a time, which records
-// what it finds beside each unchecked decision and commits it, never
-// touching the entry's line, a decision found holding several rules showing
-// flagged wherever its record is read.
+// boot launches the late check, detached and one at a time, no
+// conversation's, which records what it finds beside each unchecked
+// decision and commits it, never touching the entry's line, a decision
+// found holding several rules showing flagged wherever its record is read.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there; the separate call is the suite's stub
@@ -460,12 +460,12 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.deepStrictEqual(entries().filter((e) => e.event === 'checked').map((e) => e.entry), [full(second), full(first)]);
   });
 
-  it('runs detached: the launch hands the check a process of its own, which records its result and lets its claim go after the launch has answered', async () => {
+  it('runs detached: the launch hands the check a process of its own, no conversation\'s — launched from one boot has not stamped, it meets no refusal — which records its result and lets its claim go after the launch has answered', async () => {
     const decision = decide(ask(), PANEL);
     // A peer holds the writer lock until the launch has answered: a check the launch waited on would wait on the lock with it, and never record.
     const lock = holdLock(statePath(dir, layout.lock));
     const saved = { ...process.env };
-    Object.assign(process.env, armed({ '': rules(PANEL, SYNC) }));
+    Object.assign(process.env, armed({ '': rules(PANEL, SYNC) }, 'never-booted'));
     try {
       assert.strictEqual(launchLateCheck(fs.realpathSync(statePath(dir)), []), true);
     } finally {

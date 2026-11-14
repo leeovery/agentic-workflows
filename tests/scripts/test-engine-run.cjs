@@ -37,6 +37,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest, createFile, layout } = require('./discovery-test-utils.cjs');
+const { stampBooted } = require('./engine-harness.cjs');
 
 const REPO = path.join(__dirname, '../..');
 const ENGINE = path.join(REPO, 'skills/leeway-engine/scripts/engine.cjs');
@@ -179,6 +180,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
   });
 
   it('an environment key is held for the call and restored after it, absent keys included', () => {
+    stampBooted(dir, 'held-session');
     withProcessEnv({ CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: 'ambient' }, () => {
       engine.run(['presence', 'beat', 'payments', 'investigation', 'payments'],
         { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: 'held-session', CLAUDE_PID: String(process.pid) } });
@@ -217,6 +219,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
   });
 
   it('stdin is the caller\'s text — the hook verbs read it and nothing else', () => {
+    stampBooted(dir, 'ending-session');
     engine.run(['presence', 'beat', 'payments', 'investigation', 'payments'],
       { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: 'ending-session', CLAUDE_PID: String(process.pid) } });
     const res = engine.run(['presence', 'cleanup'], { cwd: dir, stdin: JSON.stringify({ session_id: 'ending-session' }) });

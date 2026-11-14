@@ -74,7 +74,7 @@ describe('engine boot: the conversation folders', () => {
     const env = { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
     runEngine(stubbed, fix.project, ['session', 'repair'], env);
     stubbed.ok(fix.project, ['conversation', 'end'], { env, stdin: JSON.stringify({ session_id: 'sess-1', transcript_path: transcriptPath('app-wt', 'sess-1') }) });
-    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['transcript', 'workflow']);
+    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['booted.json', 'transcript', 'workflow']);
 
     const other = setupProject(path.join(fix.root, 'other'));
     boot(other);
@@ -105,11 +105,11 @@ describe('engine boot: the conversation folders', () => {
     assert.ok(!fs.existsSync(folder(session)));
   });
 
-  it('the boot\'s own conversation is marked after the tidy — a folder the tidy takes comes back holding the mark', () => {
+  it('the boot\'s own conversation is marked and stamped after the tidy — a folder the tidy takes comes back holding the mark and boot\'s stamp', () => {
     conversation('sess-1', { workflow: '', transcript: transcriptPath('app', 'sess-1') });
 
     boot(fix.project, { CLAUDE_CODE_SESSION_ID: 'sess-1' });
 
-    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')), ['workflow']);
+    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['booted.json', 'workflow']);
   });
 });

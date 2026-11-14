@@ -128,19 +128,22 @@ the continuation to send (``Invoke `/<skill> <args>`.``) and that line. The
 payload on a Bash result of the conversation's own call — never a subagent's —
 arms the handoff, and every call has it cut from what the model reads; the
 line and the skill stay. As the turn ends the mod clears the conversation and,
-in the conversation that follows, leaves what it sends with the line as
-`sent.json` in that conversation's folder, then sends the continuation, which
-Claude acts on there, and shows a toast naming where the work went
-(`Handed off → Specification · auth-flow`) for eight seconds. The clear runs from
-a timer started at the turn's end, whatever else there fails: a mod cannot run
-a command inside a hook the turn waits on. A send that is dropped or fails
-goes into the prompt box for Enter instead; where the box will not take it
-either, the toast holds the continuation for the person to send, and stays
-longer. A clear that fails sends in place, so the work still goes on. Esc on
-the turn that handed off carries nothing: Esc means stop.
-`leeway-gates-rows` draws the continuation's transcript row as the line.
-Where the mod does not announce, the engine says so and the workflows invoke
-the skill in the same conversation.
+in the conversation that follows, copies in the engine's stamp that boot has
+run, `booted.json`, from the folder of the conversation it cleared — byte for
+byte, never read, since the engine owns its format, and before the send, so
+it stands whatever becomes of the send — then leaves what it sends with the
+line as `sent.json` in that conversation's folder, and sends the
+continuation, which Claude acts on there, and shows a toast naming where the
+work went (`Handed off → Specification · auth-flow`) for eight seconds. The
+clear runs from a timer started at the turn's end, whatever else there fails:
+a mod cannot run a command inside a hook the turn waits on. A send that is
+dropped or fails goes into the prompt box for Enter instead; where the box
+will not take it either, the toast holds the continuation for the person to
+send, and stays longer. A clear that fails sends in place, so the work still
+goes on. Esc on the turn that handed off carries nothing: Esc means stop.
+`leeway-gates-rows` draws the continuation's transcript row as the line. Where
+the mod does not announce, the engine says so and the workflows invoke the
+skill in the same conversation.
 
 ## What it sets in Claude Code
 
@@ -152,24 +155,25 @@ every such session, one answer that never changes and so never spends the
 prompt cache; a plain session's tool list is Claude Code's own.
 
 In a conversation that runs the workflows there, the mod sets
-`CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries of
-Claude's thinking printing as if they were output, and
+`CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries
+of Claude's thinking printing as if they were output, and
 `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what
 Claude is doing; project settings cannot set the second. Claude Code reads
 both per request. Every engine call marks the conversation that made it — a
 `workflow` file in its folder, named by the session id Claude Code hands every
-command — and the mod reads that mark by its own session id after each of the
-conversation's Bash calls and when it starts, so a command that only mentions
-the engine marks nothing. What the settings replace, the person's own value or
-none, is kept in the process's environment (`LEEWAY_HARNESS_REPLACED`),
-which a reload of the mod's files keeps, and a `/clear` or a resume puts it
-back exactly — except the clear a handoff runs, which leads into a workflow
-conversation by construction and so leaves the workflow values on, the
-person's own put back as that conversation ends. A marked conversation gets
-the workflow values back when the mod next follows it, whether
-`claude --resume`, a restart or `/resume` in the same process brings it back.
-A plain conversation in the same project keeps Claude Code's defaults and the
-person's own settings: the mod never touches either there.
+command — but a hook's, run for any conversation, and one refused because boot
+has not run there; and the mod reads that mark by its own session id after
+each of the conversation's Bash calls and when it starts, so a command that
+only mentions the engine marks nothing. What the settings replace, the
+person's own value or none, is kept in the process's environment
+(`LEEWAY_HARNESS_REPLACED`), which a reload of the mod's files keeps, and a
+`/clear` or a resume puts it back exactly — except the clear a handoff runs,
+which leads into a workflow conversation by construction and so leaves the
+workflow values on, the person's own put back as that conversation ends. A
+marked conversation gets the workflow values back when the mod next follows
+it, whether `claude --resume`, a restart or `/resume` in the same process
+brings it back. A plain conversation in the same project keeps Claude Code's
+defaults and the person's own settings: the mod never touches either there.
 
 ## What the spinner says
 

@@ -34,7 +34,8 @@ const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
 const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
 const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
-const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf } = require('./engine-harness.cjs');
+const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf, stampBooted } = require('./engine-harness.cjs');
+const { BOOTED } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/user-files.cjs'));
 const { briefPath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/brief-names.cjs'));
 const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
 const { worldOfTheRun } = require('./run-worlds.cjs');
@@ -114,6 +115,9 @@ class Sim {
       TMUX: undefined,
       TMUX_PANE: undefined,
     };
+    // The conversation the sim opens on has booted, as the start skill's
+    // first step does before anything else runs.
+    stampBooted(this.dir, this.env.CLAUDE_CODE_SESSION_ID, this.configDir);
   }
 
   destroy() {
@@ -169,11 +173,16 @@ class Sim {
 
   /**
    * A handoff the gate mod carries: the conversation is cleared and the work
-   * starts in a fresh one, in the same Claude process.
+   * starts in a fresh one, in the same Claude process, boot's stamp copied
+   * into it from the one cleared, as the mod copies it.
    */
   handOver() {
+    const stamp = (/** @type {string} */ id) => path.join(this.configDir, 'conversations', id, BOOTED);
+    const left = stamp(this.env.CLAUDE_CODE_SESSION_ID);
     this.conversations += 1;
     this.env = { ...this.env, CLAUDE_CODE_SESSION_ID: `sim-session-${this.conversations}` };
+    fs.mkdirSync(path.dirname(stamp(this.env.CLAUDE_CODE_SESSION_ID)), { recursive: true });
+    fs.copyFileSync(left, stamp(this.env.CLAUDE_CODE_SESSION_ID));
   }
 
   /**
@@ -189,6 +198,7 @@ class Sim {
    */
   session(sessionId, pid = process.pid) {
     const identity = { CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(pid) };
+    stampBooted(this.dir, sessionId, this.configDir);
     return {
       id: sessionId,
       run: (/** @type {string[]} */ args, /** @type {string} */ stdin = '') => this.run(args, identity, stdin),

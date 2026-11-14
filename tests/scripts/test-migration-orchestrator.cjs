@@ -64,7 +64,7 @@ function run(migrate, project, env = {}, args = ['--record', path.join(project, 
   return { status: res.status, stdout: res.stdout || '', stderr: res.stderr || '' };
 }
 
-/** Copy migrate.cjs and the old layout's module it loads into a fresh scripts/
+/** Copy migrate.cjs and the modules it loads into a fresh scripts/
  *  dir and write the given migration files into its sibling migrations/.
  *  Returns the copied migrate path. */
 function synthFleet(migrations) {
@@ -72,7 +72,7 @@ function synthFleet(migrations) {
   const scripts = path.join(root, 'scripts');
   const migDir = path.join(scripts, 'migrations');
   fs.mkdirSync(migDir, { recursive: true });
-  for (const script of ['migrate.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(REAL_MIGRATE), script), path.join(scripts, script));
+  for (const script of ['migrate.cjs', 'migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(REAL_MIGRATE), script), path.join(scripts, script));
   for (const [name, content] of Object.entries(migrations)) {
     fs.writeFileSync(path.join(migDir, name), content);
   }

@@ -203,17 +203,18 @@ describe('a directive\'s checklist (6.4.5, 6.4.11, 6.S23)', () => {
 });
 
 describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
-  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both, with nothing committed', () => {
+  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both, with nothing committed', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
     writeState(dir, layout.cache('migration', 'onboarding.md'), '# Onboarding\n\nPermissions: decided, a half-written entry.\n');
     const code = codeHead(dir);
+    const resumed = { env: { CLAUDE_CODE_SESSION_ID: 'resumed' }, unbooted: true };
 
-    assert.deepStrictEqual(ok(['boot']), { ok: true, state: 'directive', id: RECORDS, file: path.join(engine.migrations, `${RECORDS}.md`), done: 2, of: 3, warnings: [] });
-    assert.deepStrictEqual(checked().unfinished.map((piece) => piece.name), ['fumi/onboarding']);
+    assert.deepStrictEqual(engine.ok(dir, ['boot'], resumed), { ok: true, state: 'directive', id: RECORDS, file: path.join(engine.migrations, `${RECORDS}.md`), done: 2, of: 3, warnings: [] });
+    assert.deepStrictEqual(engine.ok(dir, ['migrate', 'check', RECORDS], resumed).unfinished.map((piece) => piece.name), ['fumi/onboarding']);
 
     enterTopic(dir, 'onboarding');
-    ok(['checklist', 'close', 'directive', RECORDS]);
+    engine.ok(dir, ['checklist', 'close', 'directive', RECORDS], resumed);
 
     assert.deepStrictEqual(ledgerEntries(statePath(dir)).filter((entry) => entry.topic === 'onboarding').map((entry) => entry.text), ['permissions']);
     assert.deepStrictEqual(ok(['boot']), { ok: true, state: 'directive', id: LOGS, file: path.join(engine.migrations, `${LOGS}.md`), done: 0, of: 1, warnings: [] });

@@ -259,16 +259,18 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
   });
 
-  it('a refusal of the reshape\'s guard stops boot with its facts, nothing written but the exclude line — and the next boot runs the guard again', () => {
+  it('a refusal of the reshape\'s guard stops boot with its facts, nothing written but the exclude line, the conversation unstamped — and the next boot runs the guard again', () => {
     const main = owingProject();
     const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
-    const env = { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: JSON.stringify(refused) };
+    const config = path.join(world(), 'config');
+    const env = { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: JSON.stringify(refused), CLAUDE_CODE_SESSION_ID: 'guarded', LEEWAY_CONFIG_DIR: config };
     const before = untouched(main, null);
 
     assert.deepStrictEqual(boot(main, env), { ok: true, state: 'guard', ...refused, warnings: [] });
 
     assert.deepStrictEqual(untouched(main, null), before);
     assert.ok(!fs.existsSync(statePath(main)), 'no state folder, so no record, lock or journal');
+    assert.ok(!fs.existsSync(path.join(config, 'conversations', 'guarded', 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
     assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
     assert.strictEqual(boot(main, env).state, 'guard');
   });

@@ -66,6 +66,7 @@ const { NBSP } = require('../../skills/leeway-engine/scripts/domain/projections/
 const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const { stampBoot } = require('../../skills/leeway-engine/scripts/domain/boot-stamp.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
 
@@ -73,6 +74,7 @@ const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.c
  * @typedef {object} CallOptions
  * @property {Record<string, string|undefined>} [env] overlay for this call; `undefined` unsets a key
  * @property {string} [stdin] what the call reads on stdin
+ * @property {boolean} [unbooted] the call is made in a conversation boot has not run in: nothing stamps it first
  */
 
 /**
@@ -80,23 +82,50 @@ const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.c
  * suite that runs the engine from a copied skills tree (its own stub
  * `migrate.cjs` beside it, which the engine resolves from its own
  * `__dirname`) binds that copy's `engine.cjs`.
+ *
+ * A call that carries a session id is made in a conversation that has
+ * booted, as every conversation boots before it works: where the engine
+ * would refuse it until boot has run, the conversation is first stamped as
+ * booted for the project the call is in, by the bound engine's own stamp
+ * (domain/boot-stamp.cjs), unless `unbooted` says boot has not run there. A
+ * call the stamp lets through, or made outside any project, stamps nothing.
+ * The stamp is the world the call is made in, so no trace of the call's git
+ * (`traced`) counts what making it reads.
  * @param {string} [enginePath]
  */
 function harness(enginePath = ENGINE) {
   /** @type {typeof import('../../skills/leeway-engine/scripts/engine.cjs')} */
   const engine = require(enginePath);
+  /** @type {typeof import('../../skills/leeway-engine/scripts/domain/boot-stamp.cjs')} */
+  const stamp = require(path.join(path.dirname(enginePath), 'domain/boot-stamp.cjs'));
+
+  /**
+   * The conversation a call with `env` is made in stamped as booted for the
+   * project at `dir`, where the engine would refuse `args` until boot has run.
+   * @param {string} dir @param {string[]} args @param {CallOptions['env']} env
+   */
+  const booted = (dir, args, env) => withEnv({ ...env, GIT_TRACE: undefined }, () => {
+    const session = process.env.CLAUDE_CODE_SESSION_ID;
+    if (session && !engine.bootExempt(args) && stamp.unbootedRefusal(dir, session) !== null) stamp.stampBoot(dir, session);
+  });
 
   /**
    * The raw answer, nothing asserted.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  const call = (dir, args, { env, stdin } = {}) => engine.run(args, { cwd: dir, env, stdin });
+  const call = (dir, args, { env, stdin, unbooted = false } = {}) => {
+    if (!unbooted) booted(dir, args, env);
+    return engine.run(args, { cwd: dir, env, stdin });
+  };
 
   /**
    * The raw answer of a command that answers later.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  const callAsync = (dir, args, { env, stdin } = {}) => engine.runAsync(args, { cwd: dir, env, stdin });
+  const callAsync = (dir, args, { env, stdin, unbooted = false } = {}) => {
+    if (!unbooted) booted(dir, args, env);
+    return engine.runAsync(args, { cwd: dir, env, stdin });
+  };
 
   /**
    * The raw answer of a call that must succeed.
@@ -142,7 +171,7 @@ function harness(enginePath = ENGINE) {
    */
   const output = (dir, args, opts) => succeeded(dir, args, opts).stdout;
 
-  return { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output };
+  return { booted, call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output };
 }
 
 /** @typedef {{stdout: string, stderr: string, code: number}} Answer */
@@ -859,7 +888,8 @@ const KILLED = [
  * An engine call run in a child killed at `at`: asserted killed there.
  * @param {KillPoint} at @param {string} dir @param {string[]} args @param {CallOptions} [opts]
  */
-function killedAt({ method, file, when }, dir, args, { env = {}, stdin = '' } = {}) {
+function killedAt({ method, file, when }, dir, args, { env = {}, stdin = '', unbooted = false } = {}) {
+  if (!unbooted) booted(dir, args, env);
   const { status, stdout, stderr } = spawnSync(process.execPath, ['-e', KILLED, method, file, when, dir, stdin, JSON.stringify(env), ...args], { env: process.env, encoding: 'utf8' });
   assert.strictEqual(status, 9, `engine ${args.join(' ')} was not killed ${when} ${method} ${file}\nstdout: ${stdout}\nstderr: ${stderr}`);
 }
@@ -990,13 +1020,14 @@ function hooked(hooks, rest = {}) {
 /** @type {(ReturnType<typeof harness> & {path: string})|null} */
 let stub = null;
 
-/** The migrate skill's scripts: the old layout's module the engine asks, and the reshape's shared steps. */
+/** The migrate skill's scripts: the modules the engine asks — the migrations' naming and the old layout — and the reshape's shared steps. */
 const MIGRATE_SCRIPTS = path.join(path.dirname(path.dirname(path.dirname(ENGINE))), 'leeway-migrate/scripts');
 
 /**
  * The engine copied, once per process, into a skills folder beside the
- * stand-in migration runner (`STUB_MIGRATE`), the old layout's module and
- * the reshape's shared steps — boot finds the runner beside its own file,
+ * stand-in migration runner (`STUB_MIGRATE`), the modules the engine asks of
+ * the migrate skill and the reshape's shared steps, with no migration
+ * installed — boot finds the runner beside its own file,
  * so the copy runs that resolution as installed: its path, and the shapes
  * bound to it. The copy is never written to; each test brings its own
  * project.
@@ -1006,14 +1037,25 @@ function stubEngine() {
   const skills = templateFolder('engine-skills-');
   fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'leeway-engine'), { recursive: true });
   createFile(skills, 'leeway-migrate/scripts/migrate.cjs', STUB_MIGRATE);
-  fs.copyFileSync(path.join(MIGRATE_SCRIPTS, 'old-layout.cjs'), path.join(skills, 'leeway-migrate/scripts/old-layout.cjs'));
+  for (const script of ['migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(MIGRATE_SCRIPTS, script), path.join(skills, 'leeway-migrate/scripts', script));
   fs.cpSync(path.join(MIGRATE_SCRIPTS, 'migrations/reshape'), path.join(skills, 'leeway-migrate/scripts/migrations/reshape'), { recursive: true });
   const at = path.join(skills, 'leeway-engine/scripts/engine.cjs');
   stub = { ...harness(at), path: at };
   return stub;
 }
 
-const { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output } = harness();
+const { booted, call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output } = harness();
+
+/**
+ * The conversation `session` stamped as booted for the project at `dir`, as
+ * boot stamps it (domain/boot-stamp.cjs): for a suite whose calls carry the
+ * session id and touch work, in a world boot never ran in — under the system
+ * config `configDir`, where the suite's calls name one of their own.
+ * @param {string} dir @param {string} session @param {string} [configDir]
+ */
+function stampBooted(dir, session, configDir) {
+  withEnv(configDir === undefined ? {} : { LEEWAY_CONFIG_DIR: configDir }, () => stampBoot(dir, session));
+}
 
 /**
  * A unit completed as finish's yes completes it, in process: completion has
@@ -1056,6 +1098,6 @@ module.exports = {
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs, accountFiles, accountTaken,
-  NO_SPACE, failingTrustAppends, failingStateCommits, retried, completeUnit, startItem,
+  NO_SPACE, failingTrustAppends, failingStateCommits, retried, completeUnit, startItem, stampBooted,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment,
 };

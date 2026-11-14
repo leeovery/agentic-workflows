@@ -193,9 +193,9 @@ describe('the mark', () => {
     assert.deepStrictEqual(fs.readdirSync(config), ['conversations']);
   });
 
-  it('a mark that cannot be written costs the command nothing', () => {
+  it('a mark that cannot be written costs the command nothing — a screen that goes on before boot has run, as no stamp can be written there either', () => {
     fs.writeFileSync(conversationsRoot(), 'a file where the folders must go');
-    assert.deepStrictEqual(harness.ok(dir, ['session', 'repair'], { env: session('sess-1') }), { ok: true, repaired: false });
+    assert.match(harness.output(dir, ['render', 'help', 'start-menu'], { env: session('sess-1') }), /\S/);
   });
 });
 
