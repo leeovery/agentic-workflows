@@ -24,7 +24,7 @@ $ARGUMENTS
 WORDS
 ```
 
-**CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command, and for every boot the start runs again.
+**CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command, and for every boot the start runs again. Every boot the start runs again is this one, words and all.
 
 A failed boot (`ok: false`, or a non-zero exit) is a migration that must never half-run silently: surface its error. **STOP.** Do not proceed — terminal condition.
 
@@ -40,7 +40,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render {surface} {args}
 
 Then its `next`:
 - **None** — the start ends there. **STOP.** Do not proceed — terminal condition.
-- **`gate`** — the screen asks the person, and their answer goes to `gate`. Run the `next` it returns: a boot runs as the one above, words and all, and its answer is followed afresh; anything else runs, then boot runs again; a null `next` ends the start.
+- **`gate`** — the screen asks the person, and their answer goes to `gate`. Run the `next` it returns: a boot's answer is followed afresh; anything else runs, then boot runs again; a null `next` ends the start.
 - **`load`** — load the reference it names, with what its `with` gives, then boot again:
   - `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written, with folder = `{folder}`.
   - `migration-directive`: Load **[migration-directive.md](references/migration-directive.md)** and follow its instructions as written, with directive = `{directive}` and file = `{file}`.
@@ -77,8 +77,10 @@ Then work each of boot's `gates` in its order, as **The Setup Gates** says, and 
 - **`route`**: boot routed the words to Start's type call, or into the work they name. Invoke the skill its `route`'s `next` names, with its `args`, here in this conversation: ``Invoke `/{skill} {args}`.``
 
   This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
-- **`pick`**: the words name work in progress among other words, or more than one piece of it. Fetch its `surface` with its `args` after it, in order, and emit its sections verbatim per their markers. The answer goes to `gate`, and the `next` it returns is a skill to invoke here, as a route's is.
+- **`pick`**: the words name work among other words, several pieces of it, or a unit that has closed; or they carry on, with several units in progress. Fetch its `surface` with its `args` after it, in order, and emit its sections verbatim per their markers. The answer goes to `gate`. The `next` it returns is a skill to invoke here, as a route's is, or a closed unit's screen in manage: run it, and emit its sections verbatim per their markers.
 
   ```bash
   node .claude/skills/leeway-engine/scripts/engine.cjs render {surface} {args}
   ```
+
+  Once a closed unit is drawn: Load **[start-menu.md](references/start-menu.md)** and follow its instructions as written, from **Managing a Unit**.

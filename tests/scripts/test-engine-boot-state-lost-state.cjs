@@ -295,15 +295,16 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.deepStrictEqual([next('y'), next('n')], [{ kind: 'engine', argv: ['boot', '--start-again'] }, null], 'the yes leads to the fresh start, the no to nothing');
   });
 
-  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again, the conversation stamped — the brownfield signal reads all the code as before the workflows', () => {
+  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again, the conversation stamped — the read of the code the yes promised comes on Claude\'s entry too, its signal reading all the code as before the workflows', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const main = lostProject({ remote: bare });
     const code = tip(main, 'main');
     const config = path.join(world(), 'config');
 
-    const res = engine.ok(main, ['boot', '--start-again'], { env: { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: config } });
+    const res = engine.ok(main, ['boot', '--start-again'], { env: { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: config }, stdin: 'Change the help output\n' });
 
     assert.strictEqual(res.state, 'restarted');
+    assert.deepStrictEqual([res.go, res.gates.includes('brownfield')], ['route', true]);
     assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(config, 'conversations', 'lost-state', 'booted.json'), 'utf8'))), [main], 'the work goes on from here (22.1.7)');
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)]);
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);

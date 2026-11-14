@@ -7,7 +7,7 @@ allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 
 # Quick-Fix
 
-A small, known change, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by a pair of reviewers through the build's own task loop, each from a brief the engine issues. You write the fixes as tasks, their builders build them; you land what the agents find through the doors, fix the nits a review leaves, write each fix's short record, and keep the person out of it except where a raise or the close stops for them. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
+Settled work of any size, needing no decision beyond a quick call, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by a pair of reviewers through the build's own task loop, each from a brief the engine issues. You write the fixes as tasks, their builders build them; you land what the agents find through the doors, fix the nits a review leaves, write each fix's short record, and keep the person out of it except where a raise or the close stops for them. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
 
 ## Arguments
 

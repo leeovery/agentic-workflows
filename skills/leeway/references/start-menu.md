@@ -1,6 +1,6 @@
 # Start Menu
 
-*Reference for **[leeway](../SKILL.md)** — loaded where boot answers the menu, and by the back of the roadmap, help and the epic menu.*
+*Reference for **[leeway](../SKILL.md)** — loaded where boot answers the menu, by the back of the roadmap, help and the epic menu, and from the start's pick at a closed unit.*
 
 ---
 
@@ -32,4 +32,4 @@ Load **[environment-setup.md](../../leeway-shared/references/environment-setup.m
 
 ## Managing a Unit
 
-A unit picked in manage, or among the closed units, is drawn with what can be done to it, `render manage-unit {work_unit}`. Once it is drawn: Load **[manage-work-unit.md](manage-work-unit.md)** with work_unit = `{work_unit}`.
+A unit picked in manage, among the closed units, or at the start's pick, is drawn with what can be done to it, `render manage-unit {work_unit}`. Once it is drawn: Load **[manage-work-unit.md](manage-work-unit.md)** with work_unit = `{work_unit}`.

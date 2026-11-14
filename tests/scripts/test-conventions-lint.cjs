@@ -1397,33 +1397,50 @@ function checkBuildProse(files) {
 
 // ---------------------------------------------------------------------------
 // Check 35 — the start skill follows boot's stops as data. Boot names each
-// stop's screen and what follows it (`STOPS`), and one rule in the start
-// skill follows whatever it names: the skill surfaces boot's warnings before
-// it follows any stop, fetches the screen boot names, carries a load for
-// each reference a stop's next names, and gives no stop a heading of its own
-// — a stop joins without a word of prose.
+// stop's marker, screen and what follows it (`STOPS`), and one rule in the
+// start skill follows whatever it names: the skill surfaces boot's warnings
+// before it follows any stop, runs every boot again with the person's words
+// as the first, says the marker where a stop names one,
+// fetches the screen boot names, carries a bullet for each kind of next a
+// stop has — none, or the next's kind — and a load for each reference a
+// stop's next names, and gives no stop a heading of its own — a stop joins
+// without a word of prose.
 // ---------------------------------------------------------------------------
 
 const START_SKILL = 'leeway';
 const STOP_SCREEN = /engine\.cjs render \{surface\} \{args\}/;
+const STOP_MARKER = /\*\*`▪ \{marker\}`\*\*/;
 const BOOT_WARNINGS = /Surface the answer's `warnings` first/;
+const BOOT_AGAIN = /Every boot the start runs again is this one, words and all\./;
 
-/** Each reference a stop's next loads. @param {Record<string, {next: {kind: string, reference?: string}|null}>} stops */
+/** @typedef {Record<string, {marker?: string, next: {kind: string, reference?: string}|null}>} Stops */
+
+/** Each reference a stop's next loads. @param {Stops} stops */
 const stopLoads = (stops) => Object.values(stops).flatMap(({ next }) => (next?.kind === 'load' ? [String(next.reference)] : []));
 
+/** Each kind of next the stops have, as the start skill's bullet names it: `None`, or the kind in a code span. @param {Stops} stops */
+const nextKinds = (stops) => [...new Set(Object.values(stops).map(({ next }) => (next === null ? 'None' : `\`${next.kind}\``)))];
+
+/** @param {string[]} files @param {Stops} [stops] */
 function checkBootStops(files, stops = STOPS) {
   const out = [];
   const named = new RegExp(`^#{1,6}\\s.*\`(${Object.keys(stops).join('|')})\``);
   for (const file of files.filter((f) => skillNameOf(f) === START_SKILL && f.endsWith('SKILL.md'))) {
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
+    const prose = (/** @type {(line: string) => boolean} */ test) => lines.some((line, i) => !inFence[i] && test(line));
     const screen = lines.findIndex((line, i) => inFence[i] && STOP_SCREEN.test(line));
     const warned = lines.findIndex((line, i) => !inFence[i] && BOOT_WARNINGS.test(line));
     if (screen === -1) out.push({ file, line: 1, message: 'the start skill fetches no stop\'s screen as boot names it — `render {surface} {args}`' });
     if (warned === -1 || (screen !== -1 && warned > screen)) out.push({ file, line: 1, message: 'the start skill surfaces boot\'s `warnings` before it follows any stop' });
+    if (!prose((line) => BOOT_AGAIN.test(line))) out.push({ file, line: 1, message: 'the start skill never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."' });
+    if (Object.values(stops).some(({ marker }) => marker !== undefined) && !prose((line) => STOP_MARKER.test(line))) out.push({ file, line: 1, message: 'a stop names a marker, and the start skill never says it — **`▪ {marker}`**' });
+    for (const kind of nextKinds(stops)) {
+      if (!prose((line) => line.startsWith(`- **${kind}** — `))) out.push({ file, line: 1, message: `a stop's next is ${kind}, and the start skill has no bullet following it — \`- **${kind}** —\`` });
+    }
     for (const reference of stopLoads(stops)) {
       const load = `Load **[${reference}.md](references/${reference}.md)**`;
-      if (!lines.some((line, i) => !inFence[i] && line.includes(load))) out.push({ file, line: 1, message: `a stop loads \`${reference}\`, and the start skill has no load of references/${reference}.md` });
+      if (!prose((line) => line.includes(load))) out.push({ file, line: 1, message: `a stop loads \`${reference}\`, and the start skill has no load of references/${reference}.md` });
     }
     lines.forEach((line, i) => {
       const heading = inFence[i] ? null : named.exec(line);
@@ -2866,29 +2883,41 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
   });
 });
 
-test('check 35 (boot\'s stops as data) — catches a start skill that fetches no screen boot names, surfaces no warnings ahead of the stops or only after them, lacks a stop\'s load, or gives a stop a heading of its own, and passes every other skill and the start skill\'s references by', () => {
+test('check 35 (boot\'s stops as data) — catches a start skill that fetches no screen boot names, surfaces no warnings ahead of the stops or only after them, never says a boot run again carries the words, never says a stop\'s marker, lacks the bullet for a kind of next a stop has or a stop\'s load, or gives a stop a heading of its own, and passes every other skill and the start skill\'s references by', () => {
   withTemp((dir) => {
-    const stops = { lost: { next: { kind: 'gate' } }, checks: { next: { kind: 'load', reference: 'migration-checks' } }, finish: { next: { kind: 'load', reference: 'migration-review' } } };
+    const stops = {
+      git: { next: null }, lost: { next: { kind: 'gate' } },
+      checks: { marker: 'Migration', next: { kind: 'load', reference: 'migration-checks' } }, finish: { next: { kind: 'load', reference: 'migration-review' } },
+    };
     const FETCH = ['```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render {surface} {args}', '```'];
     const clean = write(dir, 'skills/leeway/SKILL.md', [
-      '## Boot', '', 'Surface the answer\'s `warnings` first, whatever else it says.', '', '## Boot\'s Stops', '', 'Boot names the stop it made in `stop`.', '', ...FETCH, '',
-      '- `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written.',
-      '- `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
+      '## Boot', '', 'Every boot the start runs again is this one, words and all.', '', 'Surface the answer\'s `warnings` first, whatever else it says.', '', '## Boot\'s Stops', '',
+      'Boot names the stop it made in `stop`. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**.', '', ...FETCH, '',
+      '- **None** — the start ends there.', '- **`gate`** — the screen asks the person.', '- **`load`** — load the reference it names:',
+      '  - `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written.',
+      '  - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
     ].join('\n'));
     const reference = write(dir, 'skills/leeway/references/migration-review.md', '#### If `finish` answers\n');
     const other = write(dir, 'skills/leeway-roadmap/SKILL.md', '#### If `state` is `lost`\n');
-    assert.deepStrictEqual(checkBootStops([clean, reference, other], stops), [], 'the rule, its loads, and headings outside the start skill are clean');
+    assert.deepStrictEqual(checkBootStops([clean, reference, other], stops), [], `the rule, its bullets and loads, and headings outside the start skill are clean, got ${report(checkBootStops([clean, reference, other], stops))}`);
     const late = write(dir, 'skills/leeway/SKILL.md', fs.readFileSync(clean, 'utf8').replace('Surface the answer\'s `warnings` first, whatever else it says.\n', '') + '\nSurface the answer\'s `warnings` first.\n');
     assert.deepStrictEqual(checkBootStops([late], stops).map((x) => x.message), ['the start skill surfaces boot\'s `warnings` before it follows any stop'], 'warnings surfaced only after the stops are followed');
+    const gateOnly = write(dir, 'skills/leeway/SKILL.md', ['## Boot', '', 'Every boot the start runs again is this one, words and all.', 'Surface the answer\'s `warnings` first.', '', ...FETCH, '', '- **`gate`** — the screen asks the person.', ''].join('\n'));
+    assert.deepStrictEqual(checkBootStops([gateOnly], { lost: stops.lost }), [], 'the kinds of next come from the stops: with no marker, no load and no ending among them, neither the marker\'s line nor their bullets is asked for');
 
     const branched = write(dir, 'skills/leeway/SKILL.md', [
       '## Boot', '', '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate', '```', '',
       '### At `finish`', '', 'Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
-      '```markdown', '#### If `state` is `checks`', '```', '',
+      '```markdown', '#### If `state` is `checks`', '- **None** — the start ends there.', '**`▪ {marker}`**', '```', '', '**`gate`** — the screen asks the person.', '',
     ].join('\n'));
     assert.deepStrictEqual(checkBootStops([branched], stops).map((x) => [x.line, x.message]), [
       [1, 'the start skill fetches no stop\'s screen as boot names it — `render {surface} {args}`'],
       [1, 'the start skill surfaces boot\'s `warnings` before it follows any stop'],
+      [1, 'the start skill never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."'],
+      [1, 'a stop names a marker, and the start skill never says it — **`▪ {marker}`**'],
+      [1, 'a stop\'s next is None, and the start skill has no bullet following it — `- **None** —`'],
+      [1, 'a stop\'s next is `gate`, and the start skill has no bullet following it — `- **`gate`** —`'],
+      [1, 'a stop\'s next is `load`, and the start skill has no bullet following it — `- **`load`** —`'],
       [1, 'a stop loads `migration-checks`, and the start skill has no load of references/migration-checks.md'],
       [3, 'a heading of its own for boot\'s `lost` stop — boot names the stop, and one rule follows it'],
       [9, 'a heading of its own for boot\'s `finish` stop — boot names the stop, and one rule follows it'],

@@ -141,7 +141,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render send-report {home}.{
 
 The person puts something off — "roadmap it", "that's a v2 thing", "not now" — or a tangent surfaces that doesn't fit what is taking shape, and you offer to put it aside rather than fold it in. Placed on the timeline, it goes on the roadmap at once, whatever its kind; left undecided, it goes into the inbox. Where their words don't say which, ask, and never choose. A topic already on the map is postponed instead (**Changing the Map**).
 
-For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summary}` in the product's terms — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. `{log}` is the log's path from the state root, and `--kind` is for a bug or a small mechanical change:
+For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summary}` in the product's terms — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. `{log}` is the log's path from the state root, and `--kind` is for a bug or a quick-fix, settled work needing no decision:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:{home} --source {log}

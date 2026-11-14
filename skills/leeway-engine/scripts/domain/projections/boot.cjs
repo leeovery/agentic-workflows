@@ -305,13 +305,13 @@ function banner(version) {
 /**
  * The pick between the pieces of work the person's words name (O2): a row
  * for each, and one for something new, each row's next its move, invoked in
- * this conversation.
+ * this conversation, or a closed unit's screen in manage.
  * @param {{key: string|number, word?: string, label: import('./surfaces.cjs').OptionLabel, next: import('./surfaces.cjs').Next}[]} rows
  * @returns {string}
  */
 function workPick(rows) {
   return section('MENU: work pick', MENU_INSTRUCTION, menu(
-    'These words could carry on work in progress, or start something new.',
+    'These words could name work you have, or start something new.',
     rows.map(({ key, word, label, next }) => cmdOption(String(key), word, label, { next })),
     { question: 'Which piece of work?' },
   ));

@@ -353,7 +353,7 @@ function sessionEffort() {
  * @property {import('./boot-route.cjs').Gate[]} gates the setup gates due, in the order start works them
  * @property {import('./brownfield.cjs').BrownfieldOffer} brownfield_offer the answer to the brownfield offer from the project manifest — `none` means nothing recorded yet (leeway's one-time judgment: native, or the offer), `accepted` that its research is owed, which the product's conversation resumes at its next opening
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state leeway's one-time offer keys on
- * @property {import('./brownfield.cjs').BrownfieldSignal|null} [brownfield_signal] present only while brownfield_offer is `none` — the repository facts the judgment is made from; null when there is no git history to read
+ * @property {import('./brownfield.cjs').BrownfieldSignal|null} [brownfield_signal] present only where `gates` holds `brownfield` — the repository facts the judgment is made from; null when there is no git history to read
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
  */
 
@@ -479,15 +479,13 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   tidyConversations(holdsWaiting);
   launchLateCheck(root, warnings);
 
-  const brownfield = brownfieldOffer(cwd);
   const surface = gateSurface(cwd);
-  const facts = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, mod: MOD[surface], effort: sessionEffort(), brownfield_offer: brownfield, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
+  const facts = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, mod: MOD[surface], effort: sessionEffort(), brownfield_offer: brownfieldOffer(cwd), walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
   const entry = entryOf(cwd, words);
+  const restarted = placed.made === 'restarted';
   /** @type {BootResult} */
-  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', ...facts, ...entry, gates: gatesDue(facts, { bare: entry.go === 'menu', outdated: surface === 'outdated' }) };
-  // The signal travels only while nothing is recorded: the calling skill
-  // judges once, then the verdict is on the manifest.
-  if (brownfield === 'none') result.brownfield_signal = brownfieldSignal(cwd);
+  const result = { state: restarted ? 'restarted' : 'ready', ...facts, ...entry, gates: gatesDue(facts, { bare: entry.go === 'menu', outdated: surface === 'outdated', restarted }) };
+  if (result.gates.includes('brownfield')) result.brownfield_signal = brownfieldSignal(cwd);
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.

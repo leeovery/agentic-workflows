@@ -150,4 +150,4 @@ function startMenuSurface(cwd) {
   return warned + drawMenu(cwd, MENUS['start-menu'], {}, startMenuScreen(read));
 }
 
-module.exports = { typeRank, startMenuScreen, startMenuSurface };
+module.exports = { typeRank, listed, startMenuScreen, startMenuSurface };
