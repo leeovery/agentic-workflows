@@ -39,13 +39,15 @@
 // `product/discovery/product` — the product, which has no directory of its
 // own, keeping its row beside the units'.
 //
-// So does the migration, while a session carries its directives on (21.10.10,
-// P7): one row, in the folder the runner journals in, which the migration's
-// commit clears. Boot's stop at a directive stamps it for the session it
+// So does the migration, while a session carries it on (21.10.10, P7): one
+// row, in the folder the runner journals in, which the reshape's commit
+// clears with the journals, and which boot drops once it reaches the work,
+// the migration done (`dropMigrationRow`). Boot's stop at a directive, or
+// for the checks before the reshape's move, stamps it for the session it
 // stops, unless another live session holds it, whose row the stop then names
-// (`migrationCarrier`); `migrate check`, which the session runs as it works,
-// re-stamps a row it owns; and the exit sweep drops it with the session's
-// other rows.
+// (`migrationCarrier`); `migrate check` and `migrate checked`, which the
+// session runs as it works, re-stamp a row it owns; and the exit sweep drops
+// it with the session's other rows.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -315,7 +317,7 @@ function migrationCarrier(cwd) {
 
 /**
  * The calling session's row at the migration's place, stamped as boot stops
- * it at a directive it carries on. Silent, as `beatQuietly` is.
+ * it where it carries the migration on. Silent, as `beatQuietly` is.
  * @param {string} cwd
  */
 function beatMigrationQuietly(cwd) {
@@ -335,6 +337,11 @@ function refreshMigrationQuietly(cwd) {
     const record = readRecord(file);
     if (record && ownsRow(record)) stampRow(cwd, file);
   } catch { /* liveness is advisory — never fail a verb over it */ }
+}
+
+/** The migration's row gone, whoever wrote it: the migration is done. @param {string} cwd */
+function dropMigrationRow(cwd) {
+  fs.rmSync(migrationPresencePath(cwd), { force: true });
 }
 
 /**
@@ -455,6 +462,6 @@ function cleanupPresence(cwd, sessionId) {
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
   scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence,
-  migrationCarrier, beatMigrationQuietly, refreshMigrationQuietly,
+  migrationCarrier, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
   fmtAge, ownsRow,
 };

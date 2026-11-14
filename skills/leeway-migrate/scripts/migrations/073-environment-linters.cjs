@@ -200,6 +200,6 @@ module.exports = {
       ...(uncarried.length === 0 ? [] : [`These linter entries were not carried into environment.linters, being of no shape a linter was recorded in: ${uncarried.join(', ')}.`]),
       ...(clashing.length === 0 ? [] : [`These linters were not carried into environment.linters, a linter of the same name being carried already with another command: ${[...new Set(clashing)].join(', ')}.`]),
     ];
-    return notes.length === 0 ? undefined : { verify: `${notes.join(' ')} Add any still wanted to environment.linters as {name, command}.` };
+    return notes.length === 0 ? undefined : { verify: `${notes.join(' ')} Add each still wanted: read the linters recorded with \`node .claude/skills/leeway-engine/scripts/engine.cjs environment show\`, then record the whole list, those added, with \`node .claude/skills/leeway-engine/scripts/engine.cjs environment set linters\`, its JSON on stdin.` };
   },
 };

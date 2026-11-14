@@ -205,31 +205,56 @@ describe('syncSessionHooks', () => {
     assert.deepStrictEqual(syncSessionHooks(world.dir, BOTH), { changed: false });
     assert.strictEqual(settings().hooks.SessionEnd.length, 1);
     assert.strictEqual(settings().hooks.SessionStart.length, 1);
-    // Hand-adjusted copies — a different path prefix, a timeout, ours split
-    // across groups, a foreign group added after ours, a widened matcher,
-    // the PreToolUse groups swapped round a foreign one and ours sharing
-    // foreign groups, the shell hook a foreign Bash group's — still make up
-    // the wanted set, so nothing is rewritten, twinned or moved.
+    // Hand-adjusted copies — a timeout, ours split across groups, a foreign
+    // group added after ours, a widened matcher, the PreToolUse groups
+    // swapped round a foreign one and ours sharing foreign groups, the shell
+    // hook a foreign Bash group's — still make up the wanted set, so nothing
+    // is rewritten, twinned or moved.
     writeSettings({
       hooks: {
         SessionEnd: [
-          { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }] },
+          { hooks: [{ ...SESSION_HOOK, timeout: 5 }] },
           { hooks: [END_HOOK, PRESENCE_HOOK] },
           { matcher: 'clear', hooks: [{ type: 'command', command: 'say goodbye' }] },
         ],
         SessionStart: [
-          { matcher: 'startup|resume', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session resume' }] },
+          { matcher: 'startup|resume', hooks: [RESUME_HOOK] },
         ],
         PreToolUse: [
-          { matcher: 'SendMessage|Agent', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" brief guard', timeout: 5 }] },
-          { matcher: 'Bash', hooks: [{ type: 'command', command: 'say goodbye' }, { type: 'command', command: 'node "/abs/engine.cjs" shell guard', timeout: 5 }] },
-          { matcher: 'Edit|Write|NotebookEdit|Bash', hooks: [{ type: 'command', command: 'echo first' }, { type: 'command', command: 'node "/abs/engine.cjs" layout guard', timeout: 5 }] },
+          { matcher: 'SendMessage|Agent', hooks: [{ ...GUARD_GROUPS[1].hooks[0], timeout: 5 }] },
+          { matcher: 'Bash', hooks: [{ type: 'command', command: 'say goodbye' }, { ...GUARD_GROUPS[2].hooks[0], timeout: 5 }] },
+          { matcher: 'Edit|Write|NotebookEdit|Bash', hooks: [{ type: 'command', command: 'echo first' }, { ...LAYOUT_GROUP.hooks[0], timeout: 5 }] },
         ],
       },
     });
     const text = fs.readFileSync(settingsPath(), 'utf8');
     assert.deepStrictEqual(syncSessionHooks(world.dir, BOTH), { changed: false });
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), text, 'no reorder, no rewrite');
+  });
+
+  it('a hook of ours whose command is not the one the sync writes — another engine\'s path, another install prefix, an argument added — is rewritten to it where it stands, its group, matcher, place and other fields kept, and a second sync changes nothing', () => {
+    const theirs = { type: 'command', command: 'say goodbye' };
+    const other = (/** @type {string} */ verb) => ({ type: 'command', command: `node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" ${verb}` });
+    writeSettings({
+      hooks: {
+        SessionEnd: [{ hooks: [theirs, other('presence cleanup'), { ...other('conversation end'), timeout: 5 }] }],
+        PreToolUse: [
+          { matcher: 'Agent|SendMessage', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" brief guard' }] },
+          { matcher: 'Bash', hooks: [{ type: 'command', command: `${GUARD_GROUPS[2].hooks[0].command} --quiet` }, theirs] },
+          LAYOUT_GROUP,
+        ],
+      },
+    });
+
+    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: true });
+
+    assert.deepStrictEqual(settings(), {
+      hooks: {
+        SessionEnd: [{ hooks: [theirs, PRESENCE_HOOK, { ...END_HOOK, timeout: 5 }] }],
+        PreToolUse: [GUARD_GROUPS[1], { matcher: 'Bash', hooks: [GUARD_GROUPS[2].hooks[0], theirs] }, LAYOUT_GROUP],
+      },
+    });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: false });
   });
 
   it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
@@ -287,7 +312,7 @@ describe('syncSessionHooks', () => {
   });
 
   it('reconciles the two events independently — a missing SessionStart group lands while a recognised SessionEnd group is left as it was', () => {
-    const hand = { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }, PRESENCE_HOOK, END_HOOK] };
+    const hand = { hooks: [{ ...SESSION_HOOK, timeout: 5 }, PRESENCE_HOOK, END_HOOK] };
     writeSettings({ hooks: { SessionEnd: [hand], PreToolUse: GUARD_GROUPS } });
     assert.deepStrictEqual(syncSessionHooks(world.dir, BOTH), { changed: true });
     assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], PreToolUse: GUARD_GROUPS, SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] } });

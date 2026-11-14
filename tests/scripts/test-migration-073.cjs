@@ -85,7 +85,7 @@ describe('migration 073: the linters move to the project\'s environment', () => 
     unit('cards', { form: [{ name: 'prettier', command: 'npx prettier --check .' }], store: [{ name: 'vet' }] });
 
     assert.deepStrictEqual(run(), {
-      verify: 'These linters were not carried into environment.linters, a linter of the same name being carried already with another command: eslint (eslint src). Add any still wanted to environment.linters as {name, command}.',
+      verify: 'These linters were not carried into environment.linters, a linter of the same name being carried already with another command: eslint (eslint src). Add each still wanted: read the linters recorded with `node .claude/skills/leeway-engine/scripts/engine.cjs environment show`, then record the whole list, those added, with `node .claude/skills/leeway-engine/scripts/engine.cjs environment set linters`, its JSON on stdin.',
     });
 
     assert.deepStrictEqual(readState('manifest.json'), {
@@ -133,7 +133,7 @@ describe('migration 073: the linters move to the project\'s environment', () => 
     assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', environment: { linters: [{ name: 'eslint', command: 'eslint' }] } });
     assert.deepStrictEqual(readState('pay/manifest.json').phases.implementation.items.checkout, { status: 'in-progress', current_task: null });
     assert.deepStrictEqual(result, {
-      verify: 'These linter entries were not carried into environment.linters, being of no shape a linter was recorded in: 7, {"detail":"npx tsc"}. Add any still wanted to environment.linters as {name, command}.',
+      verify: 'These linter entries were not carried into environment.linters, being of no shape a linter was recorded in: 7, {"detail":"npx tsc"}. Add each still wanted: read the linters recorded with `node .claude/skills/leeway-engine/scripts/engine.cjs environment show`, then record the whole list, those added, with `node .claude/skills/leeway-engine/scripts/engine.cjs environment set linters`, its JSON on stdin.',
     });
   });
 

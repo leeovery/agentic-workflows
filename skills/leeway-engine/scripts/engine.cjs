@@ -37,7 +37,7 @@ const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD } = require('./domain/commit.cjs');
-const { commitMigrations } = require('./domain/migration-commit.cjs');
+const { commitMigrations, finishing } = require('./domain/migration-commit.cjs');
 const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
@@ -435,9 +435,10 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render knowledge-ready
   render state-merge-gate
   render ledger-stop
-  render directive-stop --directive <id> [--active <seconds>]
+  render directive-stop --directive <id>
   render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>]
   render migration-checks-stop
+  render migration-taken-stop --at <directive id|checks> --active <seconds>
   render help <menu> [<arg>] [--<name> <value> …]
   render verdicts [--unit <unit>]
   render start-menu
@@ -2639,14 +2640,17 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // hooks and of the gate mod (`conversation`, `board`), run for any
 // conversation; the capture line and the retry its note names, run from a
 // project the conversation may never boot (22.1.8, 18.6.8), each commit by
-// its scope's flag; and the walkthrough's and help's screens. Nothing refuses
-// a call with no session id, no conversation's, or one from a folder in no
-// project (domain/boot-stamp.cjs).
+// its scope's flag; and the walkthrough's and help's screens. While the
+// migration waits on its commit — its finish stop, where boot never stamps —
+// the environment setup's `show` and `set` go through too, so the review's
+// linters check can be made (`FINISH_EXEMPT`). Nothing refuses a call with
+// no session id, no conversation's, or one from a folder in no project
+// (domain/boot-stamp.cjs).
 const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} */ (Object.freeze({
   boot: '*',
   'state-merge': ['pick'],
   render: Object.freeze([
-    ...Object.values(BOOT_STOPS), 'migrations-applied', 'migration-gate',
+    ...Object.values(BOOT_STOPS), 'directive-stop', 'migrations-applied', 'migration-gate',
     'walkthrough-offer', 'walkthrough-screen', 'walkthrough-home', 'walkthrough-topics', 'walkthrough-topic', 'help',
   ]),
   gate: ['state lost gate', 'state merge gate', 'migration gate'],
@@ -2661,6 +2665,8 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
   board: '*',
   inbox: ['capture'],
 }));
+
+const FINISH_EXEMPT = /** @type {Readonly<Record<string, readonly string[]>>} */ (Object.freeze({ environment: Object.freeze(['show', 'set']) }));
 
 /** Whether a command goes through before boot has run (`BOOT_EXEMPT`). @param {string[]} argv @returns {boolean} */
 function bootExempt([command, ...rest]) {
@@ -2679,7 +2685,14 @@ function refuseUnbooted(call, argv) {
   const session = handedSession();
   if (session === null || !Object.hasOwn(COMMANDS, argv[0]) || bootExempt(argv)) return;
   const refused = unbootedRefusal(call.cwd, session);
-  if (refused !== null) failJson(call, new Error(`${argv[0]}: ${refused}`));
+  if (refused !== null && !finishExempt(call.cwd, argv)) failJson(call, new Error(`${argv[0]}: ${refused}`));
+}
+
+/** Whether a command goes through while the migration waits at its finish stop (`FINISH_EXEMPT`). @param {string} cwd @param {string[]} argv */
+function finishExempt(cwd, [command, sub]) {
+  if (!Object.hasOwn(FINISH_EXEMPT, command) || !FINISH_EXEMPT[command].includes(sub)) return false;
+  const finish = finishing(cwd);
+  return finish !== null && finish.commits.length > 0;
 }
 
 /** @param {string[]} argv @returns {boolean} */

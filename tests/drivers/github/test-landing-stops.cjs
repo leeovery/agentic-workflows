@@ -237,11 +237,11 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     ok(dir, ['boot']);
     const tax = cutTask(dir, '1.4', 'feat', 'Add tax', 'main', { 'tax.txt': 'tax\n' });
     const [booted] = git(dir, ['log', '--format=%H %s', 'origin/main..main']).trim().split('\n');
-    assert.strictEqual(booted.slice(41), 'chore: install workflow session hooks');
+    assert.strictEqual(booted.slice(41), 'chore: install Leeway session hooks');
 
     assert.strictEqual(
       refused(dir, openArgs(tax)),
-      `land: main here holds a commit origin/main does not — ${booted.slice(0, 7)} "chore: install workflow session hooks" — which a task's branch cut from it would land under the task's own subject, so task 1.4 was not opened; `
+      `land: main here holds a commit origin/main does not — ${booted.slice(0, 7)} "chore: install Leeway session hooks" — which a task's branch cut from it would land under the task's own subject, so task 1.4 was not opened; `
       + 'push it to main on GitHub if it belongs there, as `git push origin main` does, and open the task again',
     );
     assert.deepStrictEqual([tipOnGithub(dir, tax.branch), pulls(dir)], ['', []]);

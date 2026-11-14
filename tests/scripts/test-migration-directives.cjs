@@ -15,8 +15,10 @@
 // 21.10.10, 21.S37, and the machinery of 21.S33, which 29.17 proves on the
 // real sequence); a second session meeting a directive another live
 // session carries on, stopping there, and carrying it on once that one's
-// row at the migration's place is gone or stale (domain/presence.cjs; P7);
-// the stop's screen, this session carrying the step on or another
+// row at the migration's place is gone or stale, and `migrate checked`
+// re-stamping only that one's row (domain/presence.cjs; P7); the stop's
+// screen, this session carrying the step on, and the taken stop's, another
+// carrying the step on, a directive or the checks before the move
 // (21.10.11); and, while the migration
 // runs, a verb's commit held, held to the layout all the same (21.9.3), and
 // nothing told the trust log (21.1.5). The runner's side is
@@ -221,18 +223,18 @@ describe('a directive\'s checklist (6.4.5, 6.4.11, 6.S23)', () => {
   });
 });
 
-describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
-  /**
-   * Boot's answer at the directive `id`'s stop, its pieces `done` of all of
-   * them where its check counts them: the start skill's directive reference
-   * loaded with the directive and its file, then boot again.
-   * @param {string} id @param {{done?: number, of?: number}} [counts]
-   */
-  const atDirective = (id, counts = {}) => {
-    const file = path.join(engine.migrations, `${id}.md`);
-    return { ok: true, state: 'directive', id, file, ...counts, stop: { next: { kind: 'load', reference: 'migration-directive', with: { directive: id, file } } }, warnings: [] };
-  };
+/**
+ * Boot's answer at the directive `id`'s stop, its pieces `done` of all of
+ * them where its check counts them: the start skill's directive reference
+ * loaded with the directive and its file, then boot again.
+ * @param {string} id @param {{done?: number, of?: number}} [counts]
+ */
+const atDirective = (id, counts = {}) => {
+  const file = path.join(engine.migrations, `${id}.md`);
+  return { ok: true, state: 'directive', id, file, ...counts, stop: { next: { kind: 'load', reference: 'migration-directive', with: { directive: id, file } } }, warnings: [] };
+};
 
+describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
   it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both to the migration waiting on its commit, with nothing committed', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
@@ -305,7 +307,7 @@ describe('a second session at a directive (21.10.10, P7)', () => {
   const row = () => statePath(dir, layout.cache('migrate', 'presence'));
   /** Boot in the conversation `env` names. @param {Record<string, string>} env */
   const bootAs = (env) => engine.ok(dir, ['boot'], { env, unbooted: true });
-  const carriedOn = { ok: true, state: 'directive', id: RECORDS, file: path.join(engine.migrations, `${RECORDS}.md`), done: 0, of: 3, warnings: [] };
+  const carriedOn = atDirective(RECORDS, { done: 0, of: 3 });
 
   it('stops while another live session carries the directive on, naming when that one last checked it — unstamped, going no further — and the session carrying it on carries on', () => {
     assert.deepStrictEqual(bootAs(FIRST), carriedOn);
@@ -314,7 +316,8 @@ describe('a second session at a directive (21.10.10, P7)', () => {
 
     const taken = bootAs(SECOND);
 
-    assert.deepStrictEqual({ ...taken, active: undefined }, { ok: true, state: 'taken', id: RECORDS, active: undefined, warnings: [] });
+    const stop = { marker: 'Migration', surface: 'migration-taken-stop', args: ['--at', RECORDS, '--active', String(taken.active)], next: null };
+    assert.deepStrictEqual(taken, { ok: true, state: 'taken', at: RECORDS, active: taken.active, stop, warnings: [] });
     assert.ok(taken.active >= 300 && taken.active < 330, `last active ${taken.active}s ago`);
     assert.ok(!fs.existsSync(path.join(conversationDir('second'), 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
     assert.deepStrictEqual(recorded(dir), RECORDED);
@@ -324,6 +327,17 @@ describe('a second session at a directive (21.10.10, P7)', () => {
     engine.ok(dir, ['migrate', 'check', RECORDS], { env: FIRST });
     assert.ok(bootAs(SECOND).active < 300, 'the carrying session\'s check stamps its row again');
     assert.deepStrictEqual(bootAs(FIRST), carriedOn);
+  });
+
+  it('migrate checked re-stamps the row of the session carrying the migration on, and only that session\'s', () => {
+    bootAs(FIRST);
+    const checked = Date.now() - 300 * 1000;
+    fs.utimesSync(row(), new Date(checked), new Date(checked));
+
+    engine.ok(dir, ['migrate', 'checked'], { env: SECOND });
+    assert.ok(bootAs(SECOND).active >= 300, 'another session\'s record stamps nothing');
+    engine.ok(dir, ['migrate', 'checked'], { env: FIRST });
+    assert.ok(bootAs(SECOND).active < 300, 'the carrying session\'s record stamps its row again');
   });
 
   it('carries the directive on where the first session\'s row is gone, the exit sweep having taken it — the row this session\'s from then on', () => {
@@ -364,18 +378,30 @@ describe('the stop\'s screen (21.10.11)', () => {
     ].join('\n'));
   });
 
-  it('where another session carries the step on, names when it was last active and says this session stops there — nothing of a piece redone — refusing an --active that is no whole number', () => {
+  it('the taken stop, where another session carries the step on, draws that step\'s stop naming when it was last active and saying this session stops there — nothing of a piece redone — refusing a step or an --active missing, and an --active that is no whole number', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
+    const taken = (/** @type {string} */ at) => engine.output(dir, ['render', 'migration-taken-stop', '--at', at, '--active', '180']).split('\n').filter((line) => line.startsWith('>'));
 
-    assert.deepStrictEqual(engine.output(dir, ['render', 'directive-stop', '--directive', RECORDS, '--active', '180']).split('\n').filter((line) => line.startsWith('>')), [
+    assert.deepStrictEqual(taken(RECORDS), [
       '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked.',
       '>',
       '> Another session is carrying the migration on from its records step, last active 3m ago, so this one stops here.',
       '>',
       '> Run `/leeway` here again once that session has finished the migration, or has ended.',
     ]);
-    assert.strictEqual(refusedUntouched(dir, ['render', 'directive-stop', '--directive', RECORDS, '--active', '3m']), 'render directive-stop: --active takes the seconds since the session carrying the migration on was last active, got "3m"');
+    assert.deepStrictEqual(taken('checks'), [
+      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Leeway, so they come first. No session works in this project until the migration is done.",
+      '>',
+      '> Another session is carrying the migration on from its checks, last active 3m ago, so this one stops here.',
+      '>',
+      '> Run `/leeway` here again once that session has finished the migration, or has ended.',
+    ]);
+    assert.deepStrictEqual([['--active', '180'], ['--at', RECORDS], ['--at', RECORDS, '--active', '3m']].map((args) => refusedUntouched(dir, ['render', 'migration-taken-stop', ...args])), [
+      'render migration-taken-stop: --at <step> names the step another session carries the migration on from, a directive\'s id or checks',
+      'render migration-taken-stop: --active takes the seconds since the session carrying the migration on was last active',
+      'render migration-taken-stop: --active takes the seconds since the session carrying the migration on was last active, got "3m"',
+    ]);
   });
 
   it('says nothing of work kept where the directive has none done yet, and refuses without the directive it is for', () => {

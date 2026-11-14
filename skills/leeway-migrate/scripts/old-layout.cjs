@@ -29,7 +29,9 @@
 // holds, stays where it is — the files the old state ignores aside. HEAD,
 // never that copy's working tree: the guard proved the two the same before
 // the chain ran, and from then on the working tree holds the migration's
-// own changes too.
+// own changes too. Each file is hashed from the repository's top folder,
+// where git reads the paths it is handed, and a read git fails is an error,
+// never a file that differs.
 //
 // Every git call runs with hooks off and the caller's repository
 // environment cleared, so it names its repository by its folder alone.
@@ -56,7 +58,14 @@ function git(cwd, args, input) {
   const env = { ...process.env };
   for (const name of REPOSITORY_ENV) delete env[name];
   const res = spawnSync('git', [...HOOKS_OFF, ...args], { cwd, encoding: 'utf8', env, input });
-  return { ok: !res.error && res.status === 0, stdout: res.stdout || '' };
+  return { ok: !res.error && res.status === 0, stdout: res.stdout || '', stderr: res.stderr || '' };
+}
+
+/** What a git call printed; one git fails throws, naming it. @param {string} cwd @param {string[]} args @param {string} [input] */
+function gitRead(cwd, args, input) {
+  const res = git(cwd, args, input);
+  if (!res.ok) throw new Error(`git ${args.join(' ')} failed in ${cwd}: ${res.stderr.trim()}`);
+  return res.stdout;
 }
 
 /** The main checkout of the repository `dir` is in, or null where it is in none. @param {string} dir @returns {string|null} */
@@ -119,10 +128,12 @@ function reshaping(projectDir) {
  * @param {string} here @returns {Map<string, string>}
  */
 function workingIds(here) {
-  const files = git(here, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', OLD_STATE]).stdout.split('\0').filter(Boolean)
+  const files = gitRead(here, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', OLD_STATE]).split('\0').filter(Boolean)
     .filter((rel) => fs.existsSync(path.join(here, rel)));
   if (files.length === 0) return new Map();
-  const ids = git(here, ['hash-object', '--stdin-paths'], `${files.join('\n')}\n`).stdout.trim().split('\n');
+  const [top, prefix = ''] = gitRead(here, ['rev-parse', '--show-toplevel', '--show-prefix']).split('\n');
+  const ids = gitRead(top, ['hash-object', '--stdin-paths'], files.map((rel) => `${prefix}${rel}\n`).join('')).trim().split('\n');
+  if (ids.length !== files.length) throw new Error(`git hash-object answered ${ids.length} ids for ${files.length} files in ${here}`);
   return new Map(files.map((rel, at) => [rel, ids[at]]));
 }
 
@@ -132,7 +143,7 @@ function workingIds(here) {
  * @param {string} project @returns {Map<string, string>}
  */
 function committedIds(project) {
-  const listed = git(project, ['ls-tree', '-r', '-z', 'HEAD', '--', OLD_STATE]).stdout.split('\0').filter(Boolean);
+  const listed = gitRead(project, ['ls-tree', '-r', '-z', 'HEAD', '--', OLD_STATE]).split('\0').filter(Boolean);
   return new Map(listed.map((line) => {
     const [meta, rel] = line.split('\t');
     return [rel, meta.split(' ')[2]];

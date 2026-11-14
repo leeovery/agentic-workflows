@@ -232,7 +232,7 @@ describe('commit door: never a code commit inside an operation git holds open', 
       else fs.writeFileSync(at, git(dir, ['rev-parse', 'HEAD']));
       const [head, status] = [git(dir, ['rev-parse', 'HEAD']), codeStatusLines(dir)];
 
-      assert.throws(() => commitPathspecScoped(dir, '.claude/settings.json', 'chore: install workflow session hooks'),
+      assert.throws(() => commitPathspecScoped(dir, '.claude/settings.json', 'chore: install Leeway session hooks'),
         new RegExp(`^Error: ${operation} is in progress \\(${marker}\\) — finish or abort it, then commit again$`));
 
       assert.strictEqual(git(dir, ['rev-parse', 'HEAD']), head);

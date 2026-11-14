@@ -11,9 +11,11 @@
 // under its lock, a plain .leeway/ left to it to set aside — its guard's
 // refusal a stop with nothing written, boot reading that refusal alone and
 // only its facts, a warning naming what a boot from another checkout leaves
-// unmoved, held to what the main checkout's HEAD holds, the session hooks
-// synced in that checkout and in the main checkout's project folder,
-// uncommitted, and a second boot meanwhile waiting for the run to end.
+// unmoved, held to what the main checkout's HEAD holds, for a project in a
+// folder of its repository too, a read git fails refusing boot rather than
+// naming a file, the session hooks synced in that checkout and in the main
+// checkout's project folder, uncommitted, each naming the installed engine,
+// and a second boot meanwhile waiting for the run to end.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -30,13 +32,13 @@ const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { TEMPLATE_DATE, createFile, readFile } = require('./discovery-test-utils.cjs');
-const { git, commitCode, initRepo, tip, remoteTip, lockAttempts, STATE_DIR_NAME, statePath, layout, GUARD_GROUPS } = harness;
+const { git, commitCode, initRepo, tip, remoteTip, lockAttempts, STATE_DIR_NAME, statePath, layout, hooked, WORKFLOW_HOOKS } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
 const { useWorld, remoteProject, OWN_SETTINGS, STUB_ENGINE, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
-const { TODAYS_HOOKS } = require('./boot-world.cjs');
+const { TODAYS_HOOKS_UNLABELLED, sessionEndAsInstalled } = require('./boot-world.cjs');
 
 const world = useWorld();
 
@@ -230,7 +232,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(tip(fresh, 'main'), before.main, 'the main checkout\'s branch gained nothing');
     assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
     assert.deepStrictEqual(git(fresh, ['log', '--format=%s', `${before.feature}..feature`]).trim().split('\n'),
-      ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+      ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
     assert.strictEqual(readFile(code, '.gitignore'), '.leeway/\n');
     assert.ok(!fs.existsSync(path.join(code, STATE_DIR_NAME)));
   });
@@ -325,27 +327,45 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(unmoved(boot(main, env)), []);
   });
 
-  it('holds another checkout\'s .workflows/ to what the main checkout\'s HEAD holds, never to its working tree: the migration\'s own changes there, uncommitted, are named by no boot, and the calling checkout\'s own change still is', () => {
-    const main = owingProject();
+  it('holds another checkout\'s .workflows/ to what the main checkout\'s HEAD holds, never to its working tree, for a project in a folder of its repository: the migration\'s own changes there, uncommitted, are named by no boot, and the calling checkout\'s own changes still are, a file it edited and one it deleted', () => {
+    const repository = projectInWorld();
+    const main = path.join(repository, 'app');
+    createFile(main, '.workflows/payments/manifest.json', '{}\n');
     createFile(main, '.workflows/payments/discussion/payments.md', '# Payments\n');
-    commitCode(main, 'a discussion');
+    createFile(main, '.workflows/payments/discussion/refunds.md', '# Refunds\n');
+    commitCode(repository, 'the old layout, in a folder');
     const code = path.join(world(), 'portal-feature');
-    git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    git(repository, ['worktree', 'add', '-q', '-b', 'feature', code]);
     createFile(main, '.workflows/payments/manifest.json', '{"moved": "by the chain"}\n');
     createFile(main, '.workflows/payments/research/theme.md', '# A theme the split applied\n');
-    createFile(code, '.workflows/payments/discussion/payments.md', '# Payments, as the branch has it\n');
+    const calling = path.join(code, 'app');
+    createFile(calling, '.workflows/payments/discussion/payments.md', '# Payments, as the branch has it\n');
+    fs.rmSync(path.join(calling, '.workflows/payments/discussion/refunds.md'));
 
-    const booted = boot(code, { STUB_MIGRATE_MODE: 'reshape' });
+    const booted = boot(calling, { STUB_MIGRATE_MODE: 'reshape' });
 
     assert.deepStrictEqual(booted.warnings.filter((warning) => warning.startsWith('the migration moves')), [
-      `the migration moves the project's state as the main checkout holds it, in ${main}; where boot ran, in ${code}, these differ from it and stay where they are: .workflows/payments/discussion/payments.md`,
+      `the migration moves the project's state as the main checkout holds it, in ${main}; where boot ran, in ${calling}, these differ from it and stay where they are: .workflows/payments/discussion/payments.md, .workflows/payments/discussion/refunds.md`,
     ]);
   });
 
-  it('syncs the session hooks while the migration is under way where the calling checkout\'s session reads them and in the main checkout\'s project folder, whose settings the migration\'s commit takes — written, never committed', () => {
+  it('refuses where git cannot read a file of the calling checkout\'s old state, naming the failure, rather than naming the file as differing', () => {
+    const main = owingProject();
+    const code = path.join(world(), 'portal-feature');
+    git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    const unreadable = path.join(code, '.workflows/payments/manifest.json');
+    fs.chmodSync(unreadable, 0o000);
+    try {
+      assert.match(bootRefused(code, { STUB_MIGRATE_MODE: 'reshape' }), /git hash-object --stdin-paths failed in .*: .*manifest\.json/);
+    } finally {
+      fs.chmodSync(unreadable, 0o644);
+    }
+  });
+
+  it('syncs the session hooks while the migration is under way where the calling checkout\'s session reads them and in the main checkout\'s project folder, whose settings the migration\'s commit takes — written, never committed — each hook of ours naming the installed engine, labels off, so the session\'s end runs them', () => {
     const main = projectInWorld();
     createFile(main, '.workflows/payments/manifest.json', '{}\n');
-    createFile(main, '.claude/settings.json', TODAYS_HOOKS);
+    createFile(main, '.claude/settings.json', TODAYS_HOOKS_UNLABELLED);
     commitCode(main, 'the old layout');
     const code = path.join(world(), 'portal-feature');
     git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
@@ -354,8 +374,9 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
     assert.strictEqual(boot(code, { STUB_MIGRATE_MODE: 'reshape' }).state, 'finish');
 
-    assert.deepStrictEqual([main, code].map((at) => [JSON.parse(readFile(at, '.claude/settings.json')).hooks.PreToolUse, git(at, ['status', '--porcelain', '--', '.claude']).trim()]), [main, code].map(() => [GUARD_GROUPS, 'M .claude/settings.json']));
+    assert.deepStrictEqual([main, code].map((at) => [readFile(at, '.claude/settings.json'), git(at, ['status', '--porcelain', '--', '.claude']).trim()]), [main, code].map(() => [hooked(WORKFLOW_HOOKS), 'M .claude/settings.json']));
     assert.deepStrictEqual(heads(), before);
+    assert.deepStrictEqual(sessionEndAsInstalled(code, 'ending'), [0, 0]);
   });
 
   it('a second boot meanwhile waits on boot\'s lock until the first boot\'s run ends, then runs the migration under way itself', async (t) => {

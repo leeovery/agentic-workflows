@@ -36,16 +36,17 @@
 // stranded. A run the runner stops at a directive — a migration the start
 // session carries out (directives.cjs) — stops boot there, past nothing,
 // committing nothing (21.10.10): the stop names the directive, its file,
-// and its pieces done of all of them, where its check can say. The session
-// it stops carries the directive on, its row at the migration's place
-// stamped (presence.cjs); where another live session holds that row, the
-// stop is `taken`, naming when that session was last active, and this one
-// goes no further. So does a run the runner stops before the reshape's
-// move, for the checks the chain before it handed back (21.10.13): the
-// `checks` stop carries them, and the folder in the main checkout whose
-// `.workflows/` they fix, uncommitted, for the move to carry. Once made,
-// they come back marked `made` with the run that finishes the migration,
-// beside the chain's notices.
+// and its pieces done of all of them, where its check can say. So does a
+// run the runner stops before the reshape's move, for the checks the chain
+// before it handed back (21.10.13): the `checks` stop carries them, and the
+// folder in the main checkout whose `.workflows/` they fix, uncommitted,
+// for the move to carry. Once made, they come back marked `made` with the
+// run that finishes the migration, beside the chain's notices. The session
+// either stop meets carries the migration on, its row at the migration's
+// place stamped (presence.cjs); where another live session holds that row,
+// the stop is `taken`, naming the step that session carries on from and
+// when it was last active, and this one goes no further. Boot drops that
+// row once it reaches the work, the migration done.
 //
 // Where the project owes the reshape (21.1.2), boot runs the migrations
 // before anything else writes, and the reshape's guard runs first of them
@@ -171,7 +172,7 @@ const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
 const { finishOwed, projectInMain } = require('./migration-commit.cjs');
 const { entryOf, gatesDue } = require('./boot-route.cjs');
-const { migrationCarrier, beatMigrationQuietly } = require('./presence.cjs');
+const { migrationCarrier, beatMigrationQuietly, dropMigrationRow } = require('./presence.cjs');
 const { unmoved } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
@@ -260,7 +261,7 @@ const loading = (reference) => Object.freeze({ kind: 'load', reference });
  * stopped before its move for the checks the chain before it handed back
  * (`ChecksStop`); `merge`, the catch-up stopped by a field both clones
  * changed, each row's answer its `state-merge pick`; `taken`, the migration
- * stopped at a directive another live session carries on (`TakenStop`);
+ * stopped where another live session carries it on (`TakenStop`);
  * `directive`, the migration stopped at a directive the session carries out
  * (`DirectiveStop`); `finish`, the migration waiting on its commit, which
  * the review's gate makes (`FinishStop`).
@@ -273,7 +274,7 @@ const STOPS = Object.freeze({
   guard: Object.freeze({ marker: MIGRATION, surface: 'migration-guard-stop', next: null }),
   checks: Object.freeze({ marker: MIGRATION, surface: 'migration-checks-stop', next: loading('migration-checks') }),
   merge: Object.freeze({ surface: 'state-merge-gate', next: AT_THE_GATE }),
-  taken: Object.freeze({ marker: MIGRATION, surface: 'directive-stop', next: null }),
+  taken: Object.freeze({ marker: MIGRATION, surface: 'migration-taken-stop', next: null }),
   directive: Object.freeze({ next: loading('migration-directive') }),
   finish: Object.freeze({ marker: MIGRATION, next: loading('migration-review') }),
 });
@@ -324,12 +325,13 @@ function stopAt(state, { args, given } = {}) {
  */
 
 /**
- * Boot stopped at a directive of the migration another live session carries
- * on (21.10.10, P7): the directive's id, and the whole seconds since that
- * session's row at the migration's place was last written — `render
- * directive-stop` draws the stop naming it, and this session goes no
- * further.
- * @typedef {{state: 'taken', id: string, active: number, stop: Stop, warnings: string[]}} TakenStop
+ * Boot stopped where another live session carries the migration on
+ * (21.10.10, P7): the step it carries on from, `at` — a directive's id, or
+ * `checks`, the checks before the reshape's move — and the whole seconds
+ * since that session's row at the migration's place was last written;
+ * `render migration-taken-stop` draws the stop naming it, and this session
+ * goes no further.
+ * @typedef {{state: 'taken', at: string, active: number, stop: Stop, warnings: string[]}} TakenStop
  */
 
 /**
@@ -488,8 +490,8 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   if ('refused' in migrated) return guardStop(migrated.refused, warnings);
   if (reshaping !== undefined) syncMigrationHooks(cwd, warnings);
   if ('taken' in migrated) {
-    const { directive: id, active } = migrated.taken;
-    return { state: 'taken', id, active, stop: stopAt('taken', { args: ['--directive', id, '--active', String(active)] }), warnings };
+    const { at, active } = migrated.taken;
+    return { state: 'taken', at, active, stop: stopAt('taken', { args: ['--at', at, '--active', String(active)] }), warnings };
   }
   if ('directive' in migrated) {
     const stopped = directiveStopped(cwd, migrated.directive);
@@ -504,6 +506,7 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
   if ('finish' in migrated) return { state: 'finish', migrations: migrated.migrations, stop: stopAt('finish'), warnings };
   const { migrations, migrationsCommitted } = migrated;
+  dropMigrationRow(cwd);
 
   // While a reviewed migration commit follows, it takes every path the
   // workflows own, so boot's own writes there ride it as the record does —
@@ -610,24 +613,24 @@ function commitLedgerTail(root, warnings) {
  */
 
 /**
- * The directive a run stopped at, carried on by another live session, and
- * the whole seconds since it was last active.
- * @typedef {{directive: string, active: number}} Taken
+ * The step a run stopped at — a directive's id, or `checks` — carried on by
+ * another live session, and the whole seconds since it was last active.
+ * @typedef {{at: string, active: number}} Taken
  */
 
 /**
  * What a run of the migrations left: the run; the directive it stopped at,
- * this session carrying it on, or another; the checks it stopped for before
- * the reshape's move; or the refusal it stopped on.
+ * or the checks it stopped for before the reshape's move, this session
+ * carrying the migration on, or another; or the refusal it stopped on.
  * @typedef {{migrations: BootResult['migrations']}|{directive: string}|{taken: Taken}|{checks: VerifyAddendum[]}|{refused: Refusal}} Ran
  */
 
 /**
  * What boot's migrations left: the run, its record committed where no
  * reviewed commit will carry it; the migration waiting on its commit, with
- * the run that finished it; the directive a run stopped at, this session
- * carrying it on, or another; the checks it stopped for before the
- * reshape's move; or the refusal it stopped on.
+ * the run that finished it; the directive a run stopped at, or the checks it
+ * stopped for before the reshape's move, this session carrying the
+ * migration on, or another; or the refusal it stopped on.
  * @typedef {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{finish: true, migrations: BootResult['migrations']}|{directive: string}|{taken: Taken}|{checks: VerifyAddendum[]}|{refused: Refusal}} Migrated
  */
 
@@ -681,11 +684,11 @@ function runMigrations(cwd, from, warnings) {
   const refused = refusalIn(mig.stdout || '');
   if (refused !== undefined) return { refused };
   const stopped = DIRECTIVE_MARKER.exec(mig.stdout || '');
-  if (stopped !== null) return stoppedAt(cwd, stopped[1]);
+  if (stopped !== null) return carriedOn(cwd, { directive: stopped[1] }, stopped[1]);
 
   const outLines = (mig.stdout || '').split('\n');
   const handbacks = handbacksOf(outLines, warnings);
-  if (outLines.includes(CHECKS_MARKER)) return { checks: handbacks.verify };
+  if (outLines.includes(CHECKS_MARKER)) return carriedOn(cwd, { checks: handbacks.verify }, 'checks');
   const ran = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
   const stdout = outLines.join('\n');
 
@@ -693,17 +696,20 @@ function runMigrations(cwd, from, warnings) {
 }
 
 /**
- * A run stopped at `directive`: this session carries it on, its row at the
- * migration's place stamped, unless another live session holds that row —
- * then the stop names that session, and this one goes no further.
- * @param {string} cwd @param {string} directive
- * @returns {{directive: string}|{taken: Taken}}
+ * A run stopped where a session carries the migration on — `stop`, at a
+ * directive or for the checks before the reshape's move, its step `at`:
+ * this session carries it on, its row at the migration's place stamped,
+ * unless another live session holds that row — then the stop names that
+ * session's step, and this one goes no further.
+ * @template {{directive: string}|{checks: VerifyAddendum[]}} S
+ * @param {string} cwd @param {S} stop @param {string} at
+ * @returns {S|{taken: Taken}}
  */
-function stoppedAt(cwd, directive) {
+function carriedOn(cwd, stop, at) {
   const carrier = migrationCarrier(cwd);
-  if (carrier !== null) return { taken: { directive, active: carrier.age_seconds } };
+  if (carrier !== null) return { taken: { at, active: carrier.age_seconds } };
   beatMigrationQuietly(cwd);
-  return { directive };
+  return stop;
 }
 
 /**
@@ -763,7 +769,7 @@ function installSessionHooks(cwd, commit, warnings) {
     return { want: wanted, sync: syncSessionHooks(cwd, wanted) };
   });
   if (sync.error) warnings.push(`session hooks not installed: ${sync.error}`);
-  if (commit && !sync.error) commitSessionHooks(cwd, want, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
+  if (commit && !sync.error) commitSessionHooks(cwd, want, 'chore: install Leeway session hooks', 'project settings commit failed', warnings);
   return sync.changed;
 }
 

@@ -57,7 +57,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.deepStrictEqual(boot(main).warnings, []);
 
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 
@@ -93,7 +93,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
         '.gitignore holds changes of yours not yet committed, so the workflows\' own change to it was not committed either — ' +
         'commit yours, and the next boot commits theirs',
       ));
-      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: install workflow session hooks');
+      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: install Leeway session hooks');
     });
 
     it('a settings file git ignores is owed nothing: the hooks stay on disk, uncommitted, with no warning — the line still commits', () => {
@@ -150,7 +150,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       git(main, ['bisect', 'reset']);
       assert.deepStrictEqual(boot(main).warnings, []);
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
     });
 
     it('a boot from a code worktree reads its own tree\'s bisect, not the main checkout\'s, and commits on its branch', () => {
@@ -163,7 +163,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
       assert.strictEqual(tip(main, 'HEAD'), testing);
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s', 'feature']).trim().split('\n'),
-        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
     });
   });
 
@@ -198,7 +198,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.deepStrictEqual(boot(main).warnings, []);
       assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 

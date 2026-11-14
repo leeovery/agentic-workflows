@@ -5,7 +5,9 @@
 // hooks in its settings, made once per process and copied (`bootProject`,
 // `setupProject`); a real project on the layout before Leeway's, with no
 // `.leeway/`, its settings holding the hooks today's product leaves
-// (`legacyProject`); the library's stub engine, whose migration runner
+// (`legacyProject`), with labels on or off, and the SessionEnd hooks a
+// checkout's settings hold run as Claude Code runs them
+// (`sessionEndAsInstalled`); the library's stub engine, whose migration runner
 // STUB_MIGRATE_MODE and its siblings drive (`stubbed`), and the repo's real
 // scripts (`real`); the hooks boot installs, as settings read;
 // a knowledge base that reads ready, a short record to index, and
@@ -17,6 +19,7 @@ require('./hermetic-env.cjs');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { git, commitAll, fixtureFrom, folderFrom, layout, statePath, writeState, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked } = harness;
 const { createFile } = require('./discovery-test-utils.cjs');
@@ -38,6 +41,31 @@ const todaysHook = (verb) => ({ type: 'command', command: `node "$CLAUDE_PROJECT
 const TODAYS_HOOKS = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: ['session cleanup', 'presence cleanup', 'conversation end'].map(todaysHook) }], SessionStart: [{ matcher: 'resume', hooks: [todaysHook('session resume')] }] },
 }, null, 2) + '\n';
+/** The settings today's product leaves a project with labels off: its SessionEnd hooks alone, and no guard. */
+const TODAYS_HOOKS_UNLABELLED = JSON.stringify({ hooks: { SessionEnd: [{ hooks: ['presence cleanup', 'conversation end'].map(todaysHook) }] } }, null, 2) + '\n';
+
+/**
+ * Each SessionEnd hook in `checkout`'s settings run as Claude Code runs it
+ * at the end of `session`, the repo's engine linked in, for the run alone,
+ * where the hooks name the installed engine: each hook's exit status.
+ * @param {string} checkout @param {string} session
+ * @returns {(number|null)[]}
+ */
+function sessionEndAsInstalled(checkout, session) {
+  const skills = path.join(checkout, '.claude/skills');
+  const link = path.join(skills, 'leeway-engine');
+  fs.mkdirSync(skills, { recursive: true });
+  fs.symlinkSync(path.dirname(path.dirname(harness.ENGINE)), link);
+  try {
+    const settings = JSON.parse(fs.readFileSync(path.join(checkout, '.claude/settings.json'), 'utf8'));
+    const input = JSON.stringify({ session_id: session, cwd: checkout, hook_event_name: 'SessionEnd', reason: 'clear' });
+    return settings.hooks.SessionEnd.flatMap((/** @type {{hooks: {command: string}[]}} */ group) => group.hooks).map(({ command }) => (
+      spawnSync('sh', ['-c', command], { cwd: checkout, env: { ...process.env, CLAUDE_PROJECT_DIR: checkout }, input, encoding: 'utf8' }).status
+    ));
+  } finally {
+    fs.rmSync(link);
+  }
+}
 
 /** The knowledge directory's files a checkout sets up, state-relative. */
 const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((name) => layout.knowledge(name));
@@ -196,5 +224,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, FLAG, LABELS_ON, TODAYS_HOOKS, STORE_FILES, MIGRATED_TO_070, legacyLayout, setupProject, legacyProject, stubbed, real, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails,
+  hookHelpers, FLAG, LABELS_ON, TODAYS_HOOKS, TODAYS_HOOKS_UNLABELLED, sessionEndAsInstalled, STORE_FILES, MIGRATED_TO_070, legacyLayout, setupProject, legacyProject, stubbed, real, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails,
 };

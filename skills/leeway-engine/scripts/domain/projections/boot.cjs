@@ -6,11 +6,11 @@
 // offer, the migration confirm, the label opt-in, the brownfield offer, and
 // the pick between the pieces of work the person's words name — the
 // stops on a git below the engine's floor, in a folder in no git repository,
-// at the reshape's guard, at the checks before its move and at a directive
-// of the migration not yet done, this session carrying it on or another,
-// the knowledge gate's displays, and the banner the bare command opens on.
-// Pure renderers; none reads state (the calling prose follows the boot
-// response and fetches the gate at its display point, and the render
+// at the reshape's guard, and at the checks before its move and a directive
+// of the migration not yet done, this session carrying the migration on or
+// another, the knowledge gate's displays, and the banner the bare command
+// opens on. Pure renderers; none reads state (the calling prose follows the
+// boot response and fetches the gate at its display point, and the render
 // surface reads what a display names).
 // ---------------------------------------------------------------------------
 
@@ -154,11 +154,7 @@ function directiveStop({ project, step, progress, carrier = null }) {
     '>',
     ...(carrier === null
       ? [`> This session carries the migration on from its ${step} step; the start menu follows once the migration is done and committed.`]
-      : [
-        `> Another session is carrying the migration on from its ${step} step, last active ${fmtAge(carrier)} ago, so this one stops here.`,
-        '>',
-        '> Run `/leeway` here again once that session has finished the migration, or has ended.',
-      ]),
+      : takenBy(`its ${step} step`, carrier)),
   ];
   return [
     section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
@@ -169,19 +165,36 @@ function directiveStop({ project, step, progress, carrier = null }) {
 /**
  * Boot's stop before the reshape's move (21.10.13): earlier migrations left
  * checks their code could not make, some fixing files the move carries, so
- * this session makes them first, and no session works in the project until
- * the migration is done.
+ * they come first, and no session works in the project until the migration
+ * is done. This session makes them, or, where another live session carries
+ * the migration on (P7), the stop names when that one was last active, and
+ * this session stops there.
+ * @param {number|null} [carrier] the whole seconds since another session carrying the migration on was last active
  * @returns {string}
  */
-function migrationChecksStop() {
+function migrationChecksStop(carrier = null) {
   return [
     section('DISPLAY: migration checks stop', emitAs('properties'), '⚑ The migration stopped before its move, for checks earlier migrations handed back'),
     section('DISPLAY: migration checks account', emitAs('markdown'), [
       "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Leeway, so they come first. No session works in this project until the migration is done.",
       '>',
-      '> This session takes them up now; the start menu follows once the migration is done and committed.',
+      ...(carrier === null ? ['> This session takes them up now; the start menu follows once the migration is done and committed.'] : takenBy('its checks', carrier)),
     ].join('\n')),
   ].join('\n');
+}
+
+/**
+ * The lines a stop closes on where another session carries the migration
+ * on from `step`, last active `carrier` whole seconds ago.
+ * @param {string} step @param {number} carrier
+ * @returns {string[]}
+ */
+function takenBy(step, carrier) {
+  return [
+    `> Another session is carrying the migration on from ${step}, last active ${fmtAge(carrier)} ago, so this one stops here.`,
+    '>',
+    '> Run `/leeway` here again once that session has finished the migration, or has ended.',
+  ];
 }
 
 /**
