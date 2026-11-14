@@ -63,11 +63,13 @@ Once the cut has landed, ready to build closes on its checklist; `checklist show
 - `replacements-checked` — each replacement made at the spec holds up against what it replaced, its why says why, and every entry that relied on what it replaced has been confirmed (`ledger hold`) or replaced.
 - `invariants-checked` — each invariant in the spec names the hard check that enforces it, or says no check can. One that does neither is a gap (**[writing-and-review.md](references/writing-and-review.md)**).
 
+Mark each as it holds, `checklist done ready-to-build {work_unit} {item}`, or skip it with its reason, `checklist skip ready-to-build {work_unit} {item} --reason "{reason}"`.
+
 The engine's `environment-recorded` stays open until the project's environment setup is asked, once, at its first ready to build. While it is open:
 
 Load **[environment-setup.md](../leeway-shared/references/environment-setup.md)** and follow its instructions as written, with from = `ready to build`.
 
-Mark each as it holds, `checklist done ready-to-build {work_unit} {item}`, or skip it with its reason, `checklist skip ready-to-build {work_unit} {item} --reason "{reason}"`. Close it, `checklist close ready-to-build {work_unit}`, then load **[ready-to-build.md](references/ready-to-build.md)** and follow its instructions as written.
+Close the checklist, `checklist close ready-to-build {work_unit}`, then load **[ready-to-build.md](references/ready-to-build.md)** and follow its instructions as written.
 
 ## Backlogging
 

@@ -8,7 +8,8 @@
 // code gate alone, nothing written (12.7.8, 19.5.18); no cut, no ready to
 // build and no position, its fixes begun — their one phase written into the
 // tracker where it is missing, their beginning recorded on the manifest and
-// committed — and the tasks in progress put in flight (E4); what it reads,
+// committed, the steps for before the build's first task run as they begin
+// (22.5.1) — and the tasks in progress put in flight (E4); what it reads,
 // its recovery note in the quick-fix's own skill re-reading the same: the
 // change, the fixes, the record once written, the unit's record, the
 // build's log and the engine. Its fixes built in the project's own
@@ -196,18 +197,21 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT });
   });
 
-  it('entered again, starts nothing and commits nothing; its phase written with no beginning recorded, it records the beginning alone', () => {
+  it('its first entry runs the steps for before the build\'s first task as its fixes begin (22.5.1); entered again, it starts nothing, runs no step and commits nothing; its phase written with no beginning recorded, it records the beginning alone', () => {
     dir = fresh();
-    enter();
+    environment({ prepare: [{ name: 'Test database', when: 'first', command: 'echo first >> prepared.txt' }] });
+    const first = enter();
     const before = head(dir);
     const again = enter();
     const unmoved = head(dir) === before;
     const read = quickFixData('none yet');
+    const prepared = [first.sections.split('\n').filter((line) => line.startsWith('prepared: ')), fs.readFileSync(path.join(dir, 'prepared.txt'), 'utf8')];
     cleanupFixture(dir);
     dir = fresh();
     ok(dir, ['task', 'phase', UNIT, '1', '--title', 'the fixes']);
     const recorded = enter().res.started;
 
+    assert.deepStrictEqual(prepared, [['prepared: Test database — echo first >> prepared.txt'], 'first\n']);
     assert.deepStrictEqual([again.res, unmoved, again.sections], [{ ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false }, true, read]);
     assert.deepStrictEqual([recorded, subjects(2)], [true, [`implementation(${UNIT}): start`, `task(${UNIT}): write phase 1`]]);
   });

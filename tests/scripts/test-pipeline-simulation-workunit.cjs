@@ -6,7 +6,8 @@
 // unit brought back from the closed units, a completed unit with nothing to
 // do to it; a feature pivoted to an epic; a feature absorbed into an epic,
 // its epic picked and the absorb confirmed; shared files re-homed by absorb;
-// and the guards holding mid-pipeline. A decision changed mid-build (18.S68)
+// the environment setup changed from manage's setup row (start-menu.md,
+// environment-setup.md); and the guards holding mid-pipeline. A decision changed mid-build (18.S68)
 // is test-pipeline-simulation-build-park.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -110,6 +111,24 @@ describe('pipeline simulation: workunit', () => {
     completeUnit(sim.dir, wu);
     assert.ok(sim.manifest(wu).completed_at, 'complete stamps completed_at');
     assert.deepStrictEqual(Object.keys(closedPicked(sim, wu).rows), ['h', 'b'], 'a completed unit offers nothing to do to it until its reopen is built');
+  });
+
+  it('22.S14: the environment setup changed from manage — s draws it as recorded, a Comment sets the part it changes and draws it again, and its yes goes back to manage', () => {
+    const wu = 'flip';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Lifecycle', '--session-log-file', sessionLog(sim, wu)]);
+    const linters = [{ name: 'eslint', command: 'npx eslint .' }];
+
+    assert.ok(startMenu(sim).some(({ key }) => key === 'm'), 'the start menu offers manage');
+    picked(sim, 'start menu', 'm');
+    const setup = picked(sim, 'manage', 's');
+    answerGate(sim, 'manage setup', '--typed', 'comment');
+    sim.read(['environment', 'show']);
+    sim.run(['environment', 'set', 'linters'], null, JSON.stringify(linters));
+    const again = drawn(sim, ['environment-setup', '--from', 'manage']);
+    const back = picked(sim, 'manage setup', 'y');
+
+    assert.deepStrictEqual([sectionOf(setup.out, 'DISPLAY: environment setup').includes('LINTERS\n  · None recorded'), again.out.includes('  · eslint — npx eslint .')], [true, true]);
+    assert.deepStrictEqual([JSON.parse(sim.read(['environment', 'show'])).linters, Object.values(back.rows).some((next) => next.argv?.[2] === wu)], [linters, true], 'the linters recorded, and manage drawn again with the unit');
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {

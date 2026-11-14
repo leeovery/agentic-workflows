@@ -8,7 +8,7 @@ Each task goes from ready to done: started, built by its builder in a worktree o
 
 ## Taking Tasks
 
-`task ready {work_unit} {N}` answers what can start: the tracker's links hold what waits on what, and a task a question parks is never ready. Tasks that share no files run side by side, each in its own worktree; work on a shared file runs one task at a time. Where two runs are found to clash over something they share, a port or a database, record it once, `environment concurrency add {work_unit} "{what}"`, so no build learns it again. Start each task you take, `task start {work_unit} {task}`. A refusal says why the task cannot start yet — its phase not started, or the build running one task at a time — and it waits.
+`task ready {work_unit} {N}` answers what can start: the tracker's links hold what waits on what, and a task a question parks is never ready. Tasks that share no files run side by side, each in its own worktree; work on a shared file runs one task at a time. Start each task you take, `task start {work_unit} {task}`. A refusal says why the task cannot start yet — its phase not started, or the build running one task at a time — and it waits.
 
 Where it answers `back`, that task is in progress already, an answer having freed it, and its turn has come: send its builder its brief again, `brief builder {work_unit} {task}`, by SendMessage to the builder's id. Where this conversation holds no builder for it, after a `/clear`, it goes through **The Builder** afresh, its new builder carrying on from where the work stands.
 

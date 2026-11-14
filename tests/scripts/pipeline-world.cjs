@@ -1234,12 +1234,12 @@ function cutTheSpec(sim, wu, phases) {
 }
 
 // The environment setup asked as the prose asks it at the project's first
-// ready to build (22.5.7): what Claude found recorded part by part — no
-// linter, in a project of none — its screen drawn, and the person's yes
+// ready to build (22.5.7): what is recorded read — nothing to add, in a
+// project that runs nothing — its screen drawn, and the person's yes
 // followed.
 /** @param {Sim} sim */
 function environmentSetup(sim) {
-  sim.run(['environment', 'set', 'linters'], null, '[]');
+  sim.read(['environment', 'show']);
   sim.render(['environment-setup'], { expect: 'content' });
   sim.run(answerGate(sim, 'environment setup', '--pick', 'y').next.argv);
 }

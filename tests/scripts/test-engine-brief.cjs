@@ -373,6 +373,18 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.ok(brief.includes('# The decided calls\n\nNone recorded.\n\n# The linters\n\nNone recorded.\n'), brief);
   });
 
+  it('22.5.1: where the project has steps for each worktree, the builder\'s workplace and the reviewer\'s layout say the call runs them — to wait for it moved to the background, never to run it again while it runs — and a step failing is the project\'s setup: the builder stops, the reviewer reports it', () => {
+    const project = JSON.parse(readState(dir, layout.projectManifest));
+    writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { ...project.environment, prepare: [{ name: 'Dependencies', when: 'worktree', command: 'npm ci' }] } }));
+    const steps = ' The call then runs the project\'s steps that prepare the worktree, which can take minutes: where it is moved to the background, wait for its notification before going on, and never run it again while it runs. A step that fails is the project\'s setup,';
+
+    const builder = issued(['builder', UNIT, '1.1']).brief;
+    const reviewer = issued(['reviewer', UNIT, '1.1', '--base', 'main', '--letter', 'a']).brief;
+
+    assert.ok(builder.includes(`on the task's branch.${steps} the person's: stop and report it, status \`stopped\`, changing nothing to make it pass. Build, run and commit only there.`), builder);
+    assert.ok(reviewer.includes(`is the project's folder there.${steps} never the change: say so in your report, changing nothing to make it pass. Take it apart`), reviewer);
+  });
+
   it('where reading the task sets the tracker up, the set-up is committed and the commit rides the answer', () => {
     const { drivers, ...project } = JSON.parse(readState(dir, layout.projectManifest));
     writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));

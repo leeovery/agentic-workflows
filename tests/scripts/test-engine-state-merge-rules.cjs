@@ -151,10 +151,19 @@ describe('the rules each file merges by', () => {
       assert.deepStrictEqual(conflictLabel(layout.projectManifest, ['environment', 'linters', 'go vet'], 'Fumi').subject, 'the linter "go vet"');
     });
 
-    it('merges how to run the product command by command and the person\'s yes as a value, and the verify setup as one value, never part by part', () => {
+    it('merges how to run the product command by command, and the verify setup as one value, never part by part', () => {
       const verify = { place: 'verify', launch: 'up', drive: 'drive' };
       assert.deepStrictEqual(setups({ run: { tests: 't' } }, { run: { tests: 't', build: 'b' }, confirmed: AT }, { run: { tests: 'u' } }), { value: { environment: { run: { tests: 'u', build: 'b' }, confirmed: AT } }, conflicts: [] });
       assert.deepStrictEqual(setups({ verify }, { verify: { ...verify, launch: 'start' } }, { verify: { ...verify, drive: 'go' } }).conflicts.map(({ field }) => field), [['environment', 'verify']]);
+    });
+
+    it('4.7.4: merges what means the same on both sides to one, unasked — the person\'s yes given on both, the earlier instant; a thing that cannot run at once learned on both in the same words, the earlier record with its unit', () => {
+      const LATER = '2026-06-04T10:00:00Z';
+      assert.deepStrictEqual([setups({}, { confirmed: LATER }, { confirmed: AT }), setups({}, { confirmed: AT }, { confirmed: LATER })], [
+        { value: { environment: { confirmed: AT } }, conflicts: [] }, { value: { environment: { confirmed: AT } }, conflicts: [] },
+      ]);
+      const later = { what: 'port 5432', at: LATER, by: 'b' };
+      assert.deepStrictEqual(setups({ concurrency: [] }, { concurrency: [record('port 5432', 'a')] }, { concurrency: [later] }), { value: { environment: { concurrency: [record('port 5432', 'a')] } }, conflicts: [] });
     });
   });
 

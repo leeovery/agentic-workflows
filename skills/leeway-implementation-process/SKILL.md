@@ -23,7 +23,7 @@ Every phase of the unit's cut has closed, and the review phase, entered straight
 
 ## Entering
 
-Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**; one made from a task's worktree runs as the entry's `engine`. The build's first entry runs the steps that prepare the environment, which can run for minutes: give the Bash call a timeout to match.
+Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**; one made from a task's worktree runs as the entry's `engine`. The build's first entry runs the project's steps that prepare the environment, which can take minutes: where the call is moved to the background, wait for its notification before going on, and never run it again while it runs.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs enter implementation {work_unit}

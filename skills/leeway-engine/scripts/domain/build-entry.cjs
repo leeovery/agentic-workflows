@@ -67,9 +67,11 @@
 //
 // The build's first entry, where the environment setup holds steps for
 // before the build's first task, starts it: the steps run in the code root
-// of the checkout it is entered from, in order and with no lock held, a
-// step that fails refusing the entry with its output's last lines, nothing
-// written (worktree-prep.cjs, `runSteps`); then the start records that they
+// of the checkout it is entered from, in order and with no writer lock
+// held, holding the claim on that checkout's steps, so an entry while
+// another runs them refuses; a step that fails refuses the entry with its
+// exit code and its output's last lines, nothing written (worktree-prep.cjs,
+// `runSteps`, `claimingSteps`); then the start records that they
 // ran, `build.prepared`, the instant, which the entry commits, so no later
 // entry runs them again (22.5.1). A quick-fix's arm runs them as it begins
 // its fixes, which record its start.
@@ -154,7 +156,9 @@ const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { stepsAt, concurrency } = require('./environment.cjs');
-const { runSteps } = require('./worktree-prep.cjs');
+const { runSteps, claimingSteps } = require('./worktree-prep.cjs');
+const { repoFacts } = require('../kernel/isolated-git.cjs');
+const { refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -640,11 +644,16 @@ function buildReads(at) {
 
 /**
  * The steps for before the build's first task, run in the code root of the
- * checkout entered from (the header's): each a line of the DATA.
+ * checkout entered from, holding the claim on its steps (the header's):
+ * each a line of the DATA.
  * @param {Entering} at @returns {Line[]}
  */
 function firstSteps({ cwd }) {
-  const ran = runSteps(codeRoot(cwd), stepsAt(cwd, 'first'), ({ name }, exit) => `enter implementation: the step "${name}" that prepares the environment failed with exit ${exit}, so the build's first task does not start — fix what it reports, then enter again; the Bash tool stops a call at two minutes unless given a longer timeout, so give the entry's call one where the steps run long.`);
+  const steps = stepsAt(cwd, 'first');
+  if (steps.length === 0) return [];
+  const root = codeRoot(cwd);
+  const { gitDir } = /** @type {import('../kernel/isolated-git.cjs').RepoFacts} */ (repoFacts(root));
+  const ran = refusing('enter implementation', () => claimingSteps(gitDir, () => runSteps(root, steps, 'the build\'s first task does not start')));
   return ran.map(({ name, command }) => ['prepared', `${name} — ${command}`]);
 }
 

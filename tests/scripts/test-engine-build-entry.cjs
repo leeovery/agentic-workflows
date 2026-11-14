@@ -22,9 +22,10 @@
 // unit's record by their calls, the build's log, and what the environment
 // setup records cannot run at once (12.S18). The build's first entry runs
 // the steps that prepare the environment before its first task, in order,
-// never those for each worktree nor a note, recording that they ran so no
-// later entry runs them again, a step that fails refusing it with its
-// output, nothing written (22.5.1). The standing (P13): each
+// with the writer lock let go, never those for each worktree nor a note,
+// recording that they ran so no later entry runs them again, a step that
+// fails refusing it with its exit code and output, and an entry while
+// another runs them refused, nothing written (22.5.1). The standing (P13): each
 // phase not yet written, written, running, in review, closed or merged, as
 // the tracker, the checklists and the landing hold it, and the build finished
 // only once every phase of the cut has closed, so nothing ready with a phase
@@ -54,7 +55,7 @@ const os = require('os');
 const path = require('path');
 const {
   ok, okSections, okSectionsAsync, output, refusedPristine, git, stateGit, statePath, layout, writeState, readManifest, commitAll, createFile, fixtureFrom, cleanupFixture,
-  withEnv, FROZEN_AT, accountTaken, setEnvironment, lastMessage,
+  withEnv, FROZEN_AT, accountTaken, setEnvironment, lastMessage, holdLock,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
@@ -500,24 +501,25 @@ describe('the environment setup at the build\'s entry (22.5.1, 12.7.4)', () => {
   /** The DATA lines of an entry's answer that the environment setup adds. @param {string} sections */
   const setupLines = (sections) => sections.split('\n').filter((line) => /^(prepared|not at once): /.test(line));
 
-  it('the build\'s first entry runs the steps for before its first task and for both, in order — never those for each worktree nor a note — recording that they ran, so no later entry runs them again', () => {
+  it('the build\'s first entry runs the steps for before its first task and for both, in order, with the writer lock let go — never those for each worktree nor a note — recording that they ran, so no later entry runs them again', () => {
     recording([
       { name: 'Test database', when: 'first', command: 'echo first >> prepared.txt' },
       { name: 'Env file', when: 'worktree', command: 'echo worktree >> prepared.txt' },
       { name: 'Signing key', when: 'first', note: 'Copy it from the vault' },
+      { name: 'Unlocked', when: 'first', command: `test ! -e "${statePath(dir, layout.lock)}" && echo unlocked >> prepared.txt` },
       { name: 'Dependencies', when: 'both', command: 'echo both >> prepared.txt' },
     ]);
     const first = enter(['solo']);
     const message = lastMessage(dir);
     const again = enter(['solo']);
 
-    assert.deepStrictEqual([first.res.started, setupLines(first.sections), wrote(), typeof readManifest(dir, 'solo').build.prepared, message], [
-      true, ['prepared: Test database — echo first >> prepared.txt', 'prepared: Dependencies — echo both >> prepared.txt'], 'first\nboth\n', 'string', 'implementation(solo): start',
+    assert.deepStrictEqual([first.res.started, setupLines(first.sections).map((line) => line.split(' — ')[0]), wrote(), typeof readManifest(dir, 'solo').build.prepared, message], [
+      true, ['prepared: Test database', 'prepared: Unlocked', 'prepared: Dependencies'], 'first\nunlocked\nboth\n', 'string', 'implementation(solo): start',
     ]);
-    assert.deepStrictEqual([again.res.started, setupLines(again.sections), wrote()], [false, [], 'first\nboth\n']);
+    assert.deepStrictEqual([again.res.started, setupLines(again.sections), wrote()], [false, [], 'first\nunlocked\nboth\n']);
   });
 
-  it('a step that fails refuses the entry with its output, nothing recorded; the entry again, once it is fixed, runs the steps again', () => {
+  it('a step that fails refuses the entry with its exit code and output, the project\'s setup, nothing recorded; the entry again runs the steps again', () => {
     recording([
       { name: 'Dependencies', when: 'both', command: 'echo both >> prepared.txt' },
       { name: 'Ready', when: 'first', command: 'test -f ready.txt || { echo "no ready.txt here"; exit 3; }' },
@@ -525,14 +527,18 @@ describe('the environment setup at the build\'s entry (22.5.1, 12.7.4)', () => {
     const error = refused(['solo']);
     fs.writeFileSync(path.join(dir, 'ready.txt'), 'ready\n');
 
-    assert.strictEqual(error, 'enter implementation: the step "Ready" that prepares the environment failed with exit 3, so the build\'s first task does not start — fix what it reports, then enter again; the Bash tool stops a call at two minutes unless given a longer timeout, so give the entry\'s call one where the steps run long. The last of its output, 40 lines at most:\nno ready.txt here');
+    assert.strictEqual(error, 'enter implementation: the project\'s setup failed: its step "Ready" that prepares the environment exited 3, so the build\'s first task does not start. The last of its output, 40 lines at most:\nno ready.txt here');
     assert.deepStrictEqual([enter(['solo']).res.started, wrote()], [true, 'both\nboth\n']);
   });
 
-  it('runs the steps with the writer lock let go, so a step running for minutes holds no peer up', () => {
-    recording([{ name: 'Unlocked', when: 'first', command: `test ! -e "${statePath(dir, layout.lock)}" && echo unlocked >> prepared.txt` }]);
-    enter(['solo']);
-    assert.strictEqual(wrote(), 'unlocked\n');
+  it('an entry while another runs the steps in the checkout refuses, writing nothing; a claim whose holder is gone is taken over', () => {
+    recording([{ name: 'Test database', when: 'first', command: 'echo first >> prepared.txt' }]);
+    const claim = holdLock(path.join(dir, '.git', 'leeway-preparing'));
+    const error = refused(['solo']);
+    fs.writeFileSync(claim, JSON.stringify({ pid: 2 ** 22 + 1, pid_start: 'gone' }));
+
+    assert.deepStrictEqual([error, fs.existsSync(path.join(dir, 'prepared.txt'))], ['enter implementation: the project\'s steps are running in another call; wait for it', false]);
+    assert.deepStrictEqual([enter(['solo']).res.started, wrote(), fs.existsSync(claim)], [true, 'first\n', false]);
   });
 
   it('12.S18, 22.S15: carries each thing recorded that cannot run at once, so no two tasks running side by side share it', () => {

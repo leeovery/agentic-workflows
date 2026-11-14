@@ -7,8 +7,9 @@
 // the project lays them out, prepared as Claude Code prepares an isolation
 // worktree — the files `.worktreeinclude` names copied, the directories
 // `worktree.symlinkDirectories` names linked — answering the project's
-// folder there; `scratch remove` takes it apart, the links alone and no
-// worktree beside it; and what
+// folder there, the environment setup's steps for each worktree run in it;
+// `scratch remove` takes it apart, the links alone and no worktree beside
+// it; and what
 // they refuse, writing nothing (13.2.2, 14.2.2). How the layout prepares
 // each repository is test-engine-verify-mutants.cjs's, the same routine's.
 //
@@ -22,7 +23,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, commitCode, initRepo, cleanupFixture, createFile, git,
+  ok, refuses, refusedPristine, commitCode, initRepo, cleanupFixture, createFile, git, setEnvironment,
 } = require('./engine-harness.cjs');
 const { unrecorded } = require('./verify-world.cjs');
 
@@ -85,6 +86,22 @@ describe('scratch lay and remove (13.2.2, 14.2.2)', () => {
     assert.deepStrictEqual([fs.existsSync(top), fs.readFileSync(path.join(dir, 'node_modules/dep/index.js'), 'utf8'), registered(dir), registered(lib)], [false, 'dep\n', ...before]);
     assert.deepStrictEqual([builder, scratchAt('pay-1.1-b')].map((beside) => fs.existsSync(beside)), [true, true], 'the worktrees beside it left whole');
     assert.deepStrictEqual(ok(dir, ['scratch', 'remove', NAME]), removed, 'one not there passes');
+  });
+
+  it('22.5.1: runs the steps for each worktree in the project\'s folder there once the include is copied — never those for the build\'s first task — its marker in the worktree\'s own git directory; a step that fails refuses, the project\'s setup', () => {
+    setEnvironment(dir, { prepare: [
+      { name: 'Env', when: 'worktree', command: 'cat .env > prepared.txt' },
+      { name: 'Test database', when: 'first', command: 'echo first > first.txt' },
+    ] });
+    ok(dir, ['scratch', 'lay', NAME, own[1], `lib=${libs[1]}`]);
+    const top = scratchAt();
+    const ran = [fs.readFileSync(path.join(top, 'prepared.txt'), 'utf8'), fs.existsSync(path.join(top, 'first.txt'))];
+    const marked = fs.existsSync(path.join(path.resolve(top, git(top, ['rev-parse', '--git-dir']).trim()), 'leeway-prepared'));
+    setEnvironment(dir, { prepare: [{ name: 'Env', when: 'both', command: 'echo "no env here"; exit 4' }] });
+
+    assert.deepStrictEqual([ran, marked], [['KEY=1\n', false], true]);
+    assert.strictEqual(refuses(dir, ['scratch', 'lay', NAME, own[1], `lib=${libs[1]}`]).error,
+      'scratch lay: the project\'s setup failed: its step "Env" that prepares the environment exited 4, so the worktree laid out to run the tests in is not ready. The last of its output, 40 lines at most:\nno env here');
   });
 
   it('refuses a name of another shape, a child of another shape, a folder no child repository\'s or given twice, a repository given no commit and a commit a repository lacks, writing nothing; another shape answers the usage', () => {

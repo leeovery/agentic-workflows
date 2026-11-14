@@ -56,7 +56,12 @@
 //                  calls, by the engine's absolute path, that lay it out
 //                  so at those commits, prepared as a builder's worktree
 //                  is, and take it apart (scratch.cjs) — named for the
-//                  reviewer, so its brief again lays out the same one
+//                  reviewer, so its brief again lays out the same one;
+//                  where the project has steps for each worktree, which
+//                  the call runs, that it can take minutes, to wait for it
+//                  where it is moved to the background and never run it
+//                  again while it runs, and that a step failing is the
+//                  project's setup, said in the report
 //   reports        the task's last review round's reports, one per
 //                  reviewer of the count (13.3.4), each verbatim under a
 //                  heading naming its reviewer (round-report.cjs), and
@@ -95,8 +100,11 @@
 //                  is the quick-fix's one, with no chain
 //   workplace      where the builder builds, runs and commits: the worktree
 //                  it was started in, laid out by `task worktree` for the
-//                  task; a quick-fix's task, the project's own checkout,
-//                  on the quick-fix's one branch (fix-branch.cjs)
+//                  task — with scratch-layout's words on the steps where
+//                  the project has steps for each worktree, a step failing
+//                  stopping the builder — a quick-fix's task, the project's
+//                  own checkout, on the quick-fix's one branch
+//                  (fix-branch.cjs)
 //   setup-to       where the builder writes the verify setup its task
 //                  builds or changes, for `verify setup --file`: the
 //                  unit's `.cache/{unit}/build/verify-setup.json`, outside
@@ -481,7 +489,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
-const { linters, tests, verifySetup } = require('./environment.cjs');
+const { linters, tests, verifySetup, stepsAt } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const {
   recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands, currentsOf,
@@ -701,6 +709,17 @@ const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path,
 const rangeTips = (tips) => new Map([...tips].map(([repo, branch]) => [repo, onBranch(repo, branch, RANGE_TIP)]));
 
 /**
+ * What a call laying a worktree out asks of the agent making it where the
+ * project has steps for each worktree, which the call runs (worktree-prep.cjs),
+ * a step that fails `failed` says how; none where it has none.
+ * @param {string} cwd @param {string} failed @returns {string}
+ */
+function stepsRunning(cwd, failed) {
+  if (stepsAt(cwd, 'worktree').length === 0) return '';
+  return ` The call then runs the project's steps that prepare the worktree, which can take minutes: where it is moved to the background, wait for its notification before going on, and never run it again while it runs. A step that fails is the project's setup, ${failed}, changing nothing to make it pass.`;
+}
+
+/**
  * Where the reviewer's scratch worktree lays out every repository of the
  * project, each before those nested in it, as the builder's worktree held
  * them all (task-worktree.cjs): one holding work at its tip there, as
@@ -708,10 +727,10 @@ const rangeTips = (tips) => new Map([...tips].map(([repo, branch]) => [repo, onB
  * out, points it at; any other as `otherwise` lays it out. Then the calls
  * that lay the scratch worktree `name` out so, prepared, and take it apart
  * (scratch.cjs).
- * @param {Repo[]} repos @param {Map<Repo, Laid>} tips where each repository holding work is laid out, at its tip
+ * @param {string} cwd @param {Repo[]} repos @param {Map<Repo, Laid>} tips where each repository holding work is laid out, at its tip
  * @param {(repo: Repo) => Laid} otherwise @param {string} name
  */
-function layoutOf(repos, tips, otherwise, name) {
+function layoutOf(cwd, repos, tips, otherwise, name) {
   /** @type {Map<string, string>} */
   const laid = new Map();
   const lines = repos.map((repo) => {
@@ -723,7 +742,7 @@ function layoutOf(repos, tips, otherwise, name) {
   return [
     lines.join('\n'),
     '',
-    'Lay it out from the project\'s checkout with the first call below, which prepares it as the project\'s own checkout is, its ignored files and linked folders among it; its answer\'s `path` is the project\'s folder there. Take it apart with the second once your report is written.',
+    `Lay it out from the project's checkout with the first call below, which prepares it as the project's own checkout is, its ignored files and linked folders among it; its answer's \`path\` is the project's folder there.${stepsRunning(cwd, 'never the change: say so in your report')} Take it apart with the second once your report is written.`,
     '',
     '```bash',
     `${ENGINE_RUN} scratch lay ${name} ${laid.get('')}${children}`,
@@ -798,7 +817,7 @@ function drawDiffRange(filling) {
 function drawScratchLayout(filling) {
   const { ref } = taskOf(filling);
   const { repos, branch, holding } = taskHolding(filling);
-  return layoutOf(repos, rangeTips(new Map(holding.map((repo) => [repo, branch]))), (repo) => (
+  return layoutOf(filling.cwd, repos, rangeTips(new Map(holding.map((repo) => [repo, branch]))), (repo) => (
     branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
   ), scratchName.task(ref.unit, shownTask(ref), letterOf(filling)));
 }
@@ -1787,7 +1806,7 @@ function drawPhaseDiffRange(filling, warnings) {
 function drawPhaseScratchLayout(filling, warnings) {
   const { repos, tips } = phaseHolding(filling, warnings);
   const { unit, phase } = phaseOf(filling);
-  return layoutOf(repos, rangeTips(tips), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
+  return layoutOf(filling.cwd, repos, rangeTips(tips), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
 }
 
 /**
@@ -1907,7 +1926,7 @@ function drawWorkplace(filling) {
   if (ofQuickFixTask(filling)) {
     return `Build in the project's own checkout, \`${codeRoot(filling.cwd)}\`, which the task's start put on ${ref.unit}'s one branch, \`${quickFixBranch(ref.unit)}\` — never in a worktree of your own, and run every command from there. Build, run and commit only there.`;
   }
-  return `Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's \`task worktree ${ref.unit} ${shownTask(ref)}\`. It puts the worktree, and every repository nested in it, on the task's branch. Build, run and commit only there.`;
+  return `Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's \`task worktree ${ref.unit} ${shownTask(ref)}\`. It puts the worktree, and every repository nested in it, on the task's branch.${stepsRunning(filling.cwd, 'the person\'s: stop and report it, status `stopped`')} Build, run and commit only there.`;
 }
 
 /** Whether the task's brief is a quick-fix's, its task built on the quick-fix's one branch in the project's own checkout. @param {Filling} filling */
@@ -2117,7 +2136,7 @@ function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
   const unit = unitOf(filling);
   const named = filling.given.area === undefined ? scratchName.tests(unit) : scratchName.area(unit, filling.given.area, letterOf(filling));
-  return layoutOf(repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), named);
+  return layoutOf(filling.cwd, repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), named);
 }
 
 /**

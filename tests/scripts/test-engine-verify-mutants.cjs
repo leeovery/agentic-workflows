@@ -6,7 +6,8 @@
 // called from, the project laid out there in a scratch worktree of the
 // engine's beside the builders' isolation worktrees, below no folder a test
 // runner leaves out — prepared as an isolation worktree is, each repository's
-// included files copied and the settings' directories linked — and taken
+// included files copied and the settings' directories linked, the
+// environment setup's steps for each worktree run there — and taken
 // apart after, the tool runs in the project's folder there — a project
 // nested in a larger repository its folder of it, never the repository's
 // top — and is handed the lines the phase's commits changed in every
@@ -29,7 +30,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git,
+  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, setEnvironment, layout,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, setupArgs, world } = require('./verify-world.cjs');
 
@@ -155,8 +156,10 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     assert.deepStrictEqual(path.relative(fs.realpathSync(dir), ran).split(path.sep).filter((folder) => LEFT_OUT.includes(folder)), []);
   });
 
-  it('the tool runs in a worktree prepared as Claude Code prepares an isolation worktree, in each repository: the ignored files its own .worktreeinclude names copied, and the directories the project\'s settings name in worktree.symlinkDirectories linked, never copied — a file not ignored, one ignored and not named, and a name leaving the project passed over', () => {
+  it('the tool runs in a worktree prepared as Claude Code prepares an isolation worktree, in each repository: the ignored files its own .worktreeinclude names copied, and the directories the project\'s settings name in worktree.symlinkDirectories linked, never copied — a file not ignored, one ignored and not named, and a name leaving the project passed over — then the environment setup\'s steps for each worktree run there (22.5.1)', () => {
     phaseWork();
+    const { environment } = JSON.parse(readState(dir, layout.projectManifest));
+    setEnvironment(dir, { ...environment, prepare: [{ name: 'Env', when: 'worktree', command: 'cat .env > prepared.txt' }] });
     const lib = path.join(dir, 'lib');
     const files = {
       '.gitignore': '.env\n.env.local\nnode_modules/\n', '.worktreeinclude': '.env\nnotes.txt\n', '.env': 'KEY=1\n', '.env.local': 'LOCAL=1\n', 'notes.txt': 'notes\n',
@@ -166,7 +169,7 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     const outside = `../${path.basename(fs.mkdtempSync(path.join(path.dirname(dir), 'outside-')))}`;
     createFile(dir, '.claude/settings.json', JSON.stringify({ worktree: { symlinkDirectories: ['node_modules', outside] } }));
     createFile(dir, '.claude/settings.local.json', JSON.stringify({ worktree: { symlinkDirectories: ['vendor/'] } }));
-    steering(dir, 'look', `${['.env', '.env.local', 'notes.txt', 'node_modules', 'node_modules/tool/run.txt', outside, 'lib/.env', 'lib/.secret', 'lib/vendor', 'lib/vendor/kit.txt'].join('\n')}\n`);
+    steering(dir, 'look', `${['.env', '.env.local', 'notes.txt', 'node_modules', 'node_modules/tool/run.txt', outside, 'lib/.env', 'lib/.secret', 'lib/vendor', 'lib/vendor/kit.txt', 'prepared.txt'].join('\n')}\n`);
     surviving([]);
 
     try {
@@ -186,6 +189,7 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
       'lib/.secret holds SECRET=1',
       `lib/vendor linked to ${fs.realpathSync(path.join(lib, 'vendor'))}`,
       'lib/vendor/kit.txt holds kit',
+      'prepared.txt holds KEY=1',
     ]);
     assert.deepStrictEqual([fs.readFileSync(path.join(dir, 'node_modules/tool/run.txt'), 'utf8'), fs.readFileSync(path.join(lib, 'vendor/kit.txt'), 'utf8'), fs.existsSync(scratch())], ['run\n', 'kit\n', false], 'taking the worktree apart removes the links alone');
   });

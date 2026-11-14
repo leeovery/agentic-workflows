@@ -27,13 +27,15 @@
 // project for each builder; a task of the cut made on its own phase's
 // chain alone, never on another phase's work not landed, while one of the
 // review's fix phases is made on the unit's work not landed below it
-// (7.2.6). The steps that prepare the environment run in the worktree once
-// it is laid out, after the include is copied, with the writer lock let go
-// — those for each worktree and for both, never those for the build's first
-// task nor a note — none again once all have passed there, a failure
-// refusing with the step's output and run again by the call after
-// (22.5.1, 22.S35). Taking the worktree apart as the task ends, and tasks
-// side by side: test-engine-task-worktree-end.cjs.
+// (7.2.6). The layout made holding the writer lock; the steps that prepare
+// the environment run in the project's folder of the worktree once it is
+// laid out, after the include is copied, with the writer lock let go —
+// those for each worktree and for both, never those for the build's first
+// task nor a note — none again once all have passed there, the marker in
+// the worktree's git directory, a failure refusing with the step's exit
+// code and output and run again by the call after, and a call while
+// another runs them refused (22.5.1, 22.S35). Taking the worktree apart as
+// the task ends, and tasks side by side: test-engine-task-worktree-end.cjs.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -43,7 +45,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath, commitAll, setEnvironment, layout, FROZEN_AT } = require('./engine-harness.cjs');
+const {
+  ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath, commitAll, setEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
+} = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { NESTED, NESTED_TASKS, TRACKER, commitFiles, followRemedy } = require('./landing-world.cjs');
 const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
@@ -367,7 +371,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
 });
 
 describe('task worktree: the steps that prepare the environment (22.5.1)', () => {
-  /** The project with the steps `prepare` names recorded, and a builder's worktree for task 3.1. @param {(dir: string) => object[]} prepare */
+  /** The project with the steps `prepare` names recorded — anything else it writes committed with them — and a builder's worktree for task 3.1. @param {(dir: string) => object[]} prepare */
   function preparing(prepare) {
     const at = project();
     setEnvironment(at.dir, { prepare: prepare(at.dir) });
@@ -378,23 +382,39 @@ describe('task worktree: the steps that prepare the environment (22.5.1)', () =>
   /** What the steps wrote in the worktree. @param {string} tree */
   const wrote = (tree) => fs.readFileSync(path.join(tree, 'prepared.txt'), 'utf8');
 
-  it('22.S35: runs the steps for each worktree and for both in the task\'s worktree, in order, once the include is copied — never the build\'s first task\'s nor a note — and none again once all have passed there', () => {
-    const { at, session, tree } = preparing(() => [
+  /** The worktree's own git directory, where the marker and the claim sit. @param {string} tree */
+  const gitDirOf = (tree) => path.resolve(tree, git(tree, ['rev-parse', '--git-dir']).trim());
+
+  it('22.S35: lays the task out holding the writer lock, then runs the steps for each worktree and for both, in order, once the include is copied, with the lock let go — never the build\'s first task\'s nor a note — none again once all have passed, the marker kept out of the worktree\'s files', (t) => {
+    const { at, session, tree } = preparing((dir) => [
       { name: 'Before the build', when: 'first', command: 'echo first >> prepared.txt' },
       { name: 'Secret', when: 'worktree', command: 'cat lib/.secret >> prepared.txt' },
       { name: 'Signing key', when: 'worktree', note: 'Copy it from the vault' },
+      { name: 'Unlocked', when: 'worktree', command: `test ! -e "${statePath(dir, layout.lock)}" && echo unlocked >> prepared.txt` },
       { name: 'Dependencies', when: 'both', command: 'echo both >> prepared.txt' },
     ]);
     for (const [file, text] of Object.entries({ '.gitignore': '.secret\n', '.worktreeinclude': '.secret\n', '.secret': 'SECRET=1\n' })) createFile(at.lib, file, text);
+    const lock = holdLock(statePath(at.dir, layout.lock));
+    const attempts = lockAttempts(t, lock, () => fs.unlinkSync(lock));
+    /** @type {boolean[]} */
+    const heldAsLaidOut = [];
+    const rename = fs.renameSync;
+    t.mock.method(fs, 'renameSync', (/** @type {string} */ from, /** @type {string} */ to) => {
+      if (String(to).endsWith('laid-out.json')) heldAsLaidOut.push(fs.existsSync(lock));
+      return rename(from, to);
+    });
 
     const first = ok(tree, layOut('3.1'), as(session));
+    const tried = [...attempts];
     const again = ok(tree, layOut('3.1'), as(session));
 
-    assert.deepStrictEqual([first.prepared, wrote(tree)], [[{ name: 'Secret', command: 'cat lib/.secret >> prepared.txt' }, { name: 'Dependencies', command: 'echo both >> prepared.txt' }], 'SECRET=1\nboth\n']);
-    assert.deepStrictEqual([again.prepared, again.repos.every((/** @type {{already?: boolean}} */ repo) => repo.already), wrote(tree)], [undefined, true, 'SECRET=1\nboth\n']);
+    assert.deepStrictEqual([tried, heldAsLaidOut], [['taken', 'made'], [true]], 'the layout waits on a live holder and writes holding the lock');
+    assert.deepStrictEqual([first.prepared.map((/** @type {{name: string}} */ step) => step.name), wrote(tree)], [['Secret', 'Unlocked', 'Dependencies'], 'SECRET=1\nunlocked\nboth\n']);
+    assert.deepStrictEqual([again.prepared, again.repos.every((/** @type {{already?: boolean}} */ repo) => repo.already), wrote(tree)], [undefined, true, 'SECRET=1\nunlocked\nboth\n']);
+    assert.deepStrictEqual([git(tree, ['status', '--porcelain']), fs.existsSync(path.join(gitDirOf(tree), 'leeway-prepared'))], ['?? prepared.txt\n', true], 'the worktree holds nothing but what the steps wrote');
   });
 
-  it('a step that fails stops the task with its output, the worktree laid out; once what it reports is fixed, the call again runs the steps again', () => {
+  it('a step that fails stops the task with its exit code and output, the project\'s setup, the worktree laid out; the call again runs the steps again', () => {
     const { session, tree } = preparing(() => [
       { name: 'Dependencies', when: 'both', command: 'echo both >> prepared.txt' },
       { name: 'Ready', when: 'worktree', command: 'test -f ready.txt || { echo "no ready.txt here"; exit 3; }' },
@@ -403,13 +423,32 @@ describe('task worktree: the steps that prepare the environment (22.5.1)', () =>
     fs.writeFileSync(path.join(tree, 'ready.txt'), 'ready\n');
     const again = ok(tree, layOut('3.1'), as(session));
 
-    assert.strictEqual(refused, 'task worktree: the step "Ready" that prepares the environment failed with exit 3 in this worktree, so the task does not start — fix what it reports, then run task worktree again; the Bash tool stops a call at two minutes unless given a longer timeout, so give its call one where the steps run long. The last of its output, 40 lines at most:\nno ready.txt here');
+    assert.strictEqual(refused, 'task worktree: the project\'s setup failed: its step "Ready" that prepares the environment exited 3, so the task does not start in this worktree. The last of its output, 40 lines at most:\nno ready.txt here');
     assert.deepStrictEqual([again.repos.every((/** @type {{already?: boolean}} */ repo) => repo.already), again.prepared.map((/** @type {{name: string}} */ step) => step.name), wrote(tree)], [true, ['Dependencies', 'Ready'], 'both\nboth\n']);
   });
 
-  it('runs the steps with the writer lock let go, so a step running for minutes holds no peer up', () => {
-    const { session, tree } = preparing((dir) => [{ name: 'Unlocked', when: 'worktree', command: `test ! -e "${statePath(dir, layout.lock)}" && echo unlocked >> prepared.txt` }]);
-    ok(tree, layOut('3.1'), as(session));
-    assert.strictEqual(wrote(tree), 'unlocked\n');
+  it('a call while another runs the steps there refuses, running none; a claim whose holder is gone is taken over', () => {
+    const { session, tree } = preparing(() => [{ name: 'Dependencies', when: 'worktree', command: 'echo both >> prepared.txt' }]);
+    const claim = holdLock(path.join(gitDirOf(tree), 'leeway-preparing'));
+
+    const refused = refuses(tree, layOut('3.1'), as(session)).error;
+    const ran = fs.existsSync(path.join(tree, 'prepared.txt'));
+    fs.writeFileSync(claim, JSON.stringify({ pid: 2 ** 22 + 1, pid_start: 'gone' }));
+    const taken = ok(tree, layOut('3.1'), as(session));
+
+    assert.deepStrictEqual([refused, ran], ['task worktree: the project\'s steps are running in another call; wait for it', false]);
+    assert.deepStrictEqual([taken.prepared.map((/** @type {{name: string}} */ step) => step.name), wrote(tree), fs.existsSync(claim)], [['Dependencies'], 'both\n', false]);
+  });
+
+  it('7.2.17: in a project that is a folder of a larger repository, the steps run in the project\'s folder of the worktree, never its top', () => {
+    const { session, tree } = preparing((dir) => {
+      createFile(dir, 'app/readme.txt', 'app\n');
+      return [{ name: 'Where', when: 'worktree', command: 'pwd > where.txt' }];
+    });
+    const app = path.join(tree, 'app');
+
+    ok(app, layOut('3.1'), as(session));
+
+    assert.deepStrictEqual([fs.readFileSync(path.join(app, 'where.txt'), 'utf8').trim(), fs.existsSync(path.join(tree, 'where.txt'))], [fs.realpathSync(app), false]);
   });
 });

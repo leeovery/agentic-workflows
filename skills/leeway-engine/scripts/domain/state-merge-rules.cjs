@@ -34,13 +34,16 @@
 //   the sides differ the remote's stands, with or without an ancestor
 //   (4.7.12, 16.13.5). The project manifest's environment setup
 //   (environment.cjs) merges part by part: how to run the product command
-//   by command, and the person's yes, as any field; the verify setup as one
+//   by command, as any field; the person's yes, given on both sides, the
+//   earlier instant, the same yes asked twice; the verify setup as one
 //   value, never part by part, since its parts and the run it was recorded
 //   after hold together; and the steps that prepare the environment, what
 //   cannot run at once and the linters each as a set, its entries keyed by
 //   the field naming each once (`ENVIRONMENT_SETS`), so both sides' entries
 //   stay, each entry merged as one value against the ancestor's of its
-//   key: the remote's in its order, then this clone's new ones in its.
+//   key: the remote's in its order, then this clone's new ones in its. A
+//   thing that cannot run at once learned on both sides, in the same words,
+//   is one record: the earlier, with the unit that learned it then (4.7.4).
 // - The tracker's store: each file a task driver names (`storeFiles`) is
 //   merged by that driver (`mergeStore`), which reads the tracker's own
 //   records (7.5, 29.14.9); the fields both sides changed differently are
@@ -368,9 +371,11 @@ function choiceId(choice) {
 
 /**
  * How a field merges where it is not as any other: the remote's wherever the
- * sides differ; one value, never recursed into; or a set of entries, each
- * keyed by the field `keyedBy` names.
- * @typedef {'remote'|'whole'|{keyedBy: string}} FieldRule
+ * sides differ; one value, never recursed into; a set of entries, each
+ * keyed by the field `keyedBy` names; or, where both sides hold one, the
+ * earlier — the value an instant itself, or its field `earliestBy` names
+ * one — and as one value otherwise.
+ * @typedef {'remote'|'whole'|{keyedBy: string}|{earliestBy: string|null}} FieldRule
  */
 
 /** @typedef {{conflicts: FieldConflict[], pickOf: PickOf, ruleAt: (field: string[]) => FieldRule|null}} FieldMerge */
@@ -392,9 +397,9 @@ function mergeValue(base, local, remote, field, merge) {
     const appended = bothAppended(base, local, remote);
     if (appended !== undefined) return appended;
   }
-  if (rule !== null && rule !== 'whole') {
-    const keyed = mergeKeyed(base, local, remote, field, merge, rule.keyedBy);
-    if (keyed !== undefined) return keyed;
+  if (rule !== null && typeof rule === 'object') {
+    const merged = 'keyedBy' in rule ? mergeKeyed(base, local, remote, field, merge, rule.keyedBy) : earlierOf(local, remote, rule.earliestBy);
+    if (merged !== undefined) return merged;
   }
   const choice = { field, local: sideOf(local), remote: sideOf(remote) };
   const pick = merge.pickOf(choice);
@@ -448,6 +453,23 @@ function mergeKeyed(base, local, remote, field, merge, key) {
 }
 
 /**
+ * The earlier of two values both sides hold, each read as an instant — the
+ * value itself where `by` is null, else its field `by` — the remote's on a
+ * tie; undefined where either is not one.
+ * @param {unknown} local @param {unknown} remote @param {string|null} by
+ * @returns {unknown}
+ */
+function earlierOf(local, remote, by) {
+  const instant = (/** @type {unknown} */ value) => {
+    const at = by === null ? value : isObject(value) ? value[by] : undefined;
+    return typeof at === 'string' ? Date.parse(at) : NaN;
+  };
+  const [mine, theirs] = [instant(local), instant(remote)];
+  if (Number.isNaN(mine) || Number.isNaN(theirs)) return undefined;
+  return mine < theirs ? local : remote;
+}
+
+/**
  * Two JSON values merged field by field against their common ancestor
  * (undefined where it held none). Each conflict carries the pick `pickOf`
  * names for its choice, and takes it; a conflict with no pick takes the
@@ -479,17 +501,21 @@ function mergeManifest(file, base, local, remote, pickOf) {
 /**
  * How a field of the manifest `file` merges, where it is not as any other
  * (the header's): the project's id, the remote's; the environment setup's
- * verify setup, one value; its lists, each a keyed set, each entry one value.
+ * person's yes, the earlier; its verify setup, one value; its lists, each a
+ * keyed set, each entry one value, a record of what cannot run at once the
+ * earlier by when it was made.
  * @param {string} file @param {string[]} field @returns {FieldRule|null}
  */
 function manifestRule(file, field) {
   if (same([file, ...field], PROJECT_KEY)) return 'remote';
   if (file !== PROJECT_KEY[0] || field[0] !== ENVIRONMENT) return null;
   const [, part] = field;
+  if (field.length === 2 && part === 'confirmed') return { earliestBy: null };
   if (field.length === 2 && part === 'verify') return 'whole';
   if (!Object.hasOwn(ENVIRONMENT_SETS, part)) return null;
   if (field.length === 2) return { keyedBy: ENVIRONMENT_SETS[/** @type {keyof typeof ENVIRONMENT_SETS} */ (part)] };
-  return field.length === 3 ? 'whole' : null;
+  if (field.length !== 3) return null;
+  return part === 'concurrency' ? { earliestBy: 'at' } : 'whole';
 }
 
 // The entries a field can belong to, by where they sit in a manifest: the
