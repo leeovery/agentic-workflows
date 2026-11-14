@@ -43,10 +43,11 @@ const { asideBlock } = require('./review-phase.cjs');
 /**
  * Finish as it is drawn: the unit and its title, the inbox items it closed,
  * the skips it shows, the verdict asked, null where none waits, what its
- * reads warned of, and what put back set aside, null where it set aside
- * nothing.
+ * reads warned of, what put back set aside, null where it set aside
+ * nothing, and the unit's own branch and the default branch it lands on,
+ * null for a unit with no branch of its own (14.5.2).
  * @typedef {{
- *   unit: string, title: string,
+ *   unit: string, title: string, lands: {branch: string, into: string}|null,
  *   closed: {title: string, kind: string}[],
  *   skips: {checklist: string, text: string, reason: string}[],
  *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
@@ -85,10 +86,16 @@ function finishBlocks(view) {
 /** The screen's display: its title, then each block that has something to show. @param {FinishView} view */
 const finishDisplay = (view) => [`${view.title} — finish`, ...finishBlocks(view)].join('\n\n');
 
-/** Finish's gate: questions about what was built invited, then the yes and a comment. @param {FinishView} view */
-function finishGate({ unit }) {
+/**
+ * Finish's gate: questions about what was built invited, then the yes —
+ * saying it lands the unit's own branch on the default branch, where it has
+ * one (14.5.2) — and a comment.
+ * @param {FinishView} view
+ */
+function finishGate({ unit, lands }) {
+  const yes = lands === null ? 'Land what still stands, and complete the work' : `Land ${lands.branch} on ${lands.into}, and complete the work`;
   return section('MENU: finish', MENU_INSTRUCTION, menu('Ask me anything about what was built first — I answer it before we finish.', [
-    cmdOption('y', 'yes', 'Land what still stands, and complete the work', { next: { kind: 'engine', argv: ['finish', 'yes', unit] } }),
+    cmdOption('y', 'yes', yes, { next: { kind: 'engine', argv: ['finish', 'yes', unit] } }),
     promptOption('Comment', 'Ask about what was built, or tell me what to change'),
   ], { question: 'Finish the work?' }));
 }

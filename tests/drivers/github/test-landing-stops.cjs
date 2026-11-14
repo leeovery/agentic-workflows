@@ -393,10 +393,10 @@ describe('the stand-in gh and the live run (7.3.7, 7.S15)', () => {
     const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'gh-called-'));
     fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\ntouch "${bin}/called"\n`, { mode: 0o755 });
     try {
-      for (const args of [[], ['portal'], ['acme/portal', 'ext'], ['acme/portal', 'acme/portal'], ['acme/portal', 'acme/ext', 'more']]) {
+      for (const args of [[], ['portal'], ['acme/portal', 'ext'], ['acme/portal', 'acme/portal'], ['acme/portal', 'acme/ext', 'more'], ['acme/portal', '--unit'], ['acme/portal', '--unit', 'acme/portal'], ['acme/portal', '--unit', 'unit']]) {
         const ran = spawnSync(process.execPath, [path.join(__dirname, 'live-run.cjs'), ...args], { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
         assert.deepStrictEqual([ran.status, ran.stderr], [
-          2, 'live-run: name the scratch repository on GitHub you created for this run, as <owner>/<repo>, and, for a submodule, a second one, as <owner>/<sub-repo> — nothing has been done\n',
+          2, 'live-run: name the scratch repository on GitHub you created for this run, as <owner>/<repo>, for a submodule a second one, as <owner>/<sub-repo>, and for a unit\'s own branch another, as --unit <owner>/<unit-repo> — nothing has been done\n',
         ], args.join(' '));
       }
       assert.strictEqual(fs.existsSync(path.join(bin, 'called')), false);

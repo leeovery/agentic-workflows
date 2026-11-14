@@ -47,7 +47,9 @@
 //   A unit's landing record (`landings.{task}.{repo}`, landing-record.cjs)
 //   is never a choice either: where both sides recorded one task's landing
 //   in one repository differently, the remote's record stands — either
-//   says the task landed.
+//   says the task landed. Nor is a unit's own branch (`build.branch`,
+//   unit-branch.cjs): where the sides differ, the remote's stands, the
+//   branch its clone made and pushed first.
 // - The tracker's store: each file a task driver names (`storeFiles`) is
 //   merged by that driver (`mergeStore`), which reads the tracker's own
 //   records (7.5, 29.14.9); the fields both sides changed differently are
@@ -93,6 +95,9 @@ const ENVIRONMENT = 'environment';
 
 /** Whether `field` of the manifest `file` is one landing record: a unit's `landings.{task}.{repo}`. @param {string} file @param {string[]} field */
 const landingRecord = (file, field) => file !== PROJECT_KEY[0] && field.length === 3 && field[0] === LANDINGS;
+
+/** Whether `field` of the manifest `file` is a unit's own branch, `build.branch`. @param {string} file @param {string[]} field */
+const unitBranchRecord = (file, field) => file !== PROJECT_KEY[0] && field.length === 2 && field[0] === 'build' && field[1] === 'branch';
 
 /** @typedef {'ledger'|'migrations'|'manifest'|'store'|'notes'|'whole'|'file'} MergeRule */
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
@@ -507,14 +512,15 @@ function mergeManifest(file, base, local, remote, pickOf) {
 
 /**
  * How a field of the manifest `file` merges, where it is not as any other
- * (the header's): the project's id and a unit's landing record, the
- * remote's; the environment setup's person's yes, the earlier; its verify
- * setup, one value; its lists, each a keyed set, each entry one value, a
- * record of what cannot run at once the earlier by when it was made.
+ * (the header's): the project's id, a unit's landing record and its own
+ * branch, the remote's; the environment setup's person's yes, the
+ * earlier; its verify setup, one value; its lists, each a keyed set, each
+ * entry one value, a record of what cannot run at once the earlier by when
+ * it was made.
  * @param {string} file @param {string[]} field @returns {FieldRule|null}
  */
 function manifestRule(file, field) {
-  if (same([file, ...field], PROJECT_KEY) || landingRecord(file, field)) return 'remote';
+  if (same([file, ...field], PROJECT_KEY) || landingRecord(file, field) || unitBranchRecord(file, field)) return 'remote';
   if (file !== PROJECT_KEY[0] || field[0] !== ENVIRONMENT) return null;
   const [, part] = field;
   if (field.length === 2 && part === 'confirmed') return { earliestBy: null };

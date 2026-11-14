@@ -41,7 +41,8 @@
 //   is added (16.10.5). Finish then invites questions about what was built,
 //   answered before finishing (14.5.1); and what the review's put backs set
 //   aside, where they set aside anything, said to stay until the person
-//   removes it. A quick-fix's close says, under its title, what running the
+//   removes it; its yes saying it lands the unit's own branch on the
+//   default branch, for a unit with one (14.5.2). A quick-fix's close says, under its title, what running the
 //   product proved of each fix done, each scenario it names from its runs
 //   at the quick-fix's branch's tip (build-screens.cjs, `ranOf`), or in one
 //   line that the project has no way to run it, no verify setup recorded
@@ -58,7 +59,8 @@
 //   checkout holding changes not committed outside the state, naming each,
 //   its fixes having been built there (fix-branch.cjs). It lands every phase still
 //   standing (`land finish`, landing.cjs) — the review phase's fix phases,
-//   numbered past the cut, after every other (7.2.6); a quick-fix's one pull
+//   numbered past the cut, after every other (7.2.6), then, for a unit with
+//   a branch of its own, that branch on the default branch (7.2.38); a quick-fix's one pull
 //   request, every task's commit squashed into one, or, where a merge by
 //   hand landed it, the branch it lands on here brought up to the host's —
 //   a refusal there leaving the unit as it was, with its way on; a
@@ -106,6 +108,9 @@ const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
 const { ontoMenu } = require('./topic-leave.cjs');
+const { recordedBranch, defaultBranch } = require('./landing-git.cjs');
+const { remoteName } = require('./remote.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -222,6 +227,17 @@ function carryingAll(warnings, read) {
 }
 
 /**
+ * The unit's own branch and the default branch it lands on at finish's yes
+ * (7.2.38, 14.5.2), null for a unit with no branch of its own.
+ * @param {string} cwd @param {string} unit
+ * @returns {{branch: string, into: string}|null}
+ */
+function landsAt(cwd, unit) {
+  const branch = recordedBranch(cwd, unit);
+  return branch === null ? null : { branch, into: defaultBranch(codeRoot(cwd), remoteName(cwd), false) };
+}
+
+/**
  * `render finish <unit>`: the screen — a quick-fix's, its close.
  * @param {string} cwd @param {{dotpath?: string}} args
  * @returns {string}
@@ -232,6 +248,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
     const view = {
       unit,
       title: itemTitle(topicTitles(manifest), 'review', unit),
+      lands: landsAt(cwd, unit),
       closed: closedBy(cwd, unit),
       skips: skips.map(({ checklist, text, reason }) => ({ checklist, text, reason })),
       verdict,

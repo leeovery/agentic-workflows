@@ -218,7 +218,7 @@ function builtOnWhy(cwd, manifest, ref, held) {
   const behind = held.find((one) => !builtOn(read, ref.unit, one));
   if (behind === undefined) return null;
   const { repo, branch } = behind;
-  const into = landingBranch(cwd, repo);
+  const into = landingBranch(cwd, repo, ref.unit);
   const where = `in ${repoNamed(repo)}, this commit holds neither ${branch}, task 1.1's branch, where the test was proven, nor its landing`;
   const git = gitIn(repo);
   if (landedIn(read, ref.unit, repo)) return `${where}, which is on ${into} — ${mergeWay(into, into, git)}`;

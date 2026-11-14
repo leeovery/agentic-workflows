@@ -27,7 +27,8 @@
 // task is (task-landed.cjs, 7.2.22), so a merge by hand by any method still
 // gives the change its landing. So in each repository:
 // - its base is the branch given where it has that branch, else the branch
-//   it lands on (landing-git.cjs); a base given that no repository has is
+//   it lands the unit's work on, the unit's own where it has one
+//   (landing-git.cjs, `landingBranch`); a base given that no repository has is
 //   refused, so a misnamed one never passes as the default;
 // - the unit's landings (`landingParts`), oldest first: each of its tasks
 //   landed on the base, at its landing there as every type's is read
@@ -123,10 +124,10 @@ const { stackOf } = require('./phase-stack.cjs');
  */
 /** The whole change: the project's repositories, and the change in each holding it, the project's own first. @typedef {{repos: Repo[], holding: ChangeIn[]}} Change */
 
-/** The branch a repository lands on, null where it names none. @param {string} cwd @param {Repo} repo */
-function landingBranchOf(cwd, repo) {
+/** The branch a repository lands the unit's work on (landing-git.cjs, `landingBranch`), null where it names none. @param {string} cwd @param {Repo} repo @param {string} unit */
+function landingBranchOf(cwd, repo, unit) {
   try {
-    return landingBranch(cwd, repo);
+    return landingBranch(cwd, repo, unit);
   } catch {
     return null;
   }
@@ -390,7 +391,7 @@ function changeOn(cwd, unit, { pending, tasks, landed }, given, repos) {
   refuseBase(given, repos);
   const stack = new Map([...stackTips(cwd, unit, pending, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
   const based = repos.flatMap((repo) => {
-    const base = given !== null && branches(repo.path).has(given) ? given : landingBranchOf(cwd, repo);
+    const base = given !== null && branches(repo.path).has(given) ? given : landingBranchOf(cwd, repo, unit);
     return base === null ? [] : [{ repo, base }];
   });
   const holding = based.flatMap(({ repo, base }) => {

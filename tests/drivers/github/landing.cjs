@@ -184,6 +184,10 @@ module.exports = {
   }))].sort(),
   /** Whether the quick-fix `unit` is open in the repository at `dir`: a pull request of its branch open on GitHub. @param {string} dir @param {string} unit */
   quickFixOpen: (dir, unit) => github(dir).pulls.some((pull) => pull.state === 'OPEN' && pull.head === names.quickFixBranch(unit)),
+  /** The repository at `dir` made to allow no merge commits, as its settings on GitHub may. @param {string} dir */
+  noMergeCommits: (dir) => onGithub(dir, (state) => {
+    state.merges = false;
+  }),
   /** A merge in the repository at `dir` refused by GitHub while its environment is the call's. @param {string} dir */
   refuseMerge: (dir) => ({ env: { GH_STUB_FAULT: 'unmergeable@pr merge', GH_STUB_FAULT_REPO: github(dir).repo }, undo: () => {} }),
   /** The ways a person merges a quick-fix's pull request on GitHub's site, the default branch `into` here pulled after it or not. */

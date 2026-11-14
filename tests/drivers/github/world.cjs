@@ -102,15 +102,15 @@ function closeByHand(dir, number) {
 
 /**
  * A pull request merged by hand on GitHub, into `into`, else its base, by
- * `method` — squashed, else a merge commit, the site's default button, or
- * its own commits put on the branch.
+ * `method` — squashed under its title, else a merge commit under the site's
+ * own message, its default button, or its own commits put on the branch.
  * @param {string} dir @param {number} number @param {string} [into] @param {'squash'|'merge'|'rebase'} [method]
  */
 function mergeByHand(dir, number, into, method = 'squash') {
   onGithub(dir, (state) => {
     const pull = state.pulls.find((held) => held.number === number);
     if (pull === undefined) throw new Error(`no pull request #${number}`);
-    stub.mergePulls(githubOf(dir), state, [pull], method, { into: into ?? pull.base, subject: pull.title });
+    stub.mergePulls(githubOf(dir), state, [pull], method, { into: into ?? pull.base, ...(method === 'squash' ? { subject: pull.title } : {}) });
   });
 }
 

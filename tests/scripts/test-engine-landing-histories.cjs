@@ -8,15 +8,17 @@
 // before landing or once a verb read the landing — refused, the way on
 // followed — main moved on by the person's own commits, and phases landed;
 // then everything still to land landed by the verbs, every refusal's way on
-// followed. Each
-// history is held to a model of what each task's work is, built from the
-// writes alone: main holds every task's final work once, the person's own
-// kept; every task's record holds its branch's work; and no verb lands a
-// commit that changes nothing. The generator, the model and the checks
+// followed — half of them a unit's with a branch of its own, its tasks
+// landing there and the branch landed on main at finish (7.2.34, 7.2.38).
+// Each history is held to a model of what each task's work is, built from
+// the writes alone: main holds every task's final work once, the person's
+// own kept; every task's record holds its branch's work; and no verb lands
+// a commit that changes nothing. The generator, the model and the checks
 // are landing-history-world.cjs's. Conformance layer. Budget: 36 s — four
 // histories on each driver at the gate, each a whole phase walked from its
-// cut to its last landing; fewer would sample a driver's shapes too thinly
-// to catch a regression there.
+// cut to its last landing, half of them a unit's landed at finish besides;
+// fewer would sample a driver's shapes too thinly to catch a regression
+// there.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

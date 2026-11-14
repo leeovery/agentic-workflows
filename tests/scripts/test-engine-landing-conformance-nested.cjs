@@ -10,7 +10,11 @@
 // the task's branch; a phase merges in each, the project's default branch
 // then pointing the submodule at the submodule's, and finish lands what
 // stands in each; a phase's close in step reads a task in its stack once
-// opened wherever its change touches. A verb refused in one repository is
+// opened wherever its change touches; and a unit with a branch of its own
+// has one in each repository a task of it touches, made as that task opens,
+// each landed on its default branch at finish, children first, the
+// project's then pointing the submodule at a commit the submodule's holds
+// (7.2.40, 7.S37). A verb refused in one repository is
 // test-engine-landing-conformance-nested-refusals.cjs's; fix phases stacked
 // on a phase that moved the pointer,
 // test-engine-landing-conformance-stacked.cjs's and
@@ -26,15 +30,15 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { tip } = require('./engine-harness.cjs');
+const { tip, git } = require('./engine-harness.cjs');
 const { createManifest, readManifest } = require('./discovery-test-utils.cjs');
-const { NESTED_TASKS, openArgs, nestedConformance, finishReady } = require('./landing-world.cjs');
+const { NESTED, NESTED_TASKS, openArgs, nestedConformance, finishReady, buildBegun, startClosed, phaseReviewed } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { rates, show, cache } = NESTED_TASKS;
 
 for (const { name } of listDrivers('landing')) {
-  const { side, project, repos, ok, tasksLanded, pointsAtSubmodule } = nestedConformance(name, `engine-landing-nested-${name}-`);
+  const { side, project, repos, pointer, ok, tasksLanded, pointsAtSubmodule } = nestedConformance(name, `engine-landing-nested-${name}-`);
 
   describe(`the ${name} landing driver across nested repositories (7.2.17, 7.S19)`, () => {
     it('a task lands in every repository it touches, children first, each on its own default branch, and in none it does not — opened, chained, merged as a phase and finished, the project\'s default branch then pointing the submodule at the submodule\'s', () => {
@@ -58,6 +62,26 @@ for (const { name } of listDrivers('landing')) {
         ['.gitignore', '.gitmodules', 'app.txt', 'ext', 'rates.txt', 'show.txt'], ['ext-rates.txt', 'ext.txt'], ['cache.txt', 'lib-rates.txt', 'lib.txt'],
       ]);
       for (const [dir, into] of Object.values(repos(at))) assert.strictEqual(tip(dir, into), side.defaultTip(dir, into), `${dir}'s default branch here does not hold its landing`);
+    });
+
+    it('a unit with its own branch has one in each repository a task of it touches, made as the task opens, landed at finish on each default branch, children first, by a merge commit, the project\'s pointing the submodule at a commit the submodule\'s holds (7.2.40, 7.S37)', () => {
+      const at = project();
+      buildBegun(at.dir, 5);
+      startClosed(at.dir, 1, side.env);
+      const bases = ok(at.dir, openArgs(rates)).repos.map((/** @type {{repo: string, base: string}} */ { repo, base }) => [repo, base]);
+      ok(at.dir, openArgs(show));
+      phaseReviewed(at.dir, 1, 'auto');
+      ok(at.dir, ['land', 'phase', 'pay', '1']);
+      finishReady(at.dir);
+      const finished = ok(at.dir, ['land', 'finish', 'pay']).repos.filter((/** @type {{landed?: string}} */ answer) => answer.landed !== undefined).map((/** @type {{repo: string, landed: string}} */ { repo, landed }) => [repo, landed]);
+      const held = git(side.on(at.ext), ['merge-base', '--is-ancestor', pointer(at), NESTED.ext.into]) === '';
+
+      assert.deepStrictEqual({ bases, finished, tasks: tasksLanded(at), held }, {
+        bases: [['ext', 'feat/pay'], ['lib', 'feat/pay'], ['.', 'feat/pay']],
+        finished: [['ext', 'feat/pay'], ['lib', 'feat/pay'], ['.', 'feat/pay']],
+        tasks: { '.': ['pay-1-1', 'pay-1-2', null], ext: ['pay-1-1', null], lib: ['pay-1-1', null] },
+        held: true,
+      });
     });
 
     it('a phase\'s close in step reads a task in its stack once it is opened wherever its change touches, a repository holding its branch with nothing past the default branch passed over (7.2.4)', () => {

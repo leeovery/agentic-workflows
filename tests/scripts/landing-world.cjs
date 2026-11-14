@@ -262,20 +262,25 @@ function trackUnit(dir, tasks) {
   commitAll(dir, 'the unit\'s tasks');
 }
 
+/** A cut of `phases` phases, each named by its number, relying on nothing. @param {number} [phases] */
+const cutOf = (phases = PHASES) => ({ phases: Array.from({ length: phases }, (_, at) => ({ name: `Phase ${at + 1}`, scenarios: [], sections: ['1'], relies_on: [] })) });
+
 /**
  * The unit readied for finish's landing, as `land finish` asks it: its
- * build begun, in auto, through a cut of a phase for each the tracker
- * holds, each closed, its spec of one area, its review phase passed in
- * round 1 with no fix task, and finish's checklist closed — committed on
- * the state branch, so no landing verb reads it as a change of the test's.
+ * build begun, in auto — its own branch kept, where its manifest records
+ * one — through a cut of a phase for each the tracker holds, each closed,
+ * its spec of one area, its review phase passed in round 1 with no fix
+ * task, and finish's checklist closed — committed on the state branch, so
+ * no landing verb reads it as a change of the test's.
  * @param {string} dir
  */
 function finishReady(dir) {
   const numbers = Array.from({ length: PHASES }, (_, at) => at + 1);
+  const held = readManifest(dir, UNIT);
   const manifest = {
-    ...readManifest(dir, UNIT),
-    build: { position: 'auto' },
-    cut: { phases: numbers.map((phase) => ({ name: `Phase ${phase}`, scenarios: [], sections: ['1'], relies_on: [] })) },
+    ...held,
+    build: { ...held.build, position: 'auto' },
+    cut: cutOf(),
     checklists: {
       ...Object.fromEntries(numbers.flatMap((phase) => ['start', 'close'].map((end) => [`phase-${phase}-${end}`, { items: {}, closed: FROZEN_AT }]))),
       finish: { items: {}, closed: FROZEN_AT },
@@ -290,14 +295,52 @@ function finishReady(dir) {
 
 /**
  * The unit building in `position` through a cut of a phase for each the
- * tracker holds, phase `phase`'s review passed — a passing report from each
- * reviewer of the count — as `land phase` and the phase's close ask it.
+ * tracker holds — its own branch kept, where its manifest records one —
+ * phase `phase`'s review passed — a passing report from each reviewer of
+ * the count — as `land phase` and the phase's close ask it.
  * @param {string} dir @param {number} phase @param {'auto'|'step'} position
  */
 function phaseReviewed(dir, phase, position) {
-  const numbers = Array.from({ length: PHASES }, (_, at) => at + 1);
-  createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position }, cut: { phases: numbers.map((at) => ({ name: `Phase ${at}`, scenarios: [], sections: ['1'], relies_on: [] })) } });
+  const held = readManifest(dir, UNIT);
+  createManifest(dir, UNIT, { ...held, build: { ...held.build, position }, cut: cutOf() });
   for (const letter of REVIEWER_LETTERS) writeState(dir, layout.unit(UNIT, 'build', 'phases', `phase-${phase}`, `review-${letter}.md`), PASSING);
+}
+
+/**
+ * The unit a `type`, its build begun in auto through a cut of `phases`
+ * phases, none started, committed on the state branch.
+ * @param {string} dir @param {number} phases @param {string} [type]
+ */
+function buildBegun(dir, phases, type = 'feature') {
+  commitOnState(statePath(dir), { [layout.manifest(UNIT)]: `${JSON.stringify({ ...readManifest(dir, UNIT), work_type: type, build: { position: 'auto' }, cut: cutOf(phases) }, null, 2)}\n` }, 'the build begun');
+}
+
+/**
+ * A phase's start closed through the checklist's verbs, its shared design
+ * settled first, every call under `env`: the close's answer.
+ * @param {string} dir @param {number} phase @param {Record<string, string|undefined>} env
+ */
+function startClosed(dir, phase, env) {
+  ok(dir, ['checklist', 'done', 'phase-start', UNIT, String(phase), 'design-settled'], { env });
+  return ok(dir, ['checklist', 'close', 'phase-start', UNIT, String(phase)], { env });
+}
+
+/**
+ * The landing world built at `dir` and readied for the driver of `side`,
+ * its unit's build begun through a cut of five phases and its first
+ * phase's start closed, which makes `feat/{unit}` (unit-branch.cjs), and
+ * phase 1's task 1.1 landed on it, every call under the driver's
+ * environment.
+ * @param {string} dir @param {{env: Record<string, string|undefined>, prepare: (dir: string) => void}} side
+ */
+function unitBranchLanded(dir, side) {
+  buildLanding(dir);
+  side.prepare(dir);
+  buildBegun(dir, PHASES);
+  startClosed(dir, 1, side.env);
+  ok(dir, openArgs(TASKS.card), { env: side.env });
+  phaseReviewed(dir, 1, 'auto');
+  ok(dir, ['land', 'phase', UNIT, '1'], { env: side.env });
 }
 
 /** A repository's first commit: `file`, holding its name, committed in its checkout. @param {string} repo @param {string} file */
@@ -1030,7 +1073,7 @@ function mergedInto(dir, branch, from = 'main', settled = 'ours', forward = true
 
 module.exports = {
   UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pointersOn, extUpstream, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, finishReady, phaseReviewed,
-  landedHere, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped,
+  cutOf, buildBegun, startClosed, unitBranchLanded, landedHere, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped,
   refusedMoving, alreadyMoving, wordsOf, commandsOf, rebaseStopped, followRemedy, followedOn,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

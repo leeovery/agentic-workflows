@@ -60,8 +60,8 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'taken', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint']),
-    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'pushedOver', 'finished', 'protectBranch', 'setSquashDefault']),
+    required: /** @type {const} */ (['serves', 'taken', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint', 'landUnit', 'closeUnit']),
+    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'pushedOver', 'finished', 'protectBranch', 'setSquashDefault', 'unitPull']),
   },
 });
 
@@ -239,6 +239,8 @@ const METHODS = Object.freeze({
 /** @typedef {import('./landing.cjs').ChainTip} ChainTip */
 /** @typedef {import('./landing.cjs').QuickFixTask} QuickFixTask */
 /** @typedef {import('./landing.cjs').QuickFixPull} QuickFixPull */
+/** @typedef {import('./landing.cjs').UnitPull} UnitPull */
+/** @typedef {import('./landing.cjs').UnitLanding} UnitLanding */
 /**
  * A landing driver's methods, and the least each answers — what the landing
  * conformance suite reads. Each verb acts in one repository of the
@@ -291,7 +293,18 @@ const METHODS = Object.freeze({
  * each submodule the landing names pointed as it names it, or, given no
  * landing, brings that branch here to the host's, answering `already`; and
  * `closeQuickFix` closes the one open unmerged the read given found, as a
- * move closes it, answering whether it did. `repoint` points the default branch's
+ * move closes it, answering whether it did. A unit with a branch of its
+ * own lands it on the default branch at finish (landing.cjs), its context's
+ * branch the default branch: `unitPull`, where the driver lands through a
+ * host, reads the unit's pull request from that branch, the one open and
+ * why the host would refuse a merge commit, writing nothing; `landUnit`
+ * lands the branch, given its landing, by a merge commit whose first parent
+ * is the default branch, under the landing's subject and description — a
+ * host's through the unit's pull request, the one open else one opened —
+ * the default branch here brought to it, or, given none, that branch here
+ * brought to the host's alone, answering `already`; and `closeUnit` closes
+ * the open pull request a read given found, answering whether it did.
+ * `repoint` points the default branch's
  * submodules, by their paths from the repository's top, at the commits
  * given — one commit onto the branch it lands on, landed as the driver
  * lands a change, a host's through a pull request of its own — answering
@@ -323,6 +336,9 @@ const METHODS = Object.freeze({
  *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null, opened?: Record<string, any>) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
  *   closeQuickFix: (ctx: LandingContext, pull: QuickFixPull) => {closed: boolean},
  *   repoint: (ctx: LandingContext, pointers: Map<string, string>) => {commit?: string, pull_request?: number, warnings?: string[]},
+ *   unitPull?: (ctx: LandingContext, branch: string) => UnitPull,
+ *   landUnit: (ctx: LandingContext, landing: UnitLanding|null) => {into: string, landed: string, commit?: string, pull_requests?: number[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
+ *   closeUnit: (ctx: LandingContext, pull: UnitPull|null) => {closed: boolean},
  *   finished?: (ctx: LandingContext) => void,
  * }} LandingMethods
  */

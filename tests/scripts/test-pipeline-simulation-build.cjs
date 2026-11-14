@@ -25,11 +25,13 @@
 // from then on (12.S18). And the epic stopped, its one task in flight parked on a question, as every
 // view that reads it stands it.
 //
-// Layer: simulation. World: this file's own, built once from the project
-// every scenario starts from (pipeline-world.cjs, `twoPhaseEpic`), a copy
-// per scenario, which replays the engine calls the build's prose makes, in
-// order, the oracle (pipeline-oracle.cjs) auditing the whole state after
-// every mutation. Two tasks side by side are test-pipeline-simulation-build-park.cjs's;
+// Layer: simulation. World: the named world `worlds.twoPhaseEpic`, built
+// once per run (pipeline-world.cjs, `twoPhaseEpic`), a copy per scenario,
+// which replays the engine calls the build's prose makes, in order, the
+// oracle (pipeline-oracle.cjs) auditing the whole state after every
+// mutation. The epic built through both phases on its own branch and
+// finished is test-pipeline-simulation-build-unit.cjs's; two tasks side by
+// side are test-pipeline-simulation-build-park.cjs's;
 // a feature built in step test-pipeline-simulation-build-step.cjs's; a task
 // across /clears test-pipeline-simulation-build-clear.cjs's.
 // ---------------------------------------------------------------------------
@@ -44,21 +46,19 @@ const { git } = require('./engine-harness.cjs');
 const { standingOn } = require('./board-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const {
-  Sim, worldFrom, twoPhaseEpic, buildEntry, startPhase, writeTasks, briefOf, deadReader, laidBeside, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
+  Sim, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, briefOf, deadReader, laidBeside, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
-const WU = 'ledgerly';
+const WU = SPEC_TO_BUILD_UNIT;
 const BUG = '## Findings\n\n- bug: an empty ledger writes no header\n  Scenario: a first entry settled\n\nVerdict: fail\n';
 const NIT = '## Findings\n\n- nit: a comment names the phase\n  Scenario: a reader of the code\n\nVerdict: pass\n';
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
-
-const epicWorld = worldFrom('pipeline-build-', (sim) => twoPhaseEpic(sim, WU));
 
 describe('pipeline simulation: the build', () => {
   let sim;
   /** @type {ReturnType<typeof buildLoop>} */ let loop;
   beforeEach(() => {
-    sim = new Sim(epicWorld);
+    sim = new Sim(worlds.twoPhaseEpic);
     loop = buildLoop(sim, WU);
   });
   afterEach(() => {

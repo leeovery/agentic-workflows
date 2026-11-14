@@ -20,9 +20,14 @@
 // - The default branch: the one the project's remote names its HEAD; else
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
-//   never the state branch (4.9.4). A repository of the project is read for
-//   it once for each read of the project's repositories (`landingBranch`):
-//   nothing a call does names another.
+//   never the state branch (4.9.4). A unit's landing branch (7.2.34) is its
+//   own branch where its manifest records one — the project's own
+//   repository always, a nested one where it holds that branch, here or as
+//   last fetched (7.2.40) — else the default branch (`landingBranch`); a
+//   read takes it as last fetched, the branch here, else the remote's as
+//   fetched (`landingRev`). A repository of the project is read for each
+//   once for each read of the project's repositories: nothing a call does
+//   names another, but the unit's branch it makes there (`landingMade`).
 // - A repository holds a task's branch where it names it: the project's own
 //   always, a nested one only where the branch holds a commit no branch
 //   there but the unit's holds (7.2.17) — the rule the landing walks by and
@@ -84,6 +89,8 @@ const os = require('os');
 const path = require('path');
 const { git: personGit, tryGit: personTryGit, gitRun, operationInProgress, dirtyEntries, GitError } = require('../kernel/git.cjs');
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { workUnitManifestPath, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { repoFacts } = require('../kernel/isolated-git.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
@@ -2025,8 +2032,14 @@ function defaultBranch(root, remote, nested = false, local = branches(root)) {
   return named;
 }
 
-/** What each repository of the project lands on, by the read of the project's repositories that gave it (`landingBranch`). @type {WeakMap<Repo, {branch: string}|{refused: unknown}>} */
+/** The default branch each repository of the project lands on, by the read of the project's repositories that gave it (`landingBranch`). @type {WeakMap<Repo, {branch: string}|{refused: unknown}>} */
 const LANDS_ON = new WeakMap();
+
+/** The unit's branch each repository of the project holds, by the unit, null where it holds none, by the read of the project's repositories that gave it (`landingBranch`). @type {WeakMap<Repo, Map<string, string|null>>} */
+const UNIT_LANDS_ON = new WeakMap();
+
+/** A repository's remote, by its place in the project. @param {string} cwd @param {Repo} repo */
+const remoteOf = (cwd, repo) => (repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path));
 
 /**
  * The default branch a repository of the project lands on, by its own
@@ -2034,10 +2047,10 @@ const LANDS_ON = new WeakMap();
  * the project's repositories (the header's).
  * @param {string} cwd @param {Repo} repo @returns {string}
  */
-function landingBranch(cwd, repo) {
+function repoDefault(cwd, repo) {
   if (!LANDS_ON.has(repo)) {
     try {
-      LANDS_ON.set(repo, { branch: defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '') });
+      LANDS_ON.set(repo, { branch: defaultBranch(repo.path, remoteOf(cwd, repo), repo.dir !== '') });
     } catch (refused) {
       LANDS_ON.set(repo, { refused });
     }
@@ -2047,9 +2060,71 @@ function landingBranch(cwd, repo) {
   return read.branch;
 }
 
+/** The branch of its own a unit's manifest records (7.2.35), null where it records none. @param {string} cwd @param {string} unit @returns {string|null} */
+function recordedBranch(cwd, unit) {
+  const root = stateRoot(cwd);
+  if (!fs.existsSync(workUnitManifestPath(root, unit))) return null;
+  const branch = readWorkUnitManifest(root, unit).build?.branch;
+  return typeof branch === 'string' ? branch : null;
+}
+
+/** Whether a repository has a branch here, or as last fetched from its remote. @param {string} cwd @param {Repo} repo @param {string} branch */
+function holdsBranch(cwd, repo, branch) {
+  const remote = remoteOf(cwd, repo);
+  return branches(repo.path).has(branch) || (remote !== null && trackedTip(repo.path, remote, branch) !== null);
+}
+
+/**
+ * The unit's branch a repository of the project holds (the header's): the
+ * project's own, the one its manifest records; a nested one, that branch
+ * where it is there or as last fetched — null where it holds none.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {string|null}
+ */
+function unitBranchIn(cwd, repo, unit) {
+  const held = UNIT_LANDS_ON.get(repo) ?? new Map();
+  UNIT_LANDS_ON.set(repo, held);
+  if (!held.has(unit)) {
+    const branch = recordedBranch(cwd, unit);
+    held.set(unit, branch !== null && (repo.dir === '' || holdsBranch(cwd, repo, branch)) ? branch : null);
+  }
+  return /** @type {string|null} */ (held.get(unit));
+}
+
+/**
+ * The branch a repository of the project lands the unit's work on (the
+ * header's, 7.2.34): the unit's own where it holds it, else its default
+ * branch, refused as `defaultBranch` refuses it.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {string}
+ */
+function landingBranch(cwd, repo, unit) {
+  return unitBranchIn(cwd, repo, unit) ?? repoDefault(cwd, repo);
+}
+
+/**
+ * The revision a read of the unit's landing branch in a repository takes
+ * (the header's): the branch here, else the remote's as last fetched —
+ * refused where neither is, as a default branch with no local branch is.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {string}
+ */
+function landingRev(cwd, repo, unit) {
+  const branch = unitBranchIn(cwd, repo, unit);
+  if (branch === null) return `${HEADS}${repoDefault(cwd, repo)}`;
+  if (branches(repo.path).has(branch)) return `${HEADS}${branch}`;
+  const remote = remoteOf(cwd, repo);
+  if (remote !== null && trackedTip(repo.path, remote, branch) !== null) return `refs/remotes/${remote}/${branch}`;
+  throw new Error(`land: ${branch}, where the repository lands ${unit}'s work, is neither here nor fetched from its remote`);
+}
+
+/** The unit's branch a call made in a repository, which every read after it there takes (`landingBranch`). @param {Repo} repo @param {string} unit @param {string} branch */
+function landingMade(repo, unit, branch) {
+  const held = UNIT_LANDS_ON.get(repo) ?? new Map();
+  held.set(unit, branch);
+  UNIT_LANDS_ON.set(repo, held);
+}
+
 module.exports = {
   short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, landingBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
+  defaultBranch, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

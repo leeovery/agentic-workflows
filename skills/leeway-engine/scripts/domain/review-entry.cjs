@@ -231,7 +231,7 @@ function bugLines(cwd, unit, manifest, standing) {
 }
 
 /** The branch the unit's work lands on, each reader's base. @param {Reading} at @returns {Line} */
-const baseLine = (at) => ['base', `${projectLandsOn(at.cwd)} — the branch the unit's work lands on, the --base of each reader's brief`];
+const baseLine = (at) => ['base', `${projectLandsOn(at.cwd, at.unit)} — the branch the unit's work lands on, the --base of each reader's brief`];
 
 /** Each round's report recorded, by its path. @param {string} cwd @param {string} unit @param {ReviewStanding} standing */
 const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(cwd, roundReportFile(unit, at + 1)));

@@ -88,10 +88,19 @@ function refuseProjectId(fieldSegments) {
   }
 }
 
-/** Refuse a write or delete of the unit's landing record (landing-record.cjs). @param {string|null} phase @param {string[]} fieldSegments */
-function refuseLandings(phase, fieldSegments) {
-  if (phase === null && fieldSegments[0] === LANDINGS) {
+/**
+ * Refuse a write or delete of the unit's records the engine keeps alone:
+ * its landing record (landing-record.cjs), and its own branch, `build.branch`
+ * — `build` whole with it (unit-branch.cjs).
+ * @param {string|null} phase @param {string[]} fieldSegments
+ */
+function refuseEngineRecords(phase, fieldSegments) {
+  if (phase !== null) return;
+  if (fieldSegments[0] === LANDINGS) {
     fail(`"${LANDINGS}" is the engine's own landing record: a land verb writes it as it lands a task, and a verb acting on a landing as it reads one made by hand`);
+  }
+  if (fieldSegments[0] === 'build' && (fieldSegments.length === 1 || fieldSegments[1] === 'branch')) {
+    fail('"build.branch" is the engine\'s own: the first phase start\'s close of the build writes it as it makes the unit\'s branch, and it never changes');
   }
 }
 
@@ -888,7 +897,7 @@ function cmdSet(cwd, args) {
     const fieldSegments = write.field.split('.');
     refuseEmptyFieldSegments(write.field, fieldSegments);
     refuseShadowField(phase, topic, fieldSegments);
-    refuseLandings(phase, fieldSegments);
+    refuseEngineRecords(phase, fieldSegments);
     refuseContainerWrite(fieldSegments);
     const segments = resolveSegments(phase, topic, fieldSegments);
     validateSet(segments, write.value, fieldSegments);
@@ -951,7 +960,7 @@ function cmdPush(cwd, args) {
 
   refuseEmptyFieldSegments(args[1], fieldSegments);
   refuseShadowField(phase, topic, fieldSegments);
-  refuseLandings(phase, fieldSegments);
+  refuseEngineRecords(phase, fieldSegments);
   if (GUARDED_CONTAINERS.includes(fieldSegments[0])) {
     fail(`"${fieldSegments[0]}" is a guarded state container — its fields take vocabulary values via set, never array pushes`);
   }
@@ -1022,7 +1031,7 @@ function cmdPull(cwd, args) {
   requireWorkUnit(cwd, workUnit);
 
   refuseShadowField(phase, topic, fieldSegments);
-  refuseLandings(phase, fieldSegments);
+  refuseEngineRecords(phase, fieldSegments);
   const segments = resolveSegments(phase, topic, fieldSegments);
 
   const result = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
@@ -1060,7 +1069,7 @@ function cmdDelete(cwd, args) {
 
   const { workUnit, phase, topic } = parsePath(args[0]);
   const fieldSegments = args[1].split('.');
-  refuseLandings(phase, fieldSegments);
+  refuseEngineRecords(phase, fieldSegments);
 
   requireWorkUnit(cwd, workUnit);
 
@@ -1133,7 +1142,7 @@ function cmdApply(cwd, args) {
         const fieldSegments = field.split('.');
         refuseEmptyFieldSegments(field, fieldSegments);
         refuseShadowField(phase, topic, fieldSegments);
-        refuseLandings(phase, fieldSegments);
+        refuseEngineRecords(phase, fieldSegments);
         refuseContainerWrite(fieldSegments);
         const segments = resolveSegments(phase, topic, fieldSegments);
         validateSet(segments, value, fieldSegments);
@@ -1144,7 +1153,7 @@ function cmdApply(cwd, args) {
     if (typeof op.field !== 'string' || op.field === '') {
       fail(`apply: ${at} — "field" must be a non-empty field path`);
     }
-    refuseLandings(phase, op.field.split('.'));
+    refuseEngineRecords(phase, op.field.split('.'));
     return { kind: /** @type {const} */ ('delete'), path: op.path, field: op.field, segments: resolveSegments(phase, topic, op.field.split('.')) };
   });
 

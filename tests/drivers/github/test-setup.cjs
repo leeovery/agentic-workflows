@@ -5,7 +5,8 @@
 // (leeway-engine/scripts/domain/github-setup.cjs), each offer answered by
 // its own verb, alike in shape and refusals: the GitHub rule on the state
 // branch (`github-rule`, 4.4.6, 4.S10, 4.S30) and the squash default the
-// landing needs (`github-squash`, 7.2.18). Each is offered until answered,
+// landing needs, merge commits allowed beside it for a unit's own branch
+// (`github-squash`, 7.2.18, 7.2.38). Each is offered until answered,
 // and set on a yes alone, through gh — signed in first, then GitHub's API —
 // recorded, `set`, `declined` or `failed` with why, and never offered
 // again; a setting gh could not make is said, with where to make it by hand,
@@ -31,7 +32,7 @@ const harness = require('../../scripts/engine-harness.cjs');
 const { useLandingWorld, setLandingDriver } = require('../../scripts/landing-world.cjs');
 const { githubRuleOffered, githubSquashOffered } = require('../../../skills/leeway-engine/scripts/domain/github-setup.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
-const { githubWorld, github, calls, ok, refused } = require('./world.cjs');
+const { githubWorld, github, onGithub, calls, ok, refused } = require('./world.cjs');
 
 const { git, layout } = harness;
 const project = useLandingWorld('github-setup-', (dir) => {
@@ -43,7 +44,7 @@ const project = useLandingWorld('github-setup-', (dir) => {
 const committedManifest = (dir) => JSON.parse(git(dir, ['show', `leeway-state:${layout.projectManifest}`]));
 
 const AUTH = 'auth status --hostname github.com';
-const SET_SQUASH = 'api --method PATCH repos/acme/portal -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY';
+const SET_SQUASH = 'api --method PATCH repos/acme/portal -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY -F allow_merge_commit=true';
 
 /**
  * Each offer: its verb and field; whether it is offered; the API calls that
@@ -73,7 +74,7 @@ const OFFERS = [
     before: GITHUB_SQUASH,
     set: { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' },
     subject: 'chore: the GitHub squash default set',
-    unset: (/** @type {string} */ why) => `the squash default was not set on acme/portal: ${why} — set it by hand in the repository's Settings, under Pull Requests, as the default commit message "Pull request title and description"`,
+    unset: (/** @type {string} */ why) => `the squash default was not set on acme/portal: ${why} — set it by hand in the repository's Settings, under Pull Requests, as the default commit message "Pull request title and description", with "Allow merge commits" ticked`,
     answered: { refused: 'no', why: 'only a yes is taken again, setting it wherever it is not' },
   },
 ];
@@ -147,6 +148,17 @@ describe('github-squash: a yes taken again', () => {
     assert.deepStrictEqual(calls(dir), [AUTH, 'api repos/acme/portal', SET_SQUASH, AUTH, 'api repos/acme/portal']);
     assert.deepStrictEqual([out.github_squash, out.committed, github(dir).squash], ['set', null, OFFERS[1].set]);
     assert.deepStrictEqual(committedManifest(dir).github_squash, { status: 'set' });
+  });
+
+  it('the squash default set where merge commits are not allowed is not set: a yes allows them beside it, which a unit\'s own branch lands by (7.2.38)', () => {
+    const dir = project();
+    ok(dir, ['github-squash', 'yes']);
+    onGithub(dir, (state) => {
+      state.merges = false;
+    });
+
+    assert.strictEqual(ok(dir, ['github-squash', 'yes']).github_squash, 'set');
+    assert.deepStrictEqual([calls(dir).slice(3), github(dir).merges], [[AUTH, 'api repos/acme/portal', SET_SQUASH], true]);
   });
 });
 

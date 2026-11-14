@@ -269,7 +269,7 @@ function phaseMergeGateSurface(cwd, { dotpath: unit = '', item }) {
     stepOnly(manifest, 'a phase\'s stack merges with no gate');
     const refused = mergeRefusal(reading(cwd, unit, manifest), phase);
     if (refused !== null) throw new Error(refused);
-    return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase), doneBeforeIn(manifest, phase));
+    return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase), doneBeforeIn(manifest, phase), typeof manifest.build?.branch === 'string' ? manifest.build.branch : null);
   });
 }
 

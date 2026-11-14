@@ -1543,6 +1543,8 @@ const worlds = Object.freeze({
     assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'environment setup', 'ready to build', 'start menu', 'start menu'],
       '19.S6, 22.S13: between the one screen — the project\'s environment setup asked once before it, at its first ready to build — and the review, no gate stops the person; they pick the unit on the start menu alone, continuing it into its build and its review');
   }),
+  /** An epic, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, its cut two phases (`twoPhaseEpic`), handed off into its build. */
+  twoPhaseEpic: namedWorld('twoPhaseEpic', (sim) => twoPhaseEpic(sim, SPEC_TO_BUILD_UNIT)),
 });
 
 // The verify setup the first task's builder records, its mutation tool
@@ -1659,12 +1661,12 @@ function twoPhaseEpic(sim, wu) {
 }
 
 // The round under review's read of the spec's area `area`, the first by
-// default, by its pair (14.2): the first's report `report`, the second's
-// passing.
-/** @param {Sim} sim @param {string} wu @param {string} [report] @param {number} [area] */
-function areaRead(sim, wu, report = PASSED_REPORT, area = 1) {
+// default, by its pair (14.2), each briefed on the entry's `base`, main
+// unless given: the first's report `report`, the second's passing.
+/** @param {Sim} sim @param {string} wu @param {string} [report] @param {number} [area] @param {string} [base] */
+function areaRead(sim, wu, report = PASSED_REPORT, area = 1, base = 'main') {
   for (const letter of ['a', 'b']) {
-    landed(placeIn(sim, sim.run(['brief', 'review-area', wu, '--area', String(area), '--base', 'main', '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
+    landed(placeIn(sim, sim.run(['brief', 'review-area', wu, '--area', String(area), '--base', base, '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
   }
 }
 
@@ -1736,10 +1738,11 @@ function answeredAtStop(sim, wu) {
 }
 
 // The round under review's read of the test surface, by its one reader
-// (14.2): its report `report`.
-/** @param {Sim} sim @param {string} wu @param {string} [report] */
-function testsRead(sim, wu, report = PASSED_REPORT) {
-  landed(placeIn(sim, sim.run(['brief', 'test-surface', wu, '--base', 'main']), 'Where your report goes'), report);
+// (14.2), briefed on the entry's `base`, main unless given: its report
+// `report`.
+/** @param {Sim} sim @param {string} wu @param {string} [report] @param {string} [base] */
+function testsRead(sim, wu, report = PASSED_REPORT, base = 'main') {
+  landed(placeIn(sim, sim.run(['brief', 'test-surface', wu, '--base', base]), 'Where your report goes'), report);
 }
 
 // The review phase entered (14.6.1), and what its DATA says comes next, the
