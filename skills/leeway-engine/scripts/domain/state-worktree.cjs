@@ -335,6 +335,17 @@ function migrationRuns(root) {
   return git.tryRun(['rev-parse', '--quiet', '--verify', 'HEAD^{commit}']) === null && unbornHead(git) === BRANCH_REF;
 }
 
+/**
+ * Whether `leeway-state` has a commit, as the repository's refs hold it:
+ * read in the main checkout, never through the state worktree, which git
+ * cannot open once the project folder moved.
+ * @param {string} root
+ * @returns {boolean}
+ */
+function stateBorn(root) {
+  return isolatedGit(mainOf(root)).tryRun(['rev-parse', '--quiet', '--verify', `${BRANCH_REF}^{commit}`]) !== null;
+}
+
 /** @param {string} root @returns {StateFolder} */
 function folderAt(root) {
   if (!fs.existsSync(root)) return 'absent';
@@ -1074,6 +1085,7 @@ module.exports = {
   stateRemote,
   openWorktree,
   migrationRuns,
+  stateBorn,
   inspectState,
   createState,
   addStateWorktree,

@@ -24,10 +24,11 @@
 //     seeded from the old one, whole, a kill at the seed's rename included
 //     (the real guard is test-migration-074.cjs's); the stop before the
 //     reshape's move for the checks the chain before the guard handed back,
-//     and none where it handed back nothing, where the code tree holds no
-//     state, or for a handback after the guard; its frozen steps and the
-//     runtime's old-layout.cjs never loading each other; and no
-//     migration's requires reaching the engine.
+//     marked made once recorded so, its notices handed on to the run's end,
+//     and none where it handed back nothing or a notice alone, where the
+//     code tree holds no state, or for a handback after the guard; its
+//     frozen steps and the runtime's old-layout.cjs never loading each
+//     other; and no migration's requires reaching the engine.
 //
 // Layer: process.
 //
@@ -166,6 +167,10 @@ const OLD_RECORD = '.workflows/.state/migrations';
 const tellingMig = (/** @type {string} */ id) =>
   `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', info: 'What ${id} does.',\n` +
   `  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check ${id} by hand.', notice: '${id} ran.' }; } };\n`;
+
+// A .cjs migration that hands back a notice alone, as a telling one words it.
+const noticeMig = (/** @type {string} */ id) =>
+  `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', run({ reportUpdate }) { reportUpdate(); return { notice: '${id} ran.' }; } };\n`;
 
 // What a telling migration hands back, each kind as the runner journals it.
 const toldBy = (/** @type {string} */ id) => ({
@@ -748,11 +753,11 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     assert.deepStrictEqual(runs.map(handedBack), [told, told, told, [undefined, undefined, []]]);
   });
 
-  it('stops before the reshape\'s move where the chain before the guard handed back checks or notices: printing them under their markers, then the stop\'s line, the chain recorded and nothing after it run, every run until the record holds the checks made; then the chain\'s handbacks go from the journals and the run carries on past the stop (21.10.13)', () => {
+  it('stops before the reshape\'s move where the chain before the guard handed back checks: printing them under their marker, then the stop\'s line, the chain recorded and nothing after it run, every run until the record holds the checks made; then the run marks them made and carries on past the stop, its end handing on the chain\'s checks marked made and its notices verbatim beside the rest (21.10.13)', () => {
     const { migrate } = synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075'), '076-c.cjs': tellingMig('076') });
     const project = owingProject();
     const told = toldBy('050');
-    const stop = ['---VERIFY_ADDENDA---', JSON.stringify([told.verify]), '---MIGRATION_NOTICES---', JSON.stringify([told.notice]), '---CHECKS---', ''].join('\n');
+    const stop = ['---VERIFY_ADDENDA---', JSON.stringify([told.verify]), '---CHECKS---', ''].join('\n');
 
     const stopped = [1, 2].map(() => run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }));
 
@@ -764,18 +769,21 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
 
     assert.strictEqual(carried.status, 0, carried.stderr);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '075\n');
-    assert.deepStrictEqual([markerPayload(carried.stdout, '---VERIFY_ADDENDA---'), markerPayload(carried.stdout, '---MIGRATION_NOTICES---')], [[toldBy('076').verify], [toldBy('076').notice]]);
+    assert.deepStrictEqual([markerPayload(carried.stdout, '---VERIFY_ADDENDA---'), markerPayload(carried.stdout, '---MIGRATION_NOTICES---')], [[{ ...told.verify, made: true }, toldBy('076').verify], [told.notice, toldBy('076').notice]]);
     assert.ok(carried.stdout.includes('3 migration(s) applied, 3 file(s) updated.\n'), carried.stdout);
     assert.deepStrictEqual(trackingLog(project), `050\n${CHECKS_DONE}\n075\n076\n`);
   });
 
-  it('carries on past the guard with no stop where the chain before it handed back nothing, where the code tree holds no state, where no reshape is owed or under way, and for a handback after the guard', () => {
+  it('carries on past the guard with no stop where the chain before it handed back nothing, or a notice alone, which the run\'s end hands on, where the code tree holds no state, where no reshape is owed or under way, and for a handback after the guard', () => {
     const quiet = owingProject();
+    const noticed = owingProject();
     const stateless = tmp('mig-orch-none-');
     const owesNone = freshProject();
     const after = owingProject();
 
+    const told = run(synthFleet({ '050-a.cjs': noticeMig('050'), '075-b.cjs': cjsMig('075') }).migrate, noticed, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
     const runs = [
+      told,
       run(synthFleet({ '050-a.cjs': cjsMig('050'), '075-b.cjs': cjsMig('075') }).migrate, quiet, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
       run(synthFleet({ '073-a.cjs': tellingMig('073'), '075-b.cjs': cjsMig('075') }).migrate, stateless, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
       run(synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075') }).migrate, owesNone, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
@@ -785,8 +793,9 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     fs.appendFileSync(path.join(after, RECORD), '077\n');
     runs.push(run(split.migrate, after, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }));
 
-    assert.deepStrictEqual(runs.map(({ status, stdout }) => [status, stdout.includes('---CHECKS---'), runReport(stdout)]), [[0, false, { ran: 2 }], [0, false, { ran: 2 }], [0, false, { ran: 2 }], [0, false, { ran: 2 }]]);
-    assert.deepStrictEqual([quiet, stateless, owesNone, after].map((project) => fs.readFileSync(path.join(project, 'order.log'), 'utf8')), ['050\n075\n', '075\n', '075\n', '078\n']);
+    assert.deepStrictEqual(runs.map(({ status, stdout }) => [status, stdout.includes('---CHECKS---'), runReport(stdout)]), [1, 2, 3, 4, 5].map(() => [0, false, { ran: 2 }]));
+    assert.deepStrictEqual([noticed, quiet, stateless, owesNone, after].map((project) => fs.readFileSync(path.join(project, 'order.log'), 'utf8')), ['075\n', '050\n075\n', '075\n', '075\n', '078\n']);
+    assert.deepStrictEqual(markerPayload(told.stdout, '---MIGRATION_NOTICES---'), [toldBy('050').notice]);
   });
 
   it('no migration loads the engine: every require on the paths from each migration is a literal, and none reaches skills/leeway-engine/', () => {

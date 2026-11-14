@@ -5,28 +5,35 @@
 // (leeway-engine/scripts/domain/migration-commit.cjs, with boot's `finish`
 // stop in domain/boot.cjs, `migrate review` in domain/directives.cjs and
 // the state branch's first commit in domain/state-worktree.cjs): boot
-// answering `finish` with nothing committed, the ledger's copies rendered
+// answering `finish` with nothing committed and no conversation stamped,
+// the review, its gate and the yes going through in one boot never
+// stamped (`BOOT_EXEMPT` in engine.cjs), the ledger's copies rendered
 // and the records indexed (21.9.1, 21.S24, 21.S47 — its other half, the
 // store the move left never read, is test-migration-078.cjs's: the
 // knowledge config carried, never the store); the yes making the state
 // branch's first commit, the layout whole with the held writes and none of
 // the tools' sidecars, pushed where there is a remote, then the code
 // branch's, taking the drops out through its own index, and the drops going
-// from disk once both land (21.9.2, 21.S18, P5); a commit of the person's
-// own before the yes taking none of the migration's changes, one taking
-// `.workflows/` off the code branch by hand leaving the migration under way,
-// and a `git add -A` or `git reset` between the stop and the yes leaving no
-// drop on the branch; a kill before and between the two, the next boot
-// answering `finish` and the yes making what is left, and after the code
-// commit, the next boot taking the drops off itself and answering `ready`
-// (21.9.5); the refusals, nothing committed (21.9.3); the review's read,
-// once the code commit has landed among it (21.9.4); a project nested in
-// its repository, its commit called from a code worktree; the board reading
-// the project meanwhile; a code migration after the reshape handing back
-// its check and notice as today (21.10.13, 21.S48); and, through the real
-// chain, the stop before the move for the checks the chain before the
-// guard handed back, the fix made in `.workflows/` carried by the move
-// (21.10.13). The ordinary `commit --migrations` is
+// from the person's index and disk once both land (21.9.2, 21.S18, P5); a
+// commit of the person's own before the yes taking none of the migration's
+// changes, one taking `.workflows/` off the code branch by hand leaving the
+// migration under way, and a `git add -A` or `git reset` between the stop
+// and the yes leaving no drop on the branch; the project folder moved
+// meanwhile, boot relinking the state worktree, and the yes refusing,
+// nothing committed, where the relink failed; a kill before and between
+// the two, the next boot answering `finish` and the yes making what is
+// left, and after the code commit, the next boot taking the drops out of
+// the index and off disk itself and answering `ready` (21.9.5); the
+// refusals, nothing committed (21.9.3); the review's read, once the code
+// commit has landed among it (21.9.4); a project nested in its repository,
+// its commit called from a code worktree; the board reading the project
+// meanwhile; a code migration after the reshape handing back its check and
+// notice as today (21.10.13, 21.S48); and, through the real chain, the
+// stop before the move for the checks the chain before the guard handed
+// back, stamping no conversation, its screen and its record going through
+// without the stamp, the fix made in `.workflows/` carried by the move and
+// the check marked made (21.10.13), and a directive recorded unrun left out of the
+// review's directives. The ordinary `commit --migrations` is
 // test-engine-commit-door-state.cjs's.
 //
 // Layer: git. World: the migration's harness (migration-world.cjs) — the
@@ -94,6 +101,19 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
     assert.deepStrictEqual([ok(['boot']), ok(['boot'])], [FINISH, FINISH]);
 
     assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code]);
+  });
+
+  it('stamps no conversation at the finish stop: in one boot has not stamped, the review, its gate and the yes go through, and a verb that touches the work refuses', () => {
+    const unstamped = { env: { CLAUDE_CODE_SESSION_ID: 'never-stamped' }, unbooted: true };
+
+    assert.strictEqual(engine.ok(dir, ['boot'], unstamped).state, 'finish');
+    assert.deepStrictEqual(engine.ok(dir, ['migrate', 'review'], unstamped).reshape.commits, ['state', 'code']);
+    assert.match(engine.output(dir, ['render', 'migration-gate'], unstamped), /^=== MENU: migration gate/m);
+    assert.match(engine.refuses(dir, ['manifest', 'get', UNIT, 'status'], unstamped).error, /has not booted Leeway/);
+
+    engine.ok(dir, COMMIT, unstamped);
+
+    assert.deepStrictEqual([stateCommits().length, onDisk('.workflows')], [1, false]);
   });
 
   it('21.S24: boot renders the ledger\'s copies before it answers — the product record holds the entries the records marked product-wide, its file in .knowledge/', () => {
@@ -258,6 +278,17 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     assert.deepStrictEqual([onDisk(OLD_STORE), onDisk(OLD_LOCAL), onDisk(path.dirname(OLD_STORE)), fs.existsSync(statePath(dir, JOURNALS))], [false, false, false, false]);
   });
 
+  it('killed as the code commit lands, the person\'s index still holding the drops: boot takes them out of it as it takes them off disk, answering ready, and git reads nothing of them', () => {
+    const drops = ['.workflows', OLD_STORE];
+    killedAt({ method: 'rmSync', file: path.join('.git', 'leeway-commit.index'), when: 'before' }, dir, COMMIT, { env: SESSION });
+
+    assert.deepStrictEqual([git(dir, ['ls-tree', '--name-only', 'HEAD', '--', ...drops]), git(dir, ['diff', '--cached', '--name-only', '--', ...drops]) !== ''], ['', true]);
+
+    assert.strictEqual(ok(['boot']).state, 'ready');
+
+    assert.deepStrictEqual([git(dir, ['ls-files', '--', ...drops]), git(dir, ['status', '--porcelain', '--', ...drops])], ['', '']);
+  });
+
   it('the state branch\'s first commit is made on a state branch with no commit alone: on one born it refuses, committing nothing', () => {
     ok(COMMIT);
     const tip = stateGit(dir, ['rev-parse', STATE_BRANCH]).trim();
@@ -311,6 +342,38 @@ describe('the person\'s own git between the finish stop and the yes', () => {
   }
 });
 
+describe('the project folder moved while the migration waits on its commit', () => {
+  /** The project's folder renamed, its state worktree's links naming where it was. */
+  const rename = () => {
+    const to = path.join(path.dirname(dir), 'renamed');
+    fs.renameSync(dir, to);
+    dir = to;
+  };
+
+  it('boot relinks the state worktree; the review and the gate read the state branch\'s first commit still owed, and the yes makes both commits', () => {
+    rename();
+    const code = codeHead(dir);
+
+    assert.strictEqual(ok(['boot']).state, 'finish');
+    assert.deepStrictEqual(ok(['migrate', 'review']).reshape.commits, ['state', 'code']);
+    assert.doesNotMatch(engine.output(dir, ['render', 'migration-gate']), /first commit is made/);
+
+    ok(COMMIT);
+
+    assert.deepStrictEqual([stateCommits().length, codeCommit(dir).parent, onDisk('.workflows'), git(dir, ['status', '--porcelain'])], [1, code, false, '']);
+  });
+
+  it('where boot\'s relink fails, the review still reads the first commit owed, and the yes refuses, committing nothing and taking nothing from disk', () => {
+    rename();
+    killedAt({ method: 'renameSync', file: path.join('.leeway', '.git'), when: 'before' }, dir, ['boot'], { env: SESSION });
+    const code = codeHead(dir);
+
+    assert.deepStrictEqual(ok(['migrate', 'review']).reshape.commits, ['state', 'code']);
+    assert.match(refusedUntouched(dir, COMMIT), /^git cannot open the state worktree at .+ — nothing committed$/);
+    assert.deepStrictEqual([codeHead(dir), onDisk('.workflows'), onDisk(OLD_STORE), fs.existsSync(statePath(dir, JOURNALS, 'finish.json'))], [code, true, true, true]);
+  });
+});
+
 describe('a project nested in its repository, its commit called from a code worktree', () => {
   const folder = useTempFolder('migration-commit-nested-');
 
@@ -358,24 +421,26 @@ describe('a code migration after the reshape (21.10.13)', () => {
 describe('the reshape\'s real sequence through its commit (21.S18)', () => {
   const folder = useTempFolder('migration-commit-real-');
 
-  it('a project at 070 whose discussion parks a concern in its triage section stops before the move for 071\'s check, every boot until it is recorded made; the fix made in .workflows/, uncommitted, the next boot carries on, and the move carries the fixed files (21.10.13)', () => {
+  it('a project at 070 whose discussion parks a concern in its triage section stops before the move for 071\'s check, every boot until it is recorded made, stamping no conversation; the fix made in .workflows/, uncommitted, and recorded in a conversation boot has not stamped, the next boot carries on, marking the check made, and the move carries the fixed files (21.10.13)', () => {
     const project = legacyProject(folder());
-    const env = { WORKFLOWS_CONFIG_DIR: path.join(folder(), 'no-workflows-config') };
+    const unstamped = { env: { WORKFLOWS_CONFIG_DIR: path.join(folder(), 'no-workflows-config'), CLAUDE_CODE_SESSION_ID: 'never-stamped' }, unbooted: true };
     const discussion = '.workflows/payments/discussion/payments.md';
     createFile(project, discussion, '# Payments\n\nHow refunds settle.\n\n## Triage\n\n### Refund timing\n\nBilling asks when refunds settle.\n');
     git(project, ['commit', '-q', '-am', 'a concern parked in triage']);
 
-    const stopped = [real.ok(project, ['boot'], { env }), real.ok(project, ['boot'], { env })];
+    const stopped = [real.ok(project, ['boot'], unstamped), real.ok(project, ['boot'], unstamped)];
 
-    assert.deepStrictEqual(stopped.map(({ state, folder: at, verify, notices }) => ({ state, at, checks: verify.map((entry) => entry.id), notices })), [1, 2].map(() => ({ state: 'checks', at: project, checks: ['071'], notices: [] })));
-    assert.match(real.output(project, ['render', 'migration-checks-stop'], { env }), /^⚑ The migration stopped before its move, for what earlier migrations handed back$/m);
+    assert.deepStrictEqual(stopped.map(({ state, folder: at, verify }) => ({ state, at, checks: verify.map((entry) => entry.id) })), [1, 2].map(() => ({ state: 'checks', at: project, checks: ['071'] })));
+    assert.match(real.output(project, ['render', 'migration-checks-stop'], unstamped), /^⚑ The migration stopped before its move, for checks earlier migrations handed back$/m);
+    assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Leeway/);
     assert.ok(!fs.existsSync(path.join(project, '.leeway/payments')), 'nothing moved yet');
 
     createFile(project, discussion, '# Payments\n\nHow refunds settle.\n\n## Triage\n\n(none)\n');
     createFile(project, '.workflows/payments/discussion/.mailbox/payments/001-refund-timing.md', '### Refund timing\n\nBilling asks when refunds settle.\n');
-    assert.deepStrictEqual(real.ok(project, ['migrate', 'checked'], { env }), { ok: true });
+    assert.deepStrictEqual(real.ok(project, ['migrate', 'checked'], unstamped), { ok: true });
 
-    assert.strictEqual(real.ok(project, ['boot'], { env }).state, 'directive');
+    assert.strictEqual(real.ok(project, ['boot'], unstamped).state, 'directive');
+    assert.deepStrictEqual(JSON.parse(readState(project, `${JOURNALS}/pending-verify.json`)).filter((entry) => entry.id === '071').map((entry) => entry.made), [true]);
     assert.match(readState(project, 'payments/topics/payments/log.md'), /^### Triage\n\n\(none\)\n$/m);
     assert.strictEqual(readState(project, 'payments/topics/payments/mail/001-refund-timing.md'), '### Refund timing\n\nBilling asks when refunds settle.\n');
   });
@@ -392,6 +457,7 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     const booted = real.ok(project, ['boot'], { env });
 
     assert.deepStrictEqual([booted.state, booted.migrations.changed, stateUnborn(project), codeHead(project)], ['finish', true, true, code]);
+    assert.deepStrictEqual(real.ok(project, ['migrate', 'review'], { env }).reshape.directives, [], 'the records directive found no unit, so no session carried it out');
 
     real.ok(project, COMMIT, { env });
 

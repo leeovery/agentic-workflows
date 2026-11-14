@@ -19,7 +19,8 @@
 //   back (21.6.10).
 // - The runner asks a directive's pieces (`piecesOf`) as it meets it: a
 //   directive whose check answers none leaves the session nothing to do,
-//   and the runner records it unrun (21.4.3).
+//   and the runner records it unrun (21.4.3), its line and beside it the
+//   unrun line (`unrunLine`), which tells it from one a session carried out.
 // - The directive's checklist (checklist.cjs) holds one item, its check,
 //   the engine's: done while the check passes, never marked or skipped. Its
 //   close records the directive in the migrations record — the one way a
@@ -28,20 +29,21 @@
 //   of them, which `render directive-stop` draws (21.10.11). A session that
 //   died part-way may leave what the check trips on (21.10.9): the stop then
 //   answers without the counts, and `migrate check` names what failed.
-// - `migrate checked` records the checks and notices the chain before the
-//   reshape handed back as dealt with: the line the runner's stop before
-//   the move waits on (old-layout.cjs, `CHECKS_DONE`), appended to the
-//   migrations record where it is not there yet, as a directive's close
-//   records it — so a session killed before it meets the stop again, and
-//   the next run carries on past it.
+// - `migrate checked` records the checks the chain before the reshape
+//   handed back as made: the line the runner's stop before the move waits
+//   on (old-layout.cjs, `CHECKS_DONE`), appended to the migrations record
+//   where it is not there yet, as a directive's close records it — so a
+//   session killed before it meets the stop again, and the next run marks
+//   those checks made, for the review at the migration's end, and carries
+//   on past it.
 // - `migrate review` is what the migration review reads before the gate
 //   whose yes makes the migration's commit (migration-commit.cjs): the
 //   state's folder and the code side's, absolute, so the review reads them
 //   from any checkout; and, while the reshape finishes, what its summary is
 //   written from, since the state branch's first commit takes the whole
 //   state (21.9.4) — the commits the yes still makes, the units moved, the
-//   topics carried, the directives done, and the code files the commit
-//   takes.
+//   topics carried, the directives a session carried out, and the code
+//   files the commit takes.
 // - Known edges: held commits and the trust log's silence key on the state
 //   branch having no commit yet (state-worktree.cjs, trust-log.cjs), which
 //   only the reshape's migration leaves; a directive met later, on a branch
@@ -72,6 +74,9 @@ const MIGRATIONS = path.join(MIGRATE_SCRIPTS, 'migrations');
 const MIGRATIONS_RECORD = '.state/migrations';
 
 const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** The line the runner records beside a directive it recorded unrun. @param {string} number */
+const unrunLine = (number) => `${number} unrun`;
 
 const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review'].join('\n');
 
@@ -276,7 +281,8 @@ function directiveStopSurface(cwd, args) {
 }
 
 /**
- * The directives the migrations record holds, by id, in their order.
+ * The directives a session carried out, by id, in their order: each the
+ * migrations record holds, but those the runner recorded unrun.
  * @param {string} cwd @returns {string[]}
  */
 function directivesDone(cwd) {
@@ -284,7 +290,7 @@ function directivesDone(cwd) {
   const held = new Set(fs.existsSync(record) ? fs.readFileSync(record, 'utf8').split('\n') : []);
   return fs.readdirSync(MIGRATIONS).filter((name) => name.endsWith('.md')).map((name) => name.slice(0, -'.md'.length)).filter((id) => {
     const named = DIRECTIVE_ID.exec(id);
-    return named !== null && held.has(named[1]);
+    return named !== null && held.has(named[1]) && !held.has(unrunLine(named[1]));
   }).sort();
 }
 
@@ -343,4 +349,4 @@ function runMigrateVerb(cwd, argv) {
   }
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };

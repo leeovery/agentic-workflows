@@ -254,7 +254,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     const stopped = runEngine(real, project, ['boot'], env);
 
     assert.deepStrictEqual([stopped.state, stopped.id], ['directive', '079-records']);
-    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '075', '076', '077', '078']);
+    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '075', '076', '076 unrun', '077', '078']);
     assert.strictEqual(JSON.parse(fs.readFileSync(statePath(project, layout.projectManifest), 'utf8')).roadmap.items['dark-mode'].kind, 'idea');
     assert.strictEqual(git(project, ['for-each-ref', 'refs/heads/leeway-state']), '', 'nothing committed before the migration\'s commit');
   });

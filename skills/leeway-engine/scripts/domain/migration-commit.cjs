@@ -16,16 +16,19 @@
 //   `commitFirst`), then the code branch's, in the project's folder in the
 //   main checkout, where the migration ran, wherever the commit is called
 //   from: the owned files, and the drops taken out of it through the
-//   commit's own index, then out of the person's, their files left on disk.
-//   Nothing of the migration's is staged before the yes, so a commit of
-//   the person's own meanwhile takes none of it. Once the state branch is
-//   born and the code branch holds none of the drops, nothing is left for
-//   the yes to commit: the drops go from disk — the files they hold that
-//   git ignores with them, and any folder they leave empty — and the
-//   journals folder is cleared, the journal last. The yes does that once
-//   its commits land, and boot does it where a kill after the code commit
-//   left it undone (`finishOwed`). A kill between the two leaves the state
-//   born and the code branch holding the drops: boot answers `finish`
+//   commit's own index, their files left on disk. Nothing of the
+//   migration's is staged before the yes, so a commit of the person's own
+//   meanwhile takes none of it. Whether the state branch is born is read
+//   from the repository's refs, so a project folder moved meanwhile, its
+//   state worktree unopened until boot relinks it, still owes the first
+//   commit, which refuses there. Once the state branch is born and the code
+//   branch holds none of the drops, nothing is left for the yes to commit:
+//   the drops go from the person's index, then from disk — the files they
+//   hold that git ignores with them, and any folder they leave empty — and
+//   the journals folder is cleared, the journal last. The yes does that
+//   once its commits land, and boot does it where a kill after the code
+//   commit left it undone (`finishOwed`). A kill between the two leaves the
+//   state born and the code branch holding the drops: boot answers `finish`
 //   again, and the yes makes the code commit alone.
 // - While the migration runs and is not finished — `leeway-state` with no
 //   commit yet and no journal — the commit is refused: nothing is committed
@@ -34,12 +37,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { git, literally, shortSha } = require('../kernel/git.cjs');
+const { git, literally, shortSha, untrack } = require('../kernel/git.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
-const { withStateLock, migrationRuns, commitFirst } = require('./state-worktree.cjs');
+const { withStateLock, migrationRuns, stateBorn, commitFirst } = require('./state-worktree.cjs');
 const { commitStateScoped, commitStagedScoped, OWNED_PATHS } = require('./commit.cjs');
 
 // Where the runner journals what its runs owe the run that completes,
@@ -120,9 +123,8 @@ function finishing(cwd) {
   if (journal === null) return null;
   const project = projectInMain(cwd);
   const held = heldDrops(project, journal.drops);
-  const unborn = migrationRuns(stateRoot(cwd));
   /** @type {CommitsOwed} */
-  const commits = unborn ? ['state', 'code'] : held.length > 0 ? ['code'] : [];
+  const commits = !stateBorn(stateRoot(cwd)) ? ['state', 'code'] : held.length > 0 ? ['code'] : [];
   return { journal, project, held, commits };
 }
 
@@ -148,10 +150,12 @@ function removeEmptyFolders(project, rel) {
 }
 
 /**
- * The drops gone from disk, and the journals folder cleared, the journal last.
+ * The drops gone from the person's index, then from disk, and the journals
+ * folder cleared, the journal last.
  * @param {string} cwd @param {Finishing} finish
  */
 function finishOff(cwd, { project, journal: { drops } }) {
+  untrack(project, drops);
   for (const rel of drops) fs.rmSync(path.join(project, rel), { recursive: true, force: true });
   for (const rel of drops) removeEmptyFolders(project, rel);
   const journals = statePath(cwd, MIGRATION_JOURNALS);

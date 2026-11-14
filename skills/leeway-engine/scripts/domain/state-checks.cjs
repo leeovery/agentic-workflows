@@ -37,7 +37,9 @@
 //   commit it was added at, until the migration's commit — whatever the
 //   code branch holds meanwhile, a commit of the person's own among it
 //   (21.5.11). A branch lost under its folder stands at a commit of the
-//   state's, and is restored or refused as above. The worktree is locked where it is not, and boot goes on to the
+//   state's, and is restored or refused as above. The worktree is relinked
+//   where its link broke, the project folder moved or copied meanwhile, as
+//   a born branch's is, and locked where it is not; boot goes on to the
 //   migrations with nothing pushed: the branch is the migration's to begin
 //   (21.9.3).
 // - A remote out of reach is never read as holding nothing, so never as lost
@@ -182,6 +184,39 @@ function migrationUnderWay(root, seen) {
 }
 
 /**
+ * Whether the state folder is there with its link broken: git cannot open
+ * it as this repository's, or this repository registers no worktree at it.
+ * @param {StateInspection} seen
+ */
+function linkBroken(seen) {
+  return seen.folder === 'unlinked' || (seen.folder === 'linked' && seen.worktree === null);
+}
+
+/**
+ * Relink the state worktree whose link broke — the project folder moved, or
+ * was copied, the copy's state becoming its own.
+ * @param {string} root
+ * @returns {string[]} warnings
+ */
+function relink(root) {
+  const { was, from } = repairStateWorktree(root);
+  return was === 'copied' ? [`this project is a copy of ${from}: its state worktree was linked to that project's, and is now this one's own — ${from} is untouched`] : [];
+}
+
+/**
+ * Where the state stands, the migration's worktree relinked first where its
+ * link broke while the migration was under way.
+ * @param {string} root @param {string[]} warnings
+ * @returns {StateInspection}
+ */
+function inspectRelinked(root, warnings) {
+  const seen = inspectState(root);
+  if (seen.branch || !linkBroken(seen) || !standsAtCodeCommit(root)) return seen;
+  warnings.push(...relink(root));
+  return inspectState(root);
+}
+
+/**
  * Put the worktree in place for the branch: added where it is gone, relinked
  * where its link broke, locked where it is not.
  * @param {string} root @param {StateInspection} seen
@@ -196,9 +231,8 @@ function placeWorktree(root, seen) {
   /** @type {string[]} */
   const warnings = [];
   let placed = seen;
-  if (placed.folder === 'unlinked' || placed.worktree === null) {
-    const { was, from } = repairStateWorktree(root);
-    if (was === 'copied') warnings.push(`this project is a copy of ${from}: its state worktree was linked to that project's, and is now this one's own — ${from} is untouched`);
+  if (linkBroken(placed)) {
+    warnings.push(...relink(root));
     placed = inspectState(root);
   }
   const { worktree } = placed;
@@ -246,7 +280,7 @@ function placeState(cwd, { startAgain = false } = {}) {
   return withBootLock(root, () => {
     const warnings = keepStateExcluded(cwd);
     const answer = askStateRemote(root);
-    const seen = inspectState(root);
+    const seen = inspectRelinked(root, warnings);
     if (migrationUnderWay(root, seen)) {
       if (!seen.worktree?.locked) lockStateWorktree(root);
       return { made: null, migrating: true, listing: undefined, warnings };

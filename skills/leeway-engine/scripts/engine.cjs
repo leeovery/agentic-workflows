@@ -2600,7 +2600,8 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // has not stamped for the project the call is in at this version (22.1.7,
 // domain/boot-stamp.cjs) — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone: boot, and what its stops run before it stamps — `boot
-// --start-again`, `state-merge pick`, the migration review's verbs, a stop's
+// --start-again`, `state-merge pick`, the migration review's verbs, `migrate
+// review` among them, the checks stop's record, `migrate checked`, a stop's
 // screen and the answer to its gate, each gate by its name (a directive's
 // verbs run on the stamp its stop writes); the targets of Claude Code's
 // hooks and of the gate mod (`conversation`, `board`), run for any
@@ -2618,6 +2619,7 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
   ]),
   gate: ['state lost gate', 'state merge gate', 'migration gate'],
   commit: ['--migrations', '--inbox'],
+  migrate: ['review', 'checked'],
   presence: ['cleanup'],
   session: ['cleanup', 'resume'],
   conversation: '*',

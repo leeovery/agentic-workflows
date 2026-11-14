@@ -50,8 +50,9 @@
 // never the machine's.
 //
 // Layer: migration. Budget: 8 s — each run of the move adds a worktree on an
-// unborn branch and stages in a real repository, and the suite runs it over
-// the whole project once and over a repository of its own for each edge.
+// unborn branch in a real repository and reads git's status of it, and the
+// suite runs it over the whole project once and over a repository of its
+// own for each edge.
 //
 
 require('./hermetic-env.cjs');

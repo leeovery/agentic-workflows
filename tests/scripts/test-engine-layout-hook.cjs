@@ -122,7 +122,7 @@ const ENGINE_FILES = Object.freeze({
   [layout.unit('pay', 'spec-review.json')]: 'a unit\'s record of the person\'s review of its spec (pay/spec-review.json) changes only through the engine\'s commands',
   [layout.run('pay', '3.S2', '001')]: 'a verification run (pay/build/runs/3.S2/run-001.json) changes only through the engine\'s commands — engine verify',
   [layout.ledger]: ledgerReason(),
-  [layout.migrations]: 'the migrations record (.state/migrations) changes only through the engine\'s commands — engine boot|checklist close directive',
+  [layout.migrations]: 'the migrations record (.state/migrations) changes only through the engine\'s commands — engine boot|checklist close directive|migrate checked',
 });
 
 /** The reason a write to the state-relative `rel` is refused with where the layout has no place for it. @param {string} rel */

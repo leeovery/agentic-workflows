@@ -262,7 +262,7 @@ describe('the runner meets the legacy split (21.4.3)', () => {
 
     const out = runner();
 
-    assert.deepStrictEqual([out.match(/^---DIRECTIVE: (.*)---$/m)?.[1], recorded(main)], ['079-records', [...GUARDED, '075', '076', '077', '078']]);
+    assert.deepStrictEqual([out.match(/^---DIRECTIVE: (.*)---$/m)?.[1], recorded(main)], ['079-records', [...GUARDED, '075', '076', '076 unrun', '077', '078']]);
     assert.ok(!fs.existsSync(statePath(main, '.cache/migrate/split')), 'nothing staged');
   });
 

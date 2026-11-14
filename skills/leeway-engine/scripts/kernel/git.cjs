@@ -494,9 +494,9 @@ function commitMerge(cwd, specs, message, nested = []) {
  * and out of the commit. Each path is taken literally. A path git refuses
  * to stage — one an ignore rule holds out, one beyond a symbolic link — is
  * left as it is, never forced in, and one matching nothing is dropped.
- * The paths in `removed` are taken out of the commit and then out of the
- * index, their files left on disk: what a migration drops from the branch,
- * whatever the index held of them.
+ * The paths in `removed` are taken out of the commit, whatever the index
+ * holds of them, and left in the index and on disk: what a migration drops
+ * from the branch, the index its caller's to bring into line (`untrack`).
  * Refuses while a merge, cherry-pick, revert or rebase is in progress,
  * touching nothing.
  * @param {string} cwd project root
@@ -509,9 +509,17 @@ function commitStaged(cwd, specs, message, removed = []) {
   refuseMidOperation(cwd);
   const addable = stageableSpecs(cwd, specs).filter((p) => !addRefused(cwd, p));
   if (addable.length > 0) gitIndexed(cwd, ['add', '--all', '--', ...literally(addable)]);
-  const committed = commitIndexEntries(cwd, specs, message, removed);
-  if (removed.length > 0) gitIndexed(cwd, ['rm', '--cached', '-r', '-q', '-f', '--ignore-unmatch', '--', ...literally(removed)]);
-  return committed;
+  return commitIndexEntries(cwd, specs, message, removed);
+}
+
+/**
+ * Take `paths` out of the index, whatever it holds of them, their files left
+ * on disk; a path it holds nothing of is passed over, so taking them out
+ * again changes nothing. Each path is taken literally.
+ * @param {string} cwd @param {string[]} paths
+ */
+function untrack(cwd, paths) {
+  if (paths.length > 0) gitIndexed(cwd, ['rm', '--cached', '-r', '-q', '-f', '--ignore-unmatch', '--', ...literally(paths)]);
 }
 
 /**
@@ -719,7 +727,7 @@ function diffWithUntracked(cwd, base, args, exclude) {
 }
 
 module.exports = {
-  READ_BUDGET_BYTES, OPERATION_MARKERS, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
+  READ_BUDGET_BYTES, OPERATION_MARKERS, git, tryGit, gitRun, GitError, gitPath, shortSha, commitPathspec, commitStaged, untrack, dirtyEntries, hasCommits, commitsBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, mergeInProgress, unmergedPast, commitMerge,
 };
