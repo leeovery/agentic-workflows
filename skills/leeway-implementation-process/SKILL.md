@@ -23,7 +23,7 @@ Every phase of the unit's cut has closed, and the review phase, entered straight
 
 ## Entering
 
-Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**; one made from a task's worktree runs as the entry's `engine`.
+Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**; one made from a task's worktree runs as the entry's `engine`. The build's first entry runs the project's steps that prepare the environment, which can take minutes: where the call is moved to the background, wait for its notification before going on, and never run it again while it runs.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs enter implementation {work_unit}
@@ -35,6 +35,7 @@ Then read what the DATA names: the unit's `record` and its `affected` entries, b
 - Each `phase` line, and the `fixes owed` beneath one, say where the phase is.
 - Each task `in flight` says what it waits on. A task with no builder dispatched here goes the way its line names, through the task loop. One at its gate is drawn there again; one behind the task in flight, or parked on a question, waits — none of these is ever sent to a new builder.
 - `waiting` lists the questions waiting on the person.
+- Each `not at once` names something the project's runs cannot share, such as a port or a database: no two tasks that would both use it run side by side.
 - A `merge waiting` is that phase's gate, which comes before anything else: load **[phase-close.md](references/phase-close.md)** and follow its instructions as written, from **The Merge**.
 - `finished` means the build is through: go on as **Closing** says.
 
@@ -67,6 +68,7 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 - A builder's change, and your fix of a nit → `commit --paths {file}… --task {work_unit} {task} -m "{message}"`, from the task's worktree, yours run as the entry's `engine`.
 - What the task was not told → `task add {work_unit} {task} --file {addition} --by {by:[orchestrator|person]}`; a task's type → `task type`; its order → `task link {work_unit} {task} --after {task}`.
 - A note for later → `task note {work_unit} --file {note} [--phase {N}]`.
+- What the build learns cannot run at once → `environment concurrency add {work_unit} "{what}"`.
 - A stuck task, or a phase review that failed → `task settle {work_unit} {task} --file {why}`, `task settle {work_unit} --phase {N} --file {why} [--fixes {task},…]`.
 - A bugfix's reproducing test on the unfixed code, once task 1.1's account is taken → `verify run {work_unit} {scenario} --unfixed --test "{command}"`.
 - A task landing → `task account {work_unit} {task}`, `render task-landed {work_unit} {task}`, `render step-gate {work_unit} {task}`, then `land open|chain {work_unit} {task}` and `task done {work_unit} {task}`; a task given up → `task close {work_unit} {task} --reason "{reason}"`; the phase's mutation run, the `next` of either ending its last task once its notes are consolidated, or named by `brief phase-review`'s refusal → `verify mutants {work_unit} {N}`.

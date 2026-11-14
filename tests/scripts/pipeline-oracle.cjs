@@ -67,6 +67,7 @@ const { kindOf, hardToUndo } = require(path.join(ROOT, 'skills/leeway-engine/scr
 const { LEARNED } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/learned-gates.cjs'));
 const { PERSON } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/user-files.cjs'));
 const { EXPERIMENT_TERMINAL_STATUSES } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
+const { environmentFaults } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/environment.cjs'));
 
 // The words a shell makes of a route written into a command: split at spaces,
 // a double-quoted span one word without its quotes.
@@ -138,6 +139,12 @@ function auditState(dir, label) {
 
   // A file the person shares is an asset: nothing records an import.
   assert.strictEqual(project?.roadmap?.imports, undefined, ctx('the roadmap records imports'));
+
+  // The environment setup, wherever it is written, reads as its schema
+  // holds it (22.5.12), so the brief, the commit door and the build read it.
+  if (project?.environment !== undefined) {
+    assert.deepStrictEqual(environmentFaults(project.environment), [], ctx('the environment setup does not read'));
+  }
 
   // Every inbox closure recorded names an item in the archive, closed by a
   // unit of the project or by none, at a time (18.6.4, P4): whatever brings

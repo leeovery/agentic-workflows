@@ -22,6 +22,24 @@
 // Nothing the worktree holds already is replaced, and a name that leaves the
 // repository is passed over.
 //
+// The steps that prepare the environment (environment.cjs, 22.5.1) are run
+// here too, each by `sh -c` with its command alone, in the project's folder,
+// in order (kernel/shell-command.cjs), the first that fails refusing with
+// its exit code and its output's last lines — the project's setup failed,
+// never the work (`runSteps`). Those for each worktree run in every
+// worktree the project's work or its tests run in, once the include is
+// copied: a task's, at `task worktree` (task-worktree.cjs), and each the
+// engine lays afresh to run the tests in — a reader's scratch, the mutation
+// run's and the run on the unfixed code (project-layout.cjs) — a marker in
+// that worktree's own git directory once every one has passed, so a call
+// again there runs none and one after a failure runs them all again
+// (`prepareWorktreeSteps`). Those before the build's first task run at the
+// build's entry, which records that they ran (build-entry.cjs). A call runs
+// steps only holding a claim in the git directory of the checkout they run
+// in (`claimingSteps`), so a second call there while they run — one moved to
+// the background past its time limit keeps running — refuses, running
+// none; a claim whose holder is gone is taken over.
+//
 // A link preparation makes — Claude Code's at the root, this module's in a
 // child repository — is never a change of the work, though git names it
 // untracked where a `.gitignore` names the folder as one, `node_modules/`:
@@ -49,8 +67,11 @@ const fs = require('fs');
 const path = require('path');
 const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
 const { projectDirtyEntries, mappedSubmodules, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
-const { mainCheckout } = require('../kernel/isolated-git.cjs');
+const { mainCheckout, gitfileTarget } = require('../kernel/isolated-git.cjs');
+const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
+const { tryClaimFile } = require('../kernel/manifest-io.cjs');
 const { readSettings } = require('./settings.cjs');
+const { stepsAt } = require('./environment.cjs');
 
 const INCLUDE = '.worktreeinclude';
 
@@ -64,7 +85,12 @@ const LAYOUT = 'leeway-';
 const OWN_LAYOUT = new RegExp(`^${LAYOUTS.replaceAll('.', '\\.')}/${LAYOUT}[^/]+/$`);
 const SETTINGS = ['.claude/settings.json', '.claude/settings.local.json'];
 
+/** The marker a worktree keeps in its own git directory once its steps have passed, and the claim a call holds while it runs steps (the header's). */
+const PREPARED = 'leeway-prepared';
+const PREPARING = 'leeway-preparing';
+
 /** @typedef {{dir: string, path: string}} Laid a repository by its folder from the project's root, at `path` */
+/** @typedef {import('./environment.cjs').Command} Step */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {{path: string, status: string}} Entry a change git names, its two-letter status `??` where untracked */
 
@@ -149,6 +175,57 @@ function prepareWorktree(repos, laid, project = repos[0].path) {
   repos.forEach((repo, at) => {
     for (const name of directories) linked(path.join(repo.path, name), path.join(laid[at].path, name));
     for (const file of includedFiles(repo, directories)) copied(path.join(repo.path, file), path.join(laid[at].path, file));
+  });
+}
+
+/**
+ * The steps run in `root`, in order (the header's): each that ran, refused
+ * at the first that fails, its refusal saying what that leaves undone.
+ * @param {string} root @param {Step[]} steps @param {string} undone
+ * @returns {Step[]}
+ */
+function runSteps(root, steps, undone) {
+  for (const { name, command } of steps) {
+    const { exit, tail } = runShellCommand(root, command);
+    if (exit !== 0) throw new Error(`the project's setup failed: its step "${name}" that prepares the environment exited ${exit}, so ${undone}. ${tailText(tail)}`);
+  }
+  return steps;
+}
+
+/**
+ * `run` answered holding the claim on the steps in the git directory
+ * `gitDir` (the header's), refused while another call holds it.
+ * @template T @param {string} gitDir @param {() => T} run @returns {T}
+ */
+function claimingSteps(gitDir, run) {
+  const release = tryClaimFile(path.join(gitDir, PREPARING));
+  if (release === null) throw new Error('the project\'s steps are running in another call; wait for it');
+  try {
+    return run();
+  } finally {
+    release();
+  }
+}
+
+/**
+ * The steps for each worktree, run in the project's folder `root` of the
+ * worktree whose top is `top`, where they have not all passed there (the
+ * header's): each that ran, none where its marker stands. The marker and the
+ * claim sit in the git directory the gitfile at the worktree's top names —
+ * every worktree they run in is a linked one.
+ * @param {string} cwd @param {string} root @param {string} top @param {string} undone what a step failing leaves undone
+ * @returns {Step[]}
+ */
+function prepareWorktreeSteps(cwd, root, top, undone) {
+  const steps = stepsAt(cwd, 'worktree');
+  if (steps.length === 0) return [];
+  const gitDir = /** @type {string} */ (gitfileTarget(path.join(top, '.git')));
+  return claimingSteps(gitDir, () => {
+    const marker = path.join(gitDir, PREPARED);
+    if (fs.existsSync(marker)) return [];
+    runSteps(root, steps, undone);
+    fs.writeFileSync(marker, `${new Date().toISOString()}\n`);
+    return steps;
   });
 }
 
@@ -259,4 +336,6 @@ function stagedHeldOut(repos, repo) {
   });
 }
 
-module.exports = { LAYOUTS, LAYOUT, prepareWorktree, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut };
+module.exports = {
+  LAYOUTS, LAYOUT, prepareWorktree, runSteps, claimingSteps, prepareWorktreeSteps, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut,
+};

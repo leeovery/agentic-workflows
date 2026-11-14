@@ -82,8 +82,10 @@
 //   at its stack's tip (phase-stack.cjs), a submodule holding none at the
 //   commit its holder points it at, a clone holding none at the tip of the
 //   branch it lands on, each prepared as Claude Code prepares an isolation
-//   worktree. The tool runs in the project's folder there, and the
-//   worktree is taken apart again, whatever the tool did.
+//   worktree, the environment setup's steps for each worktree run there as
+//   in a task's (worktree-prep.cjs) — as in the unfixed code's worktree
+//   above. The tool runs in the project's folder there, and the worktree is
+//   taken apart again, whatever the tool did.
 //   In each repository there, the commits whose `Leeway-Task` trailer names
 //   a task of the phase (commit-task.cjs), and the change from the parent
 //   of the earliest to the tip, confined to the files those commits touched

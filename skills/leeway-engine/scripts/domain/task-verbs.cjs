@@ -72,7 +72,8 @@
 // quick-fix's ended review open, handing back to its close
 // (review-round.cjs, `handBack`);
 // worktree lays the task's worktree out for its builder, reading the task
-// as show does (task-worktree.cjs); stopped records, against the task in
+// as show does, then runs the steps that prepare it (task-worktree.cjs);
+// stopped records, against the task in
 // flight in the calling conversation, that its builder stopped, unable to
 // build past a problem (13.11.9, position.cjs).
 // The verbs refuse in the engine's words: a tool the driver needs missing or
@@ -87,7 +88,7 @@
 // own commit.
 //
 // Every verb runs under the writer lock (engine.cjs), the tool's own lock
-// inside it. Before anything else reaches the driver, the project's setting
+// inside it — worktree around its layout alone, its steps run outside it. Before anything else reaches the driver, the project's setting
 // names it — written as the default where absent (drivers.cjs) — the
 // state's `.gitignore` takes the files its tool keeps local, refused where
 // that file is gone, and its store is made in the state worktree (7.5). A

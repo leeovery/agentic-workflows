@@ -25,7 +25,11 @@
 //   start; or the worktree there already, the branch made in place or
 //   switched to. Each worktree the layout adds is prepared as Claude Code
 //   prepares an isolation worktree (worktree-prep.cjs); the root of a
-//   task's worktree is Claude Code's own isolation's, prepared already.
+//   task's worktree is Claude Code's own isolation's, prepared already. A
+//   worktree laid afresh to run the project's tests in — a reader's
+//   scratch, the mutation run's, the run on the unfixed code
+//   (`layOutCommits`) — then runs the environment setup's steps for each
+//   worktree in its project's folder, as a task's worktree does.
 // - A scratch worktree sits beside the builders' isolation worktrees, in
 //   `.claude/worktrees/` of the project's main checkout, by its name
 //   (`scratchTop`), and is taken apart deepest first (`takeApart`).
@@ -36,7 +40,7 @@ const path = require('path');
 const { git, tryGit } = require('../kernel/git.cjs');
 const { repoOf, repoPath, topPath, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
 const lg = require('./landing-git.cjs');
-const { prepareWorktree, LAYOUTS, LAYOUT } = require('./worktree-prep.cjs');
+const { prepareWorktree, prepareWorktreeSteps, LAYOUTS, LAYOUT } = require('./worktree-prep.cjs');
 
 // Where a repository lands, loaded at its call: the landing reads the
 // tracker, whose verbs lay a task out through this module.
@@ -155,7 +159,8 @@ function layOutAt(project, unit, repos, tips, top) {
 /**
  * The project laid out afresh in a worktree whose top is `top`, each
  * repository detached at the commit `commits` names for its folder, and
- * prepared (the header's): each, by `repos`' order, as laid out there.
+ * prepared, its steps for each worktree run (the header's): each, by
+ * `repos`' order, as laid out there.
  * @param {string} project the project's folder in its own checkout @param {Repo[]} repos @param {Map<string, string>} commits by folder @param {string} top
  * @returns {Repo[]}
  */
@@ -166,6 +171,7 @@ function layOutCommits(project, repos, commits, top) {
     return { repo, at: path.join(folder, repo.dir), commit, make: { inPlace: false, start: commit } };
   });
   layOut(parts, null, project);
+  prepareWorktreeSteps(project, parts[0].at, top, 'the worktree laid out to run the tests in is not ready');
   return parts.map(({ repo, at }) => ({ ...repo, path: at }));
 }
 

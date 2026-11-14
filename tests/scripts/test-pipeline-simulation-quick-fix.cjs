@@ -9,7 +9,8 @@
 // one's account its builder's, a builder's question parking its fix while
 // the next goes on, answered and built (19.5.25), a question Claude raised
 // in the conversation outliving a /clear and holding the close until it is
-// answered again, and the close landing the one pull request. Its merge by
+// answered again, and the close landing the one pull request, recording no
+// environment setup for the project (22.S28). Its merge by
 // hand is test-pipeline-simulation-quick-fix-by-hand.cjs's, its review
 // test-pipeline-simulation-quick-fix-review.cjs's, its moves
 // test-pipeline-simulation-quick-fix-move.cjs's.
@@ -111,5 +112,7 @@ describe('pipeline simulation: quick-fix', () => {
     assert.ok(!rows.some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`), 'closed, it leaves the start menu');
     assert.deepStrictEqual([yes.next, allWork.kind, allWork.at_start, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'handoff', skill: 'leeway', args: [] }, 'all', true, [wu]],
       '20.S24: closed, the cleared conversation at the start menu shows All work, the quick-fix under COMPLETE');
+    assert.deepStrictEqual(JSON.parse(sim.read(['environment', 'show'])), { run: {}, prepare: [], concurrency: [], verify: null, linters: [], confirmed: null, ok: true },
+      '22.S28: built and closed in a project with no environment setup, the quick-fix recorded none, so the project\'s first ready to build still asks it');
   });
 });

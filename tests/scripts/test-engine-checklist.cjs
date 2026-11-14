@@ -206,6 +206,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'invariants-checked claude open: every invariant names a check or says none can',
         'sections-drawn engine done: every section of the spec drawn on by at least one phase in the cut',
         'assets-linked engine done: canonical assets linked from spec.md — one gone or no longer needed set to reference: asset status <work-unit> <path> reference',
+        'environment-recorded engine open: the environment setup recorded — asked once for the project, at its first ready to build',
       ],
       start: [
         'tasks-written engine open: tasks written with their links',
@@ -250,12 +251,12 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
 
   it('leaves the sweep between topics off for a unit of one live topic — a feature\'s, or an epic\'s whose second is cancelled — and refuses marking it there', () => {
     const keys = (/** @type {string} */ unit) => show('ready-to-build', unit).items.map((/** @type {any} */ item) => item.key);
-    const unswept = ['topics-settled', 'replacements-checked', 'statements-traced', 'review-settled', 'phases-complete', 'invariants-checked', 'sections-drawn', 'assets-linked'];
+    const unswept = ['topics-settled', 'replacements-checked', 'statements-traced', 'review-settled', 'phases-complete', 'invariants-checked', 'sections-drawn', 'assets-linked', 'environment-recorded'];
     refundsCancelled();
 
     assert.deepStrictEqual([keys('solo'), keys(UNIT)], [unswept, unswept]);
     assert.strictEqual(refused(['done', 'ready-to-build', 'solo', 'sweep-run']),
-      'checklist done: ready-to-build has no item "sweep-run" — its items are topics-settled, replacements-checked, statements-traced, review-settled, phases-complete, invariants-checked, sections-drawn, assets-linked');
+      'checklist done: ready-to-build has no item "sweep-run" — its items are topics-settled, replacements-checked, statements-traced, review-settled, phases-complete, invariants-checked, sections-drawn, assets-linked, environment-recorded');
   });
 
   it('refuses a point the engine lacks, a unit, topic or phase the project lacks, a unit with no cut, an item the point lacks, and arguments of another shape, writing nothing', () => {
@@ -363,12 +364,26 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     seen.push(engines());
 
     assert.deepStrictEqual(seen, [
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn open', 'assets-linked done'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn done', 'assets-linked done'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done', 'assets-linked done'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done', 'assets-linked done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn open', 'assets-linked done', 'environment-recorded open'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn done', 'assets-linked done', 'environment-recorded open'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done', 'assets-linked done', 'environment-recorded open'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done', 'assets-linked done', 'environment-recorded open'],
     ]);
-    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'review-settled open', 'phases-complete open', 'sections-drawn open', 'assets-linked done']);
+    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'review-settled open', 'phases-complete open', 'sections-drawn open', 'assets-linked done', 'environment-recorded open']);
+  });
+
+  it('22.S13, 22.S8, 15.S14: reads the environment setup as recorded once the person\'s yes at its screen records it, naming that screen while it is not — the project\'s, so every unit\'s ready to build after finds it so', () => {
+    const recorded = (/** @type {string} */ unit) => show('ready-to-build', unit).items.find((/** @type {{key: string}} */ item) => item.key === 'environment-recorded');
+    const unasked = recorded(UNIT);
+    ok(dir, ['environment', 'confirm']);
+
+    assert.deepStrictEqual([unasked, recorded(UNIT).state, recorded('solo').state], [{
+      key: 'environment-recorded',
+      text: 'the environment setup recorded — asked once for the project, at its first ready to build',
+      by: 'engine',
+      state: 'open',
+      way: 'the project\'s environment setup has never been asked: draw it, render environment-setup, its yes recording it',
+    }, 'done', 'done']);
   });
 
   it('reads the unit\'s topics as settled once every live topic is decided — a topic under discussion open, one cancelled or postponed no longer live (11.2.1, 6.4.7)', () => {
@@ -502,7 +517,7 @@ describe('the close, refused while any item is open (6.4.4, 6.S26)', () => {
   it('refuses ready to build\'s close while the cut leaves a section undrawn, naming every item open', () => {
     cut(dir, [{ ...CARDS, sections: ['1.1'] }, REFUNDS]);
 
-    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, review-settled, invariants-checked, sections-drawn');
+    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, review-settled, invariants-checked, sections-drawn, environment-recorded');
   });
 
   it('counts no mark made before the last close toward the next: a topic reopened by mail closes again on its marks made since (10.2.7)', () => {

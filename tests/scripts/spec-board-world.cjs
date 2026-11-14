@@ -69,9 +69,10 @@ function specBoard(dir) {
     land();
   }
 
-  /** The spec cut into one phase of every section, and ready to build's checklist worked and closed: its screen draws. */
+  /** The spec cut into one phase of every section, and ready to build's checklist worked — the project's environment setup recorded — and closed: its screen draws. */
   function readyClosed() {
     ok(dir(), ['cut', UNIT, '--file', writeState(dir(), layout.cache(UNIT, 'specification', 'cut.json'), JSON.stringify({ phases: [{ name: 'All', goal: 'A card is charged and refunded.', scenarios: ['1.S1'], sections: ['1', '2'], relies_on: [] }] }))]);
+    ok(dir(), ['environment', 'confirm']);
     for (const item of ['replacements-checked', 'invariants-checked']) ok(dir(), ['checklist', 'done', 'ready-to-build', UNIT, item]);
     ok(dir(), ['checklist', 'close', 'ready-to-build', UNIT]);
   }

@@ -126,6 +126,47 @@ describe('the rules each file merges by', () => {
     assert.deepStrictEqual(mergeManifest(layout.projectManifest, {}, { x: { project_id: 'a' } }, { x: { project_id: 'b' } }).conflicts.map((c) => c.field), [['x', 'project_id']]);
   });
 
+  describe('the environment setup, part by part (4.7.5, 22.5.12)', () => {
+    const AT = '2026-06-03T09:00:00.000Z';
+    /** The project manifests merged, each its environment setup alone. @param {unknown} base @param {unknown} local @param {unknown} remote */
+    const setups = (base, local, remote) => mergeManifest(layout.projectManifest, base === undefined ? undefined : { environment: base }, { environment: local }, { environment: remote });
+    const linter = (/** @type {string} */ name, command = name) => ({ name, command });
+    const record = (/** @type {string} */ what, /** @type {string} */ by) => ({ what, at: AT, by });
+
+    it('keeps both sides\' entries of each list, each keyed by the field naming it once — the remote\'s in its order, then this clone\'s new ones — never one side\'s list over the other\'s', () => {
+      const base = { linters: [linter('vet')], concurrency: [], prepare: [] };
+      const local = { linters: [linter('vet'), linter('fmt')], concurrency: [record('port 5432', 'a')], prepare: [{ name: 'Deps', when: 'both', command: 'npm ci' }] };
+      const remote = { linters: [linter('lint'), linter('vet')], concurrency: [record('the browser', 'b')], prepare: [] };
+      assert.deepStrictEqual(setups(base, local, remote), {
+        value: { environment: { linters: [linter('lint'), linter('vet'), linter('fmt')], concurrency: [record('the browser', 'b'), record('port 5432', 'a')], prepare: [{ name: 'Deps', when: 'both', command: 'npm ci' }] } },
+        conflicts: [],
+      });
+    });
+
+    it('takes an entry one side changed or removed from that side, and stops on one both changed differently, naming it as written', () => {
+      const base = { linters: [linter('vet', 'go vet'), linter('fmt', 'gofmt')] };
+      assert.deepStrictEqual(setups(base, { linters: [linter('vet', 'go vet ./...'), linter('fmt', 'gofmt')] }, { linters: [linter('vet', 'go vet')] }).value, { environment: { linters: [linter('vet', 'go vet ./...')] } });
+      const { conflicts } = setups(base, { linters: [linter('vet', 'go vet ./...')] }, { linters: [linter('vet', 'go vet -all')] });
+      assert.deepStrictEqual(conflicts.map(({ field, local, remote }) => [field, local, remote]), [[['environment', 'linters', 'vet'], { set: true, value: linter('vet', 'go vet ./...') }, { set: true, value: linter('vet', 'go vet -all') }]]);
+      assert.deepStrictEqual(conflictLabel(layout.projectManifest, ['environment', 'linters', 'go vet'], 'Fumi').subject, 'the linter "go vet"');
+    });
+
+    it('merges how to run the product command by command, and the verify setup as one value, never part by part', () => {
+      const verify = { place: 'verify', launch: 'up', drive: 'drive' };
+      assert.deepStrictEqual(setups({ run: { tests: 't' } }, { run: { tests: 't', build: 'b' }, confirmed: AT }, { run: { tests: 'u' } }), { value: { environment: { run: { tests: 'u', build: 'b' }, confirmed: AT } }, conflicts: [] });
+      assert.deepStrictEqual(setups({ verify }, { verify: { ...verify, launch: 'start' } }, { verify: { ...verify, drive: 'go' } }).conflicts.map(({ field }) => field), [['environment', 'verify']]);
+    });
+
+    it('4.7.4: merges what means the same on both sides to one, unasked — the person\'s yes given on both, the earlier instant; a thing that cannot run at once learned on both in the same words, the earlier record with its unit', () => {
+      const LATER = '2026-06-04T10:00:00Z';
+      assert.deepStrictEqual([setups({}, { confirmed: LATER }, { confirmed: AT }), setups({}, { confirmed: AT }, { confirmed: LATER })], [
+        { value: { environment: { confirmed: AT } }, conflicts: [] }, { value: { environment: { confirmed: AT } }, conflicts: [] },
+      ]);
+      const later = { what: 'port 5432', at: LATER, by: 'b' };
+      assert.deepStrictEqual(setups({ concurrency: [] }, { concurrency: [record('port 5432', 'a')] }, { concurrency: [later] }), { value: { environment: { concurrency: [record('port 5432', 'a')] } }, conflicts: [] });
+    });
+  });
+
   it('takes the picked side where a pick is given for the choice', () => {
     const pickOf = (choice) => (choice.field.join('.') === 'a' && choice.remote.set && choice.remote.value === 3 ? 'local' : null);
     assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 3 }, pickOf), { value: { a: 2 }, conflicts: [{ field: ['a'], local: { set: true, value: 2 }, remote: { set: true, value: 3 }, pick: 'local' }] });

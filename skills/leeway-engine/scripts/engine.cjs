@@ -90,6 +90,7 @@ const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
 const { APPROVE_MAP_USAGE, runApproveMapVerb } = require('./domain/approve-map.cjs');
 const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
 const { VERIFY_USAGE, VERIFY_FLAGS, runVerifyVerb } = require('./domain/verify.cjs');
+const { ENVIRONMENT_USAGE, runEnvironmentVerb } = require('./domain/environment-verbs.cjs');
 const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
@@ -322,6 +323,7 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   ${SWEEP_USAGE}
   ${READY_TO_BUILD_USAGE}
 ${VERIFY_USAGE.replace(/^/gm, '  ')}
+${ENVIRONMENT_USAGE.replace(/^/gm, '  ')}
 ${MIGRATE_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
@@ -452,6 +454,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render roadmap-harvest --file <items.json>
   render matrix
   render matrix-replay --threshold <percent> | --build <percent>
+  render environment-setup [--from manage]
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -1412,6 +1415,22 @@ function runVerify(call, argv) {
   const { opts, flags, positional } = parseArgs(argv, [...VERIFY_FLAGS]);
   try {
     respond(call, runVerifyVerb(call.cwd, positional, opts, flags));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// environment — the project's environment setup shown, a part of it set, the
+// person's yes recorded, and what cannot run at once recorded as a build
+// learns it (domain/environment-verbs.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runEnvironment(call, argv) {
+  const [verb, ...args] = argv;
+  try {
+    respond(call, runEnvironmentVerb(call.cwd, verb, args, call.stdin));
   } catch (err) {
     failJson(call, err);
   }
@@ -2522,20 +2541,23 @@ const COMMANDS = Object.freeze({
   person: runPerson,
   convergence: runConvergence,
   trust: runTrust,
+  environment: runEnvironment,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger`, `asset`, `raise`, `enter`, `verify` and `inbox
-// capture`, and none but they waits on the lock: `inbox capture` holds
+// `boot`, `ledger`, `asset`, `raise`, `enter`, `verify`, `task worktree`
+// and `inbox capture`, and none but they waits on the lock: `inbox capture` holds
 // the lock of the project it captures into, which may be another's than
 // the caller's, around its name, its write and its commit;
 // `knowledge` writes the store the state ignores,
 // under a lock of its own; `verify` holds it around a run's record or the
 // setup's and the commit alone, so the product's parts, which run for
-// minutes, hold no peer up and may run the engine;
+// minutes, hold no peer up and may run the engine; `task worktree` holds it
+// around the task's layout alone, so the steps that prepare the environment,
+// which run for minutes, hold no peer up;
 // `boot` holds the writer lock around each state write it makes and no
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
 // holds it around its read of the ledger, the append and the commit alone,
@@ -2559,8 +2581,8 @@ const COMMANDS = Object.freeze({
 // settings file, outside the project; and the rest read:
 // `layout guard` among them, run before every file Claude writes, `brief
 // guard`, before every dispatch of an agent, `shell guard`, before every
-// shell command, `checklist show`, `migrate check` and `review`, `measures`
-// and `board`.
+// shell command, `checklist show`, `migrate check` and `review`,
+// `environment show`, `measures` and `board`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2594,6 +2616,8 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   person: '*',
   convergence: '*',
   trust: ['threshold', 'build-threshold'],
+  environment: ['show'],
+  task: ['worktree'],
 }));
 
 // Every command dispatched refuses, writing nothing, in a conversation boot

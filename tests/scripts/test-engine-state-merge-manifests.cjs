@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 // The migrations record and the manifests through a merge where both sides
 // moved (leeway-engine/scripts/domain/state-merge-paths.cjs): a migration
-// kept once, a field each side changed kept from each, and a field both
-// changed differently stopping the merge with nothing written until the
-// person picks.
+// kept once, a field each side changed kept from each — the environment
+// setup's parts among them, both sides' entries of its lists kept — and a
+// field both changed differently stopping the merge with nothing written
+// until the person picks.
 //
 // Layer: git. World: real repositories in a temp folder per test, a project
 // on a bare remote and a second clone of it on "another machine", each with
@@ -55,6 +56,22 @@ describe('the manifests (4.S17)', () => {
     const merged = JSON.parse(readFile(here.root, layout.projectManifest));
     assert.strictEqual(merged.defaults.plan_format, 'tick');
     assert.strictEqual(merged.roadmap.items['a-lifetime-tier'].horizon, 'next');
+  });
+
+  it('22.S37: keeps both machines\' changes to different parts of the environment setup, and both sides\' records of what cannot run at once (4.7.5)', () => {
+    const AT = '2026-06-03T09:00:00.000Z';
+    const vet = { name: 'go vet', command: 'go vet ./...' };
+    const fmt = { name: 'gofmt', command: 'gofmt -l .' };
+    const port = { what: 'the tests share port 5432', at: AT, by: 'pay' };
+    const browser = { what: 'the e2e suite owns the browser', at: AT, by: 'search' };
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now', { environment: { linters: [vet], confirmed: AT } }) });
+    commitUnpushed(here, { [layout.projectManifest]: projectManifest('now', { environment: { linters: [vet, fmt], confirmed: AT, concurrency: [port] } }) });
+    commitOnState(there.root, { [layout.projectManifest]: projectManifest('now', { environment: { linters: [vet], confirmed: AT, run: { tests: 'go test ./...' }, concurrency: [browser] } }) });
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.conflicts], ['merged', []]);
+    assert.deepStrictEqual(JSON.parse(readFile(here.root, layout.projectManifest)).environment, { linters: [vet, fmt], confirmed: AT, run: { tests: 'go test ./...' }, concurrency: [browser, port] });
   });
 
   it('refuses a side\'s copy that is not a JSON object, naming the manifest from the project root', () => {

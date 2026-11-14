@@ -15,9 +15,12 @@
 //   given for its folder, every one detached and nested as the project
 //   lays them out, and each prepared as Claude Code prepares an isolation
 //   worktree — the `.worktreeinclude` files copied and the
-//   `worktree.symlinkDirectories` linked (worktree-prep.cjs) — so the
-//   project's tests and its verify setup run there as in its checkout. It
-//   answers the project's folder there. Refused where a repository of the
+//   `worktree.symlinkDirectories` linked (worktree-prep.cjs) — and the
+//   environment setup's steps for each worktree run in the project's folder
+//   there, as in a task's worktree, so the project's tests and its verify
+//   setup run there as in its checkout. It answers the project's folder
+//   there. Refused where a step fails, or another call runs them there
+//   (worktree-prep.cjs); where a repository of the
 //   project is given no commit, or a folder is given twice or is none of
 //   its child repositories'; and where a repository has no commit of the
 //   one given.

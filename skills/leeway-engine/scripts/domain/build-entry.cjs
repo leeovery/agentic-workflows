@@ -57,14 +57,27 @@
 // each task in flight with its builder and its pair, or the question
 // parking it, its gate, or the task it waits behind; each question waiting
 // on the person; the entries affected since the spec concluded, by their
-// call (11.9.1); the unit's record, by its call; and the build's log, read
-// beside the ledger (12.2.2, 24.2.5). The entry's tasks in flight are the calling
+// call (11.9.1); the unit's record, by its call; the build's log, read
+// beside the ledger (12.2.2, 24.2.5); and each thing the environment setup
+// records that cannot run at once, which no two of the build's runs do at
+// the same time (12.7.4, environment.cjs). The entry's tasks in flight are the calling
 // conversation's; the note's, those of the conversation it is asked for, as
 // its position holds them — a compaction's note is asked for from outside
 // that conversation.
 //
+// The build's first entry, where the environment setup holds steps for
+// before the build's first task, starts it: the steps run in the code root
+// of the checkout it is entered from, in order and with no writer lock
+// held, holding the claim on that checkout's steps, so an entry while
+// another runs them refuses; a step that fails refuses the entry with its
+// exit code and its output's last lines, nothing written (worktree-prep.cjs,
+// `runSteps`, `claimingSteps`); then the start records that they
+// ran, `build.prepared`, the instant, which the entry commits, so no later
+// entry runs them again (22.5.1). A quick-fix's arm runs them as it begins
+// its fixes, which record its start.
+//
 // The standing is worked out at each read, never kept: only the position,
-// auto or step, is stored, as `build`. Each phase of the cut is not yet
+// auto or step, is stored, as `build`, beside when its steps ran. Each phase of the cut is not yet
 // written, the tracker holding none of it (7.4.1); written, its start
 // checklist not closed; running; in review, every task not closed done;
 // closed, its close checklist closed; or merged, closed with its stack
@@ -141,6 +154,11 @@ const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
 const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { stepsAt, concurrency } = require('./environment.cjs');
+const { runSteps, claimingSteps } = require('./worktree-prep.cjs');
+const { repoFacts } = require('../kernel/isolated-git.cjs');
+const { refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -605,6 +623,9 @@ function takeInFlight(at) {
 /** The engine by its absolute path, as an entry names it for a call made from a task's worktree. @type {Line} */
 const ENGINE_LINE = ['engine', `\`${ENGINE_RUN}\` — the engine by its absolute path, for a call made from a task's worktree`];
 
+/** Each thing the environment setup records that cannot run at once, a line each (the header's). @param {string} cwd @returns {Line[]} */
+const notAtOnce = (cwd) => concurrency(cwd).map(({ what }) => ['not at once', what]);
+
 /** What the build reads at its entry (the header's). @param {Entering} at @returns {Line[]} */
 function buildReads(at) {
   const read = readingOf(at);
@@ -616,8 +637,34 @@ function buildReads(at) {
     ['affected', `\`${affected}\``],
     ['record', `\`${record}\``],
     ['build log', statePath(at.cwd, buildLogOf(at.unit))],
+    ...notAtOnce(at.cwd),
     ENGINE_LINE,
   ];
+}
+
+/**
+ * The steps for before the build's first task, run in the code root of the
+ * checkout entered from, holding the claim on its steps (the header's):
+ * each a line of the DATA.
+ * @param {Entering} at @returns {Line[]}
+ */
+function firstSteps({ cwd }) {
+  const steps = stepsAt(cwd, 'first');
+  if (steps.length === 0) return [];
+  const root = codeRoot(cwd);
+  const { gitDir } = /** @type {import('../kernel/isolated-git.cjs').RepoFacts} */ (repoFacts(root));
+  const ran = refusing('enter implementation', () => claimingSteps(gitDir, () => runSteps(root, steps, 'the build\'s first task does not start')));
+  return ran.map(({ name, command }) => ['prepared', `${name} — ${command}`]);
+}
+
+/** Whether the build's first entry is still to run its steps (the header's). @param {Standing} at */
+const stepsOwed = ({ cwd, manifest }) => manifest.build?.prepared === undefined && stepsAt(cwd, 'first').length > 0;
+
+/** The build's steps recorded as run, the start the entry commits. @param {string} cwd @param {string} unit */
+function recordPrepared(cwd, unit) {
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  manifest.build = { ...manifest.build, prepared: isoNow() };
+  saveWorkUnitManifest(cwd, unit, manifest);
 }
 
 /** A quick-fix's fixes as the tracker holds them on arrival, null where their phase is not written. @param {Standing} at */
@@ -712,6 +759,7 @@ const QUICK_FIX = Object.freeze({
   held: codeHeld,
   unstarted: ({ manifest }) => !fixesBegun(manifest),
   start: beginFixes,
+  readies: firstSteps,
   questions: () => [],
   reads: fixesReads,
   closes: takeInFlight,
@@ -723,8 +771,9 @@ const IMPLEMENTATION = Object.freeze({
   arm: (manifest) => (quickFixBuild(manifest) ? QUICK_FIX : null),
   standing: ({ manifest }) => buildRefusal(manifest),
   held: codeHeld,
-  unstarted: () => false,
-  start: () => {},
+  unstarted: stepsOwed,
+  start: recordPrepared,
+  readies: firstSteps,
   questions: () => [],
   reads: buildReads,
   closes: takeInFlight,

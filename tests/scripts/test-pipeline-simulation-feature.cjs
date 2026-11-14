@@ -120,7 +120,8 @@ describe('pipeline simulation: feature', () => {
     // records — the topic's, and the unit's own, which holds the line.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
     assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n\n/m);
-    assert.deepStrictEqual(gatesAnswered(sim), ['start menu', 'start this work', 'ready to build'], '8.S18: past the start menu\'s pick that began it, the person was stopped at start this work and the one screen alone');
+    assert.deepStrictEqual(gatesAnswered(sim), ['start menu', 'start this work', 'environment setup', 'ready to build'],
+      '8.S18, 22.S7: past the start menu\'s pick that began it, the person was stopped at start this work, the project\'s environment setup asked once at its first ready to build, and the one screen alone — no plan format, no project skills');
   });
 
   it('start: inbox ideas and a bug picked in triage and worked as one hand discovery their seeds with no type, which start this work lands as a feature, where no investigation runs for the bug (19.S9, 18.S49)', () => {

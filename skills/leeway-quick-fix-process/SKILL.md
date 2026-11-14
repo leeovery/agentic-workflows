@@ -23,7 +23,7 @@ The person has said yes at the close: `finish yes` has landed the quick-fix's pu
 
 ## Entering
 
-Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
+Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**. The first entry runs the project's steps that prepare the environment, which can take minutes: where the call is moved to the background, wait for its notification before going on, and never run it again while it runs.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs enter implementation {work_unit}

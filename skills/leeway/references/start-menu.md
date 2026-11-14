@@ -24,6 +24,12 @@ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with ro
 
 Once triage is drawn: Load **[triage.md](triage.md)** and follow its instructions as written.
 
+## The Environment Setup
+
+Manage's `s/setup` draws the project's environment setup, and its answer goes to `gate` as any screen's does. A Comment on it says what's different:
+
+Load **[environment-setup.md](../../leeway-shared/references/environment-setup.md)** and follow its instructions as written, with from = `manage`.
+
 ## Managing a Unit
 
 A unit picked in manage, or among the closed units, is drawn with what can be done to it, `render manage-unit {work_unit}`. Once it is drawn: Load **[manage-work-unit.md](manage-work-unit.md)** with work_unit = `{work_unit}`.

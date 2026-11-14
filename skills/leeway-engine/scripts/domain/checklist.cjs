@@ -38,7 +38,10 @@
 // in flight, no gap it found waiting on the person and nothing it left
 // waiting, for the writer or to be surfaced (spec-passes.cjs); every file the
 // unit's current entries link as canonical linked from `spec.md` (11.6.3,
-// log-links.cjs); a build phase's, every item of its start and close but
+// log-links.cjs); the project's environment setup recorded, the person's
+// yes at its screen asked once at the project's first ready to build
+// (22.5.3, environment-verbs.cjs), the item naming that screen as its way
+// on while it is not; a build phase's, every item of its start and close but
 // the shared design settled (phase-checks.cjs) — its tasks written, what it
 // relies on done, its tasks passed, its phase review passed with its fixes
 // landed, its scenarios proven or reported, its notes consolidated and its
@@ -110,6 +113,7 @@ const { cutHolds } = require('./cut.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
+const { confirmedAt } = require('./environment.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
@@ -275,6 +279,9 @@ function assetsLinked({ cwd, unit, warnings }) {
   return canonicalAssets(root, /** @type {string} */ (unit), warnings).every((asset) => links.some((link) => link === asset || link.startsWith(`${asset}/`)));
 }
 
+/** The project's environment setup asked, the person's yes recording it (22.5.3). @param {Named} named */
+const environmentRecorded = ({ cwd }) => confirmedAt(cwd) !== null;
+
 /** What `landed`, the unit's landed spec, and its cut hold, as ready to build's close keeps them. @param {string} landed @param {Record<string, any>} manifest */
 const sealOf = (landed, manifest) => ({ spec_hash: fingerprint(landed), cut_hash: fingerprint(JSON.stringify(manifest.cut ?? null)) });
 
@@ -369,6 +376,12 @@ const POINTS = Object.freeze({
       { key: 'invariants-checked', text: 'every invariant names a check or says none can' },
       { key: 'sections-drawn', text: 'every section of the spec drawn on by at least one phase in the cut', check: sectionsDrawn },
       { key: 'assets-linked', text: 'canonical assets linked from spec.md — one gone or no longer needed set to reference: asset status <work-unit> <path> reference', check: assetsLinked },
+      {
+        key: 'environment-recorded',
+        text: 'the environment setup recorded — asked once for the project, at its first ready to build',
+        check: environmentRecorded,
+        way: () => 'the project\'s environment setup has never been asked: draw it, render environment-setup, its yes recording it',
+      },
     ],
     shows: ownSkips,
     seals: ({ cwd, unit, manifest }) => specAndCut(cwd, /** @type {string} */ (unit), manifest),
