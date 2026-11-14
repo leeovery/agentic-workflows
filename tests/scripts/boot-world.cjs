@@ -4,7 +4,8 @@
 // fixture, a git repository with its state worktree and the workflows' own
 // hooks in its settings, made once per process and copied (`bootProject`,
 // `setupProject`); a real project on the layout before Leeway's, with no
-// `.leeway/` (`legacyProject`); the library's stub engine, whose migration runner
+// `.leeway/`, its settings holding the hooks today's product leaves
+// (`legacyProject`); the library's stub engine, whose migration runner
 // STUB_MIGRATE_MODE and its siblings drive (`stubbed`), and the repo's real
 // scripts (`real`); the hooks boot installs, as settings read;
 // a knowledge base that reads ready, a short record to index, and
@@ -29,6 +30,13 @@ const RESUME_HOOK = engineHook('session resume');
 /** The settings such a project reaches with labels on: every SessionEnd hook, the SessionStart resume hook, and the guard groups. */
 const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: GUARD_GROUPS },
+}, null, 2) + '\n';
+
+/** A hook running a verb of today's product's engine, at its own path. @param {string} verb */
+const todaysHook = (verb) => ({ type: 'command', command: `node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" ${verb}` });
+/** The settings today's product leaves a project with labels on: its SessionEnd and SessionStart hooks, and no guard. */
+const TODAYS_HOOKS = JSON.stringify({
+  hooks: { SessionEnd: [{ hooks: ['session cleanup', 'presence cleanup', 'conversation end'].map(todaysHook) }], SessionStart: [{ matcher: 'resume', hooks: [todaysHook('session resume')] }] },
 }, null, 2) + '\n';
 
 /** The knowledge directory's files a checkout sets up, state-relative. */
@@ -72,16 +80,17 @@ const MIGRATED_TO_070 = [...new Set(fs.readdirSync(path.join(path.dirname(harnes
 /**
  * A real project on the layout before Leeway's, no `.leeway/` in it: its
  * `.workflows/` committed on `main` as the chain up to 070 left it — its
- * cache ignored there, its old migrations record at 070, a roadmap item with
- * no kind, and a feature mid-discussion — beside the workflows' own hooks.
+ * cache ignored there, its old migrations record at 070, labels on, a
+ * roadmap item with no kind, and a feature mid-discussion — beside the hooks
+ * today's product leaves in its settings.
  */
 const legacyWorld = folderFrom('engine-boot-legacy-', (folder) => {
   const project = harness.initRepo(path.join(folder, 'project'));
   createFile(project, 'README.md', '# Project\n');
-  createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+  createFile(project, '.claude/settings.json', TODAYS_HOOKS);
   createFile(project, '.workflows/.gitignore', '.cache/\n');
   createFile(project, '.workflows/.state/migrations', MIGRATED_TO_070.map((id) => `${id}\n`).join(''));
-  createFile(project, '.workflows/manifest.json', JSON.stringify({ roadmap: { items: { 'dark-mode': { title: 'Dark mode', state: 'waiting', horizon: null, sources: [] } } } }, null, 2) + '\n');
+  createFile(project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true }, roadmap: { items: { 'dark-mode': { title: 'Dark mode', state: 'waiting', horizon: null, sources: [] } } } }, null, 2) + '\n');
   createFile(project, '.workflows/payments/manifest.json', JSON.stringify({
     name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: { discussion: { items: { payments: { status: 'in-progress' } } } },
   }, null, 2) + '\n');
@@ -187,5 +196,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, FLAG, LABELS_ON, STORE_FILES, MIGRATED_TO_070, legacyLayout, setupProject, legacyProject, stubbed, real, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails,
+  hookHelpers, FLAG, LABELS_ON, TODAYS_HOOKS, STORE_FILES, MIGRATED_TO_070, legacyLayout, setupProject, legacyProject, stubbed, real, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine, runEngineFails,
 };

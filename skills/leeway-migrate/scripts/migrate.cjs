@@ -73,8 +73,9 @@
 //     directive NNN-{slug}`, which its passing check alone lets through; the
 //     next run carries on past it. One start may meet several. A directive
 //     whose check answers no piece at all has nothing for the session to do
-//     (21.4.3): the runner records it unrun — its ID, and beside it the
-//     engine's unrun line, `NNN unrun`, so the review lists only the
+//     (21.4.3), and nor has one of the reshape's sequence in a project with
+//     no `.workflows/`: the runner records it unrun — its ID, and beside it
+//     the engine's unrun line, `NNN unrun`, so the review lists only the
 //     directives a session carried out — and carries on. The check and the
 //     unrun line are the engine's side of the directives (`piecesOf`,
 //     `unrunLine`, leeway-engine/scripts/domain/directives.cjs); a check that
@@ -496,6 +497,7 @@ function main() {
     fs.appendFileSync(record, [id, ...beside].map((line) => `${line}\n`).join(''));
     recorded.add(id);
   };
+  const noteUnrun = (/** @type {string} */ id) => noteRecorded(id, require(ENGINE_DIRECTIVES).unrunLine(id));
 
   /**
    * Record a migration that ran, count it, and journal what it handed back.
@@ -538,7 +540,8 @@ function main() {
     if (recorded.has(id)) continue;
     const directive = script.endsWith(DIRECTIVE);
     if (!codeTreeState && parseInt(id, 10) <= (directive ? LAST_CODE_TREE_DIRECTIVE : LAST_CODE_TREE_MIGRATION)) {
-      noteRecorded(id);
+      if (directive) noteUnrun(id);
+      else noteRecorded(id);
       continue;
     }
     if (codeTreeState && !pastTheGuard && againstTheGuard(id) > 0) {
@@ -548,7 +551,7 @@ function main() {
     if (directive) {
       const named = path.basename(script, DIRECTIVE);
       if (nothingToDo(cwd, named)) {
-        noteRecorded(id, require(ENGINE_DIRECTIVES).unrunLine(id));
+        noteUnrun(id);
         continue;
       }
       process.stdout.write(`---DIRECTIVE: ${named}---\n`);

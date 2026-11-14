@@ -33,9 +33,10 @@
 // back its check and notice as today (21.10.13, 21.S48); and, through the
 // real chain, the stop before the move for the checks the chain before the
 // guard handed back, stamping no conversation, its screen and its record
-// going through without the stamp, the fix made in `.workflows/` carried by
-// the move and the check marked made (21.10.13), and a directive recorded
-// unrun left out of the review's directives. The ordinary `commit
+// going through without the stamp, the guards live from that stop on, the
+// fix made in `.workflows/` carried by the move and the check marked made
+// (21.10.13), and a directive recorded unrun left out of the review's
+// directives, the code commit taking the settings boot synced. The ordinary `commit
 // --migrations` is test-engine-commit-door-state.cjs's.
 //
 // Layer: git. World: the migration's harness (migration-world.cjs) — the
@@ -52,7 +53,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, statePath, layout, writeState, readState, killedAt, keywordOnlyKnowledge, indexedFiles, bareRepo, remoteTip, cleanupFixture } = harness;
+const { git, stateGit, statePath, layout, writeState, readState, killedAt, keywordOnlyKnowledge, indexedFiles, bareRepo, remoteTip, cleanupFixture, GUARD_GROUPS } = harness;
 const { createFile, useTempFolder } = require('./discovery-test-utils.cjs');
 const {
   UNIT, SESSION, ALL_RECORDED, OLD_STORE, OLD_LOCAL, directiveEngine, finishedMigration, nestedFinished, stateUnborn, codeHead, refusedUntouched,
@@ -453,7 +454,7 @@ describe('a code migration after the reshape (21.10.13)', () => {
 describe('the reshape\'s real sequence through its commit (21.S18)', () => {
   const folder = useTempFolder('migration-commit-real-');
 
-  it('a project at 070 whose discussion parks a concern in its triage section stops before the move for 071\'s check, every boot until it is recorded made, stamping no conversation; the fix made in .workflows/, uncommitted, and recorded in a conversation boot has not stamped, the next boot carries on, marking the check made, and the move carries the fixed files (21.10.13)', () => {
+  it('a project at 070 whose discussion parks a concern in its triage section stops before the move for 071\'s check, every boot until it is recorded made, stamping no conversation, the guards live in its settings from that stop on, uncommitted; the fix made in .workflows/, uncommitted, and recorded in a conversation boot has not stamped, the next boot carries on, marking the check made, and the move carries the fixed files (21.10.13)', () => {
     const project = legacyProject(folder());
     const unstamped = { env: { WORKFLOWS_CONFIG_DIR: path.join(folder(), 'no-workflows-config'), CLAUDE_CODE_SESSION_ID: 'never-stamped' }, unbooted: true };
     const discussion = '.workflows/payments/discussion/payments.md';
@@ -467,6 +468,7 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     assert.match(real.output(project, ['render', atChecks.surface], unstamped), /^⚑ The migration stopped before its move, for checks earlier migrations handed back$/m);
     assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Leeway/);
     assert.ok(!fs.existsSync(path.join(project, '.leeway/payments')), 'nothing moved yet');
+    assert.deepStrictEqual([JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8')).hooks.PreToolUse, git(project, ['status', '--porcelain', '--', '.claude']).trim()], [GUARD_GROUPS, 'M .claude/settings.json']);
 
     createFile(project, discussion, '# Payments\n\nHow refunds settle.\n\n## Triage\n\n(none)\n');
     createFile(project, '.workflows/payments/discussion/.mailbox/payments/001-refund-timing.md', '### Refund timing\n\nBilling asks when refunds settle.\n');
@@ -478,9 +480,9 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     assert.strictEqual(readState(project, 'payments/topics/payments/mail/001-refund-timing.md'), '### Refund timing\n\nBilling asks when refunds settle.\n');
   });
 
-  it('a project at 070 with no units, the tracker\'s store beside its .workflows/, boots through the guard, the chain, the move and finish to the migration waiting on its commit, nothing committed; the yes makes the two commits, and the next boot is ready', () => {
+  it('a project at 070 with no units, the tracker\'s store beside its .workflows/, boots through the guard, the chain, the move and finish to the migration waiting on its commit, nothing committed; the yes makes the two commits, the code commit taking the settings boot synced, and the next boot is ready', () => {
     const project = legacyProject(folder());
-    const env = { WORKFLOWS_CONFIG_DIR: path.join(folder(), 'no-workflows-config') };
+    const env = { WORKFLOWS_CONFIG_DIR: path.join(folder(), 'no-workflows-config'), TMUX: undefined };
     git(project, ['rm', '-r', '-q', '--', '.workflows/payments']);
     createFile(project, OLD_STORE, '{"id":"a1"}\n');
     git(project, ['add', '--', OLD_STORE]);
@@ -494,9 +496,10 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
 
     real.ok(project, COMMIT, { env });
 
-    assert.deepStrictEqual(codeCommit(project), {
+    const committed = codeCommit(project);
+    assert.deepStrictEqual({ ...committed, changes: committed.changes.sort() }, {
       parent: code,
-      changes: ['A\t.gitignore', `D\t${OLD_STORE}`, 'D\t.workflows/.gitignore', 'D\t.workflows/.state/migrations', 'D\t.workflows/manifest.json'].sort(),
+      changes: ['M\t.claude/settings.json', 'A\t.gitignore', `D\t${OLD_STORE}`, 'D\t.workflows/.gitignore', 'D\t.workflows/.state/migrations', 'D\t.workflows/manifest.json'].sort(),
     });
     assert.deepStrictEqual([fs.existsSync(path.join(project, '.workflows')), fs.existsSync(path.join(project, OLD_STORE)), real.ok(project, ['boot'], { env }).state], [false, false, 'ready']);
   });

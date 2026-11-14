@@ -11,7 +11,9 @@
 // under its lock, a plain .leeway/ left to it to set aside — its guard's
 // refusal a stop with nothing written, boot reading that refusal alone and
 // only its facts, a warning naming what a boot from another checkout leaves
-// unmoved, and a second boot meanwhile waiting for the run to end.
+// unmoved, held to what the main checkout's HEAD holds, the session hooks
+// synced in that checkout and in the main checkout's project folder,
+// uncommitted, and a second boot meanwhile waiting for the run to end.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -28,12 +30,13 @@ const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { TEMPLATE_DATE, createFile, readFile } = require('./discovery-test-utils.cjs');
-const { git, commitCode, initRepo, tip, remoteTip, lockAttempts, STATE_DIR_NAME, statePath, layout } = harness;
+const { git, commitCode, initRepo, tip, remoteTip, lockAttempts, STATE_DIR_NAME, statePath, layout, GUARD_GROUPS } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
 const { useWorld, remoteProject, OWN_SETTINGS, STUB_ENGINE, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
+const { TODAYS_HOOKS } = require('./boot-world.cjs');
 
 const world = useWorld();
 
@@ -320,6 +323,39 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
         + '.workflows/payments/discussion/payments.md, .workflows/payments/manifest.json, .workflows/payments/research/payments.md',
     ]);
     assert.deepStrictEqual(unmoved(boot(main, env)), []);
+  });
+
+  it('holds another checkout\'s .workflows/ to what the main checkout\'s HEAD holds, never to its working tree: the migration\'s own changes there, uncommitted, are named by no boot, and the calling checkout\'s own change still is', () => {
+    const main = owingProject();
+    createFile(main, '.workflows/payments/discussion/payments.md', '# Payments\n');
+    commitCode(main, 'a discussion');
+    const code = path.join(world(), 'portal-feature');
+    git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    createFile(main, '.workflows/payments/manifest.json', '{"moved": "by the chain"}\n');
+    createFile(main, '.workflows/payments/research/theme.md', '# A theme the split applied\n');
+    createFile(code, '.workflows/payments/discussion/payments.md', '# Payments, as the branch has it\n');
+
+    const booted = boot(code, { STUB_MIGRATE_MODE: 'reshape' });
+
+    assert.deepStrictEqual(booted.warnings.filter((warning) => warning.startsWith('the migration moves')), [
+      `the migration moves the project's state as the main checkout holds it, in ${main}; where boot ran, in ${code}, these differ from it and stay where they are: .workflows/payments/discussion/payments.md`,
+    ]);
+  });
+
+  it('syncs the session hooks while the migration is under way where the calling checkout\'s session reads them and in the main checkout\'s project folder, whose settings the migration\'s commit takes — written, never committed', () => {
+    const main = projectInWorld();
+    createFile(main, '.workflows/payments/manifest.json', '{}\n');
+    createFile(main, '.claude/settings.json', TODAYS_HOOKS);
+    commitCode(main, 'the old layout');
+    const code = path.join(world(), 'portal-feature');
+    git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    const heads = () => [main, code].map((at) => git(at, ['rev-parse', 'HEAD']).trim());
+    const before = heads();
+
+    assert.strictEqual(boot(code, { STUB_MIGRATE_MODE: 'reshape' }).state, 'finish');
+
+    assert.deepStrictEqual([main, code].map((at) => [JSON.parse(readFile(at, '.claude/settings.json')).hooks.PreToolUse, git(at, ['status', '--porcelain', '--', '.claude']).trim()]), [main, code].map(() => [GUARD_GROUPS, 'M .claude/settings.json']));
+    assert.deepStrictEqual(heads(), before);
   });
 
   it('a second boot meanwhile waits on boot\'s lock until the first boot\'s run ends, then runs the migration under way itself', async (t) => {

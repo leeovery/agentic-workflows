@@ -435,7 +435,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render knowledge-ready
   render state-merge-gate
   render ledger-stop
-  render directive-stop --directive <id>
+  render directive-stop --directive <id> [--active <seconds>]
   render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>]
   render migration-checks-stop
   render help <menu> [<arg>] [--<name> <value> …]
@@ -1826,12 +1826,15 @@ function runAgent(call, argv) {
 // it first, then a folder in no git repository; the state put in place and
 // caught up (a lost state, or a merge waiting on a pick, stops it), or left
 // to the reshape's migration, whose guard's refusal stops it; migrations
-// (hard error on failure; a directive not yet done stops it),
-// knowledge check (failure reports not-ready), and when ready the keyword
-// side brought in line, compacted and the vector fill launched
-// (warn-don't-block); then where the start goes, from the person's words on
-// stdin — none, or nothing but blanks, the bare command — so quoting never
-// breaks them. `--start-again` is the person's yes at the lost-state stop.
+// (hard error on failure; the checks the chain before the reshape handed
+// back stop it before the move, a directive not yet done stops it, carried
+// on by this session or another, and the reshape waiting on its commit
+// stops it at finish), knowledge check (failure reports not-ready), and
+// when ready the keyword side brought in line, compacted and the vector
+// fill launched (warn-don't-block); then where the start goes, from the
+// person's words on stdin — none, or nothing but blanks, the bare command —
+// so quoting never breaks them. `--start-again` is the person's yes at the
+// lost-state stop.
 // ---------------------------------------------------------------------------
 
 const BOOT_USAGE = 'Usage: engine boot [--start-again]   (the person\'s words on stdin)';
@@ -2643,7 +2646,7 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
   boot: '*',
   'state-merge': ['pick'],
   render: Object.freeze([
-    ...Object.values(BOOT_STOPS), 'directive-stop', 'migrations-applied', 'migration-gate',
+    ...Object.values(BOOT_STOPS), 'migrations-applied', 'migration-gate',
     'walkthrough-offer', 'walkthrough-screen', 'walkthrough-home', 'walkthrough-topics', 'walkthrough-topic', 'help',
   ]),
   gate: ['state lost gate', 'state merge gate', 'migration gate'],

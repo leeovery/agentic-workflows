@@ -25,8 +25,11 @@
 // What the reshape leaves behind where boot ran in another checkout
 // (`unmoved`): it moves the main checkout's copy of `.workflows/`, the one
 // the default branch drops, so each file of the calling checkout's copy
-// that differs from it, or that only one of the two holds, stays where it
-// is — the files the old state ignores aside.
+// that differs from the main checkout's HEAD, or that only one of the two
+// holds, stays where it is — the files the old state ignores aside. HEAD,
+// never that copy's working tree: the guard proved the two the same before
+// the chain ran, and from then on the working tree holds the migration's
+// own changes too.
 //
 // Every git call runs with hooks off and the caller's repository
 // environment cleared, so it names its repository by its folder alone.
@@ -48,11 +51,11 @@ const REPOSITORY_ENV = [
 ];
 const HOOKS_OFF = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor='];
 
-/** A git call with hooks off, the caller's repository environment cleared. @param {string} cwd @param {string[]} args */
-function git(cwd, args) {
+/** A git call with hooks off, the caller's repository environment cleared. @param {string} cwd @param {string[]} args @param {string} [input] */
+function git(cwd, args, input) {
   const env = { ...process.env };
   for (const name of REPOSITORY_ENV) delete env[name];
-  const res = spawnSync('git', [...HOOKS_OFF, ...args], { cwd, encoding: 'utf8', env });
+  const res = spawnSync('git', [...HOOKS_OFF, ...args], { cwd, encoding: 'utf8', env, input });
   return { ok: !res.error && res.status === 0, stdout: res.stdout || '' };
 }
 
@@ -109,24 +112,38 @@ function reshaping(projectDir) {
   return main !== null && (stateCheckedOut(main) || holdsOldState(projectDir, main));
 }
 
-/** The files under `.workflows/` in the project's folder `project` the old state does not ignore, by their path there. @param {string} project */
-function filesOf(project) {
-  return git(project, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', OLD_STATE]).stdout.split('\0').filter(Boolean);
+/**
+ * The files under `.workflows/` in the checkout's project folder `here` the
+ * old state does not ignore, each by its path there with the id git gives
+ * its content, as a commit of it would hold it.
+ * @param {string} here @returns {Map<string, string>}
+ */
+function workingIds(here) {
+  const files = git(here, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', OLD_STATE]).stdout.split('\0').filter(Boolean)
+    .filter((rel) => fs.existsSync(path.join(here, rel)));
+  if (files.length === 0) return new Map();
+  const ids = git(here, ['hash-object', '--stdin-paths'], `${files.join('\n')}\n`).stdout.trim().split('\n');
+  return new Map(files.map((rel, at) => [rel, ids[at]]));
 }
 
-/** A file's bytes, or null where it is none. @param {string} file */
-function bytesAt(file) {
-  try {
-    return fs.readFileSync(file);
-  } catch {
-    return null;
-  }
+/**
+ * The files under `.workflows/` the main checkout's HEAD holds in the
+ * project's folder `project`, each by its path there with its content's id.
+ * @param {string} project @returns {Map<string, string>}
+ */
+function committedIds(project) {
+  const listed = git(project, ['ls-tree', '-r', '-z', 'HEAD', '--', OLD_STATE]).stdout.split('\0').filter(Boolean);
+  return new Map(listed.map((line) => {
+    const [meta, rel] = line.split('\t');
+    return [rel, meta.split(' ')[2]];
+  }));
 }
 
 /**
  * The files under `.workflows/` in the project's folder `here` the reshape
- * leaves where they are, by their path there: none where `here` is the
- * main checkout's.
+ * leaves where they are, by their path there: each that differs from what
+ * the main checkout's HEAD holds, or that only one of the two holds — none
+ * where `here` is the main checkout's.
  * @param {string} here
  * @returns {string[]}
  */
@@ -136,10 +153,8 @@ function unmoved(here) {
   const project = projectInMain(here, main);
   const calling = fs.realpathSync(here);
   if (calling === project) return [];
-  return [...new Set([...filesOf(calling), ...filesOf(project)])].sort().filter((rel) => {
-    const [ours, theirs] = [bytesAt(path.join(calling, rel)), bytesAt(path.join(project, rel))];
-    return ours === null || theirs === null ? ours !== theirs : !ours.equals(theirs);
-  });
+  const [ours, theirs] = [workingIds(calling), committedIds(project)];
+  return [...new Set([...ours.keys(), ...theirs.keys()])].sort().filter((rel) => ours.get(rel) !== theirs.get(rel));
 }
 
 module.exports = { OLD_STATE, CHECKS_DONE, owed, reshaping, unmoved };

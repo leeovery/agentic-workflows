@@ -209,4 +209,4 @@ function commitMigrations(cwd, message) {
   return { state, code };
 }
 
-module.exports = { MIGRATION_JOURNALS, FINISH_JOURNAL, finishing, finishOwed, projectInMain, codeFiles, commitMigrations };
+module.exports = { MIGRATION_JOURNALS, finishing, finishOwed, projectInMain, codeFiles, commitMigrations };

@@ -7,12 +7,13 @@
 // the reshape — so it finds them as it finds the migrations installed
 // (`directiveEngine`); and a project the migration is under way in, made
 // once per process and copied (`midMigration`) — its `.workflows/`
-// committed on its code branch as today's layout leaves it, and its state
-// worktree at `.leeway/`, locked, on a `leeway-state` with no commit yet,
-// holding what the move writes: the state's `.gitignore`, the project's
-// manifest and id, the unit's manifest with its three topics, and the
-// migrations record, which holds the fixture migrations the boot suites
-// never reach there. The records directive's world (`recordsMigration`),
+// committed on its code branch as today's layout leaves it, beside the
+// settings boot syncs while the migration runs, and its state worktree at
+// `.leeway/`, locked, on a `leeway-state` with no commit yet, holding what
+// the move writes: the state's `.gitignore`, the project's manifest and
+// id, the unit's manifest with its three topics, and the migrations
+// record, which holds the fixture migrations the boot suites never reach
+// there. The records directive's world (`recordsMigration`),
 // made once and copied: four units as today's layout left them and as the
 // move wrote them, with the old agent store the move leaves. The legacy
 // split's (`splitProject`, `splitMigration`), each made once and copied:
@@ -34,7 +35,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, initRepo, createFile, statePath, layout, treeSnapshot } = harness;
+const { git, initRepo, createFile, statePath, layout, treeSnapshot, hooked, WORKFLOW_HOOKS } = harness;
 const { templateFolder, copyWorld, filesUnder, STATE_DIR_NAME } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.dirname(harness.ENGINE);
@@ -107,15 +108,18 @@ function directiveEngine() {
 
 /**
  * A repository at `dir` whose code branch holds `old`, its files by path,
- * committed as today's layout leaves them, and whose state worktree at
- * `.leeway/`, locked, is on a `leeway-state` with no commit yet, holding the
- * state's `.gitignore`, the project's manifest and id, and `moved`, its
- * files by path, as the move writes them.
- * @param {string} dir @param {Record<string, string>} old @param {Record<string, string>} moved
+ * committed as today's layout leaves them, and in the project's folder,
+ * `project` from `dir`, the settings boot syncs while the migration runs —
+ * committed, so no boot of the world changes them — and whose state
+ * worktree at `.leeway/`, locked, is on a `leeway-state` with no commit
+ * yet, holding the state's `.gitignore`, the project's manifest and id, and
+ * `moved`, its files by path, as the move writes them.
+ * @param {string} dir @param {Record<string, string>} old @param {Record<string, string>} moved @param {string} [project]
  */
-function buildUnborn(dir, old, moved) {
+function buildUnborn(dir, old, moved, project = '') {
   initRepo(dir);
   for (const [rel, text] of Object.entries(old)) createFile(dir, rel, text);
+  createFile(dir, path.join(project, '.claude/settings.json'), hooked(WORKFLOW_HOOKS));
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-q', '-m', 'the old layout']);
   fs.appendFileSync(path.join(dir, '.git/info/exclude'), `/${STATE_DIR_NAME}/\n`);
@@ -510,7 +514,7 @@ function nestedFinished(dir) {
   buildUnborn(dir, { 'README.md': '# The repository\n', [`app/.workflows/${UNIT}/manifest.json`]: jsonText(OLD_UNIT) }, {
     [layout.manifest(UNIT)]: jsonText(MOVED_UNIT),
     [layout.migrations]: ALL_RECORDED.map((id) => `${id}\n`).join(''),
-  });
+  }, 'app');
   const app = path.join(dir, 'app');
   createFile(app, '.gitignore', '.leeway/\n');
   FINISH.run({ projectDir: app, reportUpdate: () => {}, reportSkip: () => {} });
