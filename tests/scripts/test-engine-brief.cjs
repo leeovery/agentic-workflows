@@ -675,11 +675,15 @@ describe('the refusals, nothing written and no brief stored', () => {
     refusedUnissued(['builder', UNIT, '1.1'], /^pay has no spec — its folder holds no spec\.md$/);
   });
 
-  it('linters on the project manifest of another shape', () => {
+  it('linters on the project manifest of another shape, naming the fault', () => {
     const project = JSON.parse(readState(dir, layout.projectManifest));
-    for (const environment of [{ linters: [{ name: 'eslint' }] }, { linters: 'eslint' }, 'eslint']) {
+    for (const [environment, fault] of /** @type {const} */ ([
+      [{ linters: [{ name: 'eslint' }] }, /^the project manifest's environment\.linters does not read — entry 1: its command is not text$/],
+      [{ linters: 'eslint' }, /^the project manifest's environment\.linters does not read — it is not a list$/],
+      ['eslint', /^the project manifest's environment is not an object$/],
+    ])) {
       writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment }));
-      refusedUnissued(['builder', UNIT, '1.1'], /^the project manifest's environment\.linters is not a list of \{name, command\}$/);
+      refusedUnissued(['builder', UNIT, '1.1'], fault);
     }
   });
 });

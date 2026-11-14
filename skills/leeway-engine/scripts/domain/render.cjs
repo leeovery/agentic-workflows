@@ -81,6 +81,7 @@ const { triageSurface, archivedSurface, archivedItemSurface, archivedDeleteGateS
 const { careSurface, careKindSurface, careDropSurface } = require('./person-verbs.cjs');
 const { convergenceSurface } = require('./convergence.cjs');
 const { matrixSurface, replaySurface } = require('./trust-verbs.cjs');
+const { environmentSetupSurface } = require('./environment-verbs.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -1150,6 +1151,7 @@ const SURFACES = {
   'roadmap-harvest': (cwd, { file }) => roadmapHarvestSurface(cwd, file),
   matrix: (cwd) => matrixSurface(cwd),
   'matrix-replay': (cwd, { threshold, build }) => replaySurface(cwd, { threshold, build }),
+  'environment-setup': (cwd, { from }) => environmentSetupSurface(cwd, { from }),
 };
 
 /**

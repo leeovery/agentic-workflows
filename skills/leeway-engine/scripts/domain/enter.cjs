@@ -38,8 +38,12 @@
 // left in flight, taken onto this one's — and what of its own holds it
 // beyond its place: the build's, another session holding the checkout's
 // code, whose question comes before the place's own and is answered as it
-// is (12.7.8). A topic-level row refuses an epic entered at no topic, a
-// topic once the unit has its spec (4.11.2), and a topic the unit lacks; a
+// is (12.7.8). A row may ready its place before it starts: the build's
+// runs the steps that prepare the environment before its first task
+// (build-entry.cjs), each run named in the DATA, one that fails refusing
+// the entry before anything is written. A topic-level row refuses an epic
+// entered at no topic, a topic once the unit has its spec (4.11.2), and a
+// topic the unit lacks; a
 // unit-level row takes no topic, and is entered after the spec as before
 // it. Discussion is the first row, discovery the second
 // (discovery-entry.cjs), specification the third (spec-entry.cjs),
@@ -61,9 +65,9 @@
 // handoff into the phase carried, checked by the row before anything is
 // written, and read from (seeds.cjs).
 //
-// The refusals, the question and the reads take no lock, but a read of the
-// tracker, which takes the state's lock as every reader of it does
-// (phase-checks.cjs). The start and the move hold the writer lock around
+// The refusals, the question, what a row readies and the reads take no
+// lock, but a read of the tracker, which takes the state's lock as every
+// reader of it does (phase-checks.cjs). The start and the move hold the writer lock around
 // their writes and the commit; the position, the label, the presence, the
 // entry's time, what a row closes in the cache and the line a row writes
 // into its log are outside the state's commits, the log riding the next.
@@ -141,7 +145,9 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * conversation arrives, before it reads, for a row that closes anything;
  * and the question it puts where something of its own holds it beyond its
  * place, drawn whole, for a row that has such a hold; and, for a row that
- * takes seeds, the check refusing what it cannot take. A start that commits
+ * takes seeds, the check refusing what it cannot take; and, for a row that
+ * readies its place before its start, the readying, each line it adds to
+ * the DATA. A start that commits
  * a write of its own through the tracker's verbs, which commit their own
  * (task-verbs.cjs), answers what that commit warned of. A row may hand a
  * unit to an arm of its own, where its work type is built by another rule
@@ -163,6 +169,7 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * @property {(at: Standing) => Departure} [move]
  * @property {(at: Standing) => void} [closes]
  * @property {(at: Standing, seeds: string) => void} [seeds]
+ * @property {(at: Entering) => Line[]} [readies]
  */
 
 /** The files in a state folder, sorted, as absolute paths; none where it is not there. @param {string} dir absolute */
@@ -562,8 +569,9 @@ function enterThrough(entries, cwd, argv) {
   if (stop !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: stop };
   /** @type {Entering} */
   const entering = { ...at, started: entry.unstarted(at), voided: entry.voids?.(at) ?? false, notes: [], seeds };
+  const readied = entering.started ? entry.readies?.(entering) ?? [] : [];
   entry.closes?.(at);
-  const reads = entry.reads(entering);
+  const reads = [...entry.reads(entering), ...readied];
   const held = heldAt(cwd, phase, unit, place);
   /** @type {{committed?: string|null, note?: string, warnings?: string[]}} */
   const commit = entering.started || entering.voided || departure !== null ? settle(cwd, entry, entering, held, departure) : {};

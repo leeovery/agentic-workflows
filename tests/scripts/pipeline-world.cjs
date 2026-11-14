@@ -1233,13 +1233,26 @@ function cutTheSpec(sim, wu, phases) {
   return sim.run(['cut', wu]);
 }
 
+// The environment setup asked as the prose asks it at the project's first
+// ready to build (22.5.7): what Claude found recorded part by part — no
+// linter, in a project of none — its screen drawn, and the person's yes
+// followed.
+/** @param {Sim} sim */
+function environmentSetup(sim) {
+  sim.run(['environment', 'set', 'linters'], null, '[]');
+  sim.render(['environment-setup'], { expect: 'content' });
+  sim.run(answerGate(sim, 'environment setup', '--pick', 'y').next.argv);
+}
+
 // Ready to build as the prose reaches it (11.8): its checklist worked —
-// Claude's items marked done, the engine's holding — and closed, then the
-// screen fetched, `flags` given. Answers what it drew.
+// Claude's items marked done, the environment setup asked where it never
+// was, the engine's holding — and closed, then the screen fetched, `flags`
+// given. Answers what it drew.
 /** @param {Sim} sim @param {string} wu @param {string[]} [flags] */
 function readyToBuild(sim, wu, flags = []) {
   for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items) {
     if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'ready-to-build', wu, key]);
+    if (key === 'environment-recorded' && state === 'open') environmentSetup(sim);
   }
   sim.run(['checklist', 'close', 'ready-to-build', wu]);
   return sim.render(['ready-to-build', wu, ...flags], { expect: 'content' });
@@ -1514,8 +1527,8 @@ const worlds = Object.freeze({
   /** The build the review phase reviews (`cutClosed`), CUT_CLOSED_UNIT's, in auto, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu. */
   cutClosed: namedWorld('cutClosed', (sim) => {
     cutClosed(sim, CUT_CLOSED_UNIT);
-    assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build', 'start menu', 'start menu'],
-      '19.S6: between the one screen and the review, no gate stops the person — they pick the unit on the start menu alone, continuing it into its build and its review');
+    assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'environment setup', 'ready to build', 'start menu', 'start menu'],
+      '19.S6, 22.S13: between the one screen — the project\'s environment setup asked once before it, at its first ready to build — and the review, no gate stops the person; they pick the unit on the start menu alone, continuing it into its build and its review');
   }),
 });
 

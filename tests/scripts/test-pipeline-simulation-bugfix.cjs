@@ -236,7 +236,7 @@ describe('pipeline simulation: bugfix', () => {
     concluded(sim, wu);
 
     specToBuild(sim, wu, [wu]);
-    assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'ready to build']);
+    assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'environment setup', 'ready to build']);
     const steps = [...new Map(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'step').map((step) => [step.id, [step.gate, step.row]])).values()];
     assert.deepStrictEqual(steps, [['plan gate', 'y'], ['check-in gate', 'y'], ['conclude gate', 'y']]);
     const replayed = sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' }).replace(/\s+/g, ' ');

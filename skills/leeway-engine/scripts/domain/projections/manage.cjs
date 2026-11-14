@@ -8,8 +8,10 @@
 // - `render manage`: every unit the project holds, in progress, completed
 //   and cancelled, in that order and by type within each as the start menu
 //   lists them, each with its type and, closed, how it closed; a number
-//   opens the unit's own, and b/back draws the start menu (18.3.4). Setup,
-//   the drivers and the matrix join it with their phases.
+//   opens the unit's own; s/setup draws the project's environment setup as
+//   recorded, for the person to change (22.5.5, environment-verbs.cjs); and
+//   b/back draws the start menu (18.3.4). The drivers and the matrix join it
+//   with their phases.
 // - `render manage-unit <unit> [--from closed]`: the unit under the rule,
 //   "{Unit} ({type})",
 //   and what can be done to it as it stands (18.3.4–18.3.6): a feature in
@@ -42,6 +44,7 @@ const { itemOf } = require('../derivations.cjs');
 const { isParentExperimentId } = require('../../kernel/manifest-schema.cjs');
 const { absorbStands, absorbableFeature, absorbedMaterial } = require('../workunit-absorb.cjs');
 const { stands } = require('../staged-payload.cjs');
+const { projectName } = require('../state-checks.cjs');
 const { MENUS, drawMenu } = require('../menus.cjs');
 const { typeRank } = require('./start-menu.cjs');
 const { absorbSummary } = require('./transactions.cjs');
@@ -95,9 +98,17 @@ const unitRowOn = (list) => (/** @type {Record<string, any>} */ manifest, /** @t
   next: engine('render', 'manage-unit', manifest.name, ...LISTS[list].flag),
 });
 
-/** Manage's screen over the project's units (the header's). @param {Record<string, any>[]} manifests @returns {MenuScreen} */
-function manageScreen(manifests) {
-  return { shows: [], question: 'What would you like to manage?', rows: listed(manifests).map(unitRowOn('manage')), back: BACK_TO_START };
+/** Manage's row changing the project's environment setup, named for the project. @param {string} project @returns {MenuRow} */
+const setupRow = (project) => ({
+  key: 's',
+  word: 'setup',
+  label: `Change the environment setup — how to run ${project}, what can't run at once, the linters`,
+  next: engine('render', 'environment-setup', '--from', 'manage'),
+});
+
+/** Manage's screen over the project's units (the header's). @param {Record<string, any>[]} manifests @param {string} project @returns {MenuScreen} */
+function manageScreen(manifests, project) {
+  return { shows: [], question: 'What would you like to manage?', rows: [...listed(manifests).map(unitRowOn('manage')), setupRow(project)], back: BACK_TO_START };
 }
 
 /** The closed units' screen (the header's). @param {Record<string, any>[]} manifests @returns {MenuScreen} */
@@ -164,7 +175,7 @@ function unitNamed(cwd, unit, usage) {
 }
 
 /** `render manage`. @param {string} cwd @returns {string} */
-const manageSurface = (cwd) => drawMenu(cwd, MENUS.manage, {}, manageScreen(loadAllManifests(cwd)));
+const manageSurface = (cwd) => drawMenu(cwd, MENUS.manage, {}, manageScreen(loadAllManifests(cwd), projectName(cwd)));
 
 /** `render closed`. @param {string} cwd @returns {string} */
 const closedSurface = (cwd) => drawMenu(cwd, MENUS.closed, {}, closedScreen(loadAllManifests(cwd)));

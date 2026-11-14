@@ -22,6 +22,16 @@
 // Nothing the worktree holds already is replaced, and a name that leaves the
 // repository is passed over.
 //
+// The steps that prepare the environment (environment.cjs, 22.5.1) are run
+// here too, each by `sh -c` with its command alone, in the code root, in
+// order (kernel/shell-command.cjs), the first that fails refusing with its
+// output's last lines: those for each worktree a task runs in, at `task
+// worktree` once the include is copied, its marker in that worktree's own
+// git directory once every one has passed, so a call again there runs none
+// and one after a failure runs them again (`prepareTaskWorktree`); and those
+// before the build's first task, at the build's entry, which records that
+// they ran (build-entry.cjs, `runSteps`).
+//
 // A link preparation makes — Claude Code's at the root, this module's in a
 // child repository — is never a change of the work, though git names it
 // untracked where a `.gitignore` names the folder as one, `node_modules/`:
@@ -49,8 +59,10 @@ const fs = require('fs');
 const path = require('path');
 const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
 const { projectDirtyEntries, mappedSubmodules, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
-const { mainCheckout } = require('../kernel/isolated-git.cjs');
+const { mainCheckout, gitfileTarget } = require('../kernel/isolated-git.cjs');
+const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { readSettings } = require('./settings.cjs');
+const { stepsAt } = require('./environment.cjs');
 
 const INCLUDE = '.worktreeinclude';
 
@@ -64,7 +76,11 @@ const LAYOUT = 'leeway-';
 const OWN_LAYOUT = new RegExp(`^${LAYOUTS.replaceAll('.', '\\.')}/${LAYOUT}[^/]+/$`);
 const SETTINGS = ['.claude/settings.json', '.claude/settings.local.json'];
 
+/** The marker a task's worktree keeps in its own git directory once its steps have passed (the header's). */
+const PREPARED = 'leeway-prepared';
+
 /** @typedef {{dir: string, path: string}} Laid a repository by its folder from the project's root, at `path` */
+/** @typedef {import('./environment.cjs').Command} Step */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {{path: string, status: string}} Entry a change git names, its two-letter status `??` where untracked */
 
@@ -150,6 +166,38 @@ function prepareWorktree(repos, laid, project = repos[0].path) {
     for (const name of directories) linked(path.join(repo.path, name), path.join(laid[at].path, name));
     for (const file of includedFiles(repo, directories)) copied(path.join(repo.path, file), path.join(laid[at].path, file));
   });
+}
+
+/**
+ * The steps run in `root`, in order (the header's): each that ran, refused
+ * at the first that fails, in the words `failed` gives it.
+ * @param {string} root @param {Step[]} steps @param {(step: Step, exit: number) => string} failed
+ * @returns {Step[]}
+ */
+function runSteps(root, steps, failed) {
+  for (const step of steps) {
+    const { exit, tail } = runShellCommand(root, step.command);
+    if (exit !== 0) throw new Error(`${failed(step, exit)} ${tailText(tail)}`);
+  }
+  return steps;
+}
+
+/**
+ * The steps for each worktree a task runs in, run in the task's worktree,
+ * its code root `root`, where they have not all passed there (the header's):
+ * each that ran, none where its marker stands. The marker sits in the git
+ * directory the gitfile at the worktree's top, `top`, names — a task's
+ * worktree is always a linked one.
+ * @param {string} cwd @param {string} root @param {string} top @returns {Step[]}
+ */
+function prepareTaskWorktree(cwd, root, top) {
+  const steps = stepsAt(cwd, 'worktree');
+  if (steps.length === 0) return [];
+  const marker = path.join(/** @type {string} */ (gitfileTarget(path.join(top, '.git'))), PREPARED);
+  if (fs.existsSync(marker)) return [];
+  runSteps(root, steps, ({ name }, exit) => `task worktree: the step "${name}" that prepares the environment failed with exit ${exit} in this worktree, so the task does not start — fix what it reports, then run task worktree again; the Bash tool stops a call at two minutes unless given a longer timeout, so give its call one where the steps run long.`);
+  fs.writeFileSync(marker, `${new Date().toISOString()}\n`);
+  return steps;
 }
 
 /** Whether the folder `at` holds a symbolic link at `name`. @param {string} at @param {string} name */
@@ -259,4 +307,6 @@ function stagedHeldOut(repos, repo) {
   });
 }
 
-module.exports = { LAYOUTS, LAYOUT, prepareWorktree, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut };
+module.exports = {
+  LAYOUTS, LAYOUT, prepareWorktree, runSteps, prepareTaskWorktree, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut,
+};

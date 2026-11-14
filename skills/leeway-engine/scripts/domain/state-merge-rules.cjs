@@ -32,7 +32,15 @@
 //   the project manifest's `project_id`, which each clone mints as it sets
 //   the state up, so two set up before either pushed hold one each; where
 //   the sides differ the remote's stands, with or without an ancestor
-//   (4.7.12, 16.13.5).
+//   (4.7.12, 16.13.5). The project manifest's environment setup
+//   (environment.cjs) merges part by part: how to run the product command
+//   by command, and the person's yes, as any field; the verify setup as one
+//   value, never part by part, since its parts and the run it was recorded
+//   after hold together; and the steps that prepare the environment, what
+//   cannot run at once and the linters each as a set, its entries keyed by
+//   the field naming each once (`ENVIRONMENT_SETS`), so both sides' entries
+//   stay, each entry merged as one value against the ancestor's of its
+//   key: the remote's in its order, then this clone's new ones in its.
 // - The tracker's store: each file a task driver names (`storeFiles`) is
 //   merged by that driver (`mergeStore`), which reads the tracker's own
 //   records (7.5, 29.14.9); the fields both sides changed differently are
@@ -63,6 +71,7 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
+const { ENVIRONMENT_SETS } = require('../kernel/manifest-schema.cjs');
 
 const MIGRATIONS = '.state/migrations';
 // The project's manifest and each unit's; a unit's name never starts with
@@ -73,6 +82,7 @@ const RUN = /^[^./][^/]*\/build\/runs\/[^/]+\/run-([0-9]{3,})\.json$/;
 const NOTES = /^[^./][^/]*\/build\/notes\.md$/;
 const REPORT = /^([^./][^/]*)\/build\/phases\/phase-([1-9][0-9]*)\/consolidation\.md$/;
 const PROJECT_KEY = ['manifest.json', 'project_id'];
+const ENVIRONMENT = 'environment';
 
 /** @typedef {'ledger'|'migrations'|'manifest'|'store'|'notes'|'whole'|'file'} MergeRule */
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
@@ -356,10 +366,18 @@ function choiceId(choice) {
 
 /** @typedef {(choice: Choice) => 'local'|'remote'|null} PickOf */
 
-/** @typedef {{conflicts: FieldConflict[], pickOf: PickOf, remoteStands: (field: string[]) => boolean}} FieldMerge */
+/**
+ * How a field merges where it is not as any other: the remote's wherever the
+ * sides differ; one value, never recursed into; or a set of entries, each
+ * keyed by the field `keyedBy` names.
+ * @typedef {'remote'|'whole'|{keyedBy: string}} FieldRule
+ */
+
+/** @typedef {{conflicts: FieldConflict[], pickOf: PickOf, ruleAt: (field: string[]) => FieldRule|null}} FieldMerge */
 
 /**
- * One field merged, recursing into objects both sides hold.
+ * One field merged, recursing into objects both sides hold, as its rule
+ * says where it has one.
  * @param {unknown} base @param {unknown} local @param {unknown} remote
  * @param {string[]} field @param {FieldMerge} merge
  * @returns {unknown}
@@ -367,10 +385,17 @@ function choiceId(choice) {
 function mergeValue(base, local, remote, field, merge) {
   if (same(local, remote) || same(local, base)) return remote;
   if (same(remote, base)) return local;
-  if (merge.remoteStands(field)) return remote;
-  if (isObject(local) && isObject(remote)) return mergeObject(base, local, remote, field, merge);
-  const appended = bothAppended(base, local, remote);
-  if (appended !== undefined) return appended;
+  const rule = merge.ruleAt(field);
+  if (rule === 'remote') return remote;
+  if (rule === null) {
+    if (isObject(local) && isObject(remote)) return mergeObject(base, local, remote, field, merge);
+    const appended = bothAppended(base, local, remote);
+    if (appended !== undefined) return appended;
+  }
+  if (rule !== null && rule !== 'whole') {
+    const keyed = mergeKeyed(base, local, remote, field, merge, rule.keyedBy);
+    if (keyed !== undefined) return keyed;
+  }
   const choice = { field, local: sideOf(local), remote: sideOf(remote) };
   const pick = merge.pickOf(choice);
   merge.conflicts.push({ ...choice, pick });
@@ -395,19 +420,45 @@ function mergeObject(base, local, remote, field, merge) {
   return merged;
 }
 
+/** A list's entries by the field `key` names each once, or null where it is no such list. @param {unknown} list @param {string} key @returns {Map<string, unknown>|null} */
+function keyedEntries(list, key) {
+  if (!Array.isArray(list) || !list.every((entry) => isObject(entry) && typeof entry[key] === 'string')) return null;
+  const entries = new Map(list.map((entry) => [entry[key], entry]));
+  return entries.size === list.length ? entries : null;
+}
+
+/**
+ * Two lists both sides hold, merged as a set keyed by `key`: each entry
+ * merged as one value against the ancestor's of its key, the remote's in its
+ * order, then this clone's new ones in its. Undefined where either side is no
+ * such list.
+ * @param {unknown} base @param {unknown} local @param {unknown} remote
+ * @param {string[]} field @param {FieldMerge} merge @param {string} key
+ * @returns {unknown[]|undefined}
+ */
+function mergeKeyed(base, local, remote, field, merge, key) {
+  const [mine, theirs] = [keyedEntries(local, key), keyedEntries(remote, key)];
+  if (mine === null || theirs === null) return undefined;
+  const held = keyedEntries(base, key) ?? new Map();
+  const keys = [...theirs.keys(), ...[...mine.keys()].filter((name) => !theirs.has(name))];
+  return keys.flatMap((name) => {
+    const value = mergeValue(held.get(name), mine.get(name), theirs.get(name), [...field, name], merge);
+    return value === undefined ? [] : [value];
+  });
+}
+
 /**
  * Two JSON values merged field by field against their common ancestor
  * (undefined where it held none). Each conflict carries the pick `pickOf`
  * names for its choice, and takes it; a conflict with no pick takes the
- * remote's value for now. A field `remoteStands` names is the remote's
- * wherever the sides differ.
+ * remote's value for now. A field `ruleAt` gives a rule merges by it.
  * @param {unknown} base @param {unknown} local @param {unknown} remote
- * @param {PickOf} [pickOf] @param {(field: string[]) => boolean} [remoteStands]
+ * @param {PickOf} [pickOf] @param {(field: string[]) => FieldRule|null} [ruleAt]
  * @returns {{value: unknown, conflicts: FieldConflict[]}}
  */
-function mergeFields(base, local, remote, pickOf = () => null, remoteStands = () => false) {
+function mergeFields(base, local, remote, pickOf = () => null, ruleAt = () => null) {
   /** @type {FieldMerge} */
-  const merge = { conflicts: [], pickOf, remoteStands };
+  const merge = { conflicts: [], pickOf, ruleAt };
   const value = mergeValue(base, local, remote, [], merge);
   return { value, conflicts: merge.conflicts };
 }
@@ -422,13 +473,34 @@ function mergeFields(base, local, remote, pickOf = () => null, remoteStands = ()
  * @returns {{value: unknown, conflicts: FieldConflict[]}}
  */
 function mergeManifest(file, base, local, remote, pickOf) {
-  return mergeFields(base, local, remote, pickOf, (field) => same([file, ...field], PROJECT_KEY));
+  return mergeFields(base, local, remote, pickOf, (field) => manifestRule(file, field));
+}
+
+/**
+ * How a field of the manifest `file` merges, where it is not as any other
+ * (the header's): the project's id, the remote's; the environment setup's
+ * verify setup, one value; its lists, each a keyed set, each entry one value.
+ * @param {string} file @param {string[]} field @returns {FieldRule|null}
+ */
+function manifestRule(file, field) {
+  if (same([file, ...field], PROJECT_KEY)) return 'remote';
+  if (file !== PROJECT_KEY[0] || field[0] !== ENVIRONMENT) return null;
+  const [, part] = field;
+  if (field.length === 2 && part === 'verify') return 'whole';
+  if (!Object.hasOwn(ENVIRONMENT_SETS, part)) return null;
+  if (field.length === 2) return { keyedBy: ENVIRONMENT_SETS[/** @type {keyof typeof ENVIRONMENT_SETS} */ (part)] };
+  return field.length === 3 ? 'whole' : null;
 }
 
 // The entries a field can belong to, by where they sit in a manifest: the
-// screen names the entry and the field rather than the path (4.7.6).
+// screen names the entry and the field rather than the path (4.7.6), the
+// entry by its name as its slug reads, or as written where the person wrote
+// it.
 const SUBJECTS = [
   { manifest: 'project', at: ['roadmap', 'items'], noun: 'roadmap item' },
+  { manifest: 'project', at: [ENVIRONMENT, 'prepare'], noun: 'step that prepares the environment', asWritten: true },
+  { manifest: 'project', at: [ENVIRONMENT, 'concurrency'], noun: 'record of what can\'t run at once', asWritten: true },
+  { manifest: 'project', at: [ENVIRONMENT, 'linters'], noun: 'linter', asWritten: true },
 ];
 
 /** A key as words: `tmux_labels` → `tmux labels`. @param {string} key */
@@ -459,7 +531,7 @@ function conflictLabel(manifest, field, project) {
   const subject = SUBJECTS.find((s) => s.manifest === kind && field.length > s.at.length && startsWith(field, s.at));
   const last = field[field.length - 1];
   if (subject === undefined) return { owner, subject: null, name: null, field: words(last), path };
-  const name = phrase(field[subject.at.length]);
+  const name = subject.asWritten ? field[subject.at.length] : phrase(field[subject.at.length]);
   const rest = field.slice(subject.at.length + 1);
   return { owner, subject: `the ${subject.noun} "${name}"`, name, field: rest.length > 0 ? words(last) : null, path };
 }

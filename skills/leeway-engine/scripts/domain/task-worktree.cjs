@@ -48,6 +48,17 @@
 //   root, the files its `.worktreeinclude` names copied and the directories
 //   the project's settings name linked (worktree-prep.cjs), so its tools
 //   run with their dependencies.
+// - Once the worktree is laid out, the steps the environment setup runs in
+//   each worktree a task runs in are run in its code root (worktree-prep.cjs,
+//   environment.cjs; 22.5.1) — after the include is copied, at the root by
+//   Claude Code's isolation and in each child repository here — and with
+//   the writer lock let go, since a step may run for minutes: the layout
+//   holds the lock itself, the verb taking none of the dispatcher's
+//   (engine.cjs). Its answer names the steps run. A step that fails refuses
+//   the verb with its output's last lines, the worktree laid out and its
+//   record kept, so the call again, once what failed is fixed, runs the
+//   steps again; once every one has passed, no call there runs them
+//   again.
 // - The worktree is recorded against the task on the conversation's position
 //   (position.cjs), so a call made in it is that task's (conversation.cjs,
 //   `taskAt`), and the task's commits are made there alone (commit-task.cjs).
@@ -85,7 +96,8 @@
 // worktree anywhere else stays refused.
 //
 // Run again where it is laid out already, `task worktree` answers each
-// repository so and makes nothing. It refuses, before anything is made, in
+// repository so and makes nothing, running only the steps that have not all
+// passed there. It refuses, before anything is made, in
 // the engine's words: no conversation, or the task not in flight in it; the
 // call made in the project's own checkout, or in the worktree of another
 // task in flight; the task with no type in the tracker, which its branch is
@@ -111,7 +123,9 @@ const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { recordWorktree } = require('./position.cjs');
 const { recordLaidOut } = require('./round-report.cjs');
 const { commitOf, heldIn, startsAt, startOf, layOut } = require('./project-layout.cjs');
-const { preparedLinkOf, removePreparedLinks } = require('./worktree-prep.cjs');
+const { preparedLinkOf, removePreparedLinks, prepareTaskWorktree } = require('./worktree-prep.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { shownTask, taskId, taskName } = require('./task-id.cjs');
@@ -372,12 +386,24 @@ function childPart(ref, repos, repo, root, branch, parts, session, removing, bas
 }
 
 /**
- * `task worktree`: the task's worktree laid out where the call is made (see
- * the header), its type and title read from the tracker by `read` once the
- * task is found in flight and the worktree is its own.
+ * `task worktree`: the task's worktree laid out where the call is made under
+ * the writer lock, then the steps that prepare it run with the lock let go
+ * (see the header): the layout's answer, and the steps run, where any ran.
  * @param {string} cwd @param {TaskRef} ref @param {() => TaskDetail & {committed?: string|null, warnings?: string[]}} read
  */
 function layOutTask(cwd, ref, read) {
+  const laid = withStateLock(stateRoot(cwd), () => laidOut(cwd, ref, read));
+  const prepared = prepareTaskWorktree(cwd, fs.realpathSync(codeRoot(cwd)), laid.worktree);
+  return prepared.length === 0 ? laid : { ...laid, prepared };
+}
+
+/**
+ * The task's worktree laid out where the call is made (see the header), its
+ * type and title read from the tracker by `read` once the task is found in
+ * flight and the worktree is its own.
+ * @param {string} cwd @param {TaskRef} ref @param {() => TaskDetail & {committed?: string|null, warnings?: string[]}} read
+ */
+function laidOut(cwd, ref, read) {
   const session = buildingConversation(ref);
   const here = worktreeHere(cwd, session, ref);
   const { committed, warnings, type, title } = read();

@@ -9,7 +9,8 @@
 // of Claude's made at the spec, one labelled and one not, and a call of
 // Claude's on `cards` that is not the spec's; its sweep taken, its spec
 // written from the writer's brief and landed citing them, the land's review
-// pass clean, and the spec cut into two phases — `landed`; and the same with ready to build's checklist worked
+// pass clean, and the spec cut into two phases, the project's environment
+// setup recorded at an earlier build — `landed`; and the same with ready to build's checklist worked
 // and closed — `closed`. A feature, `tally`, its one topic closed into its
 // spec with no gate: the person's answer and a call of Claude's on it, its
 // decided checklist worked and closed, and its payload staged — a
@@ -127,6 +128,7 @@ function written(dir, text, unit = UNIT) {
 function buildLanded(dir) {
   payments(dir, 'in-progress');
   commitAll(dir, 'init');
+  ok(dir, ['environment', 'confirm']);
   made.taken = answered(dir, `${UNIT}.discussion.cards`, 'Which cards are taken?', { ...PERSON, text: 'Visa and Mastercard.', kind: 'contract' });
   answered(dir, `${UNIT}.discussion.cards`, 'Is the brand shown?', { ...MADE, text: 'As a logo.' });
   made.refund = answered(dir, `${UNIT}.discussion.refunds`, 'Where does a refund go?', { ...PERSON, text: 'Back to the card.', kind: 'behaviour' });
@@ -170,6 +172,7 @@ const reversed = (dir, at, call, text) => write(dir, 'replace', at, ['--replaces
 function buildFeature(dir, { departed = false } = {}) {
   createManifest(dir, FEATURE, { phases: { discussion: { items: { [FEATURE]: { status: 'in-progress' } } } } });
   commitAll(dir, 'init');
+  ok(dir, ['environment', 'confirm']);
   made.resets = answered(dir, FEATURE_AT, 'When does a tally reset?', { ...PERSON, text: 'At midnight.', kind: 'behaviour' });
   made.shown = answered(dir, FEATURE_AT, 'Where is the count shown?', { ...MADE, text: 'In the menu bar.', kind: 'look' });
   if (departed) made.onTopic = reversed(dir, FEATURE_AT, made.shown, 'In the dock.');

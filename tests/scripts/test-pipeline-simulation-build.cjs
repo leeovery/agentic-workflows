@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's build, as its skill's prose runs it: an epic in
 // auto, its cut two phases, built by one orchestrator in one conversation,
-// its first phase from the build's entry to its close and on into the
-// second with no handoff at the phase boundary (12.S1, 24.S6). The phase
+// its first phase from the build's entry, which asks nothing first (22.S7),
+// to its close and on into the second with no handoff at the phase
+// boundary (12.S1, 24.S6). The phase
 // written into the tracker, its task writer briefed and its task recorded,
 // its start checklist closed; a bug the person reports mid-build, for a
 // phase not yet written, held for that phase's writer through one door,
@@ -19,8 +20,9 @@
 // lays the phase out at its tips wherever it is run. The phase's review,
 // its stack merged with no gate, the scratch worktree a phase reviewer died
 // in taken apart as it merges, its close; then the second phase written
-// in the same conversation, the bug held for it reaching its writer. And
-// the epic stopped, its one task in flight parked on a question, as every
+// in the same conversation, the bug held for it reaching its writer; what
+// the build learned cannot run at once recorded and carried by its entry
+// from then on (12.S18). And the epic stopped, its one task in flight parked on a question, as every
 // view that reads it stands it.
 //
 // Layer: simulation. World: this file's own, built once from the project
@@ -71,6 +73,8 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual({ now: tab.now, spec: tab.spec, build: tab.build }, { now: { phase: 'build', since: sim.manifest(WU).checklists['ready-to-build'].closed }, spec: { state: 'complete', words: '', session: null }, build: { state: 'building', session: 'this' } },
       'S2, 20.8.2: the epic builds since ready to build\'s yes, its specification complete, this session in its build');
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 2, "Settling": not yet written', 'phase: phase 2 of 2, "Showing": not yet written']);
+    assert.deepStrictEqual([...new Set(entered.map((line) => line.slice(0, line.indexOf(': '))))], ['position', 'phase', 'affected', 'record', 'build log', 'engine'],
+      '22.S7: the project\'s first build starts asking nothing — no plan format, no project skills');
     for (const call of [['ledger', 'record', WU], ['ledger', 'affected', WU]]) sim.read(call);
     sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');
 
@@ -132,6 +136,11 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual(Object.fromEntries([...loop.agents].map(([role, named]) => [role, [...named]])), {
       'task-writer': ['leeway-task-writer'], builder: ['leeway-builder'], reviewer: ['leeway-reviewer'], fix: ['leeway-builder'], 'phase-review': ['leeway-reviewer'],
     }, 'the agents run as defined');
+
+    // The build learns two of its runs share a port and records it, so no
+    // build relearns it: the build's entry carries it from then on (12.S18).
+    sim.run(['environment', 'concurrency', 'add', WU, 'the tests share port 5432']);
+    assert.ok(buildEntry(sim, WU).includes('not at once: the tests share port 5432'), 'the entry carries what cannot run at once');
   });
   it('S1: an epic whose one task in flight a question parks has stopped, on its DELIVERY and on the banner alike, its page listing the question opening the task it parks, All work\'s row stopped and counting it', async () => {
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;

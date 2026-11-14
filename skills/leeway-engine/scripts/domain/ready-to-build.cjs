@@ -11,7 +11,10 @@
 // - The screen stands on the landed spec alone (spec-landed.cjs), refused
 //   while `spec.md` holds changes that have not landed. It shows once ready
 //   to build's checklist is closed and nothing has landed or been cut since,
-//   every engine item holding still (checklist.cjs, E12). It refuses a unit
+//   every engine item holding still (checklist.cjs, E12) — the project's
+//   environment setup recorded among them, so at the project's first ready
+//   to build its screen, `render environment-setup`, is asked before this
+//   one, and at no later one (22.5.3, environment-verbs.cjs). It refuses a unit
 //   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
 //   one not in progress, a quick-fix, a unit of a retired type, topics not
 //   settled; a unit keeping the old spec's items, which never reaches this
