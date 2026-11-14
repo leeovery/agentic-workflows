@@ -36,12 +36,15 @@
 //   `leeway-state` with no commit yet, its files standing at the code
 //   commit it was added at, until the migration's commit — whatever the
 //   code branch holds meanwhile, a commit of the person's own among it
-//   (21.5.11). A branch lost under its folder stands at a commit of the
-//   state's, and is restored or refused as above. The worktree is relinked
-//   where its link broke, the project folder moved or copied meanwhile, as
-//   a born branch's is, and locked where it is not; boot goes on to the
-//   migrations with nothing pushed: the branch is the migration's to begin
-//   (21.9.3).
+//   (21.5.11). The worktree is relinked where its link broke, the project
+//   folder moved or copied meanwhile, as a born branch's is, and locked
+//   where it is not; boot goes on to the migrations with nothing pushed:
+//   the branch is the migration's to begin (21.9.3). A folder standing at
+//   no code commit is never the migration's worktree: one holding no link
+//   git can read — a plain `.leeway/` in a project owing the reshape — is
+//   left to the migration, whose guard sets it aside, and a branch lost
+//   under its folder stands at a commit of the state's, and is restored or
+//   refused as above.
 // - A remote out of reach is never read as holding nothing, so never as lost
 //   state or a branch to push back: boot works on what this clone holds —
 //   its own branch, or the remote's as last fetched — and, holding neither,
@@ -205,7 +208,9 @@ function relink(root) {
 
 /**
  * Where the state stands, the migration's worktree relinked first where its
- * link broke while the migration was under way.
+ * link broke while the migration was under way: a folder standing at the
+ * code commit it was added at. A folder holding no link git can read, or a
+ * branch lost under its folder, is left as found.
  * @param {string} root @param {string[]} warnings
  * @returns {StateInspection}
  */

@@ -95,9 +95,9 @@
 // Boot stamps the calling conversation as booted for the project (22.1.7,
 // boot-stamp.cjs) where it reaches the work — ready, or restarted — and at a
 // directive's stop, whose steps call verbs; never at the git, repo, lost,
-// guard, checks or merge stops, nor while the migration waits on its commit,
-// where nothing may touch the work. The verbs those stops run go through
-// without it (engine.cjs, `BOOT_EXEMPT`).
+// guard, checks or merge stops, where nothing may touch the work, and never
+// at finish, where a stamp a directive's stop wrote earlier stands. The
+// verbs those stops run go through without it (engine.cjs, `BOOT_EXEMPT`).
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone, and no

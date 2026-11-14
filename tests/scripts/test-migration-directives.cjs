@@ -11,10 +11,11 @@
 // directive not yet done, and past it once it is, one start meeting several,
 // at one whose every piece is done, and at one whose check fails on what a
 // session left, the runner recording one whose check answers no piece
-// unrun, its unrun line beside it (domain/boot.cjs; 21.4.3, 21.10.9, 21.10.10, 21.S37, and the machinery of
-// 21.S33, which 29.17 proves on the real sequence); the stop's screen (21.10.11); and, while
-// the migration runs, a verb's commit held, held to the layout all the same
-// (21.9.3), and nothing told the trust log (21.1.5). The runner's side is
+// unrun, its unrun line beside it (domain/boot.cjs; 21.4.3, 21.10.9,
+// 21.10.10, 21.S37, and the machinery of 21.S33, which 29.17 proves on the
+// real sequence); the stop's screen (21.10.11); and, while the migration
+// runs, a verb's commit held, held to the layout all the same (21.9.3), and
+// nothing told the trust log (21.1.5). The runner's side is
 // test-migration-orchestrator.cjs's.
 //
 // Layer: verb, boot spawning the runner. World: the migration's harness

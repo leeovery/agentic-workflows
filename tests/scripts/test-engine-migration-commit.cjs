@@ -6,35 +6,37 @@
 // stop in domain/boot.cjs, `migrate review` in domain/directives.cjs and
 // the state branch's first commit in domain/state-worktree.cjs): boot
 // answering `finish` with nothing committed and no conversation stamped,
-// the review, its gate and the yes going through in one boot never
-// stamped (`BOOT_EXEMPT` in engine.cjs), the ledger's copies rendered
-// and the records indexed (21.9.1, 21.S24, 21.S47 — its other half, the
-// store the move left never read, is test-migration-078.cjs's: the
-// knowledge config carried, never the store); the yes making the state
-// branch's first commit, the layout whole with the held writes and none of
-// the tools' sidecars, pushed where there is a remote, then the code
-// branch's, taking the drops out through its own index, and the drops going
-// from the person's index and disk once both land (21.9.2, 21.S18, P5); a
-// commit of the person's own before the yes taking none of the migration's
-// changes, one taking `.workflows/` off the code branch by hand leaving the
+// the review, its gate and the yes going through in one boot never stamped
+// (`BOOT_EXEMPT` in engine.cjs), the ledger's copies rendered and the
+// records indexed (21.9.1, 21.S24, 21.S47 — its other half, the store the
+// move left never read, is test-migration-078.cjs's: the knowledge config
+// carried, never the store); the yes making the state branch's first
+// commit, the layout whole with the held writes and none of the tools'
+// sidecars, pushed where there is a remote, then the code branch's, taking
+// the drops out through its own index, and the drops going from the
+// person's index and disk once both land (21.9.2, 21.S18, P5); a commit of
+// the person's own before the yes taking none of the migration's changes,
+// one taking `.workflows/` off the code branch by hand leaving the
 // migration under way, and a `git add -A` or `git reset` between the stop
 // and the yes leaving no drop on the branch; the project folder moved
 // meanwhile, boot relinking the state worktree, and the yes refusing,
-// nothing committed, where the relink failed; a kill before and between
-// the two, the next boot answering `finish` and the yes making what is
-// left, and after the code commit, the next boot taking the drops out of
-// the index and off disk itself and answering `ready` (21.9.5); the
-// refusals, nothing committed (21.9.3); the review's read, once the code
-// commit has landed among it (21.9.4); a project nested in its repository,
-// its commit called from a code worktree; the board reading the project
-// meanwhile; a code migration after the reshape handing back its check and
-// notice as today (21.10.13, 21.S48); and, through the real chain, the
-// stop before the move for the checks the chain before the guard handed
-// back, stamping no conversation, its screen and its record going through
-// without the stamp, the fix made in `.workflows/` carried by the move and
-// the check marked made (21.10.13), and a directive recorded unrun left out of the
-// review's directives. The ordinary `commit --migrations` is
-// test-engine-commit-door-state.cjs's.
+// nothing committed, where the relink failed, until the next boot relinks
+// it, a kill between the relink's writes carried on by the next boot, and a
+// copy made meanwhile relinked as its own, the original untouched; a kill
+// before and between the two commits, the next boot answering `finish` and
+// the yes making what is left, and after the code commit, the next boot
+// taking the drops out of the index and off disk itself and answering
+// `ready` (21.9.5); the refusals, nothing committed (21.9.3); the review's
+// read, once the code commit has landed among it (21.9.4); a project nested
+// in its repository, its commit called from a code worktree; the board
+// reading the project meanwhile; a code migration after the reshape handing
+// back its check and notice as today (21.10.13, 21.S48); and, through the
+// real chain, the stop before the move for the checks the chain before the
+// guard handed back, stamping no conversation, its screen and its record
+// going through without the stamp, the fix made in `.workflows/` carried by
+// the move and the check marked made (21.10.13), and a directive recorded
+// unrun left out of the review's directives. The ordinary `commit
+// --migrations` is test-engine-commit-door-state.cjs's.
 //
 // Layer: git. World: the migration's harness (migration-world.cjs) — the
 // engine copied beside the real runner and the fixture migrations, and the
@@ -363,14 +365,43 @@ describe('the project folder moved while the migration waits on its commit', () 
     assert.deepStrictEqual([stateCommits().length, codeCommit(dir).parent, onDisk('.workflows'), git(dir, ['status', '--porcelain'])], [1, code, false, '']);
   });
 
-  it('where boot\'s relink fails, the review still reads the first commit owed, and the yes refuses, committing nothing and taking nothing from disk', () => {
+  it('where boot\'s relink fails, the review still reads the first commit owed, and the yes refuses, committing nothing and taking nothing from disk, naming /leeway as the way on; the next boot relinks it, sweeping the temp file the killed write left, and the yes makes both commits', () => {
     rename();
     killedAt({ method: 'renameSync', file: path.join('.leeway', '.git'), when: 'before' }, dir, ['boot'], { env: SESSION });
     const code = codeHead(dir);
 
     assert.deepStrictEqual(ok(['migrate', 'review']).reshape.commits, ['state', 'code']);
-    assert.match(refusedUntouched(dir, COMMIT), /^git cannot open the state worktree at .+ — nothing committed$/);
+    assert.match(refusedUntouched(dir, COMMIT), /^git cannot open the state worktree at .+ — nothing committed\. Start \/leeway again: its boot relinks the state worktree where the project folder moved, and the migration gate is drawn again$/);
     assert.deepStrictEqual([codeHead(dir), onDisk('.workflows'), onDisk(OLD_STORE), fs.existsSync(statePath(dir, JOURNALS, 'finish.json'))], [code, true, true, true]);
+
+    assert.strictEqual(ok(['boot']).state, 'finish');
+    ok(COMMIT);
+
+    assert.deepStrictEqual([stateCommits().length, codeCommit(dir).parent, onDisk('.workflows'), fs.readdirSync(statePath(dir)).filter((name) => name.startsWith('..git.'))], [1, code, false, []]);
+  });
+
+  it('a boot killed between the relink\'s two writes, the folder\'s link rewritten and the registration\'s not: the next boot relinks the rest, the yes makes both commits, and the boot after is ready', () => {
+    rename();
+    killedAt({ method: 'renameSync', file: path.join('.leeway', '.git'), when: 'after' }, dir, ['boot'], { env: SESSION });
+
+    assert.strictEqual(ok(['boot']).state, 'finish');
+    ok(COMMIT);
+
+    assert.deepStrictEqual([stateCommits().length, onDisk('.workflows')], [1, false]);
+    assert.strictEqual(ok(['boot']).state, 'ready');
+  });
+
+  it('a copy made while the migration waits relinks its state worktree as its own, with a warning naming the original, and finishes; the original is untouched', () => {
+    const original = dir;
+    const link = fs.readFileSync(statePath(original, '.git'), 'utf8');
+    dir = path.join(path.dirname(original), 'copy');
+    fs.cpSync(original, dir, { recursive: true });
+
+    assert.deepStrictEqual(ok(['boot']).warnings, [`this project is a copy of ${original}: its state worktree was linked to that project's, and is now this one's own — ${original} is untouched`]);
+    ok(COMMIT);
+
+    assert.deepStrictEqual([stateCommits().length, onDisk('.workflows')], [1, false]);
+    assert.deepStrictEqual([fs.readFileSync(statePath(original, '.git'), 'utf8'), stateUnborn(original), fs.existsSync(path.join(original, '.workflows'))], [link, true, true]);
   });
 });
 

@@ -156,17 +156,17 @@ function directiveStop({ project, step, progress }) {
 }
 
 /**
- * Boot's stop before the reshape's move (21.10.13): earlier migrations
- * handed back checks their code could not make, files the move reads among
- * what they fix, so this session makes them first, and no session works in
- * the project until the migration is done.
+ * Boot's stop before the reshape's move (21.10.13): earlier migrations left
+ * checks their code could not make, some fixing files the move carries, so
+ * this session makes them first, and no session works in the project until
+ * the migration is done.
  * @returns {string}
  */
 function migrationChecksStop() {
   return [
     section('DISPLAY: migration checks stop', emitAs('properties'), '⚑ The migration stopped before its move, for checks earlier migrations handed back'),
     section('DISPLAY: migration checks account', emitAs('markdown'), [
-      "> Earlier migrations of this project handed back checks their code couldn't make, files the move into Leeway reads among what they fix, so they come first. No session works in this project until the migration is done.",
+      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Leeway, so they come first. No session works in this project until the migration is done.",
       '>',
       '> This session takes them up now; the start menu follows once the migration is done and committed.',
     ].join('\n')),

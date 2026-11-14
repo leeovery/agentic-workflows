@@ -164,9 +164,9 @@ in the same header:
   the drops out through its own index, and takes them out of the
   person's index and off disk (`domain/migration-commit.cjs`); boot does
   that last part itself where a kill after the code commit left it, and
-  relinks the state worktree where the project folder moved meanwhile. Until that commit, a run that
-  completes keeps the handbacks it journaled, so every boot's review
-  reads them.
+  relinks the state worktree where the project folder moved meanwhile.
+  Until that commit, a run that completes keeps the handbacks it
+  journaled, so every boot's review reads them.
 
 ## Prose tests
 

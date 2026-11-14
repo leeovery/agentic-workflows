@@ -497,9 +497,10 @@ function registrationOf(root) {
  * registration it named, and anything of the project it was copied from,
  * are never read or written. The folder's contents and the registration's
  * lock stay as they are. The links are written without git, so what the
- * verb has read of git goes with them (kernel/git-reads). Refuses where the
- * folder holds no link, or this repository keeps no registration by its
- * name.
+ * verb has read of git goes with them (kernel/git-reads); boot's checks,
+ * which hold their own lock, are their one writer, so a temp file a killed
+ * relink left beside either is swept first. Refuses where the folder holds
+ * no link, or this repository keeps no registration by its name.
  * @param {string} root
  * @returns {Relinked}
  */
@@ -516,9 +517,9 @@ function repairStateWorktree(root) {
   let was = 'own';
   if (realpathOrSelf(named) !== realpathOrSelf(own)) {
     was = fs.existsSync(named) ? 'copied' : 'moved';
-    writeTextAtomic(dotgit, `gitdir: ${own}\n`);
+    writeTextAtomic(dotgit, `gitdir: ${own}\n`, { sole: true });
   }
-  writeTextAtomic(path.join(own, 'gitdir'), `${dotgit}\n`);
+  writeTextAtomic(path.join(own, 'gitdir'), `${dotgit}\n`, { sole: true });
   dropReads();
   return { was, from };
 }
@@ -1040,7 +1041,9 @@ function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, co
  */
 function commitFirst(root, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
   const worktree = openWorktree(root);
-  if (!worktree.opened) throw new Error(`git cannot open the state worktree at ${root}: ${worktree.why} — nothing committed`);
+  if (!worktree.opened) {
+    throw new Error(`git cannot open the state worktree at ${root}: ${worktree.why} — nothing committed. Start /leeway again: its boot relinks the state worktree where the project folder moved, and the migration gate is drawn again`);
+  }
   if (worktree.head !== BRANCH_REF || worktree.at !== null) {
     throw new Error(`the state worktree at ${root} is not on a ${STATE_BRANCH} with no commit yet, so it takes no first commit — nothing committed`);
   }

@@ -138,12 +138,13 @@ function ensureContainer(parent, key, label) {
 
 /**
  * Remove orphaned temp files a crashed writer left beside `file` — the next
- * scoped `git add` would commit them. Only files past TMP_STALE_MS go; a
- * younger one belongs to a live concurrent writer. Best-effort: a file
- * vanishing mid-sweep means another process finished the same job.
- * @param {string} file
+ * scoped `git add` would commit them. Only files past TMP_STALE_MS go, a
+ * younger one belonging to a live concurrent writer — but every one where
+ * the caller is the file's `sole` writer. Best-effort: a file vanishing
+ * mid-sweep means another process finished the same job.
+ * @param {string} file @param {boolean} sole
  */
-function sweepOrphanedTmpFiles(file) {
+function sweepOrphanedTmpFiles(file, sole) {
   const dir = path.dirname(file);
   const prefix = `.${path.basename(file)}.`;
   let names;
@@ -156,7 +157,7 @@ function sweepOrphanedTmpFiles(file) {
     if (!name.startsWith(prefix) || !name.endsWith('.tmp')) continue;
     const orphan = path.join(dir, name);
     try {
-      if (Date.now() - fs.statSync(orphan).mtimeMs > TMP_STALE_MS) fs.unlinkSync(orphan);
+      if (sole || Date.now() - fs.statSync(orphan).mtimeMs > TMP_STALE_MS) fs.unlinkSync(orphan);
     } catch { /* vanished mid-sweep */ }
   }
 }
@@ -170,11 +171,13 @@ function jsonText(data) {
  * Atomic write: `text` written to a hidden pid-suffixed temp file in the
  * same directory, renamed over the target — a crash mid-write can never
  * leave a truncated file behind. A `mode` is the file's exactly, set before
- * the rename, so the content is never readable under another.
- * @param {string} file @param {string} text @param {{mode?: number}} [options]
+ * the rename, so the content is never readable under another. A `sole`
+ * writer — one holding a lock no other writer of the file takes — sweeps
+ * every temp file beside it first, however young: each is a killed write's.
+ * @param {string} file @param {string} text @param {{mode?: number, sole?: boolean}} [options]
  */
-function writeTextAtomic(file, text, { mode } = {}) {
-  sweepOrphanedTmpFiles(file);
+function writeTextAtomic(file, text, { mode, sole = false } = {}) {
+  sweepOrphanedTmpFiles(file, sole);
   const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
   fs.writeFileSync(tmp, text, { encoding: 'utf8', mode });
   if (mode !== undefined) fs.chmodSync(tmp, mode);
