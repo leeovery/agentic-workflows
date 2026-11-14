@@ -12,7 +12,12 @@
 //   spec-sections  each section the task's spec reference cites, verbatim
 //                  from the unit's spec (spec-sections.cjs); for a
 //                  quick-fix's task, which has no spec, the line saying its
-//                  acceptance in its own words stands for them (19.5.24)
+//                  acceptance in its own words stands for them (19.5.24);
+//                  for a task the plan from before Leeway wrote, holding
+//                  no spec reference, each area joined from an old spec
+//                  its text cites by its path (21.8.5) — or, citing none
+//                  of them, its phase's sections and scenarios, as the cut
+//                  holds them
 //   decided-calls  the unit's current decisions at its own level, the
 //                  person's and Claude's alike — the builder's own calls
 //                  among them (13.11.10) — in the ledger's order, each one
@@ -454,7 +459,7 @@
 // a flag carries a name, an id or a path, never text that reaches the brief
 // (6.5.6). A record the project holds none of
 // yet is drawn as none recorded. One that cannot be read refuses the brief:
-// a task with no spec reference, a section the spec lacks, linters of
+// a section the spec lacks, linters of
 // another shape, a task's branch no repository holds work on, a base no
 // repository holding it has as a local branch, a phase's sections or
 // scenarios the spec lacks, a phase not yet written whose tasks or range a
@@ -497,7 +502,7 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined } = require('./derivations.cjs');
+const { dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, joinedTopics, builtSince } = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
@@ -629,17 +634,33 @@ function drawTask(filling) {
   return [headingsDown(task.text), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`)].join('\n\n');
 }
 
+/** An old spec's path as a task the plan from before Leeway wrote cites it, its topic captured. */
+const OLD_SPEC_PATH = /specification\/([^/\s`'"]+)\/specification\.md/g;
+
 /**
- * Each section the task's spec reference cites; for a quick-fix's task, the
- * line saying its acceptance, in its own words, stands for them (19.5.24).
+ * The areas a task the plan from before Leeway wrote cites, as a spec
+ * reference: each joined from an old spec its text names by its path, in
+ * the spec's order; null where it names none the migration joined.
+ * @param {string} text @param {string[]} topics the topics joined, area by area @returns {string|null}
+ */
+function oldCitation(text, topics) {
+  const areas = [...new Set([...text.matchAll(OLD_SPEC_PATH)].map(([, topic]) => topics.indexOf(topic) + 1))].filter((area) => area > 0).sort((a, b) => a - b);
+  return areas.length === 0 ? null : `§${areas.join(', ')}`;
+}
+
+/**
+ * Each section the task's spec reference cites, or the areas a task of the
+ * plan from before Leeway cites (`oldCitation`), or, citing none, its
+ * phase's sections and scenarios; for a quick-fix's task, the line saying
+ * its acceptance, in its own words, stands for them (19.5.24).
  * @param {Filling} filling
  */
 function drawSpecSections(filling) {
   const { ref, task } = taskOf(filling);
   if (ofQuickFixTask(filling)) return `${ref.unit} is a quick-fix, which has no spec: the task's acceptance scenarios, in their own words, stand for its sections.`;
-  const reference = specReferenceOf(task.text);
-  if (reference === null) throw new Error(`${taskName(ref)} holds no spec reference`);
-  return readCitedSections(filling.cwd, ref.unit, reference).map((section) => section.text).join('\n\n');
+  const reference = specReferenceOf(task.text) ?? oldCitation(task.text, joinedTopics(unitManifest(filling)));
+  if (reference !== null) return readCitedSections(filling.cwd, ref.unit, reference).map((section) => section.text).join('\n\n');
+  return [`${taskName(ref)} cites no section of the spec, so its phase's stand for it, with its phase's scenarios:`, ...sectionTexts(filling, ref.phase), scenarioLines(filling, ref.phase)].join('\n\n');
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -1647,33 +1668,45 @@ function drawCutPhase(filling) {
   return [`Phase ${phase} of ${unit}: ${name}`, goal, relies].join('\n\n');
 }
 
-/** @param {Filling} filling */
-function drawPhaseSections(filling) {
-  const { phase } = phaseOf(filling);
-  const cut = cutOf(filling);
-  const named = cut[phase - 1].sections;
-  const { file, sections } = unitSpec(filling);
-  const built = named.map((address) => {
-    const first = cut.findIndex((each) => each.sections.some(builds(address))) + 1;
-    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}`;
-  });
-  const texts = named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
+/**
+ * Each section a phase of the cut names, verbatim, in the cut's order — a
+ * part whose own area it names left to the area.
+ * @param {Filling} filling @param {number} phase
+ */
+function sectionTexts(filling, phase) {
+  const named = cutOf(filling)[phase - 1].sections;
+  const { sections } = unitSpec(filling);
+  return named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
     const section = sections.get(address);
     if (section === undefined) throw new Error(`phase ${phase} of the cut names §${address}, which the spec lacks`);
     return section.text;
   });
-  return [`\`${file}\``, built.join('\n'), ...texts].join('\n\n');
 }
 
-/** @param {Filling} filling */
-function drawPhaseScenarios(filling) {
-  const { phase } = phaseOf(filling);
+/** Each scenario a phase of the cut holds, by id with its wording. @param {Filling} filling @param {number} phase */
+function scenarioLines(filling, phase) {
   const wordings = new Map(unitSpec(filling).lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording]));
   return listed(cutOf(filling)[phase - 1].scenarios.map((id) => {
     const wording = wordings.get(id);
     if (wording === undefined) throw new Error(`phase ${phase} of the cut holds ${id}, which the spec lacks`);
     return `- ${id}: ${indented(wording)}`;
   }));
+}
+
+/** @param {Filling} filling */
+function drawPhaseSections(filling) {
+  const { phase } = phaseOf(filling);
+  const cut = cutOf(filling);
+  const built = cut[phase - 1].sections.map((address) => {
+    const first = cut.findIndex((each) => each.sections.some(builds(address))) + 1;
+    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}`;
+  });
+  return [`\`${unitSpec(filling).file}\``, built.join('\n'), ...sectionTexts(filling, phase)].join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawPhaseScenarios(filling) {
+  return scenarioLines(filling, phaseOf(filling).phase);
 }
 
 /** Notes for later, each verbatim under its heading. @param {import('./notes.cjs').Note[]} notes */
@@ -1787,7 +1820,7 @@ function drawReliedOn(filling) {
  */
 const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {import('./phase-stack.cjs').PhaseStack} */ (filling) => {
   const { unit, phase } = phaseOf(filling);
-  return phaseStack(filling.cwd, unit, phase, writtenPhase(filling));
+  return phaseStack(filling.cwd, unit, phase, builtSince(unitManifest(filling), writtenPhase(filling)));
 });
 
 /** @param {Filling} filling @param {string[]} warnings */

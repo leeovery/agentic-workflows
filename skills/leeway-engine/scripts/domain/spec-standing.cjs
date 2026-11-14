@@ -9,8 +9,8 @@
 //
 // - The spec's standing is derived, never kept (P7): `concluded` once ready
 //   to build's yes began the build, `build` on the unit's manifest, or once
-//   the migration joined the unit's old specs into it, `spec.joined`, which
-//   are history (21.8.5); `written` once `{unit}/spec.md` exists; else
+//   the migration joined the unit's old specs into it, the topics
+//   `spec.joined` names, which are history (21.8.5); `written` once `{unit}/spec.md` exists; else
 //   `none`.
 // - Past its spec — written or concluded — no topic exists (4.11.2), and an
 //   epic's map is closed (18.4.19, P3): no topic is added, cancelled,

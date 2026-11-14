@@ -286,7 +286,7 @@ const RECORDS_MOVED = Object.freeze({
       specification: { items: SHOP_SPECS },
       implementation: { items: { weights: { status: 'in-progress' } } },
     },
-    spec: { joined: true },
+    spec: { joined: ['weights', 'wishlist'] },
   }),
   [layout.unit('shop', 'spec.md')]: [
     '# Shop', '', '## 1. Weights', '', '#### Ranking', '', 'Newest first.', '', '##### Detail', '', 'By day.', '',

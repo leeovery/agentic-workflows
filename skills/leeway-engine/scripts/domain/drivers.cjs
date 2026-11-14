@@ -54,7 +54,7 @@ const METHODS = Object.freeze({
   task: {
     required: /** @type {const} */ ([
       'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
-      'createUnit', 'createPhase', 'createTask', 'adopt', 'add', 'setType', 'link',
+      'createUnit', 'createPhase', 'createTask', 'adopt', 'closePlan', 'add', 'setType', 'link',
       'ready', 'start', 'done', 'close', 'removePhase', 'list', 'show', 'tasks', 'started',
     ]),
     optional: /** @type {const} */ ([]),
@@ -162,7 +162,14 @@ const METHODS = Object.freeze({
  * phase's tasks so named. A name a task holds already is left, so a run
  * again adds only what the last left out; and it refuses, adding nothing,
  * a parent the tracker lacks, a task named apart from the name it would
- * take, and a name another task holds. `removePhase` takes a phase written out of the tracker for good,
+ * take, and a name another task holds. `closePlan` closes a plan the
+ * tracker held from before Leeway whose unit built nothing (21.8.4): the
+ * root the migration names, by the tracker's own id, takes the unit's name
+ * where the unit has none and the root no name of the engine's, and each
+ * task under it holding no task of its own, neither done nor closed, is
+ * closed with the reason given, the parents ended by the tracker, so the
+ * phases the build writes take names none of it holds; it answers how many
+ * it closed, a run again closing none. `removePhase` takes a phase written out of the tracker for good,
  * every task under it with it and every link to them dropped, so it reads
  * as never written and its number and its tasks' names are made again as
  * new. `add` puts an addition onto a task, after any before it;
@@ -203,6 +210,7 @@ const METHODS = Object.freeze({
  *   createPhase: (root: string, unit: string, phase: number, title: string) => void,
  *   createTask: (root: string, ref: TaskRef, task: {title: string, type: string, text: string}) => void,
  *   adopt: (root: string, unit: string, phase: number, parent: string) => TaskRef[],
+ *   closePlan: (root: string, unit: string, parent: string, reason: string) => number,
  *   add: (root: string, ref: TaskRef, addition: TaskAddition) => void,
  *   setType: (root: string, ref: TaskRef, type: string) => void,
  *   link: (root: string, task: TaskRef, after: TaskRef) => void,

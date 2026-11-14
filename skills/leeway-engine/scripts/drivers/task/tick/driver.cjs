@@ -55,7 +55,12 @@
 // already is left: a run again adds only what the last left out. A task
 // holding another of the engine's names, a name another task holds, and a
 // task holding as many refs as Tick keeps on one, ten, are refused before
-// anything is added.
+// anything is added. A plan whose unit built nothing is closed under its
+// root (21.8.4): the root takes the unit's name, as above, and each task
+// under it holding no task of its own, neither done nor cancelled, is
+// cancelled with the reason, Tick ending the parents itself, so a phase
+// the build writes later reopens the root Tick ended and the plan's phases
+// take none of the build's names.
 //
 // The store's merge between two clones is merge.cjs's, given the driver's
 // names for what the store holds. It is loaded only as the store merges:
@@ -390,12 +395,13 @@ function adoptedNames(ids, unit, phase, parent) {
   ];
 }
 
-/** @param {string} root @param {string} unit @param {number} phase @param {string} parent @returns {TaskRef[]} */
-function adopt(root, unit, phase, parent) {
-  const ids = idsIn(root);
-  const held = ids.held.get(parent);
-  if (held === undefined) throw new Error(`the tracker holds no task ${parent} to adopt as ${phaseName(unit, phase)}`);
-  const names = adoptedNames(ids, unit, phase, held);
+/**
+ * Each name given to its task, beside the refs it has — none where a task
+ * holds another of the engine's names, a name is another's, or the task
+ * holds as many refs as Tick keeps; a name it holds already left.
+ * @param {string} root @param {Ids} ids @param {[string, string][]} names
+ */
+function giveNames(root, ids, names) {
   for (const [id, ref] of names) {
     const holder = ids.byRef.get(ref);
     const own = ids.byId.get(id);
@@ -408,10 +414,32 @@ function adopt(root, unit, phase, parent) {
   for (const [id, ref] of names) {
     if (ids.byRef.get(ref) !== id) tick(root, ['update', id, '--refs', [...(/** @type {Held} */ (ids.held.get(id)).refs ?? []), ref].join(',')]);
   }
+}
+
+/** @param {string} root @param {string} unit @param {number} phase @param {string} parent @returns {TaskRef[]} */
+function adopt(root, unit, phase, parent) {
+  const ids = idsIn(root);
+  const held = ids.held.get(parent);
+  if (held === undefined) throw new Error(`the tracker holds no task ${parent} to adopt as ${phaseName(unit, phase)}`);
+  const names = adoptedNames(ids, unit, phase, held);
+  giveNames(root, ids, names);
   return names.flatMap(([, ref]) => {
     const name = nameIn(ref);
     return name?.kind === 'task' ? [name.task] : [];
   });
+}
+
+/** @param {string} root @param {string} unit @param {string} parent @param {string} reason @returns {number} */
+function closePlan(root, unit, parent, reason) {
+  const ids = idsIn(root);
+  if (!ids.held.has(parent)) throw new Error(`the tracker holds no task ${parent} to close as the root of a plan from before Leeway of ${unitName(unit)}`);
+  if (!ids.byRef.has(unitRef(unit)) && !ids.byId.has(parent)) giveNames(root, ids, [[parent, unitRef(unit)]]);
+  const open = descendants(ids, parent).filter(({ id, status }) => (ids.children.get(id) ?? []).length === 0 && status !== 'done' && status !== 'cancelled');
+  for (const { id } of open) {
+    tick(root, ['note', 'add', id, '--', `${CLOSED}${reason}`]);
+    tick(root, ['cancel', id]);
+  }
+  return open.length;
 }
 
 /** @param {string} root @param {TaskRef} ref */
@@ -509,6 +537,7 @@ module.exports = {
   createPhase,
   createTask,
   adopt,
+  closePlan,
   add,
   setType,
   link,

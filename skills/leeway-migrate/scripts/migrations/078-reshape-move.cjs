@@ -149,8 +149,10 @@
 //     parts' level — level 4 at least, two deeper where it can go — a
 //     fenced block it leaves open closed, so the next area reads, and its
 //     links to the imports pointed from `spec.md`; the spec titled with the
-//     unit's name, and its manifest marking it joined, `spec: {joined:
-//     true}`, which every reader of it reads (spec-sections.cjs) — the
+//     unit's name, and its manifest naming the topics joined, area by area,
+//     `spec: {joined: [topic, …]}`, which every reader of it reads
+//     (spec-sections.cjs), an old task's citation of its topic's spec read
+//     through its area (brief-records.cjs) — the
 //     migration's cut adds its scenarios (cut-migrating.cjs) — and the
 //     unit's other specs going to `assets/specs/`; a quick-fix's spec goes to `assets/specs/` whatever its building, and
 //     once the quick-fix is completed — its status says so, or every phase
@@ -186,9 +188,10 @@
 // decision written, its mail going to the inbox with a cancelled topic's.
 // A unit whose building has not started keeps no spec or planning items:
 // its specs and plans are reference assets now, and its one spec is written
-// fresh once its topics are decided (21.8.2, 21.8.3); a unit whose building
-// started keeps them for the cut and the merges, and a quick-fix's scoping
-// keeps its own. An epic's topics are on its map — one that was not in
+// fresh once its topics are decided (21.8.2, 21.8.3); a unit completed or
+// cancelled keeps no spec, planning or implementation items either, history
+// that waits on no cut (21.8.11); a unit whose building started keeps them
+// for the cut and the merges, and a quick-fix's scoping keeps its own. An epic's topics are on its map — one that was not in
 // progress when 038 seeded the maps gains them from its discussions — each
 // holding its place in the order: a topic with no order, as 038 left every
 // one, takes the next after the highest the map uses, in the order its old
@@ -305,6 +308,8 @@ const RESEARCH_WAITS = ['awaiting_experiments'];
 
 // A completed quick-fix's spec and plan, gone with their files.
 const QUICK_FIX_SPENT = ['specification', 'planning'];
+// The old plan's phases, which a unit that is history keeps no items of.
+const OLD_PLAN = ['specification', 'planning', 'implementation'];
 // A quick-fix's pipeline as today's engine runs it.
 const QUICK_FIX_PIPELINE = ['scoping', 'implementation', 'review'];
 
@@ -594,6 +599,9 @@ const quickFixDone = (manifest) => isQuickFix(manifest) && (manifest.status === 
 /** Whether the unit keeps no spec or planning items: nothing built, and not a quick-fix. @param {Record<string, any>} manifest */
 const writtenFresh = (manifest) => !isQuickFix(manifest) && !buildingStarted(manifest);
 
+/** Whether the unit is history, keeping no item of its old plan: completed or cancelled, and not a quick-fix (21.8.11). @param {Record<string, any>} manifest */
+const history = (manifest) => !isQuickFix(manifest) && ['completed', 'cancelled'].includes(manifest.status);
+
 /** When the unit was made, in full: the migration's moment where its manifest holds no day. @param {Record<string, any>} manifest */
 function createdAt({ created }) {
   const at = typeof created === 'string' ? Date.parse(created) : Number.NaN;
@@ -603,8 +611,9 @@ function createdAt({ created }) {
 /**
  * The unit's manifest less research and the retired state: the experiments
  * of names no topic holds going with their records' place, a completed
- * quick-fix's spec and plan with their files, and the spec and planning
- * items of a unit that writes its spec fresh; an epic's topics on its map,
+ * quick-fix's spec and plan with their files, the spec and planning
+ * items of a unit that writes its spec fresh, and the old plan's items of a
+ * unit that is history; an epic's topics on its map,
  * every one in the order, and an epic with topics past its map, approved
  * when it was made; each import's path following its file; and a quick-fix
  * whose old pipeline completed, completed, unless it was cancelled.
@@ -621,6 +630,7 @@ function reshapedManifest(manifest, topics) {
     for (const name of Object.keys(experiments)) if (!topics.has(name)) delete experiments[name];
     if (quickFixDone(manifest)) for (const phase of QUICK_FIX_SPENT) delete out.phases[phase];
     if (writtenFresh(manifest)) for (const phase of ['specification', 'planning']) delete out.phases[phase];
+    if (history(manifest)) for (const phase of OLD_PLAN) delete out.phases[phase];
     if (out.work_type === 'epic') mapTopics(out);
     if (out.work_type === 'epic' && Object.keys(itemsOf(out, 'discovery')).length > 0) out.phases.discovery.approved_at = createdAt(manifest);
   }
@@ -1073,7 +1083,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
     else put(move, at, takeDocument(move, rel, `${unit}/${at}`), mode);
     relocate(move, rel, `${unit}/${at}`);
   }
-  put(move, 'manifest.json', jsonText(move.joined.length === 0 ? reshaped : { ...reshaped, spec: { joined: true } }));
+  put(move, 'manifest.json', jsonText(move.joined.length === 0 ? reshaped : { ...reshaped, spec: { joined: move.joined } }));
   return move.files.filter((f) => !move.accounted.has(f));
 }
 

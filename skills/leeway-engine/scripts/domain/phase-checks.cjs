@@ -14,7 +14,8 @@
 // - Its tasks written: each of the phase's scenarios — a phase of the cut
 //   names one at least — an acceptance scenario of exactly one task of it
 //   not closed in the tracker (12.4.3); `task link` keeps each link where
-//   it may run (12.6.4).
+//   it may run (12.6.4). A phase whose parent the migration adopted, its
+//   tasks the old plan's, has its tasks written (21.8.8).
 // - What it relies on done: an earlier phase closed and its stack merged,
 //   since in step a phase closes with its stack waiting at its gate
 //   (7.2.5); another unit completed (12.6.2). A phase relying on nothing
@@ -43,6 +44,10 @@
 //   refusal of the close, not an item, so the checklist lists 6.4.9's items
 //   alone (6.S14).
 //
+// A task the tracker held done as the migration adopted its phase
+// (`doneBefore`) was built and landed before Leeway: it counts as passed
+// and landed, and only the tasks built since make the phase's stack.
+//
 // A call reads each thing once for all its checks (`Reading`): a phase's
 // tasks, under the state's lock as every reader of the tracker takes it,
 // since a read may commit the tracker's setting up; and what landed.
@@ -54,7 +59,7 @@ const { projectRepos } = require('../kernel/repos.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
-const { phaseClosed, phaseBuilt, cutPhases, cutLength } = require('./derivations.cjs');
+const { phaseClosed, phaseBuilt, cutPhases, cutLength, doneBefore, builtSince } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
 const { taskPassed, phaseReports } = require('./round-report.cjs');
@@ -148,18 +153,21 @@ function phaseTasks(at, phase) {
 /** Of a phase's tasks, those not closed: the phase's work. @template {TaskRow} T @param {T[]|null} tasks @returns {T[]} */
 const live = (tasks) => (tasks ?? []).filter(({ status }) => status !== 'closed');
 
+/** Whether the task was done before the migration adopted its phase (`doneBefore`). @param {Reading} at @param {TaskRow} task */
+const before = (at, { ref }) => once(at, 'done before', () => doneBefore(at.manifest)).has(shownTask(ref));
+
 /** The phase's tasks not closed, by their rows. @param {Reading} at @param {number} phase */
 const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseLists(at, [phase])[0]);
 
 /** What has landed of the unit's tasks (task-landed.cjs), read once a call. @param {Reading} at @returns {import('./task-landed.cjs').UnitLanded} */
 const landedOf = (at) => once(at, 'landed', () => unitLanded(at.cwd, at.unit, reposOf(at), dayBefore(at.manifest.created)));
 
-/** Whether the phase's stack has merged: every task not closed landed, one at least — a phase built before the migration, on the default branch already. @param {Reading} at @param {number} phase */
+/** Whether the phase's stack has merged: every task not closed landed, one at least, or done before the migration — a phase built before it, on the default branch already. @param {Reading} at @param {number} phase */
 function phaseLanded(at, phase) {
   if (phaseBuilt(at.manifest, phase)) return true;
   const rows = liveRows(at, phase);
   const { landed } = landedOf(at);
-  return rows.length > 0 && rows.every(({ ref }) => landed(ref));
+  return rows.length > 0 && rows.every((row) => before(at, row) || landed(row.ref));
 }
 
 /**
@@ -179,10 +187,12 @@ function mergeWaiting(at, last) {
   return phases.find((phase) => (phase > cut || phaseClosed(at.manifest, phase)) && unmerged(phase)) ?? null;
 }
 
-/** The phase's tasks written: each phase scenario held by exactly one task not closed (12.4.3). @param {Reading} at @param {number} phase */
+/** The phase's tasks written: each phase scenario held by exactly one task not closed (12.4.3), or the phase's parent adopted by the migration. @param {Reading} at @param {number} phase */
 function tasksWritten(at, phase) {
+  const { scenarios, tracker } = cutPhases(at.manifest)[phase - 1];
+  if (tracker !== undefined) return true;
   const tasks = live(phaseTasks(at, phase));
-  return cutPhases(at.manifest)[phase - 1].scenarios.every((scenario) => tasks.filter(({ text }) => holdsScenario(text, scenario)).length === 1);
+  return scenarios.every((scenario) => tasks.filter(({ text }) => holdsScenario(text, scenario)).length === 1);
 }
 
 /** What the phase relies on done: an earlier phase closed and its stack merged, another unit completed (6.4.8). @param {Reading} at @param {number} phase */
@@ -201,10 +211,10 @@ function passed(at, ref) {
   }
 }
 
-/** Every task of the phase not closed, one at least, passed by its pair (13.4.6). @param {Reading} at @param {number} phase */
+/** Every task of the phase not closed, one at least, passed by its pair (13.4.6), or done before the migration. @param {Reading} at @param {number} phase */
 function tasksPassed(at, phase) {
   const rows = liveRows(at, phase);
-  return rows.length > 0 && rows.every(({ ref }) => passed(at, ref));
+  return rows.length > 0 && rows.every((row) => before(at, row) || passed(at, row.ref));
 }
 
 /** The phase review's reports, read once a call (round-report.cjs). @param {Reading} at @param {number} phase @returns {Reviewed} */
@@ -282,7 +292,7 @@ function fixesOwed(at, phase) {
 function phaseTips(at, phase) {
   return once(at, `tips ${phase}`, () => {
     try {
-      return tipCommits(phaseStack(at.cwd, at.unit, phase, phaseTasks(at, phase) ?? []));
+      return tipCommits(phaseStack(at.cwd, at.unit, phase, builtSince(at.manifest, phaseTasks(at, phase) ?? [])));
     } catch (err) {
       at.warnings.push(`${phaseName(at.unit, phase)}'s scenarios are judged at its stack's tips, which cannot be read — ${messageOf(err)}`);
       return null;
@@ -324,13 +334,13 @@ function scenariosWay(at, phase) {
 const notesConsolidated = (at, phase) => consolidationFaults(at.cwd, at.unit, phase).length === 0;
 
 /**
- * Whether every task of the phase not closed, one at least, is in its
- * stack: landed (`landedOf`), else chained into it (landing.cjs); not where
- * one cannot be read so, said as a warning.
+ * Whether every task of the phase built since the migration, one at least,
+ * is in its stack: landed (`landedOf`), else chained into it (landing.cjs);
+ * not where one cannot be read so, said as a warning.
  * @param {Reading} at @param {number} phase
  */
 function chained(at, phase) {
-  const tasks = live(phaseTasks(at, phase));
+  const tasks = builtSince(at.manifest, live(phaseTasks(at, phase)));
   const { landed } = landedOf(at);
   try {
     return tasks.length > 0 && allChained(at.cwd, at.unit, tasks.filter(({ ref }) => !landed(ref)));

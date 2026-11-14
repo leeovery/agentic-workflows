@@ -65,12 +65,13 @@
 // a scenario, or a scenario closing on no statements; a scenario drawing on
 // a statement the spec lacks; and a fence left open.
 //
-// A spec the migration joined (21.8.5; the manifest's `spec.joined`, which
-// each reader passes) is the unit's old specs, each an area, `## N. Title`,
-// verbatim but for its headings, all below the parts' level: an area's
-// blocks are its text, opening no line, and a scenario of the `## N-S.`
-// blocks the migration's cut adds may close on no statements, the spec
-// holding none. Its other rules stand.
+// A spec the migration joined (21.8.5; the manifest's `spec.joined`, the
+// topics joined, which each reader passes as whether it is joined) is the
+// unit's old specs, each an area, `## N. Title`, verbatim but for its
+// headings, all below the parts' level: an area's blocks are its text,
+// opening no line, and a scenario of the `## N-S.` blocks the migration's
+// cut adds may close on no statements, the spec holding none. Its other
+// rules stand.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

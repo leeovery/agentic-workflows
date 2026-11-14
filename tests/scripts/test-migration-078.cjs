@@ -37,8 +37,9 @@
 // environment cleared, the move run again over one cut short, over one
 // whose `.leeway/` the person removed and over one killed writing each file
 // it reads back, a project nested in its repository, the specs of a unit
-// whose building started joined into its spec — a completed one's too —
-// and the join killed at each write and run again,
+// whose building started joined into its spec, the topics joined named —
+// a completed one's too, it and a cancelled one keeping no item of the old
+// plan — and the join killed at each write and run again,
 // a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
@@ -913,7 +914,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         'topics/event-tracking/log.md',
         'topics/ranking/log.md',
       ]);
-      assert.deepStrictEqual([read('shop/spec.md'), manifestOf('shop').spec], ['# Shop\n\n## 1. Ranking\n', { joined: true }]);
+      assert.deepStrictEqual([read('shop/spec.md'), manifestOf('shop').spec], ['# Shop\n\n## 1. Ranking\n', { joined: ['ranking'] }]);
     });
 
     it('drops staging, review cycles, the spec\'s gate modes, plan review tracking and dependencies, keeping the build\'s standing and its spec items for the cut; its topics off the map put on it, every topic in the order', () => {
@@ -1101,17 +1102,25 @@ describe('migration 078: a small project', () => {
       const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/store', rel), 'utf8');
       const reading = specReading(at('spec.md'), true);
       assert.deepStrictEqual([at('spec.md'), reading.faults, reading.headings.map(({ kind, title }) => `${kind} ${title}`)], [STORE_SPEC, [], ['area Cart', 'area Pay', 'area Stock']]);
-      assert.deepStrictEqual(JSON.parse(at('manifest.json')).spec, { joined: true });
+      assert.deepStrictEqual(JSON.parse(at('manifest.json')).spec, { joined: ['cart', 'pay', 'stock'] });
       assert.deepStrictEqual(tree(path.join(dir, '.leeway/store'), 'assets'), ['sketch.md', 'specs/dropped.md', 'specs/old-cart.md']);
     } finally {
       cleanupFixture(dir);
     }
   });
 
-  it('21.S32: joins a completed unit\'s specs, its two concluded discussions that never reached a spec still decided topics of the finished unit (21.8.11)', () => {
+  it('21.S32: joins a completed unit\'s specs, its two concluded discussions that never reached a spec still decided topics of the finished unit; it and a cancelled unit keep no item of the old plan, history waiting on no cut (21.8.11)', () => {
     dir = tempProject('migration-078-completed-');
     try {
-      write(dir, '.workflows/manifest.json', json({ work_units: { done: { work_type: 'epic' } } }));
+      write(dir, '.workflows/manifest.json', json({ work_units: { done: { work_type: 'epic' }, gone: { work_type: 'feature' } } }));
+      write(dir, '.workflows/gone/manifest.json', json(unit('gone', 'feature', 'cancelled', {
+        discussion: { items: { gone: { status: 'completed' } } },
+        specification: { items: { gone: { status: 'completed' } } },
+        planning: { items: { gone: { status: 'completed', format: 'sample-format' } } },
+        implementation: { items: { gone: { status: 'in-progress' } } },
+      })));
+      write(dir, '.workflows/gone/discussion/gone.md', '# Discussion: Gone\n');
+      write(dir, '.workflows/gone/specification/gone/specification.md', '# Specification: Gone\n\nNone of it.\n');
       write(dir, '.workflows/done/manifest.json', json(unit('done', 'epic', 'completed', {
         discussion: { items: Object.fromEntries(['cart', 'pay', 'loyalty', 'gifts'].map((topic) => [topic, { status: 'completed' }])) },
         specification: { items: { cart: { status: 'completed', order: 1 }, pay: { status: 'completed', order: 2 } } },
@@ -1122,9 +1131,11 @@ describe('migration 078: a small project', () => {
       write(dir, '.workflows/done/specification/pay/specification.md', '# Specification: Pay\n\nBy card.\n');
       commitAll(dir);
       run(dir);
-      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/done', rel), 'utf8');
+      const at = (/** @type {string} */ rel, of = 'done') => fs.readFileSync(path.join(dir, '.leeway', of, rel), 'utf8');
       const { status, phases, spec } = JSON.parse(at('manifest.json'));
-      assert.deepStrictEqual([at('spec.md'), spec, status], ['# Done\n\n## 1. Cart\n\nOne tap.\n\n## 2. Pay\n\nBy card.\n', { joined: true }, 'completed']);
+      assert.deepStrictEqual([at('spec.md'), spec, status], ['# Done\n\n## 1. Cart\n\nOne tap.\n\n## 2. Pay\n\nBy card.\n', { joined: ['cart', 'pay'] }, 'completed']);
+      const gone = JSON.parse(at('manifest.json', 'gone'));
+      assert.deepStrictEqual([Object.keys(phases).sort(), Object.keys(gone.phases), gone.spec, gone.status], [['discovery', 'discussion'], ['discussion'], { joined: ['gone'] }, 'cancelled']);
       assert.deepStrictEqual([phases.discussion.items.loyalty, phases.discussion.items.gifts, Object.keys(phases.discovery.items)], [{ status: 'completed' }, { status: 'completed' }, ['cart', 'pay', 'loyalty', 'gifts']]);
       assert.ok(['loyalty', 'gifts'].every((topic) => fs.existsSync(path.join(dir, '.leeway/done/topics', topic, 'log.md'))));
     } finally {
@@ -1149,7 +1160,7 @@ describe('migration 078: a small project', () => {
       }
       run(dir);
       const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/store', rel), 'utf8');
-      assert.deepStrictEqual([at('spec.md'), JSON.parse(at('manifest.json')).spec], [STORE_SPEC, { joined: true }]);
+      assert.deepStrictEqual([at('spec.md'), JSON.parse(at('manifest.json')).spec], [STORE_SPEC, { joined: ['cart', 'pay', 'stock'] }]);
     } finally {
       fs.writeFileSync = realWrite;
       cleanupFixture(dir);

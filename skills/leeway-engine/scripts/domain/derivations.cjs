@@ -12,6 +12,7 @@ const path = require('path');
 const { loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
+const { shownTask } = require('./task-id.cjs');
 const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, LEGACY_PHASES, LEGACY_PLANNING, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -95,8 +96,30 @@ const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases)
   ? manifest.cut.phases.map((/** @type {any} */ phase) => (phase?.built === true ? { scenarios: [], sections: [], relies_on: [], ...phase } : phase))
   : []);
 
-/** Whether the unit's spec is its old specs joined by the migration, `spec.joined` (21.8.5): history, concluded and never corrected. @param {Record<string, any>} manifest */
-const specJoined = (manifest) => manifest.spec?.joined === true;
+/** The topics whose old specs the migration joined into the unit's spec, area by area, `spec.joined` (21.8.5); none where it joined none. @param {Record<string, any>} manifest @returns {string[]} */
+const joinedTopics = (manifest) => (Array.isArray(manifest.spec?.joined) ? manifest.spec.joined : []);
+
+/** Whether the unit's spec is its old specs joined by the migration (21.8.5): history, concluded and never corrected. @param {Record<string, any>} manifest */
+const specJoined = (manifest) => joinedTopics(manifest).length > 0;
+
+/**
+ * The tasks of the cut's phases not built that the tracker held done as the
+ * migration adopted them, `build.done_before`, shown (21.8.8): built and
+ * landed before Leeway, so each counts as passed and landed, and no stack
+ * of the build holds it; none for a unit the migration did not cut.
+ * @param {Record<string, any>} manifest @returns {Set<string>}
+ */
+const doneBefore = (manifest) => new Set(Array.isArray(manifest.build?.done_before) ? manifest.build.done_before : []);
+
+/**
+ * Of a phase's tasks, those the build built since the migration: each but
+ * those done before it (`doneBefore`), which no stack holds.
+ * @template {{ref: import('./task-id.cjs').TaskRef}} T @param {Record<string, any>} manifest @param {T[]} tasks @returns {T[]}
+ */
+function builtSince(manifest, tasks) {
+  const before = doneBefore(manifest);
+  return tasks.filter(({ ref }) => !before.has(shownTask(ref)));
+}
 
 /** How many phases the unit's cut holds, none where it has none. @param {Record<string, any>} manifest */
 const cutLength = (manifest) => cutPhases(manifest).length;
@@ -1376,6 +1399,9 @@ module.exports = {
   buildFinished,
   cutPhases,
   specJoined,
+  joinedTopics,
+  doneBefore,
+  builtSince,
   cutLength,
   isFixPhase,
   legacyBuild,

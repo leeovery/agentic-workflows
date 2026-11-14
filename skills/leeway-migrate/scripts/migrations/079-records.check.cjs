@@ -214,7 +214,8 @@ function sourceNames(sources) {
  * The topic's specs, as the unit's manifest under `.workflows/` names them —
  * each whose sources name the topic, or that bears its name: where the state
  * keeps it, in `assets/specs/`, or, joined into the unit's `spec.md` (078,
- * `spec.joined`), its file under `.workflows/`, cited as that spec.
+ * the topics `spec.joined` names), its file under `.workflows/`, cited as
+ * that spec.
  * @param {Project} project @param {Unit} unit @param {string} topic
  * @returns {{name: string, read: string, cite: string}[]}
  */
@@ -224,7 +225,7 @@ function specsOf(project, unit, topic) {
     .flatMap(([name]) => {
       const kept = `${unit.name}/assets/specs/${name}.md`;
       if (fs.existsSync(path.join(project.stateDir, kept))) return [{ name, read: kept, cite: kept }];
-      return unit.manifest.spec?.joined === true ? [{ name, read: `${CODE_TREE_STATE}/${unit.name}/specification/${name}/specification.md`, cite: `${unit.name}/spec.md` }] : [];
+      return Array.isArray(unit.manifest.spec?.joined) && unit.manifest.spec.joined.includes(name) ? [{ name, read: `${CODE_TREE_STATE}/${unit.name}/specification/${name}/specification.md`, cite: `${unit.name}/spec.md` }] : [];
     });
 }
 

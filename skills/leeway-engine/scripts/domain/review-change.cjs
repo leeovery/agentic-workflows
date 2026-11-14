@@ -51,9 +51,10 @@
 //   on main, or on a task's branch below its first commit — in none; runs
 //   never overlap;
 // - the work not landed is every task of the unit's phases, cut and fix,
-//   done in the tracker and not landed; the stack those tasks make there
-//   (phase-stack.cjs), read from where its tip leaves the base — a task not
-//   done holds nothing yet to review;
+//   done in the tracker and not landed — a task done before the migration
+//   adopted its phase landed before Leeway (`doneBefore`, derivations.cjs);
+//   the stack those tasks make there (phase-stack.cjs), read from where its
+//   tip leaves the base — a task not done holds nothing yet to review;
 // - the change's tip, where its scratch worktree and its runs stand, is
 //   that stack's tip where the repository holds such work, else its base.
 // A quick-fix's review, asked for at its close, reads its landing through
@@ -81,7 +82,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { isFixPhase, cutPhases, quickFixBuild } = require('./derivations.cjs');
+const { isFixPhase, cutPhases, quickFixBuild, doneBefore } = require('./derivations.cjs');
 const { runsOf } = require('./runs.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { quickFixLanding } = require('./landing.cjs');
@@ -91,6 +92,7 @@ const { branches, landingBranch, mergeBase } = require('./landing-git.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { fixAcceptance, fixScenarios } = require('./fix-acceptance.cjs');
 const { stackOf } = require('./phase-stack.cjs');
+const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -228,13 +230,18 @@ function notLanded(numbers, lists, landedOf, wholeOf) {
 /**
  * The unit's tasks done and not landed (task-landed.cjs), whole, in each of
  * the phases `numbers`, in order, as the tracker holds them under the
- * writer lock.
+ * writer lock — those done before the migration landed already.
  * @param {string} cwd @param {string} unit @param {number[]} numbers @param {Repo[]} [repos] the project's, where read already
  * @returns {TaskDetail[]}
  */
 function unlandedTasks(cwd, unit, numbers, repos) {
   const lists = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, numbers).phases);
-  return notLanded(numbers, lists, () => unitLanded(cwd, unit, reposOr(cwd, repos), workSince(cwd, unit)).landed, wholeOf(cwd, unit));
+  const before = new Set(doneBefore(manifestOf(stateRoot(cwd), unit) ?? {}));
+  const landed = () => {
+    const read = unitLanded(cwd, unit, reposOr(cwd, repos), workSince(cwd, unit)).landed;
+    return (/** @type {TaskRef} */ ref) => before.has(shownTask(ref)) || read(ref);
+  };
+  return notLanded(numbers, lists, landed, wholeOf(cwd, unit));
 }
 
 /** The tasks whole of the phases asked, as the tracker holds them under the writer lock. @param {string} cwd @param {string} unit @returns {(phases: number[]) => TaskDetail[][]} */

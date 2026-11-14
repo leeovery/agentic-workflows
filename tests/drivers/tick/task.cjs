@@ -172,9 +172,10 @@ function linkAfterGone(root, title) {
  * A plan as the workflows wrote it into Tick before Leeway: its root, each
  * phase a child of it titled with its number, each task a child of its
  * phase, every one carrying the old plan's id in its refs — `{topic}`,
- * `{topic}-{N}`, `{topic}-{N}-{n}` — and each task the old type and tags.
- * Answers Tick's ids of the root and of each phase.
- * @param {string} root @param {string} topic @param {{title: string, tasks: string[]}[]} phases
+ * `{topic}-{N}`, `{topic}-{N}-{n}` — and each task the old type and its
+ * tags, the old plan's own where none are given, and the text the old plan
+ * wrote it, where given. Answers Tick's ids of the root and of each phase.
+ * @param {string} root @param {string} topic @param {{title: string, tasks: (string|{title: string, text?: string, tags?: string[]})[]}[]} phases
  * @returns {{root: string, phases: string[]}}
  */
 function oldPlan(root, topic, phases) {
@@ -183,8 +184,10 @@ function oldPlan(root, topic, phases) {
     root: planRoot,
     phases: phases.map(({ title, tasks }, at) => {
       const phase = tick(root, ['create', '--parent', planRoot, '--refs', `${topic}-${at + 1}`, '--', `Phase ${at + 1}: ${title}`]).id;
-      for (const [n, task] of tasks.entries()) {
-        tick(root, ['create', '--parent', phase, '--type', 'task', '--tags', 'api,planned', '--refs', `${topic}-${at + 1}-${n + 1}`, '--', task]);
+      for (const [n, given] of tasks.entries()) {
+        const { title: named, text, tags = ['api', 'planned'] } = typeof given === 'string' ? { title: given } : given;
+        const flags = [...(tags.length === 0 ? [] : ['--tags', tags.join(',')]), ...(text === undefined ? [] : ['--description', text])];
+        tick(root, ['create', '--parent', phase, '--type', 'task', ...flags, '--refs', `${topic}-${at + 1}-${n + 1}`, '--', named]);
       }
       return phase;
     }),
@@ -246,6 +249,19 @@ function toolAnswers(root, unit, phase) {
 }
 
 /**
+ * Each task of the old plan for `topic`, by its title, where it stands in
+ * the engine's words, with the reason it was closed with, or null.
+ * @param {string} root @param {string} topic @returns {Record<string, [string, string|null]>}
+ */
+function planStanding(root, topic) {
+  const task = new RegExp(`^${topic}-[0-9]+-[0-9]+$`);
+  return Object.fromEntries(records(root).filter(({ refs = [] }) => refs.some((ref) => task.test(ref))).map(({ title, status, notes = [] }) => {
+    const closed = [...notes].reverse().find(({ text }) => text.startsWith('Closed: '));
+    return [title, [WORDED[status], closed === undefined ? null : closed.text.slice('Closed: '.length)]];
+  }));
+}
+
+/**
  * A folder path whose names read in part like Tick's ids, each kept from
  * reading as one by one side alone: an id's shape after a `/`, then one
  * after a `+` running on into more of a name.
@@ -257,5 +273,5 @@ const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
   projectStore, addRef, makeTask, typeCleared, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone,
-  oldPlan, taskByHand, fillRefs, apartFromNames, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
+  oldPlan, taskByHand, fillRefs, apartFromNames, planStanding, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };

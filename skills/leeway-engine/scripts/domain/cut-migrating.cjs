@@ -37,14 +37,17 @@
 // top: the tracker's steps (task-verbs.cjs, `migratedTracker`) — each phase
 // naming its parent adopted, refused where a phase marked built holds a
 // task neither done nor closed, and each task neither done nor closed given
-// its type, fix in a bugfix and feat in any other (21.5.21); then the
-// unit's files, `spec.md` with the plan's blocks of scenarios, any a run
-// before wrote replaced, `build/notes.md` the notes whole, numbered from 1,
-// and the manifest — the cut, the build begun in step, `build: {position:
-// 'step'}`, which the person switches with `workunit position` (P3), and
-// the old plan's spec, planning and implementation items dropped (P12) —
-// committed to the state branch, the commit held for the migration's
-// (21.9.3). Last, the mark, `.cache/migrate/cut/{unit}.json` in the state.
+// its type, fix in a bugfix or quick-fix and feat in any other (21.5.21);
+// then the unit's files, `spec.md` with the plan's blocks of scenarios, any
+// a run before wrote replaced, `build/notes.md` the notes whole, numbered
+// from 1, and the manifest — the cut, the build begun in step, `build:
+// {position: 'step'}`, which the person switches with `workunit position`
+// (P3), naming the tasks of the phases not built that the tracker holds
+// done, `done_before`, each built and landed before Leeway (derivations.cjs,
+// `doneBefore`), and the old plan's spec, planning and implementation items
+// dropped (P12) — committed to the state branch, the commit held for the
+// migration's (21.9.3). Last, the mark, `.cache/migrate/cut/{unit}.json` in
+// the state.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -75,7 +78,10 @@ const PLAN_KEYS = Object.freeze(['phases', 'scenarios', 'notes', 'answers']);
 const PLAN_SHAPE = '{"phases": [the cut\'s phases], "scenarios": {"<area>": ["<text>", …]}, "notes": ["<text>", …], "answers": {…}}';
 
 /** The type each task neither done nor closed takes, by the unit's type: feat where none is named (21.5.21). */
-const TYPES = Object.freeze({ bugfix: 'fix' });
+const TYPES = Object.freeze({ bugfix: 'fix', 'quick-fix': 'fix' });
+
+/** The type the migration gives each task neither done nor closed of a unit of `workType` (21.5.21). @param {string} workType */
+const migratedType = (workType) => TYPES[/** @type {keyof TYPES} */ (workType)] ?? 'feat';
 
 const LEVEL_TWO = /^## /;
 const AREA_OF = /^## ([0-9]+)\. /;
@@ -201,11 +207,11 @@ function writeNotes(cwd, unit, notes) {
   return true;
 }
 
-/** The manifest's cut and build written, the old plan's items dropped (the header's). @param {string} cwd @param {string} unit @param {Phase[]} phases */
-function writeManifest(cwd, unit, phases) {
+/** The manifest's cut and build written, the old plan's items dropped (the header's). @param {string} cwd @param {string} unit @param {Phase[]} phases @param {string[]} done the tasks done before, shown */
+function writeManifest(cwd, unit, phases, done) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   manifest.cut = { phases };
-  manifest.build = { position: 'step' };
+  manifest.build = { position: 'step', ...(done.length === 0 ? {} : { done_before: done }) };
   if (isObject(manifest.phases)) for (const phase of OLD_PLAN_PHASES) delete manifest.phases[phase];
   saveWorkUnitManifest(cwd, unit, manifest);
 }
@@ -236,11 +242,11 @@ function cutMigrating(cwd, unit, file) {
   const faults = [...trackerFaults(plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
   if (faults.length > 0) refuse(faults);
   const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{ phase: at + 1, parent: phase.tracker, built: 'built' in phase }]));
-  const tracker = parents.length === 0 ? { adopted: [], typed: [] } : migratedTracker(cwd, unit, parents, TYPES[manifest.work_type] ?? 'feat');
+  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [] } : migratedTracker(cwd, unit, parents, migratedType(manifest.work_type));
   const notes = withWorkUnitLock(cwd, unit, () => {
     writeTextAtomic(specPath(cwd, unit), text);
     const wrote = writeNotes(cwd, unit, plan.notes);
-    writeManifest(cwd, unit, plan.phases);
+    writeManifest(cwd, unit, plan.phases, tracker.done);
     return wrote;
   });
   /** @type {string[]} */
@@ -266,4 +272,4 @@ function cutMigrating(cwd, unit, file) {
   return result;
 }
 
-module.exports = { MIGRATING_USAGE, cutMigrating, markPath };
+module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType };

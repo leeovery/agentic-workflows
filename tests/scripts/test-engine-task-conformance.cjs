@@ -27,7 +27,11 @@
 // what the last left out; a parent the tracker lacks, a task named apart, a
 // name held elsewhere and a task holding all the refs the tracker keeps on
 // one refused, adding nothing; and ready across every
-// phase of the unit wherever its parent sits. 7.S5: the shipped task drivers are exactly one, the default.
+// phase of the unit wherever its parent sits. A plan whose unit built
+// nothing closed under its root (21.8.4): each task neither done nor closed
+// closed with the reason, the root the unit's, the build's first phase then
+// written under it; a run again closing nothing; a root the tracker lacks
+// refused. 7.S5: the shipped task drivers are exactly one, the default.
 // The store merged between two clones (7.5.5–7.5.7): each side's changes
 // kept, a field both set differently the person's choice in the engine's
 // words, a name both made the remote's, this machine's set aside and named,
@@ -501,6 +505,37 @@ for (const driver of listDrivers('task')) {
           assert.throws(() => driver.adopt(root, OLD, phase, parent()), (err) => err instanceof Error && named.every((name) => err.message.includes(name)), named.join(', '));
           assert.deepStrictEqual(store(), before);
         }
+      });
+
+      describe('closePlan (21.8.4): the plan of a unit that built nothing closed under its root', () => {
+        const REASON = 'its unit built nothing';
+
+        it('closes each task neither done nor closed with the reason, naming the root the unit, the parents ended by the tracker — so the build\'s first phase is written under the root, its names the plan\'s none', () => {
+          assert.strictEqual(driver.closePlan(root, OLD, plan.root, REASON), 3);
+          const closed = ['closed', REASON];
+          assert.deepStrictEqual(side.planStanding(root, OLD), {
+            'Hold the basket': ['done', null], 'Price the basket': ['done', null], 'Empty the basket': ['closed', null],
+            'Open the till': closed, 'Count the till': closed, 'Close the till': closed,
+          });
+          assert.deepStrictEqual([driver.list(root, OLD, 1), driver.createUnit(root, OLD)], [null, false]);
+          driver.createPhase(root, OLD, 1, 'The basket, afresh');
+          driver.createTask(root, old(1, 1), task('Hold the basket afresh'));
+          assert.deepStrictEqual(driver.list(root, OLD, 1), side.toolAnswers(root, OLD, 1).list);
+          assert.deepStrictEqual(shown(driver.list(root, OLD, 1) ?? []), ['1.1']);
+        });
+
+        it('a run again closes nothing and changes nothing', () => {
+          driver.closePlan(root, OLD, plan.root, REASON);
+          const once = store();
+          assert.strictEqual(driver.closePlan(root, OLD, plan.root, REASON), 0);
+          assert.deepStrictEqual(store(), once);
+        });
+
+        it('refuses, closing nothing, a root the tracker lacks', () => {
+          const before = store();
+          assert.throws(() => driver.closePlan(root, OLD, 'no-such-task', REASON), (err) => err instanceof Error && err.message.includes('no-such-task') && err.message.includes(unitName(OLD)));
+          assert.deepStrictEqual(store(), before);
+        });
       });
     });
 
