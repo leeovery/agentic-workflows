@@ -7,7 +7,8 @@
 // do to it; a feature pivoted to an epic; a feature absorbed into an epic,
 // its epic picked and the absorb confirmed; shared files re-homed by absorb;
 // the environment setup changed from manage's setup row (start-menu.md,
-// environment-setup.md); and the guards holding mid-pipeline. A decision changed mid-build (18.S68)
+// environment-setup.md); a driver changed from its drivers row; and the
+// guards holding mid-pipeline. A decision changed mid-build (18.S68)
 // is test-pipeline-simulation-build-park.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -129,6 +130,18 @@ describe('pipeline simulation: workunit', () => {
 
     assert.deepStrictEqual([sectionOf(setup.out, 'DISPLAY: environment setup').includes('LINTERS\n  · None recorded'), again.out.includes('  · eslint — npx eslint .')], [true, true]);
     assert.deepStrictEqual([JSON.parse(sim.read(['environment', 'show'])).linters, Object.values(back.rows).some((next) => next.argv?.[2] === wu)], [linters, true], 'the linters recorded, and manage drawn again with the unit');
+  });
+
+  it('22.S11, 7.S18: a driver changed from manage — d draws the drivers, a number sets the one it names, and the drivers are drawn again with it in use', () => {
+    assert.ok(startMenu(sim).some(({ key }) => key === 'm'), 'the start menu offers manage');
+    picked(sim, 'start menu', 'm');
+    const { rows } = picked(sim, 'manage', 'd');
+    const set = /** @type {string[]} */ (answerGate(sim, 'drivers', '--pick', '1').next.argv);
+    const answer = sim.run(set);
+    const again = drawn(sim, answer.next.argv.slice(1));
+
+    assert.deepStrictEqual([rows['1'].argv, JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway', 'manifest.json'), 'utf8')).drivers[set[2]]], [set, set[3]]);
+    assert.ok(sectionOf(again.out, 'DISPLAY: drivers').includes(`${answer.title} — in use`), 'the drivers drawn again, the one set in use');
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {

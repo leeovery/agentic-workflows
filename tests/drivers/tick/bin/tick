@@ -1,0 +1,6 @@
+#!/bin/sh
+# The stand-in tick the drivers' check reads, first on a suite's PATH where it
+# puts it: it answers `tick version` alone, as Tick 0.3.2 prints it, at
+# TICK_STUB_VERSION or the driver's floor, 0.3.0, and refuses anything else.
+[ "$1" = version ] || { echo "the stand-in tick answers version alone" >&2; exit 97; }
+echo "tick version ${TICK_STUB_VERSION:-0.3.0}"

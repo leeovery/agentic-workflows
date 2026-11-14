@@ -20,6 +20,8 @@ Pass `--page` where this session can publish a page: the Artifact tool is among 
 node .claude/skills/leeway-engine/scripts/engine.cjs render ready-to-build {work_unit} [--page]
 ```
 
+Where a tool the drivers need is missing or too old, the screen is the drivers' stop, with no gate: once the person says it is put right, draw the screen again.
+
 A refusal names what to fix — an item open again since a land or a cut among them: work it, close the checklist again, and draw the screen again. A feature's names the restage where a staged line can no longer land, the decision it widens changed at the spec since: in the payload, the line widens that decision's replacement, in the same words where the rule still holds, or goes where it no longer does; stage it again, then draw the screen again.
 
 Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`; follow its `next`. A `next` that takes the page's marks — a position's while the page is open, or the review's — names the file they are read back to: read them back fresh into it before running it.

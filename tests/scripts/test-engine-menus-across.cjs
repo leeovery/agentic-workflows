@@ -121,6 +121,7 @@ before(() => {
     ['verdicts', []],
     ['care', []],
     ['matrix', []],
+    ['drivers', []],
   ];
   menus = drawnAs.map(([id, args]) => ({ id, args, rows: drawn([id, ...args]).rows }));
 });

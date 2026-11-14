@@ -1118,9 +1118,10 @@ module.exports = {
   kind: 'landing',
   name: 'github',
   isDefault: false,
+  title: 'GitHub\'s driver',
   needs: [
-    { tool: 'gh', floor: '2.30.0', update: 'https://cli.github.com', found: ghVersion },
-    { tool: 'gh-stack', floor: '0.1.0', update: 'https://github.com/github/gh-stack', found: stackVersion },
+    { tool: 'gh', label: 'GitHub\'s CLI', floor: '2.30.0', update: 'https://cli.github.com', found: ghVersion },
+    { tool: 'gh-stack', label: 'GitHub\'s stack extension', floor: '0.1.0', update: 'https://github.com/github/gh-stack', found: stackVersion },
   ],
   serves: (/** @type {string} */ url) => repositoryOf(url) !== null,
   assertServes: (/** @type {LandingContext} */ ctx) => {

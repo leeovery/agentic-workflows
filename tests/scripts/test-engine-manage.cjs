@@ -106,32 +106,34 @@ describe('manage and the closed units (18.3)', () => {
   beforeEach(() => { dir = world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-manage-')), 'lantern')); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('18.3.4, 22.5.8: manage lists every unit — in progress, then complete, then cancelled, by type within each — each opening its own; then the environment setup, named for the project; and back to the start menu', () => {
+  it('18.3.4, 22.5.8: manage lists every unit — in progress, then complete, then cancelled, by type within each — each opening its own; then the environment setup, named for the project; then the drivers; and back to the start menu', () => {
     const { screen, rows } = drawn(dir, ['manage'], 'manage');
 
     assert.deepStrictEqual(screen, [
       '· · · · · · · · · · · ·',
       '◆ What would you like to manage?',
       '',
-      '1       → Lazy Resume On Attach — feature',
-      '2       → Quiet Hours — feature',
-      '3       → Saved Session Layouts — feature',
-      '4       → Killing All Sessions Wipes Restore State — bugfix',
-      '5       → Agent First Portal — epic',
-      '6       → Atlas — epic',
-      '7       → Enter Attaches From Preview — feature, complete',
-      '8       → Shipped — epic, complete',
-      '9       → Split Oversized Go Files — feature, cancelled',
-      '10      → Dropped Save — bugfix, cancelled',
-      's/setup → Change the environment setup — how to run Lantern, what',
-      '          can\'t run at once, the linters',
-      'h/help  → What this menu is for, row by row',
-      'b/back  → Back to the start menu',
+      '1         → Lazy Resume On Attach — feature',
+      '2         → Quiet Hours — feature',
+      '3         → Saved Session Layouts — feature',
+      '4         → Killing All Sessions Wipes Restore State — bugfix',
+      '5         → Agent First Portal — epic',
+      '6         → Atlas — epic',
+      '7         → Enter Attaches From Preview — feature, complete',
+      '8         → Shipped — epic, complete',
+      '9         → Split Oversized Go Files — feature, cancelled',
+      '10        → Dropped Save — bugfix, cancelled',
+      's/setup   → Change the environment setup — how to run Lantern,',
+      '            what can\'t run at once, the linters',
+      'd/drivers → Change the task driver or the landing driver',
+      'h/help    → What this menu is for, row by row',
+      'b/back    → Back to the start menu',
     ]);
-    assert.deepStrictEqual([rows['1'], rows['10'], rows.s, rows.b], [
+    assert.deepStrictEqual([rows['1'], rows['10'], rows.s, rows.d, rows.b], [
       { kind: 'engine', argv: ['render', 'manage-unit', BUILDING] },
       { kind: 'engine', argv: ['render', 'manage-unit', BUG_CANCELLED] },
       { kind: 'engine', argv: ['render', 'environment-setup', '--from', 'manage'] },
+      { kind: 'engine', argv: ['render', 'drivers'] },
       { kind: 'engine', argv: ['render', 'start-menu'] },
     ]);
   });

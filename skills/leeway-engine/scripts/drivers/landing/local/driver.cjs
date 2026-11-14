@@ -764,6 +764,7 @@ module.exports = {
   kind: 'landing',
   name: 'local',
   isDefault: true,
+  title: 'the local driver',
   needs: [],
   serves: () => false,
   chainTip,

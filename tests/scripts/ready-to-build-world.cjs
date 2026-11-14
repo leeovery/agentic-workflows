@@ -208,15 +208,17 @@ const featureDeparted = fixtureFrom('ready-to-build-feature-departed-', (dir) =>
 
 /**
  * Each test of the calling file on a copy of `world`, removed after it, its
- * trust log in a config folder of its own.
- * @param {() => string} world
+ * trust log in a config folder of its own — the copy's folder `named`,
+ * where a screen names the project, else a temp folder's own name.
+ * @param {(dir?: string) => string} world @param {string} [named]
  * @returns {() => string} the running test's project
  */
-function useReadyWorld(world) {
+function useReadyWorld(world, named) {
   const config = useTempFolder('ready-to-build-config-');
+  const folder = named === undefined ? null : useTempFolder('ready-to-build-named-');
   let dir = '';
   beforeEach(() => {
-    dir = world();
+    dir = folder === null ? world() : world(path.join(folder(), /** @type {string} */ (named)));
     process.env.LEEWAY_CONFIG_DIR = config();
   });
   afterEach(() => {

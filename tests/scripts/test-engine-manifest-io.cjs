@@ -604,6 +604,7 @@ const EXEMPT_CALLS = [
   ['measures', 'findings'],
   ['board', 'sess-1'],
   ['environment', 'show'],
+  ['drivers', 'check'],
 ];
 
 describe('engine writes take the writer lock', () => {

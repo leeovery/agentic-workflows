@@ -44,14 +44,16 @@
 // begin so (`rate-limit@pr create`), the extension's calls exiting 4 as it
 // does on any failure of GitHub's API — against every repository, or the
 // one GH_STUB_FAULT_REPO names, `{owner}/{repo}`; GH_STUB_NO_STACK makes the
-// extension missing.
+// extension missing; GH_STUB_VERSION makes gh answer that version for its
+// own, 2.30.0.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
-const VERSION = 'gh version 2.30.0 (2023-05-30)\nhttps://github.com/cli/cli/releases/tag/v2.30.0\n';
+/** gh's answer to `--version`, as gh 2.30.0 prints it, at `version`. @param {string} version */
+const versionSaid = (version) => `gh version ${version} (2023-05-30)\nhttps://github.com/cli/cli/releases/tag/v${version}\n`;
 const STACK_VERSION = 'gh stack version 0.1.0\n';
 const IDENTITY = { GIT_AUTHOR_NAME: 'GitHub', GIT_AUTHOR_EMAIL: 'noreply@github.com', GIT_COMMITTER_NAME: 'GitHub', GIT_COMMITTER_EMAIL: 'noreply@github.com' };
 const FAULTS = Object.freeze({
@@ -428,7 +430,7 @@ function answer(args, cwd) {
   if (config === undefined || !fs.existsSync(config) || !fs.realpathSync(config).startsWith(fs.realpathSync(os.tmpdir()))) {
     throw new Refused('the stub runs only with GH_CONFIG_DIR pinned to a temp folder', 99);
   }
-  if (args[0] === '--version') return VERSION;
+  if (args[0] === '--version') return versionSaid(process.env.GH_STUB_VERSION || '2.30.0');
   if (args[0] === 'stack' && process.env.GH_STUB_NO_STACK) throw new Refused('unknown command "stack" for "gh"\n\nUsage:  gh <command> <subcommand> [flags]');
   if (args[0] === 'stack' && args[1] === '--version') return STACK_VERSION;
   const at = githubAt(cwd);
