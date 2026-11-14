@@ -42,7 +42,7 @@ Compose the record from the sources:
 - **The old map.** Every subtopic the old map shows decided is carried by an entry naming it, `map_item`: by its decision, or by an open question where no source says what was decided. Every one pending, exploring, converging or deferred is carried by an open question naming it. An entry that settles several names them all, `map_item` a list.
 - **Threads.** Every thread the register shows `open` or `digging` is carried by an open question naming it, `thread`, a list where one question carries several.
 - **Nothing invented.** An entry says what a source says, and nothing more.
-- **Product-wide.** An entry that holds for the whole product is `product_wide` `true`.
+- **Product-wide.** An entry that holds for the whole product is `product_wide` `true`. A cross-cutting unit's entries are product-wide: each finding and decision of its record.
 - **A topic never started.** Nothing is decided in discovery: its record holds questions and findings alone, none product-wide, and what its research concluded is a finding.
 - **Assets.** Each of the unit's assets its brief marks the topic's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
 - **A record at least.** A topic whose log holds anything has an entry at least.

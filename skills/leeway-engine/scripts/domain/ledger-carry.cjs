@@ -77,7 +77,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { appendEntries, withLedger, carrying, commitLedger } = require('./ledger.cjs');
 const { newId, shortIds } = require('./ledger-ids.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
+const { withStateLock, assertMigrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { WRITES, contentFields, checkSaid, checkUnsealed, decisionGiven } = require('./ledger-write.cjs');
@@ -357,7 +357,7 @@ function carryRecord(cwd, args) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    if (!migrationRuns(stateRoot(cwd))) throw new Error(`${SAID}: a topic's record is carried into the ledger only while the migration runs — the state branch has its first commit, so the migration is done`);
+    assertMigrationRuns(stateRoot(cwd), SAID, 'a topic\'s record is carried into the ledger');
     const session = handedSession();
     if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
     const place = topicPlace(cwd, dotpathOf(args), SAID);

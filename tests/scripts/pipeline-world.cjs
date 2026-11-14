@@ -57,7 +57,10 @@ const RAISE_ANSWERS = Object.freeze(['answer', 'aside', 'waiting']);
 // What a blind question's answer draws: its reveal (16.17.7).
 const REVEAL = '=== DISPLAY: blind question revealed ';
 
-const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
+// What a sim needs of a project beyond its state, made in `dir`: the
+// checkout's knowledge setup, the skills installed, and an ignored clone.
+/** @param {string} dir */
+function readyForSim(dir) {
   // This checkout's knowledge setup: keyword-only, pinned as setup records
   // it, so the transactions' indexing builds a store as a set-up project's does.
   fs.mkdirSync(statePath(dir, KNOWLEDGE_DIR), { recursive: true });
@@ -80,7 +83,9 @@ const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
   git(api, ['add', '-A']);
   git(api, ['commit', '-q', '-m', 'init']);
   fs.appendFileSync(path.join(dir, '.git/info/exclude'), 'api/\n');
-});
+}
+
+const simWorld = fixtureFrom('pipeline-sim-', readyForSim);
 
 class Sim {
   /** @param {() => string} [world] the project the sim starts from, copied for it: the one every scenario starts from, or a scenario file's own (`worldFrom`) */
@@ -1809,7 +1814,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, worlds, readyForSim, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

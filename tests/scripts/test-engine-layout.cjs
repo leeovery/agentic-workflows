@@ -240,6 +240,7 @@ describe('today\'s places (E4)', () => {
       experiment: layout.experiment('pay', 'auth', 'E1-token-cost', 'problem.md'),
       session: layout.session('pay', '001'),
       productSession: layout.productSession('001'),
+      productAssets: layout.productAssets('caching', 'topics', 'invalidation', 'log.md'),
       note: layout.note('2026-10-30--smart-retry.md'),
       spike: layout.spike('.product', '001-pricing', 'index.html'),
       brief: layout.brief('pay', 'auth'),

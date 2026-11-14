@@ -336,6 +336,15 @@ function migrationRuns(root) {
 }
 
 /**
+ * Refuse, in the words of `said`, the command asking, a step only the
+ * migration takes, `what`, where it does not run in the state at `root`.
+ * @param {string} root @param {string} said @param {string} what
+ */
+function assertMigrationRuns(root, said, what) {
+  if (!migrationRuns(root)) throw new Error(`${said}: ${what} only while the migration runs — the state branch has its first commit, so the migration is done`);
+}
+
+/**
  * Whether `leeway-state` has a commit, as the repository's refs hold it:
  * read in the main checkout, never through the state worktree, which git
  * cannot open once the project folder moved.
@@ -1115,4 +1124,5 @@ module.exports = {
   commitFirst,
   pushState,
   pushRefusal,
+  assertMigrationRuns,
 };

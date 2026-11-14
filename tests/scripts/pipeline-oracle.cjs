@@ -331,11 +331,14 @@ function auditState(dir, label) {
 // settle whatever the fold does inside, both read here directly: a unit is
 // live while its manifest is there and not cancelled, a topic while its map
 // row is neither cancelled nor postponed, and the product's place, which no
-// unit holds, always — what it shows is `ledger product`'s, under discovery,
-// never a record's, and it has no copy; a line an absorb's carry lists is
-// made in the unit and on the topic the carry is, its phase its own, the
-// file a link names where the carry moved it, and shown so; an event
-// is in a live place while
+// unit holds, always — what it shows is `ledger product`'s, under discovery
+// or, product-wide, in the product record, never a record's, and it has no
+// copy; a line an absorb's or a split's carry lists is made in the unit and
+// on the topic the carry is, its phase its own, the file a link names where
+// the carry moved it, and shown so; a line a retired unit left, carried to
+// the product's place, is in a live place while it is product-wide alone,
+// so the product record shows it and nothing else of the unit shows; an
+// event is in a live place while
 // the unit and topic it was made on are live — a move while its unit is, a
 // question's wording made on the topic the last move its unit made of the
 // question to a topic in a live place took it to; a move to the roadmap
@@ -437,8 +440,10 @@ function auditLedger(dir, ctx) {
     }
     return /** @type {string|null} */ (madeOn.get(id));
   };
+  /** Whether `id` is a line a retired unit left, carried to the product's place. @param {string} id */
+  const retired = (id) => carriedBy.get(id)?.unit === PRODUCT;
   /** @param {string} id */
-  const inLivePlace = (id) => placeLive(byId.get(id).unit, topicOf(id));
+  const inLivePlace = (id) => (retired(id) ? byId.get(id).product_wide === true : placeLive(byId.get(id).unit, topicOf(id)));
   /** Each question's line, by its chain's first wording: its wordings in a live place, in the ledger's order. @type {Map<string, string[]>} */
   const lines = new Map();
   for (const e of events.filter((ev) => isQuestion(ev) && inLivePlace(ev.id))) lines.set(firstOf(e.id).id, [...(lines.get(firstOf(e.id).id) ?? []), e.id]);
@@ -512,7 +517,8 @@ function auditLedger(dir, ctx) {
   /** @type {Map<string, string[]>} */
   const shownAt = new Map();
   for (const [place, record] of records) for (const e of main(record)) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), place]);
-  for (const e of product.discovery) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), `${PRODUCT}\0`]);
+  const atProduct = [...product.findings, ...product.decisions].filter((e) => standing(full(e.id)).unit === PRODUCT);
+  for (const e of [...product.discovery, ...atProduct]) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), `${PRODUCT}\0`]);
   const shown = (/** @type {string} */ id) => shownAt.has(id);
 
   /** Where `id` leads while not shown: a question's wording, the next on its line; its live replacements, or, with none, the entries its live merges went into. @param {string} id */
@@ -672,7 +678,9 @@ function auditLedger(dir, ctx) {
   assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record does not hold the shown entries marked product-wide'));
 
-  auditCopies(root, events, shownAt, placed, full, ctx);
+  const headings = new Set([...shownAt.keys()].filter((id) => byId.get(id).product_wide === true && typeof byId.get(id).answers === 'string')
+    .flatMap((id) => events.filter((e) => isQuestion(e) && firstOf(e.id).id === firstOf(byId.get(id).answers).id).map((e) => e.id)));
+  auditCopies(root, events, shownAt, placed, headings, full, ctx);
 }
 
 // The ledger audit, run once per state it reads. It is the oracle's dearest
@@ -773,14 +781,17 @@ function ledgerAuditsOf(dir) {
 // in one; the product record's file naming the shown entries marked
 // product-wide alone; no words of an entry that is not shown — a question's
 // wording, an answer's text, its why — in any copy or the product record's
-// file, but where a shown entry says them too; and the store indexing the
-// records' copies, never the product record's file.
+// file, but where a shown entry says them too, or, in the product record's
+// file, the question a shown product-wide decision answers, which heads it
+// there; and the store indexing the records' copies, never the product
+// record's file.
 /**
  * @param {string} root @param {Record<string, any>[]} events @param {Map<string, string[]>} shownAt
  * @param {(id: string) => {unit: string, topic: string|null}[]} placed
+ * @param {Set<string>} headings  each wording of a question a shown product-wide decision answers
  * @param {(short: string) => string} full @param {(msg: string) => string} ctx
  */
-function auditCopies(root, events, shownAt, placed, full, ctx) {
+function auditCopies(root, events, shownAt, placed, headings, full, ctx) {
   /** @type {Map<string, string[]>} */
   const expected = new Map();
   for (const id of shownAt.keys()) {
@@ -810,7 +821,8 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
     .flatMap((e) => words(e).map((w) => [e.id, w])).filter(([, w]) => !shownWords.some((shown) => shown.includes(w)));
   for (const file of [...copies, PRODUCT_FILE]) {
     const text = fs.readFileSync(path.join(root, file), 'utf8');
-    assert.deepStrictEqual(unshown.filter(([, w]) => text.includes(w)), [], ctx(`${file} holds the words of an entry that is not shown`));
+    const heads = (/** @type {string} */ id) => file === PRODUCT_FILE && headings.has(id);
+    assert.deepStrictEqual(unshown.filter(([id, w]) => !heads(id) && text.includes(w)), [], ctx(`${file} holds the words of an entry that is not shown`));
   }
   const storeFile = knowledgeFiles(root).store;
   const chunks = fs.existsSync(storeFile) ? knowledgeStore.allChunks(knowledgeStore.loadStore(storeFile)).filter((c) => c.phase === 'record') : [];
