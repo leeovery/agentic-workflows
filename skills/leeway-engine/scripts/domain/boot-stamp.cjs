@@ -110,4 +110,4 @@ function unbootedRefusal(cwd, sessionId) {
   return `this conversation has not booted Leeway for ${key} on this version — invoke the start skill, /leeway, which runs engine boot before anything else`;
 }
 
-module.exports = { stampPath, stampBoot, unbootedRefusal };
+module.exports = { stampBoot, unbootedRefusal };

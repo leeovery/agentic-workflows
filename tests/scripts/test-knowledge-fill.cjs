@@ -29,7 +29,7 @@ const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowled
 const { loadSettings } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
 const { syncKnowledge } = require('../../skills/leeway-engine/scripts/domain/knowledge/sync.cjs');
 const { embeddingEndpoint, engineKnowledge, recordLaunches } = require('./knowledge-harness.cjs');
-const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, statePath, layout, createFile, withEnv } = require('./discovery-test-utils.cjs');
 
 const STUB = { provider: 'stub', dimensions: 8 };
 const ENGINE_CJS = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
@@ -163,7 +163,7 @@ describe('the launch — only a provider that can embed, only while chunks await
     assert.deepStrictEqual(launched, []);
   });
 
-  it('launches `engine knowledge fill` detached, its output ignored, never waited on', (t) => {
+  it('launches `engine knowledge fill` detached, no conversation\'s, its output ignored, never waited on', (t) => {
     /** @type {any[]} */
     const spawned = [];
     /** @type {string[]} */
@@ -174,8 +174,10 @@ describe('the launch — only a provider that can embed, only while chunks await
       return { on: (/** @type {string} */ event) => { handled.push(event); }, unref: () => { unrefed = true; } };
     });
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-launch-'));
-    launcher.launch(root, ['knowledge', 'fill']);
-    assert.deepStrictEqual(spawned, [[process.execPath, [ENGINE_CJS, 'knowledge', 'fill'], { cwd: root, detached: true, stdio: 'ignore' }]]);
+    withEnv({ CLAUDE_CODE_SESSION_ID: 'launching' }, () => launcher.launch(root, ['knowledge', 'fill']));
+    const [[file, argv, { env, ...options }]] = spawned;
+    assert.deepStrictEqual([spawned.length, file, argv, options], [1, process.execPath, [ENGINE_CJS, 'knowledge', 'fill'], { cwd: root, detached: true, stdio: 'ignore' }]);
+    assert.deepStrictEqual([Object.hasOwn(env, 'CLAUDE_CODE_SESSION_ID'), env.LEEWAY_CONFIG_DIR], [false, process.env.LEEWAY_CONFIG_DIR], 'the launcher\'s environment, but the session id');
     assert.ok(unrefed);
     assert.deepStrictEqual(handled, ['error'], 'a fill that cannot start never throws in its launcher');
   });

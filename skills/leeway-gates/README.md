@@ -155,24 +155,25 @@ every such session, one answer that never changes and so never spends the
 prompt cache; a plain session's tool list is Claude Code's own.
 
 In a conversation that runs the workflows there, the mod sets
-`CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries of
-Claude's thinking printing as if they were output, and
+`CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries
+of Claude's thinking printing as if they were output, and
 `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what
 Claude is doing; project settings cannot set the second. Claude Code reads
 both per request. Every engine call marks the conversation that made it — a
 `workflow` file in its folder, named by the session id Claude Code hands every
-command — and the mod reads that mark by its own session id after each of the
-conversation's Bash calls and when it starts, so a command that only mentions
-the engine marks nothing. What the settings replace, the person's own value or
-none, is kept in the process's environment (`LEEWAY_HARNESS_REPLACED`),
-which a reload of the mod's files keeps, and a `/clear` or a resume puts it
-back exactly — except the clear a handoff runs, which leads into a workflow
-conversation by construction and so leaves the workflow values on, the
-person's own put back as that conversation ends. A marked conversation gets
-the workflow values back when the mod next follows it, whether
-`claude --resume`, a restart or `/resume` in the same process brings it back.
-A plain conversation in the same project keeps Claude Code's defaults and the
-person's own settings: the mod never touches either there.
+command — but a hook's, run for any conversation, and one refused because boot
+has not run there; and the mod reads that mark by its own session id after
+each of the conversation's Bash calls and when it starts, so a command that
+only mentions the engine marks nothing. What the settings replace, the
+person's own value or none, is kept in the process's environment
+(`LEEWAY_HARNESS_REPLACED`), which a reload of the mod's files keeps, and a
+`/clear` or a resume puts it back exactly — except the clear a handoff runs,
+which leads into a workflow conversation by construction and so leaves the
+workflow values on, the person's own put back as that conversation ends. A
+marked conversation gets the workflow values back when the mod next follows
+it, whether `claude --resume`, a restart or `/resume` in the same process
+brings it back. A plain conversation in the same project keeps Claude Code's
+defaults and the person's own settings: the mod never touches either there.
 
 ## What the spinner says
 

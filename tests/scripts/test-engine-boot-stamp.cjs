@@ -173,7 +173,7 @@ describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
     });
   });
 
-  it('every command the engine dispatches is refused before boot has run, but each form the table names, which goes through — a commit\'s scope flag wherever it stands, a gate\'s name quoted or not — and a command it does not dispatch is told so', async () => {
+  it('every command the engine dispatches is refused before boot has run, but each form the table names, which goes through — a commit\'s scope flag wherever it stands, a gate\'s name quoted or not, any other name only as the sub-verb — and a command it does not dispatch is told so', async () => {
     let fresh = 0;
     /** Whether `argv` is refused in a conversation never booted, fresh for each call. @param {string[]} argv */
     const unbooted = async (argv) => refusedUnbooted(await callAsync(dir, argv, { env: { ...env, CLAUDE_CODE_SESSION_ID: `never-booted-${fresh++}` }, stdin: '{}', unbooted: true }));
@@ -191,9 +191,12 @@ describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
       if (command === 'commit') return exempt.flatMap((flag) => [[command, flag, '-m', 'x'], [command, '-m', 'x', flag]]);
       return exempt.map((sub) => [command, sub]);
     });
+    /** For each command the table lets through in part, a form it refuses: a sub-verb it does not name, the names it does after it; a commit with no scope flag. */
+    const named = Object.entries(BOOT_EXEMPT).filter(([, exempt]) => exempt !== '*')
+      .map(([command, exempt]) => (command === 'commit' ? [command, 'work', '-m', 'x'] : [command, 'work', ...exempt]));
     const refused = Object.keys(COMMANDS).filter((command) => BOOT_EXEMPT[command] !== '*').map((command) => [command]);
 
-    assert.deepStrictEqual(await answering(refused, false), [], 'every command not wholly let through refuses its other forms');
+    assert.deepStrictEqual(await answering([...refused, ...named], false), [], 'every command not wholly let through refuses its other forms');
     assert.deepStrictEqual(await answering(through, true), [], 'each form the table names goes through');
     assert.deepStrictEqual(await answering([['no-such-verb']], true), [], 'an unknown command answers as unknown');
   });

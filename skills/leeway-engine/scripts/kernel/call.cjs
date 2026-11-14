@@ -25,13 +25,17 @@ const ENGINE_RUN = `node ${/\s/.test(ENGINE_CJS) ? `'${ENGINE_CJS}'` : ENGINE_CJ
 /**
  * The one door a detached engine job — the vector fill, the late
  * one-decision check — is launched through: its own process, run from `cwd`,
- * its output dropped, never waited on. Replaced by a test that must observe
- * a launch without a process.
+ * its output dropped, never waited on, and no conversation's: the session id
+ * the launching command was handed is not handed on, so the job marks no
+ * conversation and meets no refusal until boot has run (domain/boot-stamp).
+ * Replaced by a test that must observe a launch without a process.
  */
 const launcher = {
   /** @param {string} cwd @param {string[]} argv the engine command */
   launch(cwd, argv) {
-    const child = spawn(process.execPath, [ENGINE_CJS, ...argv], { cwd, detached: true, stdio: 'ignore' });
+    const env = { ...process.env };
+    delete env.CLAUDE_CODE_SESSION_ID;
+    const child = spawn(process.execPath, [ENGINE_CJS, ...argv], { cwd, env, detached: true, stdio: 'ignore' });
     // A job that could not start leaves its work for the next launch — never
     // an unhandled error in the command that launched it.
     child.on('error', () => {});
