@@ -42,21 +42,20 @@
 // The project: its manifest is carried, with the project's id minted on it
 // (21.5.20) — kept where a move cut short already minted one — and the
 // checklists a directive closed before the move (the split's, 076) kept on
-// it, less the
-// baseline's status fields, a recorded `native`, `skipped` or `completed`
-// kept as `brownfield_offer`, the brownfield offer's remembered answer, in
-// today's words — the offer is made once per project, and a completed
-// assessment was offered it — and one still under way kept as nothing, so
-// the offer is made again (21.11.1, 21.11.2, 8.12.11); the defaults first
-// use no longer asks for go, the plan's format and the project skills
-// (22.3.1, 22.3.2), and no driver's setting is written, so a migrated
-// project's drivers are the defaults, resolved at first need (22.4.3,
-// 7.1.11); each roadmap item's sources follow their files, once each, the
-// roadmap's `imports` index is dropped — its files are the product's
-// assets, which nothing indexes — and its open session is marked as the
-// product's conversation's (`product_session`). The inbox, the environment
-// setup file and the checkout's knowledge config are carried as they are,
-// but for an inbox file whose name is no item's
+// it, less the baseline's status fields, a recorded `native`, `skipped` or
+// `completed` kept as `brownfield_offer`, the brownfield offer's remembered
+// answer, in today's words — the offer is made once per project, and a
+// completed assessment was offered it — and one still under way kept as
+// nothing, so the offer is made again (21.11.1, 21.11.2, 8.12.11); the
+// defaults first use no longer asks for go, the plan's format and the
+// project skills (22.3.1, 22.3.2), and no driver's setting is written, so a
+// migrated project's drivers are the defaults, resolved at first need
+// (22.4.3, 7.1.11); each roadmap item's sources follow their files, once
+// each, the roadmap's `imports` index is dropped — its files are the
+// product's assets, which nothing indexes — and its open session is marked
+// as the product's conversation's (`product_session`). The inbox, the
+// environment setup file and the checkout's knowledge config are carried as
+// they are, but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
 // behind; the knowledge store is not, and the next boot builds it from the
 // config, with no setup question (21.9.6). `.roadmap/` is `.product/`

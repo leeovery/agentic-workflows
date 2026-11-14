@@ -6,14 +6,16 @@
 // the move, over the state the reshape's guard placed: one piece for each
 // source the detection (075) staged, in its order, each not done named with
 // its source's file and the folder its plan goes in — read in the main
-// checkout's working tree, from a linked worktree too — research staged
-// with no plan read as no plan; done once its plan keeps it whole or
-// validates — read, its themes listed, each named once by a name a topic
-// can take with a summary, a description and its research staged beside
-// it, none taking a name another item of the epic's map holds, a research
-// file or item of the epic has, or a theme of another of its plans, its
-// source's own name and a name the map dismissed free — each rule broken
-// named, or once the apply marked it applied; and the directive's checklist
+// checkout's working tree, from a linked worktree too, and in a project
+// nested in its repository — research staged with no plan read as no plan;
+// done once its plan keeps it whole or validates — read, its themes listed,
+// each named once by a name a topic can take with a summary, a description
+// and its research staged beside it, none taking a name another item of the
+// epic's map holds, a research file or item of the epic has, or a theme of
+// a plan of the epic's before it, the clash named on the later source
+// alone, its source's own name, a name the map dismissed and another epic's
+// theme free — each rule broken named, or once the apply marked it applied;
+// and the directive's checklist
 // closing on it, recording it. Through the real runner: where nothing
 // qualifies the directive is recorded unrun, the run going on past it to
 // the move (21.S7); where something does, the run stops at it, and once its
@@ -21,11 +23,10 @@
 // the project, the records directive's check naming each of the split's
 // topics, and the split's check passing still, after the move, with
 // `.workflows/` gone and with its staging gone (21.S8). The installed skills
-// hold no split skill: the split lives in the
-// migrations alone (21.S9). The directive spells no path from the session's
-// folder. Its head is linted with every directive's
-// (test-migration-directives.cjs); detection and the apply are
-// test-migration-075.cjs's and -077.cjs's.
+// hold no split skill: the split lives in the migrations alone (21.S9). The
+// directive spells no path from the session's folder. Its head is linted
+// with every directive's (test-migration-directives.cjs); detection and the
+// apply are test-migration-075.cjs's and -077.cjs's.
 //
 // Layer: migration. World: codeintel as the reshape's guard leaves it
 // (migration-world.cjs, `splitMigration`), made once per process and copied
@@ -40,13 +41,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { ok, git, createFile, statePath, layout, cleanupFixture } = require('./engine-harness.cjs');
-const { SESSION, SPLIT_EPIC, SPLIT_SOURCES, SPLIT_PLANS, GUARDED, themeOf, splitMigration, stateUnborn, recorded } = require('./migration-world.cjs');
+const { ok, git, initRepo, createFile, statePath, layout, cleanupFixture, STATE_DIR_NAME } = require('./engine-harness.cjs');
+const { SESSION, SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, GUARDED, themeOf, stagedPlan, splitMigration, stateUnborn, recorded } = require('./migration-world.cjs');
 
 const MIGRATE_SCRIPTS = path.join(__dirname, '../../skills/leeway-migrate/scripts');
 const DIRECTIVE = path.join(MIGRATE_SCRIPTS, 'migrations/076-legacy-split.md');
 const SKILLS = path.join(__dirname, '../../skills');
 const DETECTION = require(path.join(MIGRATE_SCRIPTS, 'migrations/075-split-detect.cjs'));
+const CHECK = require(path.join(MIGRATE_SCRIPTS, 'migrations/076-legacy-split.check.cjs'));
 const APPLY = require(path.join(MIGRATE_SCRIPTS, 'migrations/077-split-apply.cjs'));
 
 const SPLIT = '076-legacy-split';
@@ -181,7 +183,7 @@ describe('engine migrate check 076-legacy-split (21.10.7)', () => {
     assert.deepStrictEqual(checked().unfinished, [{ name: `${SPLIT_EPIC}/exploration`, problems: [whereOf('exploration'), 'its theme product-vision\'s research, product-vision.md, is empty'] }]);
   });
 
-  it('names a theme that takes a name another item of the epic\'s map holds, a research file or item of the epic has, or a theme of another of its plans takes — its source\'s own name and a name the map dismissed free', () => {
+  it('names a theme that takes a name another item of the epic\'s map holds, a research file or item of the epic has, or a theme of a plan before it takes — its source\'s own name and a name the map dismissed free', () => {
     detect();
     stage(SPLIT_PLANS);
     createFile(main, `${EPIC}/research/orphan.md`, '# Research: Orphan\n');
@@ -194,27 +196,60 @@ describe('engine migrate check 076-legacy-split (21.10.7)', () => {
 
     stage(explorationPlan({ themes: names.map(themeOf) }, names));
 
+    assert.deepStrictEqual(checked().unfinished, [{
+      name: `${SPLIT_EPIC}/exploration`,
+      problems: [
+        whereOf('exploration'),
+        `its theme charter is the name of another item on ${SPLIT_EPIC}'s map`,
+        `its theme orphan would overwrite ${SPLIT_EPIC}'s research file orphan.md`,
+        `its theme stale is the name of a research item ${SPLIT_EPIC} holds already`,
+        `its theme cost-economics is the name of another item on ${SPLIT_EPIC}'s map`,
+        `its theme cost-economics would overwrite ${SPLIT_EPIC}'s research file cost-economics.md`,
+        `its theme cost-economics is the name of a research item ${SPLIT_EPIC} holds already`,
+        'its theme cost-economics is a theme of cost-economics\'s plan already',
+        `its theme competitive-landscape is the name of another item on ${SPLIT_EPIC}'s map`,
+        `its theme competitive-landscape would overwrite ${SPLIT_EPIC}'s research file competitive-landscape.md`,
+        `its theme competitive-landscape is the name of a research item ${SPLIT_EPIC} holds already`,
+        'its theme competitive-landscape is a theme of competitive-landscape\'s plan already',
+      ],
+    }]);
+  });
+
+  it('names a theme two plans of an epic share on the later source alone, the one the interview reaches second, the plan the person took first passing', () => {
+    detect();
+    stage({ ...SPLIT_PLANS, ...stagedPlan('multi-repo-architecture', { 'tech-stack': '## Workspaces\n\nWorkspaces notes.\n' }) });
+
     assert.deepStrictEqual(checked().unfinished, [
-      { name: `${SPLIT_EPIC}/competitive-landscape`, problems: [whereOf('competitive-landscape'), 'its theme competitive-landscape is a theme of exploration\'s plan too'] },
-      { name: `${SPLIT_EPIC}/cost-economics`, problems: [whereOf('cost-economics'), 'its theme cost-economics is a theme of exploration\'s plan too'] },
-      {
-        name: `${SPLIT_EPIC}/exploration`,
-        problems: [
-          whereOf('exploration'),
-          `its theme charter is the name of another item on ${SPLIT_EPIC}'s map`,
-          `its theme orphan would overwrite ${SPLIT_EPIC}'s research file orphan.md`,
-          `its theme stale is the name of a research item ${SPLIT_EPIC} holds already`,
-          `its theme cost-economics is the name of another item on ${SPLIT_EPIC}'s map`,
-          `its theme cost-economics would overwrite ${SPLIT_EPIC}'s research file cost-economics.md`,
-          `its theme cost-economics is the name of a research item ${SPLIT_EPIC} holds already`,
-          'its theme cost-economics is a theme of cost-economics\'s plan too',
-          `its theme competitive-landscape is the name of another item on ${SPLIT_EPIC}'s map`,
-          `its theme competitive-landscape would overwrite ${SPLIT_EPIC}'s research file competitive-landscape.md`,
-          `its theme competitive-landscape is the name of a research item ${SPLIT_EPIC} holds already`,
-          'its theme competitive-landscape is a theme of competitive-landscape\'s plan too',
-        ],
-      },
+      { name: `${SPLIT_EPIC}/multi-repo-architecture`, problems: [whereOf('multi-repo-architecture'), 'its theme tech-stack is a theme of exploration\'s plan already'] },
     ]);
+  });
+
+  it('passes a theme two epics\' plans both name: each epic\'s plans are held to its own', () => {
+    createFile(main, '.workflows/orbit/manifest.json', JSON.stringify({
+      name: 'orbit', work_type: 'epic', status: 'in-progress',
+      phases: { discovery: { items: { platform: { routing: 'research', source: 'discovery,migration-seeded' } } }, research: { items: { platform: { status: 'in-progress' } } } },
+    }));
+    createFile(main, '.workflows/orbit/research/platform.md', '# Research: Platform\n\nPlatform notes.\n');
+    detect();
+    stage({ ...SPLIT_PLANS, ...stagedPlan('platform', { 'tech-stack': '## Tech Stack\n\nOrbit notes.\n' }, 'orbit') });
+
+    assert.deepStrictEqual(checked(), { ...PASSED, done: 7, of: 7 });
+  });
+
+  it('reads a project nested in its repository in its own folder, its plans staged in the state at the repository\'s top', () => {
+    const top = initRepo(path.join(world, 'monorepo'));
+    const app = path.join(top, 'app');
+    const state = path.join(top, STATE_DIR_NAME);
+    for (const [rel, text] of Object.entries(SPLIT_OLD)) createFile(app, rel, text);
+    DETECTION.run({ projectDir: app, reportUpdate: () => {}, reportSkip: () => {} });
+    for (const [rel, text] of Object.entries(SPLIT_PLANS)) createFile(state, rel, text);
+    const exploration = path.join(state, `.cache/migrate/split/${SPLIT_EPIC}/exploration`);
+    fs.rmSync(path.join(exploration, 'plan.json'));
+
+    assert.deepStrictEqual(CHECK.check({ projectDir: app, stateDir: state }), SPLIT_SOURCES.map((source) => ({
+      name: `${SPLIT_EPIC}/${source}`,
+      problems: source === 'exploration' ? [`has no plan yet: its source is ${path.join(app, EPIC, 'research/exploration.md')}, and its plan goes in ${exploration}`] : [],
+    })));
   });
 });
 

@@ -10,7 +10,8 @@
 - For each source, epic by epic: the themes it splits into, confirmed
   before any is drafted, or the source kept whole.
 - Then its drafted plan: taken as it stands, edited, or the source kept
-  whole.
+  whole; and once the check names what to mend, any mend that changes a
+  theme.
 
 ## What It Does
 
@@ -46,7 +47,7 @@ Each theme becomes a topic of its own, with its own conversation and records. A 
 
 A fragment too small to stand alone joins the theme nearest it, never dropped.
 
-One theme is a split too: the source is set aside as superseded and carried on in one research file, its map item gaining a summary and a description. Kept whole, the source stays its own research file and its map item stays as it stands.
+One theme is a split too: the source is set aside as superseded and carried on in one research file, and its map item is replaced by the theme's, with a summary and a description. Where the theme keeps the source's name, so does the item; under a new name, the source's name leaves the map. Kept whole, the source stays its own research file and its map item stays as it stands.
 
 ## The Interview
 

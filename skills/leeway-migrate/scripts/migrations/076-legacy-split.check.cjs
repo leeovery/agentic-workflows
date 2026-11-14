@@ -15,8 +15,10 @@
 // These are the rules the split's plans always kept. Two more hold since
 // the plans are applied together, after the interview, each epic's
 // manifest rebuilt whole: no theme takes the name of a research item of
-// the epic's, or of a theme of another of its plans. A name the map
-// dismissed is free: the apply takes it off the list.
+// the epic's, or of a theme of a plan of its that comes before it in the
+// check's order — the clash named on the later source alone, which the
+// interview reaches second, so a later plan never undoes one the person
+// took. A name the map dismissed is free: the apply takes it off the list.
 //
 // The plan is written only once the person takes it or keeps the source
 // whole, so research staged beside no plan is no plan. A source the apply
@@ -77,9 +79,16 @@ function themeNames(staged) {
 
 /**
  * An epic as its plans are checked against it: its map's items, its
- * research items and research folder, and each of its plans as staged.
+ * research items and research folder, and each of its plans as staged, in
+ * the check's order.
  * @typedef {{name: string, map: Set<string>, research: Set<string>, researchDir: string, plans: Map<string, Staged>}} Epic
  */
+
+/** The sources before `source` in its epic whose plans name a theme `name`. @param {Epic} epic @param {string} source @param {string} name */
+function earlierWith(epic, source, name) {
+  const plans = [...epic.plans];
+  return plans.slice(0, plans.findIndex(([other]) => other === source)).filter(([, plan]) => themeNames(plan).includes(name)).map(([other]) => other);
+}
 
 /**
  * What one theme of a source's plan lacks.
@@ -100,13 +109,12 @@ function themeProblems(epic, source, staging, theme, n) {
   const research = path.join(staging, `${name}.md`);
   const staged = !isFile(research) ? [`its theme ${name} has no research beside its plan, ${name}.md`]
     : fs.readFileSync(research, 'utf8').trim() === '' ? [`its theme ${name}'s research, ${name}.md, is empty`] : [];
-  const others = [...epic.plans].filter(([other, plan]) => other !== source && themeNames(plan).includes(name)).map(([other]) => other);
   const taken = name === source ? [] : [
     ...(epic.map.has(name) ? [`its theme ${name} is the name of another item on ${epic.name}'s map`] : []),
     ...(isFile(path.join(epic.researchDir, `${name}.md`)) ? [`its theme ${name} would overwrite ${epic.name}'s research file ${name}.md`] : []),
     ...(epic.research.has(name) ? [`its theme ${name} is the name of a research item ${epic.name} holds already`] : []),
   ];
-  return [...named, ...staged, ...taken, ...others.map((other) => `its theme ${name} is a theme of ${other}'s plan too`)];
+  return [...named, ...staged, ...taken, ...earlierWith(epic, source, name).map((other) => `its theme ${name} is a theme of ${other}'s plan already`)];
 }
 
 /**

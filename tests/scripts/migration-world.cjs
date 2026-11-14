@@ -385,9 +385,9 @@ const SPLIT_OLD = Object.freeze({
 /** A theme of a plan, its summary and description its name's. @param {string} name */
 const themeOf = (name) => ({ kebab_name: name, summary: `${name} in a line.`, description: `What ${name} covers.` });
 
-/** A source's plan staged, its themes' research beside it, by path from the state. @param {string} source @param {Record<string, string>} themes */
-function stagedPlan(source, themes) {
-  const at = `.cache/migrate/split/${SPLIT_EPIC}/${source}`;
+/** A source's plan staged, its themes' research beside it, by path from the state. @param {string} source @param {Record<string, string>} themes @param {string} [epic] */
+function stagedPlan(source, themes, epic = SPLIT_EPIC) {
+  const at = `.cache/migrate/split/${epic}/${source}`;
   return {
     [`${at}/plan.json`]: jsonText({ themes: Object.keys(themes).map(themeOf) }),
     ...Object.fromEntries(Object.entries(themes).map(([name, research]) => [`${at}/${name}.md`, research])),
