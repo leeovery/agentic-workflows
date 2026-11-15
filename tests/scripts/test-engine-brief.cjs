@@ -22,9 +22,10 @@
 // repository holding the task's branch, the diff's three-dot range and its
 // stat, never its text, from the base given or, where a repository lacks
 // it, its default, its template
-// saying a wrong comment or a workflows reference in the work is returned
-// as a nit (13.S20) and giving the report's grammar, its example reading
-// by it (13.5.11); the fix round's brief, from a conversation that briefed
+// saying a wrong comment is returned as a nit and giving the report's
+// grammar, its example reading by it (13.5.11); every reviewer's template,
+// and never the builder's, returning a workflows reference in the work as
+// a nit (13.S20); the fix round's brief, from a conversation that briefed
 // the task's builder, each reviewer's report of the
 // task's last round verbatim under its label and nothing else (6.S17),
 // refused where the task has no round's reports, a round lacks one or
@@ -427,7 +428,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.deepStrictEqual([attempts, whileHeld, stored()], [['taken', 'made'], [[]], [`${res.id}.json`, `${res.id}.md`]]);
   });
 
-  it('the builder\'s template carries the stance on a failed review (13.5.7) and keeps the workflows\' references out of the product (13.11.14)', () => {
+  it('the builder\'s template carries the stance on a failed review (13.5.7)', () => {
     const template = fs.readFileSync(path.join(TEMPLATES, 'builder.md'), 'utf8');
 
     for (const line of [
@@ -437,8 +438,15 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
       'before it lands check the edge cases around it and whether it disturbs the design',
       'A gap you find beyond the task goes to the notes for later or through the ask rule',
       'The reviewer reviews the task as a professional would, never one small thing.',
-      'The workflows\' own references never go into the product\'s code or comments: task ids, phase numbers and spec sections.',
     ]) assert.ok(template.includes(line), line);
+  });
+
+  it('13.S20: the workflows\' references are kept out of the product where the work is checked, every reviewer\'s template returning one as a nit, and the builder\'s, which the brief-quality measurement showed needs none, saying nothing of them (13.11.14)', () => {
+    const rule = '# The workflows\' own references\n\nThe workflows\' own references never go into the product\'s code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit.';
+    const read = (/** @type {string} */ role) => fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8');
+
+    for (const role of ['reviewer', 'test-surface', 'phase-review', 'review-area']) assert.ok(read(role).includes(rule), role);
+    assert.ok(!read('builder').includes('workflows\' own references'), 'the builder\'s template');
   });
 
   it('12.14.5: the builder\'s template gives the account\'s grammar, its sections and its rounds, and its example reads by it', () => {
@@ -499,7 +507,7 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
     assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# Laying out your scratch worktree\n\n`), brief);
   });
 
-  it('13.S20: the template carries the stance on a failed review (13.5.7), a call on every finding, when it is serious, with the edge list, and what a nit is (13.4.1, 13.4.5, 13.6), judges against the brief and the design, never the comments (13.9.1), returns a wrong comment as a nit (13.9.3), and a workflows reference in the work too (13.11.14)', () => {
+  it('the template carries the stance on a failed review (13.5.7), a call on every finding, when it is serious, with the edge list, and what a nit is (13.4.1, 13.4.5, 13.6), judges against the brief and the design, never the comments (13.9.1), and returns a wrong comment as a nit (13.9.3)', () => {
     const template = fs.readFileSync(path.join(TEMPLATES, 'reviewer.md'), 'utf8');
 
     assert.match(template, /\nThe edge list:\n\n(- [^\n]+;\n){4,}- [^\n]+\.\n/, 'the edge list, an item a line');
@@ -516,7 +524,6 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
       'Review the task as a professional would, never one small thing.',
       'Judge the code against this brief and the design, never against its comments.',
       'A wrong comment is not a finding and starts no review: point it out as a nit.',
-      'The workflows\' own references never go into the product\'s code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit.',
     ]) assert.ok(template.includes(line), line);
   });
 
