@@ -23,7 +23,9 @@
 //   from its one session (20.14.2), All work too, the banner the unit's
 //   close (D38) — while its position still names that place, and at the
 //   start menu boot hands it to, until the session records a position again
-//   (position.cjs); an epic's finish goes to its menu.
+//   (position.cjs); an epic's finish goes to its menu. The session's tasks
+//   in flight are read into their unit's build wherever it is drawn, the
+//   place they were started at left or not.
 // - The unit's tab shows the unit `--unit` names, else the session's: an
 //   epic's page for an epic (20.15.2), the unit's page for any other.
 //   All work shows the project (20.16), and `--page unit:{unit}` another
@@ -75,7 +77,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { PROJECT_IDENTITIES } = require('../kernel/manifest-schema.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { readPosition, readLeft, conversationDir } = require('./conversation.cjs');
+const { readPosition, readLeft, tasksInFlight, conversationDir } = require('./conversation.cjs');
 const { BRIEFS } = require('./brief-names.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { withOneCheck } = require('./ledger.cjs');
@@ -193,8 +195,8 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shar
     unit,
     manifest,
     title: titlecase(unit),
-    inFlight: place.unit === unit ? inFlight : [],
-    issued: place.unit === unit ? issuedFor(session, unit) : [],
+    inFlight,
+    issued: place.unit === unit || inFlight.length > 0 ? issuedFor(session, unit) : [],
     tracker: () => once('tracker', () => {
       if (!tasksBegun(manifest)) throw new Error(`${unit}'s build has not begun`);
       return trackedUnit(cwd, unit, manifest, task);
@@ -387,6 +389,7 @@ function askedOf(positional, opts) {
 function boardRead(cwd, { session, tab, page }, opts, warnings) {
   const position = readPosition(session);
   const place = placeOf(stateRoot(cwd), position);
+  const held = tasksInFlight(session);
   const tabUnit = opts.unit ?? place.unit;
   if (tab === 'unit' && tabUnit === null) throw new Error('the unit\'s tab is at no unit, whose page it would show — --unit names one');
   const pageUnit = page === null ? null : page.unit ?? opts['page-unit'] ?? (tab === 'unit' ? tabUnit : place.unit);
@@ -404,8 +407,10 @@ function boardRead(cwd, { session, tab, page }, opts, warnings) {
     if (!callReads.has(key)) callReads.set(key, read());
     return /** @type {any} */ (callReads.get(key));
   };
+  /** The conversation's tasks in flight in the unit's build, its place left or not. @param {string} unit @returns {InFlight[]} */
+  const inFlightIn = (unit) => held.filter((task) => task.unit === unit).map(({ unit: _unit, ...task }) => task);
   const at = (/** @type {string} */ unit) => {
-    if (!units.has(unit)) units.set(unit, unitAt(cwd, session, place, unit, position?.tasks ?? [], warnings, unit === pageUnit ? pageTask : null, reposRead, shared));
+    if (!units.has(unit)) units.set(unit, unitAt(cwd, session, place, unit, inFlightIn(unit), warnings, unit === pageUnit ? pageTask : null, reposRead, shared));
     return /** @type {BoardAt} */ (units.get(unit));
   };
   const tabAt = tabUnit === null ? null : at(tabUnit);

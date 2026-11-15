@@ -45,8 +45,11 @@ const remote = (url) => git(dir(), ['remote', 'add', 'origin', url]);
 /** The project on GitHub's driver, set through manage's verb. */
 const onGithub = () => ok(dir(), ['drivers', 'set', 'landing', 'github'], { env: env() });
 
-/** The drivers' menu's rows. */
-const rows = () => screenOf(output(dir(), ['render', 'drivers'], { env: env() }), 'MENU: drivers').slice(3, -2);
+/** The drivers' menu's rows, below its question. */
+function rows() {
+  const menu = screenOf(output(dir(), ['render', 'drivers'], { env: env() }), 'MENU: drivers');
+  return menu.slice(menu.findIndex((line) => line.startsWith('◆ ')) + 2, -2);
+}
 
 /** The landing driver's lines on the drivers' menu. */
 const landing = () => sectionOf(output(dir(), ['render', 'drivers'], { env: env() }), 'DISPLAY: drivers').trim().split('\n').slice(3);

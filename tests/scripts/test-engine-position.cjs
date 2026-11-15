@@ -10,9 +10,11 @@
 // its brief was issued for, riding with that task alone, two recorded at
 // once both standing (24.2.4, 13.3.3, 12.S21) — the tracker's `task start`
 // and `task done` on the position are test-engine-task-verbs.cjs's; the
-// start menu's repair dropping it, a record racing the drop never bringing
-// it back, and boot's leaving it, the place it left kept until a position is
-// recorded again; and `conversation position`,
+// start menu's repair dropping it, a record racing the last task's close
+// at the place left never bringing it back, and boot's leaving it, the place it left kept until a position is
+// recorded again — a position holding tasks in flight kept for them at the
+// place left, the conversation at no place, until each closes or the build
+// is entered again; and `conversation position`,
 // which answers what to re-read to carry on there: the skill that runs the
 // work, then the topic's documents this project has, each by its absolute
 // path under the project root, as the note a compaction hands up and one line
@@ -72,6 +74,11 @@ function folder(sessionId = 'sess-1') {
 /** The position recorded for a conversation, or null. */
 function position(sessionId = 'sess-1') {
   try { return JSON.parse(fs.readFileSync(path.join(folder(sessionId), 'position.json'), 'utf8')); } catch { return null; }
+}
+
+/** The place a conversation left for the start menu, or null. */
+function left(sessionId = 'sess-1') {
+  try { return JSON.parse(fs.readFileSync(path.join(folder(sessionId), 'left.json'), 'utf8')); } catch { return null; }
 }
 
 /** Hand-write a position, its conversation marked. */
@@ -207,9 +214,6 @@ describe('the position every arrival records', () => {
   });
 
   it('boot leaves the position for the start menu, keeping the place it left where that names a phase until a position is recorded again; at a unit\'s menu it keeps none (D38)', () => {
-    const left = () => {
-      try { return JSON.parse(fs.readFileSync(path.join(folder(), 'left.json'), 'utf8')); } catch { return null; }
-    };
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     ok(['boot']);
     const booted = [position(), left()];
@@ -325,6 +329,32 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     assert.deepStrictEqual(position(), BUILD, 'no task until task start');
   });
 
+  it('24.2.4: the bare command\'s boot leaves the build for the start menu keeping its tasks for their builders, at the place left — the conversation at no place, nothing carried on, a reviewer still recorded — and a re-label of the build carries them back with their agents; left again, the last task\'s close takes the position with it', () => {
+    ok(['task', 'phase', 'pay', '1', '--title', 'Ledger']);
+    const file = write('task.md', '# Keep the ledger\n\n## Type\nfeat\n\n## Problem\nA.\n\n## Solution\nB.\n\n## Outcome\nC.\n\n## Acceptance scenarios\n- Given a, when b, then c.\n\n## Spec reference\n§1\n');
+    ok(['task', 'create', 'pay', '1', '--file', abs(file)]);
+    fs.rmSync(abs(file));
+    const built = { task: '1.1', builder: AGENT, reviewers: [] };
+    const atBuild = { name: 'pay', phase: 'implementation' };
+    writePosition({ ...BUILD, tasks: [built] });
+
+    const leaving = [ok(['boot']).go, position(), left(), reads().position];
+    issue('R1', 'reviewer', '1.1');
+    dispatched('r1', 'R1');
+    const reviewed = [position().tasks, left()];
+    ok(['session', 'label', 'pay', 'implementation', 'pay']);
+    const back = [position(), left()];
+    ok(['session', 'repair']);
+    ok(['task', 'close', 'pay', '1.1', '--reason', 'The ledger keeps itself.']);
+
+    assert.deepStrictEqual([leaving, reviewed, back, [position(), left()]], [
+      ['menu', { ...BUILD, tasks: [built] }, atBuild, null],
+      [[{ ...built, reviewers: ['r1'] }], atBuild],
+      [{ ...BUILD, tasks: [{ ...built, reviewers: ['r1'] }] }, null],
+      [null, atBuild],
+    ]);
+  });
+
   it('refuses an agent id that is not one, a brief id that is not one or none, a missing argument and an extra one, recording nothing', () => {
     onTask();
     const usage = /^Usage: engine conversation builder <session-id> <agent-id> --brief <id> — the agent id letters, digits, - and _ alone, the brief's id as `engine brief` answers it$/;
@@ -378,32 +408,33 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     for (const { ids } of reports) assert.deepStrictEqual(reviewers.filter((id) => ids.includes(id)), ids);
   });
 
-  it('a drop racing a record: the drop waits on the lock the record holds, so the record\'s write never brings the dropped position back', async () => {
+  it('a close racing a record at the place left: the close waits on the lock the record holds, so the record\'s write never brings back the position its last task took with it', async () => {
     writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    fs.writeFileSync(path.join(folder(), 'left.json'), JSON.stringify({ name: 'pay', phase: 'implementation' }));
     issue('B11', 'builder', '1.1');
     const file = path.join(folder(), 'position.json');
     const met = path.join(config, 'met');
     const reports = await harness.contend(2, [
       'const [part, file, met] = process.argv.slice(1);',
-      `const { recordBuilder, dropPosition } = require(${JSON.stringify(POSITION_MODULE)});`,
+      `const { recordBuilder, clearTask } = require(${JSON.stringify(POSITION_MODULE)});`,
       "if (part === 'record') {",
       '  const rename = fs.renameSync;',
       '  const pause = new Int32Array(new SharedArrayBuffer(4));',
-      // The record, its position read, holds its write until the drop has found the lock held — or, with no lock, has deleted the file.
+      // The record, its position read, holds its write until the close has found the lock held — or, with no lock, has deleted the file.
       '  fs.renameSync = (from, to) => { if (to === file) { atBarrier(); while (!fs.existsSync(met) && fs.existsSync(file)) Atomics.wait(pause, 0, 0, 5); } return rename(from, to); };',
       "  report(recordBuilder('sess-1', 'b1', 'B11'));",
       '} else {',
       '  const link = fs.linkSync;',
       "  fs.linkSync = (from, to) => { try { return link(from, to); } catch (err) { if (to === `${file}.lock` && err.code === 'EEXIST') fs.writeFileSync(met, ''); throw err; } };",
       '  atBarrier();',
-      "  dropPosition('sess-1');",
-      '  report({ dropped: true });',
+      "  clearTask('pay', 'pay-1-1');",
+      '  report({ closed: true });',
       '}',
-    ].join('\n'), (i) => [i === 0 ? 'record' : 'drop', file, met], { ...process.env, LEEWAY_CONFIG_DIR: config });
+    ].join('\n'), (i) => [i === 0 ? 'record' : 'close', file, met], { ...process.env, LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' });
 
-    assert.deepStrictEqual(reports, [{ recorded: true }, { dropped: true }]);
-    assert.strictEqual(position(), null, 'the dropped position came back');
-    assert.ok(fs.existsSync(met), 'the drop never found the lock held: the two never met');
+    assert.deepStrictEqual(reports, [{ recorded: true }, { closed: true }]);
+    assert.strictEqual(position(), null, 'the position its last task took with it came back');
+    assert.ok(fs.existsSync(met), 'the close never found the lock held: the two never met');
   });
 });
 

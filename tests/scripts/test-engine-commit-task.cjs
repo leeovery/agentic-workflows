@@ -7,9 +7,10 @@
 // several side by side, each builder's commit from its own worktree under
 // its own task (12.S21) — its message Claude's with the trailer naming the
 // task, joining the trailers it ends in (6.S8); the project's checks — its
-// tests, then each linter — run in the code root before each commit is
-// written, holding no lock, and the first to fail refuses it, nothing
-// committed (6.S9, 15.S11); a merge in progress — the chain's tip
+// tests, then each linter, none before the person confirms the setup — run
+// in the code root before each commit is written, holding no lock, and the
+// first to fail refuses it, nothing committed (6.S9, 15.S11); a merge in
+// progress — the chain's tip
 // merged back onto the task's branch — finished through the door, its
 // resolution named, the checks run and the trailer on the merge commit,
 // refused while a conflict stays unnamed, in a project at a repository's top
@@ -39,7 +40,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, createFile, initRepo, addSubmodule, commitCode, setEnvironment,
+  ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, createFile, initRepo, addSubmodule, commitCode, setEnvironment, confirmEnvironment,
 } = require('./engine-harness.cjs');
 const { spawnSync } = require('child_process');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
@@ -129,12 +130,13 @@ beforeEach(() => {
 afterEach(() => cleanupFixture(dir));
 
 describe('commit --task: the task in flight (6.S8)', () => {
-  it('6.S8: T in flight in this conversation — the commit lands with Claude\'s message, then the trailer naming T, and answers the task and the checks run, none where the project sets none', () => {
+  it('6.S8: T in flight in this conversation — the commit lands with Claude\'s message, then the trailer naming T, and answers the task and the checks run, none where the person has not confirmed the setup recording them (22.5.7)', () => {
     createFile(dir, 'src/left.js', 'const left = 1;\n');
+    setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }] });
 
     const res = ok(dir, commitArgs(), as(BUILDING));
 
-    assert.deepStrictEqual(res, { ok: true, committed: [{ repo: '.', sha: codeHead(dir) }], left_dirty: ['src/left.js'], task: 'pay-1-1', checks: [] });
+    assert.deepStrictEqual([res, marked(dir)], [{ ok: true, committed: [{ repo: '.', sha: codeHead(dir) }], left_dirty: ['src/left.js'], task: 'pay-1-1', checks: [] }, '']);
     assert.deepStrictEqual(
       [git(dir, ['log', '-1', '--format=%B']), git(dir, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)'])],
       [`${MESSAGE}\n\nLeeway-Task: pay-1-1\n\n`, 'pay-1-1\n\n'],
@@ -214,7 +216,7 @@ describe('commit --task: the task in flight (6.S8)', () => {
 
 describe('commit --task: the project\'s checks (6.S9)', () => {
   it('6.S9: the tests, then each linter, run in the code worktree the call is made from, before the commit is written — and the commit lands, answering each', (t) => {
-    setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }, { name: 'tsc', command: marking(dir, 'tsc') }] });
+    confirmEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }, { name: 'tsc', command: marking(dir, 'tsc') }] });
     const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-worktree-')));
     t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
     const worktree = path.join(folder, 'card');
@@ -231,7 +233,7 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
   });
 
   it('12.S21, 15.S11, 2.S3: several tasks in flight, each builder in a worktree of its own — its commands carrying the conversation\'s id — commits under its own task, the checks run first in its worktree', (t) => {
-    setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }] });
+    confirmEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }] });
     const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-builders-')));
     t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
     git(dir, ['checkout', '-q', 'main']);
@@ -255,9 +257,9 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
     const failed = (/** @type {string} */ name, /** @type {number} */ exit, /** @type {string} */ output) => `commit --task: the check "${name}" failed with exit ${exit}, so nothing was committed — fix what it reports and commit again; `
       + `the Bash tool stops a call at two minutes unless given a longer timeout, so give the commit's call one where the checks run long. ${output}`;
 
-    setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: 'seq 1 45; echo "unused card" >&2; exit 3' }, { name: 'tsc', command: marking(dir, 'tsc') }] });
+    confirmEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: 'seq 1 45; echo "unused card" >&2; exit 3' }, { name: 'tsc', command: marking(dir, 'tsc') }] });
     const exited = refusedUncommitted(dir, commitArgs(), as(BUILDING));
-    setEnvironment(dir, { linters: [{ name: 'fmt', command: 'kill -KILL $$' }] });
+    confirmEnvironment(dir, { linters: [{ name: 'fmt', command: 'kill -KILL $$' }] });
     const killed = refusedUncommitted(dir, commitArgs(), as(BUILDING));
 
     const tail = [...Array.from({ length: 39 }, (_, at) => String(at + 7)), 'unused card'].join('\n');
@@ -266,14 +268,14 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
   });
 
   it('refuses a tests command of another shape before running any check', () => {
-    setEnvironment(dir, { run: { tests: 7 }, linters: [{ name: 'tsc', command: marking(dir, 'tsc') }] });
+    confirmEnvironment(dir, { run: { tests: 7 }, linters: [{ name: 'tsc', command: marking(dir, 'tsc') }] });
     assert.strictEqual(refusedUncommitted(dir, commitArgs(), as(BUILDING)), 'the project manifest\'s environment.run.tests is not a command');
     assert.strictEqual(marked(dir), '');
   });
 
   it('holds no lock while the checks run: a check takes the writer lock and the commit lock, and gives them back', () => {
     const locks = [statePath(dir, '.lock'), path.join(dir, '.git', 'leeway-commit.lock')];
-    setEnvironment(dir, { run: { tests: `set -C; ${locks.map((lock) => `: > "${lock}" && rm "${lock}" && `).join('')}echo free > "${markerOf(dir)}"` } });
+    confirmEnvironment(dir, { run: { tests: `set -C; ${locks.map((lock) => `: > "${lock}" && rm "${lock}" && `).join('')}echo free > "${markerOf(dir)}"` } });
 
     assert.deepStrictEqual(ok(dir, commitArgs(), as(BUILDING)).checks, [{ name: 'tests', exit: 0 }]);
     assert.strictEqual(marked(dir), 'free\n');
@@ -304,7 +306,7 @@ describe('commit --task: a merge in progress, the chain merged back (12.14)', ()
   }
 
   it('finishes the merge through the door: the resolution staged, the project\'s checks run, the merge committed whole under the task\'s trailer', () => {
-    setEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
+    confirmEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
     conflicted({ 'src/fee.js': 'const fee = 1;\n' });
     createFile(dir, 'src/card.js', 'const card = 2;\nconst chained = 3;\n');
 
@@ -324,7 +326,7 @@ describe('commit --task: a merge in progress, the chain merged back (12.14)', ()
   });
 
   it('refuses, before any check runs and committing nothing, while a path the merge conflicts in is not named', () => {
-    setEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
+    confirmEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
     commitCode(dir, 'card 2');
     git(dir, ['checkout', '-q', '-b', 'chained', 'HEAD~1']);
     createFile(dir, 'src/card.js', 'const card = 3;\n');
@@ -402,7 +404,7 @@ describe('commit --task: a merge in progress, the chain merged back (12.14)', ()
 
 describe('commit --task: never a code commit on the state branch (4.S20)', () => {
   it('4.S20: a tree with leeway-state checked out is refused before any check runs, nothing committed on either branch', () => {
-    setEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
+    confirmEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
     const main = git(dir, ['rev-parse', branchOf(1)]);
     git(dir, ['symbolic-ref', 'HEAD', 'refs/heads/leeway-state']);
 

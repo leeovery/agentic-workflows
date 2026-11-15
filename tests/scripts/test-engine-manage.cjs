@@ -7,8 +7,9 @@
 // a unit's standing offers — pivot and absorb only to a feature before its
 // spec, absorb only into an epic before its spec, cancel to any unit in
 // progress through its confirm, reactivate to a cancelled one, nothing to a
-// completed one (18.3.4–18.3.6, 8.8.8); `render closed`, the completed then
-// the cancelled; the absorb's pick of an epic and its confirm; and where
+// completed one (18.3.4–18.3.6, 8.8.8), and its back to the screen it was
+// opened from, the start's pick among them; `render closed`, the completed
+// then the cancelled; the absorb's pick of an epic and its confirm; and where
 // each row leads, followed through the verbs it names: a whole epic's
 // cancel ending its experiments abandoned for good (18.4.22), and a cancel
 // putting a roadmap item back on no horizon, which the person names
@@ -245,7 +246,19 @@ describe('manage and the closed units (18.3)', () => {
       { kind: 'engine', argv: ['render', 'closed'] },
       { kind: 'engine', argv: ['render', 'help', 'manage-unit', CANCELLED, '--from', 'closed'] },
     ]);
-    assert.match(refusedPristine(dir, ['render', 'manage-unit', CANCELLED, '--from', 'start']).error, /^Usage: engine render manage-unit <work-unit> \[--from closed\]$/);
+  });
+
+  it('a unit opened from the start\'s pick goes back to the pick over the same words, and its help back to it as it was opened; any other way back is refused, as the usage', () => {
+    const matches = `${CANCELLED},${COMPLETE}`;
+    const unit = drawn(dir, ['manage-unit', CANCELLED, '--from', 'pick', '--matches', matches], 'manage unit');
+    assert.deepStrictEqual([unit.screen.at(-2), unit.rows.b, unit.rows.h], [
+      'b/back       → Back to the work your words could name',
+      { kind: 'engine', argv: ['render', 'work-pick', '--matches', matches] },
+      { kind: 'engine', argv: ['render', 'help', 'manage-unit', CANCELLED, '--from', 'pick', '--matches', matches] },
+    ]);
+    for (const flags of [['--from', 'start'], ['--from', 'pick'], ['--matches', matches], ['--from', 'closed', '--matches', matches]]) {
+      assert.match(refusedPristine(dir, ['render', 'manage-unit', CANCELLED, ...flags]).error, /^Usage: engine render manage-unit <work-unit> \[--from closed \| --from pick --matches <matches>\]$/, flags.join(' '));
+    }
   });
 });
 

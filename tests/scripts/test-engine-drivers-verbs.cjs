@@ -9,9 +9,10 @@
 // setting for one kind written and committed alone, refused for a driver
 // no shipped one answers to, for one that does not serve the project, and
 // while a build is in flight in any unit (O5), and finished by a run again
-// after a kill; `render drivers`, manage's d/drivers (22.4.4, 22.5.8);
-// `render drivers-stop`, the stop at ready to build, in every wording its
-// tools can give it, drawn from the drivers' declarations alone (7.2.13).
+// after a kill; `render drivers`, manage's d/drivers, a choice asked only
+// where another driver serves the project (22.4.4, 22.5.8); and the stop at
+// ready to build in every wording its tools can give it, a change of driver
+// named only where another of its kind serves the project (7.2.13).
 // What each shipped driver's tools answer, and a driver serving a host, are
 // its own suite's (tests/drivers/{name}/test-drivers.cjs); where ready to
 // build draws the stop and refuses its yes,
@@ -39,7 +40,7 @@ const { createManifest, readState } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
-const { driversStopScreen } = require(path.join(SCRIPTS, 'domain/projections/drivers.cjs'));
+const { driversStopScreen, driversScreen } = require(path.join(SCRIPTS, 'domain/projections/drivers.cjs'));
 const { capitalise } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').Driver} Driver */
@@ -151,13 +152,6 @@ describe('the drivers\' verbs (22.4)', () => {
         `drivers set: ${capitalise(driver.title)} lands through a host this project's remote isn't on — the landing drivers that serve this project are ${serving}`);
     }
   });
-
-  it('render drivers-stop draws the stop where a tool stops ready to build, from the drivers\' declarations, and is refused where nothing does', { skip: TASK.needs.length === 0 }, () => {
-    assert.strictEqual(refusedPristine(dir, ['render', 'drivers-stop'], { env: env() }).error, 'render drivers-stop: every tool the drivers need is here — nothing stops ready to build');
-
-    assert.strictEqual(output(dir, ['render', 'drivers-stop'], { env: env({ PATH: toolless(path.dirname(dir)) }) }),
-      driversStopScreen('Lantern', [{ kind: 'task', driver: TASK.name, title: TASK.title, tools: missing(TASK) }]));
-  });
 });
 
 describe('set while a build is in flight (O5, 22.4.3)', () => {
@@ -183,10 +177,11 @@ describe('the drivers menu (22.4.4, 22.5.8)', () => {
   beforeEach(() => { dir = lantern(idle); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('shows each kind\'s drivers that ship, the one in use marked, each landing through a host the project has no remote on saying so, a numbered row for each other, and back to manage', () => {
+  it('shows each kind\'s drivers that ship, the one in use marked, each landing through a host the project has no remote on saying so, a numbered row for each other that serves it — or, where none does, the drivers in use — and back to manage', () => {
     const out = output(dir, ['render', 'drivers'], { env: env() });
     const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
-    const others = listDrivers('task').filter((driver) => driver !== TASK);
+    const others = (/** @type {'task'|'landing'} */ kind, /** @type {Driver} */ using) => listDrivers(kind).filter((driver) => driver !== using && !HOSTED.includes(driver)).map((driver) => ({ kind, driver }));
+    const choices = [...others('task', TASK), ...others('landing', LANDING)];
     const marked = (/** @type {Driver} */ driver) => {
       if (driver === LANDING) return ' — in use';
       return HOSTED.includes(driver) ? ' — lands through a host this project\'s remote isn\'t on' : '';
@@ -198,27 +193,52 @@ describe('the drivers menu (22.4.4, 22.5.8)', () => {
       'THE LANDING DRIVER',
       ...listDrivers('landing').map((driver) => `  · ${driver.title}${marked(driver)}`),
     ]);
-    assert.deepStrictEqual(screenOf(out, 'MENU: drivers'), [
+    const choosing = { task: 'Track tasks through', landing: 'Land work through' };
+    const [rule, ...menu] = screenOf(out, 'MENU: drivers');
+    const asked = menu.findIndex((line) => line.startsWith('◆ '));
+    assert.deepStrictEqual([rule, menu.slice(0, Math.max(asked - 1, 0)).join(' '), ...menu.slice(asked)], [
       '· · · · · · · · · · · ·',
-      '◆ Which driver would you like to use?',
+      choices.length === 0 ? `No other driver serves Lantern: it tracks its tasks through ${TASK.title} and lands its work through ${LANDING.title}.` : '',
+      choices.length === 0 ? '◆ What would you like to do?' : '◆ Which driver would you like to use?',
       '',
-      ...others.map((driver, at) => `${at + 1}      → Track tasks through ${driver.title}`),
+      ...choices.map(({ kind, driver }, at) => `${at + 1}      → ${choosing[kind]} ${driver.title}`),
       'h/help → What this menu is for, row by row',
       'b/back → Back to manage',
     ]);
     assert.deepStrictEqual(Object.fromEntries(shown.options.map((/** @type {{key: string, next: unknown}} */ { key, next }) => [key, next])), {
-      ...Object.fromEntries(others.map((driver, at) => [at + 1, { kind: 'engine', argv: ['drivers', 'set', 'task', driver.name] }])),
+      ...Object.fromEntries(choices.map(({ kind, driver }, at) => [at + 1, { kind: 'engine', argv: ['drivers', 'set', kind, driver.name] }])),
       h: { kind: 'engine', argv: ['render', 'help', 'drivers'] },
       b: { kind: 'engine', argv: ['render', 'manage'] },
     });
   });
 });
 
+describe('the drivers menu\'s screen (22.4.4)', () => {
+  /** A kind's view, the stand-in `using` in use, and another `serves` the project or not. @param {'task'|'landing'} kind @param {boolean} serves */
+  const view = (kind, serves) => ({ kind, using: kind, installed: [{ name: kind, title: `the ${kind} stand-in`, serves: true }, { name: `other-${kind}`, title: `another ${kind} stand-in`, serves }] });
+
+  it('asks which driver to use where another serves the project, a row for each', () => {
+    const screen = driversScreen('Lantern', [view('task', false), view('landing', true)]);
+
+    assert.deepStrictEqual([screen.statement, screen.question, screen.rows.map(({ label, next }) => [label, next])], [
+      undefined, 'Which driver would you like to use?', [['Land work through another landing stand-in', { kind: 'engine', argv: ['drivers', 'set', 'landing', 'other-landing'] }]],
+    ]);
+  });
+
+  it('where no other driver serves the project, says what it works through and asks no choice', () => {
+    const screen = driversScreen('Lantern', [view('task', false), view('landing', false)]);
+
+    assert.deepStrictEqual([screen.statement, screen.question, screen.rows], [
+      'No other driver serves Lantern: it tracks its tasks through the task stand-in and lands its work through the landing stand-in.', undefined, [],
+    ]);
+  });
+});
+
 describe('the stop\'s words (22.4.7–22.4.9, 7.2.13)', () => {
   /** @param {string} tool @param {Partial<ToolState>} state @returns {ToolState} */
   const tool = (tool, state) => ({ tool, label: tool.toUpperCase(), floor: '1.2.0', update: `https://example.invalid/${tool}`, found: '1.2.0', state: 'fine', ...state });
-  /** @param {'task'|'landing'} kind @param {ToolState[]} tools */
-  const check = (kind, tools) => ({ kind, driver: kind, title: `the ${kind} stand-in`, tools });
+  /** @param {'task'|'landing'} kind @param {ToolState[]} tools @param {boolean} [changeable] another driver of the kind serves the project */
+  const check = (kind, tools, changeable = true) => ({ kind, driver: kind, title: `the ${kind} stand-in`, tools, changeable });
   /** The stop's alert and account. @param {ReturnType<typeof check>[]} stopping */
   const stop = (stopping) => {
     const out = driversStopScreen('Lantern', stopping);
@@ -234,6 +254,18 @@ describe('the stop\'s words (22.4.7–22.4.9, 7.2.13)', () => {
       '> Lantern tracks its tasks through the task stand-in, which needs AY 1.2.0 or newer and BEE 1.2.0 or newer. AY isn\'t installed; BEE is 1.1.0, older than 1.2.0 — its update instructions are at https://example.invalid/bee.',
       '> Lantern lands its work through the landing stand-in, which needs SEA 1.2.0 or newer and DEE 1.2.0 or newer. SEA is installed but fails — exited 3; DEE is here.',
       '> Nothing has been built. Ready to build waits until AY is installed, BEE is updated and SEA is working — or, while no build is in flight, until the drivers are changed from manage on the start menu.',
+    ]);
+  });
+
+  it('names changing a driver only where another of its kind serves the project: the one that could change, or the wait alone where neither could', () => {
+    const waits = (/** @type {boolean} */ task, /** @type {boolean} */ landing) => stop([
+      check('task', [tool('ay', { found: null, state: 'missing' })], task),
+      check('landing', [tool('bee', { found: '1.1.0', state: 'older' })], landing),
+    ]).at(-1);
+
+    assert.deepStrictEqual([waits(false, true), waits(false, false)], [
+      '> Nothing has been built. Ready to build waits until AY is installed and BEE is updated — or, while no build is in flight, until the landing driver is changed from manage on the start menu.',
+      '> Nothing has been built. Ready to build waits until AY is installed and BEE is updated.',
     ]);
   });
 

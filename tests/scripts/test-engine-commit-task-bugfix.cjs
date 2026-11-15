@@ -48,7 +48,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  call, ok, refusedPristine, cleanupFixture, createFile, git, initRepo, setEnvironment, accountTaken, MERGED_BY_HAND,
+  call, ok, refusedPristine, cleanupFixture, createFile, git, initRepo, confirmEnvironment, accountTaken, MERGED_BY_HAND,
 } = require('./engine-harness.cjs');
 const {
   UNIT, TEST, BUGGY, FIXED, CRASH_TEST, branchOf, HARDEN_BRANCH, landedOnMain, logging, testRuns, unfixedArgs, unproven, proven,
@@ -174,7 +174,7 @@ afterEach(() => cleanupFixture(dir));
 describe('commit --task: a bugfix\'s fix waits on its bug proven (6.3.6, 15.5.3)', () => {
   it('6.S10, 15.S8, 19.S16: with no series of the test run on the unfixed code, the fix\'s commit is refused before any check runs, nothing committed, naming task 1.1 by its position and the call that runs the series', () => {
     dir = unproven();
-    setEnvironment(dir, CHECKS);
+    confirmEnvironment(dir, CHECKS);
 
     assert.strictEqual(refusedUncommitted(fixAttempted()), unprovenRefusal(
       `no series of it has run on the unfixed code — run it there five times: engine verify run ${UNIT} <scenario> --unfixed --test '<the command that runs that test alone>', its scenario one of task 1.1's`,
@@ -184,7 +184,7 @@ describe('commit --task: a bugfix\'s fix waits on its bug proven (6.3.6, 15.5.3)
 
   it('6.S10, 15.S8, 19.S16, 15.5.4: once the series is five failures, the fix\'s commit lands — the test run after the project\'s tests, before the linter, as a check of its own, passing on the fixed code', () => {
     dir = proven();
-    setEnvironment(dir, CHECKS);
+    confirmEnvironment(dir, CHECKS);
     const head = git(dir, ['rev-parse', 'HEAD']).trim();
 
     const res = ok(dir, fixAttempted(), building);
@@ -197,7 +197,7 @@ describe('commit --task: a bugfix\'s fix waits on its bug proven (6.3.6, 15.5.3)
 
   it('15.5.4: at every later code commit the test runs again, and one it fails on is refused, nothing committed, no linter run, saying it passes once the bug is fixed', () => {
     dir = proven();
-    setEnvironment(dir, CHECKS);
+    confirmEnvironment(dir, CHECKS);
 
     assert.strictEqual(refusedUncommitted(fixAttempted(`${BUGGY}// tidied\n`)), 'commit --task: the check "reproducing test" failed with exit 1, so nothing was committed — '
       + 'the test task 1.1 wrote fails here, and passes once the bug is fixed (15.5.4) — fix what it reports and commit again, or, for a task the fix is not in, once the fix\'s task is done, '
@@ -400,12 +400,12 @@ describe('commit --task: the reproducing task\'s own commits (6.3.5, F1)', () =>
   it('land with the project\'s tests failing, the answer saying so with their output\'s last lines, the linters run as ever — and a failing linter refuses', () => {
     dir = unproven();
     git(dir, ['checkout', '-q', branchOf(1)]);
-    setEnvironment(dir, { run: { tests: TEST }, linters: [{ name: 'eslint', command: logging('eslint') }] });
+    confirmEnvironment(dir, { run: { tests: TEST }, linters: [{ name: 'eslint', command: logging('eslint') }] });
     createFile(dir, 'test/crash.sh', `${fs.readFileSync(path.join(dir, 'test/crash.sh'), 'utf8')}# commented\n`);
 
     const res = ok(dir, commitArgs('1.1', 'test/crash.sh'), building);
     createFile(dir, 'test/crash.sh', `${fs.readFileSync(path.join(dir, 'test/crash.sh'), 'utf8')}# again\n`);
-    setEnvironment(dir, { run: { tests: TEST }, linters: [{ name: 'eslint', command: 'echo "unused log" >&2; exit 2' }] });
+    confirmEnvironment(dir, { run: { tests: TEST }, linters: [{ name: 'eslint', command: 'echo "unused log" >&2; exit 2' }] });
 
     assert.deepStrictEqual([res.checks, lastCommit().task, testRuns(dir).at(-1)], [[
       { name: 'tests', exit: 1, allowed: 'the tests failed, as the reproducing task\'s commits may: its test reproduces the bug before any fix lands (6.3.5, 15.5.1)', tail: ['checking the checkout'] },

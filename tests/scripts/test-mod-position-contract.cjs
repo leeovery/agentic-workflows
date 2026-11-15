@@ -6,10 +6,12 @@
 // JSON, the rows mod knows a compaction's note by the engine's opening words,
 // and both name the record of the notes handed up alike; the gate mod's
 // spinner reads the position file the engine keeps, by its name and keys,
-// again after the entry and each task verb the engine moves it with;
-// and the gate mod records each task's builder and reviewers, the brief
-// named by the pointer the engine issues, through the verb the engine
-// answers, which the note then names.
+// again after the entry and each task verb the engine moves it with, and
+// says nothing once the place is left, by the file the engine names it in;
+// the gate mod records each task's builder and reviewers, the brief named
+// by the pointer the engine issues, through the verb the engine answers,
+// which the note then names; and it carries boot's stamp across a
+// handoff's clear by the name the engine keeps it under.
 // Each literal is read off the mod's source — a mod cannot import the engine
 // — and held against a real answer.
 //
@@ -28,6 +30,7 @@ const { TASK_VERBS } = require('../../skills/leeway-engine/scripts/domain/task-v
 const { POINTER, ROLES, pointerOf } = require('../../skills/leeway-engine/scripts/domain/brief-names.cjs');
 const { storeBrief } = require('../../skills/leeway-engine/scripts/domain/brief.cjs');
 const { newId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
+const { BOOTED } = require('../../skills/leeway-engine/scripts/domain/user-files.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -166,6 +169,15 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.match(`node ${literal('skills/leeway-gates/hooks/folder.ts', 'ENGINE')} enter discussion pay ledger`, new RegExp(moves[1]));
   });
 
+  it('the spinner knows the place left by the file the engine names it in, the position kept beside it for the task in flight', () => {
+    building(newId(), 'builder', 'aa76bd7f82a2ef3e4');
+    harness.ok(dir, ['session', 'repair'], { env: env() });
+    const kept = (/** @type {string} */ name) => fs.existsSync(path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', name)));
+
+    assert.deepStrictEqual([kept('LEFT'), kept('POSITION')], [true, true]);
+    assert.match(source('skills/leeway-gates/hooks/spinner.ts'), /\$\.fs\.exists\(`\$\{folder\}\/\$\{LEFT\}`\)/, 'the spinner looks for the place left before it reads the position');
+  });
+
   it('the spinner has a word for every phase and project-level place the engine records', () => {
     const words = (name) => {
       const map = new RegExp(`const ${name}[^=]*= new Map\\(\\[([\\s\\S]*?)\\]\\)`).exec(source('skills/leeway-gates/hooks/position.ts'));
@@ -197,6 +209,10 @@ describe('the mods read conversation position as the engine writes it', () => {
     harness.withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief('sess-1', builderBrief, `Brief ${builderBrief}\n`, { role: 'builder', agent: ROLES.builder.agent, unit: 'pay', task: '1.1', topic: null }));
     assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'aa76bd7f82a2ef3e4', '--brief', builderBrief], { env: env() }), { ok: true, recorded: true });
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).tasks, [{ task: '1.1', builder: 'aa76bd7f82a2ef3e4', reviewers: ['ab12cd34'] }]);
+  });
+
+  it('the gate mod carries boot\'s stamp across a handoff\'s clear by the name the engine keeps it under', () => {
+    assert.strictEqual(literal('skills/leeway-gates/hooks/register.ts', 'BOOTED'), BOOTED);
   });
 
   it('the rows mod knows the note by the words the engine opens it with', () => {

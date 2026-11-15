@@ -23,7 +23,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, commitCode, initRepo, cleanupFixture, createFile, git, setEnvironment,
+  ok, refuses, refusedPristine, commitCode, initRepo, cleanupFixture, createFile, git, confirmEnvironment,
 } = require('./engine-harness.cjs');
 const { unrecorded } = require('./verify-world.cjs');
 
@@ -89,7 +89,7 @@ describe('scratch lay and remove (13.2.2, 14.2.2)', () => {
   });
 
   it('22.5.1: runs the steps for each worktree in the project\'s folder there once the include is copied — never those for the build\'s first task — its marker in the worktree\'s own git directory; a step that fails refuses, the project\'s setup', () => {
-    setEnvironment(dir, { prepare: [
+    confirmEnvironment(dir, { prepare: [
       { name: 'Env', when: 'worktree', command: 'cat .env > prepared.txt' },
       { name: 'Test database', when: 'first', command: 'echo first > first.txt' },
     ] });
@@ -97,7 +97,7 @@ describe('scratch lay and remove (13.2.2, 14.2.2)', () => {
     const top = scratchAt();
     const ran = [fs.readFileSync(path.join(top, 'prepared.txt'), 'utf8'), fs.existsSync(path.join(top, 'first.txt'))];
     const marked = fs.existsSync(path.join(path.resolve(top, git(top, ['rev-parse', '--git-dir']).trim()), 'leeway-prepared'));
-    setEnvironment(dir, { prepare: [{ name: 'Env', when: 'both', command: 'echo "no env here"; exit 4' }] });
+    confirmEnvironment(dir, { prepare: [{ name: 'Env', when: 'both', command: 'echo "no env here"; exit 4' }] });
 
     assert.deepStrictEqual([ran, marked], [['KEY=1\n', false], true]);
     assert.strictEqual(refuses(dir, ['scratch', 'lay', NAME, own[1], `lib=${libs[1]}`]).error,

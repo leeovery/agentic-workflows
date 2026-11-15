@@ -489,7 +489,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
-const { linters, tests, verifySetup, stepsAt } = require('./environment.cjs');
+const { linters, confirmedAt, verifySetup, stepsAt } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const {
   recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands, currentsOf,
@@ -656,16 +656,14 @@ function drawDecidedCalls(filling, warnings) {
 }
 
 /**
- * The project's linters; a quick-fix's in a project with no environment
- * setup, no tests nor linters recorded, the line sending its agent to
- * those it finds (22.5.10).
+ * The project's linters, once the person has confirmed its environment
+ * setup; a quick-fix's before that, the line sending its agent to those it
+ * finds (22.5.10).
  * @param {Filling} filling
  */
 function drawLinters(filling) {
-  const recorded = linters(filling.cwd);
-  const unset = recorded.length === 0 && tests(filling.cwd) === null;
-  if (unset && filling.unit !== null && quickFixBuild(unitManifest(filling))) return 'None recorded: the project has no environment setup, so run the tests and linters you find in the repository, asking nothing.';
-  return listed(recorded.map(({ name, command }) => `- ${name}: ${command}`));
+  if (confirmedAt(filling.cwd) === null && filling.unit !== null && quickFixBuild(unitManifest(filling))) return 'None confirmed: the project\'s environment setup is not confirmed yet, so run the tests and linters you find in the repository, asking nothing.';
+  return listed(linters(filling.cwd).map(({ name, command }) => `- ${name}: ${command}`));
 }
 
 // Named from the repo's folder, a root inside a larger repository reading

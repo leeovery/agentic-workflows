@@ -55,7 +55,7 @@ const os = require('os');
 const path = require('path');
 const {
   ok, okSections, okSectionsAsync, output, refusedPristine, git, stateGit, statePath, layout, writeState, readManifest, commitAll, createFile, fixtureFrom, cleanupFixture,
-  withEnv, FROZEN_AT, accountTaken, setEnvironment, lastMessage, holdLock,
+  withEnv, FROZEN_AT, accountTaken, confirmEnvironment, lastMessage, holdLock,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
@@ -491,7 +491,7 @@ describe('the build\'s standing (P13)', () => {
 describe('the environment setup at the build\'s entry (22.5.1, 12.7.4)', () => {
   /** The steps `prepare` recorded, and what cannot run at once. @param {object[]} prepare @param {string[]} [whats] */
   function recording(prepare, whats = []) {
-    setEnvironment(dir, { prepare, concurrency: whats.map((what) => ({ what, at: FROZEN_AT, by: UNIT })) });
+    confirmEnvironment(dir, { prepare, concurrency: whats.map((what) => ({ what, at: FROZEN_AT, by: UNIT })) });
     commitAll(dir, 'the environment setup');
   }
 

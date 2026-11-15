@@ -30,7 +30,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, addSubmodule, statePath, accountTaken, setEnvironment } = require('./engine-harness.cjs');
+const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, addSubmodule, statePath, accountTaken, confirmEnvironment } = require('./engine-harness.cjs');
 const { NESTED, landedOn } = require('./landing-world.cjs');
 const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 const { SIDE, UNIT, FEES, SHOW, taskWorktreeWorld, as, building, isolation, layOut, checkoutsOf, statusOf } = require('./task-worktree-world.cjs');
@@ -161,7 +161,7 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
 describe('task worktree: tasks side by side (12.S15, 12.S53, 7.S19)', () => {
   it('two tasks, each in its own worktree and branch, commit through the door there — the project\'s checks reading every repository — and land chained, each in the repositories it touched, the submodule\'s pointer recorded in the project', () => {
     const at = project();
-    setEnvironment(at.dir, { run: { tests: `test -f ${NESTED.lib.folder}/lib.txt && test -f ${NESTED.ext.folder}/ext.txt` } });
+    confirmEnvironment(at.dir, { run: { tests: `test -f ${NESTED.lib.folder}/lib.txt && test -f ${NESTED.ext.folder}/ext.txt` } });
     const session = building(at.dir, ['3.1', '3.2']);
     const [a, b] = ['a', 'b'].map((name) => isolation(at.dir, name));
     ok(a, layOut('3.1'), as(session));

@@ -687,6 +687,15 @@ function setEnvironment(dir, environment) {
   writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment }, null, 2));
 }
 
+/**
+ * The project's environment setup set to `environment` as the person's yes
+ * confirmed it — what the engine runs its tests, linters and steps from.
+ * @param {string} dir @param {Record<string, unknown>} environment
+ */
+function confirmEnvironment(dir, environment) {
+  setEnvironment(dir, { ...environment, confirmed: FROZEN_AT });
+}
+
 /** @type {Map<string, (dir: string) => string>} */
 const projects = new Map();
 
@@ -1140,5 +1149,5 @@ module.exports = {
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, MERGED_BY_HAND, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, toolless, failingPs, accountFiles, accountTaken,
   NO_SPACE, failingTrustAppends, failingStateCommits, retried, completeUnit, startItem, stampBooted,
-  setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment,
+  setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment, confirmEnvironment,
 };

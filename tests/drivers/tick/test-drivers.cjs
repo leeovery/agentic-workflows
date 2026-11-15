@@ -4,11 +4,12 @@
 // Tick's driver in the drivers' check and at ready to build
 // (leeway-engine/scripts/domain/drivers-verbs.cjs, ready-to-build.cjs;
 // 22.4.9): Tick read by the check at the version it answers; older than its
-// floor, ready to build stopped naming the version found, the one needed
-// and where its update instructions live (22.S34); and a Tick whose
-// version does not read as Tick prints it, failing, ready to build stopped
-// with its error at the screen and again at the yes. The check over any
-// driver is test-engine-drivers-verbs.cjs's and
+// floor, ready to build stopped naming the version found, the one needed and
+// where its update instructions live (22.S34); and a Tick whose version does
+// not read as Tick prints it, failing, ready to build stopped with its error
+// at the screen and again at the yes — each stop naming no change of driver,
+// no other task driver shipping to serve the project in its place. The check
+// over any driver is test-engine-drivers-verbs.cjs's and
 // test-engine-ready-to-build-drivers.cjs's.
 //
 // Layer: verb. World: the ready to build world closed
@@ -59,7 +60,7 @@ describe('Tick at ready to build (22.4.5–22.4.9)', () => {
     assert.deepStrictEqual(stop(screen({ TICK_STUB_VERSION: '0.2.9' })), [
       '⚑ Ready to build stopped: the task driver needs a newer tool',
       '> Lantern tracks its tasks through Tick\'s driver, which needs Tick 0.3.0 or newer. Tick is 0.2.9, older than 0.3.0 — its update instructions are at https://github.com/leeovery/tick.',
-      '> Nothing has been built. Ready to build waits until Tick is updated — or, while no build is in flight, until the task driver is changed from manage on the start menu.',
+      '> Nothing has been built. Ready to build waits until Tick is updated.',
     ]);
   });
 
@@ -67,11 +68,11 @@ describe('Tick at ready to build (22.4.5–22.4.9)', () => {
     assert.deepStrictEqual(stop(screen({ TICK_STUB_SAID: FAILS })), [
       '⚑ Ready to build stopped: the task driver is held up by a tool',
       `> Lantern tracks its tasks through Tick's driver, which needs Tick 0.3.0 or newer. Tick is installed but fails — tick version: ${FAILS}.`,
-      '> Nothing has been built. Ready to build waits until Tick is working — or, while no build is in flight, until the task driver is changed from manage on the start menu.',
+      '> Nothing has been built. Ready to build waits until Tick is working.',
     ]);
 
     assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env({ TICK_STUB_SAID: FAILS }) }).error,
-      `ready-to-build yes: Ready to build stopped: the task driver is held up by a tool — Lantern tracks its tasks through Tick's driver, which needs Tick 0.3.0 or newer. Tick is installed but fails — tick version: ${FAILS}. Nothing has been built. Ready to build waits until Tick is working — or, while no build is in flight, until the task driver is changed from manage on the start menu.`);
+      `ready-to-build yes: Ready to build stopped: the task driver is held up by a tool — Lantern tracks its tasks through Tick's driver, which needs Tick 0.3.0 or newer. Tick is installed but fails — tick version: ${FAILS}. Nothing has been built. Ready to build waits until Tick is working.`);
     assert.strictEqual(readManifest(dir(), UNIT).build, undefined);
   });
 });

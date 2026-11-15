@@ -83,7 +83,7 @@ const { careSurface, careKindSurface, careDropSurface } = require('./person-verb
 const { convergenceSurface } = require('./convergence.cjs');
 const { matrixSurface, replaySurface } = require('./trust-verbs.cjs');
 const { environmentSetupSurface } = require('./environment-verbs.cjs');
-const { driversSurface, driversStopSurface } = require('./drivers-verbs.cjs');
+const { driversSurface } = require('./drivers-verbs.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -1162,7 +1162,7 @@ const SURFACES = {
   'start-menu': (cwd) => startMenuSurface(cwd),
   'epic-menu': (cwd, { dotpath }) => epicMenuSurface(cwd, dotpath),
   manage: (cwd) => manageSurface(cwd),
-  'manage-unit': (cwd, { dotpath, from }) => manageUnitSurface(cwd, dotpath, from),
+  'manage-unit': (cwd, { dotpath, from, matches }) => manageUnitSurface(cwd, dotpath, { from, matches }),
   closed: (cwd) => closedSurface(cwd),
   'care': (cwd, { added, dropped }) => careSurface(cwd, { added, dropped }),
   'care-kind': careKindSurface,
@@ -1177,7 +1177,6 @@ const SURFACES = {
   'matrix-replay': (cwd, { threshold, build }) => replaySurface(cwd, { threshold, build }),
   'environment-setup': (cwd, { from }) => environmentSetupSurface(cwd, { from }),
   drivers: (cwd) => driversSurface(cwd),
-  'drivers-stop': (cwd) => driversStopSurface(cwd),
 };
 
 /**

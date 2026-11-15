@@ -170,7 +170,7 @@ const world = fixtureFrom('review-', (dir) => {
   writeState(dir, layout.unit('solo', SPEC_FILE), specOf().slice(0, specOf().indexOf('## 2. Refunds')));
   writeState(dir, layout.unit('five', SPEC_FILE), fiveSpec());
   const project = JSON.parse(readState(dir, layout.projectManifest));
-  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS, confirmed: FROZEN_AT } }, null, 2));
   commitAll(dir, 'init');
   const root = statePath(dir);
   for (const [phase, title] of [[1, 'Cards'], [2, 'Refunds']]) {

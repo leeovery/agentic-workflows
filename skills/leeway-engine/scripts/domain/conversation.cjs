@@ -33,12 +33,16 @@
 //                  attributes a run by, a call in a task's worktree is that
 //                  task's by (`taskAt`), the board reads a task's stop from,
 //                  and `conversation position` names files for; read here
-//                  alone (`readPosition`)
+//                  alone (`readPosition`, `tasksInFlight`); kept, once the
+//                  conversation leaves its place, while it holds a task in
+//                  flight there, for its tasks alone
 //   left.json      the place the conversation left for the start menu, its
 //                  unit and phase, written as boot drops a position naming a
-//                  phase and gone once a position is recorded again — what
-//                  the board reads to close a unit finished there (D38);
-//                  read here alone (`readLeft`)
+//                  phase, or as the position is left with tasks in flight,
+//                  and gone once a position is recorded again — while it
+//                  stands, the conversation is at no place, whatever
+//                  `position.json` names; what the board reads to close a
+//                  unit finished there (D38); read here alone (`readLeft`)
 //   trust-pending.jsonl
 //                  the trust log's events waiting in the conversation
 //                  (trust-log.cjs): those it could not append, for its next
@@ -228,14 +232,15 @@ function inFlightOf(stored) {
 }
 
 /**
- * The position recorded for the conversation `sessionId`, as its fields
- * read — a task in flight, or an agent id, that does not read as one left
- * out; null where none is recorded, or it names no place. The one read of
- * the file: it loads nothing of position.cjs's, for the hook before Bash,
- * which stands before every shell command (shell-guard.cjs).
+ * The position file of the conversation `sessionId`, as its fields read — a
+ * task in flight, or an agent id, that does not read as one left out; null
+ * where none is recorded, or it names no place — whether or not the
+ * conversation has left that place since. The one read of the file: it
+ * loads nothing of position.cjs's, for the hook before Bash, which stands
+ * before every shell command (shell-guard.cjs).
  * @param {string} sessionId @returns {Position|null}
  */
-function readPosition(sessionId) {
+function storedPosition(sessionId) {
   let stored;
   try {
     stored = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
@@ -254,14 +259,25 @@ function readPosition(sessionId) {
 }
 
 /**
+ * Where the conversation `sessionId` is working, with its tasks in flight
+ * there (`storedPosition`); null where it is at no place — none recorded,
+ * or the place left for the start menu, its tasks in flight kept there.
+ * @param {string} sessionId @returns {Position|null}
+ */
+function readPosition(sessionId) {
+  return fs.existsSync(leftPath(sessionId)) ? null : storedPosition(sessionId);
+}
+
+/**
  * The tasks in flight in the conversation `sessionId`, each with the unit
- * its position names — what the commit door (commit-task.cjs) and the hook
- * before Bash check a commit against, and `verify` attributes a run by
- * (verify.cjs).
+ * its position names, at its place or at the place it left — what the
+ * commit door (commit-task.cjs) and the hook before Bash check a commit
+ * against, `verify` attributes a run by (verify.cjs), and the board reads
+ * for the unit's build.
  * @param {string} sessionId @returns {(InFlight & {unit: string})[]}
  */
 function tasksInFlight(sessionId) {
-  const position = readPosition(sessionId);
+  const position = storedPosition(sessionId);
   if (position === null) return [];
   return (position.tasks ?? []).map((task) => ({ unit: position.name, ...task }));
 }
@@ -533,4 +549,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, positionPath, leftPath, isAgentId, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, positionPath, leftPath, isAgentId, storedPosition, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

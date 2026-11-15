@@ -37,11 +37,16 @@
 // the stop off.
 // They ride with their task and go with it. The start menu is no position:
 // boot drops the calling conversation's own before anything else it does,
-// keeping the place it left where that names a phase, until a position is
-// recorded again; and `session repair` drops it too. A menu's render leaves
-// the conversation as these do (menus.cjs): the start menu and the
-// project's menus beside it drop the position as `session repair` does, and
-// the epic's menu and the roadmap arrive as `session label` does.
+// whatever it answers, keeping the place it left where that names a phase,
+// until a position is recorded again; and `session repair` drops it too. A
+// menu's render leaves the conversation as these do (menus.cjs): the start
+// menu and the project's menus beside it drop the position as `session
+// repair` does, and the epic's menu and the roadmap arrive as `session
+// label` does. Leaving never drops a task in flight: a position holding any
+// is kept for them, at the place left, which `left.json` names, so the
+// conversation is at no place while its builders go on (conversation.cjs) —
+// until each task closes, the position going with the last, or a position
+// is recorded again, which carries them only into the unit's build.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs the workflows: recording a position marks the conversation first
@@ -61,7 +66,7 @@ const path = require('path');
 const { PRODUCT, PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { positionPath, leftPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
+const { positionPath, leftPath, storedPosition, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
@@ -94,6 +99,10 @@ const EPIC_MENU_SKILL = 'leeway-continue-epic';
 /** @typedef {Record<string, unknown>|null} Manifest  a work unit's manifest; null where the project has none */
 
 const POSITION_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on the conversation\'s position' };
+
+/** A write recording where the conversation is, and one changing its tasks in flight alone (`updatePosition`). */
+const ARRIVING = Object.freeze({ arriving: true });
+const TASKS_ALONE = Object.freeze({ arriving: false });
 
 /** Which of a task's agents a dispatch of each agent is. @type {Readonly<Record<string, 'builder'|'reviewers'>>} */
 const SLOTS = Object.freeze({ [ROLES.builder.agent]: 'builder', [ROLES.reviewer.agent]: 'reviewers' });
@@ -137,15 +146,22 @@ function underPositionLock(sessionId, write) {
 /**
  * The conversation `sessionId`'s position changed: read and written whole
  * under its lock, `change` answering the position to write from the one
- * recorded, or null to write nothing. Whether it was written.
- * @param {string} sessionId @param {(prior: Position|null) => Position|null} change @returns {boolean}
+ * recorded — at the place left, where it was left — or null to write
+ * nothing. Whether it was written. An arrival takes the place left away
+ * before it writes, so one cut short never reads as left; a change to the
+ * tasks alone keeps it, and where the place was left, the position goes
+ * with its last task.
+ * @param {string} sessionId @param {(prior: Position|null) => Position|null} change @param {{arriving: boolean}} how
+ * @returns {boolean}
  */
-function updatePosition(sessionId, change) {
+function updatePosition(sessionId, change, { arriving }) {
   return underPositionLock(sessionId, (file) => {
-    const next = change(readPosition(sessionId));
+    const next = change(storedPosition(sessionId));
     if (next === null) return false;
-    writeJsonAtomic(file, next);
-    fs.rmSync(leftPath(sessionId), { force: true });
+    const left = leftPath(sessionId);
+    if (arriving) fs.rmSync(left, { force: true });
+    if (next.tasks === undefined && fs.existsSync(left)) fs.rmSync(file, { force: true });
+    else writeJsonAtomic(file, next);
     return true;
   });
 }
@@ -229,7 +245,7 @@ function recordPosition(cwd, name, phase, topic) {
   if (!own) return;
   /** @type {Position} */
   const position = phase === undefined ? { name } : { name, phase, topic };
-  updatePosition(own, (prior) => (BUILD_PLACES.includes(phase ?? '') ? withTasks(position, tasksAt(prior, position)) : position));
+  updatePosition(own, (prior) => (BUILD_PLACES.includes(phase ?? '') ? withTasks(position, tasksAt(prior, position)) : position), ARRIVING);
 }
 
 /** Tasks in flight with those of `steps` not among them added after, none with an agent yet. @param {InFlight[]} held @param {string[]} steps @returns {InFlight[]} */
@@ -264,7 +280,7 @@ function recordTask(cwd, workUnit, internalId) {
   updatePosition(own, (prior) => {
     const place = startedAt(cwd, prior, workUnit, step);
     return withTasks(place, joined(tasksAt(prior, place), [step]));
-  });
+  }, ARRIVING);
 }
 
 /**
@@ -277,7 +293,7 @@ function recordTasksAt(cwd, workUnit, phase, steps) {
   const own = arrivingConversation(cwd);
   if (!own || steps.length === 0) return;
   const place = { name: workUnit, phase, topic: workUnit };
-  updatePosition(own, (prior) => withTasks(place, joined(tasksAt(prior, place), steps)));
+  updatePosition(own, (prior) => withTasks(place, joined(tasksAt(prior, place), steps)), ARRIVING);
 }
 
 /**
@@ -317,7 +333,7 @@ function recordBuilder(sessionId, agentId, briefId) {
       const held = at === null ? [] : tasksAt(prior, at.place);
       if (at === null || !held.some((t) => t.task === at.task)) return null;
       return withTasks(at.place, held.map((t) => (t.task === at.task ? withAgent(t, at.slot, agentId) : t)));
-    }),
+    }, TASKS_ALONE),
   };
 }
 
@@ -339,7 +355,7 @@ function changeInFlight(sessionId, workUnit, step, change) {
     held = tasks.find((t) => t.task === step) ?? null;
     const changed = held === null ? null : change(held);
     return changed === null ? null : withTasks(place, tasks.map((t) => (t.task === step ? changed : t)));
-  });
+  }, TASKS_ALONE);
   return { held: /** @type {InFlight|null} */ (held), written };
 }
 
@@ -388,30 +404,42 @@ function clearTask(workUnit, internalId) {
     const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit);
     const held = tasksAt(prior, place);
     return held.some((t) => t.task === step) ? withTasks(place, held.filter((t) => t.task !== step)) : null;
-  });
+  }, TASKS_ALONE);
+}
+
+/** The place `position` names left for the start menu, `left.json` naming it. @param {string} sessionId @param {Position} position */
+function leaveFor(sessionId, { name, phase }) {
+  writeJsonAtomic(leftPath(sessionId), { name, phase });
 }
 
 /**
  * The conversation `sessionId` leaves its position for the start menu, the
- * place left kept where it names a phase, else none (conversation.cjs).
+ * place left kept where it names a phase, else none — the position kept for
+ * its tasks in flight where it holds any (conversation.cjs).
  * @param {string|null|undefined} sessionId
  */
 function leavePosition(sessionId) {
   if (!sessionId) return;
   underPositionLock(sessionId, (file) => {
-    const prior = readPosition(sessionId);
+    const prior = storedPosition(sessionId);
     if (prior?.phase === undefined) fs.rmSync(leftPath(sessionId), { force: true });
-    else writeJsonAtomic(leftPath(sessionId), { name: prior.name, phase: prior.phase });
-    fs.rmSync(file, { force: true });
+    else leaveFor(sessionId, prior);
+    if (prior?.tasks === undefined) fs.rmSync(file, { force: true });
     return true;
   });
 }
 
-/** @param {string|null|undefined} sessionId */
+/**
+ * The conversation `sessionId`'s position dropped, the place left as it
+ * stands — but one holding tasks in flight, which is left as boot leaves it.
+ * @param {string|null|undefined} sessionId
+ */
 function dropPosition(sessionId) {
   if (!sessionId) return;
   underPositionLock(sessionId, (file) => {
-    fs.rmSync(file, { force: true });
+    const prior = storedPosition(sessionId);
+    if (prior?.tasks === undefined) fs.rmSync(file, { force: true });
+    else leaveFor(sessionId, prior);
     return true;
   });
 }

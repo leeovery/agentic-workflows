@@ -4,7 +4,9 @@
 // The pipeline simulation's work-unit lifecycle, through manage as the start
 // skill runs it (manage-work-unit.md): a cancel through its confirm and the
 // unit brought back from the closed units, a completed unit with nothing to
-// do to it; a feature pivoted to an epic; a feature absorbed into an epic,
+// do to it; a cancelled unit the person's words name, reached through the
+// start's pick, backing onto the pick and brought back there (SKILL.md,
+// start-menu.md); a feature pivoted to an epic; a feature absorbed into an epic,
 // its epic picked and the absorb confirmed; shared files re-homed by absorb;
 // the environment setup changed from manage's setup row (start-menu.md,
 // environment-setup.md); a driver changed from its drivers row; and the
@@ -112,6 +114,25 @@ describe('pipeline simulation: workunit', () => {
     completeUnit(sim.dir, wu);
     assert.ok(sim.manifest(wu).completed_at, 'complete stamps completed_at');
     assert.deepStrictEqual(Object.keys(closedPicked(sim, wu).rows), ['h', 'b'], 'a completed unit offers nothing to do to it until its reopen is built');
+  });
+
+  it('18.2.15: a cancelled unit the words name, through the start\'s pick — its screen in manage backs onto the pick, and brought back there, the pick is drawn again with the unit to carry on', () => {
+    const wu = 'flip';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Lifecycle', '--session-log-file', sessionLog(sim, wu)]);
+    discussed(sim, wu, wu);
+    sim.run(['workunit', 'cancel', wu]);
+
+    const { go, pick } = sim.run(['boot'], null, wu);
+    const first = drawn(sim, [pick.surface, ...pick.args]);
+    const unit = picked(sim, 'work pick', '1');
+    const again = picked(sim, 'manage unit', 'b');
+    picked(sim, 'work pick', '1');
+    ran(sim, answerGate(sim, 'manage unit', '--pick', 'r').next);
+    sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' });
+    const brought = drawn(sim, [pick.surface, ...pick.args]);
+
+    assert.deepStrictEqual([go, Object.keys(unit.rows), again.rows], ['pick', ['r', 'h', 'b'], first.rows], 'the pick drawn again as the words drew it');
+    assert.deepStrictEqual([sim.manifest(wu).status, brought.rows['1'].kind], ['in-progress', 'invoke'], 'the unit is carried on from the pick once brought back');
   });
 
   it('22.S14: the environment setup changed from manage — s draws it as recorded, a Comment sets the part it changes and draws it again, and its yes goes back to manage', () => {

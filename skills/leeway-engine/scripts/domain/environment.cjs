@@ -43,6 +43,10 @@
 // A part the setup does not hold is none: nothing to run the product with,
 // no step, nothing that cannot run at once, no verify setup, no linter, and
 // the setup not yet asked. One of another shape refuses, naming each fault.
+// What the engine runs from it — the tests, the linters and the steps — is
+// none until the person's yes confirms the setup, so what Claude found and
+// recorded for the screen runs nowhere before it; until then a quick-fix
+// runs the tests and linters it finds (22.5.7, 22.5.10, brief-records.cjs).
 // ---------------------------------------------------------------------------
 
 const path = require('path');
@@ -222,16 +226,31 @@ function partIn(environment, part) {
   return value;
 }
 
-/** The project's linters, in the setup's order; none where it records none. @param {string} cwd @returns {Linter[]} */
-const linters = (cwd) => partIn(recordedSetup(cwd), 'linters');
+/** Whether the person's yes has yet to confirm the setup `environment` (the header's). @param {Record<string, unknown>|undefined} environment */
+const unconfirmed = (environment) => partIn(environment, 'confirmed') === null;
 
-/** The command that runs the project's tests, or null where the setup records none. @param {string} cwd @returns {string|null} */
+/**
+ * A part the engine runs commands from, read whether or not confirmed, and
+ * none until the person's yes has confirmed the setup.
+ * @param {string} cwd @param {'linters'|'prepare'} part @returns {any}
+ */
+function confirmedPart(cwd, part) {
+  const environment = recordedSetup(cwd);
+  const value = partIn(environment, part);
+  return unconfirmed(environment) ? PARTS[part].none : value;
+}
+
+/** The project's linters, in the setup's order; none where it records none, or is not confirmed. @param {string} cwd @returns {Linter[]} */
+const linters = (cwd) => confirmedPart(cwd, 'linters');
+
+/** The command that runs the project's tests, or null where the setup records none, or is not confirmed. @param {string} cwd @returns {string|null} */
 function tests(cwd) {
-  const run = recordedSetup(cwd)?.run;
+  const environment = recordedSetup(cwd);
+  const run = environment?.run;
   const recorded = isObject(run) ? run.tests : run === undefined ? undefined : null;
   if (recorded === undefined) return null;
   if (!filled(recorded)) throw new Error('the project manifest\'s environment.run.tests is not a command');
-  return recorded;
+  return unconfirmed(environment) ? null : recorded;
 }
 
 /** The project's verify setup, or null where none is recorded. @param {string} cwd @returns {VerifySetup|null} */
@@ -246,12 +265,13 @@ const confirmedAt = (cwd) => partIn(recordedSetup(cwd), 'confirmed');
 /**
  * The steps the engine runs `at` — `first`, before the build's first task,
  * or `worktree`, in each worktree a task runs in — those for both among
- * them, in the setup's order; a note is never one.
+ * them, in the setup's order; a note is never one, and none runs before the
+ * setup is confirmed.
  * @param {string} cwd @param {'first'|'worktree'} at @returns {Command[]}
  */
 function stepsAt(cwd, at) {
   /** @type {Step[]} */
-  const steps = partIn(recordedSetup(cwd), 'prepare');
+  const steps = confirmedPart(cwd, 'prepare');
   return steps.flatMap((step) => ((step.when === at || step.when === 'both') && 'command' in step ? [{ name: step.name, command: step.command }] : []));
 }
 

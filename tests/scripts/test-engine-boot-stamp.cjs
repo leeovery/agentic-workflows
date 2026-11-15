@@ -33,7 +33,7 @@ const {
   call, callAsync, ok, refusedPristine, fixtureFrom, git, commitAll, createFile, stateGit, stampBooted, killedAt,
   failingStateCommits, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked,
 } = require('./engine-harness.cjs');
-const { useTempFolder } = require('./discovery-test-utils.cjs');
+const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { COMMANDS, BOOT_EXEMPT } = require('../../skills/leeway-engine/scripts/engine.cjs');
 const { highestMigration } = require('../../skills/leeway-migrate/scripts/migration-ids.cjs');
 
@@ -97,6 +97,18 @@ describe('boot\'s stamp (22.1.7)', () => {
     assert.ok(Date.parse(at) >= before && Date.parse(at) <= Date.now() && new Date(at).toISOString() === at, `stamped at the instant boot ran, as an ISO instant: ${at}`);
   });
 
+  it('boot stamps Claude\'s entry as it does the bare command, whatever the words answer — routed, or a pick among the work they could mean — and a command that touches work goes on under it', () => {
+    createManifest(dir, 'search', { status: 'completed' });
+    commitAll(dir, 'a closed unit');
+
+    const entries = [['routed', 'make the header blue'], ['picked', 'search']].map(([session, words]) => {
+      const as = { ...env, CLAUDE_CODE_SESSION_ID: session };
+      return [ok(dir, ['boot'], { env: as, stdin: words, unbooted: true }).go, refusedUnbooted(call(dir, WORK, { env: as, unbooted: true }))];
+    });
+
+    assert.deepStrictEqual(entries, [['route', false], ['pick', false]]);
+  });
+
   it('boot from a linked worktree stamps the main checkout\'s entry, and a command from the main checkout, a folder inside it and the worktree goes on under it', () => {
     const linked = path.join(folder(), 'linked');
     git(dir, ['worktree', 'add', '-q', '-b', 'side', linked]);
@@ -157,7 +169,7 @@ describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
       boot: '*',
       'state-merge': ['pick'],
       render: [
-        'git-floor-stop', 'repo-stop', 'state-lost-gate', 'migration-guard-stop', 'migration-checks-stop', 'state-merge-gate', 'migration-taken-stop', 'directive-stop', 'migrations-applied', 'migration-gate',
+        'git-floor-stop', 'repo-stop', 'state-lost-gate', 'migration-guard-stop', 'migration-checks-stop', 'state-merge-gate', 'migration-taken-stop', 'migrations-applied', 'migration-gate',
         'walkthrough-offer', 'walkthrough-screen', 'walkthrough-home', 'walkthrough-topics', 'walkthrough-topic', 'help',
       ],
       gate: ['state lost gate', 'state merge gate', 'migration gate'],

@@ -14,6 +14,13 @@ export const MARKER = 'workflow'
 /** The file the engine keeps the conversation's position in. */
 export const POSITION = 'position.json'
 
+/**
+ * The file the engine names the place the conversation left for the start
+ * menu in: while it stands, the conversation is at no place, whatever the
+ * position still holds for its tasks in flight.
+ */
+export const LEFT = 'left.json'
+
 /** The engine, where a project installs it, from the project's root. */
 export const ENGINE = '.claude/skills/leeway-engine/scripts/engine.cjs'
 

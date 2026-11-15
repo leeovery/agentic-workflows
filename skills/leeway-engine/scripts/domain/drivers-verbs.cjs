@@ -2,16 +2,18 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the drivers' verbs and screens (22.4) — `drivers check`,
-// `drivers set <task|landing> <name>`, `render drivers` and `render
-// drivers-stop` — over the drivers the project's setting names, or each
-// kind's default where none is set (drivers.cjs).
+// `drivers set <task|landing> <name>`, `render drivers`, and the stop ready
+// to build draws in its screen's place — over the drivers the project's
+// setting names, or each kind's default where none is set (drivers.cjs).
 //
 // - The check reads the project's driver of each kind as things stand,
 //   writing nothing, and how each tool it needs stands (`toolStates`):
 //   missing, older than its floor, failing, or fine. A driver with a tool
 //   not fine stops ready to build (`driversStop`), at its screen and again
 //   at its yes, so a tool gone while the screen waited still stops it
-//   (22.4.5–22.4.9, 7.2.10); a driver needing nothing never stops it.
+//   (22.4.5–22.4.9, 7.2.10); a driver needing nothing never stops it. The
+//   stop names changing a driver only where another of its kind serves the
+//   project (`projectDrivers`).
 // - `set` writes the project's setting for one kind, under the project
 //   manifest's lock, and commits it alone, pushed (`drivers: the {kind}
 //   driver is {name}`); run again where its write stands, it commits what a
@@ -22,8 +24,7 @@
 //   whose tracker holds its tasks (`tasksBegun`) — naming each, since a
 //   build never changes driver under it (22.4.3). Its next draws the
 //   drivers again.
-// - `render drivers` draws the menu manage's d/drivers opens; `render
-//   drivers-stop` the stop, refused where nothing stops.
+// - `render drivers` draws the menu manage's d/drivers opens.
 // ---------------------------------------------------------------------------
 
 const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
@@ -67,13 +68,16 @@ function driversCheck(cwd) {
 /** Each driver of the check with a tool not fine. @param {DriverCheck[]} checks */
 const stoppingOf = (checks) => checks.filter(({ tools }) => tools.some(({ state }) => state !== 'fine'));
 
+/** Whether another driver of the check's kind serves the project (the header's). @param {string} cwd @param {DriverCheck} check */
+const changeable = (cwd, { kind, driver }) => projectDrivers(cwd, kind).some((each) => each.serves && each.driver.name !== driver);
+
 /**
  * What stops ready to build in the drivers' check — its screen, and the
  * stop in one line — or null where nothing does.
  * @param {string} cwd @returns {{screen: () => string, reason: string}|null}
  */
 function driversStop(cwd) {
-  const stopping = stoppingOf(driversCheck(cwd));
+  const stopping = stoppingOf(driversCheck(cwd)).map((check) => ({ ...check, changeable: changeable(cwd, check) }));
   if (stopping.length === 0) return null;
   const project = projectName(cwd);
   return { screen: () => driversStopScreen(project, stopping), reason: driversStopReason(project, stopping) };
@@ -144,24 +148,11 @@ function runDriversVerb(cwd, verb, args) {
  * @param {string} cwd @returns {string}
  */
 function driversSurface(cwd) {
-  return refusing('render drivers', () => drawMenu(cwd, MENUS.drivers, {}, driversScreen(DRIVER_KINDS.map((kind) => ({
+  return refusing('render drivers', () => drawMenu(cwd, MENUS.drivers, {}, driversScreen(projectName(cwd), DRIVER_KINDS.map((kind) => ({
     kind,
     using: chosenDriver(cwd, kind).driver.name,
     installed: projectDrivers(cwd, kind).map(({ driver, serves }) => ({ name: driver.name, title: driver.title, serves })),
   })))));
 }
 
-/**
- * `render drivers-stop`: the stop at ready to build, refused where nothing
- * stops it.
- * @param {string} cwd @returns {string}
- */
-function driversStopSurface(cwd) {
-  return refusing('render drivers-stop', () => {
-    const stop = driversStop(cwd);
-    if (stop === null) throw new Error('every tool the drivers need is here — nothing stops ready to build');
-    return stop.screen();
-  });
-}
-
-module.exports = { DRIVERS_USAGE, runDriversVerb, driversStop, driversSurface, driversStopSurface };
+module.exports = { DRIVERS_USAGE, runDriversVerb, driversStop, driversSurface };

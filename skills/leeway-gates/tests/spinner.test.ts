@@ -115,6 +115,13 @@ function world(
         files.delete(`${folderOf(sessionId)}/position.json`)
       }
     },
+    /** The engine's calls that move the position, each leaving the place it names for the start menu, the position kept for its tasks in flight. */
+    leaves() {
+      moves = () => {
+        const { name, phase } = JSON.parse(files.get(`${folderOf(sessionId)}/position.json`) ?? '{}') as Position
+        files.set(`${folderOf(sessionId)}/left.json`, JSON.stringify({ name, phase }))
+      }
+    },
     resumesAs(id: string) {
       sessionId = id
     },
@@ -245,6 +252,18 @@ describe('the spinner', () => {
       expect([counts.reads, counts.invalidations]).toEqual([2, 1])
     })
   }
+
+  test('leaving for the start menu with a task still in flight gives the word back to Claude Code, the position kept for the task unread', async ($, on) => {
+    const { counts, leaves } = world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'pay', tasks: inFlight('3.1') } } })
+
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 3.1…')
+
+    leaves()
+    await $.tool.call({ tool: 'Bash', command: `${ENGINE} boot` })
+
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Sauteing…')
+    expect([counts.reads, counts.invalidations]).toEqual([1, 1])
+  })
 
   test('at the review phase, a fix task in flight by its number, several by their count', async ($, on) => {
     const { places } = world(on, { positions: { s0: { name: 'pay', phase: 'review', topic: 'pay', tasks: inFlight('3.1') } } })

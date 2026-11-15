@@ -4,10 +4,11 @@
 // Ready to build's drivers' check (leeway-engine/scripts/domain/
 // ready-to-build.cjs over domain/drivers-verbs.cjs), over the drivers that
 // ship, read from their declarations, so no tool is named here (7.1.10):
-// the drivers checked against the tools they need at the screen, after the
-// environment setup, the stop drawn in the screen's place where a tool is
-// not fine (22.4.5–22.4.9, 7.2.10), and again at the yes, so a tool gone
-// while the screen waited still stops the build (O20); and the yes writing
+// the drivers checked against the tools they need at the screen and again
+// at the yes, each after the environment setup, the stop drawn in the
+// screen's place where a tool is not fine (22.4.5–22.4.9, 7.2.10), a change
+// of driver named only where another serves the project, and a tool gone
+// while the screen waited still stopping the build (O20); and the yes writing
 // each driver's setting the project lacks, as the first verb needing it
 // would (22.4.3, F7). The stop's every wording is
 // test-engine-drivers-verbs.cjs's; each shipped driver's tools missing,
@@ -41,12 +42,13 @@ const flagged = (kind) => /** @type {Driver} */ (listDrivers(kind).find((driver)
 const TASK = flagged('task');
 const LANDING = flagged('landing');
 
-/** The task driver's stop, its every tool not installed. */
+/** The task driver's stop, its every tool not installed, and whether another task driver serves a project with no remote. */
 const TASK_MISSING = Object.freeze([{
   kind: /** @type {const} */ ('task'),
   driver: TASK.name,
   title: TASK.title,
   tools: TASK.needs.map(({ tool, label, floor, update }) => ({ tool, label, floor, update, found: null, state: /** @type {const} */ ('missing') })),
+  changeable: listDrivers('task').some((driver) => driver !== TASK && !('assertServes' in driver)),
 }]);
 
 const dir = useReadyWorld(closed, 'lantern');
@@ -87,12 +89,15 @@ describe('the drivers checked at ready to build (22.4.5–22.4.9)', () => {
     assert.strictEqual(readManifest(dir(), UNIT).build, undefined);
   });
 
-  it('22.5.3: the environment setup comes first — where it is not recorded, the screen is refused for it before the drivers are checked', { skip: TASK.needs.length === 0 }, () => {
+  it('22.5.3: the environment setup comes first — where it is not recorded, the screen and the yes are each refused for it before the drivers are checked', { skip: TASK.needs.length === 0 }, () => {
     setEnvironment(dir(), undefined);
     commitAll(dir(), 'the environment setup never asked');
+    const open = 'ready-to-build has items open since its close: environment-recorded — they are worked, and it is closed again';
 
-    assert.strictEqual(refusedPristine(dir(), ['render', 'ready-to-build', UNIT], { env: withoutTools() }).error,
-      'render ready-to-build: ready-to-build has items open since its close: environment-recorded — they are worked, and it is closed again');
+    assert.deepStrictEqual([
+      refusedPristine(dir(), ['render', 'ready-to-build', UNIT], { env: withoutTools() }).error,
+      refusedPristine(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: withoutTools() }).error,
+    ], [`render ready-to-build: ${open}`, `ready-to-build yes: ${open}`]);
   });
 });
 

@@ -24,7 +24,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, fixtureFrom, cleanupFixture,
+  ok, refuses, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, fixtureFrom, cleanupFixture, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
@@ -171,7 +171,7 @@ const world = fixtureFrom('brief-build-', (dir) => {
   createManifest(dir, 'draft', { cut: CUT });
   for (const unit of [UNIT, 'draft']) writeState(dir, layout.unit(unit, SPEC_FILE), SPEC);
   const project = JSON.parse(readState(dir, layout.projectManifest));
-  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS, verify: VERIFY } }, null, 2));
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS, verify: VERIFY, confirmed: FROZEN_AT } }, null, 2));
   fs.writeFileSync(path.join(dir, '.gitignore'), `${NESTED}/\n`);
   fs.mkdirSync(path.join(dir, 'verify'));
   fs.writeFileSync(path.join(dir, 'verify', 'mutate.sh'), MUTATE);
