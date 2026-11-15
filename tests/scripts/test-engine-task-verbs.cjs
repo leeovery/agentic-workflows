@@ -15,7 +15,10 @@
 // saying so; a tool missing or failing named; a task numbered after its
 // phase's highest, a quick-fix's referencing no spec, its fix 1.n naming
 // its scenarios n.S1 and on; the tasks in flight on the conversation's
-// position, and `task stopped`, a builder's stop held against one; and the
+// position — done and close taking off it first every task of the unit the
+// tracker holds ended, one another conversation took over and finished, or
+// one a done killed once the tracker moved — and `task stopped`, a
+// builder's stop held against one; and the
 // writer lock around every verb, reads included. What a driver does
 // with a task is the conformance suite's.
 //
@@ -35,7 +38,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip, accountTaken, toolless,
+  ok, refuses, refusedPristine, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip, accountTaken, toolless, killedAt,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -50,6 +53,8 @@ const { trackedPhases } = require(path.join(SCRIPTS, 'domain/task-verbs.cjs'));
 const UNIT = 'pay';
 const SESSION_ID = 'task-verbs-session';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION_ID });
+/** A second conversation, building beside the first. */
+const OTHER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'task-verbs-other' });
 const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
 /** The default driver's side of the suite. */
 const SIDE = require(path.join(__dirname, '..', 'drivers', DRIVER.name, 'task.cjs'));
@@ -480,7 +485,7 @@ describe('the phases a build phase\'s brief reads (12.5, 12.11.2)', () => {
 describe('task start, done and close: the tasks in flight (6.3.3, 7.1.12)', () => {
   beforeEach(() => {
     dir = inFolder(phasedWorld);
-    fs.rmSync(conversationDir(SESSION_ID), { recursive: true, force: true });
+    for (const { CLAUDE_CODE_SESSION_ID } of [SESSION, OTHER]) fs.rmSync(conversationDir(CLAUDE_CODE_SESSION_ID), { recursive: true, force: true });
   });
 
   const position = () => readPosition(SESSION_ID);
@@ -537,6 +542,28 @@ describe('task start, done and close: the tasks in flight (6.3.3, 7.1.12)', () =
       'task stopped: task 1.2 of pay is not in flight in this conversation — a stop is recorded for a task this conversation builds',
       held,
     ]);
+  });
+
+  it('a take-over: another conversation took a task over and finished it, so this one\'s close of its own last takes both off, leaving none in flight', () => {
+    for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], { env: SESSION });
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: OTHER });
+    accountTaken(dir, UNIT, '1.2');
+    ok(dir, ['task', 'done', UNIT, '1.2'], { env: OTHER });
+
+    ok(dir, ['task', 'close', UNIT, '1.1', '--reason', 'The old ledger already writes it.'], { env: SESSION });
+
+    assert.deepStrictEqual([position(), readPosition(OTHER.CLAUDE_CODE_SESSION_ID)], [{ name: UNIT, phase: 'implementation', topic: UNIT }, { name: UNIT, phase: 'implementation', topic: UNIT }]);
+  });
+
+  it('a done killed once the tracker moved, before the position\'s write: run again, it refuses the task done and takes it off, the other task kept', () => {
+    for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], { env: SESSION });
+    accountTaken(dir, UNIT, '1.1');
+    killedAt({ method: 'renameSync', file: 'position.json', when: 'before' }, dir, ['task', 'done', UNIT, '1.1'], { env: SESSION });
+    const killed = [ok(dir, ['task', 'show', UNIT, '1.1']).status, position().tasks];
+
+    const again = refuses(dir, ['task', 'done', UNIT, '1.1'], { env: SESSION }).error;
+
+    assert.deepStrictEqual([killed, again, position().tasks], [['done', [fresh('1.1'), fresh('1.2')]], 'task 1.1 is done — only a task not yet ended is done', [fresh('1.2')]]);
   });
 
   it('task close ends the task without it being done, its reason kept, and takes it off the position', () => {

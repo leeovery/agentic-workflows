@@ -135,7 +135,7 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual([sim.manifest(wu).status, brought.rows['1'].kind], ['in-progress', 'invoke'], 'the unit is carried on from the pick once brought back');
   });
 
-  it('22.S14: the environment setup changed from manage — s draws it as recorded, a Comment sets the part it changes and draws it again, and its yes goes back to manage', () => {
+  it('22.S14: the environment setup changed from manage — s draws it as recorded, a Comment sets the part it changes and draws it again, and its yes records the person\'s yes and goes back to manage', () => {
     const wu = 'flip';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Lifecycle', '--session-log-file', sessionLog(sim, wu)]);
     const linters = [{ name: 'eslint', command: 'npx eslint .' }];
@@ -147,10 +147,12 @@ describe('pipeline simulation: workunit', () => {
     sim.read(['environment', 'show']);
     sim.run(['environment', 'set', 'linters'], null, JSON.stringify(linters));
     const again = drawn(sim, ['environment-setup', '--from', 'manage']);
-    const back = picked(sim, 'manage setup', 'y');
+    const kept = sim.run(/** @type {string[]} */ (answerGate(sim, 'manage setup', '--pick', 'y').next.argv));
+    const back = drawn(sim, kept.next.argv.slice(1));
 
     assert.deepStrictEqual([sectionOf(setup.out, 'DISPLAY: environment setup').includes('LINTERS\n  · None recorded'), again.out.includes('  · eslint — npx eslint .')], [true, true]);
-    assert.deepStrictEqual([JSON.parse(sim.read(['environment', 'show'])).linters, Object.values(back.rows).some((next) => next.argv?.[2] === wu)], [linters, true], 'the linters recorded, and manage drawn again with the unit');
+    const recorded = JSON.parse(sim.read(['environment', 'show']));
+    assert.deepStrictEqual([recorded.linters, recorded.confirmed === kept.confirmed && kept.confirmed !== null, Object.values(back.rows).some((next) => next.argv?.[2] === wu)], [linters, true, true], 'the linters recorded and confirmed, and manage drawn again with the unit');
   });
 
   it('22.S11, 7.S18: a driver changed from manage — on a project whose remote is on GitHub, out of reach, d draws the drivers, a number sets the one it names, and the drivers are drawn again with it in use', () => {

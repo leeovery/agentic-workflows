@@ -10,11 +10,13 @@
 // its brief was issued for, riding with that task alone, two recorded at
 // once both standing (24.2.4, 13.3.3, 12.S21) — the tracker's `task start`
 // and `task done` on the position are test-engine-task-verbs.cjs's; the
-// start menu's repair dropping it, a record racing the last task's close
-// at the place left never bringing it back, and boot's leaving it, the place it left kept until a position is
-// recorded again — a position holding tasks in flight kept for them at the
-// place left, the conversation at no place, until each closes or the build
-// is entered again; and `conversation position`,
+// unit's tasks riding with every arrival in the unit and none at other
+// work; the start menu's repair dropping it, a record racing the last
+// task's close at the place left never bringing it back, and boot's leaving
+// it, the place it left kept until a position is recorded again — a
+// position holding tasks in flight kept for them at the place left, the
+// conversation at no place, until each closes, the build is entered again
+// or a task starts; and `conversation position`,
 // which answers what to re-read to carry on there: the skill that runs the
 // work, then the topic's documents this project has, each by its absolute
 // path under the project root, as the note a compaction hands up and one line
@@ -240,6 +242,14 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     return ok(['conversation', 'builder', sessionId, agentId, '--brief', brief], null);
   }
 
+  /** Pay's phase 1 written with `count` tasks, as the tracker holds them. @param {number} count */
+  function tracked(count) {
+    ok(['task', 'phase', 'pay', '1', '--title', 'Ledger']);
+    const file = write('task.md', '# Keep the ledger\n\n## Type\nfeat\n\n## Problem\nA.\n\n## Solution\nB.\n\n## Outcome\nC.\n\n## Acceptance scenarios\n- Given a, when b, then c.\n\n## Spec reference\n§1\n');
+    for (let n = 1; n <= count; n += 1) ok(['task', 'create', 'pay', '1', '--file', abs(file)], `create-${n}`);
+    fs.rmSync(abs(file));
+  }
+
   /** The conversation in the unit's build, on task 1.1, its builder recorded. */
   function onTask() {
     writePosition({ ...BUILD, tasks: [fresh('1.1')] });
@@ -271,7 +281,7 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     assert.deepStrictEqual(position().tasks, [{ task: '1.1', builder: 'b9', reviewers: ['r1', 'r2'] }, fresh('1.2')]);
   });
 
-  it('records nothing where its brief names no task in flight at its unit\'s build — never issued here, another agent\'s, a task not in flight, another unit\'s, a topic\'s implementation, no position, another place', () => {
+  it('records nothing where its brief names no task in flight on the position — never issued here, another agent\'s, a task not in flight, another unit\'s, no position, and the conversation at other work', () => {
     writePosition({ ...BUILD, tasks: [fresh('1.1')] });
     issue('B12', 'builder', '1.2');
     issue('REF', 'builder', '1.1', 'refunds');
@@ -281,17 +291,10 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     for (const brief of ['NOPE', 'B12', 'REF', 'DIVE']) assert.deepStrictEqual(dispatched('a1', brief), { ok: true, recorded: false }, brief);
     assert.deepStrictEqual(position(), before);
 
-    writePosition({ name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [fresh('1.1')] }, 'sess-2');
-    issue('B11', 'builder', '1.1', 'pay', 'sess-2');
-    assert.deepStrictEqual(dispatched('a1', 'B11', 'sess-2'), { ok: true, recorded: false }, 'a task of that number in a topic\'s implementation');
     assert.deepStrictEqual(dispatched('a1', 'B11', 'sess-none'), { ok: true, recorded: false });
     assert.strictEqual(position('sess-none'), null);
-    for (const place of [['pay', 'discussion', 'ledger'], ['pay']]) {
-      ok(['session', 'label', ...place]);
-      const at = position();
-      assert.deepStrictEqual(dispatched('a1', 'B11'), { ok: true, recorded: false }, place.join(' '));
-      assert.deepStrictEqual(position(), at, place.join(' '));
-    }
+    ok(['session', 'label', 'roadmap']);
+    assert.deepStrictEqual([dispatched('a1', 'B11'), position()], [{ ok: true, recorded: false }, { name: 'roadmap' }]);
   });
 
   it('records on the conversation it names, never the calling one', () => {
@@ -305,10 +308,7 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
   });
 
   it('a task\'s agents ride with it: task start re-run keeps them, another task starts beside it with none, and its close takes them off with it', () => {
-    ok(['task', 'phase', 'pay', '1', '--title', 'Ledger']);
-    const file = write('task.md', '# Keep the ledger\n\n## Type\nfeat\n\n## Problem\nA.\n\n## Solution\nB.\n\n## Outcome\nC.\n\n## Acceptance scenarios\n- Given a, when b, then c.\n\n## Spec reference\n§1\n');
-    for (const n of [1, 2]) ok(['task', 'create', 'pay', '1', '--file', abs(file)], `create-${n}`);
-    fs.rmSync(abs(file));
+    tracked(2);
     writePosition({ ...BUILD, tasks: [{ task: '1.1', builder: AGENT, reviewers: ['r1', 'r2'] }] });
     const [held] = position().tasks;
     ok(['task', 'start', 'pay', '1.1']);
@@ -319,21 +319,28 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     assert.deepStrictEqual(position().tasks, [fresh('1.2')]);
   });
 
-  it('a re-label of the unit\'s build keeps them; arriving anywhere else leaves none behind', () => {
+  it('arriving anywhere in the unit keeps them, their agents with them — its build again, the epic\'s menu, a topic\'s discussion; arriving at other work leaves none behind — another unit, a project place', () => {
+    workUnit('refunds', 'feature');
     onTask();
-    ok(['session', 'label', 'pay', 'implementation', 'pay']);
-    assert.strictEqual(position().tasks[0].builder, AGENT);
-    ok(['session', 'label', 'pay']);
-    assert.deepStrictEqual(position(), { name: 'pay' });
-    ok(['session', 'label', 'pay', 'implementation', 'pay']);
-    assert.deepStrictEqual(position(), BUILD, 'no task until task start');
+    const { tasks } = position();
+    const arrived = (/** @type {string[]} */ place) => {
+      ok(['session', 'label', ...place]);
+      return position();
+    };
+
+    const inUnit = [['pay', 'implementation', 'pay'], ['pay'], ['pay', 'discussion', 'ledger']].map(arrived);
+    const elsewhere = [['refunds', 'discussion', 'refunds'], ['roadmap']].map((place) => {
+      writePosition({ ...BUILD, tasks });
+      return arrived(place);
+    });
+
+    assert.strictEqual(tasks[0].builder, AGENT);
+    assert.deepStrictEqual(inUnit, [{ ...BUILD, tasks }, { name: 'pay', tasks }, { name: 'pay', phase: 'discussion', topic: 'ledger', tasks }]);
+    assert.deepStrictEqual(elsewhere, [{ name: 'refunds', phase: 'discussion', topic: 'refunds' }, { name: 'roadmap' }]);
   });
 
   it('24.2.4: the bare command\'s boot leaves the build for the start menu keeping its tasks for their builders, at the place left — the conversation at no place, nothing carried on, a reviewer still recorded — and a re-label of the build carries them back with their agents; left again, the last task\'s close takes the position with it', () => {
-    ok(['task', 'phase', 'pay', '1', '--title', 'Ledger']);
-    const file = write('task.md', '# Keep the ledger\n\n## Type\nfeat\n\n## Problem\nA.\n\n## Solution\nB.\n\n## Outcome\nC.\n\n## Acceptance scenarios\n- Given a, when b, then c.\n\n## Spec reference\n§1\n');
-    ok(['task', 'create', 'pay', '1', '--file', abs(file)]);
-    fs.rmSync(abs(file));
+    tracked(1);
     const built = { task: '1.1', builder: AGENT, reviewers: [] };
     const atBuild = { name: 'pay', phase: 'implementation' };
     writePosition({ ...BUILD, tasks: [built] });
@@ -353,6 +360,18 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
       [{ ...BUILD, tasks: [{ ...built, reviewers: ['r1'] }] }, null],
       [null, atBuild],
     ]);
+  });
+
+  it('a task start at the start menu — a builder\'s report handled there — is a position recorded again: the place left taken away, the conversation back in the build with its tasks', () => {
+    tracked(2);
+    const built = { task: '1.1', builder: AGENT, reviewers: [] };
+    writePosition({ ...BUILD, tasks: [built] });
+    ok(['boot']);
+    const atMenu = left();
+
+    ok(['task', 'start', 'pay', '1.2']);
+
+    assert.deepStrictEqual([atMenu, left(), position()], [{ name: 'pay', phase: 'implementation' }, null, { ...BUILD, tasks: [built, fresh('1.2')] }]);
   });
 
   it('refuses an agent id that is not one, a brief id that is not one or none, a missing argument and an extra one, recording nothing', () => {

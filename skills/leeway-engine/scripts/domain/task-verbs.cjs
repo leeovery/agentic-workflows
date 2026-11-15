@@ -57,7 +57,10 @@
 // clean as it stops holding it — a park sets its work aside, and done and
 // close refuse while the checkout holds changes not committed — so any
 // change there is the holder's. Done and close take a task off the
-// position, each first
+// position, each first taking off it every task of the unit the tracker
+// holds ended — one another conversation ended, or its own verb killed
+// once the tracker moved, so the verb run again finishes — before it
+// refuses or answers, then
 // taking the task's worktree apart (6.3.3, 24.2.4); done refuses a task a
 // question waiting parks, and a bugfix's reproducing task until its test's
 // series proves the bug (bug-proven.cjs, 15.5.3); close ends a task without
@@ -122,7 +125,8 @@ const { ignoreInState, withIgnored } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = require('./task-file.cjs');
-const { recordTask, clearTask, recordStop } = require('./position.cjs');
+const { recordTask, clearTask, clearTasks, recordStop } = require('./position.cjs');
+const { tasksInFlight } = require('./conversation.cjs');
 const { phaseStarted, cutLength, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
@@ -192,6 +196,21 @@ function refuseEnded(driver, root, ref, rule) {
   const task = taskIn(driver, root, ref);
   if (ENDED.includes(task.status)) throw new TaskRefusal(`task ${shownTask(ref)} is ${task.status} — ${rule}`);
   return task;
+}
+
+/**
+ * `refuseEnded` for an ending verb, every task of the unit on the calling
+ * conversation's position the tracker holds ended taken off it first (the
+ * header's).
+ * @param {string} cwd @param {TaskRef} ref @param {string} rule
+ */
+function refuseEnding(cwd, ref, rule) {
+  withTracker(cwd, ref.unit, null, (driver, root) => {
+    const session = handedSession();
+    const held = session === null ? [] : tasksInFlight(session).filter(({ unit }) => unit === ref.unit);
+    clearTasks(ref.unit, held.filter(({ task }) => ENDED.includes(driver.show(root, parseShownTask(ref.unit, task))?.status ?? '')).map(({ task }) => task));
+    return refuseEnded(driver, root, ref, rule);
+  });
 }
 
 /**
@@ -978,7 +997,7 @@ const doneTask = moving('done', (_cwd, driver, root, ref) => {
   refuseEnded(driver, root, ref, DONE_RULE);
   driver.done(root, ref);
 }, (cwd, ref, verb) => {
-  withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, DONE_RULE));
+  refuseEnding(cwd, ref, DONE_RULE);
   fixEnd().refuseUndone(cwd, ref, `task ${verb}`);
   account().refuseUnaccounted(cwd, ref, `task ${verb}`);
   refuseLeftDirty(cwd, ref, 'done', `task ${verb}`);
@@ -1000,6 +1019,7 @@ const closing = (refuseHeld, then = () => ({})) => moving('close', (cwd, driver,
   driver.close(root, ref, reason);
   return fixEnd().closedRecord(cwd, ref);
 }, (cwd, ref, verb) => {
+  refuseEnding(cwd, ref, CLOSE_RULE);
   const kept = reproducingClose(loadWorkUnitManifest(cwd, ref.unit), ref);
   if (kept !== null) throw new Error(`task ${verb}: ${kept}`);
   refuseHeld(cwd, ref, `task ${verb}`);

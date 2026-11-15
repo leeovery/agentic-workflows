@@ -130,17 +130,19 @@ beforeEach(() => {
 afterEach(() => cleanupFixture(dir));
 
 describe('commit --task: the task in flight (6.S8)', () => {
-  it('6.S8: T in flight in this conversation — the commit lands with Claude\'s message, then the trailer naming T, and answers the task and the checks run, none where the person has not confirmed the setup recording them (22.5.7)', () => {
+  it('6.S8: T in flight in this conversation — the commit lands with Claude\'s message, then the trailer naming T, and answers the task and the checks run, none where the person has not confirmed the setup recording them (22.5.7) — and once the setup is kept from manage, its checks run', () => {
     createFile(dir, 'src/left.js', 'const left = 1;\n');
     setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }] });
 
     const res = ok(dir, commitArgs(), as(BUILDING));
+    const first = { sha: codeHead(dir), message: git(dir, ['log', '-1', '--format=%B']), trailer: git(dir, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']), marked: marked(dir) };
+    ok(dir, ['environment', 'confirm', '--from', 'manage'], as(BUILDING));
+    createFile(dir, 'src/card.js', 'const card = 3;\n');
+    const kept = ok(dir, commitArgs(), as(BUILDING)).checks;
 
-    assert.deepStrictEqual([res, marked(dir)], [{ ok: true, committed: [{ repo: '.', sha: codeHead(dir) }], left_dirty: ['src/left.js'], task: 'pay-1-1', checks: [] }, '']);
-    assert.deepStrictEqual(
-      [git(dir, ['log', '-1', '--format=%B']), git(dir, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)'])],
-      [`${MESSAGE}\n\nLeeway-Task: pay-1-1\n\n`, 'pay-1-1\n\n'],
-    );
+    assert.deepStrictEqual([res, first.marked], [{ ok: true, committed: [{ repo: '.', sha: first.sha }], left_dirty: ['src/left.js'], task: 'pay-1-1', checks: [] }, '']);
+    assert.deepStrictEqual([first.message, first.trailer], [`${MESSAGE}\n\nLeeway-Task: pay-1-1\n\n`, 'pay-1-1\n\n']);
+    assert.deepStrictEqual(kept, [{ name: 'tests', exit: 0 }, { name: 'eslint', exit: 0 }]);
   });
 
   it('joins the trailers Claude\'s message ends in, as git adds one, so git reads them all', () => {

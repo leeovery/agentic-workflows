@@ -99,7 +99,7 @@ function question(asks, project) {
 /** The gate: at the first ready to build, recording the setup; from manage, keeping it. @param {SetupView} view */
 function setupGate({ project, manage }) {
   const gate = manage
-    ? { name: 'manage setup', statement: 'The verify setup changes only through the task that builds it.', yes: 'Keep it — back to manage', next: ['render', 'manage'], asks: 'Keep this setup' }
+    ? { name: 'manage setup', statement: 'The verify setup changes only through the task that builds it.', yes: 'Keep it — back to manage', next: ['environment', 'confirm', '--from', 'manage'], asks: 'Keep this setup' }
     : { name: 'environment setup', statement: 'Asked once, at the first ready to build.', yes: 'Record it — change it later from manage', next: ['environment', 'confirm'], asks: 'Record this setup' };
   return section(`MENU: ${gate.name}`, MENU_INSTRUCTION, menu(gate.statement, [
     cmdOption('y', 'yes', gate.yes, { next: { kind: 'engine', argv: gate.next } }),

@@ -19,17 +19,19 @@
 // builds (14.3.2). The tracker's `task start` adds one where the
 // conversation is at either of the unit's, the place kept, else at the
 // unit's review for a task of one of its fix phases and its implementation
-// for any other, and its `task done` and `task close` take it off
-// (task-verbs.cjs); an entry into either puts the tasks another
-// conversation left in flight there, as the conversation arrives
-// (build-entry.cjs). A `task start` re-run for a task already in flight
-// keeps it as it stands; a re-label of the same place keeps them all, a move
-// between the unit's implementation and its review phase carries them, and
-// any other place leaves none. The gate mod's `conversation builder`
-// records the agent id of a builder or a reviewer it saw dispatched against
-// the task its brief was issued for (brief-names.cjs), only while that task
-// is in flight: the builder's replacing any before it, each reviewer's
-// joining the pair the later rounds go back to (13.3.3). `task worktree`
+// for any other, and its `task done` and `task close` take it off, with
+// every other of the unit's the tracker holds ended (task-verbs.cjs); an
+// entry into either puts the tasks another conversation left in flight
+// there, as the conversation arrives, and keeps only those the tracker
+// holds neither done nor closed (build-entry.cjs). A `task start` re-run for
+// a task already in flight keeps it as it stands; an arrival anywhere in
+// the same unit carries them all — the epic's menu on the way back into its
+// build among it — and an arrival at other work leaves none. The gate mod's
+// `conversation builder` records the agent id of a builder or a reviewer
+// it saw dispatched against the task its brief was issued for
+// (brief-names.cjs), only while that task is in flight: the builder's
+// replacing any before it, each reviewer's joining the pair the later
+// rounds go back to (13.3.3). `task worktree`
 // records the worktree it laid out for a task in flight (task-worktree.cjs),
 // and `task stopped` when its builder stopped, unable to build past a
 // problem (task-verbs.cjs), its first stop kept; the task's next builder's
@@ -46,7 +48,7 @@
 // is kept for them, at the place left, which `left.json` names, so the
 // conversation is at no place while its builders go on (conversation.cjs) —
 // until each task closes, the position going with the last, or a position
-// is recorded again, which carries them only into the unit's build.
+// is recorded again, which carries them only to a place of the same unit.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs the workflows: recording a position marks the conversation first
@@ -220,14 +222,26 @@ function isPlace(cwd, name, phase, topic) {
 }
 
 /**
- * The tasks in flight a position holds at `place` — at either of a unit's
- * build places for the other, which its tasks ride between; none where it
- * is elsewhere.
- * @param {Position|null} prior @param {Position} place @returns {InFlight[]}
+ * The unit's tasks in flight a position holds, wherever in the unit it
+ * stands (the header's); none at other work.
+ * @param {Position|null} prior @param {string} workUnit @returns {InFlight[]}
  */
-function tasksAt(prior, place) {
-  if (prior === null || prior.name !== place.name || prior.topic !== place.topic) return [];
-  return prior.phase === place.phase || (inBuild(prior) && inBuild(place)) ? prior.tasks ?? [] : [];
+const unitTasks = (prior, workUnit) => (prior !== null && prior.name === workUnit ? prior.tasks ?? [] : []);
+
+/** The place a position stands at, its tasks aside. @param {Position} position @returns {Position} */
+const placeOf = ({ tasks: _tasks, ...place }) => place;
+
+/**
+ * The position with the unit's tasks in flight changed, at the place it
+ * stands: `change` answers the tasks to keep from those it holds, or null
+ * to write nothing; null where it holds none of the unit's.
+ * @param {Position|null} prior @param {string} workUnit @param {(held: InFlight[]) => InFlight[]|null} change
+ * @returns {Position|null}
+ */
+function withUnitTasks(prior, workUnit, change) {
+  const held = unitTasks(prior, workUnit);
+  const changed = held.length === 0 ? null : change(held);
+  return prior === null || changed === null ? null : withTasks(placeOf(prior), changed);
 }
 
 /** The plan step an internal id ends in, `{phase}.{task}`. @param {string} internalId @returns {string|null} */
@@ -245,7 +259,7 @@ function recordPosition(cwd, name, phase, topic) {
   if (!own) return;
   /** @type {Position} */
   const position = phase === undefined ? { name } : { name, phase, topic };
-  updatePosition(own, (prior) => (BUILD_PLACES.includes(phase ?? '') ? withTasks(position, tasksAt(prior, position)) : position), ARRIVING);
+  updatePosition(own, (prior) => withTasks(position, unitTasks(prior, name)), ARRIVING);
 }
 
 /** Tasks in flight with those of `steps` not among them added after, none with an agent yet. @param {InFlight[]} held @param {string[]} steps @returns {InFlight[]} */
@@ -277,37 +291,39 @@ function recordTask(cwd, workUnit, internalId) {
   const own = arrivingConversation(cwd);
   const step = taskStep(internalId);
   if (!own || step === null || !isPlace(cwd, workUnit, 'implementation', workUnit)) return;
-  updatePosition(own, (prior) => {
-    const place = startedAt(cwd, prior, workUnit, step);
-    return withTasks(place, joined(tasksAt(prior, place), [step]));
-  }, ARRIVING);
+  updatePosition(own, (prior) => withTasks(startedAt(cwd, prior, workUnit, step), joined(unitTasks(prior, workUnit), [step])), ARRIVING);
 }
 
 /**
  * Record the tasks an entry into the unit's build or its review phase puts
- * in flight on the calling conversation, at that place, beside those there
- * — each kept as it stands where it is one of them (build-entry.cjs).
- * @param {string} cwd @param {string} workUnit @param {'implementation'|'review'} phase @param {string[]} steps each `{phase}.{n}`
+ * in flight on the calling conversation, at that place, beside those the
+ * position holds of the unit but those of `ended` — each kept as it stands
+ * where it is one of them (build-entry.cjs).
+ * @param {string} cwd @param {string} workUnit @param {'implementation'|'review'} phase @param {string[]} steps each `{phase}.{n}` @param {string[]} ended each `{phase}.{n}`
  */
-function recordTasksAt(cwd, workUnit, phase, steps) {
+function recordTasksAt(cwd, workUnit, phase, steps, ended) {
   const own = arrivingConversation(cwd);
-  if (!own || steps.length === 0) return;
+  if (!own) return;
   const place = { name: workUnit, phase, topic: workUnit };
-  updatePosition(own, (prior) => withTasks(place, joined(tasksAt(prior, place), steps)), ARRIVING);
+  updatePosition(own, (prior) => {
+    const held = unitTasks(prior, workUnit);
+    const going = held.filter((t) => !ended.includes(t.task));
+    return steps.length === 0 && going.length === held.length ? null : withTasks(place, joined(going, steps));
+  }, ARRIVING);
 }
 
 /**
- * Where a dispatch's agent goes on the position: the task it is for, at the
- * place that task is in flight, and which of the task's agents it is — the
- * task its brief was issued for, a builder's or a reviewer's by the agent
- * it was issued for. Null where it goes nowhere.
- * @param {string} sessionId @param {Position|null} prior @param {string} briefId
- * @returns {{place: Position, task: string, slot: 'builder'|'reviewers'}|null}
+ * Where a dispatch's agent goes on the position: the unit and the task it
+ * is for, and which of the task's agents it is — the task its brief was
+ * issued for, a builder's or a reviewer's by the agent it was issued for.
+ * Null where it goes nowhere.
+ * @param {string} sessionId @param {string} briefId
+ * @returns {{unit: string, task: string, slot: 'builder'|'reviewers'}|null}
  */
-function dispatchedFor(sessionId, prior, briefId) {
+function dispatchedFor(sessionId, briefId) {
   const issued = issuedOf(sessionId, briefId);
   if (issued === null || !Object.hasOwn(SLOTS, issued.agent) || issued.unit === null || issued.task === null) return null;
-  return { place: buildPlaceOf(prior, issued.unit) ?? implementationOf(issued.unit), task: issued.task, slot: SLOTS[issued.agent] };
+  return { unit: issued.unit, task: issued.task, slot: SLOTS[issued.agent] };
 }
 
 /**
@@ -329,10 +345,8 @@ function withAgent(task, slot, agentId) {
 function recordBuilder(sessionId, agentId, briefId) {
   return {
     recorded: updatePosition(sessionId, (prior) => {
-      const at = dispatchedFor(sessionId, prior, briefId);
-      const held = at === null ? [] : tasksAt(prior, at.place);
-      if (at === null || !held.some((t) => t.task === at.task)) return null;
-      return withTasks(at.place, held.map((t) => (t.task === at.task ? withAgent(t, at.slot, agentId) : t)));
+      const at = dispatchedFor(sessionId, briefId);
+      return at === null ? null : withUnitTasks(prior, at.unit, (held) => (held.some((t) => t.task === at.task) ? held.map((t) => (t.task === at.task ? withAgent(t, at.slot, agentId) : t)) : null));
     }, TASKS_ALONE),
   };
 }
@@ -349,13 +363,11 @@ function recordBuilder(sessionId, agentId, briefId) {
 function changeInFlight(sessionId, workUnit, step, change) {
   /** @type {InFlight|null} */
   let held = null;
-  const written = updatePosition(sessionId, (prior) => {
-    const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit);
-    const tasks = tasksAt(prior, place);
+  const written = updatePosition(sessionId, (prior) => withUnitTasks(prior, workUnit, (tasks) => {
     held = tasks.find((t) => t.task === step) ?? null;
     const changed = held === null ? null : change(held);
-    return changed === null ? null : withTasks(place, tasks.map((t) => (t.task === step ? changed : t)));
-  }, TASKS_ALONE);
+    return changed === null ? null : tasks.map((t) => (t.task === step ? changed : t));
+  }), TASKS_ALONE);
   return { held: /** @type {InFlight|null} */ (held), written };
 }
 
@@ -392,19 +404,20 @@ function clearStop(sessionId, workUnit, step) {
 }
 
 /**
- * Take a task that ended off the position, its agents with it — only the
- * one it names, where the unit's tasks are in flight.
- * @param {string} workUnit @param {string} internalId
+ * Take the unit's tasks that ended off the position, their agents with
+ * them — only those of `steps` in flight there.
+ * @param {string} workUnit @param {string[]} steps each `{phase}.{n}`
  */
-function clearTask(workUnit, internalId) {
+function clearTasks(workUnit, steps) {
   const own = ownConversation();
-  if (!own) return;
+  if (!own || steps.length === 0) return;
+  updatePosition(own, (prior) => withUnitTasks(prior, workUnit, (held) => (held.some((t) => steps.includes(t.task)) ? held.filter((t) => !steps.includes(t.task)) : null)), TASKS_ALONE);
+}
+
+/** Take a task that ended off the position, its agents with it (`clearTasks`). @param {string} workUnit @param {string} internalId */
+function clearTask(workUnit, internalId) {
   const step = taskStep(internalId);
-  updatePosition(own, (prior) => {
-    const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit);
-    const held = tasksAt(prior, place);
-    return held.some((t) => t.task === step) ? withTasks(place, held.filter((t) => t.task !== step)) : null;
-  }, TASKS_ALONE);
+  if (step !== null) clearTasks(workUnit, [step]);
 }
 
 /** The place `position` names left for the start menu, `left.json` naming it. @param {string} sessionId @param {Position} position */
@@ -812,6 +825,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, leavePosition, dropPosition,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition,
   placeLine, skillAt, positionReads, positionSections,
 };

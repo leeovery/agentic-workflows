@@ -18,7 +18,9 @@
 //   that does not read, naming each fault.
 // - `confirm` records the person's yes at the setup's screen (22.5.3):
 //   `confirmed`, the instant, which ready to build's checklist reads
-//   (checklist.cjs). Run again, it keeps the instant held.
+//   (checklist.cjs). Run again, it keeps the instant held. From manage
+//   (`--from manage`), the yes that keeps the setup, it records the same
+//   where none is held, and draws manage again next.
 // - `concurrency add <unit> "<what>"` records what the unit's build learned
 //   cannot run at once (12.7.4, 22.5.6), once: one recorded already, by any
 //   unit, is answered as it stands.
@@ -30,8 +32,8 @@
 //
 // `render environment-setup [--from manage]` draws the setup's screen as the
 // setup stands (projections/environment-setup.cjs): at the first ready to
-// build, its gate's yes `environment confirm`; from manage, its yes back to
-// manage.
+// build, its gate's yes `environment confirm`; from manage, its yes
+// `environment confirm --from manage`, back to manage.
 // ---------------------------------------------------------------------------
 
 const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
@@ -53,9 +55,12 @@ const SET_PARTS = Object.freeze(/** @type {const} */ (['run', 'prepare', 'concur
 const ENVIRONMENT_USAGE = [
   'environment show',
   `environment set <${SET_PARTS.join('|')}>   (the part's JSON on stdin)`,
-  'environment confirm',
+  'environment confirm [--from manage]',
   'environment concurrency add <work-unit> "<what>"',
 ].join('\n');
+
+/** `confirm`'s words after the verb from manage, whose next draws manage again. */
+const FROM_MANAGE = '--from manage';
 
 /** @returns {never} */
 function usage() {
@@ -128,10 +133,15 @@ function setPart(cwd, part, text) {
   return written(cwd, (environment) => ({ ...environment, [part]: recorded }), `${part} set`, { part, value: recorded });
 }
 
-/** `environment confirm`: the person's yes recorded, an instant held kept. @param {string} cwd */
-function confirm(cwd) {
+/**
+ * `environment confirm [--from manage]`: the person's yes recorded, an
+ * instant held kept; from manage, manage drawn again next.
+ * @param {string} cwd @param {boolean} fromManage
+ */
+function confirm(cwd, fromManage) {
   const confirmed = setupOf(cwd).confirmed ?? isoNow();
-  return written(cwd, (environment) => ({ ...environment, confirmed }), 'confirmed', { confirmed });
+  const next = fromManage ? { next: { kind: 'engine', argv: ['render', 'manage'] } } : {};
+  return written(cwd, (environment) => ({ ...environment, confirmed }), 'confirmed', { confirmed, ...next });
 }
 
 /**
@@ -153,7 +163,7 @@ function addConcurrency(cwd, unit, what) {
 const VERBS = Object.freeze({
   show: { takes: 0, run: (cwd) => ({ ...setupOf(cwd) }) },
   set: { takes: 1, run: (cwd, [part], stdin) => setPart(cwd, part, stdin()) },
-  confirm: { takes: 0, run: (cwd) => confirm(cwd) },
+  confirm: { takes: 0, run: (cwd) => confirm(cwd, false) },
   concurrency: {
     takes: 3,
     run: (cwd, [verb, unit, what]) => {
@@ -170,6 +180,7 @@ const VERBS = Object.freeze({
  * @returns {Record<string, unknown>}
  */
 function runEnvironmentVerb(cwd, verb, args, stdin) {
+  if (verb === 'confirm' && args.join(' ') === FROM_MANAGE) return refusing('environment confirm', () => confirm(cwd, true));
   const taken = verb !== undefined && Object.hasOwn(VERBS, verb) ? VERBS[verb] : null;
   if (taken === null || args.length !== taken.takes || args.some((arg) => arg.startsWith('--'))) usage();
   const said = verb === 'concurrency' ? 'environment concurrency add' : `environment ${verb}`;

@@ -194,10 +194,17 @@ describe('render environment-setup (22.5.7, 22.5.8)', () => {
     assert.deepStrictEqual([next, typeof recorded().confirmed], [{ kind: 'engine', argv: ['environment', 'confirm'] }, 'string']);
   });
 
-  it('22.S14: from manage, its yes keeps the setup and goes back to manage', () => {
+  it('22.S14: from manage, its yes keeps the setup, recording the person\'s yes where none is held, an instant held kept, and goes back to manage', () => {
+    holding({ linters: [{ name: 'gofmt', command: 'gofmt -l .' }] });
     drawn(['--from', 'manage'], 'manage setup');
     const { next } = ok(dir, ['gate', 'manage setup', '--pick', 'y'], { env: ENV });
-    assert.deepStrictEqual(next, { kind: 'engine', argv: ['render', 'manage'] });
+    const kept = withFrozenClock(() => ok(dir, next.argv, { env: ENV }));
+    const again = ok(dir, next.argv, { env: ENV });
+
+    assert.deepStrictEqual(next, { kind: 'engine', argv: ['environment', 'confirm', '--from', 'manage'] });
+    assert.deepStrictEqual([kept.confirmed, kept.next, recorded()], [NOW, { kind: 'engine', argv: ['render', 'manage'] }, { linters: [{ name: 'gofmt', command: 'gofmt -l .' }], confirmed: NOW }]);
+    assert.deepStrictEqual([again.confirmed, again.committed, again.next], [NOW, null, kept.next]);
+    assert.match(refusedPristine(dir, ['environment', 'confirm', '--from', 'roadmap'], { env: ENV }).error, /^Usage: engine environment show \| /);
   });
 
   it('refuses drawing it from anywhere but manage, and a setup that does not read', () => {

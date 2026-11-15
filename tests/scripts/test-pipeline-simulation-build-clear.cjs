@@ -16,6 +16,8 @@
 // there, then a new builder sent its brief for the account and the account
 // taken. A /clear once it is taken: the entry, and the reviewer's refusal,
 // naming its landing, and the task landed (24.2.4, 12.1.4, 13.4.5, 12.14).
+// Then the first conversation resumed: the task a later one landed off its
+// position as it enters, no line naming it.
 //
 // Layer: simulation. World: this file's own, built once on the named world
 // `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
@@ -75,7 +77,8 @@ describe('pipeline simulation: the build across /clears', () => {
   /** The reports of round `round` of task 1.1, as a line names them. @param {number} round */
   const reportsOf = (round) => ['a', 'b'].map((letter) => `\`${path.join(sim.dir, `.leeway/${WU}/build/tasks/1.1/round-${round}-${letter}.md`)}\``).join(' and ');
 
-  it('24.2.4, 12.1.4, 13.4.5, 12.14: a /clear mid-fix, while the pair reads, between a pass and its account, and once it is taken — each line in flight naming where the task goes, a new builder briefed before any fix brief, a report that does not read back to its reviewer, the pass\'s nit fixed in the worktree the line names before the account, and the task landed', () => {
+  it('24.2.4, 12.1.4, 13.4.5, 12.14: a /clear mid-fix, while the pair reads, between a pass and its account, and once it is taken — each line in flight naming where the task goes, a new builder briefed before any fix brief, a report that does not read back to its reviewer, the pass\'s nit fixed in the worktree the line names before the account, and the task landed; the first conversation, resumed, carrying it no more', () => {
+    const opened = sim.env.CLAUDE_CODE_SESSION_ID;
     sim.run(['task', 'start', WU, '1.1']);
     const builder = loop.brief(['builder', WU, '1.1']);
     const first = loop.isolated('1.1');
@@ -128,5 +131,11 @@ describe('pipeline simulation: the build across /clears', () => {
     sim.render(['task-landed', WU, '1.1'], { expect: 'content' });
     sim.refuses(['render', 'step-gate', WU, '1.1'], /builds in auto, where no gate follows a task/);
     assert.deepStrictEqual(loop.landedTask('1.1')?.argv, ['verify', 'mutants', WU, '1']);
+
+    // The first conversation resumed past every /clear: the task a later
+    // one landed is off its position as it enters, and no line names it.
+    sim.env = { ...sim.env, CLAUDE_CODE_SESSION_ID: opened };
+    sim.run(['enter', 'implementation', WU]);
+    assert.ok(!sim.sections.includes('in flight: '), sim.sections);
   });
 });
