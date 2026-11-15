@@ -108,9 +108,8 @@ const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
 const { ontoMenu } = require('./topic-leave.cjs');
-const { recordedBranch, defaultBranch } = require('./landing-git.cjs');
-const { remoteName } = require('./remote.cjs');
-const { codeRoot } = require('../kernel/code-root.cjs');
+const { recordedBranch } = require('./landing-git.cjs');
+const { projectDefault } = require('./task-base.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -234,7 +233,7 @@ function carryingAll(warnings, read) {
  */
 function landsAt(cwd, unit) {
   const branch = recordedBranch(cwd, unit);
-  return branch === null ? null : { branch, into: defaultBranch(codeRoot(cwd), remoteName(cwd), false) };
+  return branch === null ? null : { branch, into: projectDefault(cwd) };
 }
 
 /**
@@ -323,7 +322,7 @@ function landStanding(cwd, unit, standing) {
   const { warnings, fixes } = standing;
   return carryingAll(warnings, () => {
     refuseLanding(cwd, unit, standing);
-    const landed = finishMerge(cwd, unit);
+    const landed = finishMerge(cwd, unit, 'say yes at finish again');
     if (fixes === null) return landed;
     const checkout = checkOutLanding(cwd, unit);
     return checkout === null ? landed : { ...landed, checkout };

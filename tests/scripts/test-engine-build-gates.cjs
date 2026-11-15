@@ -137,7 +137,7 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
     assert.strictEqual(sectionOf(screen(['phase-merge-gate', UNIT, '1']), 'MENU: phase merge — 1').split('\n')[1], `Phase 1, "Cards", is ready to merge: its tasks land on feat/${UNIT} as one stack.`);
   });
 
-  it('a phase of the review\'s fixes, named for its round, stops once its tasks are done, and is refused before and once it has merged, writing nothing', () => {
+  it('a phase of the review\'s fixes, named for its round, stops once its tasks are done, and is refused before and once it has merged — naming where its tasks are, the unit\'s own branch for a unit with one — writing nothing', () => {
     accountTaken(dir, UNIT, '1.1');
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
     fixPhase(['Mask the reprint']);
@@ -147,10 +147,14 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
     ok(dir, ['task', 'done', UNIT, '4.1'], { env: env() });
     const ready = screen(['phase-merge-gate', UNIT, '4']);
     git(dir, ['commit', '-q', '--allow-empty', '-m', `fix(${UNIT}): landed`, '-m', `Task: ${UNIT}-4-1`]);
+    const merged = refused(['phase-merge-gate', UNIT, '4']);
+    git(dir, ['branch', `feat/${UNIT}`, 'main']);
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { ...readManifest(dir, UNIT).build, branch: `feat/${UNIT}` } });
 
-    assert.deepStrictEqual([before, refused(['phase-merge-gate', UNIT, '4'])], [
+    assert.deepStrictEqual([before, merged, refused(['phase-merge-gate', UNIT, '4'])], [
       'render phase-merge-gate: phase 4 of pay merges once its tasks are done — task 4.1 is in progress',
       'render phase-merge-gate: phase 4 of pay is merged already — its tasks are on the default branch',
+      `render phase-merge-gate: phase 4 of pay is merged already — its tasks are on feat/${UNIT}`,
     ]);
     assert.match(ready, /Phase 4, "the review's fixes, round 1", is ready to merge/);
   });

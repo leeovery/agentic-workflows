@@ -12,9 +12,11 @@
 // parent, never another unit's between or after them nor a commit naming
 // no task, then its work not landed from where it leaves the base; for a
 // unit with a branch of its own, that branch against the base from where
-// they last met, a merge's settlement onto it among it (14.1.6) — the
-// scratch worktree's layout, the area's scenarios' runs at the change's
-// tips, the linters, and where the reviewer's report goes; the test
+// they last met, here or as last fetched, whichever is later, a merge's
+// settlement onto it among it, then its work not landed from where it
+// leaves that branch, a later round's entry bringing nothing in (14.1.6) —
+// the scratch worktree's layout, the area's scenarios' runs at the
+// change's tips, the linters, and where the reviewer's report goes; the test
 // surface's, `brief test-surface <unit> --base <branch>` — every scenario
 // of the spec, the commits, the layout, the linters and its one report
 // (14.2.4); each area its pair's two reports and the tests one, in the
@@ -195,6 +197,48 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
       '```\n src/own.js    | 1 +\n src/shared.js | 1 +\n 2 files changed, 2 insertions(+)\n```',
     ].join('\n\n'));
     assert.ok(brief.includes(`# Laying out your scratch worktree\n\n- the project's repository: \`${branch}\` — the change's tip there\n`), brief);
+  });
+
+  it('14.S18: a unit with a branch of its own whose base here is behind the base as last fetched reads that branch from where it met the fetched one', () => {
+    const branch = `feat/${UNIT}`;
+    git(dir, ['switch', '-q', '-c', branch]);
+    commitFile(dir, 'src/own.js');
+    git(dir, ['switch', '-q', 'main']);
+    const behind = mainCommit();
+    commitFile(dir, 'src/shared.js');
+    git(dir, ['switch', '-q', branch]);
+    git(dir, ['merge', '-q', '--no-ff', '-m', `Merge main into ${branch}`, 'main']);
+    git(dir, ['switch', '-q', 'main']);
+    git(dir, ['remote', 'add', 'origin', path.join(path.dirname(dir), 'nowhere.git')]);
+    git(dir, ['update-ref', 'refs/remotes/origin/main', 'main']);
+    git(dir, ['reset', '-q', '--hard', behind]);
+    const held = readManifest(dir, UNIT);
+    createManifest(dir, UNIT, { ...held, build: { ...held.build, branch } });
+
+    assert.strictEqual(sectionIn(areaReview('1').brief, 'The change\'s commits'), [
+      '## In the project\'s repository', `### The unit's branch against main: \`${short(dir, 'origin/main')}..${branch}\``, statOf('src/own.js'),
+    ].join('\n\n'));
+  });
+
+  it('14.S18: a later round of a unit with a branch of its own brings nothing in as it is entered, main moved since, and reads its fix task\'s work not landed from where it leaves that branch', () => {
+    const branch = `feat/${UNIT}`;
+    git(dir, ['switch', '-q', '-c', branch]);
+    commitFile(dir, 'src/own.js');
+    git(dir, ['switch', '-q', 'main']);
+    const held = readManifest(dir, UNIT);
+    createManifest(dir, UNIT, { ...held, build: { ...held.build, branch } });
+    firstRoundReady();
+    recorded({ can_now: [], findings: [RECEIPT] });
+    fixBuilt(3, 1, 'Send the receipt', branch, 'src/send.js');
+    commitFile(dir, 'src/later.js');
+    const before = git(dir, ['rev-parse', branch]).trim();
+    enter();
+    named(['1-cards']);
+    const fix = fixBranch(3, 1, 'Send the receipt');
+
+    assert.deepStrictEqual([git(dir, ['rev-parse', branch]).trim(), sectionIn(areaReview('1').brief, 'The change\'s commits')], [before, [
+      '## In the project\'s repository', `### The unit's branch against main: \`${short(dir, 'main~1')}..${branch}\``, statOf('src/own.js'), `### Not landed yet: \`${short(dir, branch)}..${fix}\``, statOf('src/send.js'),
+    ].join('\n\n')]);
   });
 });
 

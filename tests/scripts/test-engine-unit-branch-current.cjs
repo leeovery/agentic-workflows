@@ -3,18 +3,22 @@
 // ---------------------------------------------------------------------------
 // A unit's own branch kept current (7.2.36; leeway-engine/scripts/domain/
 // unit-branch.cjs, `bringUp`, through checklist.cjs and review-entry.cjs):
-// each later phase start's close brings the default branch, as the driver
-// lands it — never a commit here the host lacks — into `feat/{unit}` by a
-// merge commit whose first parent is the unit's branch, pushed where the
-// driver lands through a host, then moved here — nothing where the branch
-// holds the default branch already, and a merge even where the default
-// branch holds the branch's tip, as after a reopen (E7). A conflict
-// refuses the close, nothing moved or recorded, the merge begun in a
-// worktree it names, every land verb waiting on it; once settled there the
-// close takes it, bringing in on top what the default branch gained since.
-// A step killed after its bring-up, or after its settlement reached the
-// branch, is finished by the next, nothing made twice; a checkout holding
-// changes the move would touch refuses before anything is pushed. The
+// each later phase start's close, once nothing else refuses it, brings the
+// default branch, as the driver lands it — never a commit here the host
+// lacks — into `feat/{unit}` by a merge commit whose first parent is the
+// unit's branch as the driver lands it, a commit merged onto it on the
+// host's site unfetched among it, pushed where the driver lands through a
+// host, then moved here — nothing where the branch holds the default
+// branch already, and a merge even where the default branch holds the
+// branch's tip, as after a reopen (E7). A conflict refuses the close,
+// nothing moved or recorded, the merge begun in a worktree it names, every
+// land verb waiting on it, and begun again where its folder is gone; once
+// settled and finished there the close takes it, bringing in on top what
+// the default branch gained since — refusing it not finished, and where
+// the branch moved past it since. A step killed after its bring-up, or
+// after its settlement reached the branch, is finished by the next,
+// nothing made twice; a checkout holding changes the move would touch
+// refuses before anything is pushed. The
 // review phase's first round brings the default branch in and opens the
 // unit's own pull request where the driver lands through a host, a later
 // entry bringing nothing in, and one killed before its snapshot finished
@@ -23,7 +27,7 @@
 // change, test-engine-brief-review.cjs's; a phase's stack still merging
 // over a bring-up, test-engine-landing-conformance-unit.cjs's; finish's
 // conflict, test-engine-landing-conformance-unit-finish.cjs's; a submodule's
-// pointer, test-engine-unit-branch-nested.cjs's.
+// pointer, test-engine-landing-conformance-nested.cjs's.
 // Conformance layer: the landing world (landing-world.cjs,
 // `unitBranchLanded`), its unit's build begun through a cut of five phases
 // and its first phase's start closed, `feat/pay` made, phase 1's task 1.1
@@ -58,7 +62,8 @@ for (const { name } of listDrivers('landing')) {
   /**
    * @type {{
    *   env: Record<string, string|undefined>, on: (dir: string) => string, pushed: (dir: string, into?: string) => void, holds: (dir: string, into?: string) => string[],
-   *   unitPullOpen: (dir: string) => {base: string, title: string, body: string}[]|null,
+   *   unitPullOpen: (dir: string) => {base: string, title: string, body: string}[]|null, squashedHere: (dir: string, branch: string, into?: string) => void,
+   *   mergedOnHost: ((dir: string, branch: string, method: 'merge'|'squash'|'rebase', pulled: boolean, into?: string) => boolean)|null,
    * }}
    */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
@@ -109,33 +114,49 @@ for (const { name } of listDrivers('landing')) {
       return tip(tree, 'HEAD');
     };
 
+    /** Task 1.2 cut from feat/pay and opened onto it. @param {string} at */
+    const totalOpened = (at) => {
+      commitFiles(at, total.branch, BRANCH, total.files);
+      ok(at, openArgs(total));
+    };
+
+    /** Task 1.2 squashed onto feat/pay by hand — on the host's site where the driver lands through one, this clone not fetched since, else here: feat/pay's tip where the driver lands it. @param {string} at */
+    const totalSquashed = (at) => {
+      if (side.mergedOnHost === null) side.squashedHere(at, total.branch, BRANCH);
+      else side.mergedOnHost(at, total.branch, 'squash', false, BRANCH);
+      return tip(side.on(at), BRANCH);
+    };
+
     /** The refusal of the default branch conflicting with feat/pay at card.txt, the merge begun, the way on `then`. @param {string} at @param {string} so @param {string} then */
     const conflict = (at, so, then) => `${theirs(at)} conflicts with ${BRANCH} at card.txt, so ${theirs(at)} was not brought into ${BRANCH} and ${so} — the merge is begun at ${mergeTree(at)}, a worktree of its own: `
       + `settle each conflict there and finish the merge, as \`git -C ${mergeTree(at)} -c core.editor=true merge --continue\` does once they are, then ${then}, which takes it onto ${BRANCH}; every land verb in the repository waits on it until then, a quick-fix's among them`;
 
-    it('a later phase\'s start brings the default branch into feat/pay by a merge commit whose first parent is feat/pay, where the driver lands it and here, nothing moving where feat/pay holds it already; the default branch holds none of phase 1\'s work (7.S40)', () => {
+    it('a later phase\'s start brings the default branch into feat/pay by a merge commit whose first parent is feat/pay, where the driver lands it and here, nothing moving where feat/pay holds it already, nor before the start\'s items are done; the default branch holds none of phase 1\'s work (7.S40)', () => {
       const at = project();
       const landed = tip(side.on(at), BRANCH);
       startClosed(at, 2, side.env);
       const still = standing(at);
       const main = mainMoves(at, 'other.txt', 'other\n');
+      const early = [refusedPristine(at, ['checklist', 'close', 'phase-start', UNIT, '3'], { env: side.env }).error, standing(at)];
       startClosed(at, 3, side.env);
       const merged = tip(side.on(at), BRANCH);
 
-      assert.deepStrictEqual({ still, made: madeOf(side.on(at), merged), here: tip(at, BRANCH), card: side.holds(at).includes('card.txt') }, {
-        still: { here: landed, there: landed }, made: [`${landed} ${main}`, `Merge main into ${BRANCH}`], here: merged, card: false,
+      assert.deepStrictEqual({ still, early, made: madeOf(side.on(at), merged), here: tip(at, BRANCH), card: side.holds(at).includes('card.txt') }, {
+        still: { here: landed, there: landed }, early: ['checklist close: phase-3-start has items open: design-settled', still], made: [`${landed} ${main}`, `Merge main into ${BRANCH}`], here: merged, card: false,
       });
     });
 
-    it('the default branch is read as the driver lands it: a commit here the host lacks is never brought into feat/pay where it lands through a host, and is where the repository lands in itself (7.2.36)', () => {
+    it('the default branch and feat/pay are read as the driver lands them: a commit here the host lacks is never brought into feat/pay where it lands through a host, and is where the repository lands in itself; a task merged onto feat/pay on the host\'s site, this clone not fetched since, is the merge\'s first parent (7.2.36)', () => {
       const at = project();
-      const landed = tip(side.on(at), BRANCH);
+      totalOpened(at);
+      const merged = totalSquashed(at);
+      const main = mainMoves(at, 'other.txt', 'other\n');
       createFile(at, 'unpushed.txt', 'mine\n');
       commitCode(at, 'Write what I have not pushed');
       startClosed(at, 2, side.env);
       const itself = side.on(at) === at;
 
-      assert.deepStrictEqual([tip(side.on(at), BRANCH) !== landed, side.holds(at, BRANCH).includes('unpushed.txt')], [itself, itself]);
+      assert.deepStrictEqual([madeOf(side.on(at), tip(side.on(at), BRANCH))[0], side.holds(at, BRANCH).includes('unpushed.txt')], [`${merged} ${itself ? tip(at, 'main') : main}`, itself]);
     });
 
     it('a conflict refuses the close, nothing moved or recorded, naming the path and the worktree holding the merge begun; every land verb waits on it, and closing again before it is settled is refused, naming what still conflicts (7.S41)', () => {
@@ -148,15 +169,39 @@ for (const { name } of listDrivers('landing')) {
       commitFiles(at, total.branch, BRANCH, total.files);
       const waits = refuses(at, openArgs(total)).error;
       const again = refusedPristine(at, ['checklist', 'close', 'phase-start', UNIT, '2'], { env: side.env }).error;
+      git(mergeTree(at), ['checkout', '-q', '--ours', 'card.txt']);
+      git(mergeTree(at), ['add', 'card.txt']);
+      const unfinished = refusedPristine(at, ['checklist', 'close', 'phase-start', UNIT, '2'], { env: side.env }).error;
+      fs.rmSync(mergeTree(at), { recursive: true, force: true });
+      const begun = refusedPristine(at, ['checklist', 'close', 'phase-start', UNIT, '2'], { env: side.env }).error;
 
-      assert.deepStrictEqual({ refused, after, held, waits, again }, {
+      assert.deepStrictEqual({ refused, after, held, waits, again, unfinished, begun }, {
         refused: `checklist close: ${conflict(at, 'nothing was recorded', 'close phase 2\'s start again')}`,
         after: before,
         held: { merging: main, conflicted: 'card.txt' },
-        waits: `land: a merge of the default branch into a unit's own branch is held at ${mergeTree(at)}, a worktree its phase's start, its review's entry or its finish began, so nothing moved — `
-          + `settle each conflict there and finish the merge, as \`git -C ${mergeTree(at)} -c core.editor=true merge --continue\` does once they are, then run again what began it, which takes it onto that branch, and land again`,
+        waits: `land: the merge of the default branch into ${BRANCH} is held at ${mergeTree(at)}, so nothing moved — `
+          + `settle each conflict there and finish the merge, as \`git -C ${mergeTree(at)} -c core.editor=true merge --continue\` does once they are, then close phase 2's start again, which takes it onto ${BRANCH}, and land again`,
         again: `checklist close: the merge into ${BRANCH} begun at ${mergeTree(at)} still conflicts at card.txt, so nothing moved — settle each conflict there and finish the merge, as \`git -C ${mergeTree(at)} -c core.editor=true merge --continue\` does once they are, then close phase 2's start again`,
+        unfinished: `checklist close: the merge into ${BRANCH} begun at ${mergeTree(at)} is not finished, so nothing moved — settle each conflict there and finish the merge, as \`git -C ${mergeTree(at)} -c core.editor=true merge --continue\` does once they are, then close phase 2's start again`,
+        begun: refused,
       });
+    });
+
+    it('a merge settled in its worktree that feat/pay moved past since — a task merged onto it by hand — is refused by the close run again, nothing moved, naming how to take the worktree apart, the way on closing again, which begins the merge again (7.S41)', () => {
+      const at = project();
+      totalOpened(at);
+      mainMoves(at, 'card.txt', 'card, rewritten\n');
+      refusedClose(at, 2);
+      const settlement = settled(at);
+      const squashed = totalSquashed(at);
+      const moved = standing(at);
+      const refused = refusedPristine(at, ['checklist', 'close', 'phase-start', UNIT, '2'], { env: side.env }).error;
+
+      assert.deepStrictEqual([refused, standing(at)], [
+        `checklist close: ${BRANCH} moved to ${squashed.slice(0, 7)} since the merge into it was begun at ${mergeTree(at)}, and the merge settled there, ${settlement.slice(0, 7)}, holds none of that, so nothing moved — `
+          + `take that worktree apart with \`git worktree remove ${mergeTree(at)}\`, then close phase 2's start again, which begins the merge again`,
+        moved,
+      ]);
     });
 
     it('a merge settled in its worktree is taken onto feat/pay by the close run again, which brings in on top what the default branch gained since — pushed where the driver lands it, moved here, the worktree taken apart and the close recorded (7.S41)', () => {

@@ -6,16 +6,17 @@
 // a phase's start of the build, for an epic or a feature whose cut then
 // holds two or more phases, makes `feat/{unit}` at the default branch's tip
 // where the driver lands it, before it is made here, and records it as
-// `build.branch` — its tasks then laid out from it and landing on it; a
-// bugfix, a feature of one phase and one whose cut gains a phase later get
-// none. A branch of that name holding a commit the default branch lacks is
-// refused as another's, nothing made or recorded; one holding nothing it
-// lacks is taken, as a close killed after its push leaves it. A second
-// clone readies the branch from the host's copy. What lands on the branch,
-// and the branch landed at finish, are
-// test-engine-landing-conformance-unit.cjs's.
+// `build.branch`; a bugfix, a feature of one phase and one whose cut gains
+// a phase later get none. A branch of that name holding a commit the
+// default branch lacks is refused as another's, nothing made or recorded;
+// one holding nothing it lacks is taken, as a close killed after its push
+// leaves it. A second clone readies the branch from the host's copy, where
+// the driver lands through one. What lands on the branch, its tasks laid
+// out from it among them, and the branch landed at finish, are
+// test-engine-landing-conformance-unit.cjs's and
+// test-engine-landing-conformance-unit-finish.cjs's.
 // Conformance layer: the landing world (landing-world.cjs), its unit's
-// build begun through a cut of five phases, none started, built once per
+// build begun through a cut of two phases, none started, built once per
 // driver and copied for each test. This file names no driver and no tool.
 // ---------------------------------------------------------------------------
 
@@ -39,13 +40,13 @@ const BRANCH = `feat/${UNIT}`;
 const tipIn = (dir, branch) => git(dir, ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
 
 for (const { name } of listDrivers('landing')) {
-  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void, on: (dir: string) => string, pushed: (dir: string, into?: string) => void, landed: (dir: string, into?: string) => {subject: string}[]}} */
+  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void, on: (dir: string) => string, pushed: (dir: string, into?: string) => void, mergedOnHost: unknown}} */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const ok = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.ok(at, args, { env: side.env });
   const world = fixtureFrom(`engine-unit-branch-${name}-`, (dir) => {
     buildLanding(dir);
     side.prepare(dir);
-    buildBegun(dir, 5);
+    buildBegun(dir, 2);
   });
 
   describe(`a unit's own branch through the ${name} landing driver (7.2.34, 7.2.35)`, () => {
@@ -65,22 +66,12 @@ for (const { name } of listDrivers('landing')) {
     /** Where `feat/{unit}` stands: here, where the driver lands it, and as the manifest records it. @param {string} at */
     const standing = (at) => ({ here: tipIn(at, BRANCH), there: tipIn(side.on(at), BRANCH), recorded: readManifest(at, UNIT).build.branch ?? null });
 
-    it('a feature cut into two phases or more: its first phase start\'s close makes feat/pay at the default branch\'s tip where the driver lands it, records it, and its tasks open onto it and land there, the default branch untouched (7.S31, 7.S32)', () => {
+    it('a feature cut into two phases: its first phase start\'s close makes feat/pay at the default branch\'s tip where the driver lands it and here, and records it (7.S31)', () => {
       const at = project();
       const main = tip(at, 'main');
-      const closed = startClosed(at, 1, side.env);
-      const made = standing(at);
-      const opened = own(ok(at, openArgs(card)));
-      phaseReviewed(at, 1, 'auto');
-      ok(at, ['land', 'phase', UNIT, '1']);
+      const { branch } = startClosed(at, 1, side.env);
 
-      const landing = tipIn(side.on(at), BRANCH);
-
-      assert.deepStrictEqual({
-        branch: closed.branch, made, base: opened.base, landed: side.landed(at, BRANCH).map(({ subject }) => subject), recorded: readManifest(at, UNIT).landings['pay-1-1']['.'].commit, main: tipIn(side.on(at), 'main'),
-      }, {
-        branch: BRANCH, made: { here: main, there: main, recorded: BRANCH }, base: BRANCH, landed: ['feat(pay): Add card'], recorded: landing, main,
-      });
+      assert.deepStrictEqual([branch, standing(at)], [BRANCH, { here: main, there: main, recorded: BRANCH }]);
     });
 
     it('a bugfix, a feature of one phase, and one whose cut gains a phase after its first start: nothing made or recorded, its tasks landing on the default branch (7.S31, 7.S35)', () => {
@@ -131,20 +122,20 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual([killed, standing(at)], [{ here: main, there: main, recorded: null }, { here: main, there: main, recorded: BRANCH }]);
     });
 
-    it('a second clone lacking the branch, here and as last fetched, readies it from where the driver lands it at its next phase start, cutting none anew (7.S39)', () => {
-      const at = project();
-      startClosed(at, 1, side.env);
-      ok(at, openArgs(card));
-      phaseReviewed(at, 1, 'auto');
-      ok(at, ['land', 'phase', UNIT, '1']);
-      const landed = tipIn(side.on(at), BRANCH);
-      if (side.on(at) !== at) {
+    if (side.mergedOnHost !== null) {
+      it('a second clone lacking the branch, here and as last fetched, readies it from the host\'s copy at its next phase start, cutting none anew (7.S39)', () => {
+        const at = project();
+        startClosed(at, 1, side.env);
+        ok(at, openArgs(card));
+        phaseReviewed(at, 1, 'auto');
+        ok(at, ['land', 'phase', UNIT, '1']);
+        const landed = tipIn(side.on(at), BRANCH);
         git(at, ['branch', '-q', '-D', BRANCH]);
         git(at, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
-      }
-      startClosed(at, 2, side.env);
+        startClosed(at, 2, side.env);
 
-      assert.deepStrictEqual(standing(at), { here: landed, there: landed, recorded: BRANCH });
-    });
+        assert.deepStrictEqual(standing(at), { here: landed, there: landed, recorded: BRANCH });
+      });
+    }
   });
 }

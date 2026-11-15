@@ -513,14 +513,18 @@ function useNestedWorld(prefix, ready = () => {}) {
  * whether a quick-fix is open in a repository, as the driver opens one; and
  * `phaseByHand`, the ways a person lands a phase whole onto main outside
  * the engine, main here then holding it, each by what it does, told the
- * phase.
+ * phase; `pushed`, the default branch here pushed where the driver lands
+ * it; `squashedHere`, a branch squashed by hand onto the default branch
+ * here, and pushed; and `mergedOnHost`, a pull request merged by hand on
+ * the host's site, null where the driver lands through none.
  * @typedef {{
  *   env: Record<string, string|undefined>, prepare: (dir: string) => void, nest: (dir: string, into: string) => void, on: (dir: string) => string,
  *   landed: (dir: string, into?: string) => {subject: string, task: string|null}[], holds: (dir: string, into?: string) => string[],
  *   defaultTip: (dir: string, into?: string) => string, opened: (dir: string) => string[], refuseMerge: (dir: string) => {env: Record<string, string>, undo: () => void},
  *   byHand: Record<string, (dir: string, branch: string, into?: string) => void>, byHandKeeping: Record<string, (dir: string, branch: string, into?: string) => void>,
  *   deleted: (dir: string, branch: string, into?: string) => void, quickFixOpen: (dir: string, unit: string) => boolean,
- *   phaseByHand: Record<string, (dir: string, phase: number) => void>,
+ *   phaseByHand: Record<string, (dir: string, phase: number) => void>, pushed: (dir: string, into?: string) => void,
+ *   squashedHere: (dir: string, branch: string, into?: string) => void, mergedOnHost: ((dir: string, branch: string, method: 'merge'|'squash'|'rebase', pulled: boolean, into?: string) => boolean)|null,
  * }} DriverSide
  */
 

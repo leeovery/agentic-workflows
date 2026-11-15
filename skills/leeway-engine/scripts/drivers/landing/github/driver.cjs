@@ -1612,9 +1612,10 @@ function openUnit(ctx, landing) {
  * under its subject with GitHub's " (#N)" and its description, once GitHub
  * has worked out that it can at the branch's tip as the landing read it;
  * the default branch here then brought to it. Refused, before anything
- * opens, where the repository takes no merge commit, or the default branch
- * here is checked out with changes in the way. Given no landing, the
- * default branch here is brought up alone.
+ * opens, where the default branch here is checked out with changes in the
+ * way; a repository taking no merge commit is refused before any landing
+ * is made (landing.cjs, `unitSteps`). Given no landing, the default branch
+ * here is brought up alone.
  * @param {LandingContext} ctx @param {UnitLanding|null} landing
  */
 function landUnit(ctx, landing) {
@@ -1624,7 +1625,6 @@ function landUnit(ctx, landing) {
     return { into: ctx.into, already: /** @type {const} */ (true), ...(warnings.length > 0 ? { warnings } : {}) };
   }
   const read = /** @type {UnitRead} */ (landing.pull);
-  if (read.refused !== null) throw new Error(`land: ${read.refused}`);
   refuseDirtyDefault(ctx, landing.tip, defaultFetched(ctx, host));
   const { branch, title, body } = landing;
   const number = unitOpened(ctx, host, landing, read.opened);

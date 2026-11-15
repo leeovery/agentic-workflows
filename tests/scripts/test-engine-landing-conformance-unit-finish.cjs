@@ -10,10 +10,11 @@
 // completes the unit (7.2.38, 7.S33); a branch landed by hand, by a squash
 // or a merge commit, read landed whatever the default branch changed
 // since, nothing more landed (7.2.39, 7.S34); a host allowing no merge
-// commits refused before anything lands (7.S38); a conflict refused after
-// the phases, naming them, the merge begun in a worktree it names, which
-// once settled there the landing run again takes onto the branch and lands
-// (7.S43); and a
+// commits refused before anything lands (7.S38), but not where the branch
+// landed by hand; a conflict the default branch brought into the branch
+// cannot settle refused after the phases, naming them, the merge begun in a
+// worktree it names, which once settled there finish's yes again takes onto
+// the branch and lands (7.S43); and a
 // yes killed after the unit landed finishing on its next run, landing
 // nothing twice. The phases landing on the branch are
 // test-engine-landing-conformance-unit.cjs's.
@@ -76,12 +77,14 @@ for (const { name } of listDrivers('landing')) {
     /** feat/pay as the driver lands it, as this clone reads it. @param {string} at */
     const unitRef = (at) => (side.on(at) === at ? BRANCH : `origin/${BRANCH}`);
 
-    /** Phases 2 and 3 cut from feat/pay as phase 1 left it where the driver lands it, as Claude cuts them then, and opened, the unit readied for finish. @param {string} at */
-    const twoMore = (at) => {
+    /** Phase 2, and phase 3 unless `alone`, cut from feat/pay as phase 1 left it where the driver lands it, as Claude cuts them then, and opened, the unit readied for finish. @param {string} at @param {boolean} [alone] */
+    const twoMore = (at, alone = false) => {
       commitFiles(at, rounding.branch, unitRef(at), rounding.files);
-      commitFiles(at, currency.branch, rounding.branch, currency.files);
       ok(at, openArgs(rounding));
-      ok(at, openArgs(currency));
+      if (!alone) {
+        commitFiles(at, currency.branch, rounding.branch, currency.files);
+        ok(at, openArgs(currency));
+      }
       finishReady(at);
     };
 
@@ -110,10 +113,11 @@ for (const { name } of listDrivers('landing')) {
       });
     });
 
-    it('feat/pay landed by hand, squashed or by a merge commit, reads landed whatever the default branch changed since: nothing more lands, and the unit completes (7.S34)', () => {
+    it('feat/pay landed by hand, squashed or by a merge commit, reads landed whatever the default branch changed since, a host allowing no merge commits refusing nothing: nothing more lands, and the unit completes (7.S34)', () => {
       const ways = /** @type {const} */ (['squashedHere', 'mergedHere']).map((way) => {
         const at = project();
         finishReady(at);
+        side.noMergeCommits?.(at);
         side[way](at, BRANCH, 'main');
         side.pushed(at);
         mainRewrites(at);
@@ -132,7 +136,7 @@ for (const { name } of listDrivers('landing')) {
       const noMerges = side.noMergeCommits;
       it('a host allowing no merge commits refuses finish before anything lands, naming the verb that allows them (7.S38)', () => {
         const at = project();
-        twoMore(at);
+        twoMore(at, true);
         noMerges(at);
         const before = [tip(side.on(at), BRANCH), tip(side.on(at), 'main')];
         const { error } = refuses(at, ['land', 'finish', UNIT]);
@@ -144,27 +148,28 @@ for (const { name } of listDrivers('landing')) {
       });
     }
 
-    it('a conflict with the default branch refuses the unit\'s landing after the phases, naming them and the worktree holding the merge begun; once settled there, landing again takes it onto feat/pay and lands it (7.S43)', () => {
+    it('a conflict with the default branch refuses the unit\'s landing after the phases, naming them and the worktree holding the merge begun, its way on finish\'s yes again; once settled there, the yes again takes it onto feat/pay and lands it (7.S43)', () => {
       const at = project();
       twoMore(at);
       mainRewrites(at);
       const theirs = side.on(at) === at ? 'main' : 'origin/main';
       const tree = path.join(fs.realpathSync(at), '.git', 'leeway', 'feat-pay.merging');
-      const { error } = refuses(at, ['land', 'finish', UNIT]);
+      const { error } = refuses(at, ['finish', 'yes', UNIT]);
       const held = side.landed(at, BRANCH).map(({ subject }) => subject);
       git(tree, ['checkout', '-q', '--ours', 'card.txt']);
       git(tree, ['add', 'card.txt']);
       git(tree, ['-c', 'core.editor=true', 'merge', '--continue']);
       const settlement = tip(tree, 'HEAD');
-      ok(at, ['land', 'finish', UNIT]);
+      ok(at, ['finish', 'yes', UNIT]);
 
-      assert.deepStrictEqual([error, held, unitLine(at).map((message) => message.split('\n')[0]), git(side.on(at), ['rev-parse', 'main^2']).trim(), fs.existsSync(tree)], [
-        `land: ${theirs} conflicts with ${BRANCH} at card.txt, so ${UNIT} did not land on main — the merge is begun at ${tree}, a worktree of its own: `
-          + `settle each conflict there and finish the merge, as \`git -C ${tree} -c core.editor=true merge --continue\` does once they are, then land again, which takes it onto ${BRANCH}; every land verb in the repository waits on it until then, a quick-fix's among them (phase 2, 3 merged in the project before it)`,
+      assert.deepStrictEqual([error, held, unitLine(at).map((message) => message.split('\n')[0]), git(side.on(at), ['rev-parse', 'main^2']).trim(), fs.existsSync(tree), readManifest(at, UNIT).status], [
+        `finish yes: land: ${theirs} conflicts with ${BRANCH} at card.txt, so ${theirs} was not brought into ${BRANCH} and ${UNIT} did not land on main — the merge is begun at ${tree}, a worktree of its own: `
+          + `settle each conflict there and finish the merge, as \`git -C ${tree} -c core.editor=true merge --continue\` does once they are, then say yes at finish again, which takes it onto ${BRANCH}; every land verb in the repository waits on it until then, a quick-fix's among them (phase 2, 3 merged in the project before it)`,
         ['feat(pay): Add card', 'fix(pay): Round totals', 'fix(pay): Name the currency'],
         ['Rewrite the card', `Merge ${BRANCH}`],
         settlement,
         false,
+        'completed',
       ]);
     });
 

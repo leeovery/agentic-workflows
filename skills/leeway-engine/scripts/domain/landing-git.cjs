@@ -1361,6 +1361,9 @@ function scratchTree(made, branch) {
 /** What the folder of a merge into a unit's own branch ends in (`mergingTree`). */
 const MERGING = '.merging';
 
+/** The file in such a merge's worktree's own git directory naming the branch and the step that takes it (`mergeBegun`). */
+const MERGING_FOR = 'leeway-merging.json';
+
 /**
  * The worktree the default branch's merge into a unit's own branch is begun
  * in where the two conflict (unit-branch.cjs), where a remedy makes its
@@ -1398,11 +1401,13 @@ function mergeHeld(root, branch) {
  * `message`, by the replay's settings (`MERGE_PINS`), committing nothing:
  * its conflicts left in its files for the person to settle, each submodule
  * of `pointers`, by its path from the repository's top, set at its commit,
- * which leaves no conflict there theirs. Where it is.
- * @param {string} root @param {string} branch the unit's @param {string} ours @param {string} theirs @param {string} message @param {Map<string, string>} pointers
+ * which leaves no conflict there theirs. The branch and `then`, the step
+ * that takes it, are kept in the worktree's own git directory for every
+ * land verb's refusal to name (`scratchBlock`). Where it is.
+ * @param {string} root @param {{branch: string, ours: string, theirs: string, message: string, then: string}} merging the unit's branch @param {Map<string, string>} pointers
  * @returns {string}
  */
-function mergeBegun(root, branch, ours, theirs, message, pointers) {
+function mergeBegun(root, { branch, ours, theirs, message, then }, pointers) {
   const tree = mergingTree(root, branch);
   if (mergeHeld(root, branch)?.head !== ours) {
     if (mergingIn(worktrees(root), tree) !== undefined) git(root, ['worktree', 'remove', '--force', tree]);
@@ -1412,6 +1417,7 @@ function mergeBegun(root, branch, ours, theirs, message, pointers) {
   const res = gitRun(tree, [...PINNED, ...CHECKOUT_PINS, 'merge', '--no-ff', '--no-commit', '--no-log', '--no-verify-signatures', '-m', message, theirs]);
   if (res.error || res.status === null || res.status > 1) throw new GitError(`git merge failed: ${(res.error?.message ?? res.stderr).trim()}`);
   for (const [at, sha] of pointers) git(tree, ['update-index', '--cacheinfo', `160000,${sha},${at}`]);
+  fs.writeFileSync(path.join(gitDirOf(tree), MERGING_FOR), JSON.stringify({ branch, then }));
   return tree;
 }
 
@@ -1828,22 +1834,33 @@ function rebasingIn(scratch) {
 const mergeContinued = (tree) => `\`git -C ${quoted(tree)} -c core.editor=true merge --continue\``;
 
 /**
+ * What a merge into a unit's own branch held in the worktree made for it
+ * (`mergingTree`) says, until the step that began it takes it — the branch
+ * and that step as `mergeBegun` kept them — or null where none is held; a
+ * worktree whose folder is gone holds none.
+ * @param {Worktree[]} trees
+ * @returns {string|null}
+ */
+function mergingBlock(trees) {
+  const merging = mergingIn(trees.filter((tree) => fs.existsSync(tree.path)));
+  if (merging === undefined) return null;
+  const { branch, then } = JSON.parse(fs.readFileSync(path.join(gitDirOf(merging.path), MERGING_FOR), 'utf8'));
+  return `the merge of the default branch into ${branch} is held at ${merging.path}, so nothing moved — `
+    + `settle each conflict there and finish the merge, as ${mergeContinued(merging.path)} does once they are, then ${then}, which takes it onto ${branch}, and land again`;
+}
+
+/**
  * What a rebase stopped in a worktree a remedy made says, and the way on —
  * settled or ended there, and the worktree removed — or, where none is, a
- * merge into a unit's own branch held in the worktree made for it
- * (`mergingTree`), until what began it takes it; null where neither is.
- * Every verb asks before anything else.
+ * merge into a unit's own branch held (`mergingBlock`); null where neither
+ * is. Every verb asks before anything else.
  * @param {string} root
  * @returns {string|null}
  */
 function scratchBlock(root) {
   const trees = worktrees(root);
   const stopped = trees.find((tree) => tree.scratch && tree.rebasing.length > 0);
-  if (stopped === undefined) {
-    const merging = mergingIn(trees);
-    return merging === undefined ? null : `a merge of the default branch into a unit's own branch is held at ${merging.path}, a worktree its phase's start, its review's entry or its finish began, so nothing moved — `
-      + `settle each conflict there and finish the merge, as ${mergeContinued(merging.path)} does once they are, then run again what began it, which takes it onto that branch, and land again`;
-  }
+  if (stopped === undefined) return mergingBlock(trees);
   return `${stopped.rebasing[0]} is being rebased at ${stopped.path}, a worktree a remedy made, so nothing moved — `
     + `settle each conflict there and go on with \`${rebasingIn(stopped.path)} rebase --continue\`, or end it with \`git -C ${quoted(stopped.path)} rebase --abort\`, `
     + `then remove it with ${removing(stopped)}, and land again`;
@@ -2201,5 +2218,5 @@ module.exports = {
   short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, mergeContinued, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
-  worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree, mergingTree, mergeHeld, mergeBegun, mergeDone,
+  worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree, mergeHeld, mergeBegun, mergeDone,
 };

@@ -58,11 +58,15 @@
 //   refusing again. A merge not finished there refuses again, naming what
 //   still conflicts; one the branch moved past since, which holds none of
 //   that move, refuses, the way on taking the worktree apart so the merge
-//   is begun again. Finish's landing, where the branch conflicts with the
-//   default branch, begins the same merge with the same way on, and takes
-//   it before it lands (`settlementsTaken`, `mergeStopped`). Until it is
-//   taken, every land verb in the repository waits on it (landing-git.cjs,
-//   `scratchBlock`).
+//   is begun again. Until it is taken, every land verb in the repository
+//   waits on it (landing-git.cjs, `scratchBlock`).
+// - At finish (landing.cjs), where the unit's branch would conflict with
+//   the default branch it lands on, the default branch is brought into it
+//   first by the same merge (`broughtUpToLand`), each submodule pointer
+//   both sides moved pointed at the submodule's default branch as the unit
+//   landed there first, which holds both; a conflict left begins the same
+//   merge with the same way on, and finish run again takes it before
+//   anything lands (`settlementsTaken`).
 // - Never deleted by the engine (7.2.41).
 // ---------------------------------------------------------------------------
 
@@ -195,9 +199,11 @@ function atPhaseStart(cwd, unit, manifest, phase) {
   }
   if (!branchWanted(manifest)) return null;
   const branch = names.unitBranch(unit);
-  const home = ownHome(cwd);
-  const { into, tip } = defaultTip(home, `${unit}'s branch was not made`, making);
-  madeAt(home, branch, tip, hostCopy(home, branch), { into, held: tip, ...making });
+  asStep('.', () => {
+    const home = ownHome(cwd);
+    const { into, tip } = defaultTip(home, `${unit}'s branch was not made`, making);
+    madeAt(home, branch, tip, hostCopy(home, branch), { into, held: tip, ...making });
+  });
   return branch;
 }
 
@@ -263,8 +269,20 @@ function standingOf(home, unit, branch) {
   return { here, hosted, tip: /** @type {string} */ (hosted ?? here) };
 }
 
-/** A refusal as a repository's own: the project's as it is, a nested one's naming it. @param {BranchHome} home @param {string} words */
-const said = (home, words) => lg.saidIn(home.nested ?? '.', words);
+/**
+ * What `act` answers for a step keeping the unit's branch, its refusal the
+ * repository's own — the project's as it is, a nested one's naming it,
+ * `repo` its folder — never worded as a land verb's.
+ * @template T @param {string} repo @param {() => T} act @returns {T}
+ */
+function asStep(repo, act) {
+  try {
+    return act();
+  } catch (err) {
+    if (err instanceof Error) err.message = lg.saidIn(repo, err.message.replace(/^land: /, ''));
+    throw err;
+  }
+}
 
 /**
  * Where the unit's branch, at `tip`, goes on from the merge held in the
@@ -281,12 +299,12 @@ function settled(home, branch, tip, then) {
   if (held === null) return { ours: tip, held: null };
   if (held.unmerged !== null) {
     const still = held.unmerged.length === 0 ? 'is not finished' : `still conflicts at ${held.unmerged.map(lg.plain).join(', ')}`;
-    throw new Error(said(home, `the merge into ${branch} begun at ${held.path} ${still}, so nothing moved — settle each conflict there and finish the merge, as ${lg.mergeContinued(held.path)} does once they are, then ${then}`));
+    throw new Error(`the merge into ${branch} begun at ${held.path} ${still}, so nothing moved — settle each conflict there and finish the merge, as ${lg.mergeContinued(held.path)} does once they are, then ${then}`);
   }
   if (lg.isAncestor(home.root, held.head, tip)) return { ours: tip, held: held.path };
   if (lg.isAncestor(home.root, tip, held.head)) return { ours: held.head, held: held.path };
   const remove = lg.removing(held, home.nested === null ? undefined : home.root);
-  throw new Error(said(home, `${branch} moved to ${lg.short(tip)} since the merge into it was begun at ${held.path}, and the merge settled there, ${lg.short(held.head)}, holds none of that, so nothing moved — take that worktree apart with ${remove}, then ${then}, which begins the merge again`));
+  throw new Error(`${branch} moved to ${lg.short(tip)} since the merge into it was begun at ${held.path}, and the merge settled there, ${lg.short(held.head)}, holds none of that, so nothing moved — take that worktree apart with ${remove}, then ${then}, which begins the merge again`);
 }
 
 /**
@@ -301,7 +319,7 @@ function settled(home, branch, tip, then) {
  */
 function movedTo(home, branch, { here, hosted }, to, held, { undone, then }) {
   const block = here === null || here === to ? null : lg.checkoutBlock(home.root, branch, { from: here, to });
-  if (block !== null) throw new Error(said(home, block.replace('land again', then)));
+  if (block !== null) throw new Error(block.replace('land again', then));
   if (home.hosted && hosted !== to) lg.pushBranches(home.root, /** @type {string} */ (home.remote), [{ branch, commit: to, lease: hosted ?? '' }], `${branch} was not moved and ${undone} — clear what git names, and ${then}`);
   if (here !== to) lg.moveBranch(home.root, branch, here, to);
   if (held !== null) lg.mergeDone(home.root, held);
@@ -351,9 +369,9 @@ const theirsNamed = (home, into) => (home.hosted ? `${home.remote}/${into}` : in
  * @returns {string}
  */
 function mergeStopped(home, branch, { into, theirs, ours, pointers }, paths, { so, then }) {
-  const tree = lg.mergeBegun(home.root, branch, ours, theirs, `${names.bringUpSubject(into, branch)}\n`, pointers);
-  return said(home, `${theirsNamed(home, into)} conflicts with ${branch} at ${paths.map(lg.plain).join(', ')}, so ${so} — the merge is begun at ${tree}, a worktree of its own: `
-    + `settle each conflict there and finish the merge, as ${lg.mergeContinued(tree)} does once they are, then ${then}, which takes it onto ${branch}; every land verb in the repository waits on it until then, a quick-fix's among them`);
+  const tree = lg.mergeBegun(home.root, { branch, ours, theirs, message: `${names.bringUpSubject(into, branch)}\n`, then }, pointers);
+  return `${theirsNamed(home, into)} conflicts with ${branch} at ${paths.map(lg.plain).join(', ')}, so ${so} — the merge is begun at ${tree}, a worktree of its own: `
+    + `settle each conflict there and finish the merge, as ${lg.mergeContinued(tree)} does once they are, then ${then}, which takes it onto ${branch}; every land verb in the repository waits on it until then, a quick-fix's among them`;
 }
 
 /**
@@ -394,6 +412,22 @@ function broughtUpIn(home, unit, branch, subs, bringing) {
 }
 
 /**
+ * The default branch, at `theirs`, merged into the unit's branch in one
+ * repository as finish lands it there, where landing it would conflict
+ * (the header's): the merge a bring-up makes (`mergedIn`), each submodule
+ * of `subs` at its default branch as the unit landed there first — pushed
+ * and moved as a bring-up's is, refused the same where the two still
+ * conflict. Its tip.
+ * @param {string} cwd @param {import('../kernel/repos.cjs').Repo} repo @param {string} unit @param {{branch: string, into: string, theirs: string}} merging the unit's branch, and the default branch by name and by its tip @param {BroughtSub[]} subs @param {Bringing} bringing
+ * @returns {string}
+ */
+function broughtUpToLand(cwd, repo, unit, { branch, into, theirs }, subs, bringing) {
+  const home = homeOf(cwd, repo, /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver));
+  const at = standingOf(home, unit, branch);
+  return movedTo(home, branch, at, mergedIn(home, branch, into, at.tip, theirs, subs, bringing), null, bringing);
+}
+
+/**
  * Each repository of the project holding the unit's branch, children
  * first, with its home and the submodules in it that `act` reached before
  * it: what `act` answers of each, by its folder in the project, null where
@@ -410,7 +444,7 @@ function eachHolding(cwd, unit, act) {
       const sub = reached.get(projectPath(repo.dir, folder));
       return sub === undefined ? [] : [{ at: topPath(repo, folder), ...sub }];
     });
-    const tip = act(homeOf(cwd, repo, driver), subs);
+    const tip = asStep(repo.dir === '' ? '.' : repo.dir, () => act(homeOf(cwd, repo, driver), subs));
     if (tip !== null) reached.set(repo.dir, { root: repo.path, tip });
   }
 }
@@ -442,4 +476,4 @@ function settlementsTaken(cwd, unit, bringing) {
   });
 }
 
-module.exports = { landsThroughHost, branchWanted, atPhaseStart, readied, madeNested, bringUp, settlementsTaken, mergeStopped };
+module.exports = { landsThroughHost, atPhaseStart, readied, madeNested, bringUp, broughtUpToLand, settlementsTaken };

@@ -107,9 +107,10 @@
 // - A unit's own branch (landing.cjs): landed on the default branch at
 //   finish by one merge commit of the two, the default branch its first
 //   parent, under the landing's subject and description, and the default
-//   branch moved to it — refused, nothing moved, where the merge conflicts
-//   or the default branch is out with changes in the way. It opens no pull
-//   request, so a cancel closes none.
+//   branch moved to it — refused, nothing moved, where the default branch
+//   is out with changes in the way; the two never conflict, the landing
+//   bringing the default branch into the unit's branch first where they
+//   would. It opens no pull request, so a cancel closes none.
 // - A quick-fix (landing.cjs): in each repository it touches, its one pull
 //   request is a ref of the unit's (`refs/leeway/quick-fix/{unit}/open`) at
 //   the commit its branch was opened at — the host's copy of the branch,
@@ -976,18 +977,17 @@ function mergeQuickFix(ctx, landing) {
  * The unit's own branch landed on the default branch (the header's): one
  * merge commit of the two, the default branch its first parent, under the
  * landing's subject and description, the default branch moved to it —
- * refused, nothing moved, where the merge conflicts or the default branch
- * cannot move. Given no landing, nothing moves.
+ * refused, nothing moved, where the default branch cannot move. The two
+ * never conflict here: the landing brings the default branch into the
+ * unit's branch first where they would (landing.cjs, `unitLanded`). Given
+ * no landing, nothing moves.
  * @param {LandingContext} ctx @param {import('../../../domain/landing.cjs').UnitLanding|null} landing
  */
 function landUnit(ctx, landing) {
   const { root, into } = ctx;
   if (landing === null) return { into, already: /** @type {const} */ (true) };
   const intoTip = /** @type {string} */ (lg.branches(root).get(into));
-  const merged = lg.mergeTree(root, lg.mergeBase(root, intoTip, landing.tip), intoTip, landing.tip);
-  if ('conflicts' in merged) {
-    throw new Error(`land: ${landing.branch} conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — merge ${into} into ${landing.branch}, settling the conflict, and land again`);
-  }
+  const merged = /** @type {{tree: string}} */ (lg.mergeTree(root, lg.mergeBase(root, intoTip, landing.tip), intoTip, landing.tip));
   const message = `${landing.subject}\n\n${landing.body}\n`;
   const commit = lg.commitTree(root, { tree: merged.tree, parent: [intoTip, landing.tip], message, signed: lg.signs(root) }, `${landing.branch}'s merge onto ${into}`, 'land again');
   movedDefault(ctx, intoTip, commit);

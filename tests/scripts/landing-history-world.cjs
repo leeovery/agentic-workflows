@@ -661,7 +661,8 @@ function republished(h, task) {
  * where its pull request is open there (`republished` first), else in the
  * person's checkout, then pushed — each file that branch held as the model
  * ends it, that work landed, which the landing changed then the model's as
- * the branch holds it (`overridden`).
+ * the branch holds it (`overridden`), as is each the tasks it landed wrote
+ * last (`keptByGit`).
  * @param {History} h @param {Task} task
  */
 function byHand(h, task) {
@@ -672,6 +673,7 @@ function byHand(h, task) {
     republished(h, task);
     if (h.side.mergedOnHost(h.at, task.branch, method, pulled, h.into)) {
       overridden(h, before);
+      keptByGit(h, lands(task, true));
       return landedByHand(h, task, `merged on the host's site by ${method}, ${pulled ? 'pulled' : 'not pulled'}`, true);
     }
   }
@@ -682,7 +684,31 @@ function byHand(h, task) {
   if (done === null) return h.steps.push(`${task.shown} not landed by hand: ${how} stopped`);
   h.side.pushed(h.at, h.into);
   overridden(h, before);
+  keptByGit(h, lands(task, how !== PICKED));
   return landedByHand(h, task, done, how !== PICKED);
+}
+
+/**
+ * Each file one of `tasks`, landed by hand, wrote last that the branch it
+ * landed on holds otherwise than the model ends it, the model's then as the
+ * branch holds it, the person's — where that branch holds the task's tip,
+ * as a merge commit or a fast-forward leaves it: git's merge of the
+ * landing, which keeps a file the branch gained since where the task took
+ * it back, its base lacking it. A landing that copies the task's work
+ * leaves the model as it is, the engine landing what the copy missed.
+ * @param {History} h @param {Task[]} tasks
+ */
+function keptByGit(h, tasks) {
+  const host = h.side.on(h.at);
+  const held = tasks.filter((task) => tried(host, ['merge-base', '--is-ancestor', tip(h.at, task.branch), h.into]).status === 0);
+  const after = treeOf(host, h.into);
+  for (const [file, by] of h.writers) {
+    const is = after.get(file);
+    if (by === null || !held.includes(by) || is === h.model.get(file)) continue;
+    if (is === undefined) h.model.delete(file);
+    else h.model.set(file, is);
+    h.writers.set(file, null);
+  }
 }
 
 /**
@@ -806,8 +832,9 @@ function commitOn(h, task) {
 
 /**
  * The branch it lands on merged back into a task's branch, each conflict
- * settled (`settled`), the merge carrying a change of its own or not —
- * never past a landing a verb read, the task then opened at once
+ * settled (`settled`), the merge carrying a change of its own or not, each
+ * file the task wrote last as the merge leaves its branch (`keptOnBranch`)
+ * — never past a landing a verb read, the task then opened at once
  * (`opened`).
  * @param {History} h @param {Task} task
  */
@@ -824,10 +851,28 @@ function mergedBack(h, task) {
     }
     git(h.at, ['commit', '-q', '--no-edit']);
     task.merged = true;
+    keptOnBranch(h, task);
     return `${h.into} merged back${file === undefined ? '' : `, the merge rewriting ${file}`}`;
   });
   h.steps.push(`${task.shown}: ${said}`);
   if (past) opened(h, task);
+}
+
+/**
+ * Each file a task wrote last that its branch holds otherwise than the
+ * model ends it, the model's then as the branch holds it: git's merge of
+ * what the task lands on back into it, which keeps a file that branch
+ * gained where the task took it back, their base lacking it.
+ * @param {History} h @param {Task} task
+ */
+function keptOnBranch(h, task) {
+  const held = treeOf(h.at, task.branch);
+  for (const [file, by] of h.writers) {
+    const is = held.get(file);
+    if (by !== task || is === h.model.get(file)) continue;
+    if (is === undefined) h.model.delete(file);
+    else h.model.set(file, is);
+  }
 }
 
 /** The person's own commit on main, pushed: a file of their own, or app.txt reworded. @param {History} h */
@@ -898,8 +943,9 @@ function startsLeft(h) {
   return [2, 3].filter((phase) => checklists[`phase-${phase}-start`]?.closed === undefined).slice(0, 1);
 }
 
-/** A later phase's start closed, bringing main into the unit's own branch (7.2.36), its conflict's way on followed. @param {History} h @param {number} phase */
+/** A later phase's start closed, bringing main into the unit's own branch (7.2.36), main moved first by the person's own commit half the time, its conflict's way on followed. @param {History} h @param {number} phase */
 function startClosedLater(h, phase) {
+  if (chance(h, 0.5)) ownCommit(h);
   call(h.at, ['checklist', 'done', 'phase-start', UNIT, String(phase), 'design-settled'], h.as);
   attempt(h, ['checklist', 'close', 'phase-start', UNIT, String(phase)]);
 }
@@ -925,7 +971,7 @@ const EVENTS = [
   { weight: 1, can: (h) => h.tasks.filter((task) => task.landed), act: reworded },
   { weight: 1, can: (h) => (h.later === null ? h.tasks.filter((task) => task.landed) : []), act: laterTask },
   { weight: 1, can: (h) => (h.tasks.some((task) => task.opened) ? [null] : []), act: phaseLanded },
-  { weight: 1, can: startsLeft, act: startClosedLater },
+  { weight: 2, can: startsLeft, act: startClosedLater },
 ];
 
 /** One of `EVENTS` that can be done, drawn by weight, done to one of its tasks. @param {History} h */
