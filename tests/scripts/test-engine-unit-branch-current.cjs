@@ -32,7 +32,11 @@
 // `unitBranchLanded`), its unit's build begun through a cut of five phases
 // and its first phase's start closed, `feat/pay` made, phase 1's task 1.1
 // landed on it, built once per driver and copied for each test. This file
-// names no driver and no tool.
+// names no driver and no tool. Budget: 39 s — each test walks a phase
+// start's close or the review's entry whole on each driver, a merge made,
+// pushed and moved, or begun in its worktree, settled and taken, a kill
+// finished by the next (30 s probed, 37 to 39 s in loaded gate runs); each
+// is a way through the bring-up no other suite takes.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

@@ -22,7 +22,11 @@
 // `unitBranchLanded`), its unit's build begun through a cut of five phases
 // and its first phase's start closed, `feat/pay` made, phase 1's task 1.1
 // landed on it, built once per driver and copied for each test. This file
-// names no driver and no tool.
+// names no driver and no tool. Budget: 38 s — each test walks finish's yes
+// whole on each driver, from the phases still standing to the unit's
+// landing, the conflict's and the kill's twice (29 s probed, 35 to 38 s in
+// loaded gate runs); each is a way the unit's branch lands, or is read
+// landed, that no other suite takes.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -139,10 +143,10 @@ for (const { name } of listDrivers('landing')) {
         twoMore(at, true);
         noMerges(at);
         const before = [tip(side.on(at), BRANCH), tip(side.on(at), 'main')];
-        const { error } = refuses(at, ['land', 'finish', UNIT]);
+        const { error } = refuses(at, ['finish', 'yes', UNIT]);
 
         assert.deepStrictEqual([error, [tip(side.on(at), BRANCH), tip(side.on(at), 'main')]], [
-          `land: acme/portal does not allow merge commits, and ${BRANCH} lands on main by one, so it did not land — allow them beside the squash default on every repository the project lands in on GitHub, as \`engine github-squash yes\` does, and land again`,
+          `finish yes: land: acme/portal does not allow merge commits, and ${BRANCH} lands on main by one, so it did not land — allow them beside the squash default on every repository the project lands in on GitHub, as \`engine github-squash yes\` does, and say yes at finish again`,
           before,
         ]);
       });

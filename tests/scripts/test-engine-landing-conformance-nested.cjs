@@ -27,7 +27,12 @@
 // (tests/drivers/{name}/landing.cjs) readies each repository and reads what
 // landed where; this file names no driver and no tool. Conformance layer:
 // the nested world (landing-world.cjs), built once per driver and copied
-// for each test.
+// for each test. Budget: 65 s — every verb runs in three repositories, a
+// submodule and a clone, on each driver, and the unit's own branch is
+// walked there from its first phase through a later phase's start to
+// finish, and squashed by hand at finish (50 s probed, 58 to 65 s in
+// loaded gate runs); no lighter world nests a repository, and the unit's
+// branch across nested repositories is walked nowhere else.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

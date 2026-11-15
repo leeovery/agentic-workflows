@@ -1403,7 +1403,9 @@ function mergeHeld(root, branch) {
  * of `pointers`, by its path from the repository's top, set at its commit,
  * which leaves no conflict there theirs. The branch and `then`, the step
  * that takes it, are kept in the worktree's own git directory for every
- * land verb's refusal to name (`scratchBlock`). Where it is.
+ * land verb's refusal to name (`scratchBlock`), as soon as the worktree
+ * is there, so a merge git stops or a kill cuts short leaves them. Where
+ * it is.
  * @param {string} root @param {{branch: string, ours: string, theirs: string, message: string, then: string}} merging the unit's branch @param {Map<string, string>} pointers
  * @returns {string}
  */
@@ -1414,10 +1416,10 @@ function mergeBegun(root, { branch, ours, theirs, message, then }, pointers) {
     fs.rmSync(tree, { recursive: true, force: true });
     addWorktree(root, tree, null, ours);
   }
+  fs.writeFileSync(path.join(gitDirOf(tree), MERGING_FOR), JSON.stringify({ branch, then }));
   const res = gitRun(tree, [...PINNED, ...CHECKOUT_PINS, 'merge', '--no-ff', '--no-commit', '--no-log', '--no-verify-signatures', '-m', message, theirs]);
   if (res.error || res.status === null || res.status > 1) throw new GitError(`git merge failed: ${(res.error?.message ?? res.stderr).trim()}`);
   for (const [at, sha] of pointers) git(tree, ['update-index', '--cacheinfo', `160000,${sha},${at}`]);
-  fs.writeFileSync(path.join(gitDirOf(tree), MERGING_FOR), JSON.stringify({ branch, then }));
   return tree;
 }
 

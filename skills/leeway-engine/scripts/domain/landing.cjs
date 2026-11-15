@@ -1432,7 +1432,7 @@ function unitSteps(project, driver, walking, then) {
   for (const { ctx } of steps) {
     pulls.set(ctx.root, inRepo(ctx.repo, () => {
       const pull = driver.unitPull?.(ctx, branch) ?? null;
-      if (pull !== null && pull.refused !== null && !unitRead(project, driver, ctx).held) throw new Error(`land: ${pull.refused}`);
+      if (pull !== null && pull.refused !== null && !unitRead(project, driver, ctx).held) throw new Error(`land: ${pull.refused.replace('land again', then)}`);
       return pull;
     }));
   }
@@ -1555,7 +1555,6 @@ function unitLanding(project, ctx, { own, tip, base }, pull) {
   const lines = phases.map((phase) => `Phase ${phase}: ${cutPhases(manifest)[phase - 1]?.name ?? 'the review\'s fixes'}`);
   return { branch: own.into, tip, ...names.unitLanding(project.unit, unitTitle(manifest), lines), pull };
 }
-
 
 /**
  * Whether each of the tasks given, whole, is chained into its phase's stack
