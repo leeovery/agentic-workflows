@@ -139,7 +139,9 @@
 //     `assets/reviews/{topic}/`, names kept; a spec goes to
 //     `assets/specs/{topic}.md` where the unit's building has not started —
 //     an implementation item in progress or completed; where it has, every
-//     spec past its gate — its item completed — is joined into `spec.md`,
+//     spec past its gate — its item completed, or in progress where its topic
+//     has a planning or implementation item, reopened during the build to
+//     correct it — is joined into `spec.md`,
 //     read from the working tree (21.8.5, E5): each
 //     one area, `## N. {title}`, in build order, by the old order and then,
 //     for a spec with none, in the order its manifest lists them; its title
@@ -157,8 +159,8 @@
 //     (spec-sections.cjs), an old task's citation of its topic's spec read
 //     through its area (brief-records.cjs) — the
 //     migration's cut adds its scenarios (cut-migrating.cjs) — and the
-//     unit's other specs going to `assets/specs/`, a spec still being
-//     written, its item in progress, among them, its item going so its
+//     unit's other specs going to `assets/specs/`, one not past its gate,
+//     its item in progress or proposed, among them, its item going so its
 //     topics are decided topics in no spec, which leave the unit (21.8.9);
 //     a quick-fix's spec goes to `assets/specs/` whatever its building, and
 //     once the quick-fix is completed — its status says so, or every phase
@@ -326,10 +328,16 @@ const CARRIED = { imports: 'assets', seeds: 'seeds' };
 const DROP = Symbol('drop');
 // A building unit's specs, joined (21.8.5).
 const JOINED_SPEC = 'spec.md';
-// The spec a building unit joins: one past its gate.
+// A spec past its gate.
 const CONCLUDED_SPEC = 'completed';
-// A spec still being written, whose item a building unit drops.
+// A spec still being written: past its gate where the old product reopened
+// it during the build, its topic planned or built.
 const WRITTEN_SPEC = 'in-progress';
+// The specs not past their gate whose items a building unit drops: one still
+// being written, and one grouped and never begun.
+const UNCONCLUDED_SPECS = [WRITTEN_SPEC, 'proposed'];
+// The old phases whose item for a topic says its spec was past its gate.
+const PLANNED = ['planning', 'implementation'];
 const SPEC_TITLE = /^# (?:Specification: )?(.*\S)\s*$/;
 // A heading as the spec's reader reads one, at the line's start; a fence's
 // mark, at any indent, which closes the fence it opens on a line of as many
@@ -651,10 +659,21 @@ function reshapedManifest(manifest, topics) {
   return out;
 }
 
-/** A unit's spec items still being written taken off, its topics decided in no spec (21.8.9). @param {Record<string, any>} out */
+/**
+ * Whether a building unit's spec item is past its gate (21.8.5): concluded,
+ * or still being written where its topic was planned or built — reopened
+ * during the build to correct it.
+ * @param {Record<string, any>} manifest @param {string} topic @param {unknown} item
+ */
+function pastGate(manifest, topic, item) {
+  if (!isObject(item)) return false;
+  return item.status === CONCLUDED_SPEC || (item.status === WRITTEN_SPEC && PLANNED.some((phase) => Object.hasOwn(itemsOf(manifest, phase), topic)));
+}
+
+/** A unit's spec items not past their gate taken off, its topics decided in no spec (21.8.9). @param {Record<string, any>} out */
 function dropWrittenSpecs(out) {
   const specs = itemsOf(out, 'specification');
-  for (const [topic, item] of Object.entries(specs)) if (isObject(item) && item.status === WRITTEN_SPEC) delete specs[topic];
+  for (const [topic, item] of Object.entries(specs)) if (isObject(item) && UNCONCLUDED_SPECS.includes(item.status) && !pastGate(out, topic, item)) delete specs[topic];
 }
 
 /** An `imports[]` entry, its path following its file into `assets/`. @param {unknown} entry */
@@ -949,7 +968,7 @@ function joinedTopics(manifest, files) {
   if (isQuickFix(manifest) || !buildingStarted(manifest)) return [];
   const orderOf = (/** @type {Record<string, any>} */ item) => (Number.isInteger(item.order) ? item.order : Infinity);
   return Object.entries(itemsOf(manifest, 'specification'))
-    .filter(([topic, item]) => isObject(item) && item.status === CONCLUDED_SPEC && files.includes(`specification/${topic}/specification.md`))
+    .filter(([topic, item]) => pastGate(manifest, topic, item) && files.includes(`specification/${topic}/specification.md`))
     .map(([topic, item], at) => ({ topic, order: orderOf(item), at }))
     .sort((a, b) => a.order - b.order || a.at - b.at)
     .map(({ topic }) => topic);

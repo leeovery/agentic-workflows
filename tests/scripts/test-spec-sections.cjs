@@ -9,7 +9,7 @@
 // level two or above, holding its parts; a part, `### N.M Title`, to the
 // next at level three or above; a heading in a fenced block, opened by a
 // line holding, at any indent, three backticks or tildes at least, and
-// closed by one holding as many of that mark, being text — the spec refused where a
+// closed by one holding that mark alone, as many or more, being text — the spec refused where a
 // section is numbered twice or a part sits under another area or none; an
 // area's block of scenarios; the sections a reference cites drawn from a
 // text, a range's at its level in the spec's order, a part whose area is
@@ -111,9 +111,11 @@ describe('a spec\'s sections', () => {
     });
   });
 
-  it('a section numbered twice, and a part under another area or none, are refused — a run of tildes, or a fence at any indent, a list item\'s, fencing its headings as backticks do, closed only by its own mark', () => {
+  it('a section numbered twice, and a part under another area or none, are refused — a run of tildes, or a fence at any indent, a list item\'s, fencing its headings as backticks do, closed only by a bare run of its own mark as long or longer', () => {
     assert.throws(() => specSections(text(['## 1. Cards', '## 1. Again'])), /^Error: the spec numbers §1 twice$/);
     assert.deepStrictEqual([...specSections(text(['## 1. Cards', '~~~', '## 1. Again', '```', '## 2. Still fenced', '~~~~'])).keys()], ['1']);
+    assert.deepStrictEqual([...specSections(text(['## 1. Cards', '```', '## 1. Again', '`````', '## 2. Refunds'])).keys()], ['1', '2']);
+    assert.deepStrictEqual([...specSections(text(['## 1. Cards', '```', '## 1. Again', '```sh', '## 1. Still fenced', '```', '## 2. Refunds'])).keys()], ['1', '2']);
     assert.deepStrictEqual([...specSections(text(['## 1. Cards', '- a step:', '', '    ```sh', '## 1. Again', '    ```', '## 2. Refunds'])).keys()], ['1', '2']);
     assert.throws(() => specSections(text(['## 1. Cards', '### 2.1 Refunds'])), /^Error: §2\.1 sits under §1$/);
     assert.throws(() => specSections(text(['## Open questions', '### 1.1 The form'])), /^Error: §1\.1 sits under no area$/);

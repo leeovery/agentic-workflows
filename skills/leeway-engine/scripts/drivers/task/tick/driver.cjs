@@ -57,11 +57,15 @@
 // already is left: a run again adds only what the last left out. A task
 // holding another of the engine's names, a name another task holds, and a
 // task holding as many refs as Tick keeps on one, ten, are refused before
-// anything is added. A plan whose unit built nothing is closed under its
-// root (21.8.4): each task under the root holding no task of its own,
-// neither done nor cancelled, is cancelled with the reason, Tick ending the
-// parents itself, and the plan keeps no name of the engine's — history,
-// the build making its own unit's parent as it writes its first phase.
+// anything is added. The plan's phases are read as their adoption would
+// leave them, every name checked and nothing written (`adoption`), so the
+// migration's cut refuses before its first write. A plan whose unit built
+// nothing is closed under its root (21.8.4): each task under the root
+// holding no task of its own, neither done nor cancelled, is cancelled with
+// the reason, Tick ending the parents itself, and the plan keeps no name of
+// the engine's — history, the build making its own unit's parent as it
+// writes its first phase; a plan holding a task done is refused, closing
+// nothing: the tracker wins, its unit built some of it.
 //
 // The store's merge between two clones is merge.cjs's, given the driver's
 // names for what the store holds. It is loaded only as the store merges:
@@ -403,12 +407,12 @@ function adoptedNames(ids, unit, phase, parent) {
 }
 
 /**
- * Each name given to its task, beside the refs it has — none where a task
- * holds another of the engine's names, a name is another's, or the task
- * holds as many refs as Tick keeps; a name it holds already left.
- * @param {string} root @param {Ids} ids @param {[string, string][]} names
+ * Refuses names one of which a task may not take: where a task holds
+ * another of the engine's names, a name is another's, or the task holds as
+ * many refs as Tick keeps.
+ * @param {Ids} ids @param {[string, string][]} names
  */
-function giveNames(root, ids, names) {
+function refuseNames(ids, names) {
   for (const [id, ref] of names) {
     const holder = ids.byRef.get(ref);
     const own = ids.byId.get(id);
@@ -418,17 +422,57 @@ function giveNames(root, ids, names) {
     const refs = /** @type {Held} */ (ids.held.get(id)).refs ?? [];
     if (holder === undefined && refs.length >= MOST_REFS) throw new Error(`the task to be named ${said(name)} holds ${refs.length} refs, the most the tracker keeps on one — take one off it there to go on`);
   }
+}
+
+/**
+ * Each name given to its task, beside the refs it has, refused as
+ * `refuseNames` refuses; a name it holds already left.
+ * @param {string} root @param {Ids} ids @param {[string, string][]} names
+ */
+function giveNames(root, ids, names) {
+  refuseNames(ids, names);
   for (const [id, ref] of names) {
     if (ids.byRef.get(ref) !== id) tick(root, ['update', id, '--refs', [...(/** @type {Held} */ (ids.held.get(id)).refs ?? []), ref].join(',')]);
   }
 }
 
+/** The task the migration names as a phase's parent, refused where Tick lacks it. @param {Ids} ids @param {string} unit @param {number} phase @param {string} parent */
+function adoptedParent(ids, unit, phase, parent) {
+  const held = ids.held.get(parent);
+  if (held === undefined) throw new Error(`the tracker holds no task ${parent} to adopt as ${phaseName(unit, phase)}`);
+  return held;
+}
+
+/** The store as read, with `names` given beside the names it holds, nothing written. @param {Ids} ids @param {[string, string][]} names @returns {Ids} */
+function withNames(ids, names) {
+  const byRef = new Map(ids.byRef);
+  const byId = new Map(ids.byId);
+  for (const [id, ref] of names) {
+    byRef.set(ref, id);
+    byId.set(id, /** @type {Name} */ (nameIn(ref)));
+  }
+  return { ...ids, byRef, byId };
+}
+
+/**
+ * @param {string} root @param {string} unit @param {{phase: number, parent: string}[]} phases
+ * @returns {{phase: number, tasks: TaskDetail[]}[]}
+ */
+function adoption(root, unit, phases) {
+  let ids = idsIn(root);
+  for (const { phase, parent } of phases) {
+    const names = adoptedNames(ids, unit, phase, adoptedParent(ids, unit, phase, parent));
+    refuseNames(ids, names);
+    ids = withNames(ids, names);
+  }
+  const named = ids;
+  return phases.map(({ phase, parent }) => ({ phase, tasks: namedTasks(named, descendants(named, parent)).map(({ ref, task }) => detailOf(named, ref, task)) }));
+}
+
 /** @param {string} root @param {string} unit @param {number} phase @param {string} parent @returns {TaskRef[]} */
 function adopt(root, unit, phase, parent) {
   const ids = idsIn(root);
-  const held = ids.held.get(parent);
-  if (held === undefined) throw new Error(`the tracker holds no task ${parent} to adopt as ${phaseName(unit, phase)}`);
-  const names = adoptedNames(ids, unit, phase, held);
+  const names = adoptedNames(ids, unit, phase, adoptedParent(ids, unit, phase, parent));
   giveNames(root, ids, names);
   return names.flatMap(([, ref]) => {
     const name = nameIn(ref);
@@ -440,7 +484,12 @@ function adopt(root, unit, phase, parent) {
 function closePlan(root, unit, parent, reason) {
   const ids = idsIn(root);
   if (!ids.held.has(parent)) throw new Error(`the tracker holds no task ${parent} to close as the root of a plan from before Leeway of ${unitName(unit)}`);
-  const open = descendants(ids, parent).filter(({ id, status }) => (ids.children.get(id) ?? []).length === 0 && status !== 'done' && status !== 'cancelled');
+  const leaves = descendants(ids, parent).filter(({ id }) => (ids.children.get(id) ?? []).length === 0);
+  const done = leaves.filter(({ status }) => status === 'done');
+  if (done.length > 0) {
+    throw new Error(`the plan from before Leeway under ${parent} holds ${done.map(({ title }) => `"${title}"`).join(', ')} done, so ${unitName(unit)} built some of it — the tracker wins: the migration cuts the unit, carrying its plan on, and closes none of it`);
+  }
+  const open = leaves.filter(({ status }) => status !== 'cancelled');
   for (const { id } of open) {
     tick(root, ['note', 'add', id, '--', `${CLOSED}${reason}`]);
     tick(root, ['cancel', id]);
@@ -542,6 +591,7 @@ module.exports = {
   createUnit,
   createPhase,
   createTask,
+  adoption,
   adopt,
   closePlan,
   add,

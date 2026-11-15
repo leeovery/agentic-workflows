@@ -171,8 +171,11 @@ const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
 // The build's positions (3.3.1), auto first, the default. The unit's
 // manifest holds where its build stands as `build`, written by ready to
-// build's yes, which concludes the spec (P7): `{position}`, the position
-// picked there and switched since through `workunit position`.
+// build's yes, which concludes the spec (P7), or by the migration's cut
+// (cut-migrating.cjs): `{position, done_before?, cites?}`, the position
+// picked there and switched since through `workunit position`; the cut
+// adds the tasks done before the migration and the areas its old tasks
+// cite (21.8.8).
 const BUILD_POSITIONS = /** @type {const} */ (['auto', 'step']);
 
 // The landing record (landing-record.cjs, 7.2.22): the unit's manifest holds

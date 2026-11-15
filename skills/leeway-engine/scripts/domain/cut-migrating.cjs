@@ -8,7 +8,9 @@
 //
 // The plan the directive writes is one JSON object:
 // - `phases`, required: the cut as `cut` takes it (cut.cjs), in build order,
-//   a phase built before the migration `{name, goal, built: true}` (21.8.6),
+//   a phase built before the migration `{name, goal, sections, built:
+//   true}`, its sections the areas its old plan built (21.8.6), an area of
+//   the joined spec that no old plan built placed by a phase still to build,
 //   and each phase the old plan put in the tracker naming its parent there
 //   by the tracker's own id, `tracker` (21.8.8);
 // - `scenarios`: by the number of the area each belongs to, the text of the
@@ -27,17 +29,21 @@
 // a quick-fix's never are — and one this cut has marked (below); a plan it
 // cannot read, or of another shape; scenarios for an area `spec.md` lacks,
 // or text that is not one line; a note holding nothing, or a heading at
-// level one or two (notes.cjs); two phases naming one tracker parent; and
-// the cut, against `spec.md` as its scenarios leave it, as `cut` refuses it.
+// level one or two (notes.cjs); two phases naming one tracker parent; an
+// area of `spec.md` no phase places, naming it, its sections or a
+// scenario; and the cut, against `spec.md` as its scenarios leave it, as
+// `cut` refuses it.
 // Unlike `cut`, it marks a phase built and names its tracker parent anywhere
 // in the cut, and replaces every phase whole: a run killed before its mark
 // starts the unit from the top.
 //
 // Then, in this order, each step whole, so a run again takes it from the
-// top: the tracker's steps (task-verbs.cjs, `migratedTracker`) — each phase
-// naming its parent adopted, refused where a phase marked built holds a
-// task neither done nor closed, or a link holds a task neither done nor
-// closed after one neither, of a later phase or another unit's, and each
+// top: the tracker's steps (task-verbs.cjs, `migratedTracker`) — the phases
+// read as their adoption would leave them and refused, every fault named
+// and the tracker left as it was, where a phase marked built holds a task
+// neither done nor closed, a phase not marked built holds none, or a link
+// holds a task neither done nor closed after one neither, of a later phase
+// or another unit's; then each phase naming its parent adopted, and each
 // task neither done nor closed given its type, fix in a bugfix or quick-fix
 // and feat in any other (21.5.21); then the unit's files, `spec.md` with the
 // plan's blocks of scenarios, any a run before wrote replaced,
@@ -71,7 +77,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { migrationRuns } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { specJoined, joinedTopics, OLD_PLAN_PHASES } = require('./derivations.cjs');
+const { specJoined, joinedTopics, areaOfAddress, OLD_PLAN_PHASES } = require('./derivations.cjs');
 const { readSpec, specPath, specReading, rowsOf, fencedLines, SPEC_FILE } = require('./spec-sections.cjs');
 const { phasesOf, placing, specIn, againstSpec, refuse } = require('./cut.cjs');
 const { notesPath, notesAppended, topHeading } = require('./notes.cjs');
@@ -156,6 +162,18 @@ function trackerFaults(phases) {
     const first = phases.findIndex((other) => other.tracker !== undefined && other.tracker === phase.tracker);
     return first !== -1 && first < at ? [`phases ${first + 1} and ${at + 1} name one tracker parent, ${phase.tracker}`] : [];
   });
+}
+
+/**
+ * The faults of an area of the spec no phase places: names it, its sections
+ * or a scenario of it.
+ * @param {string} text the spec @param {Phase[]} phases
+ */
+function placedFaults(text, phases) {
+  const placed = new Set(phases.flatMap((phase) => [...placing(phase).sections, ...placing(phase).scenarios].map(areaOfAddress)));
+  return specReading(text, true).headings
+    .filter((heading) => heading.kind === 'area' && !placed.has(String(heading.number)))
+    .map(({ number, title }) => `§${number} ${title} is placed by no phase — a phase built before the migration names the area its old plan built in its sections, and an area none built is placed by a phase still to build`);
 }
 
 /**
@@ -271,6 +289,20 @@ function cuttable(cwd, unit) {
 }
 
 /**
+ * The tracker's steps (`migratedTracker`), a refusal of theirs opening
+ * `cut: ` as every refusal of the verb does.
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean}[]} parents @param {string} type
+ */
+function cutTracker(cwd, unit, parents, type) {
+  try {
+    return migratedTracker(cwd, unit, parents, type);
+  } catch (err) {
+    if (err instanceof Error) err.message = `cut: ${err.message}`;
+    throw err;
+  }
+}
+
+/**
  * `cut --migrating`: the unit's plan applied whole (the header's).
  * @param {string} cwd @param {string} unit @param {string} file absolute or from cwd
  */
@@ -278,10 +310,10 @@ function cutMigrating(cwd, unit, file) {
   const manifest = cuttable(cwd, unit);
   const plan = planIn(path.resolve(cwd, file));
   const text = plannedSpec(cwd, unit, plan);
-  const faults = [...trackerFaults(plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
+  const faults = [...trackerFaults(plan.phases), ...placedFaults(text, plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
   if (faults.length > 0) refuse(faults);
   const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{ phase: at + 1, parent: phase.tracker, built: 'built' in phase }]));
-  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [], open: [] } : migratedTracker(cwd, unit, parents, migratedType(manifest.work_type));
+  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type));
   const notes = withWorkUnitLock(cwd, unit, () => {
     writeTextAtomic(specPath(cwd, unit), text);
     const wrote = writeNotes(cwd, unit, plan.notes);

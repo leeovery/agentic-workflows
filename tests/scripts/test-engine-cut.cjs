@@ -13,8 +13,9 @@
 // phase has started — its start's checklist closed, not merely open — then
 // keeping every phase to the last started, whatever order its fields are
 // given in, and changing only those after. The migration's marks (21.8.6,
-// 21.8.8): a phase built, `{name, goal, built: true}`, placing and drawing on
-// nothing and read started, and a phase's tracker parent, each kept as the
+// 21.8.8): a phase built, `{name, goal, sections, built: true}`, placing no
+// scenario and relying on nothing and read started, and a phase's tracker
+// parent, each kept as the
 // migration's cut wrote it — a cut marking a phase after the last started
 // built, or naming a tracker parent the manifest's cut does not, refused.
 //
@@ -208,8 +209,8 @@ describe('the refusals (11.5.9, 11.S31), nothing written', () => {
     }
     const { goal, ...goalless } = CARDS;
     assert.strictEqual(refused({ phases: [goalless, { ...REFUNDS, order: 2 }, { ...REFUNDS, built: true }] }),
-      'cut: phase 1 is not {name, goal, scenarios, sections, relies_on}; phase 2 is not {name, goal, scenarios, sections, relies_on}; phase 3 is not {name, goal, built}');
-    assert.strictEqual(refused({ phases: [{ name: 'Setup', goal: 'Set up.', built: false }, { ...CARDS, tracker: ' ' }, REFUNDS] }),
+      'cut: phase 1 is not {name, goal, scenarios, sections, relies_on}; phase 2 is not {name, goal, scenarios, sections, relies_on}; phase 3 is not {name, goal, sections, built}');
+    assert.strictEqual(refused({ phases: [{ name: 'Setup', goal: 'Set up.', sections: [], built: false }, { ...CARDS, tracker: ' ' }, REFUNDS] }),
       'cut: phase 1\'s built is not true; phase 2\'s tracker is not the tracker\'s id of its parent');
     assert.strictEqual(refused({ phases: [{ ...CARDS, name: ' ', scenarios: '1.S1' }, { ...REFUNDS, sections: ['3', '3'], relies_on: [0] }] }), [
       'cut: phase 1\'s name is not text', 'phase 1\'s scenarios is not a list of scenario ids, each once',
@@ -291,13 +292,13 @@ describe('a second cut (E10)', () => {
 describe('the migration\'s marks: a phase built and a tracker parent (21.8.6, 21.8.8)', () => {
   useWorld(world);
 
-  const SETUP = { name: 'Setup', goal: 'Set up before the migration.', built: true };
+  const SETUP = { name: 'Setup', goal: 'Set up before the migration.', sections: ['1'], built: true };
   const TRACKED = { ...REFUNDS, relies_on: [2], tracker: 'old-7' };
 
   /** The cut the migration's wrote, on the unit's manifest. @param {object[]} phases */
   const migrated = (phases) => writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir, UNIT), cut: { phases } }, null, 2));
 
-  it('keeps a built phase and a tracker parent as the migration\'s cut wrote them, the built phase placing and drawing on nothing and read started, so a cut changes only the phases after it, a scenario in none read past it', () => {
+  it('keeps a built phase and a tracker parent as the migration\'s cut wrote them, the built phase placing no scenario and relying on nothing and read started, so a cut changes only the phases after it, a scenario in none read past it', () => {
     migrated([SETUP, CARDS, TRACKED]);
     const sooner = { ...CARDS, goal: 'Cards, sooner.' };
 
@@ -308,7 +309,7 @@ describe('the migration\'s marks: a phase built and a tracker parent (21.8.6, 21
 
   it('refuses, writing nothing, a built phase changed, one marked built after it, and a tracker parent named, changed or dropped — only the migration\'s cut does those', () => {
     migrated([SETUP, CARDS, TRACKED]);
-    const builtLater = { name: 'Refunds', goal: 'Refunds work.', built: true, tracker: 'old-7' };
+    const builtLater = { name: 'Refunds', goal: 'Refunds work.', sections: ['2'], built: true, tracker: 'old-7' };
 
     assert.strictEqual(refused({ phases: [{ ...SETUP, goal: 'Set up.' }, CARDS, TRACKED] }), 'cut: phase 1 has started, and the cut changes phase 1 — a cut keeps every phase to 1 as it stands and changes only those after');
     assert.strictEqual(refused({ phases: [SETUP, { ...CARDS, scenarios: ['1.S1', '3.S1', '3.S2'] }, builtLater] }), 'cut: phase 3 is marked built — only the migration\'s cut marks a phase built');

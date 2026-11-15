@@ -11,9 +11,10 @@
 // what it relies on, an earlier phase by its number or another unit by its
 // name (11.5.4, 12.6.2). A list may be empty: ready to build's checklist
 // holds each phase to having its own (6.4.7). A phase the migration's cut
-// found built (21.8.6, cut-migrating.cjs) is `{name, goal, built: true}`,
-// read as placing, drawing on and relying on nothing, and started and
-// closed wherever a phase is read (derivations.cjs); and a phase whose
+// found built (21.8.6, cut-migrating.cjs) is `{name, goal, sections, built:
+// true}`, its sections the areas its old plan built, read as placing no
+// scenario and relying on nothing, and started and closed wherever a phase
+// is read (derivations.cjs); and a phase whose
 // tracker parent the migration adopted names it last, `tracker`, the
 // tracker's own id (21.8.8). Only the migration's cut marks a phase built
 // or names its tracker parent: a cut here marks none built after the last
@@ -59,7 +60,7 @@ const { phaseStarted, cutPhases, cutLength, specJoined } = require('./derivation
 const { recordCut } = require('./spec-passes.cjs');
 
 /** A phase not yet built, as the file and the manifest keep it. @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>, tracker?: string}} UnbuiltPhase */
-/** A phase built before the migration, as they keep it. @typedef {{name: string, goal: string, built: true, tracker?: string}} BuiltPhase */
+/** A phase built before the migration, as they keep it. @typedef {{name: string, goal: string, sections: string[], built: true, tracker?: string}} BuiltPhase */
 /** @typedef {UnbuiltPhase|BuiltPhase} Phase */
 /** What a phase places and draws on, which the spec and the project hold it to. @typedef {import('./derivations.cjs').CutPhase} Placing */
 
@@ -88,7 +89,7 @@ const FIELDS = Object.freeze({
 const PHASE_FIELDS = /** @type {Field[]} */ (['name', 'goal', 'scenarios', 'sections', 'relies_on']);
 
 /** The fields of a phase built before the migration, in that order. */
-const BUILT_FIELDS = /** @type {Field[]} */ (['name', 'goal', 'built']);
+const BUILT_FIELDS = /** @type {Field[]} */ (['name', 'goal', 'sections', 'built']);
 
 /** The field any phase may name last: its tracker parent, once adopted. */
 const TRACKER = /** @type {Field} */ ('tracker');
@@ -120,8 +121,8 @@ function shapeFaults(phase, number) {
   return givenFields(phase).filter((field) => !fits(field, phase[field])).map((field) => `phase ${number}'s ${field} is not ${FIELDS[field].holds}`);
 }
 
-/** A phase as the cut's checks read it: a built one placing, drawing on and relying on nothing. @param {Phase} phase @returns {Placing} */
-const placing = (phase) => ('built' in phase ? { scenarios: [], sections: [], relies_on: [], ...phase } : phase);
+/** A phase as the cut's checks read it: a built one placing no scenario and relying on nothing. @param {Phase} phase @returns {Placing} */
+const placing = (phase) => ('built' in phase ? { scenarios: [], relies_on: [], ...phase } : phase);
 
 /**
  * A cut's phases, each its fields in the manifest's order. Refuses, naming

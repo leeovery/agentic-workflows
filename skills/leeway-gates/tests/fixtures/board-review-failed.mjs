@@ -14,7 +14,7 @@ export default {
     {
       "area": "1",
       "title": "Purpose and Scope",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -23,7 +23,7 @@ export default {
     {
       "area": "2",
       "title": "The Lean Default AI Command",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -32,7 +32,7 @@ export default {
     {
       "area": "3",
       "title": "Quote-Aware ai_command Parsing",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -41,7 +41,7 @@ export default {
     {
       "area": "4",
       "title": "The Per-Call Size Cap",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 1,
@@ -50,7 +50,7 @@ export default {
     {
       "area": "5",
       "title": "Per-Verb Exclusion Lists",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 1,
       "found": 1,
@@ -59,7 +59,7 @@ export default {
     {
       "area": "6",
       "title": "The Exclusion Check",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 4,
       "found": 2,
@@ -68,7 +68,7 @@ export default {
     {
       "area": "7",
       "title": "Routing a Release's Notes",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -77,7 +77,7 @@ export default {
     {
       "area": "8",
       "title": "Chunked Generation",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -86,7 +86,7 @@ export default {
     {
       "area": "9",
       "title": "Failure Classification",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -95,7 +95,7 @@ export default {
     {
       "area": "10",
       "title": "Halving After an Under-Cap Overflow",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 1,
       "found": 0,
@@ -104,7 +104,7 @@ export default {
     {
       "area": "11",
       "title": "Failures in a Chunked Run",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -113,7 +113,7 @@ export default {
     {
       "area": "12",
       "title": "The Remediation Floor",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 2,
       "found": 5,
@@ -122,7 +122,7 @@ export default {
     {
       "area": "13",
       "title": "--notes-file",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 9,
       "found": 0,
@@ -131,7 +131,7 @@ export default {
     {
       "area": "14",
       "title": "One Non-AI Body: Dropping [release].fallback",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -140,7 +140,7 @@ export default {
     {
       "area": "15",
       "title": "Chunked Notes at the Review Gate and in the Cache",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 1,
       "found": 0,
@@ -149,7 +149,7 @@ export default {
     {
       "area": "16",
       "title": "Progress Narration",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 1,
@@ -158,7 +158,7 @@ export default {
     {
       "area": "17",
       "title": "mint commit's AI-Failure Output",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 0,
@@ -167,7 +167,7 @@ export default {
     {
       "area": "18",
       "title": "Documentation and the Setup Guide",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 6,
       "found": 3,
@@ -176,7 +176,7 @@ export default {
     {
       "area": "tests",
       "title": "Tests held against the specification",
-      "before": false,
+      "before": null,
       "state": "read",
       "ran": 0,
       "found": 4,

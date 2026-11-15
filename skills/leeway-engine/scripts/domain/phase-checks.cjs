@@ -46,7 +46,9 @@
 //
 // A task that landed before the migration cut the unit (`landedBefore`,
 // derivations.cjs) was built and landed before Leeway: it counts as passed
-// and landed, and only the tasks built since make the phase's stack.
+// and landed, and only the tasks built since make the phase's stack. A
+// phase with nothing built since — each task of it landed before or closed
+// — passes its review with nothing to read (`nothingSince`).
 //
 // A call reads each thing once for all its checks (`Reading`): a phase's
 // tasks, under the state's lock as every reader of the tracker takes it,
@@ -60,7 +62,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
 const {
-  phaseClosed, phaseBuilt, phaseAdopted, cutPhases, cutLength, landedBefore, hasLanded, builtSince,
+  phaseClosed, phaseBuilt, phaseAdopted, cutPhases, cutLength, landedBefore, hasLanded, landedAnyBefore, builtSince,
 } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
@@ -222,6 +224,18 @@ function tasksPassed(at, phase) {
   return rows.length > 0 && rows.every((row) => before(at, row) || passed(at, row.ref));
 }
 
+/**
+ * Whether a phase of a unit the migration cut has nothing built since:
+ * every task of it not closed, one at least, landed before the migration
+ * (`builtSince`) — its review passing with nothing to read.
+ * @param {Reading} at @param {number} phase
+ */
+function nothingSince(at, phase) {
+  if (!landedAnyBefore(at.manifest)) return false;
+  const rows = liveRows(at, phase);
+  return rows.length > 0 && builtSince(at.manifest, rows).length === 0;
+}
+
 /** The phase review's reports, read once a call (round-report.cjs). @param {Reading} at @param {number} phase @returns {Reviewed} */
 const reviewed = (at, phase) => once(at, `review ${phase}`, () => phaseReports(at.cwd, at.unit, phase));
 
@@ -268,6 +282,7 @@ function fixFaults(at, phase, fix, status) {
  * @param {Reading} at @param {number} phase @returns {string[]}
  */
 function phaseReviewFaults(at, phase) {
+  if (nothingSince(at, phase)) return [];
   const { faults, reports } = reviewed(at, phase);
   if (faults.length > 0 || allPass(reports)) return faults;
   /** @type {string[]} */

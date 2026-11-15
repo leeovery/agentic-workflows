@@ -211,7 +211,7 @@ const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutLength, buildLength, quickFixBuild, isFixPhase } = require('./derivations.cjs');
+const { cutLength, buildLength, quickFixBuild, isFixPhase, builtSince } = require('./derivations.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { repoLanded, landedIn, landedAcross, foundIn, workIn } = require('./task-landed.cjs');
@@ -1098,7 +1098,8 @@ function refuseUnpassed(cwd, ref) {
 /**
  * The phase's mutation run, as the `next` of whatever ends the last of a
  * phase of the cut's tasks (the header's) — its chain, or its close where
- * another of the phase's is done — once its notes are consolidated, its
+ * another of the phase's built since the migration cut the unit is done
+ * (`builtSince`) — once its notes are consolidated, its
  * phase review not begun and the verify setup naming a mutation tool;
  * nothing else, and nothing for a phase past the cut — the review's fixes, a
  * quick-fix's — which no phase review reads (15.6.3).
@@ -1111,7 +1112,7 @@ function mutationRun(cwd, ref, chained = true) {
   if (notes().consolidationFaults(cwd, ref.unit, ref.phase).length > 0) return {};
   const others = (trackedPhase(cwd, ref.unit, ref.phase).tasks ?? []).filter((task) => shownTask(task.ref) !== shownTask(ref));
   if (others.some((task) => !ENDED.includes(task.status))) return {};
-  if (!chained && !others.some((task) => task.status === 'done')) return {};
+  if (!chained && !builtSince(manifest, others).some((task) => task.status === 'done')) return {};
   return { next: { kind: 'engine', argv: ['verify', 'mutants', ref.unit, String(ref.phase)] } };
 }
 

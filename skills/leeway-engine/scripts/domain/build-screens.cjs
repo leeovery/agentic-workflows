@@ -65,7 +65,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { phaseNamed, buildStanding, builtUnit, standingUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
 const { reviewStanding, reviewGoesOn } = require('./review-phase.cjs');
-const { cutPhases, cutLength, quickFixBuild, reviewAsked } = require('./derivations.cjs');
+const { cutPhases, cutLength, quickFixBuild, reviewAsked, landedBefore, doneBeforeIn } = require('./derivations.cjs');
 const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
 const { outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
@@ -140,12 +140,12 @@ function requiredAccount(cwd, ref) {
   return account;
 }
 
-/** A task's account as a screen draws it, with its place among its phase's tasks. @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView} */
+/** A task's account as a screen draws it, with its place among its phase's tasks and whether it landed before the migration cut the unit. @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView} */
 function accountView(cwd, manifest, ref, task, account) {
   const { phases: [rows] } = withStateLock(stateRoot(cwd), () => trackedLists(cwd, ref.unit, [ref.phase]));
   const tasks = (rows ?? []).map((row) => shownTask(row.ref));
   return {
-    head: headOf(manifest, ref, task), at: tasks.indexOf(shownTask(ref)) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', account,
+    head: headOf(manifest, ref, task), at: tasks.indexOf(shownTask(ref)) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', before: landedBefore(manifest)(ref), account,
   };
 }
 
@@ -269,7 +269,7 @@ function phaseMergeGateSurface(cwd, { dotpath: unit = '', item }) {
     stepOnly(manifest, 'a phase\'s stack merges with no gate');
     const refused = mergeRefusal(reading(cwd, unit, manifest), phase);
     if (refused !== null) throw new Error(refused);
-    return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase));
+    return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase), doneBeforeIn(manifest, phase));
   });
 }
 

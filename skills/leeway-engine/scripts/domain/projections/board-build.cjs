@@ -341,7 +341,7 @@ function taskPage(at, given) {
     started: account === null ? at.tracker().started : account.figures.started,
     finished: account?.figures.finished ?? null,
     does: outcomeOf(task.text),
-    criteria: criteria.length,
+    criteria: criteria.length || null,
     account: account === null ? null : {
       done: sections['What was done'],
       where: sections['Where in the code'],

@@ -28,12 +28,14 @@
 // other tags kept as it takes one; a run again adding only what the last
 // left out; a parent the tracker lacks, a task named apart, a name held
 // elsewhere and a task holding all the refs the tracker keeps on one
-// refused, adding nothing; and ready across every phase of the unit
-// wherever its parent sits. A plan whose unit built nothing closed under
-// its root (21.8.4): each task neither done nor closed closed with the
-// reason, the plan given no name of the engine's, the build's first phase
-// then written under a parent of its own; a run again closing nothing; a
-// root the tracker lacks refused. 7.S5: the shipped task drivers are exactly one, the default.
+// refused, adding nothing; ready across every phase of the unit wherever
+// its parent sits; and the adoption of phases in turn read, writing
+// nothing, as adopt then shows them, refused as adopt refuses. A plan whose
+// unit built nothing closed under its root (21.8.4): each task neither done
+// nor closed closed with the reason, the plan given no name of the
+// engine's, the build's first phase then written under a parent of its own;
+// a run again closing nothing; a root the tracker lacks, and a plan holding
+// a task done, refused. 7.S5: the shipped task drivers are exactly one, the default.
 // The store merged between two clones (7.5.5–7.5.7): each side's changes
 // kept, a field both set differently the person's choice in the engine's
 // words, a name both made the remote's, this machine's set aside and named,
@@ -430,8 +432,12 @@ for (const driver of listDrivers('task')) {
       ];
       /** @param {number} phase @param {number} n */
       const old = (phase, n) => ({ unit: OLD, phase, n });
+      const UNBUILT = 'memo';
+      const UNBUILT_PLAN = [{ title: 'Memos', tasks: ['Write a memo', 'Pin a memo', 'Drop a memo'] }, { title: 'Sharing', tasks: ['Share a memo'] }];
       /** @type {{root: string, phases: string[]}} */
       let plan;
+      /** @type {{root: string, phases: string[]}} */
+      let unbuilt;
       /** @type {any} */
       let side;
       const store = () => driver.storeFiles().map((file) => fs.readFileSync(path.join(root, file), 'utf8'));
@@ -446,7 +452,8 @@ for (const driver of listDrivers('task')) {
         fs.cpSync(template, planned, { recursive: true });
         plan = side.oldPlan(planned, OLD, PLAN);
         side.linkBy(planned, 'Count the till', 'Open the till');
-        for (const [act, title] of [['done', 'Price the basket'], ['done', 'Hold the basket'], ['cancel', 'Empty the basket'], ['start', 'Open the till']]) side.taskByHand(planned, act, title);
+        unbuilt = side.oldPlan(planned, UNBUILT, UNBUILT_PLAN);
+        for (const [act, title] of [['done', 'Price the basket'], ['done', 'Hold the basket'], ['cancel', 'Empty the basket'], ['start', 'Open the till'], ['cancel', 'Drop a memo'], ['start', 'Pin a memo']]) side.taskByHand(planned, act, title);
       });
 
       beforeEach(() => {
@@ -465,6 +472,14 @@ for (const driver of listDrivers('task')) {
           const tool = side.toolAnswers(root, OLD, phase);
           assert.deepStrictEqual({ list: phase === null ? tool.list : driver.list(root, OLD, phase), ready: driver.ready(root, OLD, phase) }, tool, `phase ${phase}`);
         }
+      });
+
+      it('reads what adopting the phases in turn would name, writing nothing: each phase\'s tasks as adopt then shows them', () => {
+        const before = store();
+        const read = driver.adoption(root, OLD, [{ phase: 1, parent: plan.phases[0] }, { phase: 2, parent: plan.phases[1] }]);
+        assert.deepStrictEqual(store(), before);
+        adoptBoth();
+        assert.deepStrictEqual(read, [1, 2].map((phase) => ({ phase, tasks: [1, 2, 3].map((n) => driver.show(root, old(phase, n))) })));
       });
 
       it('a task\'s type is its tag of the template\'s types — the old plan\'s own tags never read as one — and it takes a type with its other tags kept (21.8.8)', () => {
@@ -509,7 +524,7 @@ for (const driver of listDrivers('task')) {
         assert.deepStrictEqual([driver.createUnit(root, 'shop-extras'), driver.createUnit(root, OLD)], [false, true]);
       });
 
-      it('refuses, adding nothing, a parent the tracker lacks, a task named apart from the name it would take, a name another task holds, and a task holding all the refs the tracker keeps on one', () => {
+      it('refuses, adding nothing, a parent the tracker lacks, a task named apart from the name it would take, a name another task holds, and a task holding all the refs the tracker keeps on one — its read of the adoption refusing alike', () => {
         for (const [setUp, phase, parent, named] of /** @type {const} */ ([
           [() => {}, 1, () => 'no-such-task', [phaseName(OLD, 1)]],
           [() => side.fillRefs(root, 'Close the till'), 2, () => plan.phases[1], [taskName(old(2, 3))]],
@@ -518,7 +533,9 @@ for (const driver of listDrivers('task')) {
         ])) {
           setUp();
           const before = store();
-          assert.throws(() => driver.adopt(root, OLD, phase, parent()), (err) => err instanceof Error && named.every((name) => err.message.includes(name)), named.join(', '));
+          const naming = (/** @type {unknown} */ err) => err instanceof Error && named.every((name) => err.message.includes(name));
+          assert.throws(() => driver.adoption(root, OLD, [{ phase, parent: parent() }]), naming, `read: ${named.join(', ')}`);
+          assert.throws(() => driver.adopt(root, OLD, phase, parent()), naming, named.join(', '));
           assert.deepStrictEqual(store(), before);
         }
       });
@@ -527,29 +544,28 @@ for (const driver of listDrivers('task')) {
         const REASON = 'its unit built nothing';
 
         it('closes each task neither done nor closed with the reason, the parents ended by the tracker, the plan given no name of the engine\'s — so the build\'s first phase is written under a parent of its own, its names the plan\'s none', () => {
-          assert.strictEqual(driver.closePlan(root, OLD, plan.root, REASON), 3);
+          assert.strictEqual(driver.closePlan(root, UNBUILT, unbuilt.root, REASON), 3);
           const closed = ['closed', REASON];
-          assert.deepStrictEqual(side.planStanding(root, OLD), {
-            'Hold the basket': ['done', null], 'Price the basket': ['done', null], 'Empty the basket': ['closed', null],
-            'Open the till': closed, 'Count the till': closed, 'Close the till': closed,
-          });
-          assert.deepStrictEqual([driver.list(root, OLD, 1), driver.createUnit(root, OLD)], [null, true]);
-          driver.createPhase(root, OLD, 1, 'The basket, afresh');
-          driver.createTask(root, old(1, 1), task('Hold the basket afresh'));
-          assert.deepStrictEqual(driver.list(root, OLD, 1), side.toolAnswers(root, OLD, 1).list);
-          assert.deepStrictEqual(shown(driver.list(root, OLD, 1) ?? []), ['1.1']);
+          assert.deepStrictEqual(side.planStanding(root, UNBUILT), { 'Write a memo': closed, 'Pin a memo': closed, 'Drop a memo': ['closed', null], 'Share a memo': closed });
+          const memo = (/** @type {number} */ n) => ({ unit: UNBUILT, phase: 1, n });
+          assert.deepStrictEqual([driver.list(root, UNBUILT, 1), driver.createUnit(root, UNBUILT)], [null, true]);
+          driver.createPhase(root, UNBUILT, 1, 'Memos, afresh');
+          driver.createTask(root, memo(1), task('Write a memo afresh'));
+          assert.deepStrictEqual(driver.list(root, UNBUILT, 1), side.toolAnswers(root, UNBUILT, 1).list);
+          assert.deepStrictEqual(shown(driver.list(root, UNBUILT, 1) ?? []), ['1.1']);
         });
 
         it('a run again closes nothing and changes nothing', () => {
-          driver.closePlan(root, OLD, plan.root, REASON);
+          driver.closePlan(root, UNBUILT, unbuilt.root, REASON);
           const once = store();
-          assert.strictEqual(driver.closePlan(root, OLD, plan.root, REASON), 0);
+          assert.strictEqual(driver.closePlan(root, UNBUILT, unbuilt.root, REASON), 0);
           assert.deepStrictEqual(store(), once);
         });
 
-        it('refuses, closing nothing, a root the tracker lacks', () => {
+        it('refuses, closing nothing, a root the tracker lacks, and a plan holding a task done — the tracker winning, its unit built some of it — naming each done', () => {
           const before = store();
           assert.throws(() => driver.closePlan(root, OLD, 'no-such-task', REASON), (err) => err instanceof Error && err.message.includes('no-such-task') && err.message.includes(unitName(OLD)));
+          assert.throws(() => driver.closePlan(root, OLD, plan.root, REASON), (err) => err instanceof Error && ['"Hold the basket"', '"Price the basket"', 'the tracker wins'].every((words) => err.message.includes(words)));
           assert.deepStrictEqual(store(), before);
         });
       });

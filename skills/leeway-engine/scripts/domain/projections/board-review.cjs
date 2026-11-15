@@ -14,9 +14,9 @@
 //   round read it, with the checks the round ran of the area's scenarios —
 //   `{area}.S{k}` — and the findings the round gave it, every other
 //   unchanged, not read again (20.10.2); its findings in scope, each with
-//   its call, its checks not proven, and its verdict. An area the review
-//   reads as built before the migration cut the unit says so
-//   (`readBuiltBefore`, review-phase.cjs, 21.8.8).
+//   its call, its checks not proven, and its verdict. An area built before
+//   the migration cut the unit, whole or in part, says so (`areaBuilt`,
+//   derivations.cjs, 21.8.8).
 // - Under way, each read the round takes is read once every report of it is
 //   written, with every finding its reports hold; being read since this
 //   conversation issued its brief for that read in that round (P15); else
@@ -65,11 +65,11 @@ const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { readReport } = require('../round-report.cjs');
 const { projectName } = require('../state-checks.cjs');
-const { fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, readBuiltBefore, TESTS } = require('../review-phase.cjs');
+const { fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
 const { trackedChange, cutStandings } = require('../review-change.cjs');
 const { reposOf, landedOf } = require('../phase-checks.cjs');
 const { copiedTasks } = require('../task-verbs.cjs');
-const { quickFixBuild, FIXES_PHASE } = require('../derivations.cjs');
+const { quickFixBuild, areaBuilt, FIXES_PHASE } = require('../derivations.cjs');
 const { acceptanceOf, fixScenarios } = require('../fix-acceptance.cjs');
 const { buildRead, taskLine, standingAt, reviewStandingAt, readingAt, scenarioWording } = require('./board-build.cjs');
 const { tasksStopped } = require('./board-standing.cjs');
@@ -83,12 +83,11 @@ const { tasksStopped } = require('./board-standing.cjs');
 /** The reader over the tests, as its line titles it: held against the spec, a quick-fix's against its fixes' acceptance. @param {BoardAt} at */
 const testsTitle = (at) => `Tests held against ${quickFixBuild(at.manifest) ? 'the fixes\' acceptance' : 'the specification'}`;
 
-/** A read of a round: the area's name or the tests', its number and title, and whether the area was built before the migration. @typedef {{read: string, area: string, title: string, before: boolean}} Read */
+/** A read of a round: the area's name or the tests', its number and title, and how much of the area was built before the migration. @typedef {{read: string, area: string, title: string, before: 'built'|'partly'|null}} Read */
 
-/** The reads of a round, each the area's name or the tests', with its number and title, and whether the review reads it as built before the migration (`readBuiltBefore`). @param {BoardAt} at @param {ReviewStanding} standing @returns {Read[]} */
-function readsOf(at, standing) {
-  const before = (/** @type {import('../review-phase.cjs').Area} */ area) => readBuiltBefore(readingAt(at), standing, area);
-  return [...standing.areas.map((area) => ({ read: area.name, area: area.number, title: area.title, before: before(area) })), { read: TESTS, area: TESTS, title: testsTitle(at), before: false }];
+/** The reads of a round, each the area's name or the tests', with its number and title, and how much of it was built before the migration (`areaBuilt`). @param {BoardAt} at @param {ReviewStanding} standing @returns {Read[]} */
+function readsOf(at, { areas }) {
+  return [...areas.map(({ name, number, title }) => ({ read: name, area: number, title, before: areaBuilt(at.manifest, number) })), { read: TESTS, area: TESTS, title: testsTitle(at), before: null }];
 }
 
 /** Where a finding's words name its user scenario, which a report writes after them. */

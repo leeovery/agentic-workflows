@@ -502,7 +502,9 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, citedAreas } = require('./derivations.cjs');
+const {
+  dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, landedBefore, landedAnyBefore, citedAreas, areaBuilt,
+} = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
@@ -550,7 +552,7 @@ const { scratchName } = require('./scratch.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
-  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase, filesUnder, readBuiltBefore,
+  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase, filesUnder,
 } = require('./review-phase.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
@@ -1235,11 +1237,15 @@ function fixCriteria(filling) {
 function drawSpecScenarios(filling) {
   if (ofQuickFix(filling)) return [noSpecLine(filling), listed(fixCriteria(filling))].join('\n\n');
   const { sections, lines } = unitSpec(filling);
-  return listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
+  const scenarios = listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
     const area = /** @type {Section} */ (sections.get(number.split('.')[0]));
     return `- ${number}, of §${area.address} ${titleOf(area)}: ${indented(wording)}`;
   }));
+  return landedAnyBefore(unitManifest(filling)) ? [scenarios, TESTS_BEFORE].join('\n\n') : scenarios;
 }
+
+/** What the test surface's reader is told of a unit with work landed before the migration cut it. */
+const TESTS_BEFORE = 'Some of the unit\'s work landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips, and no commit of the change carries them. Read the tests there, those that landed before beside those the change adds or changes.';
 
 /** The part a statement or its screen is in, `N.M`. @param {string} number */
 const partOf = (number) => number.split('.').slice(0, 2).join('.');
@@ -1698,7 +1704,7 @@ function drawPhaseSections(filling) {
   const cut = cutOf(filling);
   const built = cut[phase - 1].sections.map((address) => {
     const first = cut.findIndex((each) => each.sections.some(builds(address))) + 1;
-    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}`;
+    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}${cut[first - 1].built === true ? ', before the migration cut the unit' : ''}`;
   });
   return [`\`${unitSpec(filling).file}\``, built.join('\n'), ...sectionTexts(filling, phase)].join('\n\n');
 }
@@ -1783,11 +1789,18 @@ function writtenPhase(filling) {
 /** Each addition to a task, under a heading a level below the task's own. @param {TaskDetail} task */
 const additionsOf = ({ additions }) => additions.flatMap(({ by, text }) => ['', `### Added by the ${by}`, '', text]);
 
+/** Where a task of the phase stands, as its review reads it: closed with its reason, landed before the migration cut the unit, outside the phase's range, or its status. @param {Filling} filling @param {TaskDetail} task */
+function phaseTaskStands(filling, task) {
+  if (task.status === 'closed') return `It was closed: ${task.reason}`;
+  if (landedBefore(unitManifest(filling))(task.ref)) return 'It landed before the migration cut the unit: its work stands in the product already, and the phase\'s range holds none of it.';
+  return `It is ${STATUS_WORDS[task.status]}.`;
+}
+
 /** @param {Filling} filling */
 function drawPhaseTasks(filling) {
   return blocks(writtenPhase(filling).map((task) => {
     const [title, ...body] = headingsDown(titledText(task)).split('\n');
-    const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STATUS_WORDS[task.status]}.`;
+    const stands = phaseTaskStands(filling, task);
     return [title.replace(/^## /, `## ${shownTask(task.ref)} `), '', stands, '', body.join('\n').replace(/^\n+/, ''), ...additionsOf(task)].join('\n');
   }));
 }
@@ -1800,7 +1813,7 @@ function criteriaOrText(text) {
 
 /** @param {Filling} filling */
 function drawPhaseCriteria(filling) {
-  return blocks(writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => (
+  return blocks(builtSince(unitManifest(filling), writtenPhase(filling)).filter(({ status }) => status !== 'closed').map((task) => (
     [`## ${shownTask(task.ref)} ${task.title}`, '', criteriaOrText(task.text), ...additionsOf(task)].join('\n')
   )));
 }
@@ -1812,7 +1825,7 @@ function drawReliedOn(filling) {
   return blocks(cut[phase - 1].relies_on.map((on) => {
     if (typeof on === 'string') return `## The work unit ${on}\n\nThis phase relies on its delivery.`;
     const { name, goal, sections, built } = cut[on - 1];
-    const placed = built === true ? 'Built before the migration cut the unit: its work is on the default branch already.' : `Its sections: ${sections.map((address) => `§${address}`).join(', ')}`;
+    const placed = `Its sections: ${sections.map((address) => `§${address}`).join(', ')}${built === true ? ' — built before the migration cut the unit, its work in the product already' : ''}`;
     return [`## Phase ${on}: ${name}`, '', goal, '', placed, '', 'Its tasks:', '', listed((phases[on - 1] ?? []).map(taskLine))].join('\n');
   }));
 }
@@ -1824,7 +1837,10 @@ function drawReliedOn(filling) {
  */
 const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {import('./phase-stack.cjs').PhaseStack} */ (filling) => {
   const { unit, phase } = phaseOf(filling);
-  return phaseStack(filling.cwd, unit, phase, builtSince(unitManifest(filling), writtenPhase(filling)));
+  const manifest = unitManifest(filling);
+  const since = builtSince(manifest, writtenPhase(filling));
+  if (landedAnyBefore(manifest) && !since.some(({ status }) => status !== 'closed')) throw new Error(`${phaseName(unit, phase)} has nothing built since the migration cut the unit — each task of it landed before or was closed — so its review passes with nothing to read`);
+  return phaseStack(filling.cwd, unit, phase, since);
 });
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -2112,9 +2128,15 @@ function drawAreaSections(filling, warnings) {
   const area = areaNamed(filling, warnings);
   if (ofQuickFix(filling)) return drawChangeArea(filling);
   const { file, sections } = unitSpec(filling);
-  const before = readBuiltBefore(reviewReading(filling, warnings), reviewOf(filling, warnings), area) ? [`§${area.number} was built before the migration cut the unit: its tasks landed on the default branch before Leeway, and the change since holds none of it. Hold the product as the default branch holds it against the area.`] : [];
-  return [`\`${file}\``, /** @type {Section} */ (sections.get(area.number)).text, ...before].join('\n\n');
+  const built = areaBuilt(unitManifest(filling), area.number);
+  return [`\`${file}\``, /** @type {Section} */ (sections.get(area.number)).text, ...(built === null ? [] : [BUILT_BEFORE[built](area.number)])].join('\n\n');
 }
+
+/** What the area's reader is told of work of it built before the migration cut the unit, whole or in part (`areaBuilt`). */
+const BUILT_BEFORE = Object.freeze({
+  built: (/** @type {string} */ area) => `§${area} was built before the migration cut the unit: its work landed before Leeway, so no commit of the change carries it. Hold the product at the change's tips against the area — the work landed before stands there, the area's as much as the change's.`,
+  partly: (/** @type {string} */ area) => `Some of §${area} was built before the migration cut the unit: that work landed before Leeway, so no commit of the change carries it, and the rest is the change's. Hold the product at the change's tips against the area — the work landed before stands there beside the change's.`,
+});
 
 /**
  * What the area's reader holds the change against, as its review opens: the
@@ -2126,7 +2148,8 @@ function drawAreaAuthority(filling) {
   if (ofQuickFix(filling)) {
     return 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:';
   }
-  return 'Every task and every phase of the build has passed its own review. Hold the whole change against this area of the spec, as one piece. The spec\'s intent for the area, and the product it describes, are your authority, never a task\'s criteria:';
+  const before = landedAnyBefore(unitManifest(filling)) ? ' Work of the unit that landed before the migration cut it stands in the product there with no commit of the change carrying it, and is met as the change\'s is.' : '';
+  return `Every task and every phase of the build has passed its own review. Hold the product at the change's tips against this area of the spec, as one piece.${before} The spec's intent for the area, and the product it describes, are your authority, never a task's criteria:`;
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -2163,7 +2186,7 @@ function drawChangeCommits(filling, warnings) {
 }
 
 /** A repository whose change is empty, the unit's every task there landed before the migration cut it (review-change.cjs). @param {string} base */
-const nothingSince = (base) => `Nothing has landed here since the migration cut the unit, and nothing waits to land: the change is the product as \`${base}\` holds it.`;
+const nothingSince = (base) => `Nothing has landed here since the migration cut the unit, and nothing waits to land: the change is empty, its tip \`${base}\` itself.`;
 
 /** A part of the change in a repository: a landing by its commit and subject, or the work not landed by where it is read from, with its stat. @param {Repo} repo @param {import('./review-change.cjs').ChangePart} part */
 function partDrawn(repo, { from, to, landed, branch }) {

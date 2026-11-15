@@ -11,12 +11,18 @@
 // old plan, its text opening on no title, is briefed under its title, on
 // the area the cut found its text citing by the old spec's path with its
 // phase's scenarios, or, citing none, on its phase's sections and
-// scenarios, and its phase review reads its text where it holds no
+// scenarios, its figures counting no criteria and its account saying they
+// are in its text, and its phase review reads its text where it holds no
 // criteria; the task done before the migration counts as passed and landed
-// at the phase's close, with no round, figure or landing of its own, the
-// stack the tasks built since; and the review reads the whole unit, the
-// joined spec's area its area. The review itself is
-// test-pipeline-simulation-review-migrated.cjs's.
+// at the phase's close, with no round, figure, account or landing of its
+// own — its phase review drawing it as landed before, outside the range,
+// with no criteria to hold, and the area its built phase placed as first
+// built there — the merge gate naming it on the default branch already and
+// the stack the tasks built since; and the review reads the whole unit, the
+// joined spec's area its area. A phase whose every task since was closed,
+// its others done before, passes its review with nothing to read and runs
+// no mutants. The review itself is test-pipeline-simulation-review-migrated-
+// feature.cjs's and -epic.cjs's.
 //
 // Layer: simulation. World: this file's own — a project in the layout from
 // before Leeway, the old plan in the project's tracker, moved by the real
@@ -67,7 +73,7 @@ function buildWorld(/** @type {string} */ dir) {
   }, [['done', 'Keep a page'], ['done', 'Show a page'], ['done', 'Edit a title'], ['start', 'Edit the text']]);
   migratedCut(dir, WU, {
     phases: [
-      { name: 'Pages', goal: 'A page is kept.', built: true, tracker: built },
+      { name: 'Pages', goal: 'A page is kept.', sections: ['1'], built: true, tracker: built },
       { name: 'Editing', goal: 'A page is edited.', scenarios: ['1.S1'], sections: ['1'], relies_on: [1], tracker: editing },
       { name: 'Search', goal: 'A page is found.', scenarios: ['1.S2'], sections: ['1'], relies_on: [2], tracker: search },
     ],
@@ -113,17 +119,20 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     return loop.landedTask(task);
   };
 
-  /** A phase's review passing, its stack merged at its gate, and its close: the first reviewer's brief. @param {number} phase */
+  /** A phase's review passing, its stack merged at its gate, and its close: the first reviewer's brief and the merge gate. @param {number} phase */
   const closed = (phase) => {
     const briefs = ['a', 'b'].map((letter) => loop.brief(['phase-review', WU, String(phase), '--letter', letter]));
     for (const brief of briefs) landed(placeIn(sim, brief, 'Where your report goes'), PASSED_REPORT);
-    sim.render(['phase-merge-gate', WU, String(phase)], { expect: 'content' });
+    const merge = sim.render(['phase-merge-gate', WU, String(phase)], { expect: 'content' });
     sim.run(answerGate(sim, 'phase merge', '--pick', 'y').next.argv);
     sim.run(['checklist', 'close', 'phase-close', WU, String(phase)]);
-    return briefOf(sim, briefs[0]);
+    return { review: briefOf(sim, briefs[0]), merge };
   };
 
-  it('21.8.6–21.8.8: a feature cut mid-build carried on by today\'s build to its review — each adopted phase\'s tasks written; an old task\'s builder briefed under its title on the area its text cites with its phase\'s scenarios, or its phase\'s sections and scenarios; its step gate showing its text for what it does, its phase review given its text for its criteria and the built phase it relies on as on the default branch; the task done before the migration passed and landed at its phase\'s close, the stack the tasks built since', () => {
+  /** What a task's account screen says of an account not written. @param {string} task */
+  const unaccounted = (task) => /No account (?:was|is) written[^\n]*/.exec(sim.render(['task-account', WU, task], { expect: 'content' }))?.[0];
+
+  it('21.8.6–21.8.8: a feature cut mid-build carried on by today\'s build to its review — each adopted phase\'s tasks written; an old task\'s builder briefed under its title on the area its text cites with its phase\'s scenarios, or its phase\'s sections and scenarios; its step gate showing its text for what it does and for the criteria it proves, its phase review given its text for its criteria and the built phase it relies on as in the product already; the task done before the migration passed and landed at its phase\'s close, drawn as landed before and with no account, the stack the tasks built since and the rest on the default branch already', () => {
     assert.strictEqual(sim.run(['enter', 'implementation', WU]).entered, true);
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('phase: ')), [
       'phase: phase 1 of 3, "Pages": merged — tasks 1.1 done, 1.2 done',
@@ -147,6 +156,9 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     loop.pairRound('2.2');
     assert.strictEqual(throughItsGate('2.2', ['Passed.']), undefined);
     assert.match(gate, /WHAT IT DOES\n+ +\*\*Problem\*\*: A page's text is fixed once written\./, 'an old task, holding no Outcome, shown by its text');
+    assert.match(gate, /✓ Proves the criteria in its text · /, 'an old task\'s criteria, which its figures count none of, in its text');
+    const { view: page } = sim.board(['--tab', 'unit', '--unit', WU, '--page', 'task:2.2']);
+    assert.deepStrictEqual([page.criteria, page.account.figures.criteria], [null, null], 'the board\'s task page counting none either');
 
     // 2.3 cites nothing: its phase's sections and scenarios stand for it.
     sim.run(['task', 'start', WU, '2.3']);
@@ -158,13 +170,20 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     assert.deepStrictEqual(throughItsGate('2.3', ['Passed.'])?.argv, ['verify', 'mutants', WU, '2']);
 
     // The phase's close: 2.1, done before the migration, passed and landed
-    // with no round, figure or landing of its own.
+    // with no round, figure or landing of its own, its consolidation reading
+    // it as landed before.
+    assert.ok(briefOf(sim, loop.brief(['consolidation', WU, '2', '--base', 'main'])).includes('## 2.1 Edit a title\n\nIt landed before the migration cut the unit: its work stands in the product already, and the phase\'s range holds none of it.'), 'the task done before the migration drawn as landed before');
     const items = JSON.parse(sim.read(['checklist', 'show', 'phase-close', WU, '2'])).items;
     assert.deepStrictEqual(['tasks-passed', 'stack-merged'].map((key) => items.find((/** @type {{key: string}} */ item) => item.key === key).state), ['done', 'done']);
     assert.ok(!git(sim.dir, ['log', 'main', '--format=%B']).includes(`${WU}-2-1`), 'no landing names the task done before the migration');
-    const review = closed(2);
+    const { review, merge } = closed(2);
     assert.ok(review.includes('## 2.2 Edit the text\n\n**Problem**: A page\'s text is fixed once written.'), 'the phase review reads an old task\'s text for the criteria it holds none of');
-    assert.ok(review.includes('## Phase 1: Pages\n\nA page is kept.\n\nBuilt before the migration cut the unit: its work is on the default branch already.\n\nIts tasks:'), 'the built phase it relies on read as on the default branch');
+    assert.ok(review.includes('## Phase 1: Pages\n\nA page is kept.\n\nIts sections: §1 — built before the migration cut the unit, its work in the product already\n\nIts tasks:'), 'the built phase it relies on read as in the product already');
+    assert.ok(review.includes('- §1, first built in phase 1, before the migration cut the unit'), 'the area first built by the phase built before the migration');
+    const criteria = review.slice(review.indexOf('# Its tasks\' criteria'), review.indexOf('# What it relies on'));
+    assert.ok(criteria.includes('## 2.3 ') && !criteria.includes('## 2.1 '), 'no criteria held of the task done before the migration');
+    assert.match(merge, /its tasks built since the migration cut the unit land on the default branch as one stack — 2\.1 is on it already\./);
+    assert.deepStrictEqual([unaccounted('2.1'), unaccounted('1.1')], Array(2).fill('No account was written: it landed before the migration cut the unit.'));
 
     startPhase(sim, WU, 3);
     for (const [task, file] of [['3.1', 'src/index.js'], ['3.2', 'src/find.js']]) {
@@ -180,5 +199,22 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
 
     assert.strictEqual(sim.run(['enter', 'review', WU]).entered, true, 'every phase merged, the review phase is entered');
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('area: ')), [`area: 1-${WU} — §1 Folio`]);
+  });
+
+  it('21.8.8: a phase whose every task since the migration was closed, the rest done before it, passes its review with nothing to read, its last close naming no mutation run', () => {
+    sim.run(['enter', 'implementation', WU]);
+    startPhase(sim, WU, 2);
+    sim.run(['enter', 'implementation', WU]);
+    const builder = loop.brief(['builder', WU, '2.2']);
+    const editing = loop.isolated('2.2');
+    loop.committed(editing, '2.2', VERIFY_FILES);
+    loop.setUp(editing, builder, '1.S1');
+    sim.run(['task', 'close', WU, '2.2', '--reason', 'Editing waits for the page\'s history.']);
+    sim.run(['task', 'start', WU, '2.3']);
+    assert.strictEqual(sim.run(['task', 'close', WU, '2.3', '--reason', 'Undo waits for the page\'s history.']).next, undefined, 'nothing built since to run mutants over');
+
+    const items = JSON.parse(sim.read(['checklist', 'show', 'phase-close', WU, '2'])).items;
+    assert.strictEqual(items.find((/** @type {{key: string}} */ item) => item.key === 'phase-review-passed').state, 'done');
+    sim.refuses(['brief', 'phase-review', WU, '2', '--letter', 'a'], /phase 2 of folio has nothing built since the migration cut the unit — each task of it landed before or was closed — so its review passes with nothing to read/);
   });
 });

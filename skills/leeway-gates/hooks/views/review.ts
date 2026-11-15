@@ -14,7 +14,8 @@
  * round is recorded, else every one its landed reports hold; the round's
  * areas, each read with what it ran and found, being read with its clock,
  * waiting, or unchanged, not read again (20.S11), one built before the
- * migration cut the unit saying so (21.8.8); NOT PROVEN; TO THE
+ * migration cut the unit, whole or in part, saying so on the line beneath
+ * (21.8.8); NOT PROVEN; TO THE
  * INBOX; and the VERDICT, a failing one hung under its mark (D19). Each
  * fix task, finding and check opens its page (20.10.3).
  *
@@ -31,7 +32,7 @@ import { taskLineOf, waitingLines, type TaskLine, type Waiting } from './build.t
 import { section, type Found } from './task.ts'
 
 /** An area of a round, as the engine's model holds it. */
-type AreaLine = { area: string; title: string; before: boolean; state: 'read' | 'reading' | 'waiting' | 'unchanged'; ran: number; found: number; since: string | null }
+type AreaLine = { area: string; title: string; before: 'built' | 'partly' | null; state: 'read' | 'reading' | 'waiting' | 'unchanged'; ran: number; found: number; since: string | null }
 
 /** The review phase's This session, as the engine's model holds it. */
 type ReviewView = View & {
@@ -195,16 +196,19 @@ function areaState({ state, ran, found, since }: AreaLine, kit: Kit): [Part, Par
   }
 }
 
-/** ROUND N: one row per area and one for the reader over the tests. */
+/** How an area built before the migration cut the unit says so, whole or in part. */
+const BUILT_BEFORE = { built: 'built before Leeway', partly: 'partly built before Leeway' } as const
+
+/** ROUND N: one row per area and one for the reader over the tests, an area built before the migration saying so beneath. */
 function areasOf({ round, areas }: ReviewView, kit: Kit): Line[] {
   return [
     section('review:areas', `ROUND ${round}`, COLOUR.violet, kit.width, round === 1 ? 'every area, read and run' : 'the areas the fixes changed'),
-    ...areas.map((line): Line => {
+    ...areas.flatMap((line): Line[] => {
       const [mark, state] = areaState(line, kit)
       const label = line.area === TESTS ? line.title : `§${line.area} ${line.title}`
-      const before: Part[] = line.before ? [{ text: 'built before Leeway · ', color: COLOUR.secondary }] : []
+      const row: Line = { key: `review:area:${line.area}`, parts: spread([mark, { text: ` ${label}`, color: COLOUR.body }], [state], kit.width) }
 
-      return { key: `review:area:${line.area}`, parts: spread([mark, { text: ` ${label}`, color: COLOUR.body }], [...before, state], kit.width) }
+      return line.before === null ? [row] : [row, { key: `review:area:${line.area}:before`, parts: [{ text: `  ${BUILT_BEFORE[line.before]}`, color: COLOUR.secondary }] }]
     }),
     blank('review:areas'),
   ]

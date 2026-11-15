@@ -183,6 +183,16 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
     ])
   })
 
+  test('a task from before Leeway, its criteria in its text and counted by none, says so rather than a count, in WHAT IT DOES and the account\'s figures', () => {
+    const account = { ...(TASK.account as object), figures: { files: 2, added: 9, removed: 1, criteria: null } }
+    const rows = onPage(task({ criteria: null, account }))
+
+    expect([rows.find(row => row.startsWith('Its criteria')), rows.find(row => row.startsWith('✓ Proves'))]).toEqual([
+      'Its criteria are in its text                   ▸ read the task',
+      '✓ Proves the criteria in its text · 2 files changed · +9 −1',
+    ])
+  })
+
   test('D17: a fix task\'s page lists what it fixes, each finding hung under its mark', () => {
     expect(sectionOf(onPage(FIXING), 'WHAT IT FIXES')).toEqual([
       'WHAT IT FIXES ────────────────────────────────────────────── 1',

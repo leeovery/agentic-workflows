@@ -88,14 +88,15 @@ const phaseStarted = (manifest, number) => phaseEnded(manifest, number, 'start')
 const phaseClosed = (manifest, number) => phaseEnded(manifest, number, 'close');
 
 /**
- * A phase of a unit's cut as it is read: a built phase, which keeps its name
- * and goal alone, read as placing, drawing on and relying on nothing.
+ * A phase of a unit's cut as it is read: a built phase, which keeps its
+ * name, goal and the areas its old plan built (21.8.6), read as placing no
+ * scenario and relying on nothing.
  * @typedef {{name?: string, goal?: string, sections: string[], scenarios: string[], relies_on: Array<number|string>, built?: true, tracker?: string}} CutPhase
  */
 
 /** The phases of the unit's cut, none where it has none, each as it is read. @param {Record<string, any>} manifest @returns {CutPhase[]} */
 const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases)
-  ? manifest.cut.phases.map((/** @type {any} */ phase) => (phase?.built === true ? { scenarios: [], sections: [], relies_on: [], ...phase } : phase))
+  ? manifest.cut.phases.map((/** @type {any} */ phase) => (phase?.built === true ? { scenarios: [], relies_on: [], ...phase } : phase))
   : []);
 
 /** The topics whose old specs the migration joined into the unit's spec, area by area, `spec.joined` (21.8.5); none where it joined none. @param {Record<string, any>} manifest @returns {string[]} */
@@ -161,25 +162,31 @@ function citedAreas(manifest) {
 /** The area a section, `N` or `N.M`, or a scenario, `N.Sk`, belongs to. @param {string} address */
 const areaOfAddress = (address) => address.split('.')[0];
 
+/** The tasks of phase `number` done before the migration cut the unit, shown (`build.done_before`). @param {Record<string, any>} manifest @param {number} number @returns {string[]} */
+const doneBeforeIn = (manifest, number) => doneBefore(manifest).filter((task) => task.startsWith(`${number}.`));
+
+/** Whether a phase of the cut places an area: names it, a part or a scenario of it, or holds a task the cut found citing it. @param {Record<string, any>} manifest @param {string} area */
+function placesArea(manifest, area) {
+  /** @type {Record<string, string[]>} */
+  const cites = manifest.build?.cites ?? {};
+  return (/** @type {CutPhase} */ phase, /** @type {number} */ at) => [...phase.sections, ...phase.scenarios].some((address) => areaOfAddress(address) === area)
+    || Object.entries(cites).some(([task, areas]) => task.startsWith(`${at + 1}.`) && areas.includes(area));
+}
+
 /**
- * Whether an area of the unit's spec was built whole before the migration
- * cut the unit (21.8.8), the review reading it as the default branch holds
- * it: the unit landed work before the migration, and each phase of the cut
- * built since that places a section or scenario of the area, or holds a
- * task citing it (`citedAreas`), has tasks, every one not closed landed
- * before it (`landedBefore`). `lists` holds each phase's tasks in turn,
- * null for one not written.
- * @param {Record<string, any>} manifest @param {string} area @param {({ref: TaskRef, status: string}[]|null|undefined)[]} lists
+ * How much of an area of the unit's spec was built before the migration cut
+ * the unit (21.8.8): `built` where every phase of the cut placing it was
+ * built before it (`placesArea`); `partly` where some was, or holds a task
+ * done before it (`doneBeforeIn`); null where none placing it was or done
+ * any — so for every unit that landed nothing before it — and where none
+ * places it.
+ * @param {Record<string, any>} manifest @param {string} area @returns {'built'|'partly'|null}
  */
-function areaBuiltBefore(manifest, area, lists) {
-  if (!landedAnyBefore(manifest)) return false;
-  const before = landedBefore(manifest);
-  const cited = citedAreas(manifest);
-  return cutPhases(manifest).every((phase, at) => {
-    const live = (lists[at] ?? []).filter(({ status }) => status !== 'closed');
-    const places = [...phase.sections, ...phase.scenarios].some((address) => areaOfAddress(address) === area) || live.some(({ ref }) => cited(ref).includes(area));
-    return !places || (live.length > 0 && live.every(({ ref }) => before(ref)));
-  });
+function areaBuilt(manifest, area) {
+  const places = placesArea(manifest, area);
+  const placing = cutPhases(manifest).flatMap((phase, at) => (places(phase, at) ? [{ built: phase.built === true, done: doneBeforeIn(manifest, at + 1).length > 0 }] : []));
+  if (placing.length > 0 && placing.every(({ built }) => built)) return 'built';
+  return placing.some(({ built, done }) => built || done) ? 'partly' : null;
 }
 
 /** How many phases the unit's cut holds, none where it has none. @param {Record<string, any>} manifest */
@@ -1467,7 +1474,10 @@ module.exports = {
   builtSince,
   phaseAdopted,
   citedAreas,
-  areaBuiltBefore,
+  areaOfAddress,
+  doneBeforeIn,
+  placesArea,
+  areaBuilt,
   cutLength,
   isFixPhase,
   legacyBuild,

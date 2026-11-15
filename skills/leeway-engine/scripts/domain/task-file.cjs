@@ -148,9 +148,9 @@ function criteriaTexts(text) {
   return items.map(({ opened, beneath }) => oneLine([opened[1], ...beneath.map(({ line }) => line)]));
 }
 
-/** How many acceptance criteria a task's text holds (`criteriaTexts`). @param {string} text @returns {number} */
+/** How many acceptance criteria a task's text holds (`criteriaTexts`); null where it holds none, a task from before Leeway its criteria in its text. @param {string} text @returns {number|null} */
 function criteriaOf(text) {
-  return criteriaTexts(text).length;
+  return criteriaTexts(text).length || null;
 }
 
 /** Whether text names a scenario by its id, `N.Sk`, a longer id never read as it. @param {string} text @param {string} scenario */
