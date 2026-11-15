@@ -120,6 +120,10 @@ describe('hermetic environment — the pins', () => {
     assert.strictEqual(process.env.CLAUDE_CODE_SESSION_ID, undefined);
   });
 
+  it('no session\'s effort reaches a test — boot reports the one it is handed', () => {
+    assert.strictEqual(process.env.CLAUDE_EFFORT, undefined);
+  });
+
   it('the separate Claude call runs the stub, never a real Claude — and the stub has no login until a test arms it', () => {
     assert.strictEqual(process.env.LEEWAY_CLAUDE, path.join(__dirname, 'claude-stub.sh'));
     assert.ok(fs.statSync(process.env.LEEWAY_CLAUDE).mode & 0o111, 'the stub runs as a binary');

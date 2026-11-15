@@ -97,6 +97,8 @@ delete process.env.LEEWAY_HANDOFF;
 // Claude Code hands every command it runs its conversation's id, and every
 // engine call marks that conversation's folder.
 delete process.env.CLAUDE_CODE_SESSION_ID;
+// It hands them the session's effort too, which boot reports.
+delete process.env.CLAUDE_EFFORT;
 // The developer's own ssh command overrides any a suite stands in for a
 // remote with, and would carry their keys to it.
 delete process.env.GIT_SSH_COMMAND;

@@ -73,7 +73,7 @@ describe('the catch-up at boot (4.7.8)', () => {
     const conversation = { CLAUDE_CODE_SESSION_ID: 'merging', LEEWAY_CONFIG_DIR: path.join(world(), 'config') };
     const stamp = path.join(conversation.LEEWAY_CONFIG_DIR, 'conversations', 'merging', 'booted.json');
 
-    assert.deepStrictEqual(boot(here.main, { STUB_MIGRATE_MARK: mark, ...conversation }), { ok: true, state: 'merge', warnings: [] });
+    assert.deepStrictEqual(boot(here.main, { STUB_MIGRATE_MARK: mark, ...conversation }), { ok: true, state: 'merge', stop: { surface: 'state-merge-gate', next: { kind: 'gate' } }, warnings: [] });
     assert.ok(!fs.existsSync(mark), 'the migrations ran past the stop');
     assert.ok(!fs.existsSync(stamp), 'nothing may touch the work at the stop (22.1.7)');
 

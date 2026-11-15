@@ -68,9 +68,10 @@ const COMMIT = ['commit', '--migrations', '-m', MESSAGE];
 const JOURNALS = '.cache/migrate';
 
 // What boot answers where the migration waits on its commit and the runner
-// had nothing left to run.
-const FINISH = { ok: true, state: 'finish', migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], notices: [] }, warnings: [] };
-const NOTHING_RAN = { ok: true, state: 'finish', migrations: { changed: false, ran: 0, output: '', verify: [], notices: [] }, warnings: [] };
+// had nothing left to run: the start skill's review loaded, then boot again.
+const AT_FINISH = { marker: 'Migration', next: { kind: 'load', reference: 'migration-review' } };
+const FINISH = { ok: true, state: 'finish', migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], notices: [] }, stop: AT_FINISH, warnings: [] };
+const NOTHING_RAN = { ok: true, state: 'finish', migrations: { changed: false, ran: 0, output: '', verify: [], notices: [] }, stop: AT_FINISH, warnings: [] };
 
 // What the state branch's first commit holds: the layout the move wrote,
 // and the decision the ledger held.
@@ -461,8 +462,9 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
 
     const stopped = [real.ok(project, ['boot'], unstamped), real.ok(project, ['boot'], unstamped)];
 
-    assert.deepStrictEqual(stopped.map(({ state, folder: at, verify }) => ({ state, at, checks: verify.map((entry) => entry.id) })), [1, 2].map(() => ({ state: 'checks', at: project, checks: ['071'] })));
-    assert.match(real.output(project, ['render', 'migration-checks-stop'], unstamped), /^⚑ The migration stopped before its move, for checks earlier migrations handed back$/m);
+    const atChecks = { marker: 'Migration', surface: 'migration-checks-stop', next: { kind: 'load', reference: 'migration-checks', with: { folder: project } } };
+    assert.deepStrictEqual(stopped.map(({ state, folder: at, verify, stop }) => ({ state, at, checks: verify.map((entry) => entry.id), stop })), [1, 2].map(() => ({ state: 'checks', at: project, checks: ['071'], stop: atChecks })));
+    assert.match(real.output(project, ['render', atChecks.surface], unstamped), /^⚑ The migration stopped before its move, for checks earlier migrations handed back$/m);
     assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Leeway/);
     assert.ok(!fs.existsSync(path.join(project, '.leeway/payments')), 'nothing moved yet');
 

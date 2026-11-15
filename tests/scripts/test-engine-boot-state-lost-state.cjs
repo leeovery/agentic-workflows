@@ -30,7 +30,7 @@ const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs')
 const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 
-const { useWorld, remoteProject, OWN_SETTINGS, engine, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
+const { LOST, useWorld, remoteProject, OWN_SETTINGS, engine, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -76,12 +76,12 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const before = untouched(main, bare);
     const conversation = { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: path.join(world(), 'config') };
 
-    assert.deepStrictEqual(boot(main, conversation), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(boot(main, conversation), LOST);
     assert.deepStrictEqual(untouched(main, bare), before);
     assert.ok(!fs.existsSync(statePath(main)));
     assert.ok(!fs.existsSync(path.join(conversation.LEEWAY_CONFIG_DIR, 'conversations', 'lost-state', 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
 
-    assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(boot(main), LOST);
     assert.deepStrictEqual(untouched(main, bare), before);
   });
 
@@ -89,7 +89,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const settings = { hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo theirs' }] }, LAYOUT_GROUP] } };
     const main = lostProject({ trace: { '.claude/settings.json': JSON.stringify(settings, null, 2) + '\n' } });
 
-    assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(boot(main), LOST);
     assert.ok(!fs.existsSync(statePath(main)));
   });
 
@@ -101,7 +101,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null, blocks_build: null }))}\n`;
     createFile(path.join(config, 'conversations', session), 'trust-pending.jsonl', waiting);
 
-    assert.deepStrictEqual(boot(main, { LEEWAY_CONFIG_DIR: config }), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(boot(main, { LEEWAY_CONFIG_DIR: config }), LOST);
 
     assert.strictEqual(fs.readFileSync(path.join(config, 'trust.jsonl'), 'utf8'), waiting);
     assert.ok(!fs.existsSync(path.join(config, 'conversations', session, 'trust-pending.jsonl')));
@@ -124,7 +124,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       assert.ok(!fs.existsSync(path.join(main, '.gitignore')), 'the main checkout\'s branch holds no trace');
       const before = untouched(main, bare);
 
-      assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+      assert.deepStrictEqual(boot(main), LOST);
 
       assert.deepStrictEqual(untouched(main, bare), before);
     });
@@ -135,7 +135,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       git(main, ['checkout', '-q', '-b', 'before-setup', 'main~1']);
       const before = untouched(main, bare);
 
-      assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+      assert.deepStrictEqual(boot(main), LOST);
 
       assert.deepStrictEqual(untouched(main, bare), before);
     });
@@ -148,7 +148,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       git(fresh, ['branch', '-q', '-D', 'main']);
       const before = untouched(fresh, bare);
 
-      assert.deepStrictEqual(boot(fresh), { ok: true, state: 'lost', warnings: [] });
+      assert.deepStrictEqual(boot(fresh), LOST);
 
       assert.deepStrictEqual(untouched(fresh, bare), before);
     });
@@ -164,7 +164,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       loseState(main);
       const before = untouched(main, null);
 
-      assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+      assert.deepStrictEqual(boot(main), LOST);
 
       assert.deepStrictEqual(untouched(main, null), before);
     });
@@ -181,7 +181,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       loseState(top);
       const before = untouched(top, null);
 
-      assert.deepStrictEqual(boot(path.join(top, 'app')), { ok: true, state: 'lost', warnings: [] });
+      assert.deepStrictEqual(boot(path.join(top, 'app')), LOST);
 
       assert.deepStrictEqual(untouched(top, null), before);
     });
@@ -196,7 +196,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       loseState(main, bare);
       assert.strictEqual(git(old, ['for-each-ref', 'refs/remotes/origin/feature']), '', 'the old clone never fetched it');
 
-      assert.deepStrictEqual(boot(old), { ok: true, state: 'lost', warnings: [] });
+      assert.deepStrictEqual(boot(old), LOST);
 
       assert.ok(!fs.existsSync(statePath(old)));
       assert.strictEqual(remoteTip(bare), '', 'no fresh state pushed for every other clone to restore');
@@ -295,24 +295,25 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.deepStrictEqual([next('y'), next('n')], [{ kind: 'engine', argv: ['boot', '--start-again'] }, null], 'the yes leads to the fresh start, the no to nothing');
   });
 
-  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again, the conversation stamped — the baseline signal reads all the code as before the workflows', () => {
+  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again, the conversation stamped — the read of the code the yes promised comes on Claude\'s entry too, its signal reading all the code as before the workflows', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const main = lostProject({ remote: bare });
     const code = tip(main, 'main');
     const config = path.join(world(), 'config');
 
-    const res = engine.ok(main, ['boot', '--start-again'], { env: { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: config } });
+    const res = engine.ok(main, ['boot', '--start-again'], { env: { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: config }, stdin: 'Change the help output\n' });
 
     assert.strictEqual(res.state, 'restarted');
+    assert.deepStrictEqual([res.go, res.gates.includes('brownfield')], ['route', true]);
     assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(config, 'conversations', 'lost-state', 'booted.json'), 'utf8'))), [main], 'the work goes on from here (22.1.7)');
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)]);
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));
     assert.strictEqual(tip(main, 'main'), code, 'the code side gained nothing: its trace was already there');
     assert.strictEqual(res.brownfield_offer, 'none');
-    assert.strictEqual(res.baseline_signal.commits_before, res.baseline_signal.commits_total);
-    assert.deepStrictEqual(res.baseline_signal.history_before, ['2025-03-01  the app', '2025-03-01  set up']);
-    assert.notStrictEqual(res.baseline_signal.workflows_date, null);
+    assert.strictEqual(res.brownfield_signal.commits_before, res.brownfield_signal.commits_total);
+    assert.deepStrictEqual(res.brownfield_signal.history_before, ['2025-03-01  the app', '2025-03-01  set up']);
+    assert.notStrictEqual(res.brownfield_signal.workflows_date, null);
     assert.strictEqual(boot(main).state, 'ready', 'started again once: the next boot finds the state in place');
   });
 
@@ -322,7 +323,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
     assert.strictEqual(engine.ok(main, ['boot', '--start-again']).state, 'ready');
     assert.strictEqual(tip(main, STATE_BRANCH), before);
-    assert.match(engine.refuses(main, ['boot', '--fresh']).error, /^Usage: engine boot \[--start-again\]$/);
+    assert.match(engine.refuses(main, ['boot', '--fresh']).error, /^Usage: engine boot \[--start-again\] {3}\(the person's words on stdin\)$/);
   });
 
   it('a state folder with no branch here or on the remote is refused, saying what happened and the ways on, nothing written', () => {

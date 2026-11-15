@@ -1,5 +1,6 @@
 ---
 name: leeway-discovery
+description: Leeway's discovery phase, the product's conversation and an epic's. Reached only through a Leeway handoff, never invoked directly; work comes into Leeway through the leeway skill.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
@@ -46,7 +47,7 @@ What you say is your own, and the way in decides what it opens on:
 - **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head.
 - **A roadmap idea to take in**, each `take in`, opens an epic's discovery on it: talk it through as a new topic of the map, taken in as **Changing the Map** says, `--from-roadmap {item}`.
 - **A work type or seeds**, in the product's conversation, open on that piece of work, whatever the history. A type is a hint to trust: confirm it lightly once the description fits, and reconsider only on a clear, strong signal. Seeds open on one sketch across them all and a question that pulls on its shape, but an inbox item that already names its cause and fix is confirmed in one line, not shaped again. With nothing to read, ask the person to describe the work the way it sits in their head, and invite any notes, screenshots or files that frame it.
-- **`start`** carries the product's conversation on with no announcement and asks what the person brings: talk about the product carries on from where its sessions had got to, and a piece of work goes to the type call.
+- **`start`** carries the product's conversation on with no announcement and takes what the person brings, asking for it only where they have said nothing yet: talk about the product carries on from where its sessions had got to, and a piece of work goes to the type call.
 
 A conversation a move carried here is going already: carry it on.
 
@@ -140,7 +141,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render send-report {home}.{
 
 The person puts something off — "roadmap it", "that's a v2 thing", "not now" — or a tangent surfaces that doesn't fit what is taking shape, and you offer to put it aside rather than fold it in. Placed on the timeline, it goes on the roadmap at once, whatever its kind; left undecided, it goes into the inbox. Where their words don't say which, ask, and never choose. A topic already on the map is postponed instead (**Changing the Map**).
 
-For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summary}` in the product's terms — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. `{log}` is the log's path from the state root, and `--kind` is for a bug or a small mechanical change:
+For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summary}` in the product's terms — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. `{log}` is the log's path from the state root, and `--kind` is for a bug or a quick-fix, settled work needing no decision:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:{home} --source {log}

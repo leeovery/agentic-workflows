@@ -127,7 +127,7 @@ describe('the git floor at boot', () => {
   it('a git below the floor stops boot with nothing written — the conversation\'s position kept — and its screen names the floor, the version found and where to get one', () => {
     const { answer, screen: shown } = stopped('git-floor-stop', answering('git version 2.39.5 (Apple Git-154)'));
 
-    assert.deepStrictEqual(answer, { ok: true, state: 'git', warnings: [] });
+    assert.deepStrictEqual(answer, { ok: true, state: 'git', stop: { surface: 'git-floor-stop', next: null }, warnings: [] });
     assert.strictEqual(shown, screen('this git is older than Leeway needs', 'and the git on this machine is 2.39.5.'));
   });
 
@@ -135,7 +135,7 @@ describe('the git floor at boot', () => {
     for (const [what, env] of [['none', pathWith()], ['the xcrun stand-in', pathWith(XCRUN_SHIM)]]) {
       const { answer, screen: shown } = stopped('git-floor-stop', env);
 
-      assert.deepStrictEqual(answer, { ok: true, state: 'git', warnings: [] }, what);
+      assert.deepStrictEqual(answer, { ok: true, state: 'git', stop: { surface: 'git-floor-stop', next: null }, warnings: [] }, what);
       assert.strictEqual(shown, screen(...NONE), what);
     }
   });
@@ -152,7 +152,7 @@ describe('a folder in no git repository at boot', () => {
   it('stops boot with nothing written anywhere — the conversation\'s position kept, the config directories as they were — and its screen names the folder and the way on, offering nothing to run', () => {
     const { answer, screen: shown, project } = stopped('repo-stop');
 
-    assert.deepStrictEqual(answer, { ok: true, state: 'repo', warnings: [] });
+    assert.deepStrictEqual(answer, { ok: true, state: 'repo', stop: { surface: 'repo-stop', next: null }, warnings: [] });
     assert.strictEqual(shown, repoScreen(project));
   });
 

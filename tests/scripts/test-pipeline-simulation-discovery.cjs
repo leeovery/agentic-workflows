@@ -30,7 +30,7 @@ const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, handoff, answerGate, typeAtGate, startPick, startNew, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
+  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -120,6 +120,23 @@ describe('pipeline simulation: discovery\'s entry', () => {
       'the conversation that ended without a word is named for catch-up at the next return');
     assert.strictEqual(headersIn(sim, PRODUCT, 1).length, 3, 'each conversation adds its own line to the one log');
     assert.ok(!fs.existsSync(logPath(sim, PRODUCT, 2)), 'one product conversation, one log');
+  });
+
+  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does; the bare command draws the menu (8.S79, 18.S72, 25.S10)', () => {
+    const conversation = sim.conversations;
+    const brought = startWith(sim, 'Change what the help command prints when it has no topic');
+    assert.deepStrictEqual([brought.go, brought.route], ['route', { kind: 'start', words: 'Change what the help command prints when it has no topic', next: { kind: 'invoke', skill: 'leeway-discovery', args: ['start', 'none'] } }]);
+    const opened = sim.run(['enter', 'discovery', PRODUCT]);
+    assert.strictEqual(opened.entered, true);
+    assert.strictEqual(sim.conversations, conversation, 'the route opens in place, nothing cleared: what the person said stays with the work');
+
+    startUnit(sim, 'quick-fix', 'help-topic', 'What help prints with no topic');
+    const named = startWith(sim, 'carry on with help-topic');
+    const { invoked } = handoffBy(sim, ['handoff', 'unit', 'help-topic']);
+    assert.deepStrictEqual([named.go, named.route.unit, `/${named.route.next.skill} ${named.route.next.args.join(' ')}`], ['route', 'help-topic', invoked]);
+
+    assert.strictEqual(sim.run(['boot']).go, 'menu');
+    assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'handoff unit help-topic'), 'the menu lists the unit');
   });
 
   it('the next day\'s opening, after the session was ended, opens the next log and reads where it had got to (8.S69)', () => {

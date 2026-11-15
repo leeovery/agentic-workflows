@@ -216,6 +216,17 @@ describe('a directive\'s checklist (6.4.5, 6.4.11, 6.S23)', () => {
 });
 
 describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
+  /**
+   * Boot's answer at the directive `id`'s stop, its pieces `done` of all of
+   * them where its check counts them: the start skill's directive reference
+   * loaded with the directive and its file, then boot again.
+   * @param {string} id @param {{done?: number, of?: number}} [counts]
+   */
+  const atDirective = (id, counts = {}) => {
+    const file = path.join(engine.migrations, `${id}.md`);
+    return { ok: true, state: 'directive', id, file, ...counts, stop: { next: { kind: 'load', reference: 'migration-directive', with: { directive: id, file } } }, warnings: [] };
+  };
+
   it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both to the migration waiting on its commit, with nothing committed', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
@@ -223,14 +234,14 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
     const code = codeHead(dir);
     const resumed = { env: { CLAUDE_CODE_SESSION_ID: 'resumed' }, unbooted: true };
 
-    assert.deepStrictEqual(engine.ok(dir, ['boot'], resumed), { ok: true, state: 'directive', id: RECORDS, file: path.join(engine.migrations, `${RECORDS}.md`), done: 2, of: 3, warnings: [] });
+    assert.deepStrictEqual(engine.ok(dir, ['boot'], resumed), atDirective(RECORDS, { done: 2, of: 3 }));
     assert.deepStrictEqual(engine.ok(dir, ['migrate', 'check', RECORDS], resumed).unfinished.map((piece) => piece.name), ['fumi/onboarding']);
 
     enterTopic(dir, 'onboarding');
     engine.ok(dir, ['checklist', 'close', 'directive', RECORDS], resumed);
 
     assert.deepStrictEqual(ledgerEntries(statePath(dir)).filter((entry) => entry.topic === 'onboarding').map((entry) => entry.text), ['permissions']);
-    assert.deepStrictEqual(ok(['boot']), { ok: true, state: 'directive', id: LOGS, file: path.join(engine.migrations, `${LOGS}.md`), done: 0, of: 1, warnings: [] });
+    assert.deepStrictEqual(ok(['boot']), atDirective(LOGS, { done: 0, of: 1 }));
 
     for (const topic of ['licensing', 'search', 'onboarding']) writeState(dir, layout.topic(UNIT, topic, 'log.md'), `# ${topic}\n`);
     ok(['checklist', 'close', 'directive', LOGS]);
@@ -238,6 +249,16 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
 
     assert.deepStrictEqual([finished.state, finished.migrations.ran, recorded(dir)], ['finish', 0, [...RECORDED, '079', '080']]);
     assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code], 'nothing was committed before the migration\'s commit');
+  });
+
+  it('a boot stopping at a directive carries its warnings, for the start to surface ahead of the stop as at any other — a copy made while the migration runs relinked as its own, naming the original', () => {
+    const original = dir;
+    dir = path.join(path.dirname(original), 'copy');
+    fs.cpSync(original, dir, { recursive: true });
+
+    const res = ok(['boot']);
+
+    assert.deepStrictEqual([res.state, res.id, res.warnings], ['directive', RECORDS, [`this project is a copy of ${original}: its state worktree was linked to that project's, and is now this one's own — ${original} is untouched`]]);
   });
 
   it('records a directive whose check answers no piece at all unrun, its unrun line beside it, never stopping at it: the session has nothing to do (21.4.3)', () => {
@@ -253,14 +274,14 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
     writeState(dir, layout.migrations, ['079', ...RECORDED].map((id) => `${id}\n`).join(''));
     for (const topic of ['licensing', 'search', 'onboarding']) writeState(dir, layout.topic(UNIT, topic, 'log.md'), `# ${topic}\n`);
 
-    assert.deepStrictEqual(ok(['boot']), { ok: true, state: 'directive', id: LOGS, file: path.join(engine.migrations, `${LOGS}.md`), done: 1, of: 1, warnings: [] });
+    assert.deepStrictEqual(ok(['boot']), atDirective(LOGS, { done: 1, of: 1 }));
     assert.deepStrictEqual(recorded(dir), ['079', ...RECORDED]);
   });
 
   it('stops at a directive whose check fails on what a session left, saying nothing of what is done — the check names why', () => {
     writeState(dir, layout.migrations, ['079', '080', '090', '091', '093'].map((id) => `${id}\n`).join(''));
 
-    assert.deepStrictEqual(ok(['boot']), { ok: true, state: 'directive', id: FAILING, file: path.join(engine.migrations, `${FAILING}.md`), warnings: [] });
+    assert.deepStrictEqual(ok(['boot']), atDirective(FAILING));
     assert.deepStrictEqual(engine.output(dir, ['render', 'directive-stop', '--directive', FAILING]).split('\n').filter((line) => line.startsWith('>')), [
       '> No session works in this project until the migration is done.',
       '>',

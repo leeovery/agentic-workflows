@@ -12,6 +12,9 @@
 //     throwing for every item,
 //   - every navigation menu (the start menu, an epic's) reads and renders
 //     the state without throwing,
+//   - each unit in progress named alone routes where its start-menu row's
+//     Continue goes, and the start's pick draws over every piece of work a
+//     route could name,
 //   - every menu a render draws states itself whole in its gate payload
 //     once the gate surface is announced, and the gate a render's menu
 //     states is the one its conversation was shown, which an answer through
@@ -54,9 +57,11 @@ const { manageSurface, manageUnitSurface, closedSurface } = require(path.join(RO
 const { triageSurface, archivedSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/triage.cjs'));
 const { roadmapSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/roadmap.cjs'));
 const { unitHandoff } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/unit-handoff.cjs'));
+const { entryOf, pickRows } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/boot-route.cjs'));
+const { workPick } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/boot.cjs'));
 const { awaitsCut, buildRefusal } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
 const {
-  resolveHandoff, HANDOFF_TARGETS,
+  resolveHandoff, HANDOFF_TARGETS, topicHandoff,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
 const { ledgerEntries, stateGit } = require('./engine-harness.cjs');
@@ -1123,6 +1128,46 @@ function auditStartMenu(dir, label) {
     if (next?.kind === 'handoff') auditRoutes(dir, [{ route: [`/${next.skill}`, ...next.args].join(' ') }], `${at} — ${key}`);
     if (next?.kind === 'engine' && next.argv[0] === 'handoff') auditContinue(dir, next.argv, `${at} — ${key}`);
   }
+  auditStartRoute(dir, label);
+}
+
+/** The move `compose` makes, or null where it refuses. @param {() => {skill: string, args: string}} compose */
+function composes(compose) {
+  try {
+    return compose();
+  } catch {
+    return null;
+  }
+}
+
+// Boot's route over the project as it stands (boot-route.cjs): each unit in
+// progress whose Continue composes, named alone, goes where that Continue
+// goes — never to a topic of the same name, a pivot's first among them —
+// and the start's pick draws over every piece a route could name: each
+// unit in progress whose move composes, each closed unit, and each topic of
+// an epic in progress whose move composes.
+/** @param {string} dir @param {string} label */
+function auditStartRoute(dir, label) {
+  const manifests = listWorkUnits(dir).map((wu) => JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8')));
+  /** @type {string[]} */
+  const pieces = [];
+  for (const manifest of manifests) {
+    const unit = manifest.name;
+    if (manifest.status !== 'in-progress') {
+      pieces.push(unit);
+      continue;
+    }
+    const move = composes(() => unitHandoff(dir, [unit]));
+    if (move !== null) {
+      pieces.push(unit);
+      const { go, route } = /** @type {any} */ (entryOf(dir, unit));
+      assert.deepStrictEqual({ go, unit: route?.unit, topic: route?.topic, skill: route?.next.skill, args: route?.next.args.join(' ') },
+        { go: 'route', unit, topic: undefined, skill: move.skill, args: move.args }, `[${label} — the start's route] ${unit}, named alone, does not go where its Continue goes`);
+    }
+    if (manifest.work_type !== 'epic') continue;
+    pieces.push(...Object.keys(manifest.phases?.discovery?.items ?? {}).filter((topic) => composes(() => topicHandoff(dir, [unit, topic])) !== null).map((topic) => `${unit}/${topic}`));
+  }
+  if (pieces.length > 0) auditMenuDrawn(dir, () => workPick(pickRows(dir, pieces.join(','))), `${label} — the start's pick`);
 }
 
 /** A unit's Continue, `handoff unit`, as the start menu's row leads to it. @param {string} dir @param {string[]} argv @param {string} label */

@@ -1,5 +1,6 @@
 ---
 name: leeway-continue-epic
+description: Leeway's menu for an epic. Reached only through a Leeway handoff, never invoked directly; work comes into Leeway through the leeway skill.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---

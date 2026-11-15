@@ -212,7 +212,7 @@ describe('pipeline simulation: sessions', () => {
     git(sim.dir, ['worktree', 'remove', '--force', '--force', statePath(sim.dir)]);
     git(sim.dir, ['branch', '-D', 'leeway-state']);
 
-    assert.deepStrictEqual(sim.run(['boot']), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(sim.run(['boot']), { ok: true, state: 'lost', stop: { surface: 'state-lost-gate', next: { kind: 'gate' } }, warnings: [] });
     assert.ok(!fs.existsSync(statePath(sim.dir)), 'the stop wrote state');
     assert.match(sim.render(['state-lost-gate'], { expect: 'content' }), /Start again with a fresh state\?/);
     const restarted = sim.run(answerGate(sim, 'state lost gate', '--pick', 'y').next.argv);
@@ -226,12 +226,13 @@ describe('pipeline simulation: sessions', () => {
     sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
     const offered = sim.run(['boot']);
     assert.deepStrictEqual([offered.state, offered.github_rule_offer, offered.github_squash_offer], ['ready', true, true]);
+    assert.deepStrictEqual(offered.gates.slice(-2), ['github-rule', 'github-squash'], 'the bare command\'s last setup gates, each drawn by its own render');
     assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Set that rule on GitHub\?/);
     assert.strictEqual(sim.run(['github-rule', 'no']).github_rule, 'declined');
     assert.match(sim.render(['github-squash-gate'], { expect: 'content' }), /Squash from the pull request's title and description\?/);
     assert.strictEqual(sim.run(['github-squash', 'no']).github_squash, 'declined');
     const answered = sim.run(['boot']);
-    assert.deepStrictEqual([answered.github_rule_offer, answered.github_squash_offer], [false, false]);
+    assert.deepStrictEqual([answered.github_rule_offer, answered.github_squash_offer, answered.gates.filter((gate) => gate.startsWith('github-'))], [false, false, []]);
     sim.refuses(['github-rule', 'yes'], /an answer is recorded once/);
     sim.refuses(['github-squash', 'no'], /only a yes is taken again/);
   });

@@ -76,6 +76,21 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     }
   });
 
+  it('22.S31: a label a crashed session left on the terminal is put back at boot, whoever boots — its owner gone', () => {
+    recordChoice(true);
+    const stub = installTmuxStub();
+    try {
+      const pane = { ...tmuxStubEnv(stub), TMUX_PANE: '%3' };
+      const gone = spawnSync('true').pid;
+      runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], { ...pane, CLAUDE_CODE_SESSION_ID: 'crashed', CLAUDE_PID: String(gone), TMUX: '/fake/sock,123,7' });
+      assert.strictEqual(tmuxStubName(stub), 'proj-abc · payments · discussion');
+      assert.strictEqual(bootWith({ tmux: true, env: { ...pane, CLAUDE_CODE_SESSION_ID: 'next', CLAUDE_PID: String(process.pid) } }).label_repaired, true);
+      assert.strictEqual(tmuxStubName(stub), 'proj-abc');
+    } finally {
+      fs.rmSync(stub, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
   it('drops the calling conversation\'s own position, labels off, and leaves another\'s — the start menu is no position', () => {
     recordChoice(false);
     const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-config-'));
@@ -256,6 +271,17 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       permissions: { allow: ['Bash(ls)'] },
       hooks: OWN_HOOKS,
     });
+  });
+
+  it('26.S6: boot writes no top-level effortLevel, whatever the session\'s effort — the settings it writes hold its hooks alone, and a level the person saved stays theirs, as it was', () => {
+    const low = { env: { CLAUDE_EFFORT: 'low' } };
+    dropSettings();
+    const res = bootWith(low);
+    assert.deepStrictEqual([res.effort, res.session_hooks_installed], ['low', true]);
+    assert.deepStrictEqual(settings(), { hooks: OWN_HOOKS });
+    commitSettings(JSON.stringify({ effortLevel: 'high' }, null, 2) + '\n');
+    assert.strictEqual(bootWith(low).session_hooks_installed, true);
+    assert.deepStrictEqual(settings(), { effortLevel: 'high', hooks: OWN_HOOKS });
   });
 
   it('LEEWAY_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {

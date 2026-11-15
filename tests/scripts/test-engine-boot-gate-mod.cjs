@@ -2,8 +2,10 @@
 
 // ---------------------------------------------------------------------------
 // The gate mod at boot (leeway-engine/scripts/domain/boot.cjs with
-// domain/gate-surface.cjs): the gate surface reported where the mod can run,
-// is running, is outdated or cannot run, no Claude Code settings written;
+// domain/gate-surface.cjs): whether the mod runs, could or cannot, and the
+// gates it puts to the start — the notice where it could run and is not, the
+// stop at a Claude Code older than the floor, nothing where it cannot run
+// (22.S33) — no Claude Code settings written;
 // and the hook sync beside it, its commit, its file's mode and link kept.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
@@ -34,6 +36,12 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   const HOOKS_ONLY = { hooks: OWN_HOOKS };
   /** @param {object} value */
   const json = (value) => JSON.stringify(value, null, 2) + '\n';
+  /** Where the mod stands, as boot reports it: `mod`, and whether the start's gates carry its notice or the floor's stop. @param {Record<string, any>} res */
+  const standing = (res) => ({ mod: res.mod, notice: res.gates.includes('mod-notice'), floor: res.gates.includes('claude-code-floor') });
+  const RUNNING = { mod: 'running', notice: false, floor: false };
+  const COULD = { mod: 'could', notice: true, floor: false };
+  const OUTDATED = { mod: 'cannot', notice: false, floor: true };
+  const CANNOT = { mod: 'cannot', notice: false, floor: false };
   /** Claude Code's terminal app, at the oldest version the mod runs on. */
   const TERMINAL = { CLAUDE_CODE_ENTRYPOINT: 'cli', AI_AGENT: 'claude-code_2-1-287_agent', CLAUDE_CODE_REMOTE: undefined };
   /** HEAD's subject and the sorted paths it touched. */
@@ -56,12 +64,12 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   /** Boot in the terminal app under the fixture's Claude Code config and home, `env` layered over it. */
   const bootTerminal = (env = {}) => bootWith({ env: { ...TERMINAL, CLAUDE_CONFIG_DIR: claudeDir(), HOME: homeDir(), ...env } });
 
-  it('where the mod can run and is not running, boot reports not-running and writes no Claude Code settings — the user\'s file stays absent, the project untouched, nothing committed', () => {
+  it('22.S33: where the mod can run and is not running, boot reports it could, the start\'s notice due, and writes no Claude Code settings — the user\'s file stays absent, the project untouched, nothing committed', () => {
     installMod();
     const project = projectSettingsText();
     for (const configDir of [claudeDir(), undefined]) {
       const res = bootTerminal({ CLAUDE_CONFIG_DIR: configDir });
-      assert.strictEqual(res.gate_surface, 'not-running', String(configDir));
+      assert.deepStrictEqual(standing(res), COULD, String(configDir));
       assert.deepStrictEqual(res.warnings, []);
     }
     assert.ok(!fs.existsSync(claudeDir()), 'the config directory not made');
@@ -83,7 +91,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       fs.chmodSync(userSettingsFile(), 0o600);
       const before = fs.statSync(userSettingsFile());
       const res = bootTerminal();
-      assert.strictEqual(res.gate_surface, 'not-running', content);
+      assert.deepStrictEqual(standing(res), COULD, content);
       assert.deepStrictEqual(res.warnings, [], content);
       assert.strictEqual(fs.readFileSync(userSettingsFile(), 'utf8'), content);
       const after = fs.statSync(userSettingsFile());
@@ -92,20 +100,20 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     }
   });
 
-  it('the mod announced in boot\'s environment reports on — only `1` is the announcement', () => {
+  it('the mod announced in boot\'s environment reports it running, no notice due — only `1` is the announcement', () => {
     installMod();
-    assert.strictEqual(bootTerminal({ LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on');
-    assert.strictEqual(bootTerminal({ LEEWAY_GATE_SURFACE: '0' }).gate_surface, 'not-running');
+    assert.deepStrictEqual(standing(bootTerminal({ LEEWAY_GATE_SURFACE: '1' })), RUNNING);
+    assert.deepStrictEqual(standing(bootTerminal({ LEEWAY_GATE_SURFACE: '0' })), COULD);
     assert.ok(!fs.existsSync(claudeDir()), 'nothing made either way');
   });
 
-  it('a readable release before 2.1.287 reports outdated — announced or not — and touches no file', () => {
+  it('a readable release before 2.1.287 is the floor\'s stop, the mod unable to run — announced or not — and touches no file', () => {
     installMod();
     for (const version of ['2-1-286', '2-1-282', '2-0-999', '1-9-999']) {
       const res = bootTerminal({ AI_AGENT: `claude-code_${version}_agent` });
-      assert.strictEqual(res.gate_surface, 'outdated', version);
+      assert.deepStrictEqual(standing(res), OUTDATED, version);
     }
-    assert.strictEqual(bootTerminal({ AI_AGENT: 'claude-code_2-1-286_agent', LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'outdated');
+    assert.deepStrictEqual(standing(bootTerminal({ AI_AGENT: 'claude-code_2-1-286_agent', LEEWAY_GATE_SURFACE: '1' })), OUTDATED);
     assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
     assert.ok(!fs.existsSync(homeDir()), 'nor ~/.claude');
   });
@@ -113,28 +121,28 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   it('every version from 2.1.287 on is one the mod runs on', () => {
     installMod();
     for (const version of ['2-1-287', '2-1-300', '2-2-0', '3-0-0']) {
-      assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent` }).gate_surface, 'not-running', version);
-      assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent`, LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on', version);
+      assert.deepStrictEqual(standing(bootTerminal({ AI_AGENT: `claude-code_${version}_agent` })), COULD, version);
+      assert.deepStrictEqual(standing(bootTerminal({ AI_AGENT: `claude-code_${version}_agent`, LEEWAY_GATE_SURFACE: '1' })), RUNNING, version);
     }
   });
 
-  it('the Desktop app\'s Code tab is where the mod runs too — on Anthropic\'s API or a third-party provider: on, not-running, outdated, touching no file', () => {
+  it('the Desktop app\'s Code tab is where the mod runs too — on Anthropic\'s API or a third-party provider: running, could, the floor\'s stop, touching no file', () => {
     installMod();
     for (const entrypoint of ['claude-desktop', 'claude-desktop-3p']) {
       const desktop = { CLAUDE_CODE_ENTRYPOINT: entrypoint };
-      assert.strictEqual(bootTerminal(desktop).gate_surface, 'not-running', entrypoint);
-      assert.strictEqual(bootTerminal({ ...desktop, LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on', entrypoint);
-      assert.strictEqual(bootTerminal({ ...desktop, AI_AGENT: 'claude-code_2-1-286_agent' }).gate_surface, 'outdated', entrypoint);
+      assert.deepStrictEqual(standing(bootTerminal(desktop)), COULD, entrypoint);
+      assert.deepStrictEqual(standing(bootTerminal({ ...desktop, LEEWAY_GATE_SURFACE: '1' })), RUNNING, entrypoint);
+      assert.deepStrictEqual(standing(bootTerminal({ ...desktop, AI_AGENT: 'claude-code_2-1-286_agent' })), OUTDATED, entrypoint);
     }
     assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
     assert.ok(!fs.existsSync(homeDir()), 'nor ~/.claude');
     assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
   });
 
-  it('where the mod cannot run, boot touches no file and reports unavailable', () => {
+  it('22.S33: where the mod cannot run, boot touches no file and reports it cannot, no notice due', () => {
     const old = { AI_AGENT: 'claude-code_2-1-286_agent' };
-    assert.strictEqual(bootTerminal().gate_surface, 'unavailable', 'the mod not installed in the project');
-    assert.strictEqual(bootTerminal(old).gate_surface, 'unavailable', 'the mod not installed, whatever the version');
+    assert.deepStrictEqual(standing(bootTerminal()), CANNOT, 'the mod not installed in the project');
+    assert.deepStrictEqual(standing(bootTerminal(old)), CANNOT, 'the mod not installed, whatever the version');
     installMod();
     const elsewhere = [
       ['Claude Code on the web', { CLAUDE_CODE_REMOTE: 'true' }],
@@ -153,18 +161,18 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     ];
     for (const [where, env] of elsewhere) {
       const res = bootTerminal(env);
-      assert.strictEqual(res.gate_surface, 'unavailable', where);
+      assert.deepStrictEqual(standing(res), CANNOT, where);
     }
     assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
     assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
   });
 
-  it('the harness switch holds the project\'s settings file alone — the gate surface reports as it would without it', () => {
+  it('the harness switch holds the project\'s settings file alone — the mod reports as it would without it', () => {
     installMod();
     dropSettings();
-    for (const [version, status] of [['2-1-287', 'not-running'], ['2-1-286', 'outdated']]) {
+    for (const [version, status] of [['2-1-287', COULD], ['2-1-286', OUTDATED]]) {
       const res = bootWith({ holdSettings: true, env: { ...TERMINAL, CLAUDE_CONFIG_DIR: claudeDir(), HOME: homeDir(), AI_AGENT: `claude-code_${version}_agent` } });
-      assert.strictEqual(res.gate_surface, status, version);
+      assert.deepStrictEqual(standing(res), status, version);
       assert.strictEqual(res.session_hooks_installed, false);
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')), 'the project\'s settings held');
@@ -177,8 +185,8 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     for (const value of ['1', '0']) {
       const project = json({ ...HOOKS_ONLY, env: { [FLAG]: value } });
       commitSettings(project);
-      assert.strictEqual(bootTerminal().gate_surface, 'not-running', `a project flag of ${value}`);
-      assert.strictEqual(bootTerminal({ LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on', `a project flag of ${value}`);
+      assert.deepStrictEqual(standing(bootTerminal()), COULD, `a project flag of ${value}`);
+      assert.deepStrictEqual(standing(bootTerminal({ LEEWAY_GATE_SURFACE: '1' })), RUNNING, `a project flag of ${value}`);
       assert.strictEqual(projectSettingsText(), project, 'left as found');
     }
   });
@@ -188,7 +196,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     dropSettings();
     const res = bootTerminal();
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(res.gate_surface, 'not-running');
+    assert.deepStrictEqual(standing(res), COULD);
     assert.strictEqual(projectSettingsText(), hooked(WORKFLOW_HOOKS));
     assert.deepStrictEqual(head(), { subject: 'chore: install workflow session hooks', files: ['.claude/settings.json'] });
   });

@@ -8,7 +8,7 @@ Eight screens, one at a time, each ending on its own menu. `screen` starts at 1.
 
 **Parameters** (provided by caller via Load directive):
 
-- `origin` — `first-run` (leeway's Step 0.3) or `help` (the start menu's help, or the help home)
+- `origin` — `first-run` (leeway's walkthrough offer) or `help` (the start menu's help, or the help home)
 
 ## A. Render the Screen
 

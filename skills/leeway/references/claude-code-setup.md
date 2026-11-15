@@ -4,11 +4,9 @@
 
 ---
 
-Branch on the boot response's `gate_surface` — `not-running` means the workflows' mod can run in this Claude Code and this session did not load it, a notice the session carries on past with typed menus; `outdated` means this Claude Code is older than the mod, a stop.
+Branch on the gate — `mod-notice` means the workflows' mod can run in this Claude Code and this session did not load it, a notice the session carries on past with typed menus; `claude-code-floor` means this Claude Code is older than the mod, a stop.
 
-#### If `gate_surface` is `not-running`
-
-If the boot response carries `warnings`, surface them first.
+#### If gate is `mod-notice`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -34,9 +32,7 @@ If the boot response carries `warnings`, surface them first.
 
 → Return to caller.
 
-#### If `gate_surface` is `outdated`
-
-If the boot response carries `warnings`, surface them first.
+#### If gate is `claude-code-floor`
 
 > *Output the next fenced block as markdown (not a code block):*
 

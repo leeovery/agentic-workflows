@@ -188,7 +188,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     createFile(project, '.workflows/payments/discussion/draft.md', '# Draft\n');
     const before = projectAsItStands();
 
-    assert.deepStrictEqual(runEngine(real, project, ['boot'], env), { ok: true, state: 'guard', cause: 'dirty', unit: null, phase: null, topic: null, active: null, warnings: [] });
+    assert.deepStrictEqual(runEngine(real, project, ['boot'], env), { ok: true, state: 'guard', cause: 'dirty', unit: null, phase: null, topic: null, active: null, stop: { marker: 'Migration', surface: 'migration-guard-stop', args: ['--cause', 'dirty'], next: null }, warnings: [] });
 
     const written = Date.now() - 180 * 1000;
     const row = path.join(project, '.workflows/.cache/payments/discussion/payments/presence');
@@ -199,10 +199,11 @@ describe('engine boot runs the reshape (real scripts)', () => {
     // The calling session in a time zone and locale of its own: the row's start time is UTC's and the C locale's.
     const live = runEngine(real, project, ['boot'], { ...env, CLAUDE_CODE_SESSION_ID: 'this-session', CLAUDE_PID: undefined, TZ: 'Asia/Tokyo', LANG: 'en_GB.UTF-8', LC_ALL: undefined, LC_TIME: undefined });
 
-    assert.deepStrictEqual({ ...live, active: undefined }, { ok: true, state: 'guard', cause: 'live', unit: 'payments', phase: 'discussion', topic: 'payments', active: undefined, warnings: [] });
+    assert.deepStrictEqual({ ...live, active: undefined, stop: undefined }, { ok: true, state: 'guard', cause: 'live', unit: 'payments', phase: 'discussion', topic: 'payments', active: undefined, stop: undefined, warnings: [] });
     assert.ok(live.active >= 180 && live.active < 210, `active ${live.active}s ago`);
     const facts = ['--cause', live.cause, '--unit', live.unit, '--phase', live.phase, '--topic', live.topic, '--active', String(live.active)];
-    assert.match(real.output(project, ['render', 'migration-guard-stop', ...facts]), /^> Another session is working in this project: Payments, in its discussion, last active 3m ago\./m);
+    assert.deepStrictEqual(live.stop, { marker: 'Migration', surface: 'migration-guard-stop', args: facts, next: null }, 'the stop names its screen, drawn from its facts');
+    assert.match(real.output(project, ['render', live.stop.surface, ...live.stop.args]), /^> Another session is working in this project: Payments, in its discussion, last active 3m ago\./m);
     assert.deepStrictEqual(projectAsItStands(), before);
     assert.ok(!fs.existsSync(statePath(project)), 'no state folder: no record, no lock, no journal');
     assert.strictEqual(fs.readFileSync(path.join(project, '.git/info/exclude'), 'utf8').split('\n').filter((line) => line === '/.leeway/').length, 1);

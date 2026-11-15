@@ -146,7 +146,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   it('reads only the person\'s own commits as the history before the workflows — never the setup\'s ignore line and hooks', () => {
     const main = projectInWorld();
 
-    const { baseline_signal: signal } = boot(main);
+    const { brownfield_signal: signal } = boot(main);
 
     assert.deepStrictEqual([signal.commits_total, signal.commits_before, signal.history_before], [3, 1, [`${TEMPLATE_DATE.slice(0, 10)}  code`]]);
     assert.deepStrictEqual([signal.files_at_arrival, signal.tree_at_arrival], [1, ['README.md']]);
@@ -269,6 +269,9 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(readFile(main, path.join(STATE_DIR_NAME, 'notes.md')), 'kept\n');
   });
 
+  /** The guard's stop for another session live in payments' checkout topic, 42 seconds ago: its screen drawn from those facts, the start ending there. */
+  const GUARDED = { marker: 'Migration', surface: 'migration-guard-stop', args: ['--cause', 'live', '--unit', 'payments', '--phase', 'discussion', '--topic', 'checkout', '--active', '42'], next: null };
+
   it('a refusal of the reshape\'s guard stops boot with its facts, nothing written but the exclude line, the conversation unstamped — and the next boot runs the guard again', () => {
     const main = owingProject();
     const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
@@ -276,7 +279,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const env = { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: JSON.stringify(refused), CLAUDE_CODE_SESSION_ID: 'guarded', LEEWAY_CONFIG_DIR: config };
     const before = untouched(main, null);
 
-    assert.deepStrictEqual(boot(main, env), { ok: true, state: 'guard', ...refused, warnings: [] });
+    assert.deepStrictEqual(boot(main, env), { ok: true, state: 'guard', ...refused, stop: GUARDED, warnings: [] });
 
     assert.deepStrictEqual(untouched(main, null), before);
     assert.ok(!fs.existsSync(statePath(main)), 'no state folder, so no record, lock or journal');
@@ -292,7 +295,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const settled = projectInWorld({ name: 'shop' });
     boot(settled);
 
-    assert.deepStrictEqual(boot(owing, { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: facts }), { ok: true, state: 'guard', ...refused, warnings: [] });
+    assert.deepStrictEqual(boot(owing, { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: facts }), { ok: true, state: 'guard', ...refused, stop: GUARDED, warnings: [] });
     const other = boot(settled, { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSED: '075', STUB_MIGRATE_REFUSAL: facts });
     assert.deepStrictEqual([other.state, other.migrations.output], ['ready', `---REFUSED: 075---\n${facts}`]);
   });

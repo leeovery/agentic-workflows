@@ -2,16 +2,16 @@
 
 // ---------------------------------------------------------------------------
 // What the reshape retired (1.S9, 3.S1, 6.S3): the release ships no research,
-// planning, scoping or baseline skill, no plan format, and no cross-cutting
-// type a unit can be made as; the engine's phase tables hold discovery,
-// discussion, experiment and investigation in Discovery, specification in
-// Definition, implementation and review in Delivery, with the item names
-// older units carry in a list outside the tables; and the command catalogue
-// has the new families with their verbs and the kept ones, and no verb for
-// what the release removes; each verb it says one the engine dispatches, and
-// each a family's own refusal names said, its surfaces SURFACES's own; and
-// a verb a family does not know refused in one shape, a retired name
-// recognised by none.
+// planning, scoping or baseline skill, no plan format, no skill calling a
+// quick-fix small (8.4.6), and no cross-cutting type a unit can be made as;
+// the engine's phase tables hold discovery, discussion, experiment and
+// investigation in Discovery, specification in Definition, implementation
+// and review in Delivery, with the item names older units carry in a list
+// outside the tables; and the command catalogue has the new families with
+// their verbs and the kept ones, and no verb for what the release removes;
+// each verb it says one the engine dispatches, and each a family's own
+// refusal names said, its surfaces SURFACES's own; and a verb a family does
+// not know refused in one shape, a retired name recognised by none.
 //
 // Layer: verb. World: the project, copied once, where each verb the usage
 // names is called; the rest reads the shipped skills folder, the schema
@@ -47,6 +47,18 @@ describe('the release ships none of the retired skills, formats or types (1.S9)'
     assert.ok(skills.includes('leeway-discussion-process'), 'the listing reads the shipped skills');
     assert.deepStrictEqual(skills.filter((name) => RETIRED.test(name)), []);
     assert.deepStrictEqual(HANDOFF_TARGETS.filter((skill) => RETIRED.test(skill)), []);
+  });
+
+  it('8.S38: the start skill names no baseline — the judgment and the offer are its brownfield offer, pointing at the product\'s conversation', () => {
+    const start = walk(path.join(SKILLS, 'leeway')).filter((file) => file.endsWith('.md'));
+    assert.ok(start.some((file) => path.basename(file) === 'brownfield-offer.md'), 'the listing reads the start skill\'s files');
+    assert.deepStrictEqual(start.filter((file) => /baseline/i.test(fs.readFileSync(file, 'utf8'))).map((file) => path.relative(SKILLS, file)), []);
+  });
+
+  it('8.4.6: no skill calls a quick-fix small — it is settled work of any size, needing no decision', () => {
+    const prose = walk(SKILLS).filter((file) => /\/(?:SKILL|references\/[^/]+)\.md$/.test(file));
+    assert.ok(prose.some((file) => file.endsWith(path.join('leeway-quick-fix-process', 'SKILL.md'))), 'the listing reads the skills\' prose');
+    assert.deepStrictEqual(prose.filter((file) => /small mechanical change|small, known change/i.test(fs.readFileSync(file, 'utf8'))).map((file) => path.relative(SKILLS, file)), []);
   });
 
   it('lists no plan format — no output formats anywhere in the product', () => {

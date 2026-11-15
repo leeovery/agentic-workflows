@@ -80,6 +80,7 @@ A gate that was waiting was set aside, and the framework says how it comes back;
 ```markdown
 ---
 name: {skill}
+description: Leeway's {phase} phase. Reached only through a Leeway handoff, never invoked directly; work comes into Leeway through the leeway skill.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
@@ -195,7 +196,7 @@ Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn 
 
 **Invoking** a skill is a Skill tool call: it adds the skill's instructions to the running context and clears nothing. Show the literal command — ``Invoke `/{skill} {args}`.`` — outside any fence; inside one it is printed, not run (lint check 14). **Loading** a reference reads guidance into the running context, nothing more.
 
-**Recovery.** After a compaction, a crash or a new session, the engine's note names the skill and each document to re-read, and the conversation carries on where it was. A skill carries no section of its own on resuming. Where its work needs a document re-read, the note names it: that is a change to the engine's note, never prose. Re-reading the skill re-runs its framework load. What the verbs record outlasts a compaction. A log may lag the conversation — how often Claude writes it is Claude's — and after a compaction it is caught up from the transcript of the conversation that wrote it: a topic's log names the conversations that wrote it, and in discovery the note names the log's transcript.
+**Recovery.** After a compaction, a crash or a new session, the engine's note names the skill and each document to re-read, and the conversation carries on where it was. A skill carries no section of its own on resuming (lint check 38). Where its work needs a document re-read, the note names it: that is a change to the engine's note, never prose. Re-reading the skill re-runs its framework load. What the verbs record outlasts a compaction. A log may lag the conversation — how often Claude writes it is Claude's — and after a compaction it is caught up from the transcript of the conversation that wrote it: a topic's log names the conversations that wrote it, and in discovery the note names the log's transcript.
 
 ## Display
 
@@ -205,7 +206,7 @@ Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn 
 - **A line or a payload Claude writes for a report** is in the product's terms, in the framework's register (`altitude.md`, `voice.md`), and the engine draws the report. A `t/technical` row retells it from the code's side (`technical-lens.md`).
 - **A code block Claude writes itself** — a diagram, a sample — which names its language on the fence, `text` for plain.
 
-**The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. The one exception is the banner, which stays in the start skill's prose because the release writes the version into it (`.mint.toml`). Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
+**The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
 
 **Content the person approves as the thing itself** — a change, spec prose — is shown verbatim in the form it will take, never framed in drawn borders, with a label or a line saying what it is.
 
@@ -239,6 +240,7 @@ The capture skills (`leeway-log-*`) write to the inbox and nothing else. They ar
 ### Frontmatter
 
 - `user-invocable: false` on every skill the person does not type themselves.
+- A `description` is all Claude sees of a skill until it is invoked. The start skill's opens with its trigger, short: what Claude reaches for Leeway on, and what goes straight through. Every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only through a Leeway handoff, never invoked directly (lint check 37). Invocability stays as it is: without the gate mod, a handoff invokes the next skill in the same conversation.
 - No `effort:` and no `model:`: the conversation runs at the person's own effort. An agent's definition fixes its own.
 - Every `allowed-tools` Bash grant carries a `*`; a grant for the workflows' own script ends in ` *` (lint check 28).
 - No `SessionEnd` hook: Claude Code never fires one declared in a skill. Session-end work is the settings hook the engine installs (lint check 18).

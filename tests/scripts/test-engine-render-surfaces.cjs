@@ -657,13 +657,27 @@ describe('the boot and knowledge gate surfaces', () => {
   it('the brownfield offer: a yes/no gate drawn only while nothing is recorded — any answer refuses it (8.12.11)', () => {
     const offer = renderSurface(dir, 'brownfield-offer-gate', {});
     assert.match(offer, /=== MENU: brownfield offer/);
-    assert.match(offer, /\*\*`◆ Run a baseline assessment\?`\*\*/);
-    assert.match(offer, /\*\*`y\/yes`\*\* → Start the assessment now/);
+    assert.match(offer, /\*\*`◆ Have the existing code read first\?`\*\*/);
+    assert.match(offer, /\*\*`y\/yes`\*\* → Read it now, then talk the product through/);
     assert.match(unwrap(offer), /\*\*`n\/no`\*\*\s+→ Skip — it is not offered again/);
     for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
       fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ work_units: {}, brownfield_offer: answer }));
       assert.throws(() => renderSurface(dir, 'brownfield-offer-gate', {}), new RegExp(`the offer's answer is "${answer}" — the offer is made once, while nothing is recorded`));
     }
+  });
+
+  it('18.2.15: the banner the bare command opens on — the art in a properties fence, the version the release writes into the engine beneath it, right-aligned, then the title', () => {
+    const root = path.join(__dirname, '..', '..');
+    const versionFile = /^version_file = "(.*)"$/m.exec(fs.readFileSync(path.join(root, '.mint.toml'), 'utf8'))?.[1];
+    assert.strictEqual(versionFile, 'skills/leeway-engine/content/version.txt', 'the release writes the version where the banner reads it');
+    const version = fs.readFileSync(path.join(root, versionFile), 'utf8').trim();
+    const [marker, ...lines] = renderSurface(dir, 'banner', {}).split('\n');
+    const art = lines.slice(0, 3);
+
+    assert.strictEqual(marker, '=== DISPLAY: banner (emit verbatim as a properties code block (```properties fence)) ===');
+    assert.ok(art.every((line) => /^[█▀▄░]+ [█▀▄░]+$/.test(line)), `the art, its two words split at one space: ${art.join('\n')}`);
+    assert.strictEqual(lines[3], version.padStart([...art[0]].length));
+    assert.match(lines.slice(4).join('\n'), /^=== TITLE[^\n]*===\n# \*\*`■ Leeway`\*\*$/m);
   });
 
   it('the state lost stop and the offers on GitHub are yes/no gates naming the project by its main checkout\'s folder', () => {
