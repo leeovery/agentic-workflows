@@ -29,8 +29,16 @@
 // none of the migration's changes. The journal is written whole or not at
 // all.
 //
-// Nothing is committed (21.9.3). Run again — after a kill at the journal —
-// it writes the journal whole again, read from disk as before.
+// What it drops in the state: each unit's `imports`, the list the move kept
+// on its manifest of what came in from where (21.5.7), which the records
+// directive's check read (079) and nothing reads once it has passed — each
+// file is in the unit's assets, linked from the entries that cite it. Each
+// manifest holding one is written whole without it; a retired unit's,
+// reference in the product's assets, is as it was kept.
+//
+// Nothing is committed (21.9.3). Run again — after a kill at the journal,
+// or at a manifest — it writes the journal whole again, read from disk as
+// before, and finds the manifests already written dropped.
 //
 // Where the migration is not under way — no `.workflows/` in the project's
 // folder, a folder in no repository, or `leeway-state` with a commit — it
@@ -82,10 +90,26 @@ function dropsOf(project, stores) {
   return [...new Set([OLD_STATE, ...held])];
 }
 
+/**
+ * Each unit's manifest in the state written whole without its `imports`,
+ * where it holds one.
+ * @param {string} state
+ */
+function dropImports(state) {
+  for (const entry of fs.existsSync(state) ? fs.readdirSync(state, { withFileTypes: true }) : []) {
+    const file = path.join(state, entry.name, 'manifest.json');
+    if (!entry.isDirectory() || entry.name.startsWith('.') || !fs.existsSync(file)) continue;
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!Object.hasOwn(manifest, 'imports')) continue;
+    delete manifest.imports;
+    writeWhole(path.join(state, CACHE), file, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
+}
+
 module.exports = {
   id: '081',
-  description: 'finish the reshape: journal .workflows/ and the tracker\'s old store for the migration\'s commit to drop from the default branch, and from disk once it lands',
-  info: 'The reshape\'s last step journals what the migration\'s commit drops: .workflows/ and the tracker\'s old store. The commit is two: the state branch\'s first, then the default branch\'s, which takes .workflows/ and the old store out with the project\'s settings, .gitignore and .worktreeinclude. Once both land, .workflows/ and the old store go from disk. Nothing is staged or committed until the person says yes.',
+  description: 'finish the reshape: each unit\'s imports list dropped, and .workflows/ and the tracker\'s old store journaled for the migration\'s commit to drop from the default branch, and from disk once it lands',
+  info: 'The reshape\'s last step drops the imports list each unit\'s manifest kept for the records directive\'s check, its files in the unit\'s assets, and journals what the migration\'s commit drops: .workflows/ and the tracker\'s old store. The commit is two: the state branch\'s first, then the default branch\'s, which takes .workflows/ and the old store out with the project\'s settings, .gitignore and .worktreeinclude. Once both land, .workflows/ and the old store go from disk. Nothing is staged or committed until the person says yes.',
   /** @param {{projectDir: string, reportUpdate: () => void, reportSkip: () => void}} ctx */
   run({ projectDir, reportUpdate, reportSkip }) {
     const here = path.resolve(projectDir);
@@ -97,6 +121,7 @@ module.exports = {
     }
     const { stores, unread } = preLeewayStores();
     const state = path.join(main, STATE_DIR);
+    dropImports(state);
     writeWhole(path.join(state, CACHE), path.join(state, JOURNAL), `${JSON.stringify({ drops: dropsOf(project, stores) }, null, 2)}\n`);
     reportUpdate();
     const notice = unreadStores(unread, 'the migration\'s commit drops no store declared there: a store this project kept for such a tracker stays on the default branch and on disk');

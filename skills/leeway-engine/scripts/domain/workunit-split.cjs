@@ -15,12 +15,15 @@
 //   discovery session is open.
 // - Each topic moves to it whole, keeping its name: its folder — its log,
 //   brief, mail and experiments' records — and every item it holds before
-//   the spec and its decided close, each copied as it stood, its map row
-//   numbered among the topics in the order they stood. Its ledger lines are carried to the epic's topic by
-//   one `rehomed` line (ledger-rehomed.cjs), so every read and the record
-//   copies take them there, each at its own phase, each file they name
-//   where the move took it. A roadmap item joined to the topic follows it,
-//   and a source under its folder follows its file.
+//   the spec, each copied as it stood, its map row numbered among the
+//   topics in the order they stood. Its ledger lines are carried to the
+//   epic's topic by one `rehomed` line (ledger-rehomed.cjs), so every read
+//   and the record copies take them there, each at its own phase, each file
+//   they name where the move took it. Each link of its documents to a file
+//   the move left behind — the unit's assets, seeds and spikes — is rebased
+//   to resolve from where the document now sits (21.5.7), and its places
+//   in the unit's cache are purged. A roadmap item joined to the topic
+//   follows it, and a source under its folder follows its file.
 // - The unit keeps the rest: the topics its specs cover, for its cut.
 // - Once: each step is one a redo repeats or finds done — the epic made,
 //   each folder's move, each topic's carry, of the lines the ledger still
@@ -28,12 +31,14 @@
 //   roadmap — so a session killed part-way finishes on its next run, the
 //   epic found holding every topic named on its map once it is made. Every
 //   run renders the ledger's copies at its end, so a redo renders those a
-//   run killed before them left behind.
+//   run killed before them left behind, and the knowledge base indexes each
+//   moved topic's copy at its new path, its old one gone.
 // - It refuses, writing nothing: outside the migration; a unit that is no
 //   epic; no topic named, or one named twice; a topic not on the unit's map,
-//   or set aside on it, cancelled or postponed; a topic's folder in both
-//   units; an epic's name that is no unit's, the unit's own, or one another
-//   unit holds; an empty description, or a session log that cannot be read;
+//   or set aside on it, cancelled or postponed; a topic the epic a split
+//   cut short made lacks on its map; a topic's folder in both units; an
+//   epic's name that is no unit's, the unit's own, or one another unit
+//   holds; an empty description, or a session log that cannot be read;
 //   and lines to carry with no session to tag the carry with.
 // ---------------------------------------------------------------------------
 
@@ -53,7 +58,10 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
 const { FIRST_LOG } = require('./workunit-create.cjs');
 const { CLOSED_LIFECYCLES, computeTopicLifecycle, itemJoin, roadmapItems, topicDir } = require('./derivations.cjs');
-const { carrySources } = require('./roadmap.cjs');
+const { carrySources, landingOf } = require('./roadmap.cjs');
+const { rebaseLinks } = require('./markdown-links.cjs');
+const { filesUnder } = require('./review-phase.cjs');
+const { purgeTopicCache } = require('./cache.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
@@ -110,6 +118,20 @@ function logText(cwd, file) {
 }
 
 /**
+ * The epic a split cut short made, or null for none: refused where the name
+ * is another unit's — no epic, or one whose map holds none of the topics.
+ * @param {string} root @param {string} into @param {string[]} topics
+ * @returns {Record<string, any>|null}
+ */
+function epicMade(root, into, topics) {
+  const epic = manifestOf(root, into);
+  if (epic !== null && (epic.work_type !== 'epic' || !topics.some((topic) => onMap(epic, topic)))) {
+    throw new Error(`${SAID}: work unit "${into}" already exists — the topics leave for a new epic`);
+  }
+  return epic;
+}
+
+/**
  * Refuse a topic the split cannot take: on a fresh split, one not on the
  * unit's map or set aside there; cut short, one the epic's map lacks; and
  * either way, one whose folder is in both units.
@@ -121,7 +143,7 @@ function checkTopic(root, { unit, into, manifest }, epic, topic) {
     const { lifecycle } = computeTopicLifecycle(manifest, topic);
     if (CLOSED_LIFECYCLES.includes(lifecycle)) throw new Error(`${SAID}: ${unit}'s ${topic} is ${lifecycle} — a topic set aside stays where it is`);
   } else if (!onMap(epic, topic)) {
-    throw new Error(`${SAID}: work unit "${into}" already exists — the topics leave for a new epic`);
+    throw new Error(`${SAID}: ${into}, made by a split cut short, has no topic "${topic}" on its map — split again naming the topics it was made with`);
   }
   if ([unit, into].every((at) => fs.existsSync(path.join(root, topicDir(at, topic))))) {
     throw new Error(`${SAID}: ${topic}'s folder is in both ${unit} and ${into}`);
@@ -142,9 +164,8 @@ function plannedSplit(cwd, root, unit, { topics, into, description, sessionLogFi
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`${SAID}: there is no work unit "${unit}"`);
   if (manifest.work_type !== 'epic') throw new Error(`${SAID}: ${unit} is a ${manifest.work_type} unit — only an epic's topics leave for a new epic`);
-  const epic = manifestOf(root, into);
-  if (epic !== null && epic.work_type !== 'epic') throw new Error(`${SAID}: work unit "${into}" already exists — the topics leave for a new epic`);
   const named = namedTopics(topics);
+  const epic = epicMade(root, into, named);
   /** @type {Split} */
   const split = {
     unit, into, topics: named, description, log: logText(cwd, sessionLogFile), manifest, made: epic !== null, lines: [], moves: named.map((topic) => [topicDir(unit, topic), topicDir(into, topic)]),
@@ -179,7 +200,7 @@ function mapRows(manifest, topics) {
 
 /**
  * The epic's manifest: the topics' items, each copied whole, its map rows
- * numbered among themselves and approved now, and their decided closes.
+ * numbered among themselves and approved now.
  * @param {Split} split @returns {Record<string, any>}
  */
 function epicManifest({ into, topics, description, manifest }) {
@@ -189,16 +210,7 @@ function epicManifest({ into, topics, description, manifest }) {
     const held = topics.filter((topic) => isObject(itemsIn(manifest, phase)[topic]));
     if (held.length > 0) phases[phase] = { items: Object.fromEntries(held.map((topic) => [topic, copyWhole(itemsIn(manifest, phase)[topic])])) };
   }
-  const closes = isObject(manifest.checklists?.decided) ? topics.filter((topic) => Object.hasOwn(manifest.checklists.decided, topic)) : [];
-  return {
-    name: into,
-    work_type: 'epic',
-    status: 'in-progress',
-    created: todayStamp(),
-    description,
-    phases,
-    ...(closes.length > 0 ? { checklists: { decided: Object.fromEntries(closes.map((topic) => [topic, copyWhole(manifest.checklists.decided[topic])])) } } : {}),
-  };
+  return { name: into, work_type: 'epic', status: 'in-progress', created: todayStamp(), description, phases };
 }
 
 /** The epic made, its log before its manifest, where no split cut short made it. @param {string} cwd @param {Split} split */
@@ -219,6 +231,25 @@ function moveFolders(root, { into, moves }) {
   }
 }
 
+/**
+ * Each moved document's links rebased, so each resolves to what it named
+ * where that is now: a file the move left behind in the unit, from the
+ * document's new folder; a file a topic took along, where it went. A link
+ * that resolves already is left as written, so a redo changes nothing.
+ * @param {string} root @param {Split} split
+ */
+function relinkMoved(root, { moves }) {
+  const follow = (/** @type {string} */ file) => landingOf(file, moves) ?? file;
+  for (const [from, to] of moves.filter(([, moved]) => fs.existsSync(path.join(root, moved)))) {
+    for (const rel of filesUnder(path.join(root, to)).filter((name) => name.endsWith('.md'))) {
+      const file = path.join(root, to, rel);
+      const text = fs.readFileSync(file, 'utf8');
+      const rebased = rebaseLinks(text, path.posix.dirname(`${from}/${rel}`), path.posix.dirname(`${to}/${rel}`), follow);
+      if (rebased !== text) writeTextAtomic(file, rebased);
+    }
+  }
+}
+
 /** Each topic's lines carried to the epic's topic, every carry in one write: how many lines. @param {string} root @param {Split} split @param {string[]} warnings */
 function carryLines(root, { into, lines, moves }, warnings) {
   if (lines.length === 0) return 0;
@@ -230,16 +261,14 @@ function carryLines(root, { into, lines, moves }, warnings) {
   return lines.reduce((sum, { ids }) => sum + ids.length, 0);
 }
 
-/** The topics gone from the unit: their items and their decided closes. @param {string} cwd @param {Split} split */
+/** The topics' places in the unit's cache purged, and their items gone from it. @param {string} cwd @param {Split} split */
 function leaveUnit(cwd, { unit, topics }) {
+  for (const topic of topics) purgeTopicCache(cwd, unit, topic);
   withWorkUnitLock(cwd, unit, () => {
     const manifest = loadWorkUnitManifest(cwd, unit);
     const held = topics.filter((topic) => TOPIC_PHASES.some((phase) => Object.hasOwn(itemsIn(manifest, phase), topic)));
     if (held.length === 0) return;
-    for (const topic of held) {
-      for (const phase of TOPIC_PHASES) delete itemsIn(manifest, phase)[topic];
-      if (isObject(manifest.checklists?.decided)) delete manifest.checklists.decided[topic];
-    }
+    for (const topic of held) for (const phase of TOPIC_PHASES) delete itemsIn(manifest, phase)[topic];
     saveWorkUnitManifest(cwd, unit, manifest);
   });
 }
@@ -287,6 +316,7 @@ function splitWorkUnit(cwd, unit, asked) {
       const split = plannedSplit(cwd, root, unit, asked, warnings);
       makeEpic(cwd, split);
       moveFolders(root, split);
+      relinkMoved(root, split);
       const carried = carryLines(root, split, warnings);
       leaveUnit(cwd, split);
       const { reaimed, rewritten } = followInProject(cwd, split);

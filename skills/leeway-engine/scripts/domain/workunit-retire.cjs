@@ -12,14 +12,17 @@
 //   off the registry, its name free for a unit made later; and each map row
 //   and item of a topic an epic promoted to it go from that epic, the
 //   topic's record being the unit's (P4). A source of the roadmap's under
-//   its folder follows its file.
+//   its folder follows its file, and its cache is purged.
 // - Its ledger lines stay: one `rehomed` line carries every line read in the
 //   unit to the product's place (ledger-rehomed.cjs), each file they cite or
 //   link at the path the move took it to. Every read takes them as the
-//   product's from then on, so the product record shows the unit's
+//   product's from then on: the product record shows the unit's
 //   product-wide entries — the records directive carries each finding and
-//   decision of a cross-cutting unit's product-wide — no unit's record or
-//   copy shows any of them, and a unit made later under the name meets none.
+//   decision of a cross-cutting unit's product-wide — and `ledger product`
+//   its questions, open or answered, the product's (21.7.5); no unit's
+//   record or copy shows any of them, so the knowledge base drops the
+//   unit's copies as they go, and a unit made later under the name meets
+//   none.
 // - Once: each step is one a redo repeats or finds done — the carry, of the
 //   lines the ledger still reads in the unit; the folder's move; each
 //   epic's promoted topic; the registry and the roadmap's sources — so a
@@ -55,7 +58,6 @@ const { PRODUCT_DIR } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
-const { syncKnowledge } = require('./knowledge/sync.cjs');
 
 const SAID = 'workunit retire';
 
@@ -132,17 +134,14 @@ const promotedTo = (manifest, unit) => Object.entries(itemsIn(manifest, 'discuss
 
 /**
  * Each epic's topic promoted to the unit gone from it: its item in every
- * phase a topic holds one, its map row among them, and its decided close.
+ * phase a topic holds one, its map row among them.
  * @param {string} cwd @param {string} unit @returns {{work_unit: string, topic: string}[]}
  */
 function dropPromoted(cwd, unit) {
   return listWorkUnitManifests(cwd).filter((manifest) => promotedTo(manifest, unit).length > 0).flatMap(({ name }) => withWorkUnitLock(cwd, name, () => {
     const manifest = loadWorkUnitManifest(cwd, name);
     const topics = promotedTo(manifest, unit);
-    for (const topic of topics) {
-      for (const phase of TOPIC_PHASES) delete itemsIn(manifest, phase)[topic];
-      if (isObject(manifest.checklists?.decided)) delete manifest.checklists.decided[topic];
-    }
+    for (const topic of topics) for (const phase of TOPIC_PHASES) delete itemsIn(manifest, phase)[topic];
     saveWorkUnitManifest(cwd, name, manifest);
     return topics.map((topic) => ({ work_unit: name, topic }));
   }));
@@ -185,7 +184,6 @@ function retireWorkUnit(cwd, unit) {
       moveFolder(root, unit);
       const promoted = dropPromoted(cwd, unit);
       const rewritten = deregister(cwd, unit);
-      syncKnowledge(cwd, [{ remove: { workUnit: unit } }], warnings);
       purgeWorkUnitCache(cwd, unit);
       const paths = [unit, keptAt(unit), PROJECT_MANIFEST_SPEC, ...new Set(promoted.map(({ work_unit: epic }) => epic))];
       const message = `workflow(${unit}): retire to the product's assets`;

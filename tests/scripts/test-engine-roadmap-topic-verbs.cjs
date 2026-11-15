@@ -56,7 +56,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   const epicText = () => fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
   const epic = () => JSON.parse(epicText());
 
-  it('roadmap state names the record a postponed topic left as its item\'s earlier: the brief and log where they exist, the ledger record call, each message waiting (18.8.17)', () => {
+  it('roadmap state names the record a postponed topic left as its item\'s earlier: the brief and log where they exist, the call reading its record as it stood, each message waiting (18.8.17)', () => {
     const mail = path.join(dir, '.leeway', 'mvp', 'topics', 'ordering', 'mail', '001-tax.md');
     fs.mkdirSync(path.dirname(mail), { recursive: true });
     fs.writeFileSync(mail, 'Tax\nFrom Discovery · 1 Jan\n');
@@ -66,7 +66,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     const rows = runOk(dir, ['state']).items;
     assert.deepStrictEqual(rows.find((/** @type {{name: string}} */ r) => r.name === 'ordering').earlier, {
       brief: at('brief.md'),
-      record: 'node .claude/skills/leeway-engine/scripts/engine.cjs ledger record mvp ordering',
+      record: 'node .claude/skills/leeway-engine/scripts/engine.cjs ledger earlier mvp ordering',
       log: at('log.md'),
       mail: [at('mail/001-tax.md')],
     });

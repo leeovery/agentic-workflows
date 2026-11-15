@@ -6,15 +6,17 @@
 // unit retired, two topics of the building epic split into a new one and a
 // third postponed to the roadmap, then the reshape's finish (081) and the
 // migration's commit. The retired unit's product-wide entries the product
-// record's and no unit's, its spec and its topic's log reference in the
+// record's and no unit's, its questions the product's, which the product's
+// conversation opens on, its spec and its topic's log reference in the
 // product's assets, the oracle's audit passing over the state as committed
 // (21.S26); the epic nothing of which was built sitting in discussion, its
 // specs and its plan reference in its assets, its topics where they stood,
 // and once every topic is decided its one spec written fresh through the
 // review and ready to build (21.S27); a topic split away entered in
 // discussion on its new epic, reading the record and the mail it carried,
-// and the topic postponed, pulled into that epic, opening on the record it
-// left (21.8.9, 18.8.17). The tracker's tasks the directive closes for a
+// none of it an earlier record, and the topic postponed, pulled into that
+// epic, opening on the record it left, its entries as they stood
+// (21.8.9, 18.8.17). The tracker's tasks the directive closes for a
 // unit nothing of which was built are the task driver's (`task close`),
 // which nothing from the spec's entry to ready to build reads.
 //
@@ -77,11 +79,15 @@ describe('pipeline simulation: from the migration\'s cut and merges', () => {
   beforeEach(() => { sim = new Sim(migrated); });
   afterEach(() => { sim.destroy(); });
 
-  it('21.S26: the cross-cutting unit\'s product-wide entries the product record\'s and no unit\'s, its spec and its topic\'s log reference in the product\'s assets, off the registry; the oracle\'s audit passing over the state the migration committed (21.7.3, 21.7.5, 19.6.7, 21.6.9)', () => {
+  it('21.S26: the cross-cutting unit\'s product-wide entries the product record\'s and no unit\'s, its questions the product\'s, which the product\'s conversation opens on, its spec and its topic\'s log reference in the product\'s assets, off the registry; the oracle\'s audit passing over the state the migration committed (21.7.3, 21.7.5, 19.6.7, 21.6.9)', () => {
     auditState(sim.dir, 'the state the migration committed');
 
-    const product = JSON.parse(sim.read(['ledger', 'product']));
-    assert.deepStrictEqual([product.findings.map(({ text }) => text), product.decisions.map(({ text }) => text)], [['An entry lives an hour at most.'], ['Every write purges its keys.']]);
+    sim.run(['enter', 'discovery', 'product']);
+    const call = /^product: `node \S+ (ledger product)`$/m.exec(sim.sections)?.[1];
+    assert.strictEqual(call, 'ledger product', sim.sections);
+    const product = JSON.parse(sim.read(call.split(' ')));
+    assert.deepStrictEqual([product.findings.map(({ text }) => text), product.decisions.map(({ text }) => text), product.questions.map(({ text }) => text)],
+      [['An entry lives an hour at most.'], ['Every write purges its keys.'], ['When is a cached key purged?', 'Do reads ever purge a key?']]);
     assert.deepStrictEqual([layout.assets('caching', 'specs', 'caching.md'), layout.topic('caching', 'invalidation', 'log.md')].map((rel) => fs.existsSync(statePath(sim.dir, layout.productAssets(rel)))), [true, true]);
     assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(statePath(sim.dir, layout.projectManifest), 'utf8')).work_units).sort(), ['gateway', 'shop', 'storefront']);
     assert.match(fs.readFileSync(statePath(sim.dir, layout.knowledge('product.md')), 'utf8'), /^Every write purges its keys\.$/m);
@@ -120,14 +126,19 @@ describe('pipeline simulation: from the migration\'s cut and merges', () => {
     assert.strictEqual(sim.manifest(wu).build.position, 'step');
   });
 
-  it('a topic split away enters discussion on its new epic, reading the record it carried; the topic postponed, pulled into that epic, opens on the record it left (21.8.9, 18.8.17)', () => {
+  it('a topic split away enters discussion on its new epic, reading the record it carried, none of it an earlier record; the topic postponed, pulled into that epic, opens on the record it left, its entries as they stood (21.8.9, 18.8.17)', () => {
     enterEntry(sim, 'storefront', 'discussion', 'reviews');
     assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'record', 'storefront', 'reviews'])).questions.map(({ text }) => text), ['Who may leave a review?', 'Who moderates reviews?']);
     assert.deepStrictEqual(JSON.parse(sim.read(['topic', 'mailbox', 'storefront', 'reviews'])).files, [statePath(sim.dir, layout.mailbox('storefront', 'reviews', '001-photos.md'))]);
+    enterEntry(sim, 'storefront', 'discussion', 'gifts');
+    assert.doesNotMatch(sim.sections, /^earlier record:/m, 'the lines the split carried are the topic\'s own record, never an earlier one');
 
     assert.deepStrictEqual(sim.run(['roadmap', 'pull-forward', 'wishlist', '--into', 'storefront']).prior, { work_unit: 'shop', topic: 'wishlist' });
     enterEntry(sim, 'storefront', 'discussion', 'wishlist');
     assert.ok(sim.sections.includes(`earlier log: ${statePath(sim.dir, layout.topic('shop', 'wishlist', 'log.md'))}\n`), sim.sections);
-    assert.match(sim.sections, /^earlier record: `.+ ledger record shop wishlist`$/m);
+    const call = /^earlier record: `node \S+ (ledger earlier shop wishlist)`$/m.exec(sim.sections)?.[1];
+    assert.strictEqual(call, 'ledger earlier shop wishlist', sim.sections);
+    const earlier = JSON.parse(sim.read(call.split(' ')));
+    assert.deepStrictEqual([earlier.live, earlier.earlier, earlier.questions.map(({ text }) => text)], [false, true, ['May a wishlist be shared?']]);
   });
 });

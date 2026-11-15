@@ -331,13 +331,13 @@ function auditState(dir, label) {
 // settle whatever the fold does inside, both read here directly: a unit is
 // live while its manifest is there and not cancelled, a topic while its map
 // row is neither cancelled nor postponed, and the product's place, which no
-// unit holds, always — what it shows is `ledger product`'s, under discovery
-// or, product-wide, in the product record, never a record's, and it has no
-// copy; a line an absorb's or a split's carry lists is made in the unit and
-// on the topic the carry is, its phase its own, the file a link names where
-// the carry moved it, and shown so; a line a retired unit left, carried to
-// the product's place, is in a live place while it is product-wide alone,
-// so the product record shows it and nothing else of the unit shows; an
+// unit holds, always — what it shows is `ledger product`'s, under discovery,
+// product-wide in the product record, or a question discovery did not ask
+// among the product's questions, never a record's, and it has no copy; a
+// line an absorb's or a split's carry lists is made in the unit and on the
+// topic the carry is, its phase its own, the file a link names where the
+// carry moved it, and shown so; a line a retired unit left is carried to
+// the product's place, so nothing of the unit shows it; an
 // event is in a live place while
 // the unit and topic it was made on are live — a move while its unit is, a
 // question's wording made on the topic the last move its unit made of the
@@ -440,10 +440,8 @@ function auditLedger(dir, ctx) {
     }
     return /** @type {string|null} */ (madeOn.get(id));
   };
-  /** Whether `id` is a line a retired unit left, carried to the product's place. @param {string} id */
-  const retired = (id) => carriedBy.get(id)?.unit === PRODUCT;
   /** @param {string} id */
-  const inLivePlace = (id) => (retired(id) ? byId.get(id).product_wide === true : placeLive(byId.get(id).unit, topicOf(id)));
+  const inLivePlace = (id) => placeLive(byId.get(id).unit, topicOf(id));
   /** Each question's line, by its chain's first wording: its wordings in a live place, in the ledger's order. @type {Map<string, string[]>} */
   const lines = new Map();
   for (const e of events.filter((ev) => isQuestion(ev) && inLivePlace(ev.id))) lines.set(firstOf(e.id).id, [...(lines.get(firstOf(e.id).id) ?? []), e.id]);
@@ -518,7 +516,7 @@ function auditLedger(dir, ctx) {
   const shownAt = new Map();
   for (const [place, record] of records) for (const e of main(record)) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), place]);
   const atProduct = [...product.findings, ...product.decisions].filter((e) => standing(full(e.id)).unit === PRODUCT);
-  for (const e of [...product.discovery, ...atProduct]) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), `${PRODUCT}\0`]);
+  for (const e of [...product.discovery, ...atProduct, ...product.questions]) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), `${PRODUCT}\0`]);
   const shown = (/** @type {string} */ id) => shownAt.has(id);
 
   /** Where `id` leads while not shown: a question's wording, the next on its line; its live replacements, or, with none, the entries its live merges went into. @param {string} id */

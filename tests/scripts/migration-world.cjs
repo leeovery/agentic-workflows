@@ -529,13 +529,14 @@ function nestedFinished(dir) {
 // The cut and the merges' world (080's verbs): in today's layout, an epic
 // nothing of which is built, its three specs and a plan unbuilt, one topic
 // still in discussion and one promoted to the cross-cutting unit; that
-// unit, its spec unbuilt, its record product-wide; and an epic whose
-// building started, its spec covering one topic and none of three others —
-// one in discussion with a brief, mail and a file its unit imported, one in
-// discussion with a log alone, one never started. A roadmap item joined to the topic
-// in discussion with mail, sourced from its log, and one waiting, sourced
-// from the cross-cutting unit's log. Moved by the real move, and every
-// topic's record carried.
+// unit, its spec unbuilt, its findings and decisions product-wide and one
+// question open; and an epic whose building started, its spec covering one
+// topic and none of three others — one in discussion with a brief, mail
+// and a file its unit imported, which its log and brief link, one in
+// discussion with a log alone, one never started, its research a finding.
+// A roadmap item joined to the topic in discussion with mail, sourced from
+// its log, and one waiting, sourced from the cross-cutting unit's log.
+// Moved by the real move, and every topic's record carried.
 const CUT_PROJECT = 'fumi';
 const CUT_UNITS = Object.freeze({ gateway: 'epic', caching: 'cross-cutting', shop: 'epic' });
 const CUT_DONE = Object.freeze({ status: 'completed' });
@@ -591,12 +592,14 @@ const CUT_OLD = Object.freeze({
       specification: { items: { weights: cutSpec('weights') } },
       implementation: { items: { weights: CUT_TALKING } },
     },
+    imports: [{ path: 'imports/stars.md', imported_at: '2026-01-06T10:00:00Z', origin: 'discussion/reviews' }],
   }),
   '.workflows/shop/discussion/weights.md': cutDoc('Discussion: Weights', { 'Tie Break': 'By price.' }),
-  '.workflows/shop/discussion/reviews.md': cutDoc('Discussion: Reviews', { Who: 'Buyers alone.', Moderation: 'Still open.' }),
+  '.workflows/shop/discussion/reviews.md': cutDoc('Discussion: Reviews', { Who: 'Buyers alone, rated in [stars](../imports/stars.md).', Moderation: 'Still open.' }),
   '.workflows/shop/discussion/wishlist.md': cutDoc('Discussion: Wishlist', { Sharing: 'Still open.' }),
+  '.workflows/shop/research/gifts.md': cutDoc('Research: Gifts', { Wrapping: 'Gift wrap is free.' }),
   '.workflows/shop/discussion/.mailbox/reviews/001-photos.md': 'Photos\n\nMay a review carry photos?\n',
-  '.workflows/shop/discovery/briefs/reviews.md': '# Reviews\n\nWhat buyers say.\n',
+  '.workflows/shop/discovery/briefs/reviews.md': '# Reviews\n\nWhat buyers say, in [stars](../../imports/stars.md).\n',
   '.workflows/shop/imports/stars.md': '# Stars\n\nFive at most.\n',
   '.workflows/shop/specification/weights/specification.md': cutDoc('Specification: Weights', { 'Tie Break': 'By price.' }),
 });
@@ -627,6 +630,7 @@ const CUT_RECORDS = Object.freeze({
       ref: 'f1', event: 'found', text: 'An entry lives an hour at most.', how: 'read in the spec', known: 'read', by: 'claude', product_wide: true,
       cites: [{ path: layout.assets('caching', 'specs', 'caching.md'), section: 'Lifetimes' }, cutLogCite('caching', 'invalidation', 'Lifetimes')],
     },
+    { ref: 'q2', event: 'asked', text: 'Do reads ever purge a key?', by: 'claude', cites: [cutLogCite('caching', 'invalidation', 'Purging')] },
   ],
   'shop.discussion.weights': [
     { ref: 'q1', event: 'asked', text: 'How do ties break?', by: 'claude', cites: [cutLogCite('shop', 'weights', 'Tie Break')] },
@@ -643,7 +647,9 @@ const CUT_RECORDS = Object.freeze({
   'shop.discussion.wishlist': [
     { ref: 'q1', event: 'asked', text: 'May a wishlist be shared?', by: 'claude', cites: [cutLogCite('shop', 'wishlist', 'Sharing')] },
   ],
-  'shop.discovery.gifts': [],
+  'shop.discovery.gifts': [
+    { ref: 'f1', event: 'found', text: 'Gift wrap is free.', how: 'read in the research', known: 'read', by: 'claude', cites: [cutLogCite('shop', 'gifts', 'Wrapping')] },
+  ],
 });
 
 /** @param {string} dir */

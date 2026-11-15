@@ -7,15 +7,20 @@
 // first discovery log verbatim, registered, its map approved holding the
 // topics numbered in the order they stood, so each starts where it stood
 // and none in discovery; each topic moved whole, its folder — log, brief
-// and mail — and its items; its ledger lines carried, its record read on
-// the epic's topic with each cite where its file went and its copy
-// following; a roadmap item joined to it re-aimed, its source following;
-// the unit keeping the rest; the commit held for the migration's. The other
-// way out, to the roadmap: `topic postpone` takes a topic of the building
-// unit while the migration runs, before the cut writes the build, and
-// refuses once it has (P3). Split again it finds
-// everything done; a session killed after each step, split again, leaves
-// what a run never killed leaves. Every refusal writes nothing.
+// and mail — and its items, each link to the unit's assets rebased to
+// resolve from where it now sits; its ledger lines carried, its record read
+// on the epic's topic with each cite where its file went and its copy
+// following, the knowledge store indexing it there at once; its places in
+// the unit's cache purged; a roadmap item joined to it re-aimed, its source
+// following; the unit keeping the rest; the commit held for the
+// migration's. The other way out, to the roadmap: `topic postpone` takes a
+// topic of the building unit while the migration runs, before the cut
+// writes the build, and refuses once it has (P3); pulled into the new epic
+// once the migration's commit lands, the topic reads the record it left,
+// its entries as they stood and never current. Split again it finds
+// everything done, and naming a topic the epic it made lacks is refused; a
+// session killed after each step, split again, leaves what a run never
+// killed leaves. Every refusal writes nothing.
 //
 // Layer: verb, the kills spawned. World: the cut and the merges'
 // (migration-world.cjs), made once and copied for each test that writes,
@@ -31,8 +36,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { ok, refuses, git, statePath, layout, writeState, readState, treeSnapshot, refusedPristine, killedAt, cleanupFixture } = harness;
+const { ok, callAsync, refuses, git, statePath, layout, writeState, readState, treeSnapshot, refusedPristine, killedAt, cleanupFixture, keywordOnlyKnowledge, indexedFiles } = harness;
 const { SESSION, cutMigration, settledState, stateUnborn, refusedUntouched } = require('./migration-world.cjs');
+
+const FINISH = require('../../skills/leeway-migrate/scripts/migrations/081-reshape-finish.cjs');
 
 const HELD = 'held for the migration\'s commit';
 const LOG = '# Discovery Session 001\n\nWhat buyers see, apart from the shop.\n';
@@ -64,6 +71,15 @@ const shown = (entries) => entries.map(({ text, cites }) => [text, cites.map(({ 
 /** A unit's manifest. @param {string} unit */
 const manifest = (unit) => JSON.parse(readState(dir, layout.manifest(unit)));
 
+/** The knowledge store built over the world, as a set-up project's first index builds it. */
+async function indexed() {
+  keywordOnlyKnowledge(dir);
+  const res = await callAsync(dir, ['knowledge', 'index'], { env: SESSION });
+  assert.strictEqual(res.code, 0, res.stderr);
+}
+
+const STARS = '](../../assets/stars.md)';
+
 describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
@@ -77,7 +93,7 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
       epic: 'storefront',
       topics: ['reviews', 'gifts'],
       session_log: statePath(dir, layout.session('storefront', '001')),
-      carried: 4,
+      carried: 5,
       committed: null,
       warnings: [],
       roadmap_reaimed: ['star-ratings'],
@@ -86,9 +102,16 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
     });
 
     const afterwards = treeSnapshot(dir);
-    const folder = Object.entries(before).filter(([rel]) => rel.startsWith(layout.topic('shop', 'reviews', ''))).map(([rel, text]) => [rel.replace(/^shop\//, 'storefront/'), text]);
+    const linking = [layout.brief('shop', 'reviews'), layout.topic('shop', 'reviews', 'log.md')];
+    assert.deepStrictEqual(linking.map((rel) => before[rel].includes(STARS)), [true, true], 'its log and brief link the unit\'s assets');
+    const folder = Object.entries(before).filter(([rel]) => rel.startsWith(layout.topic('shop', 'reviews', '')))
+      .map(([rel, text]) => [rel.replace(/^shop\//, 'storefront/'), text.replaceAll(STARS, '](../../../shop/assets/stars.md)')]);
     assert.deepStrictEqual(folder.map(([rel]) => rel).sort(), [layout.brief('storefront', 'reviews'), layout.topic('storefront', 'reviews', 'log.md'), layout.mailbox('storefront', 'reviews', '001-photos.md')]);
-    assert.deepStrictEqual(folder.map(([rel]) => [rel, afterwards[rel]]), folder, 'its folder moved whole, every file as it was');
+    assert.deepStrictEqual(folder.map(([rel]) => [rel, afterwards[rel]]), folder, 'its folder moved whole, every file as it was but each link to the unit\'s assets, rebased');
+    for (const rel of linking.map((at) => at.replace(/^shop\//, 'storefront/'))) {
+      const target = /** @type {string} */ (/\]\(([^)]*stars\.md)\)/.exec(afterwards[rel])?.[1]);
+      assert.strictEqual(path.posix.join(path.posix.dirname(rel), target), layout.assets('shop', 'stars.md'), `${rel}'s link resolves to the unit's asset`);
+    }
     assert.deepStrictEqual(Object.keys(afterwards).filter((rel) => rel.startsWith(layout.topic('shop', 'reviews', ''))), []);
     assert.strictEqual(afterwards[layout.session('storefront', '001')], LOG);
 
@@ -121,6 +144,19 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
     assert.ok(stateUnborn(dir));
   });
 
+  it('the knowledge store read at once: each moved topic\'s record copy indexed at its new path, its old one gone; its places in the unit\'s cache purged', async () => {
+    await indexed();
+    writeState(dir, layout.cache('shop', 'discussion', 'reviews', 'entered.json'), '{}\n');
+    const moved = ['reviews', 'gifts'];
+    const others = indexedFiles(dir).filter((file) => !moved.some((topic) => file === layout.record('shop', topic)));
+    assert.strictEqual(others.length, indexedFiles(dir).length - moved.length, 'the store held the topics\' record copies');
+
+    run(split());
+
+    assert.deepStrictEqual(indexedFiles(dir), [...others, ...moved.map((topic) => layout.record('storefront', topic))].sort());
+    assert.ok(!fs.existsSync(statePath(dir, layout.cache('shop', 'discussion', 'reviews'))), 'its place in the unit\'s cache purged');
+  });
+
   it('split again, it finds everything done: nothing carried, nothing written', () => {
     run(split());
     const done = settledState(dir, ['storefront']);
@@ -143,6 +179,32 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
     writeState(dir, layout.manifest('shop'), JSON.stringify({ ...manifest('shop'), build: { position: 'auto' } }));
     assert.strictEqual(untouched(['topic', 'postpone', 'shop', 'reviews', '--horizon', 'later']),
       'postponing "reviews" is refused — shop\'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit\'s cancel, through manage on the start menu');
+  });
+
+  it('split again naming a topic the epic it made lacks on its map: refused, naming it, nothing written', () => {
+    run(split('reviews'));
+
+    assert.strictEqual(untouched(split('reviews,gifts')),
+      'workunit split: storefront, made by a split cut short, has no topic "gifts" on its map — split again naming the topics it was made with');
+  });
+
+  it('P3: the topic postponed, pulled into the new epic once the migration\'s commit lands, reads the record it left, its entries as they stood — the one read of them, none indexed, none current there or in the new epic', async () => {
+    run(split());
+    run(['topic', 'postpone', 'shop', 'wishlist', '--horizon', 'later']);
+    FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
+    run(['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    await indexed();
+
+    run(['roadmap', 'pull-forward', 'wishlist', '--into', 'storefront']);
+
+    const earlier = run(['ledger', 'earlier', 'shop', 'wishlist']);
+    assert.deepStrictEqual([earlier.live, earlier.earlier, earlier.questions.map(({ text }) => text)], [false, true, ['May a wishlist be shared?']]);
+    const [asked] = earlier.questions;
+    assert.deepStrictEqual(run(['ledger', 'record', 'shop', 'wishlist']).questions, []);
+    assert.deepStrictEqual(run(['ledger', 'map', 'storefront', 'wishlist']).questions, []);
+    const record = run(['ledger', 'record', 'storefront']);
+    assert.ok([...record.questions, ...record.other_topics].every(({ id }) => id !== asked.id), 'none of its entries shows in the new epic');
+    assert.ok(!indexedFiles(dir).includes(layout.record('shop', 'wishlist')), 'none of its entries indexed');
   });
 
   it('a topic set aside on the unit\'s map, and a topic\'s folder in both units: refused, nothing written', () => {

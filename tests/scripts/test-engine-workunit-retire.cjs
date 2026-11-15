@@ -7,10 +7,12 @@
 // manifest, its spec and its topic's log among it, nothing of it deleted;
 // off the registry, its name free for a unit made later, which meets none of
 // its entries; its ledger lines the product's, `ledger product` showing its
-// product-wide entries with each cite where the move took its file, and no
-// unit's record or copy showing any; each epic's topic promoted to it gone
-// from that epic's map and items (P4); a roadmap source under its folder
-// following its file; the commit held for the migration's. Retired again it
+// product-wide entries and its questions with each cite where the move took
+// its file, and no unit's record or copy showing any, so the knowledge
+// store holds none, read at once; its cache purged; each epic's topic
+// promoted to it gone from that epic's map and items (P4); a roadmap source
+// under its folder following its file; the commit held for the
+// migration's. Retired again it
 // finds everything done; a session killed after each step, retired again,
 // leaves what a run never killed leaves. Every refusal writes nothing. The
 // records directive's rule that a cross-cutting unit's entries are
@@ -30,7 +32,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { ok, git, statePath, layout, writeState, treeSnapshot, refusedPristine, killedAt, cleanupFixture } = harness;
+const { ok, callAsync, git, statePath, layout, writeState, treeSnapshot, refusedPristine, killedAt, cleanupFixture, keywordOnlyKnowledge, indexedFiles } = harness;
 const { SESSION, cutMigration, settledState, stateUnborn, refusedUntouched } = require('./migration-world.cjs');
 
 const RETIRE = ['workunit', 'retire', 'caching'];
@@ -55,14 +57,14 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('21.S26: its folder kept whole in the product\'s assets, off the registry, its entries the product record\'s and no unit\'s, each cite where its file went; the epic\'s promoted topic gone (P4); the roadmap\'s source following; the commit held', () => {
+  it('21.S26: its folder kept whole in the product\'s assets, off the registry, its entries the product record\'s and no unit\'s, its questions the product\'s, each cite where its file went; the epic\'s promoted topic gone (P4); the roadmap\'s source following; the commit held', () => {
     const before = treeSnapshot(dir);
 
     assert.deepStrictEqual(run(RETIRE), {
       ok: true,
       work_unit: 'caching',
       kept: statePath(dir, layout.productAssets('caching')),
-      carried: 4,
+      carried: 5,
       promoted: [{ work_unit: 'gateway', topic: 'invalidation' }],
       committed: null,
       warnings: [],
@@ -86,15 +88,31 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
 
     const product = run(['ledger', 'product']);
     const spec = layout.productAssets('caching', 'assets', 'specs', 'caching.md');
-    assert.deepStrictEqual([product.findings.map(shown), product.decisions.map(shown), product.decisions[0].assets.map(({ path: file }) => file)], [
-      [['An entry lives an hour at most.', [spec, layout.productAssets('caching', 'topics', 'invalidation', 'log.md')]]],
+    const log = layout.productAssets('caching', 'topics', 'invalidation', 'log.md');
+    assert.deepStrictEqual([product.findings.map(shown), product.decisions.map(shown), product.decisions[0].assets.map(({ path: file }) => file), product.questions.map(shown)], [
+      [['An entry lives an hour at most.', [spec, log]]],
       [['Every write purges its keys.', [spec]]],
       [spec],
+      [['When is a cached key purged?', [log]], ['Do reads ever purge a key?', [log]]],
     ]);
     assert.deepStrictEqual(Object.keys(afterwards).filter((rel) => rel.startsWith(layout.knowledge('records'))).sort(),
-      [layout.record('gateway', 'auth'), layout.record('gateway', 'errors'), layout.record('gateway', 'limits'), layout.record('shop', 'reviews'), layout.record('shop', 'weights'), layout.record('shop', 'wishlist')]);
+      [layout.record('gateway', 'auth'), layout.record('gateway', 'errors'), layout.record('gateway', 'limits'), layout.record('shop', 'gifts'), layout.record('shop', 'reviews'), layout.record('shop', 'weights'), layout.record('shop', 'wishlist')]);
     assert.match(afterwards[layout.knowledge('product.md')], /^Every write purges its keys\.$[\s\S]*^## Finding: An entry lives an hour at most\.$/m);
     assert.ok(stateUnborn(dir));
+  });
+
+  it('the knowledge store read at once: the unit\'s record copies gone from it, every other unit\'s there still; its cache purged', async () => {
+    keywordOnlyKnowledge(dir);
+    const indexed = await callAsync(dir, ['knowledge', 'index'], { env: SESSION });
+    assert.strictEqual(indexed.code, 0, indexed.stderr);
+    writeState(dir, layout.cache('caching', 'discussion', 'invalidation', 'entered.json'), '{}\n');
+    const others = indexedFiles(dir).filter((file) => file !== layout.record('caching', 'invalidation'));
+    assert.strictEqual(others.length, indexedFiles(dir).length - 1, 'the store held the unit\'s record copy');
+
+    run(RETIRE);
+
+    assert.deepStrictEqual(indexedFiles(dir), others);
+    assert.ok(!fs.existsSync(statePath(dir, layout.cache('caching'))), 'its cache purged');
   });
 
   it('its name freed: a unit made later under it meets none of the retired unit\'s entries, which stay the product\'s', () => {

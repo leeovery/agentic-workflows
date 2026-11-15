@@ -10,13 +10,14 @@
 // tool keeps local and a file of the person's in its folder. Each test reads
 // one rule off what the finish left: the drops journaled in the state's
 // cache, `{drops}`, nothing staged, nothing committed and every file still
-// on disk; the journal written whole by a rename; a store the branch does
-// not hold dropped all the same, and local files with no store beside them
-// no store's; a project nested in its repository journaling from its own
-// folder; a run again, and one after a kill at the journal, writing the
-// journal again; a task driver's folder whose declaration is missing or
-// does not read named in its notice; and the projects it skips, writing
-// nothing.
+// on disk; each unit's imports list dropped from its manifest in the state,
+// a retired unit's kept as it was; the journal written whole by a rename; a
+// store the branch does not hold dropped all the same, and local files with
+// no store beside them no store's; a project nested in its repository
+// journaling from its own folder; a run again, and one after a kill at the
+// journal, writing the journal again; a task driver's folder whose
+// declaration is missing or does not read named in its notice; and the
+// projects it skips, writing nothing.
 //
 // Layer: migration. World: a plain git project per test, in a temp folder.
 //
@@ -152,6 +153,26 @@ describe('migration 081: the code side\'s drops journaled for the migration\'s c
     assert.deepStrictEqual(journalOf(dir), { drops: ['.workflows'] });
     assert.deepStrictEqual(staged(dir), []);
     assert.ok(!fs.existsSync(path.join(dir, 'app/.leeway')), 'no state in the project\'s folder');
+  });
+
+  it('drops each unit\'s imports list, every other field as it was, a manifest holding none untouched, and a retired unit\'s, kept in the product\'s assets, as it was kept; run again, finds them dropped (21.5.7)', () => {
+    const dir = oldProject(folder());
+    const listed = { name: 'shop', work_type: 'epic', imports: [{ path: 'assets/stars.md', imported_at: '2026-01-06T10:00:00Z', origin: 'discussion/reviews' }], phases: {} };
+    const manifests = {
+      shop: `${JSON.stringify(listed, null, 2)}\n`,
+      gateway: '{"name":"gateway","work_type":"epic"}\n',
+      retired: `${JSON.stringify({ ...listed, name: 'caching', work_type: 'cross-cutting' })}\n`,
+    };
+    const at = { shop: '.leeway/shop/manifest.json', gateway: '.leeway/gateway/manifest.json', retired: '.leeway/.product/assets/caching/manifest.json' };
+    for (const [unit, rel] of Object.entries(at)) createFile(dir, rel, manifests[/** @type {keyof typeof manifests} */ (unit)]);
+    const { imports: _, ...dropped } = listed;
+    const read = () => Object.values(at).map((rel) => fs.readFileSync(path.join(dir, rel), 'utf8'));
+
+    run(dir);
+
+    assert.deepStrictEqual(read(), [`${JSON.stringify(dropped, null, 2)}\n`, manifests.gateway, manifests.retired]);
+    run(dir);
+    assert.deepStrictEqual(read(), [`${JSON.stringify(dropped, null, 2)}\n`, manifests.gateway, manifests.retired]);
   });
 
   it('run again, writes the same journal', () => {

@@ -474,7 +474,7 @@ describe('the answer', () => {
     commitAll(dir, 'pulled from older');
     const earlier = [
       `earlier brief: ${at(layout.brief('older', 'billing'))}`,
-      `earlier record: \`${ENGINE} ledger record older billing\``,
+      `earlier record: \`${ENGINE} ledger earlier older billing\``,
       `earlier log: ${at(layout.topic('older', 'billing', 'log.md'))}`,
       `earlier mail: ${at(layout.mailbox('older', 'billing', '001-tax.md'))}`,
     ];
@@ -494,7 +494,7 @@ describe('the answer', () => {
     const { sections } = withFrozenClock(() => enter(['discussion', FEATURE]));
     assert.ok(sections.includes([
       `product: \`${ENGINE} ledger product ${FEATURE} ${FEATURE}\``,
-      `earlier record: \`${ENGINE} ledger record ${EPIC} widgets\``,
+      `earlier record: \`${ENGINE} ledger earlier ${EPIC} widgets\``,
       `earlier log: ${at(layout.topic(EPIC, 'widgets', 'log.md'))}`,
       `log: ${at(layout.topic(FEATURE, FEATURE, 'log.md'))}`,
     ].join('\n')), sections);

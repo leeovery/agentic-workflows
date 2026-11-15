@@ -54,7 +54,10 @@
 // item neither cancelled nor postponed — and started, which the engine
 // answers, once the check passes, where it has no raise yet. A topic never
 // started is carried in discovery, where nothing is decided (8.3.4): its
-// points stay open questions on it, which its first opening reads.
+// points stay open questions on it, which its first opening reads. A
+// cross-cutting unit's record is the product's: its points stay open
+// questions, the product's once the cut and the merges retire the unit
+// (21.7.5), which the product's conversation opens on.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -408,14 +411,14 @@ module.exports = {
   },
   /**
    * The points to raise: each question a carried record marks `raise`, on a
-   * topic still live and started — its place, the question's id and its
-   * text.
+   * topic still live and started, of a unit not cross-cutting — its place,
+   * the question's id and its text.
    * @param {{projectDir: string, stateDir: string}} dirs
    * @returns {{place: string, answers: string, text: string}[]}
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
-    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
+    return unitsOf(project).filter((unit) => unit.manifest?.work_type !== 'cross-cutting').flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
       const carried = carriedOf(project, unit, topic);
       if (carried === null || carried.phase === 'discovery') return [];
       const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));

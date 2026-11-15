@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a postponed topic's earlier record (18.8.17). A topic an epic
 // postponed, pulled into other work, opens reading the record it left in
-// that epic as input, never changing it: its brief, its ledger record, its
-// log and its mail. Where it sits is the epic's map row's `prior` for an
+// that epic as input, never changing it: its brief, its ledger record —
+// its entries as they stood, which `ledger earlier` reads, though none is
+// current while it is set aside (ledger-read.cjs) — its log and its mail. Where it sits is the epic's map row's `prior` for an
 // epic's topic, or for a one-topic unit the `postponed_from` of the roadmap
 // item joined to the unit; a waiting roadmap item names it by its own
 // `postponed_from`. A pull back into the epic that postponed it returns the
@@ -14,14 +15,14 @@
 const fs = require('fs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { itemOf, roadmapItems, itemJoin, itemPostponedFrom, topicAddress, briefFile, mailboxDir } = require('./derivations.cjs');
-const { topicLog, recordCall } = require('./topic-log.cjs');
+const { topicLog, earlierCall } = require('./topic-log.cjs');
 
 /** @typedef {{work_unit: string, topic: string}} Address */
 
 /**
  * What the earlier record is read by: its brief and log where they exist,
- * the call that reads its ledger record, and each message in its mailbox,
- * the paths absolute.
+ * the call that reads its ledger record as it stood, and each message in
+ * its mailbox, the paths absolute.
  * @typedef {{brief?: string, record: string, log?: string, mail: string[]}} EarlierReads
  */
 
@@ -53,7 +54,7 @@ function earlierReads(cwd, { work_unit: unit, topic }) {
   const mail = fs.existsSync(mailbox) ? fs.readdirSync(mailbox).sort().map((name) => statePath(cwd, mailboxDir(unit, topic), name)) : [];
   return {
     ...(fs.existsSync(brief) ? { brief } : {}),
-    record: recordCall(unit, topic),
+    record: earlierCall(unit, topic),
     ...(fs.existsSync(log) ? { log } : {}),
     mail,
   };

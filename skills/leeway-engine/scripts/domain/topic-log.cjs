@@ -28,8 +28,9 @@ function topicLog(unit, topic) {
 
 /**
  * The call that reads one of a topic's views of the ledger: its record, its
- * map, or the entries a replacement changed under it.
- * @param {'record'|'map'|'affected'} view @param {string} unit @param {string} topic
+ * map, the entries a replacement changed under it, or the record it left
+ * set aside, as it stood.
+ * @param {'record'|'map'|'affected'|'earlier'} view @param {string} unit @param {string} topic
  */
 function ledgerView(view, unit, topic) {
   return `${ENGINE_COMMAND} ledger ${view} ${unit} ${topic}`;
@@ -38,6 +39,11 @@ function ledgerView(view, unit, topic) {
 /** The call that reads a topic's record. @param {string} unit @param {string} topic */
 function recordCall(unit, topic) {
   return ledgerView('record', unit, topic);
+}
+
+/** The call that reads the record a topic set aside left, as it stood. @param {string} unit @param {string} topic */
+function earlierCall(unit, topic) {
+  return ledgerView('earlier', unit, topic);
 }
 
 /**
@@ -105,4 +111,4 @@ function appendLine(file, line) {
   fs.appendFileSync(file, `${gap}${line}\n`);
 }
 
-module.exports = { topicLog, ledgerView, recordCall, productCall, mapCall, owedHeader, namedConversations, conversationsIn, isHeader, appendLine };
+module.exports = { topicLog, ledgerView, recordCall, earlierCall, productCall, mapCall, owedHeader, namedConversations, conversationsIn, isHeader, appendLine };
