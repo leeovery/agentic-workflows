@@ -21,7 +21,7 @@ const review = (change: Record<string, unknown>, from: View = REVIEW): View => (
 /** The board at the review phase, its view `view`, `questions` waiting on the person. */
 const answered = (view: View, questions: Question[] = []): Answer => ({ kind: 'board', board: { ...BUILD, place: { ...BUILD.place, phase: 'review' }, questions, view } as Board })
 
-type Area = { area: string; title: string; state: string; ran: number; found: number; since: string | null }
+type Area = { area: string; title: string; before: 'built' | 'partly' | null; state: string; ran: number; found: number; since: string | null }
 
 const AREAS = REVIEW.areas as Area[]
 
@@ -321,6 +321,21 @@ describe('the review phase\'s This session (20.10)', () => {
       'round 1 · 17 of 19 areas read · ◐ 2 being read',
       ['◐ §18 Documentation and the Setup Guide           reading 2:18', '◐ Tests held against the specification            reading 2:18'],
       ['VERDICT ─────────────────────────────────────────────────────', '○ once every area is read'],
+    ])
+  })
+
+  test('21.8.8: an area built before the migration cut the unit, whole or in part, says so on the line beneath its own, its title kept whole', () => {
+    const migrated = review({ areas: AREAS.map(area => ({ '1': { ...area, before: 'built' }, '4': { ...area, before: 'partly' } })[area.area] ?? area) })
+    const rows = paneDrawn(answered(migrated), { now: NOW })
+    const at = rows.findIndex(row => row.startsWith('✓ §1 '))
+
+    expect(rows.slice(at, at + 6)).toEqual([
+      '✓ §1 Purpose and Scope               unchanged, not read again',
+      '  built before Leeway',
+      '✓ §2 The Lean Default AI Command     unchanged, not read again',
+      '✓ §3 Quote-Aware ai_command Parsing  unchanged, not read again',
+      '✓ §4 The Per-Call Size Cap                       nothing found',
+      '  partly built before Leeway',
     ])
   })
 

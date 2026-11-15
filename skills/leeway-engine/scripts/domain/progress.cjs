@@ -12,7 +12,8 @@
 //   closed, of every phase the cut holds on the manifest, written or not,
 //   since the tracker holds only the phases whose tasks are written (7.4.2,
 //   28.2.1): "build, phase 2 of 3", and a phase whose start has not closed,
-//   its tasks not written, says so: "build, phase 3 of 5, not yet written".
+//   its tasks not written, says so: "build, phase 3 of 5, not yet written"
+//   — a phase whose parent the migration adopted has its tasks written.
 // - Any other phase is said by its name alone ("investigation", "review").
 // - A unit waiting on the migration's cut — of a type the reshape retires,
 //   or built under the old plan (P12) — says so, whatever its items have in
@@ -23,7 +24,9 @@ const { nowOf, unitRead } = require('./unit-phases.cjs');
 const { liveInOrder } = require('./approve-map.cjs');
 const { mapCount } = require('./projections/board-discovery.cjs');
 const { counted } = require('./projections/map.cjs');
-const { cutPhases, cutLength, phaseClosed, phaseStarted, awaitsCut, computeTopicLifecycle } = require('./derivations.cjs');
+const {
+  cutPhases, cutLength, phaseClosed, phaseStarted, phaseAdopted, awaitsCut, computeTopicLifecycle,
+} = require('./derivations.cjs');
 
 /** How far a unit has come: its phase, and how far into it where the phase has a measure. @typedef {{phase: string, far: string|null}} Progress */
 
@@ -50,7 +53,8 @@ function epicMeasure(cwd, manifest, phase) {
 /** How far into its build the unit has come: the first phase of its cut not closed, of all, and whether it is written yet (the header's). @param {Record<string, any>} manifest */
 function buildMeasure(manifest) {
   const at = cutPhases(manifest).findIndex((_, index) => !phaseClosed(manifest, index + 1)) + 1;
-  return `phase ${at} of ${cutLength(manifest)}${phaseStarted(manifest, at) ? '' : ', not yet written'}`;
+  const written = phaseStarted(manifest, at) || phaseAdopted(manifest, at);
+  return `phase ${at} of ${cutLength(manifest)}${written ? '' : ', not yet written'}`;
 }
 
 /**

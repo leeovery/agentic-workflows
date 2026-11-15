@@ -109,7 +109,7 @@ const { handedTag } = require('./topic-map.cjs');
 const { heldBackIn } = require('./questions.cjs');
 const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
-const { buildLength, quickFixBuild } = require('./derivations.cjs');
+const { buildLength, quickFixBuild, specJoined } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesUntaken, answeredAtClose } = require('./notes.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
@@ -196,7 +196,7 @@ const CHANGE_AREA = Object.freeze(areaOf('1', 'The change'));
  */
 function reviewAreas(cwd, unit, manifest) {
   if (quickFixBuild(manifest)) return [CHANGE_AREA];
-  return specReading(readSpec(cwd, unit)).headings
+  return specReading(readSpec(cwd, unit), specJoined(manifest)).headings
     .filter(({ kind }) => kind === 'area')
     .map(({ number, title }) => areaOf(/** @type {string} */ (number), title));
 }

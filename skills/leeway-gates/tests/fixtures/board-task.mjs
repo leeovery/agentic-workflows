@@ -10,6 +10,7 @@ export default {
   finished: new Date(2026, 9, 20, 0, 3).toISOString(),
   does: 'With no timeout configured, a hung release-notes call fails after 180 seconds and a hung commit call after 60. An explicit timeout at either level still wins. Every surface that states the shipped timeout names both values.',
   criteria: 6,
+  before: false,
   account: {
     done: 'With no timeout set at any level, a release-notes call now gets 180 seconds per attempt before it fails as `AI timed out`, and a `mint commit` call keeps 60. `mint release regenerate <version>` from a fresh source gets the 180 seconds too. A `timeout` under `[release]` or `[commit]`, or a shared one, still wins. The README, `mint setup`\'s config reference and its AI-transport paragraph now name both defaults, and the `[commit]` `timeout` row reads `shared, else 60` as well, which the task did not ask for.',
     where: [

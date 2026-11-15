@@ -60,11 +60,11 @@ const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { standingOf, buildPhases } = require('../build-entry.cjs');
 const { reviewStanding, reviewGoesOn, recordedRounds } = require('../review-phase.cjs');
-const { cutLength } = require('../derivations.cjs');
+const { cutLength, specJoined, landedBefore } = require('../derivations.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf, taskHead, runsAt } = require('../build-screens.cjs');
-const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
+const { fieldOf, outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
 const { specPath, specReading, DRAWS_ON } = require('../spec-sections.cjs');
 const { figuresPath, takenFigures } = require('../task-account.cjs');
 const { roundReportPath, wholeRounds } = require('../round-report.cjs');
@@ -340,8 +340,9 @@ function taskPage(at, given) {
     line: line ?? taskLine(at, { task: given, title: task.title, status: task.status, parked: [], after: [] }),
     started: account === null ? at.tracker().started : account.figures.started,
     finished: account?.figures.finished ?? null,
-    does: fieldOf(task.text, 'Outcome') ?? '',
-    criteria: criteria.length,
+    does: outcomeOf(task.text),
+    criteria: criteria.length || null,
+    before: landedBefore(at.manifest)(ref),
     account: account === null ? null : {
       done: sections['What was done'],
       where: sections['Where in the code'],
@@ -365,7 +366,7 @@ function taskPage(at, given) {
 function scenarioWording(at, scenario) {
   const lines = at.once('spec-lines', () => {
     const file = specPath(at.cwd, at.unit);
-    return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).lines : [];
+    return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8'), specJoined(at.manifest)).lines : [];
   });
   return lines.find(({ kind, number }) => kind === 'scenario' && number === scenario)?.wording.replace(DRAWS_ON, '').trimEnd() ?? null;
 }

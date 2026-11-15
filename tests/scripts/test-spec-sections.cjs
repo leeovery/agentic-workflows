@@ -7,8 +7,9 @@
 // the order cited, every number a run holds counted — and where a section
 // runs in a spec's text — an area, `## N. Title`, to the next heading at
 // level two or above, holding its parts; a part, `### N.M Title`, to the
-// next at level three or above; a heading in a fenced block, opened and
-// closed by a line opening ```, being text — the spec refused where a
+// next at level three or above; a heading in a fenced block, opened by a
+// line holding, at any indent, three backticks or tildes at least, and
+// closed by one holding that mark alone, as many or more, being text — the spec refused where a
 // section is numbered twice or a part sits under another area or none; an
 // area's block of scenarios; the sections a reference cites drawn from a
 // text, a range's at its level in the spec's order, a part whose area is
@@ -22,7 +23,12 @@
 // scenario's last block not fenced closing on the statements it draws on;
 // the introduction unread; `\r\n` and `\r` read as newlines — the spec
 // refused, naming every fault at once, one per line; and its scenarios read
-// through its lines. That the reading is the page's own,
+// through its lines. A spec the migration joined (21.8.5) read as joined:
+// an area's blocks its text, opening no line, a scenario of the blocks the
+// migration's cut adds closing on no statement, none asked of it, each area
+// read whole as the old spec wrote it, a fence it leaves open in an area
+// refused, its other rules standing. That the
+// reading is the page's own,
 // line for line, was proven over a whole release spec against the page's
 // model; the cases here pin each rule.
 //
@@ -36,7 +42,7 @@ const assert = require('node:assert');
 const path = require('path');
 
 const {
-  citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited,
+  citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, areaText,
 } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-sections.cjs'));
 
 /** @typedef {import('../../skills/leeway-engine/scripts/domain/spec-sections.cjs').Line} Line */
@@ -105,9 +111,12 @@ describe('a spec\'s sections', () => {
     });
   });
 
-  it('a section numbered twice, and a part under another area or none, are refused — a run of tildes being no fence in a spec, as its page reads one', () => {
+  it('a section numbered twice, and a part under another area or none, are refused — a run of tildes, or a fence at any indent, a list item\'s, fencing its headings as backticks do, closed only by a bare run of its own mark as long or longer', () => {
     assert.throws(() => specSections(text(['## 1. Cards', '## 1. Again'])), /^Error: the spec numbers §1 twice$/);
-    assert.throws(() => specSections(text(['## 1. Cards', '~~~', '## 1. Again', '~~~'])), /^Error: the spec numbers §1 twice$/);
+    assert.deepStrictEqual([...specSections(text(['## 1. Cards', '~~~', '## 1. Again', '```', '## 2. Still fenced', '~~~~'])).keys()], ['1']);
+    assert.deepStrictEqual([...specSections(text(['## 1. Cards', '```', '## 1. Again', '`````', '## 2. Refunds'])).keys()], ['1', '2']);
+    assert.deepStrictEqual([...specSections(text(['## 1. Cards', '```', '## 1. Again', '```sh', '## 1. Still fenced', '```', '## 2. Refunds'])).keys()], ['1', '2']);
+    assert.deepStrictEqual([...specSections(text(['## 1. Cards', '- a step:', '', '    ```sh', '## 1. Again', '    ```', '## 2. Refunds'])).keys()], ['1', '2']);
     assert.throws(() => specSections(text(['## 1. Cards', '### 2.1 Refunds'])), /^Error: §2\.1 sits under §1$/);
     assert.throws(() => specSections(text(['## Open questions', '### 1.1 The form'])), /^Error: §1\.1 sits under no area$/);
     assert.throws(() => specSections(text(['## 1. A', '## Notes', '### 1.3 X'])), /^Error: §1\.3 sits under no area$/);
@@ -338,5 +347,43 @@ describe('a spec\'s scenarios', () => {
 
     assert.deepStrictEqual(specScenarios(spec), ['1.S2', '1.S1']);
     assert.throws(() => specScenarios(`${spec}\n1.S2 Given it again. (1.1.1)\n`), /^Error: the spec gives scenario 1\.S2 twice, on lines 15 and 19$/);
+  });
+});
+
+describe('a spec the migration joined (21.8.5)', () => {
+  const AREA = [
+    'Cards are taken once.', '', '1.1.1 A line of the old spec. [Ab12Cd]', '', 'Screen: the form.', '',
+    '#### The form', '', '- the number;', '- the expiry.', '', '```text', '## 9. Not an area', '```', '',
+    '~~~', '## 8. Nor this', '~~~', '', '- a step:', '', '    ```', '## 7. Nor this, in a list item', '    ```',
+  ];
+  const JOINED = text([
+    '# Shop', '', '## 1. Cards', '', ...AREA, '', '## 2. Refunds', '', '#### Whole', '', 'All of a charge.', '',
+    '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded, then the card is credited.', '',
+  ]);
+
+  it('reads an area\'s blocks as its text, opening no line — a numbered block, a screen, a heading below the parts\' level, a list, a fenced block — and a scenario of its blocks closing on no statement, none asked of the spec; each area whole as the old spec wrote it', () => {
+    const { lines, headings, faults } = specReading(JOINED, true);
+
+    assert.deepStrictEqual([faults, lines.map(({ kind, number, wording }) => `${kind} ${number}: ${wording}`)], [[], ['scenario 2.S1: Given a charge, when it is refunded, then the card is credited.']]);
+    assert.deepStrictEqual(headings.map(({ kind, number, title }) => `${kind} ${number} ${title}`), ['area 1 Cards', 'area 2 Refunds', 'scenarios 2 Scenarios for §2']);
+    assert.deepStrictEqual([specScenarios(JOINED, true), specStatements(JOINED, true).length, areaText(JOINED, '1')], [['2.S1'], 1, text(AREA)]);
+    assert.ok(specReading(JOINED).faults.length > 0, 'read as a spec written by area, its old words are faults');
+  });
+
+  it('refuses a fence an area leaves open, which would read the areas after it as its text', () => {
+    assert.deepStrictEqual(specReading(text(['# Shop', '', '## 1. Cards', '', 'Kept.', '', '~~~text', 'open', '', '## 2. Refunds', '', 'Whole.']), true).faults, [
+      'the fenced block opened on line 7 is never closed',
+    ]);
+  });
+
+  it('keeps its other rules: a second title, a heading at level two that is no area, a fence left open and a scenario drawing on a statement the spec lacks refused', () => {
+    const spec = text(['# Shop', '', '## 1. Cards', '', '# Again', '', '## Notes', '', 'Kept.', '', '## 1-S. Scenarios for §1', '', '1.S1 Given a card, then it is taken. (1.1.1)', '', '```text', 'open']);
+
+    assert.deepStrictEqual(specReading(spec, true).faults, [
+      'line 5 is a second title — the spec has one, # Title, its first line',
+      'the heading on line 7 is neither an area, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N',
+      'the fenced block opened on line 15 is never closed',
+      'scenario 1.S1 draws on statement 1.1.1, which the spec lacks',
+    ]);
   });
 });

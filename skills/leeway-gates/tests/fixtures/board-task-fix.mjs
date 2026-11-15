@@ -9,6 +9,7 @@ export default {
   finished: null,
   does: 'In pretty mode, a failed exclusion check leaves the notes stage\'s live line running, so the stage still says what it is doing.',
   criteria: 2,
+  before: false,
   account: null,
   reviews: [],
   calls: [],

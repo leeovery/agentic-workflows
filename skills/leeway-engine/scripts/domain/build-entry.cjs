@@ -134,7 +134,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const {
-  buildBegun, buildFinished, phaseStarted, phaseClosed, buildRefusal, cutPhases, cutLength, buildLength, quickFixBuild, fixesBegun, reviewBegun, FIXES_PHASE,
+  buildBegun, buildFinished, phaseStarted, phaseClosed, phaseBuilt, buildRefusal, cutPhases, cutLength, buildLength, quickFixBuild, fixesBegun, reviewBegun, FIXES_PHASE,
 } = require('./derivations.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { isoNow } = require('./dates.cjs');
@@ -246,8 +246,9 @@ function buildPhases(at) {
   return Array.from({ length: buildLength(at.manifest) + fixes }, (_, i) => i + 1);
 }
 
-/** Where a phase of the cut stands, or not yet written. @param {Reading} at @param {number} phase @param {TaskRow[]|null} rows @returns {PhaseState} */
+/** Where a phase of the cut stands, or not yet written — one built before the migration merged, whatever the tracker holds of it. @param {Reading} at @param {number} phase @param {TaskRow[]|null} rows @returns {PhaseState} */
 function phaseState(at, phase, rows) {
+  if (phaseBuilt(at.manifest, phase)) return 'merged';
   if (rows === null) return 'not yet written';
   if (phaseClosed(at.manifest, phase)) return phaseLanded(at, phase) ? 'merged' : 'closed';
   if (!phaseStarted(at.manifest, phase)) return 'written';

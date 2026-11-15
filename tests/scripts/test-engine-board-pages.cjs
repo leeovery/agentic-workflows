@@ -71,6 +71,7 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
       finished: figures.finished,
       does: 'Take a card works at the till, and the customer sees it.',
       criteria: 2,
+      before: false,
       account: {
         done: 'A card is taken at the till, and the receipt line names its last four digits.',
         where: 'The till and the card.\n\n- src/card.js: the card taken and masked\n- src/till.js: the till asks for the card',

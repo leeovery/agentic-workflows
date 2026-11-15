@@ -8,12 +8,14 @@
  * done, when it finished and how long it took; EVIDENCE, what running the
  * product proved of each of its scenarios, each opening on `▸ see`, or
  * `▸ read` where it is not proven (D16); WHAT IT DOES, with its count of
- * acceptance criteria and `▸ read the task`; for a fix task, WHAT IT FIXES
+ * acceptance criteria — for a task from before Leeway, that they are in its
+ * text — and `▸ read the task`; for a fix task, WHAT IT FIXES
  * (D17); for a parked task, each question it waits on, as the page holds
  * it wherever the session has gone, with its `▸ discuss` while the session
- * is in the task's unit (20.5.6, 20.3.5); once done, WHAT WAS DONE from its account, or that none was
- * written (D8), DIFFERS FROM THE TASK, always, saying so where nothing
- * differs (D14), and REVIEWS, each round's `▸ read` opening its two reports
+ * is in the task's unit (20.5.6, 20.3.5); once done, WHAT WAS DONE from
+ * its account, or that none was written (D8) — for a task landed before the
+ * migration cut its unit, why — DIFFERS FROM THE TASK, always, saying so
+ * where nothing differs (D14), and REVIEWS, each round's `▸ read` opening its two reports
  * (D15); and CALLS MADE. Nothing on it sends the account to the
  * conversation (20.5.7).
  */
@@ -34,13 +36,14 @@ type TaskPage = View & {
   started: string | null
   finished: string | null
   does: string
-  criteria: number
+  criteria: number | null
+  before: boolean
   account: {
     done: string
     where: string
     tests: string
     differences: string[]
-    figures: { files: number; added: number; removed: number; criteria: number }
+    figures: { files: number; added: number; removed: number; criteria: number | null }
   } | null
   reviews: { round: string; summary: string }[]
   calls: { id: string; text: string }[]
@@ -153,11 +156,11 @@ function evidenceOf({ line, ran }: TaskPage, kit: Kit): Line[] {
   ]
 }
 
-/** WHAT IT DOES: the task's goal, its count of acceptance criteria, and the task as written a press away. */
+/** WHAT IT DOES: the task's goal, its count of acceptance criteria — none for a task from before Leeway, its criteria in its text — and the task as written a press away. */
 const doesOf = ({ line, does, criteria }: TaskPage, kit: Kit): Line[] => [
   section('does', 'WHAT IT DOES', COLOUR.sky, kit.width),
   ...prose('does', does),
-  buttoned('does:count', [{ text: counted(criteria, 'acceptance criterion', 'acceptance criteria'), color: COLOUR.secondary }], { key: pageKey(`task:${line.task}:written`), label: '▸ read the task' }, kit.width),
+  buttoned('does:count', [{ text: criteria === null ? 'Its criteria are in its text' : counted(criteria, 'acceptance criterion', 'acceptance criteria'), color: COLOUR.secondary }], { key: pageKey(`task:${line.task}:written`), label: '▸ read the task' }, kit.width),
 ]
 
 /** WHAT IT FIXES, for a fix task: each finding of the review that went to it (D17). */
@@ -201,7 +204,7 @@ function figuresOf({ criteria, files, added, removed }: NonNullable<TaskPage['ac
     key: 'done:figures',
     parts: [
       { text: `${MARK.done} `, color: COLOUR.done },
-      { text: `Proves ${counted(criteria, 'criterion', 'criteria')} · ${counted(files, 'file')} changed · +${added} −${removed}`, color: COLOUR.secondary },
+      { text: `Proves ${criteria === null ? 'the criteria in its text' : counted(criteria, 'criterion', 'criteria')} · ${counted(files, 'file')} changed · +${added} −${removed}`, color: COLOUR.secondary },
     ],
   }
 }
@@ -242,7 +245,7 @@ function reviewsOf({ line, reviews }: TaskPage, kit: Kit): Line[] {
   ]
 }
 
-/** WHAT WAS DONE, once the task is done: its account, or that none was written (D8); then what differs and its reviews. */
+/** WHAT WAS DONE, once the task is done: its account, or that none was written (D8) — for a task landed before the migration cut its unit, why; then what differs and its reviews. */
 function doneOf(page: TaskPage, kit: Kit): Line[] {
   const { account } = page
 
@@ -253,7 +256,8 @@ function doneOf(page: TaskPage, kit: Kit): Line[] {
   const head = [blank('done'), section('done', 'WHAT WAS DONE', COLOUR.done, kit.width)]
 
   if (account === null) {
-    return [...head, ...prose('done', 'No account was written for this task as it landed.', COLOUR.secondary), ...reviewsOf(page, kit)]
+    const none = page.before ? 'No account was written: it landed before the migration cut the unit.' : 'No account was written for this task as it landed.'
+    return [...head, ...prose('done', none, COLOUR.secondary), ...reviewsOf(page, kit)]
   }
 
   return [

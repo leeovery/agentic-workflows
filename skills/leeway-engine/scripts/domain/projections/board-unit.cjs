@@ -73,7 +73,7 @@ const { specPath, specReading } = require('../spec-sections.cjs');
 const { unitHistory, sentMail } = require('../state-history.cjs');
 const { seedsOf, fromRoadmap, seedOrigin } = require('../inbox.cjs');
 const { dayBefore } = require('../dates.cjs');
-const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile, quickFixBuild, tasksBegun, startedOn } = require('../derivations.cjs');
+const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile, quickFixBuild, tasksBegun, startedOn, specJoined } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildRead, buildMoments, untasked } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
@@ -311,7 +311,7 @@ function landedWords(at) {
 /** How many sections the unit's spec holds, null where it is not written. @param {BoardAt} at */
 function specAreas(at) {
   const file = specPath(at.cwd, at.unit);
-  return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).headings.filter(({ kind }) => kind === 'area').length : null;
+  return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8'), specJoined(at.manifest)).headings.filter(({ kind }) => kind === 'area').length : null;
 }
 
 /** The spec's sections, and the build phases cut once it is complete, else the passes reported, as the tab says them. @param {BoardAt} at */

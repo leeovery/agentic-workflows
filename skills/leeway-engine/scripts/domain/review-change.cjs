@@ -51,9 +51,11 @@
 //   on main, or on a task's branch below its first commit — in none; runs
 //   never overlap;
 // - the work not landed is every task of the unit's phases, cut and fix,
-//   done in the tracker and not landed; the stack those tasks make there
-//   (phase-stack.cjs), read from where its tip leaves the base — a task not
-//   done holds nothing yet to review;
+//   done in the tracker and not landed (task-landed.cjs) — a task that
+//   landed before the migration cut the unit landed before Leeway
+//   (`landedBefore`, derivations.cjs); the stack those tasks make there
+//   (phase-stack.cjs), read from where its tip leaves the base — a task
+//   not done holds nothing yet to review;
 // - the change's tip, where its scratch worktree and its runs stand, is
 //   that stack's tip where the repository holds such work, else its base.
 // A quick-fix's review, asked for at its close, reads its landing through
@@ -65,7 +67,11 @@
 // landed, read from where it leaves the branch it lands on, as the landing
 // cuts it again; its tip the branch there, else the landing's.
 // A repository with neither landings nor work not landed holds none of the
-// change. Refused where no repository holds any.
+// change. Refused where no repository holds any — but for a unit that
+// landed work before the migration cut it (`landedAnyBefore`), whose change
+// is what landed since (21.8.8): none holding any, its change is empty,
+// standing at each repository's base, its tips there, where the review
+// reads every area built before at the change's tips.
 // The cut's scenarios — a quick-fix's, its fixes' (fix-acceptance.cjs) —
 // stand where their runs at or behind the change's tips put them
 // (`cutStandings`), as a round records them and the board shows
@@ -81,7 +87,9 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { isFixPhase, cutPhases, quickFixBuild } = require('./derivations.cjs');
+const {
+  isFixPhase, cutPhases, quickFixBuild, hasLanded, builtSince, landedAnyBefore,
+} = require('./derivations.cjs');
 const { runsOf } = require('./runs.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { quickFixLanding } = require('./landing.cjs');
@@ -209,24 +217,28 @@ const phasesTo = (phases) => Array.from({ length: phases }, (_, at) => at + 1);
  */
 const reposOr = (cwd, repos) => repos ?? projectRepos(codeRoot(cwd));
 
+/** The unit's manifest, none read as an empty one. @param {string} cwd @param {string} unit @returns {Record<string, any>} */
+const manifestOr = (cwd, unit) => manifestOf(stateRoot(cwd), unit) ?? {};
+
 /**
- * The unit's tasks done and not landed, whole, in each of the phases
- * `numbers`, in order, from each phase's list `lists` holds, the tasks
- * landed `landedOf` reads, and the tasks whole `wholeOf` reads of the
- * phases among them holding any.
- * @param {number[]} numbers @param {(TaskRow[]|null|undefined)[]} lists
+ * The unit's tasks done and not landed (`hasLanded`), whole, in each of the
+ * phases `numbers`, in order, from each phase's list `lists` holds, what
+ * has landed as `landedOf` reads it, and the tasks whole `wholeOf` reads of
+ * the phases among them holding any — read only where a task built since
+ * the migration is done.
+ * @param {Record<string, any>} manifest @param {number[]} numbers @param {(TaskRow[]|null|undefined)[]} lists
  * @param {() => (ref: TaskRef) => boolean} landedOf @param {(phases: number[]) => TaskDetail[][]} wholeOf
  * @returns {TaskDetail[]}
  */
-function notLanded(numbers, lists, landedOf, wholeOf) {
-  if (!lists.some((list) => (list ?? []).some(({ status }) => status === 'done'))) return [];
-  const landed = landedOf();
+function notLanded(manifest, numbers, lists, landedOf, wholeOf) {
+  if (!lists.some((list) => builtSince(manifest, list ?? []).some(({ status }) => status === 'done'))) return [];
+  const landed = hasLanded(manifest, landedOf());
   const waiting = (/** @type {TaskRow} */ { ref, status }) => status === 'done' && !landed(ref);
   return wholeOf(numbers.filter((_, at) => (lists[at] ?? []).some(waiting))).flatMap((tasks) => tasks.filter(waiting));
 }
 
 /**
- * The unit's tasks done and not landed (task-landed.cjs), whole, in each of
+ * The unit's tasks done and not landed (`notLanded`), whole, in each of
  * the phases `numbers`, in order, as the tracker holds them under the
  * writer lock.
  * @param {string} cwd @param {string} unit @param {number[]} numbers @param {Repo[]} [repos] the project's, where read already
@@ -234,7 +246,7 @@ function notLanded(numbers, lists, landedOf, wholeOf) {
  */
 function unlandedTasks(cwd, unit, numbers, repos) {
   const lists = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, numbers).phases);
-  return notLanded(numbers, lists, () => unitLanded(cwd, unit, reposOr(cwd, repos), workSince(cwd, unit)).landed, wholeOf(cwd, unit));
+  return notLanded(manifestOr(cwd, unit), numbers, lists, () => unitLanded(cwd, unit, reposOr(cwd, repos), workSince(cwd, unit)).landed, wholeOf(cwd, unit));
 }
 
 /** The tasks whole of the phases asked, as the tracker holds them under the writer lock. @param {string} cwd @param {string} unit @returns {(phases: number[]) => TaskDetail[][]} */
@@ -311,8 +323,9 @@ function changeOf(cwd, unit, phases, given, repos, warnings) {
   /** @type {QuickFixLanding|undefined} */
   let quickFix;
   const landed = () => (read ??= unitLanded(cwd, unit, repos, workSince(cwd, unit)));
-  const pending = () => notLanded(numbers, lists, () => landed().landed, wholeOf(cwd, unit));
-  const change = changeFrom(cwd, unit, { pending, tasks: () => tasksIn(lists), landed, quickFix: () => (quickFix ??= quickFixLanding(cwd, unit)) }, given, repos);
+  const manifest = manifestOr(cwd, unit);
+  const pending = () => notLanded(manifest, numbers, lists, () => landed().landed, wholeOf(cwd, unit));
+  const change = changeFrom(cwd, unit, { pending, tasks: () => tasksIn(manifest, lists), landed, quickFix: () => (quickFix ??= quickFixLanding(cwd, unit)) }, given, repos);
   recordLandings(cwd, unit, [...(read?.found() ?? []), ...(quickFix?.found() ?? [])], warnings);
   return change;
 }
@@ -331,11 +344,14 @@ function changeOf(cwd, unit, phases, given, repos, warnings) {
 function trackedChange(cwd, unit, phases, { lists, landed, wholeOf }, repos) {
   const numbers = phasesTo(phases);
   const listed = numbers.map((phase) => lists[phase - 1]);
-  return changeFrom(cwd, unit, { pending: () => notLanded(numbers, listed, () => landed.landed, wholeOf), tasks: () => tasksIn(listed), landed: () => landed, quickFix: () => quickFixLanding(cwd, unit, { asFetched: true }) }, null, repos);
+  const manifest = manifestOr(cwd, unit);
+  return changeFrom(cwd, unit, {
+    pending: () => notLanded(manifest, numbers, listed, () => landed.landed, wholeOf), tasks: () => tasksIn(manifest, listed), landed: () => landed, quickFix: () => quickFixLanding(cwd, unit, { asFetched: true }),
+  }, null, repos);
 }
 
-/** Every task among phases' lists. @param {(TaskRow[]|null|undefined)[]} lists @returns {TaskRef[]} */
-const tasksIn = (lists) => lists.flatMap((list) => (list ?? []).map(({ ref }) => ref));
+/** Every task among phases' lists built since the migration (`builtSince`). @param {Record<string, any>} manifest @param {(TaskRow[]|null|undefined)[]} lists @returns {TaskRef[]} */
+const tasksIn = (manifest, lists) => lists.flatMap((list) => builtSince(manifest, list ?? []).map(({ ref }) => ref));
 
 /**
  * The whole change (the header's), its landings of its tasks: a
@@ -373,9 +389,11 @@ const noChange = (unit) => new Error(`no repository of the project holds ${unit}
 function changeOn(cwd, unit, { pending, tasks, landed }, given, repos) {
   refuseBase(given, repos);
   const stack = new Map([...stackTips(cwd, unit, pending, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
-  const holding = repos.flatMap((repo) => {
+  const based = repos.flatMap((repo) => {
     const base = given !== null && branches(repo.path).has(given) ? given : landingBranchOf(cwd, repo);
-    if (base === null) return [];
+    return base === null ? [] : [{ repo, base }];
+  });
+  const holding = based.flatMap(({ repo, base }) => {
     const tip = `refs/heads/${base}`;
     const parts = landingParts(repo, landed.on(repo, tip), tasks);
     const branch = stack.get(repo.path);
@@ -383,13 +401,15 @@ function changeOn(cwd, unit, { pending, tasks, landed }, given, repos) {
       const to = git(repo.path, ['rev-parse', `refs/heads/${branch}`]).trim();
       parts.push({ from: mergeBase(repo.path, tip, to), to, landed: null, branch });
     }
-    if (parts.length === 0) return [];
-    const at = branch ?? base;
-    return [{ repo, base, parts, tip: at, commit: git(repo.path, ['rev-parse', `refs/heads/${at}`]).trim() }];
+    return parts.length === 0 ? [] : [changeIn(repo, base, parts, branch ?? base)];
   });
-  if (holding.length === 0) throw noChange(unit);
-  return { repos, holding };
+  if (holding.length > 0) return { repos, holding };
+  if (!landedAnyBefore(manifestOr(cwd, unit))) throw noChange(unit);
+  return { repos, holding: based.map(({ repo, base }) => changeIn(repo, base, [], base)) };
 }
+
+/** The change in a repository, standing at the branch `tip`. @param {Repo} repo @param {string} base @param {ChangePart[]} parts @param {string} tip @returns {ChangeIn} */
+const changeIn = (repo, base, parts, tip) => ({ repo, base, parts, tip, commit: git(repo.path, ['rev-parse', `refs/heads/${tip}`]).trim() });
 
 /**
  * A quick-fix's whole change (the header's), read through its landing's

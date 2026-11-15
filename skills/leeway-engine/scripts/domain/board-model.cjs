@@ -103,19 +103,21 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * }} BuildView
  */
 
-/** The engine's figures of a task's work. @typedef {{files: number, added: number, removed: number, criteria: number}} Figures */
+/** The engine's figures of a task's work, its criteria null where its text writes them in the form from before Leeway. @typedef {{files: number, added: number, removed: number, criteria: number|null}} Figures */
 /** What running the product proved of one of a task's scenarios (15.2.14). @typedef {{scenario: string, criterion: string, standing: string}} Ran */
 /**
  * A task's page (20.5.4–20.5.6): its line; its phase; when it started, null
  * where it never has, and when it finished, as its account was taken, null
- * where none is; what it does and its count of acceptance criteria; its
+ * where none is; what it does and its count of acceptance criteria, null
+ * where its text writes them in the form from before Leeway; whether it
+ * landed before the migration cut the unit, so no account was written; its
  * account, null where none is taken; each round's summary; each call it
  * made; what running the product proved of its scenarios, null where it
  * holds none; each question parking it, whole, none where none does;
  * and, for a fix task, each finding of the review it fixes (D17), else none.
  * @typedef {{
  *   kind: 'task', unit: string, phase: number, phase_name: string, line: TaskLine, started: string|null, finished: string|null,
- *   does: string, criteria: number,
+ *   does: string, criteria: number|null, before: boolean,
  *   account: {done: string, where: string, tests: string, differences: string[], figures: Figures}|null,
  *   reviews: {round: string, summary: string}[], calls: {id: string, text: string}[], ran: Ran[]|null, questions: Question[],
  *   fixes: FoundLine[],
@@ -152,9 +154,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /** An area's state in a round: read, being read, waiting, or not read again (20.10.2). @typedef {'read'|'reading'|'waiting'|'unchanged'} AreaState */
 /**
  * An area of a round, or the reader over the tests (`tests`): its number
- * and title, its state, the checks of its scenarios the round ran, what it
- * found, and since when it is read, else null.
- * @typedef {{area: string, title: string, state: AreaState, ran: number, found: number, since: string|null}} AreaLine
+ * and title, how much of it was built before the migration cut the unit,
+ * `built` or `partly`, else null (21.8.8), its state, the checks of its
+ * scenarios the round ran, what it found, and since when it is read, else
+ * null.
+ * @typedef {{area: string, title: string, before: 'built'|'partly'|null, state: AreaState, ran: number, found: number, since: string|null}} AreaLine
  */
 /**
  * The review phase's This session (20.10): the unit, its title, the project

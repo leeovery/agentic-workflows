@@ -11,12 +11,16 @@
 // plan's older ids among them, whose topic the rule does not hold. The
 // tracker's own ids never leave its driver: a task, phase or unit is named
 // in a sentence the one way, every driver's refusals among them, so no
-// driver writes the words itself.
+// driver writes the words itself. A task's type, the conventional-commit
+// kind its branch and pull request are named by, is one of `TASK_TYPES`.
 // ---------------------------------------------------------------------------
 
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 
 /** @typedef {{unit: string, phase: number, n: number}} TaskRef */
+
+/** The kinds a task's type is one of. */
+const TASK_TYPES = Object.freeze(['feat', 'fix', 'refactor', 'perf', 'test', 'docs', 'build', 'ci', 'chore']);
 
 const STEP = /-([1-9][0-9]*)-([1-9][0-9]*)$/;
 const SHOWN = /^([1-9][0-9]*)\.([1-9][0-9]*)$/;
@@ -119,5 +123,5 @@ function endedInTracker(whats, unit) {
 }
 
 module.exports = {
-  assertUnit, taskId, sameTask, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker, isShownTask,
+  TASK_TYPES, assertUnit, taskId, sameTask, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker, isShownTask,
 };

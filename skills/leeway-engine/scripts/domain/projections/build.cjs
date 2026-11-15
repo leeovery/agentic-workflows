@@ -61,20 +61,24 @@ const { STATUS_WORDS } = require('../task-verbs.cjs');
  * @typedef {{head: TaskHead, reviewed: Reviewed, calls: number, changed: string, criteria: string[], product: string, ran: Ran[]|null, recorded: boolean, waiting: Waiting[]}} Landing
  */
 /** Whether another unit is finished, by its name. @typedef {(unit: string) => boolean} Finished */
-/** The engine's figures of a task, with when it started and finished (task-account.cjs). @typedef {{files: number, added: number, removed: number, criteria: number, started: string|null, finished: string}} Figures */
+/** The engine's figures of a task, with when it started and finished (task-account.cjs). @typedef {{files: number, added: number, removed: number, criteria: number|null, started: string|null, finished: string}} Figures */
 /**
  * A task's account as a screen draws it: the task, its place in its phase,
- * what it does, whether it closed, and its account where one is written —
- * its sections, its differences, its rounds' summaries by their headings,
- * how its review ended and its figures.
+ * what it does, whether it closed, whether it landed before the migration
+ * cut the unit, and its account where one is written — its sections, its
+ * differences, its rounds' summaries by their headings, how its review
+ * ended and its figures.
  * @typedef {{
- *   head: TaskHead, at: number, of: number, does: string, closed: boolean,
+ *   head: TaskHead, at: number, of: number, does: string, closed: boolean, before: boolean,
  *   account: {sections: Record<string, string>, differences: string[], reviews: {heading: string, summary: string}[], reviewed: Reviewed, figures: Figures}|null,
  * }} AccountView
  */
 
 /** The width every display here wraps to. */
 const WIDTH = TREE_WIDTH;
+
+/** What a task from before Leeway proves, its criteria written in its text rather than counted. */
+const CRITERIA_IN_TEXT = 'the criteria in its text';
 
 /** A task's glyph by its state. @type {Readonly<Record<string, string>>} */
 const TASK_GLYPH = Object.freeze({ open: '○', 'in-progress': '◐', behind: '◌', 'at-gate': '●', done: '✓', closed: '⊘' });
@@ -218,7 +222,7 @@ function doneBlock({ sections, figures }) {
     ...prose(sections['What was done'], '  '),
     ...prose(sections['Where in the code'], '  ', { dotted: true }),
     ...prose(sections['What the tests prove'], '  ', { dotted: true }),
-    `  ✓ Proves ${counted(criteria, 'criterion', 'criteria')} · ${counted(files, 'file')} changed · +${added} −${removed}`,
+    `  ✓ Proves ${criteria === null ? CRITERIA_IN_TEXT : counted(criteria, 'criterion', 'criteria')} · ${counted(files, 'file')} changed · +${added} −${removed}`,
   ].join('\n'));
 }
 
@@ -233,12 +237,18 @@ function reviewsBlock(reviews) {
   return block('REVIEWS', reviews.flatMap(({ heading, summary }) => [`  ${heading}`, ...prose(summary, '    ')]).join('\n'));
 }
 
+/** Why a task has no account: it landed before the migration cut the unit, closed without one, or has yet to land. @param {boolean} closed @param {boolean} before */
+function absentAccount(closed, before) {
+  if (before) return 'No account was written: it landed before the migration cut the unit.';
+  return closed ? 'No account was written: it closed without one.' : 'No account is written yet: its builder writes it as the task lands.';
+}
+
 /**
  * A task's account as drawn (12.14.2, 12.14.3): its rounds' summaries only
  * where `reviews`.
  * @param {AccountView} view @param {{reviews: boolean}} opts
  */
-function accountDisplay({ head, at, of, does, closed, account }, { reviews }) {
+function accountDisplay({ head, at, of, does, closed, before, account }, { reviews }) {
   const blocks = [
     taskMarker(head),
     ...(account === null ? [] : [accountVerdict(account.reviewed)]),
@@ -246,7 +256,7 @@ function accountDisplay({ head, at, of, does, closed, account }, { reviews }) {
     block('WHAT IT DOES', prose(does, '  ').join('\n')),
   ];
   if (account === null) {
-    blocks.push(closed ? '  No account was written: it closed without one.' : '  No account is written yet: its builder writes it as the task lands.');
+    blocks.push(`  ${absentAccount(closed, before)}`);
   } else {
     blocks.push(doneBlock(account), differsBlock(account.differences));
     if (reviews) blocks.push(reviewsBlock(account.reviews));
@@ -283,10 +293,14 @@ function stepGateScreen(unit, view) {
 
 /**
  * The gate before a phase's stack merges, in step (7.2.4): yes merges it.
- * @param {string} unit @param {number} phase @param {string} name
+ * The phase's tasks done before the migration cut the unit, `before`, are
+ * on the default branch already, and only the rest land in its stack.
+ * @param {string} unit @param {number} phase @param {string} name @param {string[]} before
  */
-function phaseMergeGateScreen(unit, phase, name) {
-  return section(`MENU: phase merge — ${phase}`, MENU_INSTRUCTION, menu(`Phase ${phase}, "${name}", is ready to merge: its tasks land on the default branch as one stack.`, [
+function phaseMergeGateScreen(unit, phase, name, before) {
+  const lands = before.length === 0 ? 'its tasks land' : 'its tasks built since the migration cut the unit land';
+  const already = before.length === 0 ? '' : ` — ${before.join(', ')} ${before.length === 1 ? 'is' : 'are'} on it already`;
+  return section(`MENU: phase merge — ${phase}`, MENU_INSTRUCTION, menu(`Phase ${phase}, "${name}", is ready to merge: ${lands} on the default branch as one stack${already}.`, [
     cmdOption('y', 'yes', 'Merge it and carry on with the build', { next: { kind: 'engine', argv: ['land', 'phase', unit, String(phase)] } }),
     promptOption('Comment', 'Tell me what to change before it merges'),
   ], { question: `Merge phase ${phase}?` }));

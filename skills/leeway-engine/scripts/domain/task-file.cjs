@@ -20,9 +20,7 @@
 // ---------------------------------------------------------------------------
 
 const { BULLET, listItems } = require('./list-items.cjs');
-
-/** The kinds a task's type is one of. */
-const TASK_TYPES = Object.freeze(['feat', 'fix', 'refactor', 'perf', 'test', 'docs', 'build', 'ci', 'chore']);
+const { TASK_TYPES } = require('./task-id.cjs');
 
 /** The spec reference of a task whose unit has no spec: a quick-fix's (19.5.5). */
 const NO_SPEC = 'none';
@@ -112,6 +110,9 @@ function fieldOf(text, field) {
   return bodies.length === 1 && bodies[0] !== '' ? bodies[0] : null;
 }
 
+/** What a task does, as a screen says it: its Outcome as written, else its text whole. @param {string} text */
+const outcomeOf = (text) => fieldOf(text, 'Outcome') ?? text.trim();
+
 /**
  * The spec reference a task's text holds, as written; null where it holds
  * none, or more than one.
@@ -147,9 +148,9 @@ function criteriaTexts(text) {
   return items.map(({ opened, beneath }) => oneLine([opened[1], ...beneath.map(({ line }) => line)]));
 }
 
-/** How many acceptance criteria a task's text holds (`criteriaTexts`). @param {string} text @returns {number} */
+/** How many acceptance criteria a task's text holds (`criteriaTexts`); null where it holds none, a task from before Leeway its criteria in its text. @param {string} text @returns {number|null} */
 function criteriaOf(text) {
-  return criteriaTexts(text).length;
+  return criteriaTexts(text).length || null;
 }
 
 /** Whether text names a scenario by its id, `N.Sk`, a longer id never read as it. @param {string} text @param {string} scenario */
@@ -180,4 +181,4 @@ function criterionScenario(criterion) {
   return OPENING_ID.exec(criterion)?.[1] ?? null;
 }
 
-module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };
+module.exports = { FIELDS, NO_SPEC, breaksLine, readTaskText, fieldOf, outcomeOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };

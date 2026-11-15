@@ -8,7 +8,11 @@
 // numbered heading at level two, `## N. Title`, and a part of it one at
 // level three, `### N.M Title`. A section runs from its heading to the next
 // heading at its level or above, so an area holds its parts. Headings inside
-// a fenced block are text. A spec that numbers one section twice, or a part
+// a fenced block are text: a block opened by a line holding, at any indent,
+// a list item's among them, three backticks or tildes at least, and closed
+// by one holding as many of that mark at least and nothing else — the one
+// fence rule every reader here keeps, and the migration's join of old specs
+// (078) with it (`fences`). A spec that numbers one section twice, or a part
 // under another area's number, is refused: its sections cannot be addressed.
 //
 // A reference cites sections in runs. A run opens at `§` or `§§` and goes
@@ -27,8 +31,7 @@
 // rows split at `\n`, `\r\n` or `\r`. The spec opens with its title,
 // `# Title`, and what comes before its first area — a contents section,
 // `## Contents`, among it — is its introduction. The rest is read in blocks
-// split on blank lines, a fenced block — opened and closed by a line opening
-// ``` — kept whole:
+// split on blank lines, a fenced block kept whole:
 // - A block opening with a number and a space starts a line: `N.M.K `, a
 //   statement, in the part `### N.M`; or `N.Sk `, a scenario, in its area's
 //   block of scenarios, `## N-S. …`, after the area.
@@ -64,6 +67,14 @@
 // three, or one closing an earlier block than the line's last; a bracket on
 // a scenario, or a scenario closing on no statements; a scenario drawing on
 // a statement the spec lacks; and a fence left open.
+//
+// A spec the migration joined (21.8.5; the manifest's `spec.joined`, the
+// topics joined, which each reader passes as whether it is joined) is the
+// unit's old specs, each an area, `## N. Title`, verbatim but for its
+// headings, all below the parts' level: an area's blocks are its text,
+// opening no line, and a scenario of the `## N-S.` blocks the migration's
+// cut adds may close on no statements, the spec holding none. Its other
+// rules stand.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -92,8 +103,8 @@ const NUMBERED = [
 /** A heading's level, in its marks. */
 const HEADING = /^(#{1,6})(?: |$)/;
 
-/** A line of the spec that opens or closes a fenced block. */
-const SPEC_FENCE = /^```/;
+/** A line that opens a fenced block, or may close one: at any indent, three backticks or tildes at least. */
+const FENCE = /^[ \t]*(`{3,}|~{3,})/;
 
 /** Where the spec's areas begin: its first heading at level two but its contents. */
 const BODY = /^## (?!Contents\b)/;
@@ -201,26 +212,27 @@ function citedSections(reference) {
 }
 
 /**
- * The lines' fenced blocks: whether each line is in one, its fences among
- * them, and the line a block left open at their end opens on, null for none.
- * @param {string[]} lines @returns {{fenced: boolean[], open: number|null}}
+ * The lines' fenced blocks (the header's): whether each line is in one, its
+ * fences among them, whether it opens one and whether it closes one, and
+ * the line a block left open at their end opens on, null for none.
+ * @param {string[]} lines @returns {{fenced: boolean[], opens: boolean[], closes: boolean[], open: number|null}}
  */
 function fences(lines) {
   /** @type {{mark: string, length: number, at: number}|null} */
   let fence = null;
-  /** @type {boolean[]} */
-  const fenced = [];
+  /** @type {{fenced: boolean[], opens: boolean[], closes: boolean[]}} */
+  const read = { fenced: [], opens: [], closes: [] };
   for (const [at, line] of lines.entries()) {
-    const opens = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-    if (fence === null) {
-      if (opens !== null) fence = { mark: opens[1][0], length: opens[1].length, at };
-      fenced.push(opens !== null);
-    } else {
-      if (opens !== null && opens[1][0] === fence.mark && opens[1].length >= fence.length && line.trim() === opens[1]) fence = null;
-      fenced.push(true);
-    }
+    const marks = FENCE.exec(line);
+    const opens = fence === null && marks !== null;
+    const closes = fence !== null && marks !== null && marks[1][0] === fence.mark && marks[1].length >= fence.length && line.trim() === marks[1];
+    read.fenced.push(fence !== null || opens);
+    read.opens.push(opens);
+    read.closes.push(closes);
+    if (opens) fence = { mark: marks[1][0], length: marks[1].length, at };
+    else if (closes) fence = null;
   }
-  return { fenced, open: fence === null ? null : fence.at };
+  return { ...read, open: fence === null ? null : fence.at };
 }
 
 /** Whether each line is in a fenced block, its fences among them. @param {string[]} lines @returns {boolean[]} */
@@ -229,29 +241,11 @@ const fencedLines = (lines) => fences(lines).fenced;
 /** The line a fenced block the lines leave open opens on, null for none. @param {string[]} lines @returns {number|null} */
 const unclosedFence = (lines) => fences(lines).open;
 
-/**
- * Whether each line of a spec is in a fenced block as the spec's page reads
- * one, opened and closed by a line opening ```, its fences among them.
- * @param {string[]} lines @returns {boolean[]}
- */
-function specFencedLines(lines) {
-  let open = false;
-  return lines.map((line) => {
-    const fence = SPEC_FENCE.test(line);
-    const inside = open || fence;
-    if (fence) open = !open;
-    return inside;
-  });
-}
-
 /** A spec's rows, split at each newline as its page reads one: `\n`, `\r\n` or `\r`. @param {string} text */
 const rowsOf = (text) => text.split(/\r\n?|\n/);
 
 /** A line's heading level, 0 for a line that is no heading. @param {string} line */
 const levelOf = (line) => HEADING.exec(line)?.[1].length ?? 0;
-
-/** Each line's heading level, 0 for one that is no heading or is `fenced`. @param {string[]} lines @param {boolean[]} fenced */
-const levelsOf = (lines, fenced) => lines.map((line, at) => (fenced[at] ? 0 : levelOf(line)));
 
 /**
  * Each line's heading level, 0 for a line that is no heading — a line in a
@@ -259,7 +253,8 @@ const levelsOf = (lines, fenced) => lines.map((line, at) => (fenced[at] ? 0 : le
  * @param {string[]} lines @returns {number[]}
  */
 function headingLevels(lines) {
-  return levelsOf(lines, fencedLines(lines));
+  const fenced = fencedLines(lines);
+  return lines.map((line, at) => (fenced[at] ? 0 : levelOf(line)));
 }
 
 /** Where the section a heading at `level` opens on line `at` ends: at the next heading at its level or above. @param {number[]} levels @param {number} at @param {number} level */
@@ -278,7 +273,7 @@ function sectionEnd(levels, at, level) {
  */
 function specSections(text) {
   const lines = rowsOf(text);
-  const levels = levelsOf(lines, specFencedLines(lines));
+  const levels = headingLevels(lines);
   /** @type {Map<string, Section>} */
   const sections = new Map();
   /** @type {string|null} */
@@ -317,7 +312,7 @@ function specIntroduction(text) {
  */
 function scenarioBlocks(text) {
   const lines = rowsOf(text);
-  const levels = levelsOf(lines, specFencedLines(lines));
+  const levels = headingLevels(lines);
   /** @type {Map<string, string>} */
   const blocks = new Map();
   lines.forEach((line, at) => {
@@ -339,6 +334,7 @@ function scenarioBlocks(text) {
 
 /** A spec's body, from line `from`, as its blocks, in order. @param {string[]} lines @param {number} from @returns {Block[]} */
 function blocksOf(lines, from) {
+  const { opens, closes } = fences(lines);
   /** @type {Block[]} */
   const blocks = [];
   /** @type {Pick<Block, 'kind'|'at'>|null} */
@@ -348,10 +344,9 @@ function blocksOf(lines, from) {
     open = null;
   };
   for (let at = from; at < lines.length; at += 1) {
-    const fence = SPEC_FENCE.test(lines[at]);
     if (open?.kind === 'fence') {
-      if (fence) close(at + 1, true);
-    } else if (fence) {
+      if (closes[at]) close(at + 1, true);
+    } else if (opens[at]) {
       close(at);
       open = { kind: 'fence', at };
     } else if (lines[at].trim() === '') {
@@ -372,10 +367,10 @@ function blocksOf(lines, from) {
  * or scenario, which a screen follows, and the line whose blocks it is
  * gathering; the lines opened and the headings read; each statement's and
  * scenario's text line by its number; each line's screens and each place's
- * notes counted; and the faults found.
+ * notes counted; the faults found; and whether the spec is joined.
  * @typedef {{
  *   lines: string[], area: string|null, part: string|null, scenariosOf: string|null, last: string|null, open: Opened|null,
- *   opened: Opened[], headings: Heading[], given: Map<string, number>, counted: Map<string, number>, faults: string[],
+ *   opened: Opened[], headings: Heading[], given: Map<string, number>, counted: Map<string, number>, faults: string[], joined: boolean,
  * }} Reading
  */
 
@@ -506,9 +501,25 @@ function readOwned(reading, { at, closed }, part) {
   else reading.open.parts.push(part);
 }
 
+/** Whether the reading is in a joined spec's area, before its scenarios: where every block is the area's text. @param {Reading} reading */
+const inJoinedArea = ({ joined, area, scenariosOf }) => joined && area !== null && scenariosOf === null;
+
+/**
+ * A block of a joined spec's area that is not a heading: its text, opening
+ * no line, a heading in it not standing alone and a fence left open still
+ * faults.
+ * @param {Reading} reading @param {Block} block
+ */
+function readAreaText(reading, block) {
+  if (block.kind === 'text') headingFaults(reading, block);
+  else if (!block.closed) reading.faults.push(`the fenced block opened on line ${block.at + 1} is never closed`);
+}
+
 /** A block of the body read: a heading, a line opened, a screen, or a block the open line owns. @param {Reading} reading @param {Block} block */
 function readBlock(reading, block) {
   const text = reading.lines.slice(block.at, block.end).join('\n');
+  const areaText = inJoinedArea(reading) && !/^#{2,3} /.test(text);
+  if (areaText) return readAreaText(reading, block);
   if (block.kind === 'fence') return readOwned(reading, block, { kind: 'fence', text });
   headingFaults(reading, block);
   blankLineFaults(reading, block);
@@ -562,7 +573,7 @@ const noSource = () => ({ cites: [], builder: false, drawsOn: [] });
 /**
  * A scenario's source: the statements its last block that is not fenced
  * closes on, in parentheses; a fault where it carries a bracket, or closes
- * on none.
+ * on none but in a joined spec.
  * @param {Reading} reading @param {Opened} line @param {Part[]} parts @param {string|null} bracket
  * @returns {Pick<Line, 'cites'|'builder'|'drawsOn'>}
  */
@@ -570,7 +581,7 @@ function scenarioSource(reading, { number, line }, parts, bracket) {
   if (bracket !== null) reading.faults.push(`scenario ${number} on line ${line} ends in [${bracket}] — a scenario's source is the statements it draws on, in parentheses`);
   const drawsOn = DRAWS_ON.exec(parts[lastText(parts)]?.text ?? '');
   if (drawsOn === null) {
-    reading.faults.push(`scenario ${number} on line ${line} closes on no statements — a scenario ends in the statements it draws on, (N.M.K, …)`);
+    if (!reading.joined) reading.faults.push(`scenario ${number} on line ${line} closes on no statements — a scenario ends in the statements it draws on, (N.M.K, …)`);
     return noSource();
   }
   return { ...noSource(), drawsOn: drawsOn[1].split(',').map((drawn) => drawn.trim()) };
@@ -608,28 +619,29 @@ function finished(reading, opened) {
 }
 
 /**
- * The faults a spec read whole shows: no statement; a scenario drawing on a
- * statement it lacks.
- * @param {Line[]} lines @returns {string[]}
+ * The faults a spec read whole shows: no statement, but in a joined spec; a
+ * scenario drawing on a statement it lacks.
+ * @param {Line[]} lines @param {boolean} joined @returns {string[]}
  */
-function wholeFaults(lines) {
+function wholeFaults(lines, joined) {
   const numbers = new Set(lines.filter(({ kind }) => kind === 'statement').map(({ number }) => number));
   return [
-    ...(numbers.size === 0 ? ['the spec has no statement — a statement is a block opening N.M.K, in its part'] : []),
+    ...(numbers.size === 0 && !joined ? ['the spec has no statement — a statement is a block opening N.M.K, in its part'] : []),
     ...lines.flatMap(({ kind, number, drawsOn }) => (kind === 'scenario' ? drawsOn.filter((drawn) => !numbers.has(drawn)).map((drawn) => `scenario ${number} draws on statement ${drawn}, which the spec lacks`) : [])),
   ];
 }
 
 /**
  * A spec's lines and headings, in its order, as its page reads them, and
- * every fault that refuses it.
- * @param {string} text @returns {SpecReading}
+ * every fault that refuses it — a spec the migration joined read as one
+ * (the header's).
+ * @param {string} text @param {boolean} [joined] @returns {SpecReading}
  */
-function specReading(text) {
+function specReading(text, joined = false) {
   const lines = rowsOf(text);
   /** @type {Reading} */
   const reading = {
-    lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], headings: [], given: new Map(), counted: new Map(), faults: [],
+    lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], headings: [], given: new Map(), counted: new Map(), faults: [], joined,
   };
   if (!lines[0].startsWith('# ')) reading.faults.push('the spec does not open with its title — its first line is # Title');
   try {
@@ -641,16 +653,16 @@ function specReading(text) {
   if (body === -1) reading.faults.push('the spec has no area — an area is a heading ## N. Title');
   else for (const block of blocksOf(lines, body)) readBlock(reading, block);
   const read = reading.opened.map((opened) => finished(reading, opened));
-  return { lines: read, headings: reading.headings, faults: [...reading.faults, ...wholeFaults(read)] };
+  return { lines: read, headings: reading.headings, faults: [...reading.faults, ...wholeFaults(read, joined)] };
 }
 
 /**
  * A spec's statements, scenarios and screens, in its order. Refuses, naming
  * every fault, one per line, a spec the grammar cannot read.
- * @param {string} text @returns {Line[]}
+ * @param {string} text @param {boolean} [joined] whether the migration joined it @returns {Line[]}
  */
-function specStatements(text) {
-  const { lines, faults } = specReading(text);
+function specStatements(text, joined = false) {
+  const { lines, faults } = specReading(text, joined);
   if (faults.length > 0) throw new Error(faults.join('\n'));
   return lines;
 }
@@ -658,10 +670,20 @@ function specStatements(text) {
 /**
  * Every scenario a spec's text gives, by id, in the spec's order. Refuses
  * what `specStatements` does.
- * @param {string} text @returns {string[]}
+ * @param {string} text @param {boolean} [joined] whether the migration joined it @returns {string[]}
  */
-function specScenarios(text) {
-  return specStatements(text).filter(({ kind }) => kind === 'scenario').map(({ number }) => number);
+function specScenarios(text, joined = false) {
+  return specStatements(text, joined).filter(({ kind }) => kind === 'scenario').map(({ number }) => number);
+}
+
+/**
+ * An area's words as a joined spec holds them: its text under its heading,
+ * verbatim; '' for an area the spec lacks.
+ * @param {string} text @param {string} area
+ */
+function areaText(text, area) {
+  const section = specSections(text).get(area);
+  return section === undefined ? '' : section.text.split('\n').slice(1).join('\n').trim();
 }
 
 /**
@@ -707,5 +729,5 @@ function readCitedSections(cwd, unit, reference) {
 
 module.exports = {
   SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, readCitedSections,
-  specIntroduction, fencedLines, unclosedFence, DRAWS_ON,
+  specIntroduction, areaText, fencedLines, unclosedFence, rowsOf, DRAWS_ON,
 };

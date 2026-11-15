@@ -105,7 +105,7 @@ const { inventedLines } = require('./spec-trace.cjs');
 const { readLandedSpec } = require('./spec-landed.cjs');
 const { sweepTaken, candidatesWaiting } = require('./sweep.cjs');
 const { reviewSettled, cutRequests } = require('./spec-passes.cjs');
-const { mailboxDepth, buildBegun, phaseKey, cutPhases, cutLength } = require('./derivations.cjs');
+const { mailboxDepth, buildBegun, phaseKey, phaseBuilt, cutPhases, cutLength } = require('./derivations.cjs');
 const checks = require('./phase-checks.cjs');
 const finishChecks = require('./finish-checks.cjs');
 const { phaseRecords } = require('./round-report.cjs');
@@ -331,6 +331,7 @@ const onPhase = (end) => onUnit((manifest, given, unit) => {
   if (phases === 0) throw new Error(`${unit} has no cut — its phases come from engine cut`);
   if (!/^[1-9][0-9]*$/.test(given) || Number(given) > phases) throw new Error(`${unit}'s cut has no phase ${given} — its phases are 1 to ${phases}`);
   const phase = Number(given);
+  if (phaseBuilt(manifest, phase)) throw new Error(`${unit}'s phase ${phase} was built before the migration cut it, so it has no checklist to ${end} it`);
   if (end === 'start' && !buildBegun(manifest)) throw new Error(`${unit}'s build has not begun, so no phase starts — ready to build's yes begins it: render ready-to-build ${unit}`);
   return { path: [phaseKey(phase, end)], phase };
 });

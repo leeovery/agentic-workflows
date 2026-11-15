@@ -14,8 +14,8 @@ const { place } = require('./board-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
-/** An area's line. @param {string} area @param {string} title @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
-const area = (area, title, state, { ran = 0, found = 0, since = null } = {}) => ({ area, title, state, ran, found, since });
+/** An area's line, of a unit the migration did not cut. @param {string} area @param {string} title @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
+const area = (area, title, state, { ran = 0, found = 0, since = null } = {}) => ({ area, title, before: null, state, ran, found, since });
 
 /** The tests' reader's line. @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
 const tests = (state, more) => area('tests', 'Tests held against the specification', state, more);

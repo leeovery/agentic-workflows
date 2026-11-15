@@ -38,7 +38,7 @@
 
 {{area-authority}}
 
-- what the area asks of the product, met by the change as it stands: a requirement no task carried, a behaviour two tasks built halves of, an edge the area names that nothing delivered;
+- what the area asks of the product, met by the product at the change's tips: a requirement nothing there meets, a behaviour two tasks built halves of, an edge the area names that nothing delivered;
 - where the area meets the others, so a fault between them is found;
 - the unit's calls read whole: a call fine alone and wrong in combination with another is a finding;
 - the product run: run the project's tests in the project's folder of your scratch worktree, and from there each scenario of the area's above through the project's verify setup, one at a time: the engine's `verify run {unit} {scenario}`, the unit this brief is for. A drive can run for minutes: give the Bash call a timeout to match. Where the project has no verify setup recorded, say so in your report instead of running.

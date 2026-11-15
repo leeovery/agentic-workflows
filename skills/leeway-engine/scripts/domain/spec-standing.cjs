@@ -8,8 +8,10 @@
 // no ledger, so each of those can require it.
 //
 // - The spec's standing is derived, never kept (P7): `concluded` once ready
-//   to build's yes began the build, `build` on the unit's manifest;
-//   `written` once `{unit}/spec.md` exists; else `none`.
+//   to build's yes began the build, `build` on the unit's manifest, or once
+//   the migration joined the unit's old specs into it, the topics
+//   `spec.joined` names, which are history (21.8.5); `written` once `{unit}/spec.md` exists; else
+//   `none`.
 // - Past its spec — written or concluded — no topic exists (4.11.2), and an
 //   epic's map is closed (18.4.19, P3): no topic is added, cancelled,
 //   reactivated, reopened or pulled forward, nor sent a message, nor talked
@@ -38,19 +40,20 @@ const fs = require('fs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
-const { buildBegun, closedIntoSpec, computeTopicLifecycle, itemOf, topicTitles, goesBy } = require('./derivations.cjs');
+const { buildBegun, specJoined, closedIntoSpec, computeTopicLifecycle, itemOf, topicTitles, goesBy } = require('./derivations.cjs');
 const { specPath } = require('./spec-sections.cjs');
 
 /** @typedef {'none'|'written'|'concluded'} SpecStanding */
 
 /**
  * Where the unit stands with its spec, its manifest read: concluded once its
- * build has begun, written once its `spec.md` exists, else none.
+ * build has begun or its old specs were joined, written once its `spec.md`
+ * exists, else none.
  * @param {string} cwd @param {string} unit @param {Record<string, any>|null} manifest
  * @returns {SpecStanding}
  */
 function standingOf(cwd, unit, manifest) {
-  if (manifest !== null && buildBegun(manifest)) return 'concluded';
+  if (manifest !== null && (buildBegun(manifest) || specJoined(manifest))) return 'concluded';
   return fs.existsSync(specPath(cwd, unit)) ? 'written' : 'none';
 }
 

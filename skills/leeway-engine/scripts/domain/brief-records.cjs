@@ -12,7 +12,12 @@
 //   spec-sections  each section the task's spec reference cites, verbatim
 //                  from the unit's spec (spec-sections.cjs); for a
 //                  quick-fix's task, which has no spec, the line saying its
-//                  acceptance in its own words stands for them (19.5.24)
+//                  acceptance in its own words stands for them (19.5.24);
+//                  for a task the plan from before Leeway wrote, holding
+//                  no spec reference, each area joined from an old spec
+//                  its text cites by its path (21.8.5) — or, citing none
+//                  of them, its phase's sections and scenarios, as the cut
+//                  holds them
 //   decided-calls  the unit's current decisions at its own level, the
 //                  person's and Claude's alike — the builder's own calls
 //                  among them (13.11.10) — in the ledger's order, each one
@@ -454,7 +459,7 @@
 // a flag carries a name, an id or a path, never text that reaches the brief
 // (6.5.6). A record the project holds none of
 // yet is drawn as none recorded. One that cannot be read refuses the brief:
-// a task with no spec reference, a section the spec lacks, linters of
+// a section the spec lacks, linters of
 // another shape, a task's branch no repository holds work on, a base no
 // repository holding it has as a local branch, a phase's sections or
 // scenarios the spec lacks, a phase not yet written whose tasks or range a
@@ -497,7 +502,9 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames, topicTitle, cutPhases, quickFixBuild } = require('./derivations.cjs');
+const {
+  dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, nothingBuiltSince, landedBefore, landedAnyBefore, citedAreas, areaBuilt,
+} = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
@@ -623,23 +630,38 @@ function headingsDown(text) {
 /** Text whose every line after its first is indented, to stay in a list item. @param {string} text */
 const indented = (text) => text.split('\n').join('\n  ');
 
+/** A task's text opening on its title: as written where it opens on a heading at level one, else its title over it. @param {TaskDetail} task */
+const titledText = ({ title, text }) => (/^# /.test(text) ? text : `# ${title}\n\n${text.trim()}`);
+
 /** @param {Filling} filling */
 function drawTask(filling) {
   const { task } = taskOf(filling);
-  return [headingsDown(task.text), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`)].join('\n\n');
+  return [headingsDown(titledText(task)), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`)].join('\n\n');
 }
 
 /**
- * Each section the task's spec reference cites; for a quick-fix's task, the
- * line saying its acceptance, in its own words, stands for them (19.5.24).
+ * Each section the task's spec reference cites; for a task of the plan from
+ * before Leeway, the areas the migration's cut found it citing (21.8.8,
+ * `citedAreas`), with its phase's scenarios; or, citing none, its phase's
+ * sections and scenarios. For a quick-fix's task, the line saying its
+ * acceptance, in its own words, stands for them (19.5.24).
  * @param {Filling} filling
  */
 function drawSpecSections(filling) {
   const { ref, task } = taskOf(filling);
   if (ofQuickFixTask(filling)) return `${ref.unit} is a quick-fix, which has no spec: the task's acceptance scenarios, in their own words, stand for its sections.`;
+  const cited = citedAreas(unitManifest(filling))(ref);
+  if (cited.length > 0) return [...cited.map((area) => areaSectionText(filling, area)), 'Its phase\'s scenarios:', scenarioLines(filling, ref.phase)].join('\n\n');
   const reference = specReferenceOf(task.text);
-  if (reference === null) throw new Error(`${taskName(ref)} holds no spec reference`);
-  return readCitedSections(filling.cwd, ref.unit, reference).map((section) => section.text).join('\n\n');
+  if (reference !== null) return readCitedSections(filling.cwd, ref.unit, reference).map((section) => section.text).join('\n\n');
+  return [`${taskName(ref)} cites no section of the spec, so its phase's stand for it, with its phase's scenarios:`, ...sectionTexts(filling, ref.phase), scenarioLines(filling, ref.phase)].join('\n\n');
+}
+
+/** An area of the spec, verbatim, refused where the spec lacks it. @param {Filling} filling @param {string} area */
+function areaSectionText(filling, area) {
+  const section = unitSpec(filling).sections.get(area);
+  if (section === undefined) throw new Error(`the spec has no §${area}`);
+  return section.text;
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -1169,8 +1191,8 @@ function unitOf({ unit }) {
 const READ_SPECS = new WeakMap();
 
 /**
- * The unit's spec, read once a fill; refused where the unit has none or its
- * grammar refuses it.
+ * The unit's spec, read once a fill — as joined, where the migration joined
+ * it; refused where the unit has none or its grammar refuses it.
  * @param {Filling} filling @returns {ReadSpec}
  */
 function unitSpec(filling) {
@@ -1181,7 +1203,7 @@ function unitSpec(filling) {
   /** @type {Line[]} */
   let lines;
   try {
-    lines = specStatements(text);
+    lines = specStatements(text, specJoined(unitManifest(filling)));
   } catch (err) {
     throw new Error(`brief: ${unit}'s ${SPEC_FILE} does not read —\n${messageOf(err)}`);
   }
@@ -1215,11 +1237,15 @@ function fixCriteria(filling) {
 function drawSpecScenarios(filling) {
   if (ofQuickFix(filling)) return [noSpecLine(filling), listed(fixCriteria(filling))].join('\n\n');
   const { sections, lines } = unitSpec(filling);
-  return listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
+  const scenarios = listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
     const area = /** @type {Section} */ (sections.get(number.split('.')[0]));
     return `- ${number}, of §${area.address} ${titleOf(area)}: ${indented(wording)}`;
   }));
+  return landedAnyBefore(unitManifest(filling)) ? [scenarios, TESTS_BEFORE].join('\n\n') : scenarios;
 }
+
+/** What the test surface's reader is told of a unit with work landed before the migration cut it. */
+const TESTS_BEFORE = 'Work of the unit landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips, and no commit of the change carries them. Read the tests there, those that landed before beside those the change adds or changes.';
 
 /** The part a statement or its screen is in, `N.M`. @param {string} number */
 const partOf = (number) => number.split('.').slice(0, 2).join('.');
@@ -1612,7 +1638,7 @@ function drawProductCites(filling, warnings) {
   return listed([...cited].map(([id, numbers]) => `${entryLine(/** @type {UnitEntry} */ (entries.get(id)))}\n  Cited by ${numbers.join(', ')}`));
 }
 
-/** A phase of a unit's cut. @typedef {import('./cut.cjs').Phase} CutPhase */
+/** A phase of a unit's cut, as it is read. @typedef {import('./derivations.cjs').CutPhase} CutPhase */
 
 /**
  * The phase a phase's record is drawn for: its unit, its number, and every
@@ -1647,33 +1673,45 @@ function drawCutPhase(filling) {
   return [`Phase ${phase} of ${unit}: ${name}`, goal, relies].join('\n\n');
 }
 
-/** @param {Filling} filling */
-function drawPhaseSections(filling) {
-  const { phase } = phaseOf(filling);
-  const cut = cutOf(filling);
-  const named = cut[phase - 1].sections;
-  const { file, sections } = unitSpec(filling);
-  const built = named.map((address) => {
-    const first = cut.findIndex((each) => each.sections.some(builds(address))) + 1;
-    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}`;
-  });
-  const texts = named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
+/**
+ * Each section a phase of the cut names, verbatim, in the cut's order — a
+ * part whose own area it names left to the area.
+ * @param {Filling} filling @param {number} phase
+ */
+function sectionTexts(filling, phase) {
+  const named = cutOf(filling)[phase - 1].sections;
+  const { sections } = unitSpec(filling);
+  return named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
     const section = sections.get(address);
     if (section === undefined) throw new Error(`phase ${phase} of the cut names §${address}, which the spec lacks`);
     return section.text;
   });
-  return [`\`${file}\``, built.join('\n'), ...texts].join('\n\n');
 }
 
-/** @param {Filling} filling */
-function drawPhaseScenarios(filling) {
-  const { phase } = phaseOf(filling);
+/** Each scenario a phase of the cut holds, by id with its wording. @param {Filling} filling @param {number} phase */
+function scenarioLines(filling, phase) {
   const wordings = new Map(unitSpec(filling).lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording]));
   return listed(cutOf(filling)[phase - 1].scenarios.map((id) => {
     const wording = wordings.get(id);
     if (wording === undefined) throw new Error(`phase ${phase} of the cut holds ${id}, which the spec lacks`);
     return `- ${id}: ${indented(wording)}`;
   }));
+}
+
+/** @param {Filling} filling */
+function drawPhaseSections(filling) {
+  const { phase } = phaseOf(filling);
+  const cut = cutOf(filling);
+  const built = cut[phase - 1].sections.map((address) => {
+    const first = cut.findIndex((each) => each.sections.some(builds(address))) + 1;
+    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}${cut[first - 1].built === true ? ', before the migration cut the unit' : ''}`;
+  });
+  return [`\`${unitSpec(filling).file}\``, built.join('\n'), ...sectionTexts(filling, phase)].join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawPhaseScenarios(filling) {
+  return scenarioLines(filling, phaseOf(filling).phase);
 }
 
 /** Notes for later, each verbatim under its heading. @param {import('./notes.cjs').Note[]} notes */
@@ -1751,19 +1789,32 @@ function writtenPhase(filling) {
 /** Each addition to a task, under a heading a level below the task's own. @param {TaskDetail} task */
 const additionsOf = ({ additions }) => additions.flatMap(({ by, text }) => ['', `### Added by the ${by}`, '', text]);
 
+/** Where a task of the phase stands, as its review reads it: closed with its reason, landed before the migration cut the unit, outside the phase's range, or its status. @param {Filling} filling @param {TaskDetail} task */
+function phaseTaskStands(filling, task) {
+  if (task.status === 'closed') return `It was closed: ${task.reason}`;
+  if (landedBefore(unitManifest(filling))(task.ref)) return 'It landed before the migration cut the unit: its work stands in the product already, and the phase\'s range holds none of it.';
+  return `It is ${STATUS_WORDS[task.status]}.`;
+}
+
 /** @param {Filling} filling */
 function drawPhaseTasks(filling) {
   return blocks(writtenPhase(filling).map((task) => {
-    const [title, ...body] = headingsDown(task.text).split('\n');
-    const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STATUS_WORDS[task.status]}.`;
+    const [title, ...body] = headingsDown(titledText(task)).split('\n');
+    const stands = phaseTaskStands(filling, task);
     return [title.replace(/^## /, `## ${shownTask(task.ref)} `), '', stands, '', body.join('\n').replace(/^\n+/, ''), ...additionsOf(task)].join('\n');
   }));
 }
 
+/** A task's acceptance criteria, as its phase review reads them: its text, headings a level down, where it holds none. @param {string} text */
+function criteriaOrText(text) {
+  const criteria = scenariosOf(text);
+  return criteria === '' ? headingsDown(text.trim()) : criteria;
+}
+
 /** @param {Filling} filling */
 function drawPhaseCriteria(filling) {
-  return blocks(writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => (
-    [`## ${shownTask(task.ref)} ${task.title}`, '', scenariosOf(task.text), ...additionsOf(task)].join('\n')
+  return blocks(builtSince(unitManifest(filling), writtenPhase(filling)).filter(({ status }) => status !== 'closed').map((task) => (
+    [`## ${shownTask(task.ref)} ${task.title}`, '', criteriaOrText(task.text), ...additionsOf(task)].join('\n')
   )));
 }
 
@@ -1773,10 +1824,9 @@ function drawReliedOn(filling) {
   const cut = cutOf(filling);
   return blocks(cut[phase - 1].relies_on.map((on) => {
     if (typeof on === 'string') return `## The work unit ${on}\n\nThis phase relies on its delivery.`;
-    const { name, goal, sections } = cut[on - 1];
-    return [
-      `## Phase ${on}: ${name}`, '', goal, '', `Its sections: ${sections.map((address) => `§${address}`).join(', ')}`, '', 'Its tasks:', '', listed((phases[on - 1] ?? []).map(taskLine)),
-    ].join('\n');
+    const { name, goal, sections, built } = cut[on - 1];
+    const placed = `Its sections: ${sections.map((address) => `§${address}`).join(', ')}${built === true ? ' — built before the migration cut the unit, its work in the product already' : ''}`;
+    return [`## Phase ${on}: ${name}`, '', goal, '', placed, '', 'Its tasks:', '', listed((phases[on - 1] ?? []).map(taskLine))].join('\n');
   }));
 }
 
@@ -1787,7 +1837,9 @@ function drawReliedOn(filling) {
  */
 const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {import('./phase-stack.cjs').PhaseStack} */ (filling) => {
   const { unit, phase } = phaseOf(filling);
-  return phaseStack(filling.cwd, unit, phase, writtenPhase(filling));
+  const manifest = unitManifest(filling);
+  if (nothingBuiltSince(manifest, writtenPhase(filling))) throw new Error(`${phaseName(unit, phase)} has nothing built since the migration cut the unit — each task of it landed before or was closed — so its review passes with nothing to read`);
+  return phaseStack(filling.cwd, unit, phase, builtSince(manifest, writtenPhase(filling)));
 });
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -2072,11 +2124,18 @@ function drawChangeArea(filling) {
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawAreaSections(filling, warnings) {
-  const { number } = areaNamed(filling, warnings);
+  const area = areaNamed(filling, warnings);
   if (ofQuickFix(filling)) return drawChangeArea(filling);
   const { file, sections } = unitSpec(filling);
-  return [`\`${file}\``, /** @type {Section} */ (sections.get(number)).text].join('\n\n');
+  const built = areaBuilt(unitManifest(filling), area.number);
+  return [`\`${file}\``, /** @type {Section} */ (sections.get(area.number)).text, ...(built === null ? [] : [BUILT_BEFORE[built](area.number)])].join('\n\n');
 }
+
+/** What the area's reader is told of work of it built before the migration cut the unit, whole or in part (`areaBuilt`). */
+const BUILT_BEFORE = Object.freeze({
+  built: (/** @type {string} */ area) => `§${area} was built before the migration cut the unit: its work landed before Leeway, so no commit of the change carries it. Hold the product at the change's tips against the area — the work landed before stands there, the area's as much as the change's.`,
+  partly: (/** @type {string} */ area) => `Some of §${area} was built before the migration cut the unit: that work landed before Leeway, so no commit of the change carries it, and the rest is the change's. Hold the product at the change's tips against the area — the work landed before stands there beside the change's.`,
+});
 
 /**
  * What the area's reader holds the change against, as its review opens: the
@@ -2088,7 +2147,8 @@ function drawAreaAuthority(filling) {
   if (ofQuickFix(filling)) {
     return 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:';
   }
-  return 'Every task and every phase of the build has passed its own review. Hold the whole change against this area of the spec, as one piece. The spec\'s intent for the area, and the product it describes, are your authority, never a task\'s criteria:';
+  const before = landedAnyBefore(unitManifest(filling)) ? ' Work of the unit that landed before the migration cut it stands in the product there with no commit of the change carrying it, and is met as the change\'s is.' : '';
+  return `Every task and every phase of the build has passed its own review. Hold the product at the change's tips against this area of the spec, as one piece.${before} The spec's intent for the area, and the product it describes, are your authority, never a task's criteria:`;
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -2119,8 +2179,13 @@ function drawUnitCalls(filling, warnings) {
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawChangeCommits(filling, warnings) {
-  return changeHeld(filling, warnings).holding.map(({ repo, parts }) => [`## In ${repoNamed(repo)}`, ...parts.map((part) => partDrawn(repo, part))].join('\n\n')).join('\n\n');
+  return changeHeld(filling, warnings).holding.map(({ repo, base, parts }) => [
+    `## In ${repoNamed(repo)}`, ...(parts.length === 0 ? [nothingSince(base)] : parts.map((part) => partDrawn(repo, part))),
+  ].join('\n\n')).join('\n\n');
 }
+
+/** A repository whose change is empty, the unit's every task there landed before the migration cut it (review-change.cjs). @param {string} base */
+const nothingSince = (base) => `Nothing has landed here since the migration cut the unit, and nothing waits to land: the change is empty, its tip \`${base}\` itself.`;
 
 /** A part of the change in a repository: a landing by its commit and subject, or the work not landed by where it is read from, with its stat. @param {Repo} repo @param {import('./review-change.cjs').ChangePart} part */
 function partDrawn(repo, { from, to, landed, branch }) {

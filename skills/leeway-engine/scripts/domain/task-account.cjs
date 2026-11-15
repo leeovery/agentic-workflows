@@ -39,7 +39,8 @@
 // quick-fix's task's the net change of its own commits, the other fixes'
 // left out — renames found, and a submodule's pointer never a file of it, as
 // `verify mutants` leaves it out; the acceptance criteria the task holds
-// (task-file.cjs); how many additions the task holds, whoever made them
+// (task-file.cjs), none where its text writes its criteria in the form from
+// before Leeway; how many additions the task holds, whoever made them
 // (13.11.3) — one made after the account means the task changed under it,
 // so it stands at its step gate only while the count holds
 // (build-entry.cjs); when it started, its move into progress as the tracker
@@ -99,7 +100,7 @@ const {
 /** @typedef {import('./round-report.cjs').Round} Round */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {{files: number, added: number, removed: number}} Change */
-/** @typedef {Change & {rounds: number, criteria: number, additions: number, started: string|null, finished: string}} Figures */
+/** @typedef {Change & {rounds: number, criteria: number|null, additions: number, started: string|null, finished: string}} Figures */
 /** @typedef {(reason: string) => never} Refuse */
 
 /** The account's sections, as their headings read, in order. */

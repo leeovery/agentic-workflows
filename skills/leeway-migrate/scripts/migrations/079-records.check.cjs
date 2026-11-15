@@ -17,12 +17,10 @@
 //   - every entry cites a section that exists, once, in a file of the topic's
 //     own or the unit's: the topic's log or brief or one of its experiments'
 //     records, or a file of the unit's `assets/` — a spec kept there, an
-//     import — or, cited as `{unit}/spec.md` in a unit whose building
-//     started, where the state has none yet, a heading of the unit's specs
-//     under `.workflows/`, which the cut and the merges join into it
-//     verbatim (21.8.5); nothing in the cache, and nothing of another
-//     topic's. A heading its file holds more than once names no one section
-//     (21.12.7);
+//     import — or the unit's `spec.md`, its specs joined verbatim where its
+//     building started (21.8.5, 078); nothing in the cache, and nothing of
+//     another topic's. A heading its file holds more than once names no one
+//     section (21.12.7);
 //   - every subtopic its old discussion map shows decided — in the unit's
 //     manifest under `.workflows/`, which the move dropped the map from
 //     (21.5.8) — named by an entry's map item, and every one it shows still
@@ -68,10 +66,7 @@
 // brief draws (brief-records.cjs).
 //
 // Known edges: a log with CRLF endings has no heading this reads, nor does
-// a fence nested in a four-backtick block end where it should; the joined
-// spec's headings are counted over every `specification.md` `.workflows/`
-// holds for the unit, superseded and cancelled ones among them, as the cut
-// and the merges (080) are to join them; the carried
+// a fence nested in a four-backtick block end where it should; the carried
 // file sits in the cache, where a per-topic agent, which may write files,
 // could overwrite it; and an epic's imports from its discovery as a whole,
 // `discovery`, are owed by no topic, staying in `assets/` unlinked until a
@@ -146,12 +141,6 @@ function headingCounts(text) {
   return counts;
 }
 
-/** Whether a unit's building started, as the move (078) decides it. @param {Record<string, any>|null} manifest */
-function buildingStarted(manifest) {
-  return Object.values(itemsOf(manifest?.phases?.implementation?.items))
-    .some((item) => isObject(item) && (item.status === 'in-progress' || item.status === 'completed'));
-}
-
 /** Whether a unit's manifest holds the topic in the phase. @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
 const holds = (manifest, phase, topic) => TOPIC_PHASES.includes(phase) && isObject(itemsOf(manifest.phases?.[phase]?.items)[topic]);
 
@@ -196,28 +185,13 @@ function projectOf(projectDir, stateDir) {
 
 /**
  * A unit as the rules read it: its manifest in the state, and as
- * `.workflows/` holds it, from before the move; whether its building
- * started; and, read once, how many times each heading of its specs under
- * `.workflows/` is there, which its spec.md joins.
- * @typedef {{name: string, manifest: Record<string, any>, before: Record<string, any>|null, built: boolean, joined: () => Map<string, number>}} Unit
+ * `.workflows/` holds it, from before the move.
+ * @typedef {{name: string, manifest: Record<string, any>, before: Record<string, any>|null}} Unit
  */
 
 /** @param {Project} project @param {string} name @returns {Unit} */
 function unitOf(project, name) {
-  const before = project.before(name);
-  const specs = path.join(project.dir, CODE_TREE_STATE, name, 'specification');
-  /** @type {Map<string, number>|null} */
-  let joined = null;
-  return {
-    name,
-    manifest: readJson(path.join(project.stateDir, name, 'manifest.json')),
-    before,
-    built: buildingStarted(before),
-    joined: () => {
-      joined ??= headingCounts(foldersIn(specs).map((spec) => readText(path.join(specs, spec, 'specification.md')) ?? '').join('\n'));
-      return joined;
-    },
-  };
+  return { name, manifest: readJson(path.join(project.stateDir, name, 'manifest.json')), before: project.before(name) };
 }
 
 /**
@@ -239,8 +213,9 @@ function sourceNames(sources) {
 /**
  * The topic's specs, as the unit's manifest under `.workflows/` names them —
  * each whose sources name the topic, or that bears its name: where the state
- * keeps it, in `assets/specs/`, while the unit's building has not started,
- * or its file under `.workflows/`, cited as `{unit}/spec.md`, once it has.
+ * keeps it, in `assets/specs/`, or, joined into the unit's `spec.md` (078,
+ * the topics `spec.joined` names), its file under `.workflows/`, cited as
+ * that spec.
  * @param {Project} project @param {Unit} unit @param {string} topic
  * @returns {{name: string, read: string, cite: string}[]}
  */
@@ -248,9 +223,9 @@ function specsOf(project, unit, topic) {
   return Object.entries(itemsOf(unit.before?.phases?.specification?.items))
     .filter(([name, item]) => name === topic || (isObject(item) && sourceNames(item.sources).includes(topic)))
     .flatMap(([name]) => {
-      if (unit.built) return [{ name, read: `${CODE_TREE_STATE}/${unit.name}/specification/${name}/specification.md`, cite: `${unit.name}/spec.md` }];
       const kept = `${unit.name}/assets/specs/${name}.md`;
-      return fs.existsSync(path.join(project.stateDir, kept)) ? [{ name, read: kept, cite: kept }] : [];
+      if (fs.existsSync(path.join(project.stateDir, kept))) return [{ name, read: kept, cite: kept }];
+      return Array.isArray(unit.manifest.spec?.joined) && unit.manifest.spec.joined.includes(name) ? [{ name, read: `${CODE_TREE_STATE}/${unit.name}/specification/${name}/specification.md`, cite: `${unit.name}/spec.md` }] : [];
     });
 }
 
@@ -308,9 +283,8 @@ function citable(unit, topic, cited) {
 function citeProblem(project, unit, topic, cite) {
   if (typeof cite.path !== 'string' || !citable(unit, topic, cite.path)) return `cites ${cite.path}, which is none of its topic's log, brief or experiments, nor the unit's assets or spec.md`;
   const text = readText(path.join(project.stateDir, cite.path));
-  const joined = text === null && unit.built && cite.path === `${unit.name}/spec.md`;
-  if (text === null && !joined) return `cites ${cite.path}, which the state does not hold`;
-  const count = (joined ? unit.joined() : headingCounts(text ?? '')).get(cite.section) ?? 0;
+  if (text === null) return `cites ${cite.path}, which the state does not hold`;
+  const count = headingCounts(text).get(cite.section) ?? 0;
   if (count === 0) return `cites "${cite.section}" in ${cite.path}, which has no such heading`;
   return count === 1 ? null : `cites "${cite.section}" in ${cite.path}, which holds that heading ${count} times — a cite names a heading its file holds once`;
 }

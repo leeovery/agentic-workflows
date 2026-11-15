@@ -152,7 +152,7 @@ const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutPhases, cutLength, buildFinished, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
+const { cutPhases, cutLength, buildFinished, quickFixBuild, FIXES_PHASE, builtSince } = require('./derivations.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { codeStatus } = require('./code.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -819,7 +819,7 @@ function verifyMutants(cwd, unit, given) {
   const { mutation } = recordedSetup(cwd, unit);
   if (mutation === undefined) throw new Error(NO_TOOL);
   const tasks = withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, phase).tasks ?? []);
-  const { repos, tips } = phaseStack(cwd, unit, phase, tasks);
+  const { repos, tips } = phaseStack(cwd, unit, phase, builtSince(manifest, tasks));
   const branches = new Map([...tips].map(([repo, tip]) => [repo.dir, tip]));
   return inScratch(repos, `mutants-${unit}-phase-${phase}`, (top) => layOutAt(repos[0].path, unit, repos, branches, top), (laid) => mutantsAt(cwd, unit, phase, mutation, laid));
 }

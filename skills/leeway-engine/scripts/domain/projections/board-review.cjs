@@ -14,7 +14,9 @@
 //   round read it, with the checks the round ran of the area's scenarios —
 //   `{area}.S{k}` — and the findings the round gave it, every other
 //   unchanged, not read again (20.10.2); its findings in scope, each with
-//   its call, its checks not proven, and its verdict.
+//   its call, its checks not proven, and its verdict. An area built before
+//   the migration cut the unit, whole or in part, says so (`areaBuilt`,
+//   derivations.cjs, 21.8.8).
 // - Under way, each read the round takes is read once every report of it is
 //   written, with every finding its reports hold; being read since this
 //   conversation issued its brief for that read in that round (P15); else
@@ -67,7 +69,7 @@ const { fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } 
 const { trackedChange, cutStandings } = require('../review-change.cjs');
 const { reposOf, landedOf } = require('../phase-checks.cjs');
 const { copiedTasks } = require('../task-verbs.cjs');
-const { quickFixBuild, FIXES_PHASE } = require('../derivations.cjs');
+const { quickFixBuild, areaBuilt, FIXES_PHASE } = require('../derivations.cjs');
 const { acceptanceOf, fixScenarios } = require('../fix-acceptance.cjs');
 const { buildRead, taskLine, standingAt, reviewStandingAt, readingAt, scenarioWording } = require('./board-build.cjs');
 const { tasksStopped } = require('./board-standing.cjs');
@@ -81,9 +83,11 @@ const { tasksStopped } = require('./board-standing.cjs');
 /** The reader over the tests, as its line titles it: held against the spec, a quick-fix's against its fixes' acceptance. @param {BoardAt} at */
 const testsTitle = (at) => `Tests held against ${quickFixBuild(at.manifest) ? 'the fixes\' acceptance' : 'the specification'}`;
 
-/** The reads of a round, each the area's name or the tests', with its number and title. @param {BoardAt} at @param {ReviewStanding} standing */
+/** A read of a round: the area's name or the tests', its number and title, and how much of the area was built before the migration. @typedef {{read: string, area: string, title: string, before: 'built'|'partly'|null}} Read */
+
+/** The reads of a round, each the area's name or the tests', with its number and title, and how much of it was built before the migration (`areaBuilt`). @param {BoardAt} at @param {ReviewStanding} standing @returns {Read[]} */
 function readsOf(at, { areas }) {
-  return [...areas.map(({ number, title, name }) => ({ read: name, area: number, title })), { read: TESTS, area: TESTS, title: testsTitle(at) }];
+  return [...areas.map(({ name, number, title }) => ({ read: name, area: number, title, before: areaBuilt(at.manifest, number) })), { read: TESTS, area: TESTS, title: testsTitle(at), before: null }];
 }
 
 /** Where a finding's words name its user scenario, which a report writes after them. */
@@ -116,17 +120,17 @@ const landedReports = (at, round, read) => reportsOf(at, round, read).filter(({ 
 /**
  * A read of a round under way: read once all its reports are written, with
  * every finding they hold; being read since its brief; else waiting.
- * @param {BoardAt} at @param {number} round @param {{read: string, area: string, title: string}} read @returns {AreaLine}
+ * @param {BoardAt} at @param {number} round @param {Read} read @returns {AreaLine}
  */
-function underWay(at, round, { read, area, title }) {
+function underWay(at, round, { read, area, title, before }) {
   const landed = landedReports(at, round, read);
-  if (landed.length === reportsOf(at, round, read).length) return { area, title, state: 'read', ran: 0, found: landed.flatMap(({ findings }) => findings).length, since: null };
+  if (landed.length === reportsOf(at, round, read).length) return { area, title, before, state: 'read', ran: 0, found: landed.flatMap(({ findings }) => findings).length, since: null };
   const brief = at.issued.filter((issued) => issued.round === round && (read === TESTS ? issued.role === 'test-surface' : issued.role === 'review-area' && issued.area === area)).at(-1);
-  return brief === undefined ? { area, title, state: 'waiting', ran: 0, found: 0, since: null } : { area, title, state: 'reading', ran: 0, found: 0, since: brief.at };
+  return brief === undefined ? { area, title, before, state: 'waiting', ran: 0, found: 0, since: null } : { area, title, before, state: 'reading', ran: 0, found: 0, since: brief.at };
 }
 
-/** A read the round does not take: not read again. @param {{area: string, title: string}} read @returns {AreaLine} */
-const unchanged = ({ area, title }) => ({ area, title, state: 'unchanged', ran: 0, found: 0, since: null });
+/** A read the round does not take: not read again. @param {Read} read @returns {AreaLine} */
+const unchanged = ({ area, title, before }) => ({ area, title, before, state: 'unchanged', ran: 0, found: 0, since: null });
 
 /** The checks a recorded round ran of an area's scenarios, `{area}.S{k}`. @param {RoundRecord} record @param {string} area */
 const ranIn = ({ scenarios }, area) => scenarios.filter(({ scenario }) => scenario.startsWith(`${area}.S`)).length;
@@ -245,9 +249,11 @@ function roundRecorded(at, standing, record, round) {
   const read = readNames(record);
   return {
     recorded: true,
-    areas: readsOf(at, standing).map(({ read: name, area, title }) => (read.has(name)
-      ? { area, title, state: /** @type {const} */ ('read'), ran: ranIn(record, area), found: record.findings.filter((finding) => finding.area === name).length, since: null }
-      : unchanged({ area, title }))),
+    areas: readsOf(at, standing).map((each) => (read.has(each.read)
+      ? {
+        area: each.area, title: each.title, before: each.before, state: /** @type {const} */ ('read'), ran: ranIn(record, each.area), found: record.findings.filter((finding) => finding.area === each.read).length, since: null,
+      }
+      : unchanged(each))),
     found: foundOf(record, round),
     not_proven: unprovenOf(at, record, round),
     inbox: inboxUpTo(standing.rounds, round),

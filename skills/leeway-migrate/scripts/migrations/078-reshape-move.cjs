@@ -138,9 +138,31 @@
 //   - plans go to `assets/plans/{topic}/` and review folders to
 //     `assets/reviews/{topic}/`, names kept; a spec goes to
 //     `assets/specs/{topic}.md` where the unit's building has not started —
-//     an implementation item in progress or completed — and, where it has,
-//     stays for the cut and the merges to join into `spec.md` (21.8.5); a
-//     quick-fix's spec goes to `assets/specs/` whatever its building, and
+//     an implementation item in progress or completed; where it has, every
+//     spec past its gate — its item completed, or in progress where its topic
+//     has a planning or implementation item, reopened during the build to
+//     correct it — is joined into `spec.md`,
+//     read from the working tree (21.8.5, E5): each
+//     one area, `## N. {title}`, in build order, by the old order and then,
+//     for a spec with none, in the order its manifest lists them; its title
+//     its first line's after `Specification:`, or its topic's name where it
+//     opens with no title; its words kept but for each heading outside a
+//     fenced block, as the spec's reader reads one — opened by a line
+//     holding, at any indent, three backticks or tildes at least, and closed
+//     by one holding as many of that mark at least and nothing else
+//     (spec-sections.cjs, `fences`) — demoted below the parts' level, level
+//     4 at least, two deeper where it can go, a fenced block it leaves open
+//     closed by its own mark, so the next area reads, and its
+//     links to the imports pointed from `spec.md`; the spec titled with the
+//     unit's name, and its manifest naming the topics joined, area by area,
+//     `spec: {joined: [topic, …]}`, which every reader of it reads
+//     (spec-sections.cjs), an old task's citation of its topic's spec read
+//     through its area (brief-records.cjs) — the
+//     migration's cut adds its scenarios (cut-migrating.cjs) — and the
+//     unit's other specs going to `assets/specs/`, one not past its gate,
+//     its item in progress or proposed, among them, its item going so its
+//     topics are decided topics in no spec, which leave the unit (21.8.9);
+//     a quick-fix's spec goes to `assets/specs/` whatever its building, and
 //     once the quick-fix is completed — its status says so, or every phase
 //     of its old pipeline, scoping, implementation and review, completed,
 //     whatever its status reads — its spec is its `summary.md` and its plan
@@ -174,9 +196,11 @@
 // decision written, its mail going to the inbox with a cancelled topic's.
 // A unit whose building has not started keeps no spec or planning items:
 // its specs and plans are reference assets now, and its one spec is written
-// fresh once its topics are decided (21.8.2, 21.8.3); a unit whose building
-// started keeps them for the cut and the merges, and a quick-fix's scoping
-// keeps its own. An epic's topics are on its map — one that was not in
+// fresh once its topics are decided (21.8.2, 21.8.3); a unit completed or
+// cancelled keeps no spec, planning or implementation items either, history
+// that waits on no cut (21.8.11); a unit whose building started keeps them
+// for the cut and the merges, but the item of a spec still being written,
+// and a quick-fix's scoping keeps its own. An epic's topics are on its map — one that was not in
 // progress when 038 seeded the maps gains them from its discussions — each
 // holding its place in the order: a topic with no order, as 038 left every
 // one, takes the next after the highest the map uses, in the order its old
@@ -293,6 +317,8 @@ const RESEARCH_WAITS = ['awaiting_experiments'];
 
 // A completed quick-fix's spec and plan, gone with their files.
 const QUICK_FIX_SPENT = ['specification', 'planning'];
+// The old plan's phases, which a unit that is history keeps no items of.
+const OLD_PLAN = ['specification', 'planning', 'implementation'];
 // A quick-fix's pipeline as today's engine runs it.
 const QUICK_FIX_PIPELINE = ['scoping', 'implementation', 'review'];
 
@@ -300,7 +326,24 @@ const DELIVERY_PHASES = ['specification', 'planning', 'review'];
 // Folders carried whole under a name of the layout's, their files as they are.
 const CARRIED = { imports: 'assets', seeds: 'seeds' };
 const DROP = Symbol('drop');
-const STAYS = Symbol('stays');
+// A building unit's specs, joined (21.8.5).
+const JOINED_SPEC = 'spec.md';
+// A spec past its gate.
+const CONCLUDED_SPEC = 'completed';
+// A spec still being written: past its gate where the old product reopened
+// it during the build, its topic planned or built.
+const WRITTEN_SPEC = 'in-progress';
+// The specs not past their gate whose items a building unit drops: one still
+// being written, and one grouped and never begun.
+const UNCONCLUDED_SPECS = [WRITTEN_SPEC, 'proposed'];
+// The old phases whose item for a topic says its spec was past its gate.
+const PLANNED = ['planning', 'implementation'];
+const SPEC_TITLE = /^# (?:Specification: )?(.*\S)\s*$/;
+// A heading as the spec's reader reads one, at the line's start; a fence's
+// mark, at any indent, which closes the fence it opens on a line of as many
+// at least and nothing else.
+const SPEC_HEADING = /^(#{1,6})(?= |$)/;
+const SPEC_FENCE = /^[ \t]*(`{3,}|~{3,})/;
 
 const IMPORT_LINK = /(?:\.\.\/)+imports\/([A-Za-z0-9._-]+)/g;
 const MAILBOX_MESSAGE = /^(research|discussion|investigation)\/\.mailbox\/([^/]+)\/([^/]+\.md)$/;
@@ -575,6 +618,9 @@ const quickFixDone = (manifest) => isQuickFix(manifest) && (manifest.status === 
 /** Whether the unit keeps no spec or planning items: nothing built, and not a quick-fix. @param {Record<string, any>} manifest */
 const writtenFresh = (manifest) => !isQuickFix(manifest) && !buildingStarted(manifest);
 
+/** Whether the unit is history, keeping no item of its old plan: completed or cancelled, and not a quick-fix (21.8.11). @param {Record<string, any>} manifest */
+const history = (manifest) => !isQuickFix(manifest) && ['completed', 'cancelled'].includes(manifest.status);
+
 /** When the unit was made, in full: the migration's moment where its manifest holds no day. @param {Record<string, any>} manifest */
 function createdAt({ created }) {
   const at = typeof created === 'string' ? Date.parse(created) : Number.NaN;
@@ -584,8 +630,9 @@ function createdAt({ created }) {
 /**
  * The unit's manifest less research and the retired state: the experiments
  * of names no topic holds going with their records' place, a completed
- * quick-fix's spec and plan with their files, and the spec and planning
- * items of a unit that writes its spec fresh; an epic's topics on its map,
+ * quick-fix's spec and plan with their files, the spec and planning
+ * items of a unit that writes its spec fresh, and the old plan's items of a
+ * unit that is history; an epic's topics on its map,
  * every one in the order, and an epic with topics past its map, approved
  * when it was made; each import's path following its file; and a quick-fix
  * whose old pipeline completed, completed, unless it was cancelled.
@@ -602,12 +649,31 @@ function reshapedManifest(manifest, topics) {
     for (const name of Object.keys(experiments)) if (!topics.has(name)) delete experiments[name];
     if (quickFixDone(manifest)) for (const phase of QUICK_FIX_SPENT) delete out.phases[phase];
     if (writtenFresh(manifest)) for (const phase of ['specification', 'planning']) delete out.phases[phase];
+    else if (!isQuickFix(manifest)) dropWrittenSpecs(out);
+    if (history(manifest)) for (const phase of OLD_PLAN) delete out.phases[phase];
     if (out.work_type === 'epic') mapTopics(out);
     if (out.work_type === 'epic' && Object.keys(itemsOf(out, 'discovery')).length > 0) out.phases.discovery.approved_at = createdAt(manifest);
   }
   if (Array.isArray(out.imports)) out.imports = out.imports.map(asAsset);
   if (quickFixDone(manifest) && manifest.status !== 'cancelled') out.status = 'completed';
   return out;
+}
+
+/**
+ * Whether a building unit's spec item is past its gate (21.8.5): concluded,
+ * or still being written where its topic was planned or built — reopened
+ * during the build to correct it.
+ * @param {Record<string, any>} manifest @param {string} topic @param {unknown} item
+ */
+function pastGate(manifest, topic, item) {
+  if (!isObject(item)) return false;
+  return item.status === CONCLUDED_SPEC || (item.status === WRITTEN_SPEC && PLANNED.some((phase) => Object.hasOwn(itemsOf(manifest, phase), topic)));
+}
+
+/** A unit's spec items not past their gate taken off, its topics decided in no spec (21.8.9). @param {Record<string, any>} out */
+function dropWrittenSpecs(out) {
+  const specs = itemsOf(out, 'specification');
+  for (const [topic, item] of Object.entries(specs)) if (isObject(item) && UNCONCLUDED_SPECS.includes(item.status) && !pastGate(out, topic, item)) delete specs[topic];
 }
 
 /** An `imports[]` entry, its path following its file into `assets/`. @param {unknown} entry */
@@ -656,7 +722,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   cancelled: Set<string>,
  *   quickFix: boolean,
  *   quickFixDone: boolean,
- *   built: boolean,
+ *   joined: string[],
  *   incoming: {topic: string, text: string}[],
  *   outgoing: Map<string, string>,
  *   promotedFrom: Map<string, string>,
@@ -876,9 +942,9 @@ function moveMail(move) {
 }
 
 /**
- * Where a spec, a plan or a review folder's file goes, unit-relative; DROP
- * for one that goes, STAYS for a spec left for the cut and the merges, or
- * null for one the layout has no place for.
+ * Where a spec not joined, a plan or a review folder's file goes,
+ * unit-relative; DROP for one that goes, or null for one the layout has no
+ * place for.
  * @param {UnitMove} move @param {string} top @param {string} topic @param {string} below
  * @returns {string|symbol|null}
  */
@@ -887,8 +953,72 @@ function deliveryPlace(move, top, topic, below) {
   if (top === 'planning') return move.quickFixDone ? DROP : `assets/plans/${topic}/${below}`;
   if (top === 'review') return `assets/reviews/${topic}/${below}`;
   if (below !== 'specification.md') return null;
-  if (move.quickFixDone) return 'summary.md';
-  return move.built && !move.quickFix ? STAYS : `assets/specs/${topic}.md`;
+  return move.quickFixDone ? 'summary.md' : `assets/specs/${topic}.md`;
+}
+
+/**
+ * The topics whose specs a unit whose building started joins, in build
+ * order: its spec items past their gate with a spec, by their order, then
+ * those with none in the order the manifest lists them; none for any other
+ * unit, a quick-fix among them.
+ * @param {Record<string, any>} manifest @param {string[]} files unit-relative
+ * @returns {string[]}
+ */
+function joinedTopics(manifest, files) {
+  if (isQuickFix(manifest) || !buildingStarted(manifest)) return [];
+  const orderOf = (/** @type {Record<string, any>} */ item) => (Number.isInteger(item.order) ? item.order : Infinity);
+  return Object.entries(itemsOf(manifest, 'specification'))
+    .filter(([topic, item]) => pastGate(manifest, topic, item) && files.includes(`specification/${topic}/specification.md`))
+    .map(([topic, item], at) => ({ topic, order: orderOf(item), at }))
+    .sort((a, b) => a.order - b.order || a.at - b.at)
+    .map(({ topic }) => topic);
+}
+
+/**
+ * An old spec's lines below its title, each heading outside a fenced block
+ * demoted below the parts' level, and a fenced block left open closed by
+ * its own mark (the header's).
+ * @param {string[]} rows
+ */
+function belowParts(rows) {
+  /** @type {string|null} */
+  let fence = null;
+  const demotedRows = rows.map((row) => {
+    const mark = SPEC_FENCE.exec(row)?.[1];
+    if (fence === null && mark !== undefined) fence = mark;
+    else if (fence !== null && mark !== undefined && mark[0] === fence[0] && mark.length >= fence.length && row.trim() === mark) {
+      fence = null;
+      return row;
+    }
+    const heading = fence === null ? SPEC_HEADING.exec(row) : null;
+    return heading === null ? row : `${'#'.repeat(Math.min(6, Math.max(4, heading[1].length + 2)))}${row.slice(heading[1].length)}`;
+  });
+  return fence === null ? demotedRows : [...demotedRows, fence];
+}
+
+/** An old spec as an area of `spec.md`, numbered `number` (the header's). @param {string} text @param {number} number @param {string} topic */
+function asArea(text, number, topic) {
+  const rows = text.split(/\r\n?|\n/);
+  const title = SPEC_TITLE.exec(rows[0]);
+  const words = (title === null ? rows : rows.slice(1)).join('\n').replace(/^(?:[ \t]*\n)+/, '').trimEnd();
+  const body = belowParts(words.split('\n')).join('\n');
+  return `## ${number}. ${title === null ? titled(topic) : title[1]}${body === '' ? '' : `\n\n${body}`}`;
+}
+
+/**
+ * The unit's specs joined into `spec.md`, each relocated there and its links
+ * pointed from it; nothing where it joins none.
+ * @param {UnitMove} move
+ */
+function joinSpecs(move) {
+  if (move.joined.length === 0) return;
+  const at = `${move.unit}/${JOINED_SPEC}`;
+  const areas = move.joined.map((topic, i) => {
+    const rel = `specification/${topic}/specification.md`;
+    relocate(move, rel, at);
+    return asArea(takeDocument(move, rel, at), i + 1, topic);
+  });
+  put(move, JOINED_SPEC, `# ${titled(move.unit)}\n\n${areas.join('\n\n')}\n`);
 }
 
 /**
@@ -904,7 +1034,7 @@ function briefPlace(move, folder, inside) {
 
 /**
  * Where a file of the unit's goes, unit-relative, by its place today: DROP,
- * STAYS, or null as `deliveryPlace` says.
+ * or null as `deliveryPlace` says.
  * @param {UnitMove} move @param {string} rel
  * @returns {string|symbol|null}
  */
@@ -960,12 +1090,13 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
   const from = path.join(workflows, unit);
   const topics = topicNames(manifest, unit);
   const reshaped = reshapedManifest(manifest, topics);
+  const files = filesUnder(from);
   /** @type {UnitMove} */
   const move = {
     unit,
     from,
     state,
-    files: filesUnder(from),
+    files,
     imported: importedNames(from),
     accounted: new Set(['manifest.json']),
     relocations,
@@ -973,7 +1104,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
     cancelled: cancelledTopics(reshaped),
     quickFix: isQuickFix(manifest),
     quickFixDone: quickFixDone(manifest),
-    built: buildingStarted(manifest),
+    joined: joinedTopics(manifest, files),
     incoming: promoted.filter(({ source, target, topic }) => target === unit && fs.existsSync(path.join(workflows, source, 'research', `${topic}.md`)))
       .map((entry) => promotedText(workflows, entry)),
     outgoing: new Map(promoted.filter(({ source }) => source === unit).map(({ topic, target }) => [topic, target])),
@@ -982,6 +1113,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
   };
   moveLogs(move);
   moveMail(move);
+  joinSpecs(move);
   for (const rel of move.files.filter((f) => !move.accounted.has(f))) {
     const at = placeOf(move, rel);
     if (at === null) continue;
@@ -995,7 +1127,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
     else put(move, at, takeDocument(move, rel, `${unit}/${at}`), mode);
     relocate(move, rel, `${unit}/${at}`);
   }
-  put(move, 'manifest.json', jsonText(reshaped));
+  put(move, 'manifest.json', jsonText(move.joined.length === 0 ? reshaped : { ...reshaped, spec: { joined: move.joined } }));
   return move.files.filter((f) => !move.accounted.has(f));
 }
 

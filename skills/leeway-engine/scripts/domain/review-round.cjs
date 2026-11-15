@@ -112,7 +112,7 @@ const { readShown } = require('./ledger-read.cjs');
 const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 const { titleOf } = require('./start.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { itemTitle, topicTitles, quickFixBuild, reviewAsked, buildRefusal } = require('./derivations.cjs');
+const { itemTitle, topicTitles, quickFixBuild, reviewAsked, buildRefusal, specJoined } = require('./derivations.cjs');
 const { closeNotesPath, answeredAtClose } = require('./notes.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
@@ -617,7 +617,7 @@ function roundView(cwd, manifest, record, round, wordings, statuses) {
 /** Each scenario's wording, by its id, the statements it draws on left to the spec — a quick-fix's as its fixes' acceptance words them (fix-acceptance.cjs). @param {string} cwd @param {string} unit @param {Record<string, any>} manifest */
 function scenarioWordings(cwd, unit, manifest) {
   if (quickFixBuild(manifest)) return new Map(fixScenarios(fixAcceptance(cwd, unit)).map(({ scenario, wording }) => [scenario, wording]));
-  return new Map(specStatements(readSpec(cwd, unit)).filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording.replace(/\s*\([^()]*\)$/, '')]));
+  return new Map(specStatements(readSpec(cwd, unit), specJoined(manifest)).filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording.replace(/\s*\([^()]*\)$/, '')]));
 }
 
 /** The calls decided for the person across the unit, by kind, with the build's share; what the read warned of pushed to `warnings`. @param {string} cwd @param {string} unit @param {string[]} warnings */

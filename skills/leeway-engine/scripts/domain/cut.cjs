@@ -10,13 +10,25 @@
 // address, `N` or `N.M`, as `spec.md` gives them (spec-sections.cjs); and
 // what it relies on, an earlier phase by its number or another unit by its
 // name (11.5.4, 12.6.2). A list may be empty: ready to build's checklist
-// holds each phase to having its own (6.4.7).
+// holds each phase to having its own (6.4.7). A phase the migration's cut
+// found built (21.8.6, cut-migrating.cjs) is `{name, goal, sections, built:
+// true}`, its sections the areas its old plan built, read as placing no
+// scenario and relying on nothing, and started and closed wherever a phase
+// is read (derivations.cjs); and a phase whose
+// tracker parent the migration adopted names it last, `tracker`, the
+// tracker's own id (21.8.8). Only the migration's cut marks a phase built
+// or names its tracker parent: a cut here marks none built after the last
+// started, and names each phase's tracker parent as the cut on the
+// manifest holds it.
 //
 // It refuses, naming each fault and writing nothing (11.5.9): a unit with no
-// `spec.md`, or one its lines refuse (spec-sections.cjs); a file of another
-// shape; a scenario or a section the spec lacks; a scenario placed in two
-// phases or in none; a phase relying on itself or one after it, its own
-// unit, or another unit the project lacks. The same checks of the cut on
+// `spec.md`, or one its lines refuse (spec-sections.cjs), a spec the
+// migration joined read as one; a file of another shape; a scenario or a
+// section the spec lacks; a scenario placed in two phases or in none, a
+// built phase placing none; a phase relying on itself or one after it, its
+// own unit, or another unit the project lacks; a phase after the last
+// started marked built, and a tracker parent other than the one adopted.
+// The same checks of the cut on
 // the manifest, against the spec as it stands, hold ready to build's
 // phases-complete (`cutHolds`, checklist.cjs).
 // A second cut replaces the whole cut until a phase has started — its
@@ -44,18 +56,25 @@ const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { readSpec, specSections, specScenarios, SPEC_FILE } = require('./spec-sections.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { phaseStarted, cutPhases, cutLength } = require('./derivations.cjs');
+const { phaseStarted, cutPhases, cutLength, specJoined } = require('./derivations.cjs');
 const { recordCut } = require('./spec-passes.cjs');
 
-/** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
-/** What a phase places and draws on, which the spec and the project hold it to. @typedef {Pick<Phase, 'scenarios'|'sections'|'relies_on'>} Placing */
+/** A phase not yet built, as the file and the manifest keep it. @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>, tracker?: string}} UnbuiltPhase */
+/** A phase built before the migration, as they keep it. @typedef {{name: string, goal: string, sections: string[], built: true, tracker?: string}} BuiltPhase */
+/** @typedef {UnbuiltPhase|BuiltPhase} Phase */
+/** What a phase places and draws on, which the spec and the project hold it to. @typedef {import('./derivations.cjs').CutPhase} Placing */
 
 const CUT_USAGE = 'cut <work-unit> [--file <cut.json>]';
 
+/** @param {unknown} value */
+const isText = (value) => typeof value === 'string' && value.trim() !== '';
+
 /** What each of a phase's fields holds, and how a fault in it is named. */
 const FIELDS = Object.freeze({
-  name: { holds: 'text', fits: (/** @type {unknown} */ value) => typeof value === 'string' && value.trim() !== '' },
-  goal: { holds: 'text', fits: (/** @type {unknown} */ value) => typeof value === 'string' && value.trim() !== '' },
+  name: { holds: 'text', fits: isText },
+  goal: { holds: 'text', fits: isText },
+  built: { holds: 'true', fits: (/** @type {unknown} */ value) => value === true },
+  tracker: { holds: 'the tracker\'s id of its parent', fits: isText },
   scenarios: { holds: 'a list of scenario ids, each once', each: (/** @type {unknown} */ id) => typeof id === 'string' },
   sections: { holds: 'a list of section addresses, each once', each: (/** @type {unknown} */ address) => typeof address === 'string' },
   relies_on: {
@@ -64,28 +83,60 @@ const FIELDS = Object.freeze({
   },
 });
 
-/** The fields of a phase, in the order the manifest keeps them. */
-const PHASE_FIELDS = /** @type {Array<keyof Phase>} */ (Object.keys(FIELDS));
+/** @typedef {keyof typeof FIELDS} Field */
+
+/** The fields of a phase not yet built, in the order the manifest keeps them. */
+const PHASE_FIELDS = /** @type {Field[]} */ (['name', 'goal', 'scenarios', 'sections', 'relies_on']);
+
+/** The fields of a phase built before the migration, in that order. */
+const BUILT_FIELDS = /** @type {Field[]} */ (['name', 'goal', 'sections', 'built']);
+
+/** The field any phase may name last: its tracker parent, once adopted. */
+const TRACKER = /** @type {Field} */ ('tracker');
+
+/** The fields a phase holds, by whether it names itself built. @param {Record<string, unknown>} phase */
+const fieldsOf = (phase) => (Object.hasOwn(phase, 'built') ? BUILT_FIELDS : PHASE_FIELDS);
 
 /** @param {string[]} faults @returns {never} */
 function refuse(faults) {
   throw new Error(`cut: ${faults.join('; ')}`);
 }
 
-/** Whether a value fits a field: a whole list of fitting items, given once each, where it is a list. @param {keyof Phase} field @param {unknown} value */
+/** Whether a value fits a field: a whole list of fitting items, given once each, where it is a list. @param {Field} field @param {unknown} value */
 function fits(field, value) {
   const kind = FIELDS[field];
   if ('fits' in kind) return kind.fits(value);
   return Array.isArray(value) && value.every(kind.each) && new Set(value).size === value.length;
 }
 
+/** The fields a phase gives, in the manifest's order, its tracker parent last where it names one. @param {Record<string, unknown>} phase */
+const givenFields = (phase) => [...fieldsOf(phase), ...(Object.hasOwn(phase, TRACKER) ? [TRACKER] : [])];
+
 /** The faults in one phase's shape. @param {unknown} phase @param {number} number */
 function shapeFaults(phase, number) {
-  if (!isObject(phase) || Object.keys(phase).length !== PHASE_FIELDS.length || !PHASE_FIELDS.every((field) => Object.hasOwn(phase, field))) {
-    return [`phase ${number} is not {${PHASE_FIELDS.join(', ')}}`];
+  const fields = isObject(phase) ? fieldsOf(phase) : PHASE_FIELDS;
+  if (!isObject(phase) || Object.keys(phase).length !== givenFields(phase).length || !fields.every((field) => Object.hasOwn(phase, field))) {
+    return [`phase ${number} is not {${fields.join(', ')}}`];
   }
-  return PHASE_FIELDS.filter((field) => !fits(field, phase[field])).map((field) => `phase ${number}'s ${field} is not ${FIELDS[field].holds}`);
+  return givenFields(phase).filter((field) => !fits(field, phase[field])).map((field) => `phase ${number}'s ${field} is not ${FIELDS[field].holds}`);
 }
+
+/** A phase as the cut's checks read it: a built one placing no scenario and relying on nothing. @param {Phase} phase @returns {Placing} */
+const placing = (phase) => ('built' in phase ? { scenarios: [], relies_on: [], ...phase } : phase);
+
+/**
+ * A cut's phases, each its fields in the manifest's order. Refuses, naming
+ * every fault, a phase of another shape.
+ * @param {unknown[]} phases @returns {Phase[]}
+ */
+function phasesOf(phases) {
+  const faults = phases.flatMap((phase, at) => shapeFaults(phase, at + 1));
+  if (faults.length > 0) refuse(faults);
+  return phases.map((phase) => /** @type {Phase} */ (Object.fromEntries(givenFields(/** @type {Record<string, unknown>} */ (phase)).map((field) => [field, /** @type {Record<string, unknown>} */ (phase)[field]]))));
+}
+
+/** What a cut's file holds, as a refusal says it. */
+const CUT_SHAPE = `{"phases": [{${PHASE_FIELDS.join(', ')}}, …]}`;
 
 /**
  * The phases a cut's file holds, each its fields in the manifest's order.
@@ -101,11 +152,9 @@ function phasesIn(file) {
     refuse([`${file} holds no cut: ${err instanceof Error ? err.message : String(err)}`]);
   }
   if (!isObject(cut) || Object.keys(cut).join() !== 'phases' || !Array.isArray(cut.phases) || cut.phases.length === 0) {
-    refuse([`${file} holds no cut — a cut is {"phases": [{${PHASE_FIELDS.join(', ')}}, …]}`]);
+    refuse([`${file} holds no cut — a cut is ${CUT_SHAPE}`]);
   }
-  const faults = cut.phases.flatMap((phase, at) => shapeFaults(phase, at + 1));
-  if (faults.length > 0) refuse(faults);
-  return cut.phases.map((phase) => /** @type {Phase} */ (Object.fromEntries(PHASE_FIELDS.map((field) => [field, phase[field]]))));
+  return phasesOf(cut.phases);
 }
 
 /** A list in words: `1`, `1 and 2`, `1, 2 and 3`. @param {Array<string|number>} items */
@@ -114,16 +163,31 @@ const inWords = (items) => (items.length === 1 ? String(items[0]) : `${items.sli
 /** @typedef {{scenarios: string[], sections: Map<string, unknown>}} Spec */
 
 /**
+ * A spec's scenarios and sections, read as joined where the migration
+ * joined it, a refusal of it the cut's.
+ * @param {string} text @param {boolean} joined @returns {Spec}
+ */
+function specIn(text, joined) {
+  try {
+    return { scenarios: specScenarios(text, joined), sections: specSections(text) };
+  } catch (err) {
+    return refuse([messageOf(err)]);
+  }
+}
+
+/**
  * The unit's spec's scenarios and sections, a refusal of it the cut's.
  * @param {string} cwd @param {string} unit @returns {Spec}
  */
 function specOf(cwd, unit) {
+  /** @type {string} */
+  let text;
   try {
-    const text = readSpec(cwd, unit);
-    return { scenarios: specScenarios(text), sections: specSections(text) };
+    text = readSpec(cwd, unit);
   } catch (err) {
     return refuse([messageOf(err)]);
   }
+  return specIn(text, specJoined(manifestOf(stateRoot(cwd), unit) ?? {}));
 }
 
 /**
@@ -178,7 +242,7 @@ function lastStarted(manifest) {
  */
 function startedFaults(manifest, phases) {
   const started = lastStarted(manifest);
-  const kept = cutPhases(manifest);
+  const kept = /** @type {Phase[]} */ (manifest.cut?.phases ?? []);
   const changed = kept.slice(0, started).findIndex((phase, at) => JSON.stringify(phase) !== JSON.stringify(phases[at]));
   if (changed === -1) return [];
   const how = phases[changed] === undefined ? 'drops' : 'changes';
@@ -196,6 +260,24 @@ function stagedCutPath(cwd, unit) {
  * @param {string} cwd @param {string} unit @param {Placing[]} phases @param {Spec} spec
  */
 const againstSpec = (cwd, unit, phases, spec) => [...specFaults(phases, spec), ...reliesFaults(phases, stateRoot(cwd), unit)];
+
+/**
+ * The faults of a cut marking a phase after the last started built, or
+ * naming a tracker parent the cut on the manifest does not hold for that
+ * phase, or none where it holds one: only the migration's cut does either.
+ * @param {Record<string, any>} manifest @param {Phase[]} phases @returns {string[]}
+ */
+function markedFaults(manifest, phases) {
+  const started = lastStarted(manifest);
+  const kept = /** @type {Phase[]} */ (manifest.cut?.phases ?? []);
+  return phases.flatMap((phase, at) => {
+    const [given, adopted] = [phase.tracker, kept[at]?.tracker];
+    return [
+      ...(at >= started && 'built' in phase ? [`phase ${at + 1} is marked built — only the migration's cut marks a phase built`] : []),
+      ...(given === adopted ? [] : [`phase ${at + 1} names ${given === undefined ? 'no tracker parent' : `the tracker parent ${given}`}, and ${adopted === undefined ? 'none was adopted' : `${adopted} was adopted`} for it — only the migration's cut names one`]),
+    ];
+  });
+}
 
 /**
  * Whether `phases` — the cut on the unit's manifest — still holds against
@@ -221,7 +303,7 @@ function checkedCut(cwd, unit, file) {
   const spec = specOf(cwd, unit);
   const cut = phasesIn(file);
   const manifest = loadWorkUnitManifest(cwd, unit);
-  const faults = [...againstSpec(cwd, unit, cut, spec), ...startedFaults(manifest, cut)];
+  const faults = [...againstSpec(cwd, unit, cut.map(placing), spec), ...startedFaults(manifest, cut), ...markedFaults(manifest, cut)];
   if (faults.length > 0) refuse(faults);
   return { cut, manifest };
 }
@@ -269,4 +351,4 @@ function writeCut(cwd, unit, file) {
   return result;
 }
 
-module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal, cutHolds };
+module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal, cutHolds, phasesOf, placing, specIn, againstSpec, refuse };

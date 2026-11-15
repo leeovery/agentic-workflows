@@ -9,7 +9,11 @@
 // reopen or remove one, cancel, mark done or reopen a unit or a phase,
 // delete the store's file,
 // take away its folder's write, write a line into it that is not JSON or
-// link a task after one it does not hold; what Tick itself answers as a
+// link a task after one it does not hold; a plan the workflows wrote into
+// Tick before Leeway, a task of it started, done or cancelled there, as
+// the old plan's process left it, or given as many refs as Tick keeps on
+// one, and the store's records as they stand
+// apart from the engine's names for a unit; what Tick itself answers as a
 // phase's list and the tasks ready in it, for the driver's reads to be held
 // to; a title Tick refuses, for a verb refused after it wrote; and a folder
 // named in part like Tick's ids. Tick reads no config of its own; the
@@ -164,6 +168,67 @@ function linkAfterGone(root, title) {
   fs.writeFileSync(path.join(root, '.tick', 'tasks.jsonl'), `${held.map((task) => JSON.stringify(task)).join('\n')}\n`);
 }
 
+/**
+ * A plan as the workflows wrote it into Tick before Leeway: its root, each
+ * phase a child of it titled with its number, each task a child of its
+ * phase, every one carrying the old plan's id in its refs — `{topic}`,
+ * `{topic}-{N}`, `{topic}-{N}-{n}` — and each task the old type and its
+ * tags, the old plan's own where none are given, and the text the old plan
+ * wrote it, where given. Answers Tick's ids of the root and of each phase.
+ * @param {string} root @param {string} topic @param {{title: string, tasks: (string|{title: string, text?: string, tags?: string[]})[]}[]} phases
+ * @returns {{root: string, phases: string[]}}
+ */
+function oldPlan(root, topic, phases) {
+  const planRoot = tick(root, ['create', '--refs', topic, '--', topic]).id;
+  return {
+    root: planRoot,
+    phases: phases.map(({ title, tasks }, at) => {
+      const phase = tick(root, ['create', '--parent', planRoot, '--refs', `${topic}-${at + 1}`, '--', `Phase ${at + 1}: ${title}`]).id;
+      for (const [n, given] of tasks.entries()) {
+        const { title: named, text, tags = ['api', 'planned'] } = typeof given === 'string' ? { title: given } : given;
+        const flags = [...(tags.length === 0 ? [] : ['--tags', tags.join(',')]), ...(text === undefined ? [] : ['--description', text])];
+        tick(root, ['create', '--parent', phase, '--type', 'task', ...flags, '--refs', `${topic}-${at + 1}-${n + 1}`, '--', named]);
+      }
+      return phase;
+    }),
+  };
+}
+
+/** The task titled `title` started, marked done or cancelled in Tick, as the old plan's process left it. @param {string} root @param {'start'|'done'|'cancel'} act @param {string} title */
+function taskByHand(root, act, title) {
+  tick(root, [act, idOf(root, title)]);
+}
+
+/** The tags the task titled `title` holds, as the store keeps them: the driver keeps a task's type among them. @param {string} root @param {string} title @returns {string[]} */
+function tagsOf(root, title) {
+  return /** @type {{title: string, tags?: string[]}[]} */ (records(root)).find((held) => held.title === title)?.tags ?? [];
+}
+
+/** The task titled `title` given refs of a person's own up to the ten Tick keeps on one. @param {string} root @param {string} title */
+function fillRefs(root, title) {
+  const id = idOf(root, title);
+  const { refs } = tick(root, ['show', id]);
+  tick(root, ['update', id, '--refs', [...refs, ...Array.from({ length: 10 - refs.length }, (_, k) => `mine-${k + 1}`)].join(',')]);
+}
+
+/**
+ * The store's records, by id, each as it stands but for the engine's names
+ * for `unit` among its refs and when it last changed — what adopting the
+ * unit's plan leaves as it was — and, where `types` is false, for the type
+ * the driver keeps as its tags, which the migration's cut gives a task not
+ * ended.
+ * @param {string} root @param {string} unit @param {boolean} [types]
+ */
+function apartFromNames(root, unit, types = true) {
+  const names = new RegExp(`^(unit:${unit}|phase:${unit}-[0-9]+|task:${unit}-[0-9]+-[0-9]+)$`);
+  return records(root)
+    .map(({ updated, ...held }) => {
+      const { tags, ...kept } = /** @type {{tags?: string[]}} */ (held);
+      return { ...(types ? held : kept), refs: (held.refs ?? []).filter((ref) => !names.test(ref)) };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
 /** Tick's statuses as the engine words them. @type {Record<string, string>} */
 const WORDED = { open: 'open', in_progress: 'in-progress', done: 'done', cancelled: 'closed' };
 
@@ -189,6 +254,19 @@ function toolAnswers(root, unit, phase) {
 }
 
 /**
+ * Each task of the old plan for `topic`, by its title, where it stands in
+ * the engine's words, with the reason it was closed with, or null.
+ * @param {string} root @param {string} topic @returns {Record<string, [string, string|null]>}
+ */
+function planStanding(root, topic) {
+  const task = new RegExp(`^${topic}-[0-9]+-[0-9]+$`);
+  return Object.fromEntries(records(root).filter(({ refs = [] }) => refs.some((ref) => task.test(ref))).map(({ title, status, notes = [] }) => {
+    const closed = [...notes].reverse().find(({ text }) => text.startsWith('Closed: '));
+    return [title, [WORDED[status], closed === undefined ? null : closed.text.slice('Closed: '.length)]];
+  }));
+}
+
+/**
  * A folder path whose names read in part like Tick's ids, each kept from
  * reading as one by one side alone: an id's shape after a `/`, then one
  * after a `+` running on into more of a name.
@@ -199,5 +277,6 @@ const LOOKALIKE_FOLDER = path.join('tick-cafe', 'x+tick-cafe-old');
 const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
-  projectStore, addRef, makeTask, typeCleared, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
+  projectStore, addRef, makeTask, typeCleared, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone,
+  oldPlan, taskByHand, fillRefs, tagsOf, apartFromNames, planStanding, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };

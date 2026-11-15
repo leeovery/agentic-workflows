@@ -172,6 +172,12 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
     ])
   })
 
+  test('a task landed before the migration cut its unit says why no account was written', () => {
+    expect(sectionOf(onPage(task({ account: null, before: true, reviews: [] })), 'WHAT WAS DONE')).toEqual([
+      'WHAT WAS DONE ───────────────────────────────────────────────', 'No account was written: it landed before the migration cut the', 'unit.',
+    ])
+  })
+
   test('D14, D41: DIFFERS FROM THE TASK always shows, saying nothing differs where nothing does; one criterion, one file and one round each read in the one', () => {
     const account = { ...(TASK.account as object), differences: [], figures: { files: 1, added: 4, removed: 0, criteria: 1 } }
     const rows = onPage(task({ criteria: 1, account }))
@@ -180,6 +186,16 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
       '1 acceptance criterion                         ▸ read the task',
       '✓ Proves 1 criterion · 1 file changed · +4 −0',
       ['DIFFERS FROM THE TASK ─────────────────────────────────── none', 'Nothing differs from the task as written.'],
+    ])
+  })
+
+  test('a task from before Leeway, its criteria in its text and counted by none, says so rather than a count, in WHAT IT DOES and the account\'s figures', () => {
+    const account = { ...(TASK.account as object), figures: { files: 2, added: 9, removed: 1, criteria: null } }
+    const rows = onPage(task({ criteria: null, account }))
+
+    expect([rows.find(row => row.startsWith('Its criteria')), rows.find(row => row.startsWith('✓ Proves'))]).toEqual([
+      'Its criteria are in its text                   ▸ read the task',
+      '✓ Proves the criteria in its text · 2 files changed · +9 −1',
     ])
   })
 
