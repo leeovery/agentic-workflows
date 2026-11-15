@@ -78,7 +78,7 @@ const STAND_INS = Object.freeze(fs.readdirSync(path.join(__dirname, '..', 'drive
   .filter((bin) => fs.existsSync(bin)));
 process.env.PATH = [...STAND_INS, process.env.PATH].join(path.delimiter);
 
-const ENGINE =path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
+const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
 
 /**
  * @typedef {object} CallOptions
