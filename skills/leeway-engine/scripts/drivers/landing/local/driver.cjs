@@ -17,7 +17,9 @@
 // (landing.cjs) — and the commit its opening made on its phase's branch
 // (`refs/leeway/phase-commit/`), so a later opening finds that commit's
 // tree changed by hand; both dropped only when its phase's stack begins
-// again without it, or at finish.
+// again without it, or at finish. The default branch, below, is the
+// branch a context lands on (landing.cjs): a unit's own branch, for a unit
+// with one, which lands on the default branch itself at finish.
 //
 // - Merged, by one rule: every task a phase's branch landed — those its
 //   stack holds past the default branch, or, the default branch holding its
@@ -102,6 +104,13 @@
 //   stack not merged, or a phase merged with a task waiting — that stacks on
 //   no phase not merged; the seam makes each merge in turn (landing.cjs),
 //   and then every opened ref the unit has is dropped.
+// - A unit's own branch (landing.cjs): landed on the default branch at
+//   finish by one merge commit of the two, the default branch its first
+//   parent, under the landing's subject and description, and the default
+//   branch moved to it — refused, nothing moved, where the default branch
+//   is out with changes in the way; the two never conflict, the landing
+//   bringing the default branch into the unit's branch first where they
+//   would. It opens no pull request, so a cancel closes none.
 // - A quick-fix (landing.cjs): in each repository it touches, its one pull
 //   request is a ref of the unit's (`refs/leeway/quick-fix/{unit}/open`) at
 //   the commit its branch was opened at — the host's copy of the branch,
@@ -965,6 +974,30 @@ function mergeQuickFix(ctx, landing) {
 }
 
 /**
+ * The unit's own branch landed on the default branch (the header's): one
+ * merge commit of the two, the default branch its first parent, under the
+ * landing's subject and description, the default branch moved to it —
+ * refused, nothing moved, where the default branch cannot move. The two
+ * never conflict here: the landing brings the default branch into the
+ * unit's branch first where they would (landing.cjs, `unitLanded`). Given
+ * no landing, nothing moves.
+ * @param {LandingContext} ctx @param {import('../../../domain/landing.cjs').UnitLanding|null} landing
+ */
+function landUnit(ctx, landing) {
+  const { root, into } = ctx;
+  if (landing === null) return { into, already: /** @type {const} */ (true) };
+  const intoTip = /** @type {string} */ (lg.branches(root).get(into));
+  const merged = /** @type {{tree: string}} */ (lg.mergeTree(root, lg.mergeBase(root, intoTip, landing.tip), intoTip, landing.tip));
+  const message = `${landing.subject}\n\n${landing.body}\n`;
+  const commit = lg.commitTree(root, { tree: merged.tree, parent: [intoTip, landing.tip], message, signed: lg.signs(root) }, `${landing.branch}'s merge onto ${into}`, 'land again');
+  movedDefault(ctx, intoTip, commit);
+  return { into, landed: landing.branch, commit };
+}
+
+/** The unit's own pull request closed: the local driver opens none. @returns {{closed: boolean}} */
+const closeUnit = () => ({ closed: false });
+
+/**
  * Every ref the driver keeps of the unit here dropped, once finish has
  * merged it all (the header's): its tasks' openings and the commits they
  * made, and a quick-fix's opening and the heads it merged — read in one
@@ -1012,5 +1045,7 @@ module.exports = {
   mergeQuickFix,
   closeQuickFix,
   repoint,
+  landUnit,
+  closeUnit,
   finished,
 };

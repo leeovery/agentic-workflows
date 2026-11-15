@@ -27,6 +27,9 @@
 // by hand is a stack still, and so is one merged whole, taking a task
 // opened since (R30); one closed by hand whose task never landed stops
 // every verb that reaches its phase, saying what happened and the way on.
+// The default branch, below, is the branch a context lands on
+// (landing.cjs): a unit's own branch, for a unit with one, which lands on
+// the default branch itself at finish.
 //
 // - The chain's tip: the open pull request at the top of the task's phase's
 //   stack; for its first task, or one opened since its phase landed, the
@@ -74,8 +77,8 @@
 //   the pull request's title and description — each commit then the task's
 //   subject with GitHub's " (#N)", and its id in the body (7.2.18); setup
 //   offers to set it on every repository the project lands in on GitHub,
-//   and `github-squash yes` sets it wherever it is not, so a refusal names
-//   that verb (github-setup.cjs). A lone pull request is merged alone
+//   merge commits allowed beside it, and `github-squash yes` sets both
+//   wherever they are not, so a refusal names that verb (github-setup.cjs). A lone pull request is merged alone
 //   under that same subject and body, its base made the default branch
 //   first where it stood on another phase's task. A stack built on a phase
 //   GitHub squashed is first brought up to date with the default branch,
@@ -143,6 +146,17 @@
 //   requests and fetches the default branch once in a repository, fetching
 //   it again only after a merge of its own, the pull requests it merged
 //   then read as merged.
+// - A unit's own branch (landing.cjs): its pull request is the one open
+//   whose head is the unit's branch, onto the default branch, of those
+//   opened from the repository itself (`unitPull`), opened as the unit's
+//   review phase begins where none is (`openUnit`). At finish it is merged
+//   by a merge commit, opened first where none is open, titled and
+//   described as the landing gives, under the landing's subject with
+//   GitHub's " (#N)", once GitHub has worked out that it can, at the
+//   branch's tip on GitHub, as a lone pull request merges, the default
+//   branch here then brought to it. A repository that does not allow merge
+//   commits refuses it, naming `github-squash yes`, which allows them beside
+//   the squash default. A cancel closes the one open (`closeUnit`).
 // - A quick-fix (landing.cjs): in each repository it touches, its one pull
 //   request is the latest whose head is its branch, onto the default branch,
 //   of those opened from the repository itself, never a fork, since the
@@ -1536,6 +1550,104 @@ function mergeQuickFix(ctx, landing, opened) {
   return { into: ctx.into, merged: landing.tasks, pull_requests: [number], ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
+/** A unit's own pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').UnitPull} UnitPull */
+/** A unit's own branch to land, as the seam gives it (landing.cjs). @typedef {import('../../../domain/landing.cjs').UnitLanding} UnitLanding */
+/** The unit's own pull request as this driver reads it (`unitPull`): the seam's read, carrying the open one whole, which the seam hands back with the landing. @typedef {UnitPull & {opened: BranchPull|null}} UnitRead */
+
+/** Whether a repository, as GitHub's API reads it, takes a merge commit. @param {string} read */
+function takesMerges(read) {
+  /** @type {{allow_merge_commit?: boolean}} */
+  const repository = JSON.parse(read);
+  return repository.allow_merge_commit !== false;
+}
+
+/**
+ * The unit's own pull request (see the header): the one open from its
+ * branch onto the default branch, of those opened from the repository
+ * itself, and, where the repository takes no merge commit, the refusal of
+ * its landing, naming the verb that allows them.
+ * @param {LandingContext} ctx @param {string} branch
+ * @returns {UnitRead}
+ */
+function unitPull(ctx, branch) {
+  const host = hostOf(ctx);
+  const opened = listedPulls(ctx, host, branch, null).find((pull) => pull.state === 'OPEN') ?? null;
+  const takes = takesMerges(ghAt(ctx, host, ['api', `repos/${host.repo}`], `read whether ${host.repo} takes merge commits`));
+  const refused = takes ? null : `${host.repo} does not allow merge commits, and ${branch} lands on ${ctx.into} by one, so it did not land — allow them beside the squash default on every repository the project lands in on GitHub, as \`engine github-squash yes\` does, and land again`;
+  return { open: opened?.number ?? null, refused, opened };
+}
+
+/**
+ * The unit's own pull request, from its branch onto the default branch, as
+ * the landing gives it: the one open, given its title and description where
+ * it bears others, else one opened so — its number.
+ * @param {LandingContext} ctx @param {Host} host @param {UnitLanding} landing @param {BranchPull|null} open
+ * @returns {number}
+ */
+function unitOpened(ctx, host, { branch, title, body }, open) {
+  if (open === null) {
+    const what = `open ${ctx.unit}'s pull request from ${branch}`;
+    return Number(/\/pull\/(\d+)\s*$/.exec(ghAt(ctx, host, ['pr', 'create', '--base', ctx.into, '--head', branch, '--title', title, '--body', body], what))?.[1]);
+  }
+  if (open.title !== title || open.body !== body) ghAt(ctx, host, ['pr', 'edit', String(open.number), '--title', title, '--body', body], `give ${ctx.unit}'s pull request its landing's title and body`);
+  return open.number;
+}
+
+/**
+ * The unit's own pull request opened as its review phase begins (see the
+ * header), where none is open from its branch: its number, and whether
+ * this call opened it.
+ * @param {LandingContext} ctx @param {UnitLanding} landing
+ */
+function openUnit(ctx, landing) {
+  const host = hostOf(ctx);
+  const open = listedPulls(ctx, host, landing.branch, null).find((pull) => pull.state === 'OPEN') ?? null;
+  return { into: ctx.into, pull_request: unitOpened(ctx, host, landing, open), ...(open === null ? { opened: /** @type {const} */ (true) } : {}) };
+}
+
+/**
+ * The unit's own branch landed on the default branch (see the header):
+ * through the pull request open from it, else one opened, titled and
+ * described as the landing gives (`unitOpened`), merged by a merge commit
+ * under its subject with GitHub's " (#N)" and its description, once GitHub
+ * has worked out that it can at the branch's tip as the landing read it;
+ * the default branch here then brought to it. Refused, before anything
+ * opens, where the default branch here is checked out with changes in the
+ * way; a repository taking no merge commit is refused before any landing
+ * is made (landing.cjs, `unitSteps`). Given no landing, the default branch
+ * here is brought up alone.
+ * @param {LandingContext} ctx @param {UnitLanding|null} landing
+ */
+function landUnit(ctx, landing) {
+  const host = hostOf(ctx);
+  if (landing === null) {
+    const warnings = bringDefaultUp(ctx, host, false);
+    return { into: ctx.into, already: /** @type {const} */ (true), ...(warnings.length > 0 ? { warnings } : {}) };
+  }
+  const read = /** @type {UnitRead} */ (landing.pull);
+  refuseDirtyDefault(ctx, landing.tip, defaultFetched(ctx, host));
+  const { branch, title, body } = landing;
+  const number = unitOpened(ctx, host, landing, read.opened);
+  const pull = { number, state: /** @type {const} */ ('OPEN'), head: branch, base: ctx.into, oid: landing.tip, title, body };
+  const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, then: `push ${branch}, ` };
+  awaitMergeable(ctx, host, merging, [pull], new Map([[number, landing.tip]]));
+  ghAt(ctx, host, ['pr', 'merge', String(number), '--merge', '--subject', `${landing.subject} (#${number})`, '--body', body], `merge ${ctx.unit}'s pull request`);
+  const warnings = bringDefaultUp(ctx, host, true);
+  return { into: ctx.into, landed: branch, pull_requests: [number], ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/**
+ * The unit's own pull request closed unmerged, where the read given found
+ * one open: whether this call closed it.
+ * @param {LandingContext} ctx @param {UnitPull|null} pull
+ * @returns {{closed: boolean}}
+ */
+function closeUnit(ctx, pull) {
+  if (pull === null || pull.open === null) return { closed: false };
+  ghAt(ctx, hostOf(ctx), ['pr', 'close', String(pull.open)], `close ${ctx.unit}'s pull request`);
+  return { closed: true };
+}
+
 /**
  * The default branch's submodules pointed at their landings (see the
  * header): one commit onto the default branch on GitHub, pushed to a
@@ -1600,14 +1712,15 @@ function protectBranch(root, url, branch) {
 
 /**
  * Make the remote's repository squash a pull request into its title and
- * description (7.2.18), left as it is where it does already: the
- * repository, and why it does not, null where it does.
+ * description (7.2.18), and allow merge commits beside it, which a unit's
+ * own branch lands by (7.2.38), left as it is where it does both already:
+ * the repository, and why it does not, null where it does.
  * @param {string} root @param {string} url
  */
 function setSquashDefault(root, url) {
   const repository = repositoryNamed(url);
-  const squash = ['-f', 'squash_merge_commit_title=PR_TITLE', '-f', 'squash_merge_commit_message=PR_BODY'];
-  const held = { read: [`repos/${repository}`], made: squashesIntoPull };
+  const squash = ['-f', 'squash_merge_commit_title=PR_TITLE', '-f', 'squash_merge_commit_message=PR_BODY', '-F', 'allow_merge_commit=true'];
+  const held = { read: [`repos/${repository}`], made: (/** @type {string} */ read) => squashesIntoPull(read) && takesMerges(read) };
   return { repository, unset: setOnGithub(root, ['--method', 'PATCH', `repos/${repository}`, ...squash], { held }) };
 }
 
@@ -1639,6 +1752,10 @@ module.exports = {
   mergeQuickFix,
   closeQuickFix,
   repoint,
+  unitPull,
+  openUnit,
+  landUnit,
+  closeUnit,
   protectBranch,
   setSquashDefault,
   repositoryOf,

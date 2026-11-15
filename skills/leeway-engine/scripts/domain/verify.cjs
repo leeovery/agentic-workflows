@@ -163,7 +163,7 @@ const { holdsScenario } = require('./task-file.cjs');
 const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
 const { phaseStack, repoNamed } = require('./phase-stack.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { holdingBranch, holdsBeyond, landingBranch } = require('./landing-git.cjs');
+const { holdingBranch, holdsBeyond, landingBranch, landingRev } = require('./landing-git.cjs');
 const { layOutAt, layOutCommits, scratchTop, takeApart } = require('./project-layout.cjs');
 const { isoNow, dayBefore } = require('./dates.cjs');
 const { repoLanded } = require('./task-landed.cjs');
@@ -508,7 +508,7 @@ function unfixedLayout(cwd, unit, task, series, command, repos) {
     return (top) => layOutCommits(own.path, repos, commits, top);
   }
   const branch = taskBranch(task.ref, /** @type {string} */ (task.type), task.title);
-  const holding = holdingBranch(unit, repos, branch).holding.filter((repo) => repo.dir !== '' || holdsBeyond(repo.path, [branch], [landingBranch(cwd, repo)]));
+  const holding = holdingBranch(unit, repos, branch).holding.filter((repo) => repo.dir !== '' || holdsBeyond(repo.path, [branch], [landingBranch(cwd, repo, unit)]));
   if (holding.length === 0) {
     throw new Error(`no repository of the project holds a commit on ${branch}, task 1.1's branch, beyond the branch it lands on — its test is committed there through the door first: engine commit --paths <the test's files> --task ${unit} 1.1 -m "<message>" (15.5.1)`);
   }
@@ -709,7 +709,7 @@ function phaseCommits(cwd, repo, unit, phase, since) {
   const stamped = commitsTouching(repo, ['--reverse', '--topo-order', '--fixed-strings', `--grep=${TRAILER}: ${unit}-${phase}-`]).filter(({ tasks }) => tasks.some(ofPhase));
   const held = new Set(stamped.map(({ sha }) => sha));
   const recorded = recordsIn(manifestOf(stateRoot(cwd), unit), repoName(repo));
-  const owned = repoLanded(repo.path, unit, landingBranch(cwd, repo), { since, recorded }).ownedSince('HEAD')
+  const owned = repoLanded(repo.path, unit, landingRev(cwd, repo, unit), { since, recorded }).ownedSince('HEAD')
     .filter(({ sha, owners }) => !held.has(sha) && owners.some(ofPhase)).map(({ sha }) => sha);
   const own = owned.length === 0 ? [] : commitsTouching(repo, ['--no-walk=unsorted', ...owned]);
   /** @param {{sha: string, paths: string[]}[]} commits */

@@ -44,7 +44,7 @@ describe('GitHub\'s landing driver across nested repositories, each asked in tur
     };
     for (const dir of [at.dir, at.ext]) onGithub(dir, squashing);
     const read = (/** @type {string} */ repo) => ['auth status --hostname github.com', `api repos/acme/${repo}`];
-    const set = (/** @type {string} */ repo) => `api --method PATCH repos/acme/${repo} -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY`;
+    const set = (/** @type {string} */ repo) => `api --method PATCH repos/acme/${repo} -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY -F allow_merge_commit=true`;
     const squashes = () => [at.dir, at.ext, at.lib].map((dir) => github(dir).squash);
     const fromPulls = { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' };
 

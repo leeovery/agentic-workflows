@@ -8,7 +8,8 @@
 // (17.S2), each call the person changed in the build and the review phase
 // asked its verdict before the gate (14.S9, 16.S35) and nothing added where
 // they changed none (16.10.5), questions about what was built invited, then
-// yes and a comment; and the units it refuses, `land finish` refusing each
+// yes — saying it lands the unit's own branch on the default branch, for a
+// unit with one (14.5.2, 14.S19) — and a comment; and the units it refuses, `land finish` refusing each
 // as it does. Every refusal writes and commits nothing. The inbox items the
 // unit closed are test-engine-finish-inbox.cjs's.
 //
@@ -18,7 +19,8 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
-const { sectionOf, keywordOnlyKnowledge, layout, commitAll } = require('./engine-harness.cjs');
+const { sectionOf, keywordOnlyKnowledge, layout, commitAll, git } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const {
   UNIT, calls, reviewCall, useWorld, env, reviewPassed, finishClosed, finishReady, readManifest, writeState, ok, assert,
 } = require('./review-world.cjs');
@@ -62,6 +64,15 @@ describe('render finish (14.5.1)', () => {
       '',
     ].join('\n'));
     assert.deepStrictEqual(ok(dir, ['gate', 'finish', '--pick', 'y'], { env: env('later-session') }).next, { kind: 'engine', argv: ['finish', 'yes', UNIT] });
+  });
+
+  it('14.S19: for a unit with its own branch, the yes says it lands that branch on the default branch', () => {
+    reviewPassed();
+    git(dir, ['branch', `feat/${UNIT}`, 'main']);
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { ...readManifest(dir, UNIT).build, branch: `feat/${UNIT}` } });
+    finishClosed();
+
+    assert.match(sectionOf(screen('later-session'), 'MENU: finish'), new RegExp(`^\\*\\*\`y/yes\`\\*\\*   → Land feat/${UNIT} on main, and complete the work$`, 'm'));
   });
 
   it('16.S35: asks a verdict on each call the person changed in the build and the review phase, one at a time, at finish, before the gate — a change at the spec never asked here — the yes refused until each is given', () => {

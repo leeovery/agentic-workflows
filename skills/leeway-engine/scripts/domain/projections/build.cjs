@@ -292,15 +292,16 @@ function stepGateScreen(unit, view) {
 }
 
 /**
- * The gate before a phase's stack merges, in step (7.2.4): yes merges it.
- * The phase's tasks done before the migration cut the unit, `before`, are
- * on the default branch already, and only the rest land in its stack.
- * @param {string} unit @param {number} phase @param {string} name @param {string[]} before
+ * The gate before a phase's stack merges, in step (7.2.4): yes merges it —
+ * onto the unit's own branch, named, where it has one, else the default
+ * branch. The phase's tasks done before the migration cut the unit,
+ * `before`, are on it already, and only the rest land in its stack.
+ * @param {string} unit @param {number} phase @param {string} name @param {string[]} before @param {string|null} branch the unit's own, null where it has none
  */
-function phaseMergeGateScreen(unit, phase, name, before) {
+function phaseMergeGateScreen(unit, phase, name, before, branch) {
   const lands = before.length === 0 ? 'its tasks land' : 'its tasks built since the migration cut the unit land';
   const already = before.length === 0 ? '' : ` — ${before.join(', ')} ${before.length === 1 ? 'is' : 'are'} on it already`;
-  return section(`MENU: phase merge — ${phase}`, MENU_INSTRUCTION, menu(`Phase ${phase}, "${name}", is ready to merge: ${lands} on the default branch as one stack${already}.`, [
+  return section(`MENU: phase merge — ${phase}`, MENU_INSTRUCTION, menu(`Phase ${phase}, "${name}", is ready to merge: ${lands} on ${branch ?? 'the default branch'} as one stack${already}.`, [
     cmdOption('y', 'yes', 'Merge it and carry on with the build', { next: { kind: 'engine', argv: ['land', 'phase', unit, String(phase)] } }),
     promptOption('Comment', 'Tell me what to change before it merges'),
   ], { question: `Merge phase ${phase}?` }));

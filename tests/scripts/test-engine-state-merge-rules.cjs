@@ -176,6 +176,15 @@ describe('the rules each file merges by', () => {
     assert.deepStrictEqual(mergeManifest(layout.projectManifest, undefined, here, there).conflicts.map((c) => c.field), [['landings', 'pay-1-1', '.', 'by']]);
   });
 
+  it('keeps the remote\'s own branch of a unit where the clones recorded build.branch differently, never a choice, the build\'s other fields merged as any; the project manifest\'s like any field (unit-branch.cjs)', () => {
+    const base = { build: { position: 'auto' } };
+    const here = { build: { position: 'step', branch: 'feat/pay-here' } };
+    const there = { build: { position: 'auto', branch: 'feat/pay' } };
+
+    assert.deepStrictEqual(merged(base, here, there), { value: { build: { position: 'step', branch: 'feat/pay' } }, conflicts: [] });
+    assert.deepStrictEqual(mergeManifest(layout.projectManifest, base, here, there).conflicts.map((c) => c.field), [['build', 'branch']]);
+  });
+
   it('takes the picked side where a pick is given for the choice', () => {
     const pickOf = (choice) => (choice.field.join('.') === 'a' && choice.remote.set && choice.remote.value === 3 ? 'local' : null);
     assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 3 }, pickOf), { value: { a: 2 }, conflicts: [{ field: ['a'], local: { set: true, value: 2 }, remote: { set: true, value: 3 }, pick: 'local' }] });

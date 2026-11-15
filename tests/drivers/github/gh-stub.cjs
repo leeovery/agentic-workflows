@@ -7,7 +7,8 @@
 // copy of the code, which the world's remote reaches through the stand-in
 // ssh beside this file, and `state.json` for what GitHub holds besides:
 // the pull requests, their bases and states, the stacks, GitHub's own
-// default branch, the repository's squash default, its rulesets and the
+// default branch, the repository's squash default, whether it allows merge
+// commits (`merges`, GitHub's own yes where unset), its rulesets and the
 // merge method last used, and how long GitHub takes to work out whether a
 // pull request can merge. Every call is logged to `calls`, one line each.
 // It fails closed: it runs only with GH_CONFIG_DIR pinned to a temp folder,
@@ -15,8 +16,8 @@
 // made.
 //
 // What it answers, as gh and the stack extension do: its versions; `auth
-// status`; `api` reading the repository, changing its squash default, and
-// adding a ruleset; `pr list`, with when each pull request was opened and
+// status`; `api` reading the repository, changing its squash default and
+// whether it allows merge commits, and adding a ruleset; `pr list`, with when each pull request was opened and
 // whether it is a fork's, `view`, `create` — refused where the head holds
 // no commit past the base, or one of the repository's own is open from that
 // head onto that base — `edit` of its base, title and body,
@@ -32,7 +33,9 @@
 // own, unless changed: a lone commit's message, or the title over the
 // commits' — the subject ending " (#N)"; a rebase puts each of the pull
 // request's own commits, merges aside, onto that branch under its own
-// message, made anew by GitHub. Whether a pull request can merge
+// message, made anew by GitHub; a merge commit is made under the subject
+// and body given, else GitHub's own message, and refused where the
+// repository allows no merge commits. Whether a pull request can merge
 // is whether its head merges with its base — but once either's tip moves,
 // by a push, a merge into its base, `edit --base` or a stack's link, it is
 // unknown for as many of `view`'s reads as the state's `lag` (none unless
@@ -81,7 +84,7 @@ const GITHUB_SQUASH = Object.freeze({ squash_merge_commit_title: 'COMMIT_OR_PR_T
  * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number, merged?: string, created?: string, fork?: string, oid?: string}} Pull
  */
 /** @typedef {{number: number, base: string, pulls: number[]}} Stack */
-/** @typedef {{repo: string, default: string, next: number, method: string, squash: Record<string, string>, rulesets: object[], pulls: Pull[], stacks: Stack[], lag?: number, stale?: boolean}} Github */
+/** @typedef {{repo: string, default: string, next: number, method: string, squash: Record<string, string>, merges?: boolean, rulesets: object[], pulls: Pull[], stacks: Stack[], lag?: number, stale?: boolean}} Github */
 
 /** A call's refusal, as gh's: its words on stderr, its exit code. */
 class Refused extends Error {
@@ -204,6 +207,7 @@ function rebased(bare, pull, onto, head) {
  */
 function mergeOf(bare, state, pull, method, onto, { into, subject, body }) {
   if (pull.state !== 'OPEN') throw new Refused(`Pull request #${pull.number} is not open`);
+  if (method === 'merge' && state.merges === false) throw new Refused('GraphQL: Merge commits are not allowed on this repository. (mergePullRequest)');
   const head = tipOf(bare, pull.head);
   if (head === null) throw new Refused(`Pull request #${pull.number} has no branch to merge`);
   if (method === 'rebase') return rebased(bare, pull, onto, head);
@@ -212,8 +216,8 @@ function mergeOf(bare, state, pull, method, onto, { into, subject, body }) {
   const merged = spawnSync('git', ['merge-tree', '--write-tree', ...(below === null ? [] : [`--merge-base=${below}`]), onto, head], { cwd: bare, encoding: 'utf8' });
   if (merged.status !== 0) throw new Refused(`Pull request #${pull.number} is not mergeable: the merge commit cannot be cleanly created.`);
   const tree = merged.stdout.split('\n')[0];
-  const made = squash ? squashed(bare, state, pull, below ?? onto, head) : null;
-  const message = made === null ? `Merge pull request #${pull.number} from ${pull.head}\n\n${pull.title}\n` : `${subject ?? made.subject}\n\n${body ?? made.body}\n`;
+  const made = squash ? squashed(bare, state, pull, below ?? onto, head) : { subject: `Merge pull request #${pull.number} from ${pull.head}`, body: pull.title };
+  const message = `${subject ?? made.subject}\n\n${body ?? made.body}\n`;
   return inBare(bare, ['commit-tree', tree, '-p', onto, ...(squash ? [] : ['-p', head]), '-F', '-'], { env: IDENTITY, input: message });
 }
 
@@ -386,15 +390,16 @@ function stackMerge(at, state, args) {
 /** @param {string} at @param {Github} state @param {string[]} args @returns {string} */
 function api(at, state, args) {
   const { value: method = 'GET', rest } = take(args, '--method');
-  const [route] = rest.filter((arg, i) => !arg.startsWith('-') && !['-f', '--input'].includes(rest[i - 1]));
-  if (route === `repos/${state.repo}` && method === 'GET') return `${JSON.stringify({ full_name: state.repo, ...state.squash })}\n`;
+  const [route] = rest.filter((arg, i) => !arg.startsWith('-') && !['-f', '-F', '--input'].includes(rest[i - 1]));
+  const repository = () => `${JSON.stringify({ full_name: state.repo, ...state.squash, allow_merge_commit: state.merges ?? true })}\n`;
+  if (route === `repos/${state.repo}` && method === 'GET') return repository();
   if (route === `repos/${state.repo}` && method === 'PATCH') {
     for (const [i, arg] of rest.entries()) {
-      if (arg !== '-f') continue;
-      const [field, value] = rest[i + 1].split('=');
-      state.squash[field] = value;
+      const [field, value] = String(rest[i + 1]).split('=');
+      if (arg === '-f') state.squash[field] = value;
+      if (arg === '-F' && field === 'allow_merge_commit') state.merges = value === 'true';
     }
-    return `${JSON.stringify({ full_name: state.repo, ...state.squash })}\n`;
+    return repository();
   }
   if (route === `repos/${state.repo}/rulesets` && method === 'POST') {
     state.rulesets.push(JSON.parse(fs.readFileSync(0, 'utf8')));

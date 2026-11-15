@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The names a landing takes (leeway-engine/scripts/domain/landing-names.cjs,
 // 7.2.18): a task's branch and a phase's, the message a task lands under
-// and a quick-fix's, titled by its tasks' types, the title that may not
-// forge its trailer, and each read back — the unit's own alone. Unit layer:
+// and a quick-fix's, titled by its tasks' types, a unit's own branch and
+// what it lands under (7.2.38), the title that may not forge its trailer,
+// and each read back — the unit's own alone. Unit layer:
 // values in, values out; no git.
 // ---------------------------------------------------------------------------
 
@@ -99,5 +100,17 @@ describe('the landing\'s names (7.2.18)', () => {
       ['feat(typo): The flag', 'fix(typo): The flag', 'refactor(typo): The flag', 'fix(typo): The flag'],
     );
     assert.strictEqual(names.quickFixMessage('typo', 'The flag', [task(1, 'fix'), task(2, 'feat')]), 'feat(typo): The flag\n\nfix(typo): Fix 1\n\nTask: typo-1-1\n\nfeat(typo): Fix 2\n\nTask: typo-1-2\n');
+  });
+
+  it('names a unit\'s own branch feat/{unit}, one of the unit\'s and no other\'s, landing under the subject Merge feat/{unit}, its pull request titled {unit}: {title} and described by its phases a line each (7.2.34, 7.2.38)', () => {
+    assert.deepStrictEqual({
+      branch: names.unitBranch('pay'),
+      own: ['feat/pay', 'feat/pay-v2', 'feat/pa', 'fix/pay'].map((branch) => names.isUnitBranch('pay', branch)),
+      landing: names.unitLanding('pay', '  Card payments ', ['Phase 1: Settling', 'Phase 2: Showing']),
+    }, {
+      branch: 'feat/pay',
+      own: [true, false, false, true],
+      landing: { title: 'pay: Card payments', body: 'Phase 1: Settling\nPhase 2: Showing', subject: 'Merge feat/pay' },
+    });
   });
 });

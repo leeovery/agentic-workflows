@@ -20,9 +20,14 @@
 // - The default branch: the one the project's remote names its HEAD; else
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
-//   never the state branch (4.9.4). A repository of the project is read for
-//   it once for each read of the project's repositories (`landingBranch`):
-//   nothing a call does names another.
+//   never the state branch (4.9.4). A unit's landing branch (7.2.34) is its
+//   own branch where its manifest records one — the project's own
+//   repository always, a nested one where it holds that branch, here or as
+//   last fetched (7.2.40) — else the default branch (`landingBranch`); a
+//   read takes it as last fetched, the branch here, else the remote's as
+//   fetched (`landingRev`). A repository of the project is read for each
+//   once for each read of the project's repositories: nothing a call does
+//   names another, but the unit's branch it makes there (`landingMade`).
 // - A repository holds a task's branch where it names it: the project's own
 //   always, a nested one only where the branch holds a commit no branch
 //   there but the unit's holds (7.2.17) — the rule the landing walks by and
@@ -68,7 +73,10 @@
 //   removed, and no other worktree with it. The branch then moves by
 //   `git branch -f`, or is rebased in a worktree the remedy makes under the
 //   repository's `leeway/` folder and removes after. A rebase stopped there
-//   stops every verb until it is settled or ended. Every path and word a
+//   stops every verb until it is settled or ended; so does the merge of the
+//   default branch into a unit's own branch begun in a worktree there,
+//   detached, where the two conflict (unit-branch.cjs, `mergingTree`),
+//   until what began it takes it onto that branch. Every path and word a
 //   remedy names is quoted for the shell, and what the person wrote that a
 //   refusal names — a subject, a title, a path — never opens a command.
 // - A task's worktree (task-worktree.cjs) is laid out by the same git: its
@@ -82,8 +90,10 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { git: personGit, tryGit: personTryGit, gitRun, operationInProgress, dirtyEntries, GitError } = require('../kernel/git.cjs');
+const { git: personGit, tryGit: personTryGit, gitRun, operationInProgress, mergeInProgress, dirtyEntries, GitError } = require('../kernel/git.cjs');
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { workUnitManifestPath, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { repoFacts } = require('../kernel/isolated-git.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
@@ -1348,6 +1358,76 @@ function scratchTree(made, branch) {
   return path.join(made, branch.replace(/\//g, '-'));
 }
 
+/** What the folder of a merge into a unit's own branch ends in (`mergingTree`). */
+const MERGING = '.merging';
+
+/** The file in such a merge's worktree's own git directory naming the branch and the step that takes it (`mergeBegun`). */
+const MERGING_FOR = 'leeway-merging.json';
+
+/**
+ * The worktree the default branch's merge into a unit's own branch is begun
+ * in where the two conflict (unit-branch.cjs), where a remedy makes its
+ * worktrees.
+ * @param {string} root @param {string} branch the unit's
+ */
+const mergingTree = (root, branch) => scratchTree(scratchRoot(root), `${branch}${MERGING}`);
+
+/** The worktree of `trees` a merge into a unit's own branch is held in, at `at`, where any is: one at any such folder where `at` is not given. @param {Worktree[]} trees @param {string} [at] */
+const mergingIn = (trees, at) => trees.find((tree) => tree.scratch && (at === undefined ? tree.path.endsWith(MERGING) : samePlace(tree.path, at)));
+
+/**
+ * The merge of the default branch into a unit's own branch held in the
+ * worktree made for it (`mergingTree`): where it is, its commit, and, while
+ * the merge is under way, the paths it still conflicts at — null where none
+ * is held, a registration whose folder is gone removed.
+ * @param {string} root @param {string} branch the unit's
+ * @returns {(Worktree & {head: string, unmerged: string[]|null})|null}
+ */
+function mergeHeld(root, branch) {
+  const held = mergingIn(worktrees(root), mergingTree(root, branch));
+  if (held === undefined) return null;
+  if (!fs.existsSync(held.path)) {
+    removeWorktree(root, held.path);
+    return null;
+  }
+  const unmerged = mergeInProgress(held.path) ? git(held.path, ['diff', '--name-only', '-z', '--diff-filter=U']).split('\0').filter(Boolean) : null;
+  return { ...held, head: git(held.path, ['rev-parse', 'HEAD']).trim(), unmerged };
+}
+
+/**
+ * The merge of `theirs` into `ours` begun in the worktree made for it
+ * (`mergingTree`) — added there detached at `ours`, a folder no worktree
+ * holds cleared first, where it holds none at `ours` already — under
+ * `message`, by the replay's settings (`MERGE_PINS`), committing nothing:
+ * its conflicts left in its files for the person to settle, each submodule
+ * of `pointers`, by its path from the repository's top, set at its commit,
+ * which leaves no conflict there theirs. The branch and `then`, the step
+ * that takes it, are kept in the worktree's own git directory for every
+ * land verb's refusal to name (`scratchBlock`), as soon as the worktree
+ * is there, so a merge git stops or a kill cuts short leaves them. Where
+ * it is.
+ * @param {string} root @param {{branch: string, ours: string, theirs: string, message: string, then: string}} merging the unit's branch @param {Map<string, string>} pointers
+ * @returns {string}
+ */
+function mergeBegun(root, { branch, ours, theirs, message, then }, pointers) {
+  const tree = mergingTree(root, branch);
+  if (mergeHeld(root, branch)?.head !== ours) {
+    if (mergingIn(worktrees(root), tree) !== undefined) git(root, ['worktree', 'remove', '--force', tree]);
+    fs.rmSync(tree, { recursive: true, force: true });
+    addWorktree(root, tree, null, ours);
+  }
+  fs.writeFileSync(path.join(gitDirOf(tree), MERGING_FOR), JSON.stringify({ branch, then }));
+  const res = gitRun(tree, [...PINNED, ...CHECKOUT_PINS, 'merge', '--no-ff', '--no-commit', '--no-log', '--no-verify-signatures', '-m', message, theirs]);
+  if (res.error || res.status === null || res.status > 1) throw new GitError(`git merge failed: ${(res.error?.message ?? res.stderr).trim()}`);
+  for (const [at, sha] of pointers) git(tree, ['update-index', '--cacheinfo', `160000,${sha},${at}`]);
+  return tree;
+}
+
+/** The worktree a merge into a unit's own branch was held in (`mergeHeld`) taken apart, once the branch holds what it made. @param {string} root @param {string} tree */
+function mergeDone(root, tree) {
+  git(root, ['worktree', 'remove', '--force', tree]);
+}
+
 /**
  * What a worktree has at a path or in its way: the path itself, or the
  * first leading component that is no directory — a file, or a symbolic
@@ -1752,16 +1832,37 @@ function rebasingIn(scratch) {
   return `git -C ${quoted(scratch)} ${MERGE_PINS.map((setting) => `-c ${setting}`).join(' ')}`;
 }
 
+/** The command that finishes a merge settled in a worktree, under the message it was begun with. @param {string} tree */
+const mergeContinued = (tree) => `\`git -C ${quoted(tree)} -c core.editor=true merge --continue\``;
+
+/**
+ * What a merge into a unit's own branch held in the worktree made for it
+ * (`mergingTree`) says, until the step that began it takes it — the branch
+ * and that step as `mergeBegun` kept them — or null where none is held; a
+ * worktree whose folder is gone holds none.
+ * @param {Worktree[]} trees
+ * @returns {string|null}
+ */
+function mergingBlock(trees) {
+  const merging = mergingIn(trees.filter((tree) => fs.existsSync(tree.path)));
+  if (merging === undefined) return null;
+  const { branch, then } = JSON.parse(fs.readFileSync(path.join(gitDirOf(merging.path), MERGING_FOR), 'utf8'));
+  return `the merge of the default branch into ${branch} is held at ${merging.path}, so nothing moved — `
+    + `settle each conflict there and finish the merge, as ${mergeContinued(merging.path)} does once they are, then ${then}, which takes it onto ${branch}, and land again`;
+}
+
 /**
  * What a rebase stopped in a worktree a remedy made says, and the way on —
- * settled or ended there, and the worktree removed — or null where none is.
- * Every verb asks before anything else.
+ * settled or ended there, and the worktree removed — or, where none is, a
+ * merge into a unit's own branch held (`mergingBlock`); null where neither
+ * is. Every verb asks before anything else.
  * @param {string} root
  * @returns {string|null}
  */
 function scratchBlock(root) {
-  const stopped = worktrees(root).find((tree) => tree.scratch && tree.rebasing.length > 0);
-  if (stopped === undefined) return null;
+  const trees = worktrees(root);
+  const stopped = trees.find((tree) => tree.scratch && tree.rebasing.length > 0);
+  if (stopped === undefined) return mergingBlock(trees);
   return `${stopped.rebasing[0]} is being rebased at ${stopped.path}, a worktree a remedy made, so nothing moved — `
     + `settle each conflict there and go on with \`${rebasingIn(stopped.path)} rebase --continue\`, or end it with \`git -C ${quoted(stopped.path)} rebase --abort\`, `
     + `then remove it with ${removing(stopped)}, and land again`;
@@ -2025,8 +2126,14 @@ function defaultBranch(root, remote, nested = false, local = branches(root)) {
   return named;
 }
 
-/** What each repository of the project lands on, by the read of the project's repositories that gave it (`landingBranch`). @type {WeakMap<Repo, {branch: string}|{refused: unknown}>} */
+/** The default branch each repository of the project lands on, by the read of the project's repositories that gave it (`landingBranch`). @type {WeakMap<Repo, {branch: string}|{refused: unknown}>} */
 const LANDS_ON = new WeakMap();
+
+/** The unit's branch each repository of the project holds, by the unit, null where it holds none, by the read of the project's repositories that gave it (`landingBranch`). @type {WeakMap<Repo, Map<string, string|null>>} */
+const UNIT_LANDS_ON = new WeakMap();
+
+/** A repository's remote, by its place in the project. @param {string} cwd @param {Repo} repo */
+const remoteOf = (cwd, repo) => (repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path));
 
 /**
  * The default branch a repository of the project lands on, by its own
@@ -2034,10 +2141,10 @@ const LANDS_ON = new WeakMap();
  * the project's repositories (the header's).
  * @param {string} cwd @param {Repo} repo @returns {string}
  */
-function landingBranch(cwd, repo) {
+function repoDefault(cwd, repo) {
   if (!LANDS_ON.has(repo)) {
     try {
-      LANDS_ON.set(repo, { branch: defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '') });
+      LANDS_ON.set(repo, { branch: defaultBranch(repo.path, remoteOf(cwd, repo), repo.dir !== '') });
     } catch (refused) {
       LANDS_ON.set(repo, { refused });
     }
@@ -2047,9 +2154,71 @@ function landingBranch(cwd, repo) {
   return read.branch;
 }
 
+/** The branch of its own a unit's manifest records (7.2.35), null where it records none. @param {string} cwd @param {string} unit @returns {string|null} */
+function recordedBranch(cwd, unit) {
+  const root = stateRoot(cwd);
+  if (!fs.existsSync(workUnitManifestPath(root, unit))) return null;
+  const branch = readWorkUnitManifest(root, unit).build?.branch;
+  return typeof branch === 'string' ? branch : null;
+}
+
+/** Whether a repository has a branch here, or as last fetched from its remote. @param {string} cwd @param {Repo} repo @param {string} branch */
+function holdsBranch(cwd, repo, branch) {
+  const remote = remoteOf(cwd, repo);
+  return branches(repo.path).has(branch) || (remote !== null && trackedTip(repo.path, remote, branch) !== null);
+}
+
+/**
+ * The unit's branch a repository of the project holds (the header's): the
+ * project's own, the one its manifest records; a nested one, that branch
+ * where it is there or as last fetched — null where it holds none.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {string|null}
+ */
+function unitBranchIn(cwd, repo, unit) {
+  const held = UNIT_LANDS_ON.get(repo) ?? new Map();
+  UNIT_LANDS_ON.set(repo, held);
+  if (!held.has(unit)) {
+    const branch = recordedBranch(cwd, unit);
+    held.set(unit, branch !== null && (repo.dir === '' || holdsBranch(cwd, repo, branch)) ? branch : null);
+  }
+  return /** @type {string|null} */ (held.get(unit));
+}
+
+/**
+ * The branch a repository of the project lands the unit's work on (the
+ * header's, 7.2.34): the unit's own where it holds it, else its default
+ * branch, refused as `defaultBranch` refuses it.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {string}
+ */
+function landingBranch(cwd, repo, unit) {
+  return unitBranchIn(cwd, repo, unit) ?? repoDefault(cwd, repo);
+}
+
+/**
+ * The revision a read of the unit's landing branch in a repository takes
+ * (the header's): the branch here, else the remote's as last fetched —
+ * refused where neither is, as a default branch with no local branch is.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {string}
+ */
+function landingRev(cwd, repo, unit) {
+  const branch = unitBranchIn(cwd, repo, unit);
+  if (branch === null) return `${HEADS}${repoDefault(cwd, repo)}`;
+  if (branches(repo.path).has(branch)) return `${HEADS}${branch}`;
+  const remote = remoteOf(cwd, repo);
+  if (remote !== null && trackedTip(repo.path, remote, branch) !== null) return `refs/remotes/${remote}/${branch}`;
+  throw new Error(`land: ${branch}, where the repository lands ${unit}'s work, is neither here nor fetched from its remote`);
+}
+
+/** The unit's branch a call made in a repository, which every read after it there takes (`landingBranch`). @param {Repo} repo @param {string} unit @param {string} branch */
+function landingMade(repo, unit, branch) {
+  const held = UNIT_LANDS_ON.get(repo) ?? new Map();
+  held.set(unit, branch);
+  UNIT_LANDS_ON.set(repo, held);
+}
+
 module.exports = {
   short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
-  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, landingBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
-  worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
+  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, mergeContinued, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
+  defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
+  worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree, mergeHeld, mergeBegun, mergeDone,
 };

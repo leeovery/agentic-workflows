@@ -81,6 +81,7 @@ const { unitEntries } = require('./unit-entries.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { parseShownTask, parsePhase, shownTask, taskName, phaseName } = require('./task-id.cjs');
 const { filled, shaped, listed, readPayload, refusing } = require('./staged-payload.cjs');
+const { recordedBranch } = require('./landing-git.cjs');
 const {
   landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen,
 } = require('./projections/build.cjs');
@@ -269,7 +270,7 @@ function phaseMergeGateSurface(cwd, { dotpath: unit = '', item }) {
     stepOnly(manifest, 'a phase\'s stack merges with no gate');
     const refused = mergeRefusal(reading(cwd, unit, manifest), phase);
     if (refused !== null) throw new Error(refused);
-    return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase), doneBeforeIn(manifest, phase));
+    return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase), doneBeforeIn(manifest, phase), recordedBranch(cwd, unit));
   });
 }
 
@@ -283,7 +284,7 @@ function phaseMergeGateSurface(cwd, { dotpath: unit = '', item }) {
 function mergeRefusal(at, phase) {
   const [rows] = phaseLists(at, [phase]);
   if (rows === null) return `${phaseName(at.unit, phase)} is not written — no stack of its waits to merge`;
-  if (phaseLanded(at, phase)) return `${phaseName(at.unit, phase)} is merged already — its tasks are on the default branch`;
+  if (phaseLanded(at, phase)) return `${phaseName(at.unit, phase)} is merged already — its tasks are on ${recordedBranch(at.cwd, at.unit) ?? 'the default branch'}`;
   if (phase <= cutLength(at.manifest)) return reviewRefusalOf(at, phase);
   const unfinished = rows.find(({ status }) => status !== 'done' && status !== 'closed');
   return unfinished === undefined ? null : `${phaseName(at.unit, phase)} merges once its tasks are done — task ${shownTask(unfinished.ref)} is ${STATUS_WORDS[unfinished.status]}`;

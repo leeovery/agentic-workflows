@@ -33,7 +33,7 @@ const { quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { taskId, taskName } = require('./task-id.cjs');
-const { branches, branchesHeldBy, defaultBranch, landingBranch, isAncestor, latestOf, stampedPast } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, isAncestor, latestOf, stampedPast } = require('./landing-git.cjs');
 const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 const { repoLanded } = require('./task-landed.cjs');
@@ -46,8 +46,8 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 /** The door's stamp on a task's commit, read when asked: the door reads the task verbs, which read this module. */
 const stampKey = () => require('./commit-task.cjs').TRAILER;
 
-/** The branch the project's own repository lands on, its child repositories unread. @param {string} cwd */
-const projectLandsOn = (cwd) => defaultBranch(codeRoot(cwd), remoteName(cwd), false);
+/** The project's own repository's default branch, its child repositories unread. @param {string} cwd */
+const projectDefault = (cwd) => defaultBranch(codeRoot(cwd), remoteName(cwd), false);
 
 /** A base as git names it: a commit as it is, a branch by its ref. @param {string} base */
 const baseRev = (base) => (/^[0-9a-f]{40}$/.test(base) ? base : `refs/heads/${base}`);
@@ -87,7 +87,7 @@ function builtOnBases(cwd, ref, holding, branch) {
   return holding.map((repo) => {
     const local = branches(repo.path);
     const merged = branchesHeldBy(repo.path, `refs/heads/${branch}`);
-    const landsOn = landingBranch(cwd, repo);
+    const landsOn = landingBranch(cwd, repo, ref.unit);
     const at = laid[repo.dir];
     /** @type {Under[]} */
     const under = [
@@ -95,7 +95,7 @@ function builtOnBases(cwd, ref, holding, branch) {
       ...below.filter((other) => other !== branch && merged.has(other)).map((other) => ({ base: other, commit: /** @type {string} */ (local.get(other)) })),
     ];
     const floor = under.length > 0 || !merged.has(landsOn) ? under : [{ base: landsOn, commit: /** @type {string} */ (local.get(landsOn)) }];
-    const start = repoLanded(repo.path, ref.unit, `refs/heads/${landsOn}`, { since }).ownStart(ref);
+    const start = repoLanded(repo.path, ref.unit, landingRev(cwd, repo, ref.unit), { since }).ownStart(ref);
     const own = start === null ? undefined : latestUnder(repo, [...floor, { base: start, commit: start }]);
     return (own ?? latestUnder(repo, under))?.base ?? landsOn;
   });
@@ -109,7 +109,7 @@ function builtOnBases(cwd, ref, holding, branch) {
  */
 function ownCommits(cwd, ref, repo) {
   const id = taskId(ref);
-  return stampedPast(repo.path, `refs/heads/${quickFixBranch(ref.unit)}`, landingBranch(cwd, repo), stampKey())
+  return stampedPast(repo.path, `refs/heads/${quickFixBranch(ref.unit)}`, landingBranch(cwd, repo, ref.unit), stampKey())
     .filter(({ value }) => value === id).map(({ sha, message }) => ({ sha, subject: message.split('\n')[0] }));
 }
 
@@ -120,4 +120,4 @@ function ownCommits(cwd, ref, repo) {
  */
 const ownWork = (cwd, ref, holding) => holding.map((repo) => ({ repo, commits: ownCommits(cwd, ref, repo) })).filter(({ commits }) => commits.length > 0);
 
-module.exports = { projectLandsOn, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork };
+module.exports = { projectDefault, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork };

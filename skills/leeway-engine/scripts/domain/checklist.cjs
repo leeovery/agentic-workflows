@@ -54,7 +54,14 @@
 // start (`engineItemsHold`). An open engine item may name
 // its way on: the phase review's, what stands in the way of it, its
 // settlement among them (phase-settlement.cjs). Phase 1's close is refused
-// beyond its items until the verify setup is recorded (12.3.3). A phase's
+// beyond its items until the verify setup is recorded (12.3.3). The first
+// phase start's close of a build decides whether the unit has a branch of
+// its own and makes it, once nothing refuses the close and before it
+// records itself, recording it as `build.branch` beside its close and
+// answering it as `branch`; each later one brings the default branch into
+// that branch, readied first where this clone lacks it (unit-branch.cjs,
+// 6.4.13, 7.2.36) — a refusal of either writing nothing, a conflict's
+// leaving the merge begun in a worktree it names. A phase's
 // close commits, beside the manifest, every record its folder holds — the
 // reports its items read, its consolidation report, its settlement
 // (round-report.cjs, `phaseRecords`) — so a second clone reads
@@ -118,6 +125,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { messageOf } = require('../kernel/call.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { REVIEWERS } = require('../kernel/reviewers.cjs');
+const unitBranch = require('./unit-branch.cjs');
 
 /** @typedef {import('./phase-checks.cjs').Reading} PhaseReading */
 /** @typedef {{state: 'done'|'skipped', reason?: string, at: string}} Mark */
@@ -150,7 +158,10 @@ const { REVIEWERS } = require('../kernel/reviewers.cjs');
  * A point: what names its checklist after the point, and where that places
  * it; its items; the skips its gate shows, given its own; what its close
  * keeps beside the time, where it keeps more; why its close is refused
- * beyond its items, where it can be; what its close commits beside the
+ * beyond its items, where it can be; what its close does outside the state
+ * before it records itself, once nothing refuses it, where it does more,
+ * answering what the close then records on the manifest beside its record
+ * and answers (`prepares`, `records`); what its close commits beside the
  * manifest, where it commits more; and what its close does beyond
  * recording itself, where it does more.
  * @typedef {{
@@ -160,6 +171,8 @@ const { REVIEWERS } = require('../kernel/reviewers.cjs');
  *   shows: (named: Named, own: Skip[]) => Skip[],
  *   seals?: (named: Named) => Record<string, unknown>,
  *   refuses?: (named: Named) => string|null,
+ *   prepares?: (named: Named) => Record<string, unknown>,
+ *   records?: (manifest: Record<string, any>, prepared: Record<string, unknown>) => void,
  *   commits?: (named: Named) => string[],
  *   closes?: (named: Named) => void,
  * }} Point
@@ -396,6 +409,13 @@ const POINTS = Object.freeze({
       { key: 'relies-on-done', text: 'what the phase relies on is done: closed, and its stack merged', check: ofPhase(checks.reliedOnDone) },
     ],
     shows: noSkips,
+    prepares: ({ cwd, unit, manifest, phase }) => {
+      const branch = unitBranch.atPhaseStart(cwd, /** @type {string} */ (unit), manifest, /** @type {number} */ (phase));
+      return branch === null ? {} : { branch };
+    },
+    records: (manifest, { branch }) => {
+      if (typeof branch === 'string') manifest.build = { ...manifest.build, branch };
+    },
   },
   'phase-close': {
     takes: ['<work-unit>', '<N>'],
@@ -626,24 +646,39 @@ function mark(checklist, key, state, reason) {
 }
 
 /**
+ * Refuse a checklist's close while any item is open (6.4.4), then as its
+ * point refuses it beyond them.
+ * @param {Named} checklist
+ */
+function refuseClose(checklist) {
+  const open = itemStates(checklist).filter((item) => item.state === 'open').map((item) => item.key);
+  if (open.length > 0) throw new Error(`${nameOf(checklist)} has items open: ${open.join(', ')}`);
+  const refused = POINTS[checklist.point].refuses?.(checklist) ?? null;
+  if (refused !== null) throw new Error(refused);
+}
+
+/**
  * Record the checklist's close, refused where what its point keeps cannot be
- * read, then while any item is open (6.4.4), then as its point refuses it
- * beyond them, committing what its point's close commits beside the
- * manifest; then do what its point's close does beyond.
+ * read, then as `refuseClose` refuses it — first, where its point prepares
+ * what it records, before that is done, so nothing is done outside the state
+ * for a close refused — recording what was prepared beside it and
+ * committing what its point's close commits beside the manifest; then do
+ * what its point's close does beyond.
  * @param {Named} checklist
  */
 function close(checklist) {
   const at = new Date().toISOString();
+  const point = POINTS[checklist.point];
+  if (point.prepares !== undefined) refuseClose(checklist);
+  const prepared = point.prepares?.(checklist) ?? {};
   const answer = changeRecord(checklist, 'closed', (record, fresh) => {
-    const sealed = POINTS[checklist.point].seals?.(fresh);
-    const open = itemStates(fresh).filter((item) => item.state === 'open').map((item) => item.key);
-    if (open.length > 0) throw new Error(`${nameOf(checklist)} has items open: ${open.join(', ')}`);
-    const refused = POINTS[checklist.point].refuses?.(fresh) ?? null;
-    if (refused !== null) throw new Error(refused);
+    const sealed = point.seals?.(fresh);
+    refuseClose(fresh);
     record.closed = at;
     Object.assign(record, sealed);
-  }, { ...answering(checklist), closed: at }, POINTS[checklist.point].commits?.(checklist));
-  POINTS[checklist.point].closes?.(checklist);
+    point.records?.(fresh.manifest, prepared);
+  }, { ...answering(checklist), closed: at, ...prepared }, point.commits?.(checklist));
+  point.closes?.(checklist);
   return answer;
 }
 

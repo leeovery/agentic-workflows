@@ -76,6 +76,10 @@ module.exports = {
   },
   /** Whether the quick-fix `unit` is open in the repository at `dir`: its opening's ref there. @param {string} dir @param {string} unit */
   quickFixOpen: (dir, unit) => git(dir, ['for-each-ref', '--format=%(refname)', `refs/leeway/quick-fix/${unit}/open`]).trim() !== '',
+  /** The unit's own pull request open in a repository: none, there being no host to open one on. */
+  unitPullOpen: () => null,
+  /** A repository made to allow no merge commits: none, there being no host to say so. */
+  noMergeCommits: null,
   /** A merge in the repository at `dir` refused until `undo`: its checkout in the middle of a merge, as a merge stopped there leaves it. @param {string} dir */
   refuseMerge: (dir) => {
     const marker = path.resolve(dir, git(dir, ['rev-parse', '--git-path', 'MERGE_HEAD']).trim());

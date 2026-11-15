@@ -11,7 +11,8 @@
 //   Code; offered wherever the code host's driver can set it.
 // - The squash default (7.2.18): a squash merge's commit made from the pull
 //   request's title and description, so each task lands under its own
-//   subject and id; offered only where the project also lands through that
+//   subject and id, and merge commits allowed beside it, which a unit's own
+//   branch lands by (7.2.38); offered only where the project also lands through that
 //   driver, since landing refuses a stack merge until it is set — and made
 //   on every repository the project lands in there: its own, and each
 //   nested in it whose own remote the driver serves, each left as it is
@@ -79,7 +80,7 @@ const SQUASH = {
   method: 'setSquashDefault',
   make: (host, root, url) => host.setSquashDefault(root, url),
   nowhere: 'the project does not land through GitHub — there is no repository to set the squash default on',
-  unset: (repository, why) => `the squash default was not set on ${repository}: ${why} — set it by hand in the repository's Settings, under Pull Requests, as the default commit message "Pull request title and description"`,
+  unset: (repository, why) => `the squash default was not set on ${repository}: ${why} — set it by hand in the repository's Settings, under Pull Requests, as the default commit message "Pull request title and description", with "Allow merge commits" ticked`,
 };
 
 /**

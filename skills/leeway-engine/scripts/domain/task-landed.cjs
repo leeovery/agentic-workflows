@@ -189,8 +189,10 @@
 // landing the pointer holds moves nothing (landing-git.cjs,
 // `pointerFrom`), and a commit with no landing of its own keeps its pin.
 //
-// A feature's, an epic's or a bugfix's tasks are read on each repository's
-// default branch here (`unitLanded`), as the build's checks, the review's
+// A feature's, an epic's or a bugfix's tasks are read on the branch each
+// repository lands the unit's work on — the unit's own, where it has one
+// (landing-git.cjs, `landingBranch`) — here, else as last fetched
+// (`unitLanded`), as the build's checks, the review's
 // change and a bugfix's door read them; a quick-fix's on each default branch
 // as the host has it (landing.cjs, `quickFixLanding`). Each read is made once
 // a call, writing nothing. Every task's last commit, its branch's tip and
@@ -1805,7 +1807,7 @@ function landedAcross(reads) {
 
 /**
  * What has landed of a feature's, an epic's or a bugfix's tasks, from
- * `since` (the header's): each repository read on its default branch here,
+ * `since` (the header's): each repository read on its landing branch,
  * as first asked — a repository with no default branch to land on holds
  * none — or on another revision (`on`), each task's last commit there read
  * once for every revision, each recorded landing read from its record
@@ -1821,14 +1823,14 @@ function unitLanded(cwd, unit, repos, since, manifest = loadWorkUnitManifest(cwd
   const byRepo = new Map();
   /** @param {Repo} repo @param {string} tip */
   const on = (repo, tip) => {
-    if (!byRepo.has(repo.path)) byRepo.set(repo.path, landedIn(repo.path, unit, since, undefined, recordsIn(manifest, repoName(repo)), undefined, () => onBranch(cwd, repo, (at) => at)));
+    if (!byRepo.has(repo.path)) byRepo.set(repo.path, landedIn(repo.path, unit, since, undefined, recordsIn(manifest, repoName(repo)), undefined, () => onBranch(cwd, repo, unit, (at) => at)));
     return /** @type {(tip: string) => RepoLanded} */ (byRepo.get(repo.path))(tip);
   };
   /** @type {Map<Repo, RepoLanded|null>} */
   const reads = new Map();
   /** @param {Repo} repo */
   const inRepo = (repo) => {
-    if (!reads.has(repo)) reads.set(repo, onBranch(cwd, repo, (tip) => on(repo, tip)));
+    if (!reads.has(repo)) reads.set(repo, onBranch(cwd, repo, unit, (tip) => on(repo, tip)));
     return /** @type {RepoLanded|null} */ (reads.get(repo));
   };
   /** @type {Map<string, boolean>} */
@@ -1847,7 +1849,7 @@ function unitLanded(cwd, unit, repos, since, manifest = loadWorkUnitManifest(cwd
     inRepo,
     on,
     found: () => repos.flatMap((repo) => {
-      const read = byRepo.has(repo.path) ? onBranch(cwd, repo, (tip) => on(repo, tip)) : null;
+      const read = byRepo.has(repo.path) ? onBranch(cwd, repo, unit, (tip) => on(repo, tip)) : null;
       return read === null ? [] : foundIn(read, repo);
     }),
   };
@@ -1867,18 +1869,19 @@ function foundIn(read, repo, took) {
 /** A unit's read of what has landed (`unitLanded`). @typedef {ReturnType<typeof unitLanded>} UnitLanded */
 
 /**
- * What `read` makes of a repository's default branch here, null where it
- * has none to land on.
- * @template T @param {string} cwd @param {Repo} repo @param {(tip: string) => T} read @returns {T|null}
+ * What `read` makes of the branch a repository lands the unit's work on,
+ * as last fetched (landing-git.cjs, `landingRev`), null where it has none
+ * to land on.
+ * @template T @param {string} cwd @param {Repo} repo @param {string} unit @param {(tip: string) => T} read @returns {T|null}
  */
-function onBranch(cwd, repo, read) {
-  let branch;
+function onBranch(cwd, repo, unit, read) {
+  let rev;
   try {
-    branch = lg.landingBranch(cwd, repo);
+    rev = lg.landingRev(cwd, repo, unit);
   } catch {
     return null;
   }
-  return read(`refs/heads/${branch}`);
+  return read(rev);
 }
 
 module.exports = { repoLanded, landedIn, landedAcross, unitLanded, foundIn, workIn };

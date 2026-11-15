@@ -77,7 +77,7 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
       `area: ${AREA} — the change: ${UNIT}'s record and its change-set from the base`,
       `reads: ${AREA}, the test surface (tests)`,
       'fix phase: phase 2, where round 1\'s fix tasks are written',
-      'base: main — the branch the unit\'s work lands on, the --base of each reader\'s brief',
+      'base: main — the default branch, which the change is read against, the --base of each reader\'s brief',
       `summary: ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`,
       `record: \`node .claude/skills/leeway-engine/scripts/engine.cjs ledger record ${UNIT}\``,
     ]);

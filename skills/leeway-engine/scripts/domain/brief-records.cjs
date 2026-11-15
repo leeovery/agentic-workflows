@@ -397,11 +397,14 @@
 //   change-commits in each repository holding the change, under a heading
 //                  naming it, the unit's own work, never what others
 //                  landed beside it: each landing, `{commit}` and its
-//                  subject, read against its first parent, then the work
-//                  not landed, `{from}..{tip}`, read from where its stack
-//                  leaves the base — each with its `git diff --stat`, the
-//                  base the branch `--base` names where the repository has
-//                  it
+//                  subject, read against its first parent — for a unit
+//                  with a branch of its own there, that branch against the
+//                  base instead, `{from}..{branch}` under "The unit's
+//                  branch against {base}" (14.1.6) — then the work not
+//                  landed, `{from}..{tip}`, read from where its stack
+//                  leaves the base or the unit's branch — each with its
+//                  `git diff --stat`, the base the branch `--base` names
+//                  where the repository has it
 //   change-scratch-layout the reviewer's scratch worktree, laid out as
 //                  scratch-layout lays it out, one holding the change at
 //                  its tip there, a clone holding none at the branch it
@@ -707,15 +710,15 @@ function rangeIn(repo, base, branch) {
 
 /**
  * Each repository's base for the range: the one given where it is a local
- * branch there, else the repository's default branch, as the landing picks
- * it; refused where no repository has the one given, so a misnamed base
- * never passes as the default.
- * @param {string} cwd @param {Repo[]} holding @param {string} given @param {string} what the branch, as a refusal names it
+ * branch there, else the branch the repository lands the unit's work on,
+ * as the landing picks it; refused where no repository has the one given,
+ * so a misnamed base never passes as the default.
+ * @param {string} cwd @param {string} unit @param {Repo[]} holding @param {string} given @param {string} what the branch, as a refusal names it
  */
-function basesOf(cwd, holding, given, what) {
+function basesOf(cwd, unit, holding, given, what) {
   const has = holding.map((repo) => branches(repo.path).has(given));
   if (!has.includes(true)) throw new Error(`the base ${given} is no local branch in any repository holding ${what}`);
-  return holding.map((repo, at) => (has[at] ? given : landingBranch(cwd, repo)));
+  return holding.map((repo, at) => (has[at] ? given : landingBranch(cwd, repo, unit)));
 }
 
 /** Where a repository is laid out: what the brief names, its commit, and why there. @typedef {{named: string, commit: string, why: string}} Laid */
@@ -829,7 +832,7 @@ function drawDiffRange(filling) {
   const { branch, holding, what } = taskHolding(filling);
   const { base } = filling.given;
   if (base === undefined && ofQuickFixTask(filling)) return ownRange(filling, ref, holding, branch);
-  const bases = base === undefined ? builtOnBases(filling.cwd, ref, holding, branch) : basesOf(filling.cwd, holding, base, what);
+  const bases = base === undefined ? builtOnBases(filling.cwd, ref, holding, branch) : basesOf(filling.cwd, ref.unit, holding, base, what);
   return holding.map((repo, at) => rangeIn(repo, bases[at], branch)).join('\n\n');
 }
 
@@ -838,7 +841,7 @@ function drawScratchLayout(filling) {
   const { ref } = taskOf(filling);
   const { repos, branch, holding } = taskHolding(filling);
   return layoutOf(filling.cwd, repos, rangeTips(new Map(holding.map((repo) => [repo, branch]))), (repo) => (
-    branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landingBranch(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
+    branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landingBranch(filling.cwd, repo, ref.unit), 'the branch it lands on, the task\'s branch not made there')
   ), scratchName.task(ref.unit, shownTask(ref), letterOf(filling)));
 }
 
@@ -1848,7 +1851,8 @@ function drawPhaseDiffRange(filling, warnings) {
   const holding = [...tips.keys()];
   const tipped = holding.map((repo) => /** @type {string} */ (tips.get(repo)));
   const { base } = filling.given;
-  const bases = base === undefined ? holding.map((repo) => landingBranch(filling.cwd, repo)) : basesOf(filling.cwd, holding, base, `${what}'s tasks`);
+  const { unit } = phaseOf(filling);
+  const bases = base === undefined ? holding.map((repo) => landingBranch(filling.cwd, repo, unit)) : basesOf(filling.cwd, unit, holding, base, `${what}'s tasks`);
   return holding.map((repo, at) => rangeIn(repo, bases[at], tipped[at])).join('\n\n');
 }
 
@@ -1856,7 +1860,7 @@ function drawPhaseDiffRange(filling, warnings) {
 function drawPhaseScratchLayout(filling, warnings) {
   const { repos, tips } = phaseHolding(filling, warnings);
   const { unit, phase } = phaseOf(filling);
-  return layoutOf(filling.cwd, repos, rangeTips(tips), (repo) => onBranch(repo, landingBranch(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
+  return layoutOf(filling.cwd, repos, rangeTips(tips), (repo) => onBranch(repo, landingBranch(filling.cwd, repo, unit), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
 }
 
 /**
@@ -2187,11 +2191,16 @@ function drawChangeCommits(filling, warnings) {
 /** A repository whose change is empty, the unit's every task there landed before the migration cut it (review-change.cjs). @param {string} base */
 const nothingSince = (base) => `Nothing has landed here since the migration cut the unit, and nothing waits to land: the change is empty, its tip \`${base}\` itself.`;
 
-/** A part of the change in a repository: a landing by its commit and subject, or the work not landed by where it is read from, with its stat. @param {Repo} repo @param {import('./review-change.cjs').ChangePart} part */
-function partDrawn(repo, { from, to, landed, branch }) {
-  const stat = git(repo.path, ['diff', '--no-color', ...STAT, from, to, '--']);
-  const heading = landed === null ? `### Not landed yet: \`${from.slice(0, 12)}..${branch}\`` : `### Landed: \`${landed.commit.slice(0, 12)}\` ${landed.subject}`;
-  return `${heading}\n\n${stat === '' ? 'Nothing changed in it.' : `\`\`\`\n${stat}\`\`\``}`;
+/** A part of the change in a repository's heading: a landing by its commit and subject, the unit's own branch against the base it is read against, or the work not landed, each by where it is read from. @param {import('./review-change.cjs').ChangePart} part */
+function partHeading({ from, landed, branch, against }) {
+  if (landed !== null) return `### Landed: \`${landed.commit.slice(0, 12)}\` ${landed.subject}`;
+  return against === undefined ? `### Not landed yet: \`${from.slice(0, 12)}..${branch}\`` : `### The unit's branch against ${against}: \`${from.slice(0, 12)}..${branch}\``;
+}
+
+/** A part of the change in a repository under its heading (`partHeading`), with its stat. @param {Repo} repo @param {import('./review-change.cjs').ChangePart} part */
+function partDrawn(repo, part) {
+  const stat = git(repo.path, ['diff', '--no-color', ...STAT, part.from, part.to, '--']);
+  return `${partHeading(part)}\n\n${stat === '' ? 'Nothing changed in it.' : `\`\`\`\n${stat}\`\`\``}`;
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -2199,7 +2208,7 @@ function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
   const unit = unitOf(filling);
   const named = filling.given.area === undefined ? scratchName.tests(unit) : scratchName.area(unit, filling.given.area, letterOf(filling));
-  return layoutOf(filling.cwd, repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landingBranch(filling.cwd, repo), 'the branch it lands on'), named);
+  return layoutOf(filling.cwd, repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landingBranch(filling.cwd, repo, unit), 'the branch it lands on'), named);
 }
 
 /**

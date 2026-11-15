@@ -373,6 +373,25 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
   });
 
+  it('refuses set, push, pull, delete and apply on the unit\'s own branch, build.branch, or on build whole, the manifest byte-unchanged: the first phase start\'s close writes it (7.2.35)', () => {
+    const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    const refusal = '"build.branch" is the engine\'s own: the first phase start\'s close of the build writes it as it makes the unit\'s branch, and it never changes';
+    for (const args of [
+      ['set', 'payments', 'build.branch', 'feat/payments'],
+      ['set', 'payments', 'build', '{"position":"auto"}'],
+      ['push', 'payments', 'build.branch', 'x'],
+      ['pull', 'payments', 'build.branch', 'x'],
+      ['delete', 'payments', 'build.branch'],
+      ['delete', 'payments', 'build'],
+      ['apply', 'payments', '--file', payload([{ op: 'set', path: 'payments', fields: { 'build.branch': 'feat/payments' } }])],
+      ['apply', 'payments', '--file', payload([{ op: 'delete', path: 'payments', field: 'build' }])],
+    ]) {
+      assert.strictEqual(runFails(dir, args).error, refusal, args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  });
+
   it('order refuses the push route — a scalar never becomes an array', () => {
     const err = runFails(dir, ['push', 'payments.specification.anchor', 'order', '3']);
     assert.match(err.error, /order is a scalar — use `manifest set`/);

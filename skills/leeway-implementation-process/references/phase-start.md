@@ -30,4 +30,6 @@ Phase {N}'s tasks are written as it starts, against the code the phases before i
 
    `tasks-written` and `relies-on-done` are the engine's: the first stays open while a gap holds back the task one of the phase's scenarios goes to, the second until what the phase relies on is done — another unit's delivery among it — and either holds the phase back while other work goes on. Yours is `design-settled`: every design several of the phase's tasks touch is settled, written into each task it touches, and on the ledger, so no two builders settle it apart. Mark it, `checklist done phase-start {work_unit} {N} design-settled`, then close the checklist, `checklist close phase-start {work_unit} {N}`.
 
+   For a unit with a branch of its own, the close brings the default branch into it. Where the two conflict, the close is refused, naming the worktree that holds the merge begun: settle each conflict there with the person, in the conversation, finish the merge as the refusal says, then close the checklist again.
+
 The phase's tasks then go into the task loop.

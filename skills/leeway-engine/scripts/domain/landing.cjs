@@ -127,8 +127,43 @@
 // its move (workunit-move.cjs), which closes each pull request open
 // unmerged (`quickFixClose`), one closed by hand read as none open.
 //
+// A unit with a branch of its own (7.2.34, unit-branch.cjs) lands its tasks
+// and phases on it: each repository's context lands on the unit's landing
+// branch (landing-git.cjs, `landingBranch`) — the unit's own where the
+// repository holds it, readied first where this clone lacks it here, else
+// the repository's default branch — so the default branch, throughout
+// above, is the context's, and the landing record names that branch's
+// first-parent line. A nested repository gets the unit's own as the
+// unit's first task touching it opens there (`nestedMade`, 7.2.40). Finish
+// then lands the unit's branch on the default branch in each repository
+// holding it, children first, after every phase has merged onto it, in the
+// same walk (`unitSteps`, 7.2.38), on contexts landing on the default
+// branches, its submodules' pointers settled as a merge's are — a default
+// branch pointing a submodule at a commit of the submodule's own branch,
+// which landed by hand there, pointed at that landing (`unitRepointing`,
+// 7.2.32): nothing where the unit has landed there, read by content
+// (`unitRead`, 7.2.39) — its branch's tip held on the default branch as
+// the driver lands onto it, or a commit on that branch's first-parent line
+// past where they met holding the branch's change, as a merge, squash or
+// rebase by hand leaves it, whatever the default branch changed since;
+// refused before anything lands where a host takes no merge commit
+// (`unitPull`); where the two would conflict, the default branch brought
+// into the unit's branch first by the bring-up's own merge, each
+// submodule's pointer both sides moved pointed at the submodule's default
+// branch as the unit landed there (unit-branch.cjs, `broughtUpToLand`) — a
+// conflict left refusing, the merge begun in a worktree, the refusal
+// naming the paths, the worktree and the way on, a merge settled there
+// taken onto the branch as finish runs again, before anything lands
+// (`settlementsTaken`); then landed by the driver by a merge commit
+// (`landUnit`), under the names the unit lands under (landing-names.cjs,
+// `unitLanding`), its description the phases merged into the branch
+// there. Nothing of it is recorded. As its review phase
+// begins, the default branch is brought into the branch and the unit's own
+// pull request opened where the driver lands through a host (`openUnit`),
+// so finish merges the one open (`reviewOpened`).
+//
 // What every driver shares is settled here: the names (landing-names.cjs);
-// the default branch everything lands on in each repository, never the
+// the branch everything lands on in each repository, never the
 // state branch (4.9.4); and, for a task opened, its type and title, read
 // from the tracker as the task verbs read a task (task-verbs.cjs), a task it
 // lacks or holds with no type refused (7.2.18, 12.4.1), and its branch,
@@ -211,16 +246,18 @@ const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutLength, buildLength, quickFixBuild, isFixPhase, builtSince } = require('./derivations.cjs');
+const { cutLength, cutPhases, buildLength, quickFixBuild, isFixPhase, builtSince } = require('./derivations.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { repoLanded, landedIn, landedAcross, foundIn, workIn } = require('./task-landed.cjs');
 const { recordsIn, writeLandings, recordLandings } = require('./landing-record.cjs');
+const { landsThroughHost, readied, madeNested, bringUp, broughtUpToLand, settlementsTaken } = require('./unit-branch.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { withWriterLock } = require('../kernel/manifest-io.cjs');
 const { projectRepos, projectPath, childrenFirst, topPath, repoName } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 
@@ -299,6 +336,25 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  */
 
 /**
+ * A unit's own pull request, onto the default branch, as a driver that
+ * lands through a host reads it in one repository: the number of the one
+ * open from the unit's branch, null where none is; and the driver's words
+ * for why the host would refuse to land it by a merge commit, null where it
+ * would not. The driver may carry more on it: the seam hands it back with
+ * the landing (`UnitLanding`).
+ * @typedef {{open: number|null, refused: string|null}} UnitPull
+ */
+
+/**
+ * A unit's own branch to land on the default branch in one repository
+ * (landing-names.cjs, `unitLanding`): the branch, its tip as the driver
+ * lands it — the host's copy, where it lands through one — its pull
+ * request's title and description, the merge commit's subject, and its
+ * pull request as read, null for a driver with none.
+ * @typedef {{branch: string, tip: string, title: string, body: string, subject: string, pull: UnitPull|null}} UnitLanding
+ */
+
+/**
  * The chain's tip a driver answers for a task: the branch the task's branch
  * must descend from, and that branch's commit, which the repository has
  * locally; and, set by the seam where the task's branch does not descend
@@ -308,7 +364,9 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  */
 
 /**
- * The project a verb lands in: its folder; its repositories, its own first,
+ * The project a verb lands in: its folder; whether its contexts land on the
+ * default branches rather than the unit's landing branch (`onDefault`); its
+ * repositories, its own first,
  * and their contexts, each made once, as the verb first needs it, keeping
  * the reads its driver makes there, and of each the commit the driver took
  * each task at, by the repository's root — read as first asked (`taken`),
@@ -321,7 +379,7 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  * its landing driver, read as first asked; and each task's landing
  * message, by the task shown, read as first asked (`taskMessage`).
  * @typedef {{
- *   cwd: string, unit: string, repos: Repo[], contexts: Map<string, LandingContext>,
+ *   cwd: string, unit: string, onDefault: boolean, repos: Repo[], contexts: Map<string, LandingContext>,
  *   taken: Map<string, () => Map<string, string>>, took: Map<string, () => Map<string, string>>, tips: Map<string, string|null>, merged: Map<string, Set<string>>, reads: {root: string, made: () => RepoLanded[]}[],
  *   since: string|null, manifest: Record<string, any>|null, driver: () => LandingDriver, messages: Map<string, string>,
  * }} Project
@@ -388,7 +446,11 @@ function noted(ctx, answer) {
 
 /**
  * A repository's context, once no rebase a remedy began is stopped there:
- * the commit the driver took each task at read once, as first asked.
+ * the branch it lands on the unit's landing branch (landing-git.cjs,
+ * `landingBranch`) — its own, readied first where the repository lacks it
+ * here (unit-branch.cjs), or, for a project landing on the default
+ * branches (`onDefault`), the default branch — and the commit the driver
+ * took each task at read once, as first asked.
  * @param {Project} project @param {Repo} repo @param {string|null} remote
  * @returns {LandingContext}
  */
@@ -398,8 +460,10 @@ function repoContext(project, repo, remote) {
   return inRepo(named, () => {
     const stopped = lg.scratchBlock(repo.path);
     if (stopped !== null) throw new Error(`land: ${stopped}`);
+    const own = project.onDefault ? null : lg.unitBranchIn(project.cwd, repo, project.unit);
+    if (own !== null) readied({ root: repo.path, nested: nested ? repo.dir : null, remote, hosted: landsThroughHost(project.driver(), remote) }, project.unit, own);
     const local = lg.branches(repo.path);
-    const into = lg.defaultBranch(repo.path, remote, nested, local);
+    const into = own ?? lg.defaultBranch(repo.path, remote, nested, local);
     project.tips.set(repo.path, local.get(into) ?? null);
     /** @type {Map<string, string>|undefined} */
     let took;
@@ -432,11 +496,15 @@ function repoContext(project, repo, remote) {
 /**
  * The project a verb lands in, its own repository's context made first, its
  * landing driver the one its setting names, else the default, read as first
- * asked.
+ * asked — its contexts landing on the default branches where `onDefault`,
+ * as the unit's own branch lands at finish, and the record its verb writes
+ * read from it unless it is not `recorded` (`landingsLeft`): each task's
+ * landing is recorded on the unit's landing branch alone.
  * @param {string} cwd @param {string} unit @param {Repo[]} [repos] the project's, where the caller has read them — the land verb's own, `recording` having read them
+ * @param {{onDefault?: boolean, recorded?: boolean}} [how]
  * @returns {Project}
  */
-function projectOf(cwd, unit, repos = recordingFrames.at(-1)?.repos ?? projectRepos(codeRoot(cwd))) {
+function projectOf(cwd, unit, repos = recordingFrames.at(-1)?.repos ?? projectRepos(codeRoot(cwd)), { onDefault = false, recorded = true } = {}) {
   assertUnit(unit);
   /** @type {LandingDriver|undefined} */
   let chosen;
@@ -445,6 +513,7 @@ function projectOf(cwd, unit, repos = recordingFrames.at(-1)?.repos ?? projectRe
   const project = {
     cwd,
     unit,
+    onDefault,
     repos,
     since: workSince(manifest),
     manifest,
@@ -457,7 +526,7 @@ function projectOf(cwd, unit, repos = recordingFrames.at(-1)?.repos ?? projectRe
     driver: () => (chosen ??= /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver)),
     messages: new Map(),
   };
-  recordingFrames.at(-1)?.made.push(project);
+  if (recorded) recordingFrames.at(-1)?.made.push(project);
   project.contexts.set('', repoContext(project, repos[0], remoteName(cwd)));
   return project;
 }
@@ -759,18 +828,45 @@ function refuseUnheldMoves(project, repo, task, from) {
 }
 
 /**
+ * Where a repository's default branch, as `ctx` lands onto it, pointing
+ * the submodule at `path`, `sub`, at `sha` points it instead: `{to}`, the
+ * commit; `{refused}` where it cannot be pointed on; null where what the
+ * submodule lands onto descends from `sha`.
+ * @typedef {(ctx: LandingContext, path: string, sub: LandingContext, sha: string) => {to: string}|{refused: string}|null} Repointing
+ */
+
+/**
+ * A merge's re-point (`Repointing`): the submodule's landing, past the
+ * commit, of the work the pointer carries, as a merge by hand of the
+ * submodule after the repository holding it leaves it (landing-git.cjs,
+ * `repointing`).
+ * @param {LandingDriver} driver @returns {Repointing}
+ */
+const taskRepointing = (driver) => (ctx, path, sub, sha) => lg.repointing(ctx.into, path, sub, sha, landsOn(driver, sub));
+
+/**
+ * The unit's landing's re-point (`Repointing`, 7.2.32): where the
+ * submodule's own branch holds the commit and has landed by hand on the
+ * default branch (`unitRead`), the commit there holding its change.
+ * @param {Project} project the unit's, landing on its own branch @param {LandingDriver} driver @returns {Repointing}
+ */
+const unitRepointing = (project, driver) => (ctx, path, sub, sha) => {
+  const ahead = lg.pointerAhead(ctx.into, path, sub, sha, landsOn(driver, sub));
+  if (ahead === null) return null;
+  const { at, tip } = unitRead(project, driver, sub);
+  return at !== null && lg.isAncestor(sub.root, sha, tip) ? { to: at } : { refused: ahead };
+};
+
+/**
  * Each repository whose default branch points a submodule the walk lands
  * in at a commit the submodule's own default branch does not descend from,
  * each as it lands, with the commit each such submodule is pointed at
- * instead: the submodule's landing there, past that commit, of the work
- * the pointer carries, as a merge by hand of the submodule after the
- * repository holding it leaves it (`repointing`), each by the commit it
- * points at now and that landing — refused, before anything merges, where
- * there is none.
- * @param {LandingDriver} driver @param {LandingContext[]} merging
+ * instead, as `pointing` finds it, each by the commit it points at now and
+ * that one — refused, before anything merges, where there is none.
+ * @param {LandingDriver} driver @param {LandingContext[]} merging @param {Repointing} pointing
  * @returns {Map<string, Map<string, {from: string, to: string}>>} by the repository, as answers name it
  */
-function repointsOf(driver, merging) {
+function repointsOf(driver, merging, pointing) {
   /** @type {Map<string, Map<string, {from: string, to: string}>>} */
   const repoints = new Map();
   for (const ctx of merging.filter(({ submodules }) => submodules.length > 0)) {
@@ -782,7 +878,7 @@ function repointsOf(driver, merging) {
       for (const { path, ctx: sub } of ctx.submodules) {
         const sha = pointers.get(path) ?? null;
         if (sha === null) continue;
-        const found = lg.repointing(ctx.into, path, sub, sha, landsOn(driver, sub));
+        const found = pointing(ctx, path, sub, sha);
         if (found === null) continue;
         if ('refused' in found) throw new Error(found.refused);
         pointed.set(path, { from: sha, to: found.to });
@@ -834,15 +930,17 @@ function landingTips(cwd, unit, repos, wanted) {
  * found before anything merges; then, in a repository whose default branch
  * pointed one at a commit whose change the submodule landed, each such
  * submodule its merge left where it was pointed at that landing through
- * the driver (`mergedThenRepointed`).
+ * the driver (`mergedThenRepointed`) — each such commit found as a merge
+ * finds it, unless `pointing` finds it otherwise.
  * @param {Project} project @param {LandingDriver} driver @param {Repo[]} walking @param {(ctx: LandingContext) => Record<string, any>|null} act
- * @param {(ref: TaskRef) => boolean} picks
+ * @param {((ref: TaskRef) => boolean)|null} picks null where the merge lands no task's branch, as a unit's own branch's landing lands none
+ * @param {Repointing} [pointing]
  * @returns {Step[]}
  */
-function mergeSteps(project, driver, walking, act, picks) {
+function mergeSteps(project, driver, walking, act, picks, pointing = taskRepointing(driver)) {
   const merging = walking.map((repo) => mergingIn(project, repo, walking));
-  refuseAfterLandingIn(project, driver, merging, picks);
-  const repoints = repointsOf(driver, merging);
+  if (picks !== null) refuseAfterLandingIn(project, driver, merging, picks);
+  const repoints = repointsOf(driver, merging, pointing);
   return merging.map((ctx) => {
     const found = repoints.get(ctx.repo);
     return { ctx, act: () => (found === undefined ? act(ctx) : mergedThenRepointed(driver, ctx, found, act)) };
@@ -937,12 +1035,12 @@ function refuseAfterLanding(ctx, into, refs, driver) {
 }
 
 /**
- * The default branch a way on lays a branch onto, as the driver lands on
- * it: as the host has it, where the driver lands on the host's copy
- * (`landsOn`), else here.
+ * The landing branch a way on lays a branch onto, as the driver lands on
+ * it: as the host has it, where the driver lands through the host
+ * (unit-branch.cjs, `landsThroughHost`), else here.
  * @param {LandingDriver} driver @param {LandingContext} ctx
  */
-const theirsOf = (driver, ctx) => (driver.landsOn === undefined || ctx.remote === null ? ctx.into : `${ctx.remote}/${ctx.into}`);
+const theirsOf = (driver, ctx) => (landsThroughHost(driver, ctx.remote) ? `${ctx.remote}/${ctx.into}` : ctx.into);
 
 /**
  * Refuse, before anything merges, a task the walk lands — of those `picks`
@@ -1036,6 +1134,26 @@ function refuseOffBase(cwd, project, task) {
   }
 }
 
+/**
+ * The unit's own branch made in each nested repository the task's branch
+ * holds work in that lacks it, here and as last fetched, before anything
+ * opens (unit-branch.cjs, `madeNested`) — none where the unit lands on the
+ * default branch, and none on a host the driver does not serve, which the
+ * task's opening refuses (`assertServes`).
+ * @param {Project} project @param {LandingDriver} driver @param {LandingTask} task @param {Repo[]} holding
+ */
+function nestedMade(project, driver, task, holding) {
+  const branch = lg.recordedBranch(project.cwd, project.unit);
+  if (branch === null) return;
+  for (const repo of holding.filter((held) => held.dir !== '' && lg.unitBranchIn(project.cwd, held, project.unit) === null)) {
+    const remote = nestedRemoteName(repo.path);
+    const hosted = landsThroughHost(driver, remote);
+    if (hosted && !driver.serves(lg.remoteUrlOf(repo.path, /** @type {string} */ (remote)))) continue;
+    inRepo(repo.dir, () => madeNested({ root: repo.path, nested: repo.dir, remote, hosted }, project.unit, branch, task.branch));
+    lg.landingMade(repo, project.unit, branch);
+  }
+}
+
 /** Refuse a bugfix's reproducing task while its bug is not proven at its tip, naming the series or the rework (bug-proven.cjs). @param {string} cwd @param {TaskRef} ref */
 function refuseUnproven(cwd, ref) {
   const held = reproducingHold(cwd, loadWorkUnitManifest(cwd, ref.unit), ref, 'lands');
@@ -1064,6 +1182,7 @@ function landOpen(cwd, unit, task) {
   carrying(warnings ?? [], () => refuseUnproven(cwd, ref));
   carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
   return withDriver(cwd, (driver) => {
+    nestedMade(project, driver, landing, holding);
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
     const already = steps.length === 0 ? { already: true } : {};
     return { task: shown, branch: landing.branch, ...already, ...answered(walk(steps, () => `task ${shown} opened`)) };
@@ -1253,16 +1372,188 @@ function landFinish(cwd, unit) {
   return finishMerge(cwd, unit);
 }
 
-/** `land finish` past its refusals, which finish's yes makes itself before it lands. @param {string} cwd @param {string} unit */
-function finishMerge(cwd, unit) {
+/** What `act` answers, its refusal worded as a land verb's. @template T @param {() => T} act @returns {T} */
+function asLanding(act) {
+  try {
+    return act();
+  } catch (err) {
+    if (err instanceof Error && !err.message.startsWith('land: ')) err.message = `land: ${err.message}`;
+    throw err;
+  }
+}
+
+/**
+ * `land finish` past its refusals, which finish's yes makes itself before
+ * it lands: a merge into the unit's own branch held in its worktree taken
+ * onto it first (unit-branch.cjs, `settlementsTaken`); every phase still
+ * standing merged onto the unit's landing branch, then, for a unit with a
+ * branch of its own, that branch landed on the default branch
+ * (`unitSteps`) — one walk, so a refusal names the phases merged before
+ * it. `then` is the step a refusal's way on runs again.
+ * @param {string} cwd @param {string} unit @param {string} [then]
+ */
+function finishMerge(cwd, unit, then = 'land again') {
   if (landsAsOne(cwd, unit)) return quickFixLand(cwd, unit, true);
+  asLanding(() => settlementsTaken(cwd, unit, { undone: 'nothing landed', then }));
   const project = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
-    const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, (branch) => names.isUnitBranch(unit, branch))), (ctx) => finishing(driver, ctx), () => true);
+    const walking = walked(project, driver, holdingWork(project, (branch) => names.isUnitBranch(unit, branch)));
+    const steps = [...mergeSteps(project, driver, walking, (ctx) => finishing(driver, ctx), () => true), ...unitSteps(project, driver, walking, then)];
     const merged = (/** @type {Answer} */ answer) => (answer.phases ?? []).length > 0;
-    const did = (/** @type {Answer} */ answer) => (merged(answer) ? `phase ${answer.phases.map((/** @type {{phase: number}} */ phase) => phase.phase).join(', ')} merged` : null);
-    return answered(walk(steps, didWith(did)), (answer) => merged(answer) || 'repointed' in answer);
+    const did = (/** @type {Answer} */ answer) => {
+      if (answer.landed !== undefined) return `${answer.landed} landed on ${answer.into}`;
+      return merged(answer) ? `phase ${answer.phases.map((/** @type {{phase: number}} */ phase) => phase.phase).join(', ')} merged` : null;
+    };
+    return answered(walk(steps, didWith(did)), (answer) => merged(answer) || answer.landed !== undefined || 'repointed' in answer);
   });
+}
+
+/**
+ * The unit's own branch landed on the default branch in each repository of
+ * `walking` holding it, children first (7.2.38), as a merge's steps are
+ * made (`mergeSteps`), on contexts landing on the default branches — none
+ * for a unit with no branch of its own — a default branch pointing a
+ * submodule at a commit of the submodule's own branch landed there by hand
+ * re-pointed at that landing (`unitRepointing`). Refused before anything
+ * lands where a repository's host takes no merge commit and the unit's
+ * branch has not landed there (`unitPull`). `then` is the step a refusal's
+ * way on runs again.
+ * @param {Project} project the unit's, landing on its own branch @param {LandingDriver} driver @param {Repo[]} walking @param {string} then
+ * @returns {Step[]}
+ */
+function unitSteps(project, driver, walking, then) {
+  const branch = lg.recordedBranch(project.cwd, project.unit);
+  if (branch === null) return [];
+  const holding = walking.filter((repo) => lg.unitBranchIn(project.cwd, repo, project.unit) !== null);
+  const onDefault = projectOf(project.cwd, project.unit, project.repos, { onDefault: true, recorded: false });
+  /** @type {Map<string, UnitPull|null>} */
+  const pulls = new Map();
+  const steps = mergeSteps(onDefault, driver, holding, (ctx) => unitLanded(project, driver, ctx, { pull: pulls.get(ctx.root) ?? null, onDefault, then }), null, unitRepointing(project, driver));
+  for (const { ctx } of steps) {
+    pulls.set(ctx.root, inRepo(ctx.repo, () => {
+      const pull = driver.unitPull?.(ctx, branch) ?? null;
+      if (pull !== null && pull.refused !== null && !unitRead(project, driver, ctx).held) throw new Error(`land: ${pull.refused.replace('land again', then)}`);
+      return pull;
+    }));
+  }
+  return steps;
+}
+
+/**
+ * A unit's own branch readied as its review phase begins, at its first
+ * round (review-entry.cjs): the default branch brought into it
+ * (unit-branch.cjs, `bringUp`, 7.2.36), then its own pull request opened
+ * in each repository holding it, children first, where the driver lands
+ * through a host (`openUnit`) and the unit has not landed there
+ * (`unitRead`), one open taken as it is (7.2.38) — under the writer lock,
+ * as a land verb pushes; nothing for a unit with no branch of its own.
+ * @param {string} cwd @param {string} unit
+ */
+function reviewOpened(cwd, unit) {
+  const branch = lg.recordedBranch(cwd, unit);
+  if (branch === null) return;
+  withWriterLock(stateRoot(cwd), () => {
+    bringUp(cwd, unit, branch, { undone: 'the review phase was not entered', then: 'enter the review again' });
+    const project = projectOf(cwd, unit);
+    withDriver(cwd, (driver) => {
+      const opens = driver.openUnit;
+      if (opens === undefined) return {};
+      const onDefault = projectOf(cwd, unit, project.repos, { onDefault: true, recorded: false });
+      for (const repo of childrenFirst(project.repos).filter((held) => lg.unitBranchIn(cwd, held, unit) !== null)) {
+        contextOf(project, repo);
+        const ctx = contextOf(onDefault, repo);
+        inRepo(ctx.repo, () => {
+          const read = unitRead(project, driver, ctx);
+          if (!read.held) opens(ctx, unitLanding(project, ctx, read, null));
+        });
+      }
+      return {};
+    });
+  });
+}
+
+/**
+ * The unit's own branch in a repository against its default branch, each
+ * as the driver lands onto it (`landsOn`): their tips, where they met, and
+ * where the unit has landed there (7.2.39), `held` where it has — the
+ * branch's tip, held on the default branch, or the oldest commit on its
+ * first-parent line past where they met holding the branch's change, as a
+ * merge by hand, by any method, leaves it, whatever the default branch
+ * changed since; null where it has not.
+ * @param {Project} project the unit's, landing on its own branch @param {LandingDriver} driver @param {LandingContext} ctx the repository's, landing on its default branch
+ */
+function unitRead(project, driver, ctx) {
+  const own = /** @type {LandingContext} */ (project.contexts.get(ctx.repo === '.' ? '' : ctx.repo));
+  const tip = landsOn(driver, own);
+  const onto = landsOn(driver, ctx);
+  const base = lg.mergeBase(ctx.root, onto, tip);
+  const at = base === tip ? tip : landedAt(ctx.root, lg.firstParentLine(ctx.root, base, onto), { tip, base });
+  return { own, tip, onto, base, held: at !== null, at };
+}
+
+/**
+ * The oldest commit of `line`, a first-parent line newest first, holding
+ * the change of the unit's branch at `tip` since `base`, or null where
+ * none does.
+ * @param {string} root @param {{sha: string, tree: string}[]} line @param {{tip: string, base: string}} branch
+ */
+function landedAt(root, line, { tip, base }) {
+  if (line.length === 0) return null;
+  const holds = lg.holdChanges(root, line.map(({ sha, tree }) => ({ ours: sha, tree, theirs: tip, base })));
+  return line[holds.lastIndexOf(true)]?.sha ?? null;
+}
+
+/**
+ * A repository's part of the unit's landing at finish (7.2.38): nothing
+ * where the unit has landed there (`unitRead`), the driver bringing the
+ * default branch here up alone; else, where its branch would conflict with
+ * the default branch, the default branch brought into it first by the
+ * bring-up's merge, each submodule pointer both sides moved pointed at the
+ * submodule's default branch as the unit landed there (unit-branch.cjs,
+ * `broughtUpToLand`) — refused, the merge begun in its worktree, where the
+ * two still conflict; then landed by the driver by a merge commit, under
+ * the names the unit lands under (landing-names.cjs, `unitLanding`), the
+ * phases merged into its branch there each a line of its description.
+ * @param {Project} project the unit's, landing on its own branch @param {LandingDriver} driver @param {LandingContext} ctx the repository's, landing on its default branch
+ * @param {{pull: UnitPull|null, onDefault: Project, then: string}} landing its pull request as read, null for none; the project landing on its default branches; and the step a refusal's way on runs again
+ */
+function unitLanded(project, driver, ctx, { pull, onDefault, then }) {
+  const read = unitRead(project, driver, ctx);
+  if (read.held) return driver.landUnit(ctx, null);
+  if (!('conflicts' in lg.mergeTree(ctx.root, read.base, read.onto, read.tip))) return driver.landUnit(ctx, unitLanding(project, ctx, read, pull));
+  const repo = /** @type {Repo} */ (onDefault.repos.find((held) => held.path === ctx.root));
+  const merging = { branch: read.own.into, into: ctx.into, theirs: read.onto };
+  const tip = asLanding(() => broughtUpToLand(project.cwd, repo, project.unit, merging, landedSubs(onDefault, driver, repo), { undone: `${project.unit} did not land on ${ctx.into}`, then }));
+  return driver.landUnit(ctx, unitLanding(project, ctx, { ...read, tip, base: read.onto }, pull));
+}
+
+/**
+ * The submodules of a repository the unit lands in at finish, each by its
+ * path from the repository's top, its repository, and its default branch's
+ * tip as the driver lands onto it — where the unit landed first, children
+ * first, that landing.
+ * @param {Project} onDefault the unit's project, landing on its default branches @param {LandingDriver} driver @param {Repo} repo
+ */
+function landedSubs(onDefault, driver, repo) {
+  return repo.submodules.flatMap((folder) => {
+    const sub = onDefault.repos.find((held) => held.dir === projectPath(repo.dir, folder));
+    return sub === undefined ? [] : [{ at: topPath(repo, folder), root: sub.path, tip: landsOn(driver, contextOf(onDefault, sub)) }];
+  });
+}
+
+/**
+ * The unit's own branch to land in a repository, as read there
+ * (`unitRead`): under the names the unit lands under (landing-names.cjs,
+ * `unitLanding`), the phases merged into its branch there each a line of
+ * its description, and its pull request as read, null for none.
+ * @param {Project} project the unit's, landing on its own branch @param {LandingContext} ctx the repository's, landing on its default branch @param {ReturnType<typeof unitRead>} read @param {UnitPull|null} pull
+ * @returns {UnitLanding}
+ */
+function unitLanding(project, ctx, { own, tip, base }, pull) {
+  const manifest = /** @type {Record<string, any>} */ (project.manifest);
+  const phases = [...new Set(lg.namedPast(ctx.root, project.unit, base, tip).flatMap(({ ids }) => ids.map((id) => parseTaskId(id).phase)))].sort((a, b) => a - b);
+  const lines = phases.map((phase) => `Phase ${phase}: ${cutPhases(manifest)[phase - 1]?.name ?? 'the review\'s fixes'}`);
+  return { branch: own.into, tip, ...names.unitLanding(project.unit, unitTitle(manifest), lines), pull };
 }
 
 /**
@@ -1350,6 +1641,9 @@ const sinceTime = (since) => (since === null ? -Infinity : Date.parse(since));
 
 /** The time a quick-fix's work is read from, in milliseconds (`workSince`): a commit made before it none of the unit's work. @param {Record<string, any>|null} manifest the unit's */
 const workFrom = (manifest) => sinceTime(workSince(manifest));
+
+/** The title a unit lands under as a whole — a quick-fix's, or a unit's own branch's — its description's first line, else its name. @param {Record<string, any>} manifest the unit's */
+const unitTitle = (manifest) => String(manifest.description ?? '').split('\n').map((line) => line.trim()).find(Boolean) ?? manifest.name;
 
 /** Whether a unit's tasks land as a quick-fix's one pull request: a unit built as a quick-fix (`quickFixBuild`). @param {string} cwd @param {string} unit */
 function landsAsOne(cwd, unit) {
@@ -1504,8 +1798,7 @@ function quickFixTask(cwd, read, shown) {
     if (tracked.type === null) throw new Error(untyped(tracked.ref, tracked.status));
     return [{ ref: tracked.ref, type: tracked.type, title: tracked.title }];
   });
-  const title = String(manifest.description ?? '').split('\n').map((line) => line.trim()).find(Boolean) ?? unit;
-  return { branch, message: names.quickFixMessage(unit, title, tasks), tasks: tasks.map(({ ref }) => shownTask(ref)), pull: read.pull(), since: read.since, pointers: new Map() };
+  return { branch, message: names.quickFixMessage(unit, unitTitle(manifest), tasks), tasks: tasks.map(({ ref }) => shownTask(ref)), pull: read.pull(), since: read.since, pointers: new Map() };
 }
 
 /**
@@ -1787,7 +2080,7 @@ module.exports = {
   landPhase: (cwd, unit, given) => recording(cwd, unit, () => landPhase(cwd, unit, given)),
   /** `land finish`, its landings recorded. @param {string} cwd @param {string} unit */
   landFinish: (cwd, unit) => recording(cwd, unit, () => landFinish(cwd, unit)),
-  /** `land finish` past its refusals, its landings written for finish's yes's commit of the unit to carry. @param {string} cwd @param {string} unit */
-  finishMerge: (cwd, unit) => recording(cwd, unit, () => finishMerge(cwd, unit), true),
-  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal,
+  /** `land finish` past its refusals, its landings written for finish's yes's commit of the unit to carry, `then` the step a refusal's way on runs again. @param {string} cwd @param {string} unit @param {string} then */
+  finishMerge: (cwd, unit, then) => recording(cwd, unit, () => finishMerge(cwd, unit, then), true),
+  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal, reviewOpened,
 };

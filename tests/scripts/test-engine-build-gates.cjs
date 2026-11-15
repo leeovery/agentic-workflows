@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The build's gates in step (leeway-engine/scripts/domain/build-screens.cjs,
 // drawn by domain/projections/build.cjs): the gate after a task and the gate
-// before a phase's stack merges; and in step, every process gate of the
+// before a phase's stack merges, naming the unit's own branch where it has
+// one; and in step, every process gate of the
 // build stopping whatever its count, a learned one among them
 // (domain/decision-point.cjs `learned`). A task at its gate as the build's standing
 // gives it, and as its entry takes it over after a /clear, is
@@ -23,8 +24,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, git, writeState, layout, cleanupFixture, sectionOf, accountTaken, withFrozenClock } = require('./engine-harness.cjs');
-const { withEnv } = require('./discovery-test-utils.cjs');
+const { ok, git, writeState, readManifest, layout, cleanupFixture, sectionOf, accountTaken, withFrozenClock } = require('./engine-harness.cjs');
+const { withEnv, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 const { lines, trustLogHelpers, history } = require('./trust-world.cjs');
 const { learned } = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
@@ -128,7 +129,15 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
     assert.deepStrictEqual(next, { kind: 'engine', argv: ['land', 'phase', UNIT, '1'] });
   });
 
-  it('a phase of the review\'s fixes, named for its round, stops once its tasks are done, and is refused before and once it has merged, writing nothing', () => {
+  it('names the unit\'s own branch as where its tasks land, for a unit with one (7.2.34)', () => {
+    for (const letter of ['a', 'b']) writeState(dir, layout.unit(UNIT, `build/phases/phase-1/review-${letter}.md`), reportOf([]));
+    git(dir, ['branch', `feat/${UNIT}`, 'main']);
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { ...readManifest(dir, UNIT).build, branch: `feat/${UNIT}` } });
+
+    assert.strictEqual(sectionOf(screen(['phase-merge-gate', UNIT, '1']), 'MENU: phase merge — 1').split('\n')[1], `Phase 1, "Cards", is ready to merge: its tasks land on feat/${UNIT} as one stack.`);
+  });
+
+  it('a phase of the review\'s fixes, named for its round, stops once its tasks are done, and is refused before and once it has merged — naming where its tasks are, the unit\'s own branch for a unit with one — writing nothing', () => {
     accountTaken(dir, UNIT, '1.1');
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
     fixPhase(['Mask the reprint']);
@@ -138,10 +147,14 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
     ok(dir, ['task', 'done', UNIT, '4.1'], { env: env() });
     const ready = screen(['phase-merge-gate', UNIT, '4']);
     git(dir, ['commit', '-q', '--allow-empty', '-m', `fix(${UNIT}): landed`, '-m', `Task: ${UNIT}-4-1`]);
+    const merged = refused(['phase-merge-gate', UNIT, '4']);
+    git(dir, ['branch', `feat/${UNIT}`, 'main']);
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { ...readManifest(dir, UNIT).build, branch: `feat/${UNIT}` } });
 
-    assert.deepStrictEqual([before, refused(['phase-merge-gate', UNIT, '4'])], [
+    assert.deepStrictEqual([before, merged, refused(['phase-merge-gate', UNIT, '4'])], [
       'render phase-merge-gate: phase 4 of pay merges once its tasks are done — task 4.1 is in progress',
       'render phase-merge-gate: phase 4 of pay is merged already — its tasks are on the default branch',
+      `render phase-merge-gate: phase 4 of pay is merged already — its tasks are on feat/${UNIT}`,
     ]);
     assert.match(ready, /Phase 4, "the review's fixes, round 1", is ready to merge/);
   });

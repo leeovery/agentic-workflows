@@ -8,8 +8,10 @@
 //     discovery items status-less, no phase-named shadow roots, a
 //     quick-fix's record naming each nested repository it touched once,
 //     the landing record naming the unit's own tasks landed in the
-//     project's repositories at commits each holds), the project's keeping
-//     the project_id setup gave it,
+//     project's repositories at commits each holds, a unit's own branch
+//     an epic's or a feature's, the default branch holding none of its
+//     work until the unit completes and its merge at most once), the
+//     project's keeping the project_id setup gave it,
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
 //   - every navigation menu (the start menu, an epic's) reads and renders
@@ -123,6 +125,47 @@ function auditLandings(dir, wu, landings, ctx) {
   }
 }
 
+/** The refs and status each unit's own branch was last audited at, by its folder and unit. @type {Map<string, string>} */
+const unitBranchAudits = new Map();
+
+/** A loose branch ref's commit in the repository at `dir`, null where git holds it packed or not at all. @param {string} dir @param {string} branch */
+const looseRef = (dir, branch) => {
+  try {
+    return fs.readFileSync(path.join(dir, '.git', 'refs', 'heads', branch), 'utf8').trim();
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * A unit's own branch held to its design (7.2.34, 7.2.38): an epic's or a
+ * feature's, `feat/{unit}`, a branch of the project's repository; the
+ * default branch, past it, holding none of the unit's tasks' landings, nor
+ * its merge, until the unit completes, and that merge at most once after —
+ * read again only once either branch or the unit's status moves.
+ * @param {string} dir @param {string} wu @param {Record<string, any>} manifest @param {(why: string) => string} ctx
+ */
+function auditUnitBranch(dir, wu, manifest, ctx) {
+  const branch = `feat/${wu}`;
+  assert.ok(['epic', 'feature'].includes(manifest.work_type) && manifest.build.branch === branch, ctx(`${wu}: a ${manifest.work_type} records build.branch ${JSON.stringify(manifest.build.branch)}`));
+  const completed = manifest.status === 'completed';
+  const refs = [looseRef(dir, 'main'), looseRef(dir, branch)];
+  const key = `${completed}:${refs.join(':')}`;
+  if (!refs.includes(null) && unitBranchAudits.get(`${dir}\0${wu}`) === key) return;
+  /** @type {string[]} */
+  let past = [];
+  try {
+    past = git(dir, ['log', '--format=%B%x1e', `refs/heads/${branch}..main`]).split('\x1e').map((message) => message.trim()).filter(Boolean);
+  } catch {
+    assert.fail(ctx(`${wu}: build.branch names ${branch}, no branch of the project's repository`));
+  }
+  const task = new RegExp(`^Task: ${wu}-\\d+-\\d+$`, 'm');
+  const merges = past.filter((message) => message.split('\n')[0].replace(/ \(#\d+\)$/, '') === `Merge ${branch}`).length;
+  if (!completed) assert.ok(!past.some((message) => task.test(message)), ctx(`${wu}: the default branch holds a task of the unit's landed past ${branch} before the unit completes`));
+  assert.ok(merges <= (completed ? 1 : 0), ctx(`${wu}: the default branch holds ${merges} merge(s) of ${branch} while the unit is ${manifest.status}`));
+  if (!refs.includes(null)) unitBranchAudits.set(`${dir}\0${wu}`, key);
+}
+
 // The project_id each project's state was minted with, by its folder, while
 // the state lasts.
 /** @type {Map<string, string>} */
@@ -227,6 +270,7 @@ function auditState(dir, label) {
     }
 
     if (manifest[schema.LANDINGS] !== undefined) auditLandings(dir, wu, manifest[schema.LANDINGS], ctx);
+    if (manifest.build?.branch !== undefined) auditUnitBranch(dir, wu, manifest, ctx);
 
     // A review asked for at a quick-fix's close is recorded on its fixes as
     // the instant it was asked, a quick-fix's alone.

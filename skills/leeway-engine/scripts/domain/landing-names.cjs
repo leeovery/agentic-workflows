@@ -5,9 +5,11 @@
 // landing driver. A task's branch is `{type}/{unit}-{phase}.{n}-{slug}`, its
 // slug made from the task's title, or `task` where the title has no letter
 // or digit to make one of — the id before it already makes the branch the
-// task's alone; a phase's branch is `feat/{unit}-phase-{phase}`; and a
-// quick-fix's one branch, which every task of its build commits on, is
-// `fix/{unit}` (fix-branch.cjs). A task's pull request title, and the
+// task's alone; a phase's branch is `feat/{unit}-phase-{phase}`; a
+// unit's own branch, where it has one, which its phases merge into and
+// which lands on the default branch at finish, is `feat/{unit}` (7.2.34,
+// unit-branch.cjs); and a quick-fix's one branch, which every task of its
+// build commits on, is `fix/{unit}` (fix-branch.cjs). A task's pull request title, and the
 // subject of the commit it squashes to, is `{type}({unit}): {title}`, and
 // the message's last line is the task's internal id as a `Task:` trailer,
 // which is how a landing names its task, and the only name of one a
@@ -25,7 +27,9 @@
 // from its template (12.4.1): a lowercase word, as feat or fix. A commit
 // pointing submodules at their landings is `chore({unit}): point {folders}
 // at its landing`, `their` for more than one (`pointedMessage`), naming no
-// task; on a branch of its own, `chore/{unit}-point-submodules`.
+// task; on a branch of its own, `chore/{unit}-point-submodules`. The merge
+// bringing the default branch into a unit's own branch is `Merge {default}
+// into feat/{unit}` (`bringUpSubject`), no conventional commit's either.
 // ---------------------------------------------------------------------------
 
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
@@ -86,6 +90,12 @@ function phaseBranch(unit, phase) {
   return `feat/${unit}-phase-${phase}`;
 }
 
+/** A unit's own branch, where it has one (7.2.34). @param {string} unit @returns {string} */
+function unitBranch(unit) {
+  assertUnit(unit);
+  return `feat/${unit}`;
+}
+
 /** The unit's phase a branch is the branch of, or null. @param {string} unit @param {string} branch @returns {number|null} */
 function phaseOfBranch(unit, branch) {
   const named = new RegExp(`^feat/${unit}-phase-(${NUMBER})$`).exec(branch);
@@ -120,9 +130,9 @@ function isWorkBranch(unit, branch) {
   return taskOfBranch(unit, branch) !== null || branch === quickFixBranch(unit);
 }
 
-/** Whether a branch is one of the unit's: a task's, a quick-fix's or a phase's. @param {string} unit @param {string} branch @returns {boolean} */
+/** Whether a branch is one of the unit's: a task's, a quick-fix's, a phase's or its own. @param {string} unit @param {string} branch @returns {boolean} */
 function isUnitBranch(unit, branch) {
-  return isWorkBranch(unit, branch) || phaseOfBranch(unit, branch) !== null;
+  return isWorkBranch(unit, branch) || phaseOfBranch(unit, branch) !== null || branch === unitBranch(unit);
 }
 
 /**
@@ -148,6 +158,28 @@ function quickFixMessage(unit, title, tasks) {
   const landings = tasks.map((task) => landedMessage(task.ref, task.type, task.title).trimEnd());
   return `${[`${quickFixType(tasks.map((task) => task.type))}(${unit}): ${titleOf(title)}`, ...landings].join('\n\n')}\n`;
 }
+
+/**
+ * What a unit's own branch lands on the default branch under (7.2.18,
+ * 7.2.38): its pull request's title, `{unit}: {title}`, and description, a
+ * line for each phase merged into it; and the merge commit's subject,
+ * `Merge feat/{unit}`, no conventional commit's, so a release reading
+ * subjects counts each task once.
+ * @param {string} unit @param {string} title @param {string[]} phases each as its line names it, in order
+ * @returns {{title: string, body: string, subject: string}}
+ */
+function unitLanding(unit, title, phases) {
+  return { title: `${unit}: ${titleOf(title)}`, body: phases.join('\n'), subject: `Merge ${unitBranch(unit)}` };
+}
+
+/**
+ * The subject of the merge commit bringing the default branch, `into`, into
+ * a unit's own branch (7.2.18, 7.2.36): `Merge {into} into feat/{unit}`, no
+ * conventional commit's, so a release reading subjects counts each task
+ * once.
+ * @param {string} into @param {string} branch the unit's
+ */
+const bringUpSubject = (into, branch) => `Merge ${into} into ${branch}`;
 
 /** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */
 function taskOfLine(line, key) {
@@ -190,4 +222,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, landingOf, tasksOfMessage };

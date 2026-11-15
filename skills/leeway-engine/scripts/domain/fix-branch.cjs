@@ -477,7 +477,7 @@ const movedBranch = (unit) => `${MOVED}${quickFixBranch(unit)}`;
 const keptName = (repo, unit) => `${movedBranch(unit)}${repo.dir === '' ? '' : ` in ${lg.plain(repo.dir)}`}`;
 
 /** Whether a repository's quick-fix branch holds commits past the branch it lands on. @param {string} cwd @param {Repo} repo @param {string} unit */
-const branchHolds = (cwd, repo, unit) => lg.holdsBeyond(repo.path, [quickFixBranch(unit)], [lg.landingBranch(cwd, repo)]);
+const branchHolds = (cwd, repo, unit) => lg.holdsBeyond(repo.path, [quickFixBranch(unit)], [lg.landingBranch(cwd, repo, unit)]);
 
 /**
  * The names the quick-fix's branches holding commits past the branch each
@@ -532,7 +532,7 @@ function checkOutLanding(cwd, unit) {
   const branch = quickFixBranch(unit);
   const out = childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => lg.branchOut(repo.path) === branch);
   for (const repo of out) {
-    const lands = lg.landingBranch(cwd, repo);
+    const lands = lg.landingBranch(cwd, repo, unit);
     const back = `${unit}'s tasks leave ${repo.dir === '' ? 'the project\'s checkout' : `${repoName(repo)}'s checkout`}, which holds changes not committed`;
     const way = (/** @type {string} */ dirty) => `${back} — ${dirty} — so it was not taken back to ${lands}: commit them on ${branch} or set them aside, then say yes again`;
     if (repo.dir === '') refuseDirt(cwd, way);
@@ -540,7 +540,7 @@ function checkOutLanding(cwd, unit) {
   }
   let own = null;
   for (const repo of out) {
-    const lands = lg.landingBranch(cwd, repo);
+    const lands = lg.landingBranch(cwd, repo, unit);
     lg.switchTo(repo.path, lands);
     if (repo.dir === '') own = lands;
   }

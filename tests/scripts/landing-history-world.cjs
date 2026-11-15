@@ -52,9 +52,23 @@
 // rewritten it — the person's reword, the later task, or the task stacked
 // on it. A history holds where main ends holding exactly the model; where
 // every task's record holds its work as its branch ends, main holding all
-// the branch changed past the record's tip; and
+// the branch changed past the record's tip but a file the person wrote
+// last, which the model holds main to; and
 // where no verb lands a commit that changes nothing, so no landed task
 // lands again. A history that fails tells its seed and every step it took.
+//
+// A history of an even seed is a unit's with a branch of its own (7.2.34):
+// its build begun through a cut of five phases and its first phase's start
+// closed, which makes `feat/{unit}`, so that branch is where its tasks are
+// cut from, landed by the verbs and by hand, merged back from and reworded
+// on, the person's own commits still made on main, which a later phase's
+// start brings into the branch by a merge commit (7.2.36); and once every
+// task has landed on it, perhaps landed on main by hand, squashed or by a
+// merge commit, then finish lands what still stands and the branch on main
+// by a merge commit — a conflict with main's own commits, at a start or at
+// finish, settled in the worktree the refusal names and the step run again
+// (7.2.38, 7.2.39). The model and the checks are the same: main ends
+// holding every task's final work once, and the person's own.
 //
 // The gate runs `GATE` histories on each driver from seed 1;
 // LEEWAY_LANDING_HISTORIES and LEEWAY_LANDING_SEED run another count from
@@ -67,7 +81,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, tip, call, commitAll, readManifest, fixtureFrom } = require('./engine-harness.cjs');
-const { UNIT, track, commitFiles, buildLanding, openArgs, wordsOf, commandsOf, rebaseStopped } = require('./landing-world.cjs');
+const { UNIT, track, commitFiles, buildLanding, buildBegun, startClosed, phaseReviewed, finishReady, openArgs, wordsOf, commandsOf, rebaseStopped } = require('./landing-world.cjs');
 const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 const { parseShownTask, taskId } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
@@ -107,10 +121,11 @@ const MOVED = /task (\d+\.\d+)'s branch \S+ has moved since it was opened at \w+
 
 /**
  * A history under way: the driver's side and the world it runs in, its
- * seed and draws, its tasks, the model — every file main should end
- * holding, by its blob, and the task that wrote each, null or none for the
- * person — and what it did and found.
- * @typedef {{side: any, at: string, as: {env: Record<string, string>}, seed: number, draw: () => number, tasks: Task[], later: Task|null, model: Map<string, string>, writers: Map<string, Task|null>, made: number, steps: string[], problems: string[]}} History
+ * seed and draws, the branch its tasks land on — main, or the unit's own —
+ * its tasks, the model — every file main should end holding, by its blob,
+ * and the task that wrote each, null or none for the person — and what it
+ * did and found.
+ * @typedef {{side: any, at: string, as: {env: Record<string, string>}, seed: number, draw: () => number, into: string, tasks: Task[], later: Task|null, model: Map<string, string>, writers: Map<string, Task|null>, made: number, steps: string[], problems: string[]}} History
  */
 
 /** The seeds a run takes: the gate's, else those the environment names. */
@@ -266,7 +281,7 @@ function withdrawn(h, shown, to) {
   h.steps.push(`  ${shown}'s change since it opened kept aside as a task of its own`);
 }
 
-/** `act` with the task's branch out in the main checkout, main out again after. @template T @param {History} h @param {string} branch @param {() => T} act @returns {T} */
+/** `act` with `branch` out in the main checkout, main out again after, whatever `act` left out. @template T @param {History} h @param {string} branch @param {() => T} act @returns {T} */
 function onBranch(h, branch, act) {
   git(h.at, ['switch', '-q', branch]);
   try {
@@ -298,7 +313,7 @@ function committed(h, task, files, removed = []) {
 function cutTasks(h) {
   for (let n = 0, count = 1 + under(h, 3); n < count; n += 1) {
     const below = n > 0 && chance(h, 0.5) ? h.tasks[n - 1] : null;
-    const task = taskOf(POOL[n], below, tip(h.at, below?.branch ?? 'main'));
+    const task = taskOf(POOL[n], below, tip(h.at, below?.branch ?? h.into));
     below?.above.push(task);
     const commits = 1 + under(h, 3);
     const reach = below !== null && chance(h, 0.6) ? pick(h, writable(below)) : undefined;
@@ -311,7 +326,7 @@ function cutTasks(h) {
     }
     if (reach !== undefined) /** @type {Task} */ (below).frozen.add(reach);
     h.tasks.push(task);
-    h.steps.push(`${task.shown} cut from ${below?.shown ?? 'main'}, ${commits} commit(s)${reach === undefined ? '' : `, its last ${undone ? 'deleting' : 'rewriting'} ${reach}`}`);
+    h.steps.push(`${task.shown} cut from ${below?.shown ?? h.into}, ${commits} commit(s)${reach === undefined ? '' : `, its last ${undone ? 'deleting' : 'rewriting'} ${reach}`}`);
   }
 }
 
@@ -319,15 +334,16 @@ function cutTasks(h) {
  * A verb run as the person runs it, every refusal's way on followed and
  * the verb run again, until it goes through, there is nothing left to
  * land, or its way on cannot be followed: its answer, or null. Each commit
- * it lands on main must change something.
+ * it lands on main, or on the branch the tasks land on, must change
+ * something.
  * @param {History} h @param {string[]} args @param {number} [depth]
  * @returns {Record<string, any>|null}
  */
 function attempt(h, args, depth = 0) {
   for (let tries = 0; tries < 4; tries += 1) {
-    const before = h.side.defaultTip(h.at);
+    const before = landedOn(h).map((branch) => [branch, h.side.defaultTip(h.at, branch)]);
     const res = call(h.at, args, h.as);
-    emptyLandings(h, args, before);
+    for (const [branch, was] of before) emptyLandings(h, args, branch, was);
     if (res.code === 0) {
       const answer = JSON.parse(res.stdout.split('\n')[0]);
       h.steps.push(`${'  '.repeat(depth)}${args.join(' ')}: ${answer.already ? 'already' : 'ok'}`);
@@ -350,14 +366,17 @@ function attempt(h, args, depth = 0) {
   return null;
 }
 
+/** The branches a verb lands on in a history: the tasks', and main where that is the unit's own. @param {History} h */
+const landedOn = (h) => [...new Set([h.into, 'main'])];
+
 /**
- * Each commit a verb landed on main past `before` that changes nothing
+ * Each commit a verb landed on `branch` past `before` that changes nothing
  * against its first parent, a problem: a task landed again.
- * @param {History} h @param {string[]} args @param {string} before
+ * @param {History} h @param {string[]} args @param {string} branch @param {string} before
  */
-function emptyLandings(h, args, before) {
+function emptyLandings(h, args, branch, before) {
   const host = h.side.on(h.at);
-  const after = h.side.defaultTip(h.at);
+  const after = h.side.defaultTip(h.at, branch);
   if (after === before) return;
   const made = git(host, ['log', '--reverse', '--first-parent', '--format=%T %s', `${before}..${after}`]).split('\n').filter(Boolean);
   let tree = git(host, ['rev-parse', `${before}^{tree}`]).trim();
@@ -369,13 +388,17 @@ function emptyLandings(h, args, before) {
 }
 
 /**
- * A refusal's way on followed as the person follows it: the commands it
- * names — a change kept aside as a task of its own withdrawn from the model
- * (`withdrawn`) — else the merge it asks for in words, or the tasks it asks
- * opened first. Whether it named a way on to follow.
+ * A refusal's way on followed as the person follows it: a merge of main
+ * into the unit's branch begun in a worktree settled and finished there
+ * (`mergeFinished`); else the commands it names — a change kept aside as
+ * a task of its own withdrawn from the model (`withdrawn`) — else the merge
+ * it asks for in words, or the tasks it asks opened first. Whether it named
+ * a way on to follow.
  * @param {History} h @param {string} refusal @param {number} depth
  */
 function followed(h, refusal, depth) {
+  const begun = /the merge is begun at (\S+), a worktree of its own/.exec(refusal);
+  if (begun !== null) return mergeFinished(h, begun[1]);
   const commands = commandsOf(refusal);
   const moved = MOVED.exec(refusal);
   if (commands.length > 0) {
@@ -509,14 +532,38 @@ function settledPick(h, tree) {
  * @param {History} h @param {string} branch @param {string} from @param {boolean} push
  */
 function mergedInto(h, branch, from, push) {
+  merged(h, branch, from);
+  if (push && tried(h.at, ['push', '-q', 'origin', branch]).status !== 0) git(h.at, ['push', '-q', '--force-with-lease', 'origin', branch]);
+  h.steps.push(`  followed: ${from} merged into ${branch}${push ? ', pushed' : ''}`);
+  return true;
+}
+
+/** `from` merged into `branch` here, each conflict settled (`settled`). @param {History} h @param {string} branch @param {string} from */
+function merged(h, branch, from) {
   onBranch(h, branch, () => {
     if (tried(h.at, ['merge', '-q', '--no-edit', from]).status !== 0) {
       settled(h, h.at, 'ours');
       git(h.at, ['commit', '-q', '--no-edit']);
     }
   });
-  if (push && tried(h.at, ['push', '-q', 'origin', branch]).status !== 0) git(h.at, ['push', '-q', '--force-with-lease', 'origin', branch]);
-  h.steps.push(`  followed: ${from} merged into ${branch}${push ? ', pushed' : ''}`);
+}
+
+/**
+ * The merge of main into the unit's branch begun in the worktree at
+ * `tree` settled there, each conflict as the person means it (`settled`),
+ * the unit's side its own, and finished as the way on says, which the step
+ * run again takes onto the branch — git refusing to finish it, a problem:
+ * whether it went.
+ * @param {History} h @param {string} tree
+ */
+function mergeFinished(h, tree) {
+  settled(h, tree, 'ours');
+  const went = tried(tree, ['-c', 'core.editor=true', 'merge', '--continue']);
+  if (went.status !== 0) {
+    h.problems.push(`the merge begun at ${tree} could not be finished: ${went.stderr.trim()}`);
+    return false;
+  }
+  h.steps.push(`  followed: the merge begun at ${tree} settled and finished`);
   return true;
 }
 
@@ -553,8 +600,9 @@ function carried(h) {
 const PICKED = 'its commits picked';
 
 /**
- * The ways a person lands a task's branch on main in their own checkout:
- * what each did, or null where git stopped it, nothing then moved.
+ * The ways a person lands a task's branch on the branch it lands on, out in
+ * their own checkout: what each did, or null where git stopped it, nothing
+ * then moved.
  * @type {Record<string, (h: History, task: Task) => string|null>}
  */
 const HAND = {
@@ -574,7 +622,7 @@ const HAND = {
   [PICKED]: (h, task) => {
     const own = git(h.at, ['rev-list', '--reverse', '--no-merges', `${task.cut}..${task.branch}`]).split('\n').filter(Boolean);
     if (own.length === 0 || tried(h.at, ['cherry-pick', ...own]).status !== 0) return aborted(h, ['cherry-pick', '--abort']);
-    return `its own commits picked onto main by hand (${own.length})`;
+    return `its own commits picked onto the branch it lands on by hand (${own.length})`;
   },
 };
 
@@ -585,7 +633,7 @@ function aborted(h, end) {
   return null;
 }
 
-/** A task's branch squashed onto main by hand, committed with `message`. @param {History} h @param {Task} task @param {string[]} message */
+/** A task's branch squashed by hand onto the branch out, committed with `message`. @param {History} h @param {Task} task @param {string[]} message */
 function squashed(h, task, message) {
   if (tried(h.at, ['merge', '-q', '--squash', task.branch]).status !== 0) return aborted(h, ['merge', '--abort']);
   if (tried(h.at, ['diff', '--cached', '--quiet']).status === 0) return null;
@@ -609,44 +657,72 @@ function republished(h, task) {
 }
 
 /**
- * A task landed by hand: on the host's site where its pull request is open
- * there (`republished` first), else in the person's checkout, then pushed —
- * each file main held as the model ends it, that work landed, which the
- * landing changed then the model's as main holds it (`overridden`).
+ * A task landed by hand on the branch it lands on: on the host's site
+ * where its pull request is open there (`republished` first), else in the
+ * person's checkout, then pushed — each file that branch held as the model
+ * ends it, that work landed, which the landing changed then the model's as
+ * the branch holds it (`overridden`), as is each the tasks it landed wrote
+ * last (`keptByGit`).
  * @param {History} h @param {Task} task
  */
 function byHand(h, task) {
-  const before = { main: treeOf(h.side.on(h.at), 'main'), landed: new Set(allTasks(h).filter((held) => held.landed)) };
+  const before = { main: treeOf(h.side.on(h.at), h.into), landed: new Set(allTasks(h).filter((held) => held.landed)) };
   if (h.side.mergedOnHost !== null && task.opened && chance(h, 0.5)) {
     const method = pick(h, ['squash', 'merge', 'rebase']);
     const pulled = chance(h, 0.5);
     republished(h, task);
-    if (h.side.mergedOnHost(h.at, task.branch, method, pulled)) {
+    if (h.side.mergedOnHost(h.at, task.branch, method, pulled, h.into)) {
       overridden(h, before);
+      keptByGit(h, lands(task, true));
       return landedByHand(h, task, `merged on the host's site by ${method}, ${pulled ? 'pulled' : 'not pulled'}`, true);
     }
   }
-  h.side.pulled(h.at);
+  h.side.pulled(h.at, h.into);
   const how = pick(h, Object.keys(HAND));
   if (how === PICKED && task.below !== null && !task.below.landed) return h.steps.push(`${task.shown} not landed by hand: its own commits never picked while the task below it has not landed`);
-  const done = HAND[how](h, task);
+  const done = onBranch(h, h.into, () => HAND[how](h, task));
   if (done === null) return h.steps.push(`${task.shown} not landed by hand: ${how} stopped`);
-  h.side.pushed(h.at);
+  h.side.pushed(h.at, h.into);
   overridden(h, before);
+  keptByGit(h, lands(task, how !== PICKED));
   return landedByHand(h, task, done, how !== PICKED);
 }
 
 /**
- * Each file a landing by hand leaves on main otherwise than the model ends
- * it, the model's then as main holds it, the person's: one main held as
- * the model ends it that the landing changed, that write the person's or a
+ * Each file one of `tasks`, landed by hand, wrote last that the branch it
+ * landed on holds otherwise than the model ends it, the model's then as the
+ * branch holds it, the person's — where that branch holds the task's tip,
+ * as a merge commit or a fast-forward leaves it: git's merge of the
+ * landing, which keeps a file the branch gained since where the task took
+ * it back, its base lacking it. A landing that copies the task's work
+ * leaves the model as it is, the engine landing what the copy missed.
+ * @param {History} h @param {Task[]} tasks
+ */
+function keptByGit(h, tasks) {
+  const host = h.side.on(h.at);
+  const held = tasks.filter((task) => tried(host, ['merge-base', '--is-ancestor', tip(h.at, task.branch), h.into]).status === 0);
+  const after = treeOf(host, h.into);
+  for (const [file, by] of h.writers) {
+    const is = after.get(file);
+    if (by === null || !held.includes(by) || is === h.model.get(file)) continue;
+    if (is === undefined) h.model.delete(file);
+    else h.model.set(file, is);
+    h.writers.set(file, null);
+  }
+}
+
+/**
+ * Each file a landing by hand leaves on the branch it lands on otherwise
+ * than the model ends it, the model's then as the branch holds it, the
+ * person's: one the branch held as the model ends it that the landing
+ * changed, that write the person's or a
  * task's already landed — a task cut below another landed after that one's
  * own work, its write over a file that work rewrote standing, as work that
  * landed stays landed (R25).
  * @param {History} h @param {{main: Map<string, string>, landed: Set<Task>}} before
  */
 function overridden(h, before) {
-  const after = treeOf(h.side.on(h.at), 'main');
+  const after = treeOf(h.side.on(h.at), h.into);
   for (const file of new Set([...before.main.keys(), ...after.keys(), ...h.model.keys()])) {
     const [by, is, was, should] = [h.writers.get(file), after.get(file), before.main.get(file), h.model.get(file)];
     const task = by === undefined || by === null ? null : by;
@@ -755,15 +831,17 @@ function commitOn(h, task) {
 }
 
 /**
- * main merged back into a task's branch, each conflict settled
- * (`settled`), the merge carrying a change of its own or not — never past
- * a landing a verb read, the task then opened at once (`opened`).
+ * The branch it lands on merged back into a task's branch, each conflict
+ * settled (`settled`), the merge carrying a change of its own or not, each
+ * file the task wrote last as the merge leaves its branch (`keptOnBranch`)
+ * — never past a landing a verb read, the task then opened at once
+ * (`opened`).
  * @param {History} h @param {Task} task
  */
 function mergedBack(h, task) {
   const past = task.landed;
   const said = onBranch(h, task.branch, () => {
-    if (tried(h.at, ['merge', '-q', '--no-ff', '--no-commit', 'main']).status !== 0) settled(h, h.at, 'ours');
+    if (tried(h.at, ['merge', '-q', '--no-ff', '--no-commit', h.into]).status !== 0) settled(h, h.at, 'ours');
     if (tried(h.at, ['rev-parse', '-q', '--verify', 'MERGE_HEAD']).status !== 0) return 'nothing to merge back';
     const file = !past && chance(h, 0.4) ? pick(h, writable(task)) : undefined;
     if (file !== undefined) {
@@ -773,10 +851,28 @@ function mergedBack(h, task) {
     }
     git(h.at, ['commit', '-q', '--no-edit']);
     task.merged = true;
-    return `main merged back${file === undefined ? '' : `, the merge rewriting ${file}`}`;
+    keptOnBranch(h, task);
+    return `${h.into} merged back${file === undefined ? '' : `, the merge rewriting ${file}`}`;
   });
   h.steps.push(`${task.shown}: ${said}`);
   if (past) opened(h, task);
+}
+
+/**
+ * Each file a task wrote last that its branch holds otherwise than the
+ * model ends it, the model's then as the branch holds it: git's merge of
+ * what the task lands on back into it, which keeps a file that branch
+ * gained where the task took it back, their base lacking it.
+ * @param {History} h @param {Task} task
+ */
+function keptOnBranch(h, task) {
+  const held = treeOf(h.at, task.branch);
+  for (const [file, by] of h.writers) {
+    const is = held.get(file);
+    if (by !== task || is === h.model.get(file)) continue;
+    if (is === undefined) h.model.delete(file);
+    else h.model.set(file, is);
+  }
 }
 
 /** The person's own commit on main, pushed: a file of their own, or app.txt reworded. @param {History} h */
@@ -792,40 +888,43 @@ function ownCommit(h) {
 }
 
 /**
- * A file of a landed task that main holds as the task's branch does, which
- * another may then rewrite — no task writing it again — or undefined.
+ * A file of a landed task that the branch it landed on holds as the task's
+ * branch does, which another may then rewrite — no task writing it again —
+ * or undefined.
  * @param {History} h @param {Task} task
  */
 function rewritable(h, task) {
   const file = pick(h, writable(task));
   if (file === undefined) return undefined;
-  h.side.pulled(h.at);
-  const [onMain, onTask] = tried(h.at, ['rev-parse', `main:${file}`, `${task.branch}:${file}`]).stdout.split('\n');
+  h.side.pulled(h.at, h.into);
+  const [onMain, onTask] = tried(h.at, ['rev-parse', `${h.into}:${file}`, `${task.branch}:${file}`]).stdout.split('\n');
   if (onMain !== onTask) return undefined;
   for (const held of allTasks(h)) held.frozen.add(file);
   return file;
 }
 
-/** A landed task's file reworded on main by the person's own commit, pushed. @param {History} h @param {Task} task */
+/** A landed task's file reworded by the person's own commit on the branch it landed on, pushed. @param {History} h @param {Task} task */
 function reworded(h, task) {
   const file = rewritable(h, task);
   if (file === undefined) return;
   const text = `reworded ${next(h)}\n`;
-  staged(h, file, text);
-  git(h.at, ['commit', '-q', '-m', `Reword ${file}`]);
-  h.side.pushed(h.at);
+  onBranch(h, h.into, () => {
+    staged(h, file, text);
+    git(h.at, ['commit', '-q', '-m', `Reword ${file}`]);
+  });
+  h.side.pushed(h.at, h.into);
   wrote(h, null, file, text);
-  h.steps.push(`my own commit on main rewording ${task.shown}'s ${file}`);
+  h.steps.push(`my own commit on ${h.into} rewording ${task.shown}'s ${file}`);
 }
 
-/** The later task cut from main rewriting a landed task's file, opened, and its phase landed. @param {History} h @param {Task} task */
+/** The later task cut from the branch the tasks land on, rewriting a landed task's file, opened, and its phase landed. @param {History} h @param {Task} task */
 function laterTask(h, task) {
   const file = rewritable(h, task);
   if (file === undefined) return;
-  const later = taskOf(LATER, null, tip(h.at, 'main'));
+  const later = taskOf(LATER, null, tip(h.at, h.into));
   committed(h, later, { [file]: `${later.shown} rewrote it\n` });
   h.later = later;
-  h.steps.push(`${later.shown} cut from main, rewriting ${task.shown}'s ${file}`);
+  h.steps.push(`${later.shown} cut from ${h.into}, rewriting ${task.shown}'s ${file}`);
   later.opened = attempt(h, openArgs(later)) !== null;
   attempt(h, ['land', 'phase', UNIT, '5']);
 }
@@ -837,6 +936,20 @@ function opened(h, task) {
   if (answer?.already) task.landed = true;
 }
 
+/** The first of phases 2 and 3 whose start has not closed, for a unit with its own branch, which its close brings main into. @param {History} h @returns {number[]} */
+function startsLeft(h) {
+  if (h.into === 'main') return [];
+  const { checklists } = readManifest(h.at, UNIT);
+  return [2, 3].filter((phase) => checklists[`phase-${phase}-start`]?.closed === undefined).slice(0, 1);
+}
+
+/** A later phase's start closed, bringing main into the unit's own branch (7.2.36), main moved first by the person's own commit half the time, its conflict's way on followed. @param {History} h @param {number} phase */
+function startClosedLater(h, phase) {
+  if (chance(h, 0.5)) ownCommit(h);
+  call(h.at, ['checklist', 'done', 'phase-start', UNIT, String(phase), 'design-settled'], h.as);
+  attempt(h, ['checklist', 'close', 'phase-start', UNIT, String(phase)]);
+}
+
 /** Phase 4 landed, each task it merged then landed. @param {History} h */
 function phaseLanded(h) {
   const answer = attempt(h, ['land', 'phase', UNIT, '4']);
@@ -846,8 +959,8 @@ function phaseLanded(h) {
 
 /**
  * What a history does between cutting its tasks and landing them all, each
- * with its weight and the tasks it can be done to.
- * @type {{weight: number, can: (h: History) => (Task|null)[], act: (h: History, task: any) => void}[]}
+ * with its weight and the tasks, or phases, it can be done to.
+ * @type {{weight: number, can: (h: History) => (Task|number|null)[], act: (h: History, on: any) => void}[]}
  */
 const EVENTS = [
   { weight: 3, can: (h) => h.tasks.filter((task) => !task.opened), act: opened },
@@ -858,6 +971,7 @@ const EVENTS = [
   { weight: 1, can: (h) => h.tasks.filter((task) => task.landed), act: reworded },
   { weight: 1, can: (h) => (h.later === null ? h.tasks.filter((task) => task.landed) : []), act: laterTask },
   { weight: 1, can: (h) => (h.tasks.some((task) => task.opened) ? [null] : []), act: phaseLanded },
+  { weight: 2, can: startsLeft, act: startClosedLater },
 ];
 
 /** One of `EVENTS` that can be done, drawn by weight, done to one of its tasks. @param {History} h */
@@ -871,19 +985,72 @@ function event(h) {
   chosen.act(h, pick(h, chosen.tasks));
 }
 
-/** Everything still to land landed by the verbs: each task opened, then its phase. @param {History} h */
+/**
+ * Everything still to land landed by the verbs: each task opened, then its
+ * phase — then, for a unit with its own branch, that branch perhaps landed
+ * on main by hand, and finish (`unitFinished`).
+ * @param {History} h
+ */
 function landedAll(h) {
   h.steps.push('then every task opened and its phase landed:');
   for (const task of h.tasks) attempt(h, openArgs(task));
   attempt(h, ['land', 'phase', UNIT, '4']);
-  if (h.later === null) return;
-  attempt(h, openArgs(h.later));
-  attempt(h, ['land', 'phase', UNIT, '5']);
+  if (h.later !== null) {
+    attempt(h, openArgs(h.later));
+    attempt(h, ['land', 'phase', UNIT, '5']);
+  }
+  if (h.into !== 'main') unitFinished(h);
+}
+
+/**
+ * The unit's own branch landed on main by hand, squashed or by a merge
+ * commit, pushed — or not, or where git stopped it — then finish's landing,
+ * which lands what still stands and the branch, every refusal's way on
+ * followed (7.2.38, 7.2.39).
+ * @param {History} h
+ */
+function unitFinished(h) {
+  if (chance(h, 0.4)) {
+    h.side.pulled(h.at);
+    h.side.pulled(h.at, h.into);
+    const squash = chance(h, 0.5);
+    const went = tried(h.at, ['merge', '-q', ...(squash ? ['--squash'] : ['--no-ff', '--no-edit']), h.into]).status === 0
+      && (!squash || tried(h.at, ['commit', '-q', '-m', 'Land the unit in my own words']).status === 0);
+    if (went) {
+      h.side.pushed(h.at);
+      h.steps.push(`${h.into} landed on main by hand, ${squash ? 'squashed' : 'by a merge commit'}`);
+    } else {
+      aborted(h, ['merge', '--abort']);
+      h.steps.push(`${h.into} not landed on main by hand: git stopped it`);
+    }
+  }
+  finishReady(h.at);
+  attempt(h, ['land', 'finish', UNIT]);
+}
+
+/**
+ * The files main lacks of what `branch` changed past `tip`, its record's:
+ * each file a merge of it over `tip` into main leaves otherwise than main,
+ * at `main`, holds — but one the person wrote last, which the model holds
+ * main to (`checked`): a branch laid on the unit's own branch carries the
+ * person's writes there, which a later write of theirs on main overrides.
+ * None where main holds the branch's tip: a way on that makes it again on
+ * the branch it lands on leaves it there, carrying other tasks' work as
+ * that branch held it, which main may hold rewritten since.
+ * @param {History} h @param {string} tip @param {string} branch @param {string} main
+ */
+function lackedPast(h, tip, branch, main) {
+  if (tried(h.at, ['merge-base', '--is-ancestor', branch, 'main']).status === 0) return [];
+  const [tree, ...conflicted] = tried(h.at, ['merge-tree', '--write-tree', '--name-only', '--no-messages', `--merge-base=${tip}`, 'main', branch]).stdout.split('\n').filter(Boolean);
+  if (tree === main) return [];
+  const differing = git(h.at, ['diff', '--name-only', '-z', tree, main]).split('\0').filter(Boolean);
+  return [...new Set([...conflicted, ...differing])].filter((file) => h.writers.get(file) !== null);
 }
 
 /**
  * The history held to the model: main holding exactly the model's files,
- * and each task's record holding its branch's work as it ends.
+ * and each task's record holding its branch's work as it ends
+ * (`lackedPast`).
  * @param {History} h
  */
 function checked(h) {
@@ -901,9 +1068,23 @@ function checked(h) {
       h.problems.push(`${task.shown} has no landing record`);
       continue;
     }
-    const merged = tried(h.at, ['merge-tree', '--write-tree', `--merge-base=${record.tip}`, 'main', task.branch]);
-    if (merged.stdout.split('\n')[0] !== main) h.problems.push(`${task.shown}'s record, at ${record.tip.slice(0, 7)}: main lacks what its branch changed past it`);
+    const lacked = lackedPast(h, record.tip, task.branch, main);
+    if (lacked.length > 0) h.problems.push(`${task.shown}'s record, at ${record.tip.slice(0, 7)}: main lacks what its branch changed past it (${lacked.join(', ')})`);
   }
+}
+
+/**
+ * The unit given its own branch: its build begun through a cut of five
+ * phases and its first phase's start closed, which makes it, its tasks
+ * then landing there (7.2.34) — the reviews of the phases they are cut in
+ * passed, as a phase lands once its review has.
+ * @param {History} h
+ */
+function unitBranched(h) {
+  buildBegun(h.at, 5);
+  h.into = startClosed(h.at, 1, h.side.env).branch;
+  for (const phase of [4, 5]) phaseReviewed(h.at, phase, 'auto');
+  h.steps.push(`${h.into} made as phase 1's start closed`);
 }
 
 /**
@@ -914,7 +1095,8 @@ function checked(h) {
  */
 function history(side, at, seed) {
   /** @type {History} */
-  const h = { side, at, as: { env: side.env }, seed, draw: drawsOf(seed), tasks: [], later: null, model: treeOf(at, 'main'), writers: new Map(), made: 0, steps: [], problems: [] };
+  const h = { side, at, as: { env: side.env }, seed, draw: drawsOf(seed), into: 'main', tasks: [], later: null, model: treeOf(at, 'main'), writers: new Map(), made: 0, steps: [], problems: [] };
+  if (seed % 2 === 0) unitBranched(h);
   cutTasks(h);
   for (let n = 2 + under(h, 4); n > 0; n -= 1) event(h);
   landedAll(h);
