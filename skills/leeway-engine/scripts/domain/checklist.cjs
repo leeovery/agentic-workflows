@@ -58,9 +58,10 @@
 // phase start's close of a build decides whether the unit has a branch of
 // its own and makes it, once nothing refuses the close and before it
 // records itself, recording it as `build.branch` beside its close and
-// answering it as `branch`; each later one readies that branch where this
-// clone lacks it (unit-branch.cjs, 6.4.13) — a refusal of either writing
-// nothing. A phase's
+// answering it as `branch`; each later one brings the default branch into
+// that branch, readied first where this clone lacks it (unit-branch.cjs,
+// 6.4.13, 7.2.36) — a refusal of either writing nothing, a conflict's
+// leaving the merge begun in a worktree it names. A phase's
 // close commits, beside the manifest, every record its folder holds — the
 // reports its items read, its consolidation report, its settlement
 // (round-report.cjs, `phaseRecords`) — so a second clone reads

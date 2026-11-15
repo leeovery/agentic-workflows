@@ -33,7 +33,7 @@ const { quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { taskId, taskName } = require('./task-id.cjs');
-const { branches, branchesHeldBy, defaultBranch, recordedBranch, landingBranch, landingRev, isAncestor, latestOf, stampedPast } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, isAncestor, latestOf, stampedPast } = require('./landing-git.cjs');
 const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 const { repoLanded } = require('./task-landed.cjs');
@@ -46,8 +46,8 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 /** The door's stamp on a task's commit, read when asked: the door reads the task verbs, which read this module. */
 const stampKey = () => require('./commit-task.cjs').TRAILER;
 
-/** The branch the project's own repository lands the unit's work on, its child repositories unread: the unit's own, else the default branch (landing-git.cjs, `landingBranch`). @param {string} cwd @param {string} unit */
-const projectLandsOn = (cwd, unit) => recordedBranch(cwd, unit) ?? defaultBranch(codeRoot(cwd), remoteName(cwd), false);
+/** The project's own repository's default branch, its child repositories unread. @param {string} cwd */
+const projectDefault = (cwd) => defaultBranch(codeRoot(cwd), remoteName(cwd), false);
 
 /** A base as git names it: a commit as it is, a branch by its ref. @param {string} base */
 const baseRev = (base) => (/^[0-9a-f]{40}$/.test(base) ? base : `refs/heads/${base}`);
@@ -120,4 +120,4 @@ function ownCommits(cwd, ref, repo) {
  */
 const ownWork = (cwd, ref, holding) => holding.map((repo) => ({ repo, commits: ownCommits(cwd, ref, repo) })).filter(({ commits }) => commits.length > 0);
 
-module.exports = { projectLandsOn, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork };
+module.exports = { projectDefault, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork };

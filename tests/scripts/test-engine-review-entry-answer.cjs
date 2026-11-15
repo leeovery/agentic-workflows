@@ -42,8 +42,8 @@ const readsAfter = (unit = UNIT) => [
   ENGINE_LINE,
 ];
 
-/** The base line: the branch the unit's work lands on, each reader's base. */
-const BASE_LINE = 'base: main — the branch the unit\'s work lands on, the --base of each reader\'s brief';
+/** The base line: the default branch, which the change is read against, each reader's base. */
+const BASE_LINE = 'base: main — the default branch, which the change is read against, the --base of each reader\'s brief';
 
 /** The areas' lines, each by its name and its title. */
 const AREA_LINES = ['area: 1-cards — §1 Cards', 'area: 2-refunds — §2 Refunds'];

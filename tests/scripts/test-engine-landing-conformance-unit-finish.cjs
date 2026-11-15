@@ -11,7 +11,9 @@
 // or a merge commit, read landed whatever the default branch changed
 // since, nothing more landed (7.2.39, 7.S34); a host allowing no merge
 // commits refused before anything lands (7.S38); a conflict refused after
-// the phases, naming them and the way on, which then lands (7.S43); and a
+// the phases, naming them, the merge begun in a worktree it names, which
+// once settled there the landing run again takes onto the branch and lands
+// (7.S43); and a
 // yes killed after the unit landed finishing on its next run, landing
 // nothing twice. The phases landing on the branch are
 // test-engine-landing-conformance-unit.cjs's.
@@ -27,9 +29,7 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 
@@ -144,28 +144,27 @@ for (const { name } of listDrivers('landing')) {
       });
     }
 
-    it('a conflict with the default branch refuses the unit\'s landing after the phases, naming them and the way on, which once followed lands it (7.S43)', () => {
+    it('a conflict with the default branch refuses the unit\'s landing after the phases, naming them and the worktree holding the merge begun; once settled there, landing again takes it onto feat/pay and lands it (7.S43)', () => {
       const at = project();
       twoMore(at);
       mainRewrites(at);
       const theirs = side.on(at) === at ? 'main' : 'origin/main';
-      const push = side.on(at) === at ? '' : `, push ${BRANCH} to origin`;
+      const tree = path.join(fs.realpathSync(at), '.git', 'leeway', 'feat-pay.merging');
       const { error } = refuses(at, ['land', 'finish', UNIT]);
       const held = side.landed(at, BRANCH).map(({ subject }) => subject);
-      const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-landing-unit-merge-'));
-      git(at, ['worktree', 'add', '-q', tree, BRANCH]);
-      spawnSync('git', ['merge', '-q', theirs], { cwd: tree });
       git(tree, ['checkout', '-q', '--ours', 'card.txt']);
       git(tree, ['add', 'card.txt']);
-      git(tree, ['commit', '-q', '--no-edit']);
-      git(at, ['worktree', 'remove', '--force', tree]);
-      if (push !== '') git(at, ['push', '-q', 'origin', BRANCH]);
+      git(tree, ['-c', 'core.editor=true', 'merge', '--continue']);
+      const settlement = tip(tree, 'HEAD');
       ok(at, ['land', 'finish', UNIT]);
 
-      assert.deepStrictEqual([error, held, unitLine(at).map((message) => message.split('\n')[0])], [
-        `land: ${BRANCH} conflicts with ${theirs} at card.txt, so ${UNIT} did not land on main — merge ${theirs} into ${BRANCH} in a worktree, as \`git worktree add <folder> ${BRANCH}\` then \`git merge ${theirs}\` there do, settle and commit it${push}, and land again (phase 2, 3 merged in the project before it)`,
+      assert.deepStrictEqual([error, held, unitLine(at).map((message) => message.split('\n')[0]), git(side.on(at), ['rev-parse', 'main^2']).trim(), fs.existsSync(tree)], [
+        `land: ${theirs} conflicts with ${BRANCH} at card.txt, so ${UNIT} did not land on main — the merge is begun at ${tree}, a worktree of its own: `
+          + `settle each conflict there and finish the merge, as \`git -C ${tree} -c core.editor=true merge --continue\` does once they are, then land again, which takes it onto ${BRANCH}; every land verb in the repository waits on it until then, a quick-fix's among them (phase 2, 3 merged in the project before it)`,
         ['feat(pay): Add card', 'fix(pay): Round totals', 'fix(pay): Name the currency'],
         ['Rewrite the card', `Merge ${BRANCH}`],
+        settlement,
+        false,
       ]);
     });
 

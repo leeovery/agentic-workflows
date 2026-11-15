@@ -27,7 +27,9 @@
 // from its template (12.4.1): a lowercase word, as feat or fix. A commit
 // pointing submodules at their landings is `chore({unit}): point {folders}
 // at its landing`, `their` for more than one (`pointedMessage`), naming no
-// task; on a branch of its own, `chore/{unit}-point-submodules`.
+// task; on a branch of its own, `chore/{unit}-point-submodules`. The merge
+// bringing the default branch into a unit's own branch is `Merge {default}
+// into feat/{unit}` (`bringUpSubject`), no conventional commit's either.
 // ---------------------------------------------------------------------------
 
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
@@ -170,6 +172,15 @@ function unitLanding(unit, title, phases) {
   return { title: `${unit}: ${titleOf(title)}`, body: phases.join('\n'), subject: `Merge ${unitBranch(unit)}` };
 }
 
+/**
+ * The subject of the merge commit bringing the default branch, `into`, into
+ * a unit's own branch (7.2.18, 7.2.36): `Merge {into} into feat/{unit}`, no
+ * conventional commit's, so a release reading subjects counts each task
+ * once.
+ * @param {string} into @param {string} branch the unit's
+ */
+const bringUpSubject = (into, branch) => `Merge ${into} into ${branch}`;
+
 /** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */
 function taskOfLine(line, key) {
   const value = line.startsWith(`${key}: `) ? line.slice(key.length + 2) : '';
@@ -211,4 +222,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, landingOf, tasksOfMessage };

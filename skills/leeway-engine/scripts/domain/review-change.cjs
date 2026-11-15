@@ -27,10 +27,17 @@
 // task is (task-landed.cjs, 7.2.22), so a merge by hand by any method still
 // gives the change its landing. So in each repository:
 // - its base is the branch given where it has that branch, else the branch
-//   it lands the unit's work on, the unit's own where it has one
-//   (landing-git.cjs, `landingBranch`); a base given that no repository has is
-//   refused, so a misnamed one never passes as the default;
-// - the unit's landings (`landingParts`), oldest first: each of its tasks
+//   it lands the unit's work on — for a unit with a branch of its own
+//   there, the default branch (landing-git.cjs, `landingBranch`); a base
+//   given that no repository has is refused, so a misnamed one never passes
+//   as the default;
+// - for a unit with a branch of its own there (7.2.34), one part: that
+//   branch, here or as last fetched, against the base, from where they last
+//   met (`againstBase`, 14.1.6) — so the merges that brought the default
+//   branch in, their settlements among them, are read as the unit will
+//   land; its tasks' landings still read on that branch, and those found by
+//   hand recorded, as the work not landed reads them;
+// - else the unit's landings (`landingParts`), oldest first: each of its tasks
 //   landed on the base, at its landing there as every type's is read
 //   (task-landed.cjs) — the oldest commit on the base's first-parent line
 //   holding its change: the one that brought its last commit in, by a
@@ -55,10 +62,12 @@
 //   done in the tracker and not landed (task-landed.cjs) — a task that
 //   landed before the migration cut the unit landed before Leeway
 //   (`landedBefore`, derivations.cjs); the stack those tasks make there
-//   (phase-stack.cjs), read from where its tip leaves the base — a task
-//   not done holds nothing yet to review;
+//   (phase-stack.cjs), read from where its tip leaves the base, or the
+//   unit's own branch where it has one — a task not done holds nothing
+//   yet to review;
 // - the change's tip, where its scratch worktree and its runs stand, is
-//   that stack's tip where the repository holds such work, else its base.
+//   that stack's tip where the repository holds such work, else the unit's
+//   own branch where it has one, else its base.
 // A quick-fix's review, asked for at its close, reads its landing through
 // its own one read (`quickFixLanding`, landing.cjs) in each repository it
 // touches — every task of it, the review's fix tasks among them,
@@ -96,7 +105,7 @@ const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { quickFixLanding } = require('./landing.cjs');
 const { unitLanded } = require('./task-landed.cjs');
 const { recordLandings } = require('./landing-record.cjs');
-const { branches, landingBranch, mergeBase } = require('./landing-git.cjs');
+const { branches, landingBranch, landingRev, unitBranchIn, repoDefault, remoteOf, trackedTip, latestOf, mergeBase } = require('./landing-git.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { fixAcceptance, fixScenarios } = require('./fix-acceptance.cjs');
 const { stackOf } = require('./phase-stack.cjs');
@@ -113,8 +122,10 @@ const { stackOf } = require('./phase-stack.cjs');
 
 /**
  * One part of the change in a repository, read `from..to`: a landing, by
- * its commit and its subject, or the work not landed, by its stack's tip.
- * @typedef {{from: string, to: string, landed: {commit: string, subject: string}|null, branch: string|null}} ChangePart
+ * its commit and its subject; the unit's own branch, by its name, against
+ * the base it is read against (`against`); or the work not landed, by its
+ * stack's tip.
+ * @typedef {{from: string, to: string, landed: {commit: string, subject: string}|null, branch: string|null, against?: string}} ChangePart
  */
 /**
  * The change in one repository: its base, its parts in order — its
@@ -124,10 +135,10 @@ const { stackOf } = require('./phase-stack.cjs');
  */
 /** The whole change: the project's repositories, and the change in each holding it, the project's own first. @typedef {{repos: Repo[], holding: ChangeIn[]}} Change */
 
-/** The branch a repository lands the unit's work on (landing-git.cjs, `landingBranch`), null where it names none. @param {string} cwd @param {Repo} repo @param {string} unit */
-function landingBranchOf(cwd, repo, unit) {
+/** The branch `read` answers for a repository, null where it names none. @param {() => string} read */
+function branchOf(read) {
   try {
-    return landingBranch(cwd, repo, unit);
+    return read();
   } catch {
     return null;
   }
@@ -391,18 +402,20 @@ function changeOn(cwd, unit, { pending, tasks, landed }, given, repos) {
   refuseBase(given, repos);
   const stack = new Map([...stackTips(cwd, unit, pending, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
   const based = repos.flatMap((repo) => {
-    const base = given !== null && branches(repo.path).has(given) ? given : landingBranchOf(cwd, repo, unit);
-    return base === null ? [] : [{ repo, base }];
+    const own = unitBranchIn(cwd, repo, unit);
+    const base = given !== null && branches(repo.path).has(given) ? given : branchOf(() => (own === null ? landingBranch(cwd, repo, unit) : repoDefault(cwd, repo)));
+    return base === null ? [] : [{ repo, base, own }];
   });
-  const holding = based.flatMap(({ repo, base }) => {
-    const tip = `refs/heads/${base}`;
-    const parts = landingParts(repo, landed.on(repo, tip), tasks);
+  const holding = based.flatMap(({ repo, base, own }) => {
+    const on = own === null ? `refs/heads/${base}` : landingRev(cwd, repo, unit);
+    const parts = own === null ? landingParts(repo, landed.on(repo, on), tasks) : againstBase(cwd, repo, own, on, base);
     const branch = stack.get(repo.path);
     if (branch !== undefined) {
       const to = git(repo.path, ['rev-parse', `refs/heads/${branch}`]).trim();
-      parts.push({ from: mergeBase(repo.path, tip, to), to, landed: null, branch });
+      parts.push({ from: mergeBase(repo.path, on, to), to, landed: null, branch });
     }
-    return parts.length === 0 ? [] : [changeIn(repo, base, parts, branch ?? base)];
+    if (parts.length === 0) return [];
+    return [{ repo, base, parts, tip: branch ?? own ?? base, commit: git(repo.path, ['rev-parse', branch === undefined ? on : `refs/heads/${branch}`]).trim() }];
   });
   if (holding.length > 0) return { repos, holding };
   if (!landedAnyBefore(manifestOr(cwd, unit))) throw noChange(unit);
@@ -411,6 +424,25 @@ function changeOn(cwd, unit, { pending, tasks, landed }, given, repos) {
 
 /** The change in a repository, standing at the branch `tip`. @param {Repo} repo @param {string} base @param {ChangePart[]} parts @param {string} tip @returns {ChangeIn} */
 const changeIn = (repo, base, parts, tip) => ({ repo, base, parts, tip, commit: git(repo.path, ['rev-parse', `refs/heads/${tip}`]).trim() });
+
+/**
+ * A repository's part of the change for a unit with a branch of its own
+ * (the header's, 14.1.6): its branch, read at `on`, against the base, from
+ * where they last met — where it meets the base here, or as last fetched
+ * from the repository's remote, whichever is later, so a base here behind
+ * its host's, or ahead of it with commits never pushed, is read as the
+ * branch brought it in; none where the branch holds nothing past it.
+ * @param {string} cwd @param {Repo} repo @param {string} own the unit's branch @param {string} on @param {string} base
+ * @returns {ChangePart[]}
+ */
+function againstBase(cwd, repo, own, on, base) {
+  const to = git(repo.path, ['rev-parse', on]).trim();
+  const remote = remoteOf(cwd, repo);
+  const fetched = remote === null ? null : trackedTip(repo.path, remote, base);
+  const met = [`refs/heads/${base}`, ...(fetched === null ? [] : [fetched])].map((rev) => mergeBase(repo.path, rev, to));
+  const from = met[Math.max(latestOf(repo.path, met), 0)];
+  return from === to ? [] : [{ from, to, landed: null, branch: own, against: base }];
+}
 
 /**
  * A quick-fix's whole change (the header's), read through its landing's

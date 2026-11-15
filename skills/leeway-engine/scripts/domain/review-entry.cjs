@@ -27,7 +27,14 @@
 // snapshotted for it (review-phase.cjs) where no snapshot is held — what
 // `review round` holds the tree to (14.1.5); a later round's is taken as
 // `review reads` opens it. Entering again never takes one, so dirt met
-// before a `/clear` still stops for the person.
+// before a `/clear` still stops for the person. Before that snapshot, for a
+// unit with a branch of its own, the default branch is brought into that
+// branch and the unit's own pull request opened on a host (landing.cjs,
+// `reviewOpened`, 7.2.36, 7.2.38), under the writer lock: a conflict
+// refuses the entry, nothing taken over or snapshotted, the merge begun in
+// a worktree the refusal names, so the entry again takes the settlement —
+// only round 1's first entry, so a later round reads no area changed by
+// what no fix touched.
 //
 // It answers, in its DATA: the round under review, or how the round that
 // ended the phase did, and what is next; the spec's areas, each by its name
@@ -50,8 +57,8 @@
 // runs did and the commits they ran at, and each run's file — and, while
 // round 1 is under review, the test's run on the unfixed code again, which
 // that round waits on, or how those since the review began did
-// (bug-proven.cjs, 15.5.6); the branch the unit's work lands on, each
-// reader's base (task-base.cjs); each of the conversation's fix
+// (bug-proven.cjs, 15.5.6); the default branch, which the change is read
+// against, each reader's base (task-base.cjs, 14.1.6); each of the conversation's fix
 // tasks in flight, and each question waiting on the person, as the build's
 // entry gives them (12.13.7); each round's report; the spec — a
 // quick-fix's record, `summary.md`, in its place; the unit's
@@ -69,14 +76,15 @@ const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
   codeHeld, buildLogOf, standingOf, ownInFlight, inFlightLines, waitingLines, askedLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
-const { projectLandsOn } = require('./task-base.cjs');
+const { projectDefault } = require('./task-base.cjs');
 const { waitingAndFreed } = require('./questions.cjs');
 const { specPath } = require('./spec-sections.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { notesPath } = require('./notes.cjs');
 const {
-  reviewStanding, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, setAsideHeld,
+  reviewStanding, recordedRounds, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, takeSnapshot, snapshotRound, fixPhase, setAsideHeld,
 } = require('./review-phase.cjs');
+const { reviewOpened } = require('./landing.cjs');
 const {
   UNFIXED_ITEM, isBugfix, bugRuns, runVerb, rerunPassed,
 } = require('./bug-proven.cjs');
@@ -230,8 +238,8 @@ function bugLines(cwd, unit, manifest, standing) {
   return standing.ended || standing.round !== 1 ? series : [...series, ['rerun', rerunWords(unit, runs)]];
 }
 
-/** The branch the unit's work lands on, each reader's base. @param {Reading} at @returns {Line} */
-const baseLine = (at) => ['base', `${projectLandsOn(at.cwd, at.unit)} — the branch the unit's work lands on, the --base of each reader's brief`];
+/** The default branch, which the change is read against, each reader's base (14.1.6). @param {Reading} at @returns {Line} */
+const baseLine = (at) => ['base', `${projectDefault(at.cwd)} — the default branch, which the change is read against, the --base of each reader's brief`];
 
 /** Each round's report recorded, by its path. @param {string} cwd @param {string} unit @param {ReviewStanding} standing */
 const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(cwd, roundReportFile(unit, at + 1)));
@@ -289,11 +297,19 @@ function reviewRecovery(cwd, unit, manifest, inFlight, session) {
   }
 }
 
-/** The tasks in progress taken over, and round 1's snapshot taken as it opens, where none is held (the header's). @param {Entering} at */
+/**
+ * What the conversation's arrival closes (the header's): as round 1 opens,
+ * where no snapshot is held, a unit's own branch readied for its review
+ * (landing.cjs, `reviewOpened`), refusing the entry on a conflict before
+ * anything else is written; the tasks in progress taken over; then round
+ * 1's snapshot.
+ * @param {Entering} at
+ */
 function arriving(at) {
+  const opening = recordedRounds(at.cwd, at.unit).length === 0 && snapshotRound(at.cwd, at.unit) === null;
+  if (opening) reviewOpened(at.cwd, at.unit);
   takeInFlight(at);
-  const read = readingOf(at);
-  if (reviewStanding(read).rounds.length === 0) openSnapshot(at.cwd, at.unit, 1, reposOf(read));
+  if (opening) takeSnapshot(at.cwd, at.unit, 1, reposOf(readingOf(at)));
 }
 
 /** @type {Entry} */

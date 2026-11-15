@@ -11,7 +11,9 @@
 // task's branch merged into past its landing refused, its way on making it
 // again on the unit's branch as the driver lands it with its own commits
 // since, which followed lands them there, the default branch's own change
-// left out. The
+// left out; and a later phase's start bringing the default branch into the
+// unit's branch under the phase's open stack, which still merges onto it
+// (7.2.36, 7.S42). The
 // branch decided and made is test-engine-unit-branch.cjs's; the branch
 // landed at finish, test-engine-landing-conformance-unit-finish.cjs's.
 // Conformance layer: the landing world (landing-world.cjs,
@@ -29,8 +31,8 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { tip, createFile, commitCode, fixtureFrom, cleanupFixture } = harness;
-const { UNIT, TASKS, openArgs, own, cutTask, unitBranchLanded, mergeBack, commitFiles, followedOn, short } = require('./landing-world.cjs');
+const { git, tip, createFile, commitCode, fixtureFrom, cleanupFixture } = harness;
+const { UNIT, BASE, TASKS, openArgs, own, cutTask, unitBranchLanded, startClosed, mergeBack, commitFiles, followedOn, short } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { card, total } = TASKS;
@@ -75,6 +77,22 @@ for (const { name } of listDrivers('landing')) {
       ok(at, ['land', 'phase', UNIT, '1']);
 
       assert.deepStrictEqual([opened, side.landed(at, BRANCH).map(({ subject }) => subject), tip(side.on(at), 'main')], [BRANCH, ['feat(pay): Add card', 'feat(pay): Show total'], main]);
+    });
+
+    it('phase 2\'s start bringing the default branch into feat/pay while phase 1\'s stack is open leaves the stack merging onto feat/pay after the bring-up, the default branch untouched by it (7.S42)', () => {
+      const at = project();
+      commitFiles(at, total.branch, unitRef(at), total.files);
+      ok(at, openArgs(total));
+      createFile(at, 'other.txt', 'other\n');
+      commitCode(at, 'Another change');
+      side.pushed(at);
+      const main = tip(side.on(at), 'main');
+      startClosed(at, 2, side.env);
+      ok(at, ['land', 'phase', UNIT, '1']);
+
+      assert.deepStrictEqual([git(side.on(at), ['log', '--reverse', '--first-parent', '--format=%s', `${BASE}..${BRANCH}`]).trim().split('\n').map((subject) => subject.replace(/ \(#\d+\)$/, '')), side.holds(at, BRANCH).includes('other.txt'), tip(side.on(at), 'main')], [
+        ['feat(pay): Add card', `Merge main into ${BRANCH}`, 'feat(pay): Show total'], true, main,
+      ]);
     });
 
     it('a task of a phase merged onto feat/pay by hand — squashed on the host\'s site where its pull request is open there, else here — reads landed there, the phase\'s merge landing the rest on feat/pay, the default branch untouched (7.S32)', () => {

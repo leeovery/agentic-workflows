@@ -61,7 +61,7 @@ const METHODS = Object.freeze({
   },
   landing: {
     required: /** @type {const} */ (['serves', 'taken', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint', 'landUnit', 'closeUnit']),
-    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'pushedOver', 'finished', 'protectBranch', 'setSquashDefault', 'unitPull']),
+    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'pushedOver', 'finished', 'protectBranch', 'setSquashDefault', 'unitPull', 'openUnit']),
   },
 });
 
@@ -297,7 +297,10 @@ const METHODS = Object.freeze({
  * own lands it on the default branch at finish (landing.cjs), its context's
  * branch the default branch: `unitPull`, where the driver lands through a
  * host, reads the unit's pull request from that branch, the one open and
- * why the host would refuse a merge commit, writing nothing; `landUnit`
+ * why the host would refuse a merge commit, writing nothing; `openUnit`,
+ * there too, opens the unit's pull request from that branch, given its
+ * landing, as its review phase begins, where none is open, answering its
+ * number and whether it opened it; `landUnit`
  * lands the branch, given its landing, by a merge commit whose first parent
  * is the default branch, under the landing's subject and description — a
  * host's through the unit's pull request, the one open else one opened —
@@ -337,6 +340,7 @@ const METHODS = Object.freeze({
  *   closeQuickFix: (ctx: LandingContext, pull: QuickFixPull) => {closed: boolean},
  *   repoint: (ctx: LandingContext, pointers: Map<string, string>) => {commit?: string, pull_request?: number, warnings?: string[]},
  *   unitPull?: (ctx: LandingContext, branch: string) => UnitPull,
+ *   openUnit?: (ctx: LandingContext, landing: UnitLanding) => {into: string, pull_request: number, opened?: true},
  *   landUnit: (ctx: LandingContext, landing: UnitLanding|null) => {into: string, landed: string, commit?: string, pull_requests?: number[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
  *   closeUnit: (ctx: LandingContext, pull: UnitPull|null) => {closed: boolean},
  *   finished?: (ctx: LandingContext) => void,

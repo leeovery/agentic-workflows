@@ -9,7 +9,8 @@
 // followed — main moved on by the person's own commits, and phases landed;
 // then everything still to land landed by the verbs, every refusal's way on
 // followed — half of them a unit's with a branch of its own, its tasks
-// landing there and the branch landed on main at finish (7.2.34, 7.2.38).
+// landing there, a later phase's start bringing main into it, and the
+// branch landed on main at finish (7.2.34, 7.2.36, 7.2.38).
 // Each history is held to a model of what each task's work is, built from
 // the writes alone: main holds every task's final work once, the person's
 // own kept; every task's record holds its branch's work; and no verb lands

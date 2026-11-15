@@ -148,7 +148,8 @@
 //   then read as merged.
 // - A unit's own branch (landing.cjs): its pull request is the one open
 //   whose head is the unit's branch, onto the default branch, of those
-//   opened from the repository itself (`unitPull`). At finish it is merged
+//   opened from the repository itself (`unitPull`), opened as the unit's
+//   review phase begins where none is (`openUnit`). At finish it is merged
 //   by a merge commit, opened first where none is open, titled and
 //   described as the landing gives, under the landing's subject with
 //   GitHub's " (#N)", once GitHub has worked out that it can, at the
@@ -1577,15 +1578,43 @@ function unitPull(ctx, branch) {
 }
 
 /**
+ * The unit's own pull request, from its branch onto the default branch, as
+ * the landing gives it: the one open, given its title and description where
+ * it bears others, else one opened so — its number.
+ * @param {LandingContext} ctx @param {Host} host @param {UnitLanding} landing @param {BranchPull|null} open
+ * @returns {number}
+ */
+function unitOpened(ctx, host, { branch, title, body }, open) {
+  if (open === null) {
+    const what = `open ${ctx.unit}'s pull request from ${branch}`;
+    return Number(/\/pull\/(\d+)\s*$/.exec(ghAt(ctx, host, ['pr', 'create', '--base', ctx.into, '--head', branch, '--title', title, '--body', body], what))?.[1]);
+  }
+  if (open.title !== title || open.body !== body) ghAt(ctx, host, ['pr', 'edit', String(open.number), '--title', title, '--body', body], `give ${ctx.unit}'s pull request its landing's title and body`);
+  return open.number;
+}
+
+/**
+ * The unit's own pull request opened as its review phase begins (see the
+ * header), where none is open from its branch: its number, and whether
+ * this call opened it.
+ * @param {LandingContext} ctx @param {UnitLanding} landing
+ */
+function openUnit(ctx, landing) {
+  const host = hostOf(ctx);
+  const open = listedPulls(ctx, host, landing.branch, null).find((pull) => pull.state === 'OPEN') ?? null;
+  return { into: ctx.into, pull_request: unitOpened(ctx, host, landing, open), ...(open === null ? { opened: /** @type {const} */ (true) } : {}) };
+}
+
+/**
  * The unit's own branch landed on the default branch (see the header):
  * through the pull request open from it, else one opened, titled and
- * described as the landing gives, merged by a merge commit under its
- * subject with GitHub's " (#N)" and its description, once GitHub has worked
- * out that it can at the branch's tip as the landing read it; the default
- * branch here then brought to it. Refused, before anything opens, where the
- * repository takes no merge commit, or the default branch here is checked
- * out with changes in the way. Given no landing, the default branch here is
- * brought up alone.
+ * described as the landing gives (`unitOpened`), merged by a merge commit
+ * under its subject with GitHub's " (#N)" and its description, once GitHub
+ * has worked out that it can at the branch's tip as the landing read it;
+ * the default branch here then brought to it. Refused, before anything
+ * opens, where the repository takes no merge commit, or the default branch
+ * here is checked out with changes in the way. Given no landing, the
+ * default branch here is brought up alone.
  * @param {LandingContext} ctx @param {UnitLanding|null} landing
  */
 function landUnit(ctx, landing) {
@@ -1598,10 +1627,7 @@ function landUnit(ctx, landing) {
   if (read.refused !== null) throw new Error(`land: ${read.refused}`);
   refuseDirtyDefault(ctx, landing.tip, defaultFetched(ctx, host));
   const { branch, title, body } = landing;
-  const open = read.opened;
-  const what = `open ${ctx.unit}'s pull request from ${branch}`;
-  const number = open?.number ?? Number(/\/pull\/(\d+)\s*$/.exec(ghAt(ctx, host, ['pr', 'create', '--base', ctx.into, '--head', branch, '--title', title, '--body', body], what))?.[1]);
-  if (open !== null && (open.title !== title || open.body !== body)) ghAt(ctx, host, ['pr', 'edit', String(number), '--title', title, '--body', body], `give ${ctx.unit}'s pull request its landing's title and body`);
+  const number = unitOpened(ctx, host, landing, read.opened);
   const pull = { number, state: /** @type {const} */ ('OPEN'), head: branch, base: ctx.into, oid: landing.tip, title, body };
   const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, then: `push ${branch}, ` };
   awaitMergeable(ctx, host, merging, [pull], new Map([[number, landing.tip]]));
@@ -1727,6 +1753,7 @@ module.exports = {
   closeQuickFix,
   repoint,
   unitPull,
+  openUnit,
   landUnit,
   closeUnit,
   protectBranch,

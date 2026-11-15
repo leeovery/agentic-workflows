@@ -184,6 +184,11 @@ module.exports = {
   }))].sort(),
   /** Whether the quick-fix `unit` is open in the repository at `dir`: a pull request of its branch open on GitHub. @param {string} dir @param {string} unit */
   quickFixOpen: (dir, unit) => github(dir).pulls.some((pull) => pull.state === 'OPEN' && pull.head === names.quickFixBranch(unit)),
+  /** The unit's own pull request open in the repository at `dir`, by its base, title and description, null where none is. @param {string} dir */
+  unitPullOpen: (dir) => {
+    const open = github(dir).pulls.filter((pull) => pull.state === 'OPEN' && pull.head === names.unitBranch(UNIT));
+    return open.length === 0 ? null : open.map(({ base, title, body }) => ({ base, title, body }));
+  },
   /** The repository at `dir` made to allow no merge commits, as its settings on GitHub may. @param {string} dir */
   noMergeCommits: (dir) => onGithub(dir, (state) => {
     state.merges = false;

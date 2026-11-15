@@ -266,15 +266,14 @@ function trackUnit(dir, tasks) {
 const cutOf = (phases = PHASES) => ({ phases: Array.from({ length: phases }, (_, at) => ({ name: `Phase ${at + 1}`, scenarios: [], sections: ['1'], relies_on: [] })) });
 
 /**
- * The unit readied for finish's landing, as `land finish` asks it: its
- * build begun, in auto — its own branch kept, where its manifest records
- * one — through a cut of a phase for each the tracker holds, each closed,
- * its spec of one area, its review phase passed in round 1 with no fix
- * task, and finish's checklist closed — committed on the state branch, so
- * no landing verb reads it as a change of the test's.
- * @param {string} dir
+ * The unit's build finished, in auto — its own branch kept, where its
+ * manifest records one — through a cut of a phase for each the tracker
+ * holds, each closed, its spec of one area, with the checklists and the
+ * state files given besides — committed on the state branch under
+ * `message`, so no landing verb reads it as a change of the test's.
+ * @param {string} dir @param {Record<string, unknown>} checklists @param {Record<string, string>} files @param {string} message
  */
-function finishReady(dir) {
+function buildFinished(dir, checklists, files, message) {
   const numbers = Array.from({ length: PHASES }, (_, at) => at + 1);
   const held = readManifest(dir, UNIT);
   const manifest = {
@@ -283,12 +282,27 @@ function finishReady(dir) {
     cut: cutOf(),
     checklists: {
       ...Object.fromEntries(numbers.flatMap((phase) => ['start', 'close'].map((end) => [`phase-${phase}-${end}`, { items: {}, closed: FROZEN_AT }]))),
-      finish: { items: {}, closed: FROZEN_AT },
+      ...checklists,
     },
   };
   commitOnState(statePath(dir), {
     [layout.manifest(UNIT)]: `${JSON.stringify(manifest, null, 2)}\n`,
     [layout.unit(UNIT, 'spec.md')]: '# Pay\n\n## 1. Paying\n\n### 1.1 The card\n\n1.1.1 A card is taken.\n',
+    ...files,
+  }, message);
+}
+
+/** The unit at its review phase's first round, as `enter review` takes it: its build finished (`buildFinished`), no round recorded. @param {string} dir */
+const reviewReady = (dir) => buildFinished(dir, {}, {}, 'the build finished');
+
+/**
+ * The unit readied for finish's landing, as `land finish` asks it: its
+ * build finished (`buildFinished`), its review phase passed in round 1
+ * with no fix task, and finish's checklist closed.
+ * @param {string} dir
+ */
+function finishReady(dir) {
+  buildFinished(dir, { finish: { items: {}, closed: FROZEN_AT } }, {
     [layout.unit(UNIT, 'review', 'round-1.json')]: `${JSON.stringify({ reports: [], passed: true, can_now: [], findings: [], settled: null, scenarios: [] })}\n`,
   }, 'the review passed');
 }
@@ -1072,7 +1086,7 @@ function mergedInto(dir, branch, from = 'main', settled = 'ours', forward = true
 }
 
 module.exports = {
-  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pointersOn, extUpstream, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, finishReady, phaseReviewed,
+  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pointersOn, extUpstream, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, reviewReady, finishReady, phaseReviewed,
   cutOf, buildBegun, startClosed, unitBranchLanded, landedHere, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped,
   refusedMoving, alreadyMoving, wordsOf, commandsOf, rebaseStopped, followRemedy, followedOn,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,

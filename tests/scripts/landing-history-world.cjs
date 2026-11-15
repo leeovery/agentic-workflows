@@ -61,11 +61,13 @@
 // its build begun through a cut of five phases and its first phase's start
 // closed, which makes `feat/{unit}`, so that branch is where its tasks are
 // cut from, landed by the verbs and by hand, merged back from and reworded
-// on, the person's own commits still made on main; and once every task has
-// landed on it, perhaps landed on main by hand, squashed or by a merge
-// commit, then finish lands what still stands and the branch on main by a
-// merge commit, its conflict with main's own commits settled as the way on
-// says (7.2.38, 7.2.39). The model and the checks are the same: main ends
+// on, the person's own commits still made on main, which a later phase's
+// start brings into the branch by a merge commit (7.2.36); and once every
+// task has landed on it, perhaps landed on main by hand, squashed or by a
+// merge commit, then finish lands what still stands and the branch on main
+// by a merge commit — a conflict with main's own commits, at a start or at
+// finish, settled in the worktree the refusal names and the step run again
+// (7.2.38, 7.2.39). The model and the checks are the same: main ends
 // holding every task's final work once, and the person's own.
 //
 // The gate runs `GATE` histories on each driver from seed 1;
@@ -386,17 +388,17 @@ function emptyLandings(h, args, branch, before) {
 }
 
 /**
- * A refusal's way on followed as the person follows it: a unit's branch
- * conflicting with main merged with it, as the worktree it names would;
- * else the commands it names — a change kept aside as a task of its own
- * withdrawn from the model (`withdrawn`) — else the merge it asks for in
- * words, or the tasks it asks opened first. Whether it named a way on to
- * follow.
+ * A refusal's way on followed as the person follows it: a merge of main
+ * into the unit's branch begun in a worktree settled and finished there
+ * (`mergeFinished`); else the commands it names — a change kept aside as
+ * a task of its own withdrawn from the model (`withdrawn`) — else the merge
+ * it asks for in words, or the tasks it asks opened first. Whether it named
+ * a way on to follow.
  * @param {History} h @param {string} refusal @param {number} depth
  */
 function followed(h, refusal, depth) {
-  const unit = /merge (\S+) into (\S+) in a worktree/.exec(refusal);
-  if (unit !== null) return unitMerged(h, unit[2], unit[1], / push \S+ to /.test(refusal));
+  const begun = /the merge is begun at (\S+), a worktree of its own/.exec(refusal);
+  if (begun !== null) return mergeFinished(h, begun[1]);
   const commands = commandsOf(refusal);
   const moved = MOVED.exec(refusal);
   if (commands.length > 0) {
@@ -547,18 +549,21 @@ function merged(h, branch, from) {
 }
 
 /**
- * main merged into the unit's branch as the way on its conflict says, each
- * conflict settled (`settled`), and pushed where it asks, as the person
- * pushes it — a push refused, a problem: whether it went.
- * @param {History} h @param {string} branch @param {string} from @param {boolean} push
+ * The merge of main into the unit's branch begun in the worktree at
+ * `tree` settled there, each conflict as the person means it (`settled`),
+ * the unit's side its own, and finished as the way on says, which the step
+ * run again takes onto the branch — git refusing to finish it, a problem:
+ * whether it went.
+ * @param {History} h @param {string} tree
  */
-function unitMerged(h, branch, from, push) {
-  merged(h, branch, from);
-  if (push && tried(h.at, ['push', '-q', 'origin', branch]).status !== 0) {
-    h.problems.push(`${branch} merged with ${from} as the way on says could not be pushed`);
+function mergeFinished(h, tree) {
+  settled(h, tree, 'ours');
+  const went = tried(tree, ['-c', 'core.editor=true', 'merge', '--continue']);
+  if (went.status !== 0) {
+    h.problems.push(`the merge begun at ${tree} could not be finished: ${went.stderr.trim()}`);
     return false;
   }
-  h.steps.push(`  followed: ${from} merged into ${branch} in a worktree${push ? ', pushed' : ''}`);
+  h.steps.push(`  followed: the merge begun at ${tree} settled and finished`);
   return true;
 }
 
@@ -886,6 +891,19 @@ function opened(h, task) {
   if (answer?.already) task.landed = true;
 }
 
+/** The first of phases 2 and 3 whose start has not closed, for a unit with its own branch, which its close brings main into. @param {History} h @returns {number[]} */
+function startsLeft(h) {
+  if (h.into === 'main') return [];
+  const { checklists } = readManifest(h.at, UNIT);
+  return [2, 3].filter((phase) => checklists[`phase-${phase}-start`]?.closed === undefined).slice(0, 1);
+}
+
+/** A later phase's start closed, bringing main into the unit's own branch (7.2.36), its conflict's way on followed. @param {History} h @param {number} phase */
+function startClosedLater(h, phase) {
+  call(h.at, ['checklist', 'done', 'phase-start', UNIT, String(phase), 'design-settled'], h.as);
+  attempt(h, ['checklist', 'close', 'phase-start', UNIT, String(phase)]);
+}
+
 /** Phase 4 landed, each task it merged then landed. @param {History} h */
 function phaseLanded(h) {
   const answer = attempt(h, ['land', 'phase', UNIT, '4']);
@@ -895,8 +913,8 @@ function phaseLanded(h) {
 
 /**
  * What a history does between cutting its tasks and landing them all, each
- * with its weight and the tasks it can be done to.
- * @type {{weight: number, can: (h: History) => (Task|null)[], act: (h: History, task: any) => void}[]}
+ * with its weight and the tasks, or phases, it can be done to.
+ * @type {{weight: number, can: (h: History) => (Task|number|null)[], act: (h: History, on: any) => void}[]}
  */
 const EVENTS = [
   { weight: 3, can: (h) => h.tasks.filter((task) => !task.opened), act: opened },
@@ -907,6 +925,7 @@ const EVENTS = [
   { weight: 1, can: (h) => h.tasks.filter((task) => task.landed), act: reworded },
   { weight: 1, can: (h) => (h.later === null ? h.tasks.filter((task) => task.landed) : []), act: laterTask },
   { weight: 1, can: (h) => (h.tasks.some((task) => task.opened) ? [null] : []), act: phaseLanded },
+  { weight: 1, can: startsLeft, act: startClosedLater },
 ];
 
 /** One of `EVENTS` that can be done, drawn by weight, done to one of its tasks. @param {History} h */

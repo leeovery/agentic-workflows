@@ -32,7 +32,9 @@ node .claude/skills/leeway-engine/scripts/engine.cjs enter review {work_unit}
 
 A refusal names the way on: say it in a line. Where another session holds the unit or the checkout's code, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; carrying on from it ends the turn.
 
-Otherwise read what the DATA names that this conversation does not hold already — the spec, the unit's record by its call, the build's log, each round's report, the builders' `notes`: each once in the conversation, and after that only what is new since. `base` is the branch the unit's work lands on, and `waiting` lists the questions waiting on the person. Then its lines say what comes next, the first that applies:
+For a unit with a branch of its own, the first round's entry brings the default branch into it. Where the two conflict, the entry is refused, naming the worktree that holds the merge begun: settle each conflict there with the person, in the conversation, finish the merge as the refusal says, then enter again.
+
+Otherwise read what the DATA names that this conversation does not hold already — the spec, the unit's record by its call, the build's log, each round's report, the builders' `notes`: each once in the conversation, and after that only what is new since. `base` is the default branch, which the change is read against, and `waiting` lists the questions waiting on the person. Then its lines say what comes next, the first that applies:
 - `fix task waiting` — the last round's fix tasks are built (**The Fixes**).
 - `merge waiting` — their phase merges at its gate (**The Fixes**).
 - a `round` saying its builders' notes are answered — **The Builders' Notes**.
@@ -137,7 +139,7 @@ Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with
 node .claude/skills/leeway-engine/scripts/engine.cjs render finish {work_unit}
 ```
 
-Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`: follow its `next`, and then the `next` of what it ran. A refusal of the yes names the way on: take it, then run the yes again.
+Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`: follow its `next`, and then the `next` of what it ran. A refusal of the yes names the way on: take it — a conflict with the default branch settled with the person, as at the entry — then run the yes again.
 
 ## The Calls
 

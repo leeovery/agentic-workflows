@@ -10,7 +10,9 @@
 // combination (16.17.8, 16.S61), the change's commits in each repository —
 // the unit's own work alone: each of its landings against its first
 // parent, never another unit's between or after them nor a commit naming
-// no task, then its work not landed from where it leaves the base — the
+// no task, then its work not landed from where it leaves the base; for a
+// unit with a branch of its own, that branch against the base from where
+// they last met, a merge's settlement onto it among it (14.1.6) — the
 // scratch worktree's layout, the area's scenarios' runs at the change's
 // tips, the linters, and where the reviewer's report goes; the test
 // surface's, `brief test-surface <unit> --base <branch>` — every scenario
@@ -34,7 +36,7 @@ const path = require('path');
 const { template, filledTemplate, scratchCalls, ENGINE_DRAWN } = require('./brief-build-world.cjs');
 const {
   UNIT, OTHER, AREAS, EVERY, RECEIPT, calls, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBranch, fixBuilt, commitFile, stateText, issued, storedBriefs, areaText,
-  refusedPristine, statePath, writeState, reportText, git, initRepo, assert,
+  refusedPristine, statePath, writeState, reportText, git, initRepo, readManifest, createManifest, assert,
 } = require('./review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -168,6 +170,31 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     assert.strictEqual(sectionIn(areaReview('1').brief, 'The change\'s commits'), [
       projectCommits(), '## In `lib/cards`', landingDrawn(cards, 'main~1', 'card/token.js'), '## In `lib/refunds`', unlandedDrawn(refunds, fixBranch(3, 1, 'Send the receipt'), 'src/send.js'),
     ].join('\n\n'));
+  });
+
+  it('14.S18: a unit with a branch of its own reads its change as that branch against the base from where they last met, the settlement of the merge that brought main in among it, what main gained since left out, its tip that branch', () => {
+    const branch = `feat/${UNIT}`;
+    git(dir, ['switch', '-q', '-c', branch]);
+    commitFile(dir, 'src/own.js');
+    git(dir, ['switch', '-q', 'main']);
+    commitFile(dir, 'src/shared.js');
+    git(dir, ['switch', '-q', branch]);
+    git(dir, ['merge', '-q', '--no-ff', '--no-commit', 'main']);
+    fs.appendFileSync(path.join(dir, 'src/shared.js'), 'export const settled = 1;\n');
+    git(dir, ['add', 'src/shared.js']);
+    git(dir, ['commit', '-q', '-m', `Merge main into ${branch}`]);
+    git(dir, ['switch', '-q', 'main']);
+    commitFile(dir, 'src/later.js');
+    const held = readManifest(dir, UNIT);
+    createManifest(dir, UNIT, { ...held, build: { ...held.build, branch } });
+    const { brief } = areaReview('1');
+
+    assert.strictEqual(sectionIn(brief, 'The change\'s commits'), [
+      '## In the project\'s repository',
+      `### The unit's branch against main: \`${short(dir, 'main~1')}..${branch}\``,
+      '```\n src/own.js    | 1 +\n src/shared.js | 1 +\n 2 files changed, 2 insertions(+)\n```',
+    ].join('\n\n'));
+    assert.ok(brief.includes(`# Laying out your scratch worktree\n\n- the project's repository: \`${branch}\` — the change's tip there\n`), brief);
   });
 });
 

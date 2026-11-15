@@ -145,10 +145,17 @@
 // holding the branch's change, as a merge, squash or rebase by hand leaves
 // it, whatever the default branch changed since; refused before anything
 // lands where a host takes no merge commit (`unitPull`), and where the two
-// conflict, naming the paths and the way on (`unitConflict`); else landed
-// by the driver by a merge commit (`landUnit`), under the names the unit
-// lands under (landing-names.cjs, `unitLanding`), its description the
-// phases merged into the branch there. Nothing of it is recorded.
+// conflict, the merge of the default branch into the unit's branch begun
+// in a worktree, as a bring-up's conflict begins it, the refusal naming the
+// paths, the worktree and the way on (`unitConflict`) — a merge settled
+// there taken onto the branch as finish's landing runs again, before
+// anything lands (`settlementsTaken`); else landed by the driver by a
+// merge commit (`landUnit`), under the names the unit lands under
+// (landing-names.cjs, `unitLanding`), its description the phases merged
+// into the branch there. Nothing of it is recorded. As its review phase
+// begins, the default branch is brought into the branch and the unit's own
+// pull request opened where the driver lands through a host (`openUnit`),
+// so finish merges the one open (`reviewOpened`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the branch everything lands on in each repository, never the
@@ -239,12 +246,13 @@ const { dayBefore } = require('./dates.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { repoLanded, landedIn, landedAcross, foundIn, workIn } = require('./task-landed.cjs');
 const { recordsIn, writeLandings, recordLandings } = require('./landing-record.cjs');
-const { landsThroughHost, readied, madeNested } = require('./unit-branch.cjs');
+const { landsThroughHost, readied, madeNested, bringUp, settlementsTaken, mergeStopped } = require('./unit-branch.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { withWriterLock } = require('../kernel/manifest-io.cjs');
 const { projectRepos, projectPath, childrenFirst, topPath, repoName } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 
@@ -1332,14 +1340,17 @@ function landFinish(cwd, unit) {
 
 /**
  * `land finish` past its refusals, which finish's yes makes itself before
- * it lands: every phase still standing merged onto the unit's landing
- * branch, then, for a unit with a branch of its own, that branch landed on
- * the default branch (`unitSteps`) — one walk, so a refusal names the
- * phases merged before it.
+ * it lands: a merge into the unit's own branch held in its worktree taken
+ * onto it first (unit-branch.cjs, `settlementsTaken`); every phase still
+ * standing merged onto the unit's landing branch, then, for a unit with a
+ * branch of its own, that branch landed on the default branch
+ * (`unitSteps`) — one walk, so a refusal names the phases merged before
+ * it.
  * @param {string} cwd @param {string} unit
  */
 function finishMerge(cwd, unit) {
   if (landsAsOne(cwd, unit)) return quickFixLand(cwd, unit, true);
+  settlementsTaken(cwd, unit, { undone: 'nothing landed', then: 'land again' });
   const project = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
     const walking = walked(project, driver, holdingWork(project, (branch) => names.isUnitBranch(unit, branch)));
@@ -1382,6 +1393,39 @@ function unitSteps(project, driver, walking) {
 }
 
 /**
+ * A unit's own branch readied as its review phase begins, at its first
+ * round (review-entry.cjs): the default branch brought into it
+ * (unit-branch.cjs, `bringUp`, 7.2.36), then its own pull request opened
+ * in each repository holding it, children first, where the driver lands
+ * through a host (`openUnit`) and the unit has not landed there
+ * (`unitRead`), one open taken as it is (7.2.38) — under the writer lock,
+ * as a land verb pushes; nothing for a unit with no branch of its own.
+ * @param {string} cwd @param {string} unit
+ */
+function reviewOpened(cwd, unit) {
+  const branch = lg.recordedBranch(cwd, unit);
+  if (branch === null) return;
+  withWriterLock(stateRoot(cwd), () => {
+    bringUp(cwd, unit, branch, { undone: 'the review phase was not entered', then: 'enter the review again' });
+    const project = projectOf(cwd, unit);
+    withDriver(cwd, (driver) => {
+      const opens = driver.openUnit;
+      if (opens === undefined) return {};
+      const onDefault = projectOf(cwd, unit, project.repos, { onDefault: true, recorded: false });
+      for (const repo of childrenFirst(project.repos).filter((held) => lg.unitBranchIn(cwd, held, unit) !== null)) {
+        contextOf(project, repo);
+        const ctx = contextOf(onDefault, repo);
+        inRepo(ctx.repo, () => {
+          const read = unitRead(project, driver, ctx);
+          if (!read.held) opens(ctx, unitLanding(project, ctx, read, null));
+        });
+      }
+      return {};
+    });
+  });
+}
+
+/**
  * The unit's own branch in a repository against its default branch, each
  * as the driver lands onto it (`landsOn`): their tips, where they met, and
  * whether the unit has landed there (7.2.39) — the branch's tip held on the
@@ -1411,29 +1455,42 @@ function unitRead(project, driver, ctx) {
  * @param {Project} project the unit's, landing on its own branch @param {LandingDriver} driver @param {LandingContext} ctx the repository's, landing on its default branch @param {UnitPull|null} pull
  */
 function unitLanded(project, driver, ctx, pull) {
-  const { own, tip, onto, base, held } = unitRead(project, driver, ctx);
-  if (held) return driver.landUnit(ctx, null);
+  const read = unitRead(project, driver, ctx);
+  if (read.held) return driver.landUnit(ctx, null);
+  const { own, tip, onto, base } = read;
   const merged = lg.mergeTree(ctx.root, base, onto, tip);
-  if ('conflicts' in merged) throw new Error(unitConflict(driver, ctx, own.into, merged.conflicts));
+  if ('conflicts' in merged) throw new Error(unitConflict(driver, ctx, { branch: own.into, ours: tip, theirs: onto }, merged.conflicts));
+  return driver.landUnit(ctx, unitLanding(project, ctx, read, pull));
+}
+
+/**
+ * The unit's own branch to land in a repository, as read there
+ * (`unitRead`): under the names the unit lands under (landing-names.cjs,
+ * `unitLanding`), the phases merged into its branch there each a line of
+ * its description, and its pull request as read, null for none.
+ * @param {Project} project the unit's, landing on its own branch @param {LandingContext} ctx the repository's, landing on its default branch @param {ReturnType<typeof unitRead>} read @param {UnitPull|null} pull
+ * @returns {UnitLanding}
+ */
+function unitLanding(project, ctx, { own, tip, base }, pull) {
   const manifest = /** @type {Record<string, any>} */ (project.manifest);
   const phases = [...new Set(lg.namedPast(ctx.root, project.unit, base, tip).flatMap(({ ids }) => ids.map((id) => parseTaskId(id).phase)))].sort((a, b) => a - b);
   const lines = phases.map((phase) => `Phase ${phase}: ${cutPhases(manifest)[phase - 1]?.name ?? 'the review\'s fixes'}`);
-  return driver.landUnit(ctx, { branch: own.into, tip, ...names.unitLanding(project.unit, unitTitle(manifest), lines), pull });
+  return { branch: own.into, tip, ...names.unitLanding(project.unit, unitTitle(manifest), lines), pull };
 }
 
 /**
  * The refusal of the unit's branch conflicting with the default branch it
- * lands on: the paths, and the way on — the default branch, as the driver
- * lands onto it, merged into the unit's branch in a worktree, settled and
- * committed, pushed where the driver lands through a host — then the
- * landing again.
- * @param {LandingDriver} driver @param {LandingContext} ctx the repository's, landing on its default branch @param {string} branch the unit's @param {string[]} paths
+ * lands on: the merge of the default branch, as the driver lands onto it,
+ * into the unit's branch begun in the worktree made for it, as a bring-up's
+ * conflict begins it, with its way on — settled and finished there, then
+ * the landing again, which takes it onto the branch before it lands
+ * (unit-branch.cjs, `mergeStopped`, `settlementsTaken`).
+ * @param {LandingDriver} driver @param {LandingContext} ctx the repository's, landing on its default branch @param {{branch: string, ours: string, theirs: string}} merging the unit's branch, its tip and the default branch's @param {string[]} paths
  */
-function unitConflict(driver, ctx, branch, paths) {
-  const theirs = theirsOf(driver, ctx);
-  const push = landsThroughHost(driver, ctx.remote) ? `, push ${branch} to ${ctx.remote}` : '';
-  return `land: ${branch} conflicts with ${theirs} at ${paths.map(lg.plain).join(', ')}, so ${ctx.unit} did not land on ${ctx.into} — `
-    + `merge ${theirs} into ${branch} in a worktree, as \`git worktree add <folder> ${branch}\` then \`git merge ${theirs}\` there do, settle and commit it${push}, and land again`;
+function unitConflict(driver, ctx, { branch, ours, theirs }, paths) {
+  const home = { root: ctx.root, nested: ctx.repo === '.' ? null : ctx.repo, remote: ctx.remote, hosted: landsThroughHost(driver, ctx.remote) };
+  const merging = { into: ctx.into, theirs, ours, pointers: new Map() };
+  return `land: ${mergeStopped(home, branch, merging, paths, { so: `${ctx.unit} did not land on ${ctx.into}`, then: 'land again' })}`;
 }
 
 /**
@@ -1962,5 +2019,5 @@ module.exports = {
   landFinish: (cwd, unit) => recording(cwd, unit, () => landFinish(cwd, unit)),
   /** `land finish` past its refusals, its landings written for finish's yes's commit of the unit to carry. @param {string} cwd @param {string} unit */
   finishMerge: (cwd, unit) => recording(cwd, unit, () => finishMerge(cwd, unit), true),
-  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal,
+  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal, reviewOpened,
 };
