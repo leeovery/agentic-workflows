@@ -14,7 +14,10 @@
 //   every engine item holding still (checklist.cjs, E12) — the project's
 //   environment setup recorded among them, so at the project's first ready
 //   to build its screen, `render environment-setup`, is asked before this
-//   one, and at no later one (22.5.3, environment-verbs.cjs). It refuses a unit
+//   one, and at no later one (22.5.3, environment-verbs.cjs). Then the
+//   drivers are checked against the tools they need: where a tool is not
+//   fine, the stop is drawn in the screen's place, and the yes, checking
+//   them again, is refused with it (22.4.5–22.4.9, drivers-verbs.cjs). It refuses a unit
 //   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
 //   one not in progress, a quick-fix, a unit of a retired type, topics not
 //   settled; a unit keeping the old spec's items, which never reaches this
@@ -54,10 +57,12 @@
 //   lands them after: the product-record lines through the ledger, then, in
 //   the manifest's one save, the candidates parked on the roadmap, the topic
 //   decided and its close recorded as taken, which dates the discussion.
-//   Then it writes `build: {position}` on the unit's manifest — the first
+//   Then it writes each driver's setting the project lacks, as the first
+//   verb needing it would, so the build records its drivers (22.4.3); then
+//   `build: {position}` on the unit's manifest — the first
 //   pick of the position, its record the gate's answer (E14) — concluding
-//   the spec (P7), and commits the manifest with the record, if any, and the
-//   roadmap the candidates parked on, a failed commit retried by the unit's
+//   the spec (P7), and commits the manifest with the project's, the record,
+//   if any, and the roadmap the candidates parked on, a failed commit retried by the unit's
 //   `commit --state`, which takes each: files only the engine writes. Its
 //   `next` hands off into the build, whatever the unit's type (24.1.2).
 // - A switch of position is stated intent (3.3.7): `workunit position`
@@ -69,7 +74,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
-const { BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
+const { BUILD_POSITIONS, DRIVER_KINDS } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
@@ -87,8 +92,10 @@ const { closesIntoSpec, featureClose, closingYes } = require('./decided.cjs');
 const { pageOpen, readBackFile, reviewStates, settleReview } = require('./spec-review.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { record } = require('./trust-log.cjs');
-const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
+const { resolveDriver } = require('./drivers.cjs');
+const { driversStop } = require('./drivers-verbs.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { readyToBuildScreen } = require('./projections/ready-to-build.cjs');
 
@@ -215,6 +222,8 @@ function reviewCounts(cwd, unit) {
 function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
   return refusing('render ready-to-build', () => {
     const ready = standing(cwd, unit);
+    const stop = driversStop(cwd);
+    if (stop !== null) return stop.screen();
     const { headings } = specReading(ready.landed);
     const open = pageOpen(cwd, unit);
     return readyToBuildScreen({
@@ -258,6 +267,8 @@ function nextAfterYes(manifest) {
 function readyToBuildYes(cwd, unit, position, marks) {
   const ready = standing(cwd, unit);
   const { warnings, topic } = ready;
+  const stop = driversStop(cwd);
+  if (stop !== null) throw new Error(stop.reason);
   if (ready.verdict !== null) throw new Error('a verdict is still to ask — render ready-to-build asks each before the yes');
   if (topic !== null && topic.unreplaced !== null) throw new Error(topic.unreplaced);
   if (marks !== undefined && !pageOpen(cwd, unit)) throw new Error(`${unit}'s review page is not open, so the yes takes no marks — the build starts with no review recorded`);
@@ -267,6 +278,7 @@ function readyToBuildYes(cwd, unit, position, marks) {
     throw new Error(`a comment on the review page waits for Claude, so the build does not start — Claude answers each beneath its line, then shows ready to build again:\n${settled.waiting.map(waitingLine).join('\n')}`);
   }
   const landed = yes === null ? {} : yes.land();
+  for (const kind of DRIVER_KINDS) resolveDriver(cwd, kind);
   const at = new Date().toISOString();
   const { manifest, beside, parked } = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
@@ -275,7 +287,7 @@ function readyToBuildYes(cwd, unit, position, marks) {
     saveWorkUnitManifest(cwd, unit, fresh);
     return { manifest: fresh, beside: yes === null || taken === null ? [] : yes.paths(taken), parked: taken?.parked ?? [] };
   });
-  const paths = [...new Set([`${unit}/manifest.json`, ...beside, ...(settled.record === null ? [] : [settled.record])])];
+  const paths = [...new Set([`${unit}/manifest.json`, PROJECT_MANIFEST_SPEC, ...beside, ...(settled.record === null ? [] : [settled.record])])];
   const outcome = commitStateTail(cwd, paths, `ready-to-build(${unit}): ${position}`, warnings);
   yes?.done();
   const closing = yes === null ? {} : { decided: at, ...landed, candidates: yes.candidates, struck: yes.struck, parked };

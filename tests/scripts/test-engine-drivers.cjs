@@ -7,8 +7,9 @@
 // lacking a quick-fix's methods among them; each kind's
 // default among its drivers, landing's turning on the remote a driver
 // serves; the project manifest's `drivers` setting, honoured, refused where
-// it names no shipped driver, and written where absent; why a driver cannot
-// run, every tool missing or failing named; the task's internal id and its
+// it names no shipped driver, and written where absent; each tool a driver
+// needs held against its floor, and why a driver cannot run, every tool
+// missing, older or failing named; the task's internal id and its
 // shown form, formatted and parsed. Unit layer: the fixture
 // drivers under tests/fixtures/drivers/, and a plain temp folder pinned as
 // the state root for the project manifest. No git: the landing default read
@@ -24,7 +25,7 @@ const path = require('path');
 
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { pinStateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
-const { loadDriver, listDrivers, defaultDriver, resolveDriver, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { loadDriver, listDrivers, defaultDriver, resolveDriver, toolStates, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { taskId, stepOfId, parseTaskId, shownTask, parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
 const FIXTURES = path.join(__dirname, '..', 'fixtures', 'drivers');
@@ -44,8 +45,8 @@ describe('loadDriver and listDrivers', () => {
     const [alpha] = tasks;
     const [need] = alpha.needs;
     assert.deepStrictEqual(
-      { kind: alpha.kind, isDefault: alpha.isDefault, need: { tool: need.tool, floor: need.floor, found: need.found() }, ready: alpha.ready() },
-      { kind: 'task', isDefault: true, need: { tool: 'alpha-cli', floor: '1.0.0', found: '1.2.0' }, ready: 'ready' },
+      { kind: alpha.kind, isDefault: alpha.isDefault, title: alpha.title, need: { tool: need.tool, label: need.label, floor: need.floor, found: need.found() }, ready: alpha.ready() },
+      { kind: 'task', isDefault: true, title: 'alpha\'s driver', need: { tool: 'alpha-cli', label: 'Alpha', floor: '1.0.0', found: '1.2.0' }, ready: 'ready' },
     );
   });
 
@@ -59,7 +60,9 @@ describe('loadDriver and listDrivers', () => {
       misnamed: 'must declare kind "task" and name "misnamed", as its folder does',
       miskinded: 'must declare kind "task" and name "miskinded", as its folder does',
       unflagged: 'must declare isDefault, true or false',
-      unfound: 'must declare its needs as a list of {tool, floor, update, found}',
+      untitled: 'must declare its title, the words a screen names it by',
+      unfound: 'must declare its needs as a list of {tool, label, floor, update, found}, each floor a version',
+      floorless: 'must declare its needs as a list of {tool, label, floor, update, found}, each floor a version',
       entryless: 'has no driver.cjs',
     };
     for (const [name, fault] of Object.entries(faults)) {
@@ -171,21 +174,42 @@ describe('resolveDriver: the project manifest\'s drivers setting (7.1.4)', () =>
   });
 });
 
-describe('needsRefusal: why a driver cannot run', () => {
-  /** @param {string} tool @param {() => string|null} found */
-  const need = (tool, found) => ({ tool, floor: '1.0.0', update: `https://example.invalid/${tool}`, found });
+describe('a driver\'s tools against their floors (22.4.9)', () => {
+  /** @param {string} tool @param {() => string|null} found @param {string} [floor] */
+  const need = (tool, found, floor = '1.2.0') => ({ tool, label: tool.toUpperCase(), floor, update: `https://example.invalid/${tool}`, found });
   const broken = () => { throw new Error('exited 3'); };
+  /** @param {ReturnType<typeof need>[]} needs */
+  const driver = (needs) => /** @type {any} */ ({ kind: 'task', needs });
 
-  it('names every tool not installed and where its updates are, and passes through the error of each that fails, every one of each', () => {
-    const driver = /** @type {any} */ ({
-      kind: 'task', needs: [need('ay', () => null), need('bee', broken), need('sea', () => null), need('dee', () => '1.2.0'), need('ee', broken)],
-    });
-    assert.strictEqual(needsRefusal(driver), 'the task driver needs ay and sea, not installed — ay\'s updates are at https://example.invalid/ay; '
-      + 'sea\'s updates are at https://example.invalid/sea; and bee is installed but fails — exited 3; and ee is installed but fails — exited 3');
+  it('toolStates: each tool fine, missing, older than its floor part by part, or failing with its error, in the order declared', () => {
+    const states = toolStates(driver([
+      need('ay', () => '1.2.0'), need('bee', () => null), need('sea', () => '1.1.9'), need('dee', broken), need('ee', () => '1.10.0'), need('ef', () => '2'), need('gee', () => 'v1.3'),
+    ]));
+    assert.deepStrictEqual(states.map(({ tool, found, state, error }) => ({ tool, found, state, ...(error === undefined ? {} : { error }) })), [
+      { tool: 'ay', found: '1.2.0', state: 'fine' },
+      { tool: 'bee', found: null, state: 'missing' },
+      { tool: 'sea', found: '1.1.9', state: 'older' },
+      { tool: 'dee', found: null, state: 'failing', error: 'exited 3' },
+      { tool: 'ee', found: '1.10.0', state: 'fine' },
+      { tool: 'ef', found: '2', state: 'fine' },
+      { tool: 'gee', found: 'v1.3', state: 'fine' },
+    ]);
+    assert.deepStrictEqual(Object.keys(states[0]), ['tool', 'label', 'floor', 'update', 'found', 'state'], 'each state carries the words a screen names its tool by, its floor and its update instructions');
   });
 
-  it('answers null where every tool runs', () => {
-    assert.strictEqual(needsRefusal(/** @type {any} */ ({ kind: 'task', needs: [need('dee', () => '1.2.0')] })), null);
+  it('toolStates: a release without its third part reads it as 0, a floor\'s or a version found, and a release short of it is older', () => {
+    assert.deepStrictEqual(toolStates(driver([need('ay', () => '1.1.99', '1.2'), need('bee', () => '1.2', '1.2.0'), need('sea', () => '1.2', '1.2.1')])).map(({ state }) => state), ['older', 'fine', 'older']);
+  });
+
+  it('needsRefusal: names every tool not installed and where its updates are, each older with the version found, and passes through the error of each that fails', () => {
+    const refused = needsRefusal(driver([need('ay', () => null), need('bee', broken), need('sea', () => null), need('dee', () => '1.0.0'), need('ee', () => '1.2.0')]));
+    assert.strictEqual(refused, 'the task driver needs ay and sea, not installed — ay\'s updates are at https://example.invalid/ay; '
+      + 'sea\'s updates are at https://example.invalid/sea; and bee is installed but fails — exited 3; '
+      + 'and dee is 1.0.0, older than the 1.2.0 it needs — its updates are at https://example.invalid/dee');
+  });
+
+  it('needsRefusal: null where every tool is fine', () => {
+    assert.strictEqual(needsRefusal(driver([need('dee', () => '1.2.0')])), null);
   });
 });
 

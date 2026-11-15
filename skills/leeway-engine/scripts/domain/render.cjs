@@ -83,6 +83,7 @@ const { careSurface, careKindSurface, careDropSurface } = require('./person-verb
 const { convergenceSurface } = require('./convergence.cjs');
 const { matrixSurface, replaySurface } = require('./trust-verbs.cjs');
 const { environmentSetupSurface } = require('./environment-verbs.cjs');
+const { driversSurface, driversStopSurface } = require('./drivers-verbs.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -1175,6 +1176,8 @@ const SURFACES = {
   matrix: (cwd) => matrixSurface(cwd),
   'matrix-replay': (cwd, { threshold, build }) => replaySurface(cwd, { threshold, build }),
   'environment-setup': (cwd, { from }) => environmentSetupSurface(cwd, { from }),
+  drivers: (cwd) => driversSurface(cwd),
+  'drivers-stop': (cwd) => driversStopSurface(cwd),
 };
 
 /**

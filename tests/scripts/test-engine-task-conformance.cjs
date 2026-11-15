@@ -43,7 +43,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { STATE_DIR_NAME, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
-const { listDrivers, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers, toolStates, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { phaseName, unitName, taskName, endedInTracker, FOREIGN_TASK } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 const { MergeError } = require('../../skills/leeway-engine/scripts/domain/state-merge-rules.cjs');
 
@@ -59,12 +59,6 @@ const ref = (phase, n) => ({ unit: UNIT, phase, n });
 /** @param {string} title */
 const task = (title) => ({ title, type: 'feat', text: `# ${title}\n\n## Problem\n${title} is missing.` });
 
-/** Whether a version is at or above a floor, by each dotted number in turn. @param {string} version @param {string} floor */
-function atLeast(version, floor) {
-  const [have, need] = [version, floor].map((v) => v.split('.').map((part) => parseInt(part, 10) || 0));
-  const differing = need.findIndex((part, i) => (have[i] ?? 0) !== part);
-  return differing === -1 || (have[differing] ?? 0) > need[differing];
-}
 
 /** @param {{ref: {phase: number, n: number}}[]} rows */
 const shown = (rows) => rows.map((row) => `${row.ref.phase}.${row.ref.n}`);
@@ -104,10 +98,8 @@ for (const driver of listDrivers('task')) {
     });
 
     it(`runs against its tools at or above the floors it declares (7.3.5)`, () => {
-      for (const need of driver.needs) {
-        const version = need.found();
-        assert.ok(version !== null, `${need.tool} is not installed — the ${driver.name} driver needs it at ${need.floor} or later (${need.update})`);
-        assert.ok(atLeast(version, need.floor), `${need.tool} ${version} is below the ${driver.name} driver's floor, ${need.floor} (${need.update})`);
+      for (const { tool, found, state, floor, update } of toolStates(driver)) {
+        assert.strictEqual(state, 'fine', `${tool} is ${found ?? 'not installed'} — the ${driver.name} driver needs it at ${floor} or later (${update})`);
       }
     });
 

@@ -29,13 +29,13 @@ const dir = useReadyWorld(closed);
 const { refused, yes, events, publish, readBack } = readyHelpers(dir);
 
 describe('the yes (11.8.1, 11.8.6, E11)', () => {
-  it('begins the build in the position picked, its manifest holding it as `build`, committed alone, with no review written where no page is open, and hands off into the build (11.S22, 24.S4)', () => {
+  it('begins the build in the position picked, its manifest holding it as `build`, committed with the project manifest its drivers are written in, with no review written where no page is open, and hands off into the build (11.S22, 24.S4)', () => {
     const before = head(dir());
     const answer = yes(['--position', 'auto']);
 
     assert.deepStrictEqual(answer, { ok: true, unit: UNIT, position: 'auto', record: null, committed: stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway-implementation-process', args: ['epic', UNIT] } });
     assert.deepStrictEqual(readManifest(dir(), UNIT).build, { position: 'auto' });
-    assert.deepStrictEqual([lastMessage(dir()), touched(statePath(dir()), 'HEAD'), stateGit(dir(), ['rev-parse', 'HEAD~1']).trim()], [`ready-to-build(${UNIT}): auto`, [`M\t${layout.manifest(UNIT)}`], before]);
+    assert.deepStrictEqual([lastMessage(dir()), touched(statePath(dir()), 'HEAD'), stateGit(dir(), ['rev-parse', 'HEAD~1']).trim()], [`ready-to-build(${UNIT}): auto`, ['M\tmanifest.json', `M\t${layout.manifest(UNIT)}`], before]);
     assert.ok(!fs.existsSync(statePath(dir(), layout.unit(UNIT, 'spec-review.json'))));
     assert.deepStrictEqual(events('position-switch'), [], 'the first pick is the gate\'s record, never a switch (E14)');
   });
@@ -59,7 +59,7 @@ describe('the yes (11.8.1, 11.8.6, E11)', () => {
     const answer = failingStateCommits(dir(), () => yes(['--position', 'auto', '--marks', readBack({ s1: { m: { '1-1-1': { s: 'tick' } } } })]));
 
     assert.deepStrictEqual([answer.committed, answer.note], [null, `commit pending — state saved; retry with: engine commit ${UNIT} --state -m "<message>"`]);
-    assert.deepStrictEqual(retried(dir(), answer), { took: [`M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort(), left: '' });
+    assert.deepStrictEqual(retried(dir(), answer), { took: ['M\tmanifest.json', `M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort(), left: '' });
   });
 
   it('takes no marks while no page is open, and refuses a position that is none of the build\'s and arguments of another shape, writing nothing', () => {
@@ -102,7 +102,7 @@ describe('the yes over an open review page (11.11.5, 11.11.8, 11.11.9)', () => {
     });
     assert.deepStrictEqual(lines['1.1.2'].conversation.map((/** @type {{by: string, text: string}} */ { by, text }) => ({ by, text })), [{ by: 'person', text: 'Why refuse it?' }, { by: 'claude', text: 'An unknown brand cannot be charged.' }]);
     assert.strictEqual(trust(), trusted, 'the yes logs nothing the trust counts read');
-    assert.deepStrictEqual([touched(statePath(dir()), 'HEAD'), stateGit(dir(), ['rev-parse', 'HEAD~1']).trim()], [[`M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort(), before]);
+    assert.deepStrictEqual([touched(statePath(dir()), 'HEAD'), stateGit(dir(), ['rev-parse', 'HEAD~1']).trim()], [['M\tmanifest.json', `M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort(), before]);
   });
 });
 

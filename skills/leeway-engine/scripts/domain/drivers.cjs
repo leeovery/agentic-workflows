@@ -7,11 +7,20 @@
 // A driver is a folder the workflows ship, `drivers/{kind}/{name}/driver.cjs`,
 // and never one loaded from elsewhere (7.1.7): the loader reads the shipped
 // folders. A driver declares its kind, its name, whether it is its kind's
-// default, and the tools it needs: each with the oldest version it works
-// with, where its update instructions live, and how to find the version
-// installed (22.4.9). It carries every required method of its kind, and an
-// optional one only where its tool has the capability. A driver short of a
-// required method, or declaring any of that amiss, is refused.
+// default, the words a screen names it by, and the tools it needs: each
+// with the words a screen names it by, the oldest version it works with,
+// where its update instructions live, and how to find the version installed
+// (22.4.9) — so no screen of the engine's names a tool (7.1.10, 7.2.13). It
+// carries every required method of its kind, and an optional one only where
+// its tool has the capability. A driver short of a required method, or
+// declaring any of that amiss, is refused.
+//
+// Each tool a driver needs stands one of four ways (`toolStates`): fine;
+// missing; older than its floor, its version read part by part — one that
+// does not read is not judged, as the git floor's is not; or failing,
+// installed but erroring as its version is read. The drivers' check at
+// ready to build reads them (drivers-verbs.cjs), and a verb a driver fails
+// is refused for a tool that is not fine (`needsRefusal`).
 //
 // The project manifest's `drivers: {task, landing}` names one of each kind.
 // Where a kind's setting is absent, the first verb that resolves it settles
@@ -22,7 +31,9 @@
 // is refused, naming those they do. The code host's driver, which acts on
 // the remote's host for setup, is the landing driver that serves the
 // remote, whatever the setting; which driver a project lands through can be
-// read without settling it. The loader names no host: a driver for
+// read without settling it. A driver serves the project unless it lands
+// through a host (`assertServes`) the project's remote is not on
+// (`projectDrivers`). The loader names no host: a driver for
 // another one is a folder of its own and nothing else.
 // ---------------------------------------------------------------------------
 
@@ -31,6 +42,7 @@ const path = require('path');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { DRIVER_KINDS } = require('../kernel/manifest-schema.cjs');
+const { releaseOf, atLeast } = require('../kernel/version.cjs');
 
 /** @typedef {typeof DRIVER_KINDS[number]} DriverKind */
 
@@ -54,15 +66,22 @@ const METHODS = Object.freeze({
 });
 
 /**
- * A tool a driver needs: the oldest version it works with, where its update
- * instructions live, and the version installed — null where it is not, the
- * tool's own error thrown where it is but fails.
- * @typedef {{tool: string, floor: string, update: string, found: () => string|null}} DriverNeed
+ * A tool a driver needs: the words a screen names it by, the oldest version
+ * it works with, where its update instructions live, and the version
+ * installed — null where it is not, the tool's own error thrown where it is
+ * but fails.
+ * @typedef {{tool: string, label: string, floor: string, update: string, found: () => string|null}} DriverNeed
  */
 
 /**
- * What every driver declares.
- * @typedef {{kind: DriverKind, name: string, isDefault: boolean, needs: DriverNeed[]}} DriverDeclaration
+ * What every driver declares: `title` the words a screen names it by.
+ * @typedef {{kind: DriverKind, name: string, title: string, isDefault: boolean, needs: DriverNeed[]}} DriverDeclaration
+ */
+
+/**
+ * How a tool a driver needs stands (the header's): the version found, null
+ * where none is, and the error it failed with, where it did.
+ * @typedef {{tool: string, label: string, floor: string, update: string, found: string|null, state: 'fine'|'missing'|'older'|'failing', error?: string}} ToolState
  */
 
 /** @typedef {(...args: any[]) => any} DriverMethod */
@@ -284,7 +303,8 @@ function isText(value) {
 
 /** @param {unknown} need @returns {boolean} */
 function isNeed(need) {
-  return isObject(need) && isText(need.tool) && isText(need.floor) && isText(need.update) && typeof need.found === 'function';
+  return isObject(need) && isText(need.tool) && isText(need.label) && isText(need.floor) && releaseOf(need.floor) !== null
+    && isText(need.update) && typeof need.found === 'function';
 }
 
 /**
@@ -297,7 +317,8 @@ function faultOf(kind, name, driver) {
     return `must declare kind "${kind}" and name "${name}", as its folder does`;
   }
   if (typeof driver.isDefault !== 'boolean') return 'must declare isDefault, true or false';
-  if (!Array.isArray(driver.needs) || !driver.needs.every(isNeed)) return 'must declare its needs as a list of {tool, floor, update, found}';
+  if (!isText(driver.title)) return 'must declare its title, the words a screen names it by';
+  if (!Array.isArray(driver.needs) || !driver.needs.every(isNeed)) return 'must declare its needs as a list of {tool, label, floor, update, found}, each floor a version';
   const { required, optional } = METHODS[kind];
   const missing = required.filter((method) => typeof driver[method] !== 'function');
   if (missing.length > 0) return `lacks ${missing.join(', ')}`;
@@ -407,6 +428,42 @@ function settingOf(project, kind) {
 }
 
 /**
+ * The URL of the project's remote where a kind's drivers read it — the
+ * landing drivers' — else null.
+ * @param {string} cwd @param {DriverKind} kind
+ * @returns {string|null}
+ */
+function remoteOf(cwd, kind) {
+  // Loaded here, not with the module: the layout guard reads the drivers
+  // before every write under the state, and remote.cjs brings the state
+  // worktree's modules with it.
+  return kind === 'landing' ? require('./remote.cjs').remoteUrl(cwd) : null;
+}
+
+/**
+ * Whether a driver serves a project whose remote's URL is `url`: a task
+ * driver serves any, as does a landing driver landing through no host; one
+ * landing through a host (`assertServes`) serves only a remote it serves.
+ * @param {Driver} driver @param {string|null} url
+ * @returns {boolean}
+ */
+function servesRemote(driver, url) {
+  if (driver.kind !== 'landing') return true;
+  const landing = /** @type {LandingDriver} */ (driver);
+  return landing.assertServes === undefined || (url !== null && landing.serves(url));
+}
+
+/**
+ * A kind's shipped drivers, each with whether it serves the project.
+ * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
+ * @returns {{driver: Driver, serves: boolean}[]}
+ */
+function projectDrivers(cwd, kind, root = DRIVERS_ROOT) {
+  const url = remoteOf(cwd, kind);
+  return listDrivers(kind, root).map((driver) => ({ driver, serves: servesRemote(driver, url) }));
+}
+
+/**
  * The project's driver of a kind as things stand, writing nothing: the one
  * its setting names, or the kind's default; `set` says the setting names it.
  * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
@@ -415,11 +472,7 @@ function settingOf(project, kind) {
 function chosenDriver(cwd, kind, root = DRIVERS_ROOT) {
   const set = settingOf(readProjectManifest(cwd), kind);
   if (set !== null) return { driver: loadDriver(kind, set, root), set: true };
-  // Loaded here, not with the module: the layout guard reads the drivers
-  // before every write under the state, and remote.cjs brings the state
-  // worktree's modules with it.
-  const url = kind === 'landing' ? require('./remote.cjs').remoteUrl(cwd) : null;
-  return { driver: defaultDriver(kind, listDrivers(kind, root), url), set: false };
+  return { driver: defaultDriver(kind, listDrivers(kind, root), remoteOf(cwd, kind)), set: false };
 }
 
 /**
@@ -443,29 +496,47 @@ function resolveDriver(cwd, kind, root = DRIVERS_ROOT) {
 }
 
 /**
- * Why a driver can't run, naming every tool it needs that is not installed
- * and where its updates are, and passing through the error of each that is
- * installed but fails; null when each one runs.
+ * How each tool a driver needs stands (the header's), in the order it
+ * declares them.
+ * @param {Driver} driver
+ * @returns {ToolState[]}
+ */
+function toolStates(driver) {
+  return driver.needs.map(({ tool, label, floor, update, found: read }) => {
+    const need = { tool, label, floor, update };
+    /** @type {string|null} */
+    let found;
+    try {
+      found = read();
+    } catch (err) {
+      return { ...need, found: null, state: /** @type {const} */ ('failing'), error: err instanceof Error ? err.message : String(err) };
+    }
+    if (found === null) return { ...need, found, state: /** @type {const} */ ('missing') };
+    const release = releaseOf(found);
+    const older = release !== null && !atLeast(release, /** @type {number[]} */ (releaseOf(floor)));
+    return { ...need, found, state: older ? /** @type {const} */ ('older') : /** @type {const} */ ('fine') };
+  });
+}
+
+/**
+ * Why a driver can't run: every tool it needs that is not installed, and
+ * where its updates are; each older than its floor, with the version found
+ * and where its updates are; and the error of each installed but failing —
+ * null where each one is fine.
  * @param {Driver} driver
  * @returns {string|null}
  */
 function needsRefusal(driver) {
-  /** @type {DriverNeed[]} */
-  const missing = [];
-  /** @type {string[]} */
-  const failing = [];
-  for (const need of driver.needs) {
-    try {
-      if (need.found() === null) missing.push(need);
-    } catch (err) {
-      failing.push(`${need.tool} is installed but fails — ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
+  const states = toolStates(driver);
+  const missing = states.filter(({ state }) => state === 'missing');
   const absent = missing.length === 0 ? [] : [
     `needs ${missing.map((need) => need.tool).join(' and ')}, not installed — ${missing.map((need) => `${need.tool}'s updates are at ${need.update}`).join('; ')}`,
   ];
-  const faults = [...absent, ...failing];
+  const faults = [...absent, ...states.flatMap((need) => {
+    if (need.state === 'older') return [`${need.tool} is ${need.found}, older than the ${need.floor} it needs — its updates are at ${need.update}`];
+    return need.state === 'failing' ? [`${need.tool} is installed but fails — ${need.error}`] : [];
+  })];
   return faults.length === 0 ? null : `the ${driver.kind} driver ${faults.join('; and ')}`;
 }
 
-module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, hostDriver, chosenDriver, resolveDriver, settingOf, needsRefusal };
+module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, hostDriver, chosenDriver, resolveDriver, settingOf, toolStates, needsRefusal, projectDrivers };

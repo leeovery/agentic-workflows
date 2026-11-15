@@ -91,6 +91,7 @@ const { APPROVE_MAP_USAGE, runApproveMapVerb } = require('./domain/approve-map.c
 const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
 const { VERIFY_USAGE, VERIFY_FLAGS, runVerifyVerb } = require('./domain/verify.cjs');
 const { ENVIRONMENT_USAGE, runEnvironmentVerb } = require('./domain/environment-verbs.cjs');
+const { DRIVERS_USAGE, runDriversVerb } = require('./domain/drivers-verbs.cjs');
 const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
@@ -324,6 +325,7 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   ${READY_TO_BUILD_USAGE}
 ${VERIFY_USAGE.replace(/^/gm, '  ')}
 ${ENVIRONMENT_USAGE.replace(/^/gm, '  ')}
+${DRIVERS_USAGE.replace(/^/gm, '  ')}
 ${MIGRATE_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
@@ -458,6 +460,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render matrix
   render matrix-replay --threshold <percent> | --build <percent>
   render environment-setup [--from manage]
+  render drivers
+  render drivers-stop
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -1434,6 +1438,21 @@ function runEnvironment(call, argv) {
   const [verb, ...args] = argv;
   try {
     respond(call, runEnvironmentVerb(call.cwd, verb, args, call.stdin));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// drivers — the project's drivers checked against the tools they need, and
+// either driver changed (domain/drivers-verbs.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runDrivers(call, argv) {
+  const [verb, ...args] = argv;
+  try {
+    respond(call, runDriversVerb(call.cwd, verb, args));
   } catch (err) {
     failJson(call, err);
   }
@@ -2551,6 +2570,7 @@ const COMMANDS = Object.freeze({
   convergence: runConvergence,
   trust: runTrust,
   environment: runEnvironment,
+  drivers: runDrivers,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2591,7 +2611,7 @@ const COMMANDS = Object.freeze({
 // `layout guard` among them, run before every file Claude writes, `brief
 // guard`, before every dispatch of an agent, `shell guard`, before every
 // shell command, `checklist show`, `migrate check` and `review`,
-// `environment show`, `measures` and `board`.
+// `environment show`, `drivers check`, `measures` and `board`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2627,6 +2647,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   trust: ['threshold', 'build-threshold'],
   environment: ['show'],
   task: ['worktree'],
+  drivers: ['check'],
 }));
 
 // Every command dispatched refuses, writing nothing, in a conversation boot

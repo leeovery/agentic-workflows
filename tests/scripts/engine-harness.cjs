@@ -37,6 +37,10 @@
 // another holds runs in process, its attempts at the lock watched
 // (`lockAttempts`): the test lets the lock go at the call's own attempt,
 // never when a timer guesses the call has reached its wait.
+//
+// The tools the drivers' check reads at ready to build are stood in for
+// first on the PATH (`tests/drivers/{name}/bin`), so no suite reads the
+// machine's; a call given a PATH of its own goes without them.
 
 require('./hermetic-env.cjs');
 
@@ -67,6 +71,12 @@ const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 const { stampBoot } = require('../../skills/leeway-engine/scripts/domain/boot-stamp.cjs');
+
+/** Each driver's stand-ins, as they come first on the PATH. */
+const STAND_INS = Object.freeze(fs.readdirSync(path.join(__dirname, '..', 'drivers'))
+  .map((name) => path.join(__dirname, '..', 'drivers', name, 'bin'))
+  .filter((bin) => fs.existsSync(bin)));
+process.env.PATH = [...STAND_INS, process.env.PATH].join(path.delimiter);
 
 const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
 
@@ -479,6 +489,20 @@ function githubOffline(dir) {
   const file = path.join(dir, 'github-offline.gitconfig');
   fs.writeFileSync(file, '[url "ssh://git@github.com:0/"]\n\tinsteadOf = git@github.com:\n');
   return { GIT_CONFIG_GLOBAL: file };
+}
+
+/**
+ * A PATH, made in `dir`, holding git and ps alone: no tool a driver needs
+ * is found on it.
+ * @param {string} dir @returns {string}
+ */
+function toolless(dir) {
+  const bin = fs.mkdtempSync(path.join(dir, 'bin-'));
+  for (const tool of ['git', 'ps']) {
+    const found = (process.env.PATH ?? '').split(path.delimiter).map((folder) => path.join(folder, tool)).find((file) => fs.existsSync(file));
+    if (found !== undefined) fs.symlinkSync(found, path.join(bin, tool));
+  }
+  return bin;
 }
 
 /**
@@ -1091,13 +1115,13 @@ function startItem(dir, workUnit, phase, topic) {
 }
 
 module.exports = {
-  ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
+  ENGINE, STAND_INS, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
   call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, screenOf, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
-  commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs, accountFiles, accountTaken,
+  commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, toolless, failingPs, accountFiles, accountTaken,
   NO_SPACE, failingTrustAppends, failingStateCommits, retried, completeUnit, startItem, stampBooted,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment,
 };
