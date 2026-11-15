@@ -182,7 +182,7 @@ describe('the product record (5.8.6)', () => {
 
     const product = read('product');
 
-    assert.deepStrictEqual(product, { ok: true, findings: [current(finding)], decisions: [current(replaced, [old]), current(minted)], discovery: [] });
+    assert.deepStrictEqual(product, { ok: true, findings: [current(finding)], decisions: [current(replaced, [old]), current(minted)], questions: [], discovery: [] });
     assert.strictEqual(line(replaced).product_wide, true, 'the replacement did not keep the mark');
   });
 });
@@ -270,6 +270,6 @@ describe('refusals', () => {
     assert.deepStrictEqual(read('record', UNIT, 'note-window'), {
       ok: true, unit: UNIT, topic: 'note-window', live: true, questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [],
     });
-    assert.deepStrictEqual(read('product'), { ok: true, findings: [], decisions: [], discovery: [] });
+    assert.deepStrictEqual(read('product'), { ok: true, findings: [], decisions: [], questions: [], discovery: [] });
   });
 });

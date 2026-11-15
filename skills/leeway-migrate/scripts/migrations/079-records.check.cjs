@@ -38,7 +38,10 @@
 //     no epic, an import from its discovery, `discovery`, being the topic's;
 //   - a record carried in discovery, an epic's topic never started, holds no
 //     decision and nothing product-wide: nothing is decided in discovery
-//     (8.3.4, 8.9.6), so what its research concluded is a finding.
+//     (8.3.4, 8.9.6), so what its research concluded is a finding;
+//   - a cross-cutting unit's findings and decisions are every one
+//     product-wide: the cut and the merges keep the unit as the product's
+//     reference (21.7.3).
 // A record of no entries keeps every rule but the cites: its old map, its
 // threads and its imports are asked of it as of any. A topic promoted to a
 // cross-cutting unit took only its discussion there: its research's threads
@@ -51,7 +54,10 @@
 // item neither cancelled nor postponed — and started, which the engine
 // answers, once the check passes, where it has no raise yet. A topic never
 // started is carried in discovery, where nothing is decided (8.3.4): its
-// points stay open questions on it, which its first opening reads.
+// points stay open questions on it, which its first opening reads. A
+// cross-cutting unit's record is the product's: its points stay open
+// questions, the product's once the cut and the merges retire the unit
+// (21.7.5), which the product's conversation opens on.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -322,6 +328,16 @@ function undecidedProblems(record) {
 }
 
 /**
+ * What a cross-cutting unit's record holds that is not the product's: a
+ * finding or decision not marked product-wide.
+ * @param {Record<string, any>[]} record @returns {string[]}
+ */
+function narrowProblems(record) {
+  return record.filter(({ event, product_wide: wide }) => event !== 'asked' && wide !== true)
+    .map(({ ref }) => `entry ${ref} is not product-wide, and a cross-cutting unit's findings and decisions all are — the reshape keeps the unit as the product's`);
+}
+
+/**
  * What a topic's record breaks of the rules, carried in `phase`: the record
  * as `ledger carry` takes it, `{"entries": [...]}`, each entry its ref,
  * event, the ref of the question it answers, its cites, its map item and
@@ -335,6 +351,7 @@ function problemsOf(project, unit, topic, phase, record) {
     .map((entry) => `${entry.path} came in from ${entry.origin}, and no entry links it`);
   const empty = record.length === 0 && logOf(project, unit, topic).trim() !== '' ? ['its record is empty, and its log is not'] : [];
   const undecided = phase === 'discovery' ? undecidedProblems(record) : [];
+  const narrow = unit.manifest?.work_type === 'cross-cutting' ? narrowProblems(record) : [];
   const cites = record.flatMap(({ ref, cites: given }) => {
     if (!Array.isArray(given) || given.length === 0) return [`entry ${ref} cites nothing`];
     return given.map((cite) => citeProblem(project, unit, topic, cite)).filter((problem) => problem !== null).map((problem) => `entry ${ref} ${problem}`);
@@ -350,7 +367,7 @@ function problemsOf(project, unit, topic, phase, record) {
   const openThreads = new Set(open.flatMap((entry) => namesOf(entry.thread)));
   const threads = threadsOf(project, unit, topic).filter(({ thread }) => !openThreads.has(thread))
     .map(({ thread, status }) => `the thread ${thread} is still ${status} in its research, and no open question carries it`);
-  return [...empty, ...undecided, ...cites, ...mapped, ...threads, ...imports];
+  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...threads, ...imports];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -394,14 +411,14 @@ module.exports = {
   },
   /**
    * The points to raise: each question a carried record marks `raise`, on a
-   * topic still live and started — its place, the question's id and its
-   * text.
+   * topic still live and started, of a unit not cross-cutting — its place,
+   * the question's id and its text.
    * @param {{projectDir: string, stateDir: string}} dirs
    * @returns {{place: string, answers: string, text: string}[]}
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
-    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
+    return unitsOf(project).filter((unit) => unit.manifest?.work_type !== 'cross-cutting').flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
       const carried = carriedOf(project, unit, topic);
       if (carried === null || carried.phase === 'discovery') return [];
       const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));

@@ -397,14 +397,21 @@ function heldFacts(root) {
 }
 
 /**
- * Whether a carry took lines to `topic` of `unit` (ledger-rehomed.cjs), by
- * a scan that reads the carries alone.
+ * Whether a move carried lines to `topic` of `unit` (ledger-rehomed.cjs): a
+ * carry there of a line the unit made itself. An absorb's or a split's
+ * brings another unit's lines, which become the topic's own record, never
+ * an earlier one.
  * @param {string} root @param {string} unit @param {string} topic
  * @param {string[]} notes what a landing the read's check finished said, pushed to
  * @returns {boolean}
  */
 function carriedTo(root, unit, topic, notes) {
-  return withLedger(root, notes, (ledger) => [...ledger.named('rehomed')].some(({ event }) => event.unit === unit && event.topic === topic));
+  return withLedger(root, notes, (ledger) => {
+    const carried = new Set([...ledger.named('rehomed')].filter(({ event }) => event.unit === unit && event.topic === topic).flatMap(({ event }) => /** @type {string[]} */ (event.lines)));
+    if (carried.size === 0) return false;
+    for (const { event } of ledger.entries()) if (carried.has(/** @type {string} */ (event.id)) && event.unit === unit) return true;
+    return false;
+  });
 }
 
 /**
@@ -1197,8 +1204,26 @@ function discoveredOf(folded, unit, topic) {
   return found;
 }
 
+/**
+ * The product's questions (21.7.5): every current question, in the ledger's
+ * order, standing at the product's place whose chain began outside
+ * discovery — a retired unit's, which its retire carried there.
+ * @param {Folded} folded
+ * @returns {string[]}
+ */
+function productQuestionsOf(folded) {
+  /** @type {string[]} */
+  const asked = [];
+  for (const [id, facts] of folded.facts) {
+    if (facts.kind !== 'question' || factsOf(folded, facts.root).phase === 'discovery') continue;
+    const { unit, topic } = standingOf(folded, id);
+    if (unit === PRODUCT && topic === null && isCurrent(folded, id)) asked.push(id);
+  }
+  return asked;
+}
+
 module.exports = {
   ID_FACTS, readFolded, foldLedger, readOnce, holding, heldFacts, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
   keptOf, whoseDecision, decidedNow, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
-  movedToBy,
+  movedToBy, productQuestionsOf,
 };

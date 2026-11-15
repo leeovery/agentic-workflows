@@ -5,34 +5,35 @@
 // (079-records.check.cjs), run through `engine migrate check`, and the rules
 // it holds a topic's record to, which `ledger carry` holds the record to
 // before it writes. One piece for each topic of each unit, completed,
-// cancelled, building and never-started ones among them, but a topic
-// promoted to a cross-cutting unit, carried there, its research's threads
-// read where it was promoted from; each done once its record is carried —
-// an entry at least where its log holds anything, and every import come in
-// from it whose file the state holds linked, a unit of one topic's from its
-// discovery among them and an epic's from its discovery as a whole asked of
-// none; a record of none keeping every rule but the cites; every entry
-// citing a heading its file holds once, in a file of its topic's own or the
-// unit's — its log and the reviews the move folded into it, its brief, an
-// experiment's record, the unit's assets, or its spec.md as its specs
-// under `.workflows/` hold, joined, where its building started — never the
-// cache, another topic's or its mail; every subtopic its old map shows
-// decided carried, one entry settling several, every one still undecided
-// and every thread still open carried by an open question. A record
-// breaking a rule is refused at the carry, the refusal written beside the
-// record and nothing else, and leaves nothing in the way of the record
-// mended. Once it passes, the check lists each point marked to raise on a
-// live topic until the conversation raises it — none on a topic never
-// started, carried in discovery, whose first opening reads it with the rest
-// of its record. `.workflows/` is read where the move read it, the working
-// tree in the main checkout, the old chain's and the split's changes
-// uncommitted there among it, and the record where the state keeps it, from
-// a linked worktree too. The check rests on
-// the record the carry kept and its ids in the ledger, and reads what the
-// real move (078) writes. The directive's own example record carries, and
-// the directive spells no path from the session's folder. The directive's
-// head is linted with every directive's (test-migration-directives.cjs);
-// the carry's mechanics are test-engine-ledger-carry.cjs's.
+// cancelled, building and never-started ones among them, but a topic promoted
+// to a cross-cutting unit, carried there, its research's threads read where
+// it was promoted from; each done once its record is carried — an entry at
+// least where its log holds anything, and every import come in from it whose
+// file the state holds linked, a unit of one topic's from its discovery among
+// them and an epic's from its discovery as a whole asked of none; a record of
+// none keeping every rule but the cites; every entry citing a heading its
+// file holds once, in a file of its topic's own or the unit's — its log and
+// the reviews the move folded into it, its brief, an experiment's record, the
+// unit's assets, or its spec.md as its specs under `.workflows/` hold,
+// joined, where its building started — never the cache, another topic's or
+// its mail; every subtopic its old map shows decided carried, one entry
+// settling several, every one still undecided and every thread still open
+// carried by an open question. A record breaking a rule is refused at the
+// carry, the refusal written beside the record and nothing else, and leaves
+// nothing in the way of the record mended. Once it passes, the check lists
+// each point marked to raise on a live topic until the conversation raises it
+// — none on a topic never started, carried in discovery, whose first opening
+// reads it with the rest of its record, and none of a cross-cutting unit,
+// whose record is the product's, so the directive closes over it.
+// `.workflows/` is read where the move read it, the working tree in the main
+// checkout, the old chain's and the split's changes uncommitted there among
+// it, and the record where the state keeps it, from a linked worktree too.
+// The check rests on the record the carry kept and its ids in the ledger, and
+// reads what the real move (078) writes. The directive's own example record
+// carries, and the directive spells no path from the session's folder. The
+// directive's head is linted with every directive's
+// (test-migration-directives.cjs); the carry's mechanics are
+// test-engine-ledger-carry.cjs's.
 //
 // Layer: migration. Budget: 8 s — every carry and check is the engine's
 // over a copied repository with its state worktree, and one case runs the
@@ -100,7 +101,7 @@ const GOOD = Object.freeze({
   'platform.discussion.auth': [
     { ref: 'q1', event: 'asked', text: 'How long do sessions and their tokens last?', by: 'claude', map_item: ['sessions', 'tokens'], cites: [logCite('platform', 'auth', 'Sessions')] },
     {
-      ref: 'd1', event: 'decided', answers: 'q1', text: 'Thirty days, the tokens renewed with each session.', why: 'The log settles it.', by: 'claude', given: 'carried', map_item: ['sessions', 'tokens'],
+      ref: 'd1', event: 'decided', answers: 'q1', text: 'Thirty days, the tokens renewed with each session.', why: 'The log settles it.', by: 'claude', given: 'carried', product_wide: true, map_item: ['sessions', 'tokens'],
       cites: [logCite('platform', 'auth', 'Sessions')], assets: [{ path: layout.assets('platform', 'sso.md'), status: 'reference' }],
     },
     { ref: 'q2', event: 'asked', text: 'When do tokens expire?', by: 'claude', thread: 'token-expiry', cites: [logCite('platform', 'auth', 'Sessions')] },
@@ -241,6 +242,17 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     ]));
   });
 
+  it('21.S26: a cross-cutting unit\'s finding or decision not marked product-wide refused — every one is the product\'s; its questions are no entry of the product record (21.7.3, 19.6.7)', () => {
+    const [q1, d1, q2] = GOOD['platform.discussion.auth'];
+    const f1 = { ref: 'f1', event: 'found', text: 'Sessions live in one store.', how: 'read in the log', known: 'read', by: 'claude', product_wide: true, cites: [logCite('platform', 'auth', 'Sessions')] };
+
+    assert.strictEqual(refused('platform.discussion.auth', [q1, { ...d1, product_wide: false }, q2, { ...f1, product_wide: undefined }]), breaks('platform', 'auth', [
+      'entry d1 is not product-wide, and a cross-cutting unit\'s findings and decisions all are — the reshape keeps the unit as the product\'s',
+      'entry f1 is not product-wide, and a cross-cutting unit\'s findings and decisions all are — the reshape keeps the unit as the product\'s',
+    ]));
+    carry('platform.discussion.auth', [q1, d1, q2, f1]);
+  });
+
   it('21.S36: a subtopic its old map shows decided that no entry names, and one still open or deferred, and a thread still digging, that no open question names', () => {
     const answered = [...GOOD['fumi.discussion.search'], { ref: 'd2', event: 'decided', answers: 'q2', text: 'Off by one letter.', why: 'The log says so.', by: 'claude', given: 'carried', map_item: 'typo-tolerance', cites: [logCite('fumi', 'search', 'Typo Tolerance')] }];
 
@@ -335,7 +347,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
 });
 
 describe('the points to raise (21.6.10, 21.S25)', () => {
-  it('once the check passes, it lists each open question marked to raise on a live topic, until this conversation raises it; none on a cancelled unit\'s, nor on a topic never started, carried in discovery where nothing is decided, whose first opening reads it with the rest of its record (8.3.4, 9.3.6)', async () => {
+  it('once the check passes, it lists each open question marked to raise on a live topic, until this conversation raises it, and the directive closes; none on a cancelled unit\'s, nor on a topic never started, carried in discovery where nothing is decided, whose first opening reads it with the rest of its record (8.3.4, 9.3.6), nor of a cross-cutting unit, whose record is the product\'s (21.7.5)', async () => {
     dir = world();
     const point = { ref: 'q3', event: 'asked', text: 'Does the trial need a card?', by: 'claude', raise: true, cites: [logCite('fumi', 'licensing', 'Trial Length')] };
     const unsettled = { ref: 'q1', event: 'asked', text: 'Are rates set per seat or per team?', by: 'claude', raise: true, cites: [{ path: layout.assets('fumi', 'rates.md'), section: 'Rates' }] };
@@ -344,6 +356,7 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
       if (dotpath === 'fumi.discussion.licensing') carry(dotpath, [...entries, point]);
       else if (dotpath === 'fumi.discovery.billing') carry(dotpath, [...entries, unsettled]);
       else if (dotpath === 'gone.discussion.gone') carry(dotpath, [{ ...cause, raise: true }]);
+      else if (dotpath === 'platform.discussion.auth') carry(dotpath, entries.map((entry) => (entry.ref === 'q2' ? { ...entry, raise: true } : entry)));
       else carry(dotpath, entries);
     }
     /** The id the carry gave each of a topic's entries, by its ref. @param {string} topic @returns {Record<string, string>} */

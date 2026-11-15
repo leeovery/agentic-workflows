@@ -397,17 +397,29 @@ function renderLedgerCopies(cwd, warnings, after = () => {}) {
 }
 
 /**
+ * What a caller moved, told to the knowledge base whatever the render
+ * found: the scopes it takes out, and the copies it indexes where they are
+ * on disk — so a redo after a run killed between the copies and the store
+ * leaves the store as a clean run does.
+ * @typedef {{remove?: import('./knowledge/maintenance.cjs').Scope[], index?: string[]}} Following
+ */
+
+/**
  * The copies rendered against the ledger and, where the checkout's knowledge
  * base is set up, indexed under the same lock: each written indexed, each
- * removed taken out. A failure of either is a warning.
- * @param {string} cwd @param {string[]} warnings
+ * removed taken out, and what `following` names with them. A failure of
+ * either is a warning.
+ * @param {string} cwd @param {string[]} warnings @param {Following} [following]
  */
-function refreshLedgerCopies(cwd, warnings) {
+function refreshLedgerCopies(cwd, warnings, following = {}) {
   renderLedgerCopies(cwd, warnings, (rendered) => {
-    if (!fs.existsSync(knowledgeFiles(stateRoot(cwd)).config)) return;
+    const root = stateRoot(cwd);
+    if (!fs.existsSync(knowledgeFiles(root).config)) return;
+    const held = (following.index ?? []).filter((file) => fs.existsSync(path.join(root, file)));
     syncKnowledge(cwd, [
-      ...rendered.written.map((file) => ({ index: file, label: `knowledge index (${file})` })),
+      ...(following.remove ?? []).map((scope) => ({ remove: scope, label: `knowledge remove (${scope.workUnit})` })),
       ...rendered.removed.map((file) => ({ remove: recordScope(file), label: `knowledge remove (${file})` })),
+      ...[...new Set([...rendered.written, ...held])].map((file) => ({ index: file, label: `knowledge index (${file})` })),
     ], warnings);
   });
 }

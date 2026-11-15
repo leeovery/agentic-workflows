@@ -155,6 +155,11 @@ in the same header:
   `pre-leeway-store.json`, which the reshape's steps read with fs alone,
   and a folder whose declaration is missing or does not read is named in
   their notice.
+- The engine's verbs only the migration's directives call — `ledger
+  carry`, `workunit split` and `workunit retire` — refuse once the state
+  branch has its first commit (`state-worktree.cjs`,
+  `assertMigrationRuns`), and each finishes on a redo of a run killed
+  part-way.
 - The reshape's finish (081) journals the code side's drops —
   `.workflows/` and each declared store — in the state's cache,
   `.leeway/.cache/migrate/finish.json`, `{drops}`, staging nothing, so

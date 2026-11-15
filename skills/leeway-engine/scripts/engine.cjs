@@ -110,6 +110,8 @@ const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { stageMove } = require('./domain/workunit-move.cjs');
+const { splitWorkUnit } = require('./domain/workunit-split.cjs');
+const { retireWorkUnit } = require('./domain/workunit-retire.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
 const { HUNT_USAGE, logHunt } = require('./domain/investigation-log.cjs');
@@ -258,6 +260,8 @@ ${TRUST_USAGE.replace(/^/gm, '  ')}
   workunit pivot <work-unit> --summary <text> [--description <text>]
   workunit absorb <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
   workunit move <work-unit> --to feature|bugfix --file <payload.json>
+  workunit split <epic> --topics <a,b,…> --into <new-epic> --description <text> --session-log-file <path>
+  workunit retire <work-unit>
   ${POSITION_USAGE}
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
@@ -640,6 +644,9 @@ function runTrust(call, argv) {
 // commit at the end.
 // move stages a quick-fix's or a bugfix's move to another type and draws
 // start this work's screen from it, its yes start this work's.
+// split and retire are the migration's alone: split moves topics whole to a
+// new epic, retire keeps a cross-cutting unit's folder in the product's
+// assets and takes it off the registry.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -690,10 +697,23 @@ function runWorkunit(call, argv) {
       const { response, sections } = stageMove(call.cwd, workUnit, { to: opts.to, file: opts.file });
       respond(call, response);
       respondSections(call, sections);
+    } else if (command === 'split') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit] = positional;
+      if (!workUnit || positional.length !== 1 || opts.topics === undefined || !opts.into || opts.description === undefined || !opts['session-log-file']) {
+        throw new Error('Usage: engine workunit split <epic> --topics <a,b,…> --into <new-epic> --description <text> --session-log-file <path>');
+      }
+      respond(call, splitWorkUnit(call.cwd, workUnit, {
+        topics: opts.topics.split(','), into: opts.into, description: opts.description, sessionLogFile: opts['session-log-file'],
+      }));
+    } else if (command === 'retire') {
+      const [workUnit, ...extra] = rest;
+      if (!workUnit || extra.length > 0) throw new Error('Usage: engine workunit retire <work-unit>');
+      respond(call, retireWorkUnit(call.cwd, workUnit));
     } else if (command === 'position') {
       respond(call, runPositionVerb(call.cwd, rest));
     } else {
-      throw new Error('Usage: engine workunit <create|cancel|reactivate|pivot|absorb|move|position> …');
+      throw new Error('Usage: engine workunit <create|cancel|reactivate|pivot|absorb|move|split|retire|position> …');
     }
   } catch (err) {
     failJson(call, err);

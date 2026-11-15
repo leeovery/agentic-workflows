@@ -19,7 +19,7 @@
 // split's (`splitProject`, `splitMigration`), each made once and copied:
 // an epic shaped as codeintel's was before its split, on today's layout
 // with no state, and as the reshape's guard leaves it; with the plans its
-// interview stages. And the project waiting on the migration's commit
+// interview stages. The project waiting on the migration's commit
 // (`finishedMigration`), made once and copied: the project the migration
 // is under way in with every fixture migration recorded, the tracker's
 // store on its code branch where a project from before Leeway kept it and
@@ -27,7 +27,10 @@
 // `.gitignore`, unstaged, as the move writes it, a decision held in the
 // ledger, and the reshape's finish (081) run over it — its drops
 // journaled; and one nested in its repository, made for each call
-// (`nestedFinished`).
+// (`nestedFinished`). And the cut and the merges' world (`cutMigration`),
+// made once and copied: three units in today's layout moved by the real
+// move (078), each topic's record carried as the records directive
+// carries it.
 
 require('./hermetic-env.cjs');
 
@@ -85,6 +88,8 @@ const MOVED_UNIT = {
 // recorded: the directives whose checks are broken, so no run stops at
 // them, and the code migration after the reshape, which never runs in it.
 const RECORDED = ['090', '091', '092', '093', '094'];
+const MOVE = require(path.join(path.dirname(RUNNER), 'migrations/078-reshape-move.cjs'));
+const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 /** @type {(ReturnType<typeof harness.harness> & {path: string, migrations: string})|null} */
 let engine = null;
@@ -521,6 +526,190 @@ function nestedFinished(dir) {
   return app;
 }
 
+// The cut and the merges' world (080's verbs): in today's layout, an epic
+// nothing of which is built, its three specs and a plan unbuilt, one topic
+// still in discussion and one promoted to the cross-cutting unit; that
+// unit, its spec unbuilt, its findings and decisions product-wide and one
+// question open; and an epic whose building started, its spec covering one
+// topic and none of three others — one in discussion with a brief, mail
+// and a file its unit imported, which its log and brief link, one in
+// discussion with a log alone, one never started, its research a finding.
+// A roadmap item joined to the topic in discussion with mail, sourced from
+// its log, and one waiting, sourced from the cross-cutting unit's log.
+// Moved by the real move, and every topic's record carried.
+const CUT_PROJECT = 'fumi';
+const CUT_UNITS = Object.freeze({ gateway: 'epic', caching: 'cross-cutting', shop: 'epic' });
+const CUT_DONE = Object.freeze({ status: 'completed' });
+const CUT_TALKING = Object.freeze({ status: 'in-progress' });
+
+/** @param {string} title @param {Record<string, string>} sections */
+const cutDoc = (title, sections) => `# ${title}\n\n${Object.entries(sections).map(([heading, body]) => `## ${heading}\n\n${body}\n`).join('\n')}`;
+
+/** A spec of one topic, incorporated. @param {string} topic @param {string} [status] */
+const cutSpec = (topic, status = 'completed') => ({ status, sources: { [topic]: { status: 'incorporated' } } });
+
+const CUT_OLD = Object.freeze({
+  'README.md': '# Fumi\n',
+  '.workflows/manifest.json': jsonText({
+    work_units: Object.fromEntries(Object.entries(CUT_UNITS).map(([unit, type]) => [unit, { work_type: type }])),
+    roadmap: {
+      horizons: ['next'],
+      items: {
+        'star-ratings': { summary: 'Star ratings', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'shop', topic: 'reviews' }, sources: ['shop/discussion/reviews.md'] },
+        'edge-cache': { horizon: 'next', summary: 'Caching at the edge', kind: 'idea', origin: 'harvest', sources: ['caching/discussion/invalidation.md'] },
+      },
+    },
+  }),
+  '.workflows/gateway/manifest.json': jsonText({
+    name: 'gateway', work_type: 'epic', status: 'in-progress', description: 'The public API', created: '2026-01-01',
+    phases: {
+      discussion: { items: { auth: CUT_DONE, limits: CUT_DONE, errors: CUT_TALKING, invalidation: { status: 'promoted', promoted_to: 'caching' } } },
+      specification: { items: { auth: cutSpec('auth'), limits: cutSpec('limits'), errors: cutSpec('errors', 'in-progress') } },
+      planning: { items: { auth: CUT_DONE } },
+    },
+  }),
+  '.workflows/gateway/discussion/auth.md': cutDoc('Discussion: Auth', { Tokens: 'Bearer tokens.' }),
+  '.workflows/gateway/discussion/limits.md': cutDoc('Discussion: Limits', { Rate: 'A hundred calls a minute.' }),
+  '.workflows/gateway/discussion/errors.md': cutDoc('Discussion: Errors', { Shape: 'Still open.' }),
+  '.workflows/gateway/specification/auth/specification.md': cutDoc('Specification: Auth', { Tokens: 'Bearer tokens on every call.' }),
+  '.workflows/gateway/specification/limits/specification.md': cutDoc('Specification: Limits', { Rate: 'A hundred calls a minute.' }),
+  '.workflows/gateway/specification/errors/specification.md': cutDoc('Specification: Errors', { Shape: 'A code and a message.' }),
+  '.workflows/gateway/planning/auth/planning.md': cutDoc('Plan: Auth', { Tasks: 'Each task is in the tracker.' }),
+  '.workflows/caching/manifest.json': jsonText({
+    name: 'caching', work_type: 'cross-cutting', status: 'in-progress', description: 'Caching across the product', created: '2026-01-02',
+    phases: {
+      discussion: { items: { invalidation: CUT_DONE } },
+      specification: { items: { caching: { status: 'completed', sources: { invalidation: { status: 'incorporated' } } } } },
+    },
+  }),
+  '.workflows/caching/discussion/invalidation.md': cutDoc('Discussion: Invalidation', { Purging: 'Every write purges its keys.', Lifetimes: 'An hour at most.' }),
+  '.workflows/caching/specification/caching/specification.md': cutDoc('Specification: Caching', { Invalidation: 'Every write purges its keys.', Lifetimes: 'An entry lives an hour at most.' }),
+  '.workflows/shop/manifest.json': jsonText({
+    name: 'shop', work_type: 'epic', status: 'in-progress', description: 'The shop', created: '2026-01-03',
+    phases: {
+      discovery: { items: { gifts: { routing: 'discussion', source: 'discovery', summary: 'Gifts', order: 1 } } },
+      discussion: { items: { weights: CUT_DONE, reviews: CUT_TALKING, wishlist: CUT_TALKING } },
+      specification: { items: { weights: cutSpec('weights') } },
+      implementation: { items: { weights: CUT_TALKING } },
+    },
+    imports: [{ path: 'imports/stars.md', imported_at: '2026-01-06T10:00:00Z', origin: 'discussion/reviews' }],
+  }),
+  '.workflows/shop/discussion/weights.md': cutDoc('Discussion: Weights', { 'Tie Break': 'By price.' }),
+  '.workflows/shop/discussion/reviews.md': cutDoc('Discussion: Reviews', { Who: 'Buyers alone, rated in [stars](../imports/stars.md).', Moderation: 'Still open.' }),
+  '.workflows/shop/discussion/wishlist.md': cutDoc('Discussion: Wishlist', { Sharing: 'Still open.' }),
+  '.workflows/shop/research/gifts.md': cutDoc('Research: Gifts', { Wrapping: 'Gift wrap is free.' }),
+  '.workflows/shop/discussion/.mailbox/reviews/001-photos.md': 'Photos\n\nMay a review carry photos?\n',
+  '.workflows/shop/discovery/briefs/reviews.md': '# Reviews\n\nWhat buyers say, in [stars](../../imports/stars.md).\n',
+  '.workflows/shop/imports/stars.md': '# Stars\n\nFive at most.\n',
+  '.workflows/shop/specification/weights/specification.md': cutDoc('Specification: Weights', { 'Tie Break': 'By price.' }),
+});
+
+/** @param {string} unit @param {string} topic @param {string} section */
+const cutLogCite = (unit, topic, section) => ({ path: layout.topic(unit, topic, 'log.md'), section });
+
+// Each topic's record, as the records directive composes it.
+const CUT_RECORDS = Object.freeze({
+  'gateway.discussion.auth': [
+    { ref: 'q1', event: 'asked', text: 'How do clients authenticate?', by: 'claude', cites: [cutLogCite('gateway', 'auth', 'Tokens')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Bearer tokens.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [cutLogCite('gateway', 'auth', 'Tokens')] },
+  ],
+  'gateway.discussion.limits': [
+    { ref: 'q1', event: 'asked', text: 'How many calls a minute?', by: 'claude', cites: [cutLogCite('gateway', 'limits', 'Rate')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'A hundred.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [cutLogCite('gateway', 'limits', 'Rate')] },
+  ],
+  'gateway.discussion.errors': [
+    { ref: 'q1', event: 'asked', text: 'What shape is an error?', by: 'claude', cites: [cutLogCite('gateway', 'errors', 'Shape')] },
+  ],
+  'caching.discussion.invalidation': [
+    { ref: 'q1', event: 'asked', text: 'When is a cached key purged?', by: 'claude', cites: [cutLogCite('caching', 'invalidation', 'Purging')] },
+    {
+      ref: 'd1', event: 'decided', answers: 'q1', text: 'Every write purges its keys.', why: 'The spec holds it.', by: 'claude', given: 'carried', product_wide: true,
+      cites: [{ path: layout.assets('caching', 'specs', 'caching.md'), section: 'Invalidation' }], assets: [{ path: layout.assets('caching', 'specs', 'caching.md'), status: 'reference' }],
+    },
+    {
+      ref: 'f1', event: 'found', text: 'An entry lives an hour at most.', how: 'read in the spec', known: 'read', by: 'claude', product_wide: true,
+      cites: [{ path: layout.assets('caching', 'specs', 'caching.md'), section: 'Lifetimes' }, cutLogCite('caching', 'invalidation', 'Lifetimes')],
+    },
+    { ref: 'q2', event: 'asked', text: 'Do reads ever purge a key?', by: 'claude', cites: [cutLogCite('caching', 'invalidation', 'Purging')] },
+  ],
+  'shop.discussion.weights': [
+    { ref: 'q1', event: 'asked', text: 'How do ties break?', by: 'claude', cites: [cutLogCite('shop', 'weights', 'Tie Break')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'By price.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [{ path: 'shop/spec.md', section: 'Tie Break' }] },
+  ],
+  'shop.discussion.reviews': [
+    { ref: 'q1', event: 'asked', text: 'Who may leave a review?', by: 'claude', cites: [cutLogCite('shop', 'reviews', 'Who')] },
+    {
+      ref: 'd1', event: 'decided', answers: 'q1', text: 'Buyers alone.', why: 'The log settles it.', by: 'claude', given: 'carried',
+      cites: [cutLogCite('shop', 'reviews', 'Who'), { path: layout.topic('shop', 'reviews', 'brief.md'), section: 'Reviews' }], assets: [{ path: layout.assets('shop', 'stars.md'), status: 'reference' }],
+    },
+    { ref: 'q2', event: 'asked', text: 'Who moderates reviews?', by: 'claude', cites: [cutLogCite('shop', 'reviews', 'Moderation')] },
+  ],
+  'shop.discussion.wishlist': [
+    { ref: 'q1', event: 'asked', text: 'May a wishlist be shared?', by: 'claude', cites: [cutLogCite('shop', 'wishlist', 'Sharing')] },
+  ],
+  'shop.discovery.gifts': [
+    { ref: 'f1', event: 'found', text: 'Gift wrap is free.', how: 'read in the research', known: 'read', by: 'claude', cites: [cutLogCite('shop', 'gifts', 'Wrapping')] },
+  ],
+});
+
+/** @param {string} dir */
+function buildCut(dir) {
+  initRepo(dir);
+  for (const [rel, text] of Object.entries(CUT_OLD)) createFile(dir, rel, text);
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '-q', '-m', 'the old layout']);
+  MOVE.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
+  for (const [place, entries] of Object.entries(CUT_RECORDS)) {
+    const [unit, , topic] = place.split('.');
+    createFile(statePath(dir), composedPath(unit, topic), JSON.stringify({ entries }));
+    harness.ok(dir, ['ledger', 'carry', place], { env: SESSION });
+  }
+}
+
+/** @type {string|null} */
+let cutTemplate = null;
+
+/**
+ * The cut and the merges' world at `{dir}/fumi`, the migration under way in
+ * it, every topic's record carried.
+ * @param {string} dir
+ * @returns {string} the project's folder, symbolic links resolved
+ */
+function cutMigration(dir) {
+  if (cutTemplate === null) {
+    cutTemplate = path.join(templateFolder('cut-migration-template-'), CUT_PROJECT);
+    buildCut(cutTemplate);
+  }
+  return copyWorld(cutTemplate, path.join(dir, CUT_PROJECT));
+}
+
+/**
+ * The state as a verb of the migration's leaves it, read so two runs
+ * compare: the worktree's link, the cache and the copies' marks left out;
+ * each carry's own id and time; and the instant the map of each epic in
+ * `made`, the run's own, was approved at.
+ * @param {string} dir @param {string[]} [made]
+ */
+function settledState(dir, made = []) {
+  const kept = Object.entries(treeSnapshot(dir)).filter(([rel]) => rel !== '.git' && !rel.startsWith(layout.cache()) && !rel.startsWith(layout.knowledge('.copies')));
+  /** @param {string} text */
+  const lines = (text) => text.split('\n').filter(Boolean).map((line) => {
+    const { id, at, ...event } = JSON.parse(line);
+    return event.event === 'rehomed' ? event : { id, at, ...event };
+  });
+  /** @param {string} text */
+  const unstamped = (text) => {
+    const manifest = JSON.parse(text);
+    delete manifest.phases.discovery.approved_at;
+    return manifest;
+  };
+  const read = (/** @type {string} */ rel, /** @type {string} */ text) => {
+    if (rel === layout.ledger) return lines(text);
+    return made.some((unit) => rel === layout.manifest(unit)) ? unstamped(text) : text;
+  };
+  return Object.fromEntries(kept.map(([rel, text]) => [rel, read(rel, text)]));
+}
+
 /** Whether the project's `leeway-state` has no commit yet. @param {string} dir */
 function stateUnborn(dir) {
   return git(dir, ['for-each-ref', BRANCH_REF]).trim() === '';
@@ -587,4 +776,5 @@ module.exports = {
   UNIT, SESSION, DECIDED, RECORDED, ALL_RECORDED, FIXTURES, OLD_STORE, OLD_LOCAL,
   directiveEngine, midMigration, recordsMigration, finishedMigration, nestedFinished, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
   SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, GUARDED, themeOf, stagedPlan, splitProject, splitMigration, projectTree,
+  CUT_RECORDS, cutMigration, settledState,
 };

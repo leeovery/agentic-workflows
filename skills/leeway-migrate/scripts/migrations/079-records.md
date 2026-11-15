@@ -42,7 +42,7 @@ Compose the record from the sources:
 - **The old map.** Every subtopic the old map shows decided is carried by an entry naming it, `map_item`: by its decision, or by an open question where no source says what was decided. Every one pending, exploring, converging or deferred is carried by an open question naming it. An entry that settles several names them all, `map_item` a list.
 - **Threads.** Every thread the register shows `open` or `digging` is carried by an open question naming it, `thread`, a list where one question carries several.
 - **Nothing invented.** An entry says what a source says, and nothing more.
-- **Product-wide.** An entry that holds for the whole product is `product_wide` `true`.
+- **Product-wide.** An entry that holds for the whole product is `product_wide` `true`. A cross-cutting unit's entries are product-wide: each finding and decision of its record.
 - **A topic never started.** Nothing is decided in discovery: its record holds questions and findings alone, none product-wide, and what its research concluded is a finding.
 - **Assets.** Each of the unit's assets its brief marks the topic's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
 - **A record at least.** A topic whose log holds anything has an entry at least.
@@ -84,7 +84,7 @@ Carrying holds the record to the check's rules before it writes anything. A reco
 
 ## The Raises at the End
 
-Once every topic is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise`, on a live topic, that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a fact only the person holds, at its `place`, answering its question. A point on a topic or unit that isn't live, cancelled or postponed, is not listed: it stays an open question on its topic, left open until the topic returns. Nor is a point on a topic never started, carried in discovery, where nothing is decided: it stays an open question on its topic, for its discussion to open with.
+Once every topic is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise`, on a live topic, that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a fact only the person holds, at its `place`, answering its question. A point on a topic or unit that isn't live, cancelled or postponed, is not listed: it stays an open question on its topic, left open until the topic returns. Nor is a point on a topic never started, carried in discovery, where nothing is decided: it stays an open question on its topic, for its discussion to open with. Nor is a point of a cross-cutting unit: its record is the product's, and the point stays an open question, the product's, which the product's conversation opens on.
 
 The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`.
 

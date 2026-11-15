@@ -29,11 +29,18 @@
 //   current entries, never copied, the entries standing elsewhere that were
 //   made there, that it relies on, that its merges that hold went into, or
 //   that answer its questions (5.8.4, 5.8.19). `ledger product` reads the
-//   product record (5.8.6) and, under a heading of its own, what discovery
-//   found (9.3.12): the findings at the product's place (8.12.9), given a
-//   unit those at the unit's own level, which no topic's record shows, and
-//   given a topic too, what discovery left on it, which a topic's first
-//   opening reads here, reading no record.
+//   product record (5.8.6); named with no unit, the product's questions —
+//   those standing at its place that discovery did not ask, a retired
+//   unit's (21.7.5), open or answered — which the product's conversation
+//   alone opens on; and, under a heading of its own, what discovery found
+//   (9.3.12): the findings at the product's place (8.12.9), given a unit
+//   those at the unit's own level, which no topic's record shows, and given
+//   a topic too, what discovery left on it, which a topic's first opening
+//   reads here, reading no record. The one exception to the rule
+//   is `ledger earlier`, the record a topic set aside left: its entries as
+//   they stood, read as `ledger record` reads a live topic's, for a later
+//   topic it was pulled into to read as input (18.8.17, 21.8.9) — marked
+//   earlier, and never current, so no other read, copy or check takes them.
 //   `ledger map` reads a topic's questions as they stand now, each answered
 //   as its record shows it, those standing elsewhere that it shows for what
 //   was made on it, and each current answer placed on it that no current
@@ -58,7 +65,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, readOnce, holding, factsOf, isLive, mergeHolds, holdsOf, keptOf, decidedNow, assetsOf, foldedBeneath, mapOf, recordOf, productOf, discoveredOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, readOnce, holding, factsOf, isLive, mergeHolds, holdsOf, keptOf, decidedNow, assetsOf, foldedBeneath, mapOf, recordOf, productOf, discoveredOf, productQuestionsOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
 const { answerSince, answerShown } = require('./ledger-since.cjs');
@@ -198,6 +205,21 @@ function answerRecord(shower, { unit, topic }) {
 }
 
 /**
+ * `ledger earlier`: the record a topic set aside left, its entries as they
+ * stood — the read `ledger record` makes with the topic read as live for it
+ * alone, every other place as it stands — its liveness as it is, and marked
+ * earlier: input a later topic reads, never current.
+ * @param {Shower} shower @param {Place} place
+ */
+function answerEarlier(shower, place) {
+  const { facts, live } = shower.folded;
+  /** @type {import('./ledger-fold.cjs').Liveness} */
+  const stood = (unit, topic) => (unit === place.unit && topic === place.topic ? null : live(unit, topic));
+  const record = answerRecord(showerOf({ facts, live: stood }, shower.entryAt), place);
+  return { ...record, live: live(/** @type {string} */ (place.unit), place.topic) === null, earlier: true };
+}
+
+/**
  * A question's answer as its map row shows it: whose and how given, where,
  * and what, and what the late one-decision check found of it, where it
  * found anything.
@@ -260,17 +282,20 @@ function answerMap(shower, { unit, topic }, root) {
 }
 
 /**
- * `ledger product`: the product record, and apart from it what discovery
- * found of the product and, given a unit, of the unit, and given a topic
- * too, of the topic — each entry with its chain, its confirmations and its
- * keeps.
+ * `ledger product`: the product record; at the product's own place, named
+ * with no unit, the product's questions, which its conversation opens on;
+ * and apart from them what discovery found of the product and, given a
+ * unit, of the unit, and given a topic too, of the topic — each entry with
+ * its chain, its confirmations and its keeps.
  * @param {Shower} shower @param {Place} place
  */
 function answerProduct(shower, { unit, topic }) {
   const ids = productOf(shower.folded);
+  const asked = unit === null ? { questions: productQuestionsOf(shower.folded).map((id) => chained(shower, id)) } : {};
   return {
     findings: ids.findings.map((id) => chained(shower, id)),
     decisions: ids.decisions.map((id) => chained(shower, id)),
+    ...asked,
     discovery: discoveredOf(shower.folded, unit, topic).map((id) => chained(shower, id)),
   };
 }
@@ -283,6 +308,7 @@ const READS = Object.freeze({
   affected: { usage: 'ledger affected <work-unit> [<topic>]', names: [1, 2], answer: answerAffected },
   since: { usage: 'ledger since <work-unit> [<topic>]', names: [1, 2], answer: answerSince },
   shown: { usage: 'ledger shown <work-unit> [<topic>]', names: [1, 2], answer: answerShown },
+  earlier: { usage: 'ledger earlier <work-unit> <topic>', names: [2], answer: answerEarlier },
 });
 
 /** The read verbs' usage, a line each. */
@@ -354,7 +380,7 @@ function canonicalAssets(root, unit, warnings) {
 }
 
 /**
- * `ledger <record|map|product|affected|since|shown>`: the projection read,
+ * `ledger <record|map|product|affected|since|shown|earlier>`: the projection read,
  * as JSON, and as warnings what a landing its check finished said, and what
  * the read said on the way.
  * @param {string} cwd @param {string} verb @param {string[]} args
