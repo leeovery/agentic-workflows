@@ -80,9 +80,8 @@ const path = require('path');
 const { spawnSync } = require('../../../kernel/spawn.cjs');
 const { workUnitNameRefusal } = require('../../../kernel/manifest-schema.cjs');
 const {
-  taskId, stepOfId, shownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
+  taskId, stepOfId, shownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker, TASK_TYPES,
 } = require('../../../domain/task-id.cjs');
-const { TASK_TYPES } = require('../../../domain/task-file.cjs');
 
 /** @typedef {import('../../../domain/drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('../../../domain/drivers.cjs').TaskStatus} TaskStatus */

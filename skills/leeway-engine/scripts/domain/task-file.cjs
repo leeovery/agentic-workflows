@@ -20,9 +20,7 @@
 // ---------------------------------------------------------------------------
 
 const { BULLET, listItems } = require('./list-items.cjs');
-
-/** The kinds a task's type is one of. */
-const TASK_TYPES = Object.freeze(['feat', 'fix', 'refactor', 'perf', 'test', 'docs', 'build', 'ci', 'chore']);
+const { TASK_TYPES } = require('./task-id.cjs');
 
 /** The spec reference of a task whose unit has no spec: a quick-fix's (19.5.5). */
 const NO_SPEC = 'none';
@@ -183,4 +181,4 @@ function criterionScenario(criterion) {
   return OPENING_ID.exec(criterion)?.[1] ?? null;
 }
 
-module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, outcomeOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };
+module.exports = { FIELDS, NO_SPEC, breaksLine, readTaskText, fieldOf, outcomeOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };

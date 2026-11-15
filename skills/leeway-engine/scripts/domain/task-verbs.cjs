@@ -139,8 +139,8 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { resolveDriver, chosenDriver, settingOf, needsRefusal } = require('./drivers.cjs');
 const { ignoreInState, withIgnored, migrationRuns } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
-const { TASK_TYPES, NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = require('./task-file.cjs');
+const { TASK_TYPES, taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
+const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = require('./task-file.cjs');
 const { recordTask, clearTask, clearTasks, recordStop } = require('./position.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const {
