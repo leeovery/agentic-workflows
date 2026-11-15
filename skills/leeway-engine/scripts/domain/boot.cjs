@@ -135,7 +135,9 @@
 // project's ledger, under its writer lock.
 // The start menu is no position, so the calling conversation's own goes
 // first, before the migrations — a boot that fails leaves none — the place
-// it left kept for the board where it names a phase (position.cjs).
+// it left kept for the board where it names a phase, and its tasks in
+// flight kept there whatever boot answers, the menu, a route or a pick, so
+// the builders still at work go on (position.cjs).
 //
 // Where a decision landed unchecked and no late check has judged it, boot
 // launches the late one-decision check, detached, as it hands vectors to the

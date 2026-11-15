@@ -61,7 +61,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, stateGit, lastMessage, fixtureFrom, cleanupFixture, lockAttempts, holdLock,
+  ok, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, stateGit, lastMessage, fixtureFrom, cleanupFixture, lockAttempts, holdLock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { scratchCalls } = require('./brief-build-world.cjs');
@@ -191,7 +191,7 @@ const TAKE_A_CARD = 'Refunds, §2;\nthe form, §1.1';
 const unitWorld = fixtureFrom('brief-', (dir) => {
   createManifest(dir, UNIT, { phases: { discussion: { items: { [UNIT]: { status: 'in-progress' } } } } });
   const project = JSON.parse(readState(dir, layout.projectManifest));
-  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS, confirmed: FROZEN_AT } }, null, 2));
   for (const { at, text } of REPORTS) writeState(dir, at, text);
   fs.writeFileSync(path.join(dir, 'CLAUDE.md'), `# Rules\n\n${PROJECT_WORDS}\n`);
   fs.writeFileSync(path.join(dir, '.gitignore'), `${NESTED}/\n`);

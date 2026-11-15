@@ -25,7 +25,8 @@
 // review phase's entry, whose fix tasks the same loop builds (14.3.2) —
 // every task the tracker holds in progress in a phase the build has written
 // is put in flight on its position at the place entered (position.cjs), a
-// task already there kept as it stands (`takeInFlight`): one another
+// task already there kept as it stands and one there the tracker holds
+// done or closed taken off (`takeInFlight`): one another
 // conversation left comes with no builder and no pair, which are dispatched
 // afresh on its branch, as its line names the way: a round briefed and not
 // reported whole is its new pair's to read, each reviewer whose report is
@@ -140,7 +141,7 @@ const { isoNow } = require('./dates.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { STATUS_WORDS, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase } = require('./task-verbs.cjs');
+const { STATUS_WORDS, ENDED, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
@@ -611,13 +612,15 @@ function buildRecovery(cwd, unit, inFlight, session) {
 /**
  * Every task the tracker holds in progress in a phase the build has
  * written, put in flight on this conversation's position at the place
- * entered, one there already kept as it stands (the header's).
+ * entered, one there already kept as it stands, and those there it holds
+ * ended taken off (the header's).
  * @param {Standing} at
  */
 function takeInFlight(at) {
   const read = readingOf(at);
-  const steps = phaseLists(read, buildPhases(read)).flatMap((rows) => rows ?? []).filter(({ status }) => status === 'in-progress').map(({ ref }) => shownTask(ref));
-  recordTasksAt(at.cwd, at.unit, /** @type {'implementation'|'review'} */ (at.phase), steps);
+  const rows = phaseLists(read, buildPhases(read)).flatMap((tasks) => tasks ?? []);
+  const where = (/** @type {(status: string) => boolean} */ holds) => rows.filter(({ status }) => holds(status)).map(({ ref }) => shownTask(ref));
+  recordTasksAt(at.cwd, at.unit, /** @type {'implementation'|'review'} */ (at.phase), where((status) => status === 'in-progress'), where((status) => ENDED.includes(status)));
 }
 
 /** The engine by its absolute path, as an entry names it for a call made from a task's worktree. @type {Line} */

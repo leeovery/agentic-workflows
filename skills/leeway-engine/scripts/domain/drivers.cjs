@@ -139,8 +139,9 @@ const METHODS = Object.freeze({
  * tracker lacks,
  * and the engine refuses in its words before any other method names one. A
  * verb a driver's method fails, where a tool the driver needs is not
- * installed or fails to run, is refused for that (`needsRefusal`), so a
- * driver lets its tool's absence throw as it falls. What stays with the
+ * installed, is older than the version it needs, or fails to run, is
+ * refused for that (`needsRefusal`), so a driver lets its tool's absence
+ * throw as it falls. What stays with the
  * driver is what only its tracker can know: a store it cannot read and a
  * link that would make a cycle, in the tool's words with the engine's names
  * for what they name; a line of the store it cannot read, naming the file

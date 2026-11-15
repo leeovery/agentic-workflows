@@ -36,7 +36,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, setEnvironment, layout, datedAt, accountTaken,
+  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, confirmEnvironment, layout, datedAt, accountTaken,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, setupArgs, world } = require('./verify-world.cjs');
 
@@ -227,7 +227,7 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
   it('the tool runs in a worktree prepared as Claude Code prepares an isolation worktree, in each repository: the ignored files its own .worktreeinclude names copied, and the directories the project\'s settings name in worktree.symlinkDirectories linked, never copied — a file not ignored, one ignored and not named, and a name leaving the project passed over — then the environment setup\'s steps for each worktree run there (22.5.1)', () => {
     phaseWork();
     const { environment } = JSON.parse(readState(dir, layout.projectManifest));
-    setEnvironment(dir, { ...environment, prepare: [{ name: 'Env', when: 'worktree', command: 'cat .env > prepared.txt' }] });
+    confirmEnvironment(dir, { ...environment, prepare: [{ name: 'Env', when: 'worktree', command: 'cat .env > prepared.txt' }] });
     const lib = path.join(dir, 'lib');
     const files = {
       '.gitignore': '.env\n.env.local\nnode_modules/\n', '.worktreeinclude': '.env\nnotes.txt\n', '.env': 'KEY=1\n', '.env.local': 'LOCAL=1\n', 'notes.txt': 'notes\n',

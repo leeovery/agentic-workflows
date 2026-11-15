@@ -1,11 +1,12 @@
 /**
  * The spinner saying the phase the conversation works in, the drawing alone,
  * in a session that announced and a conversation the engine has marked, on
- * the terminal app's and the Desktop app's surfaces.
+ * the terminal app's and the Desktop app's surfaces — nothing once it has
+ * left its place for the start menu, its tasks in flight kept there.
  */
 import type { EngineInterface, On } from 'claude-code'
 
-import { MARKER, POSITION, folderOf } from './folder.ts'
+import { LEFT, MARKER, POSITION, folderOf } from './folder.ts'
 import { positionOf, wordFor } from './position.ts'
 
 /** The engine calls that move the conversation's position. */
@@ -35,7 +36,8 @@ async function sayNow($: EngineInterface): Promise<Said> {
     id,
   )
   const isMarked = folder !== null && (await $.fs.exists(`${folder}/${MARKER}`))
-  const text = isMarked ? await $.fs.read(`${folder}/${POSITION}`).catch(() => null) : null
+  const atPlace = isMarked && !(await $.fs.exists(`${folder}/${LEFT}`))
+  const text = atPlace ? await $.fs.read(`${folder}/${POSITION}`).catch(() => null) : null
 
   return { id, word: text === null ? null : wordFor(positionOf(text)) }
 }

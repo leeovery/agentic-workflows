@@ -1,6 +1,6 @@
 ---
 name: leeway
-description: Use for any change to what this project's code does, however small, and whenever the person asks to run something through Leeway — invoke it with their words. Comments, docs and formatting that change no behaviour go straight through; in doubt, use it.
+description: Use for any change to what this project's code does, however small, and whenever the person asks to run something through Leeway — invoke it with their words, unless this conversation is already in a Leeway phase, which takes them itself. Comments, docs and formatting that change no behaviour go straight through; in doubt, use it.
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 

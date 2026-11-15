@@ -688,8 +688,9 @@ function restoreSessionLabel(cwd, sessionId) {
 /**
  * Boot's pass over the current terminal — leeway is the place
  * whose label is the original name, and no position: the calling
- * conversation's own position comes off first, labels on or off, while a
- * dead owner's stays — that session may yet be resumed. When the tmux
+ * conversation's own position comes off first, labels on or off — its tasks
+ * in flight kept at the place left (position.cjs) — while a dead owner's
+ * stays — that session may yet be resumed. When the tmux
  * session's name is a name this module applied and the label is the
  * calling session's own (`ownsRow`: its session id, or its pid for a later
  * conversation in the same process) or its owner is gone — a session that

@@ -616,12 +616,12 @@ function answered(answers, happened = () => true) {
 /**
  * Run a driver's verb with the project's landing driver, committing the
  * setting where this call settled it, whether or not the driver refused. A
- * verb that fails where a tool the driver needs is not installed, or fails
- * to run, is refused for that (`needsRefusal`). The answer carries the
- * verb's last state commit, null where it failed, and every warning:
- * `before`'s — what the verb committed and was warned of before — the
- * setting's own, and the driver's, a refusal's those of the landings before
- * it (`Partial`).
+ * verb that fails where a tool the driver needs is not installed, is older
+ * than the version it needs, or fails to run, is refused for that
+ * (`needsRefusal`). The answer carries the verb's last state commit, null
+ * where it failed, and every warning: `before`'s — what the verb committed
+ * and was warned of before — the setting's own, and the driver's, a refusal's
+ * those of the landings before it (`Partial`).
  * @template {Record<string, unknown> & {warnings?: string[]}} T
  * @param {string} cwd @param {(driver: LandingDriver) => T} act
  * @param {{committed?: string|null, warnings?: string[]}} [before]

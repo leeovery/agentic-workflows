@@ -224,7 +224,7 @@ describe('engine boot: the route and the pick, through boot', () => {
     assert.match(screen, /^\*\*`3`\*\* +→ Manage feature: Search — \*completed\*$/m);
     assert.match(screen, /^\*\*`s\/start`\*\* → Start something new with these words$/m);
     assert.deepStrictEqual(['1', '2', '3', 's'].map((key) => answer(pick.args, key)), [
-      INTO.payments, INTO['refund-rules'], { kind: 'engine', argv: ['render', 'manage-unit', 'search', '--from', 'closed'] }, TO_START,
+      INTO.payments, INTO['refund-rules'], { kind: 'engine', argv: ['render', 'manage-unit', 'search', '--from', 'pick', '--matches', 'payments,billing/refund-rules,search'] }, TO_START,
     ]);
     assert.match(shown(['--matches', 'old-reports']), /^\*\*`1`\*\* +→ Manage bugfix: Old Reports — \*cancelled\*$/m);
   });

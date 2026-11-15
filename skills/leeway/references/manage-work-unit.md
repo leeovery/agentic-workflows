@@ -4,7 +4,13 @@
 
 ---
 
-A unit in manage is drawn with what can be done to it as it stands, opened from manage or from the closed units. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a pick that carries on in the conversation, or a `next` that runs a lifecycle verb, is below. Once it is done — and on the cancel confirm's no — draw again the list the unit was opened from, `render closed` where it was drawn with `--from closed`, else `render manage`, emit its sections verbatim per their markers, and carry on there as the start menu's screens do:
+A unit in manage is drawn with what can be done to it as it stands, opened from manage, the closed units or the start's pick. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a pick that carries on in the conversation, or a `next` that runs a lifecycle verb, is below. Once it is done — and on the cancel confirm's no — draw again the screen the unit was opened from, emit its sections verbatim per their markers, and carry on there as the start menu's screens do. Drawn with `--from pick --matches {matches}`, that is the pick:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render work-pick --matches {matches}
+```
+
+Otherwise it is the list, `closed` where it was drawn with `--from closed`, else `manage`:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render {list:[manage|closed]}

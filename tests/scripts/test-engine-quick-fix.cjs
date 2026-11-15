@@ -8,31 +8,31 @@
 // code gate alone, nothing written (12.7.8, 19.5.18); no cut, no ready to
 // build and no position, its fixes begun — their one phase written into the
 // tracker where it is missing, their beginning recorded on the manifest and
-// committed, the steps for before the build's first task run as they begin
-// (22.5.1) — and the tasks in progress put in flight (E4); what it reads,
-// its recovery note in the quick-fix's own skill re-reading the same: the
-// change, the fixes, the record once written, the unit's record, the
-// build's log and the engine. Its fixes built in the project's own
-// checkout: `task start` putting the checkout on the quick-fix's one branch
-// — cut at the first fix's start from the branch it lands on, every later
-// fix's start keeping it, and where it stood recorded as the start of the
-// fix's range — refused while the checkout holds changes not committed;
-// its builder briefed to build there, with no chain, its acceptance
-// standing for the spec it lacks, the tests and linters it finds where the
-// project has no environment setup (19.5.24, 22.5.10), and its pair the
-// fix's range alone; and through the doors any task takes (19.S20): the
-// commit door, refusing a commit on another branch, naming the quick-fix's
-// (12.9.9), and one git would date before the unit was made, naming the
-// clock (R19), `land open` opening the quick-fix's one pull request before
-// its pair has read it (19.5.20) and `task done` refusing it until its pair
-// has passed it and its account is taken (19.5.22) — `land open` refused
-// for a fix with no type (7.2.18), as `land phase` is for a phase it lacks
-// and `land chain` for any of its tasks, there being no stack — and the
-// last fix closed naming no mutation run, there being no phase review
-// (15.6.3). A raise Claude makes at its place drawn in the conversation,
-// parking nothing, and one its builder asks parking its fix (19.5.25); the
-// review's fix phases numbered past the fixes (P14); and the cut's screens
-// refusing it. The task file's rules are
+// committed, the steps for before the build's first task run as they begin,
+// once the person has confirmed them (22.5.1) — and the tasks in progress put
+// in flight (E4); what it reads, its recovery note in the quick-fix's own
+// skill re-reading the same: the change, the fixes, the record once written,
+// the unit's record, the build's log and the engine. Its fixes built in the
+// project's own checkout: `task start` putting the checkout on the
+// quick-fix's one branch — cut at the first fix's start from the branch it
+// lands on, every later fix's start keeping it, and where it stood recorded
+// as the start of the fix's range — refused while the checkout holds changes
+// not committed; its builder briefed to build there, with no chain, its
+// acceptance standing for the spec it lacks, the tests and linters it finds
+// until the person confirms the environment setup (19.5.24, 22.5.10), and its
+// pair the fix's range alone; and through the doors any task takes (19.S20):
+// the commit door, refusing a commit on another branch, naming the
+// quick-fix's (12.9.9), and one git would date before the unit was made,
+// naming the clock (R19), `land open` opening the quick-fix's one pull
+// request before its pair has read it (19.5.20) and `task done` refusing it
+// until its pair has passed it and its account is taken (19.5.22) —
+// `land open` refused for a fix with no type (7.2.18), as `land phase` is for a
+// phase it lacks and `land chain` for any of its tasks, there being no stack
+// — and the last fix closed naming no mutation run, there being no phase
+// review (15.6.3). A raise Claude makes at its place drawn in the
+// conversation, parking nothing, and one its builder asks parking its fix
+// (19.5.25); the review's fix phases numbered past the fixes (P14); and the
+// cut's screens refusing it. The task file's rules are
 // test-engine-task-verbs.cjs's, its verify run test-engine-verify.cjs's, the
 // board's row test-engine-board-units.cjs's, and a quick-fix its old scoping
 // made test-engine-build-entry.cjs's and test-engine-legacy-build.cjs's.
@@ -55,7 +55,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   ok, okSections, okSectionsAsync, refuses, refusedPristine, output, git, stateGit, statePath, layout, writeState, readState, createFile, fixtureFrom, cleanupFixture,
-  head, readManifest, withEnv, sectionOf, accountTaken,
+  head, readManifest, withEnv, sectionOf, accountTaken, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -142,7 +142,7 @@ const branchOut = () => git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
 /** A commit's sha. @param {string} rev */
 const sha = (rev) => git(dir, ['rev-parse', rev]).trim();
 
-/** The project's environment, the parts given set. @param {Record<string, unknown>} parts */
+/** The project's environment, the parts given set — the person's yes, `confirmed`, among them. @param {Record<string, unknown>} parts */
 function environment(parts) {
   const project = JSON.parse(readState(dir, layout.projectManifest));
   writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { ...project.environment, ...parts } }, null, 2));
@@ -196,9 +196,10 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT });
   });
 
-  it('its first entry runs the steps for before the build\'s first task as its fixes begin (22.5.1); entered again, it starts nothing, runs no step and commits nothing; its phase written with no beginning recorded, it records the beginning alone', () => {
+  it('its first entry runs the steps for before the build\'s first task as its fixes begin (22.5.1); entered again, it starts nothing, runs no step and commits nothing; its phase written with no beginning recorded, it records the beginning alone, and runs no step the person has not confirmed (22.5.10)', () => {
+    const prepare = [{ name: 'Test database', when: 'first', command: 'echo first >> prepared.txt' }];
     dir = fresh();
-    environment({ prepare: [{ name: 'Test database', when: 'first', command: 'echo first >> prepared.txt' }] });
+    environment({ prepare, confirmed: FROZEN_AT });
     const first = enter();
     const before = head(dir);
     const again = enter();
@@ -208,11 +209,15 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     cleanupFixture(dir);
     dir = fresh();
     ok(dir, ['task', 'phase', UNIT, '1', '--title', 'the fixes']);
-    const recorded = enter().res.started;
+    environment({ prepare });
+    const unconfirmed = enter();
 
     assert.deepStrictEqual(prepared, [['prepared: Test database — echo first >> prepared.txt'], 'first\n']);
     assert.deepStrictEqual([again.res, unmoved, again.sections], [{ ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false }, true, read]);
-    assert.deepStrictEqual([recorded, subjects(2)], [true, [`implementation(${UNIT}): start`, `task(${UNIT}): write phase 1`]]);
+    assert.deepStrictEqual(
+      [unconfirmed.res.started, unconfirmed.sections.includes('prepared: '), fs.existsSync(path.join(dir, 'prepared.txt')), subjects(2)],
+      [true, false, false, [`implementation(${UNIT}): start`, `task(${UNIT}): write phase 1`]],
+    );
   });
 
   it('puts in flight the fix another conversation left in progress, reading each fix by its id, title and where it stands, its record once written, and a question asked in the quick-fix still open with the raise that asks it again (19.5.25); its recovery note re-reads the same', () => {
@@ -288,7 +293,7 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
 
   it('19.S20: the commit door takes the fix in flight with no plan, the tests and the linters run, the commit naming its task; one on another branch is refused, naming the quick-fix\'s and the start that puts the checkout there (12.9.9)', () => {
     dir = entered();
-    environment({ run: { tests: 'true' }, linters: [{ name: 'eslint', command: 'true' }] });
+    environment({ run: { tests: 'true' }, linters: [{ name: 'eslint', command: 'true' }], confirmed: FROZEN_AT });
     const res = commitFix();
     git(dir, ['switch', '-q', 'main']);
     createFile(dir, 'src/flag.js', 'const flag = \'colour!\';\n');
@@ -332,19 +337,25 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
     assert.deepStrictEqual(fixes(), [{ task: '1.1', title: TITLE, status: 'done' }]);
   });
 
-  it('19.5.3, 19.5.24: a fix\'s builder is briefed to build in the project\'s own checkout, on the quick-fix\'s one branch with no chain to merge back, its acceptance standing for the spec it lacks; where the project has no environment setup, to the tests and linters it finds (22.5.10)', () => {
+  it('19.5.3, 19.5.24: a fix\'s builder is briefed to build in the project\'s own checkout, on the quick-fix\'s one branch with no chain to merge back, its acceptance standing for the spec it lacks; until the person confirms the project\'s environment setup, to the tests and linters it finds, whatever the setup records, and once confirmed to its linters alone, none where it confirms none (22.5.10)', () => {
     dir = entered();
     const unset = briefText(['builder', UNIT, '1.1']);
     environment({ linters: [{ name: 'eslint', command: 'npx eslint .' }] });
+    const recorded = briefText(['builder', UNIT, '1.1']);
+    environment({ confirmed: FROZEN_AT });
     const set = briefText(['builder', UNIT, '1.1']);
+    environment({ linters: [] });
+    const none = briefText(['builder', UNIT, '1.1']);
 
     for (const [heading, drawn] of [
       ['The spec\'s sections it cites', `${UNIT} is a quick-fix, which has no spec: the task's acceptance scenarios, in their own words, stand for its sections.`],
       ['Where your branch stands', `Your branch is ${UNIT}'s one branch, \`${BRANCH}\`, every task of the quick-fix before yours on it: it has no chain to merge back.`],
       ['Where you work', `Build in the project's own checkout, \`${dir}\`, which the task's start put on ${UNIT}'s one branch, \`${BRANCH}\` — never in a worktree of your own, and run every command from there. Build, run and commit only there.`],
-      ['The linters', 'None recorded: the project has no environment setup, so run the tests and linters you find in the repository, asking nothing.'],
     ]) assert.ok(unset.includes(`# ${heading}\n\n${drawn}\n\n#`), `${heading}\n${unset}`);
+    const found = '# The linters\n\nNone confirmed: the project\'s environment setup is not confirmed yet, so run the tests and linters you find in the repository, asking nothing.\n\n#';
+    assert.deepStrictEqual([unset.includes(found), recorded.includes(found)], [true, true], recorded);
     assert.ok(set.includes('# The linters\n\n- eslint: npx eslint .\n\n#'), set);
+    assert.ok(none.includes('# The linters\n\nNone recorded.\n\n#'), none);
   });
 
   it('19.5.24: a fix\'s pair reads its own commits alone, each stamped with it, the fixes before it left out; with none yet, refused naming the door', () => {

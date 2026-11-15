@@ -446,7 +446,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render start-menu
   render epic-menu <epic>
   render manage
-  render manage-unit <work-unit> [--from closed]
+  render manage-unit <work-unit> [--from closed | --from pick --matches <matches>]
   render closed
   render care [--added <kind> | --dropped <kind>]
   render care-kind
@@ -461,7 +461,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render matrix-replay --threshold <percent> | --build <percent>
   render environment-setup [--from manage]
   render drivers
-  render drivers-stop
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -2657,21 +2656,21 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // --start-again`, `state-merge pick`, the migration review's verbs, `migrate
 // review` among them, the checks stop's record, `migrate checked`, a stop's
 // screen and the answer to its gate, each gate by its name (a directive's
-// verbs run on the stamp its stop writes); the targets of Claude Code's
-// hooks and of the gate mod (`conversation`, `board`), run for any
+// screen and verbs run on the stamp its stop writes); the targets of Claude
+// Code's hooks and of the gate mod (`conversation`, `board`), run for any
 // conversation; the capture line and the retry its note names, run from a
 // project the conversation may never boot (22.1.8, 18.6.8), each commit by
 // its scope's flag; and the walkthrough's and help's screens. While the
 // migration waits on its commit — its finish stop, where boot never stamps —
 // the environment setup's `show` and `set` go through too, so the review's
-// linters check can be made (`FINISH_EXEMPT`). Nothing refuses a call with
-// no session id, no conversation's, or one from a folder in no project
+// linters check can be made (`FINISH_EXEMPT`). Nothing refuses a call with no
+// session id, no conversation's, or one from a folder in no project
 // (domain/boot-stamp.cjs).
 const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} */ (Object.freeze({
   boot: '*',
   'state-merge': ['pick'],
   render: Object.freeze([
-    ...Object.values(BOOT_STOPS), 'directive-stop', 'migrations-applied', 'migration-gate',
+    ...Object.values(BOOT_STOPS), 'migrations-applied', 'migration-gate',
     'walkthrough-offer', 'walkthrough-screen', 'walkthrough-home', 'walkthrough-topics', 'walkthrough-topic', 'help',
   ]),
   gate: ['state lost gate', 'state merge gate', 'migration gate'],

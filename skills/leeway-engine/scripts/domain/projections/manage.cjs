@@ -13,15 +13,17 @@
 //   d/drivers draws the drivers, for the person to change either (22.4.4,
 //   drivers-verbs.cjs); and b/back draws the start menu (18.3.4). The matrix
 //   joins it with its phase.
-// - `render manage-unit <unit> [--from closed]`: the unit under the rule,
-//   "{Unit} ({type})",
+// - `render manage-unit <unit> [--from closed | --from pick --matches
+//   <matches>]`: the unit under the rule, "{Unit} ({type})",
 //   and what can be done to it as it stands (18.3.4–18.3.6): a feature in
 //   progress before its spec, p/pivot, and o/absorb while an epic before its
 //   spec can take it in — the same rules the verbs refuse by (spec-standing.cjs,
 //   workunit-absorb.cjs) — then c/cancel for any unit in progress, through
 //   its confirm (8.8.8); a cancelled unit, r/reactivate; a completed one,
-//   nothing yet. b/back draws the list it was opened from — manage, or with
-//   `--from closed` the closed units — and Ask leads into the conversation.
+//   nothing yet. b/back draws the screen it was opened from — manage, with
+//   `--from closed` the closed units, or with `--from pick` the start's
+//   pick over the same matches (boot-route.cjs) — and Ask leads into the
+//   conversation.
 // - `render closed`: the completed units, then the cancelled, each opening
 //   its own in manage, from the closed units; b/back draws the start menu
 //   (18.2.10).
@@ -92,6 +94,11 @@ const LISTS = Object.freeze({
 
 /** @typedef {keyof typeof LISTS} List */
 
+/** A unit's way back: its row's label and where it leads. @typedef {{label: string, next: Next}} WayBack */
+
+/** The way back to the start's pick over `matches`, which draws it again. @param {string} matches @returns {WayBack} */
+const toPick = (matches) => ({ label: 'Back to the work your words could name', next: engine('render', 'work-pick', '--matches', matches) });
+
 /** A unit's row on `list`, opening its own in manage. @param {List} list */
 const unitRowOn = (list) => (/** @type {Record<string, any>} */ manifest, /** @type {number} */ at) => /** @type {MenuRow} */ ({
   key: at + 1,
@@ -156,11 +163,11 @@ function unitRows(cwd, manifest) {
 }
 
 /**
- * A unit's screen in manage (the header's), opened from `list`.
- * @param {string} cwd @param {Record<string, any>} manifest @param {List} [list] @returns {MenuScreen}
+ * A unit's screen in manage (the header's), its back the way to the screen
+ * it was opened from.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {WayBack} [back] @returns {MenuScreen}
  */
-function manageUnitScreen(cwd, manifest, list = 'manage') {
-  const { label, next } = LISTS[list];
+function manageUnitScreen(cwd, manifest, { label, next } = LISTS.manage) {
   return {
     shows: [],
     statement: `${titlecase(manifest.name)} (${kindOf(manifest)})`,
@@ -185,14 +192,25 @@ const manageSurface = (cwd) => drawMenu(cwd, MENUS.manage, {}, manageScreen(load
 const closedSurface = (cwd) => drawMenu(cwd, MENUS.closed, {}, closedScreen(loadAllManifests(cwd)));
 
 /**
- * `render manage-unit <unit> [--from closed]`.
- * @param {string} cwd @param {string|undefined} unit @param {string|undefined} from @returns {string}
+ * The way back `--from` names, the pick's over the `--matches` it carries;
+ * refused, as the usage, for any other.
+ * @param {string|undefined} from @param {string|undefined} matches @param {string} usage @returns {WayBack}
  */
-function manageUnitSurface(cwd, unit, from) {
-  const usage = 'render manage-unit <work-unit> [--from closed]';
-  if (from !== undefined && from !== 'closed') throw new Error(`Usage: engine ${usage}`);
+function wayBackFrom(from, matches, usage) {
+  if (from === 'pick' && matches !== undefined) return toPick(matches);
+  if (matches !== undefined || (from !== undefined && from !== 'closed')) throw new Error(`Usage: engine ${usage}`);
+  return LISTS[from ?? 'manage'];
+}
+
+/**
+ * `render manage-unit <unit> [--from closed | --from pick --matches <matches>]`.
+ * @param {string} cwd @param {string|undefined} unit @param {{from?: string, matches?: string}} [flags] @returns {string}
+ */
+function manageUnitSurface(cwd, unit, { from, matches } = {}) {
+  const usage = 'render manage-unit <work-unit> [--from closed | --from pick --matches <matches>]';
+  const back = wayBackFrom(from, matches, usage);
   const manifest = unitNamed(cwd, unit, usage);
-  return drawMenu(cwd, MENUS['manage-unit'], { arg: manifest.name, flags: { from } }, manageUnitScreen(cwd, manifest, from ?? 'manage'));
+  return drawMenu(cwd, MENUS['manage-unit'], { arg: manifest.name, flags: { from, matches } }, manageUnitScreen(cwd, manifest, back));
 }
 
 /** A feature the absorb's gates draw for, refused where it cannot be absorbed. @param {string} cwd @param {string|undefined} feature @param {string} usage */

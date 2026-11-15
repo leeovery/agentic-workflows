@@ -10,8 +10,10 @@
 // written, `--take` entering and back leaving it to that session (12.7.8);
 // the tasks another conversation left in flight taken onto this
 // conversation's record with no builder and no pair, this conversation's own
-// kept as they stand, the other's record left alone, a parked one waiting on
-// its question with no builder until the answer (12.13.2); and the answer,
+// kept as they stand — those the tracker holds ended taken off, and an
+// epic's carried back through its menu — the other's record left alone, a
+// parked one waiting on its question with no builder until the answer
+// (12.13.2); and the answer,
 // which is the recovery note too (12.1.6, 12.2.2, 24.2.2, 24.2.5, 12.S4,
 // 24.S13), none for a unit built under the old plan: where each phase of the
 // cut stands with its tasks, its review's fixes owed until it is settled
@@ -55,7 +57,7 @@ const os = require('os');
 const path = require('path');
 const {
   ok, okSections, okSectionsAsync, output, refusedPristine, git, stateGit, statePath, layout, writeState, readManifest, commitAll, createFile, fixtureFrom, cleanupFixture,
-  withEnv, FROZEN_AT, accountTaken, setEnvironment, lastMessage, holdLock,
+  withEnv, FROZEN_AT, accountTaken, confirmEnvironment, lastMessage, holdLock,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
@@ -331,6 +333,39 @@ describe('the answer: where the build stands, and what to read beside the ledger
     assert.ok(sections.includes('in flight: task 1.3, its builder agent `agent-own`\nin flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch\n'), sections);
   });
 
+  it('takes off this conversation\'s record each task there the tracker holds ended: another conversation, a handoff\'s, took both over and finished them, so this one entering again carries none, and no line names them', () => {
+    ok(dir, ['task', 'start', UNIT, '1.3'], { env: env('old') });
+    enter([UNIT], 'old');
+    enter([UNIT], 'new');
+    for (const task of ['1.2', '1.3']) {
+      accountTaken(dir, UNIT, task);
+      ok(dir, ['task', 'done', UNIT, task], { env: env('new') });
+    }
+    const resumed = position('old').tasks.map(({ task }) => task);
+
+    const { sections } = enter([UNIT], 'old');
+
+    assert.deepStrictEqual([resumed, position('old'), sections.split('\n').filter((line) => line.startsWith('in flight: '))], [
+      ['1.3', '1.2'], { name: UNIT, phase: 'implementation', topic: UNIT }, [],
+    ]);
+  });
+
+  it('an epic\'s way back into its build — the start menu, the epic\'s menu, then the build — keeps its tasks in flight as they stand, their agents with them', () => {
+    ok(dir, ['task', 'start', UNIT, '1.3'], { env: env() });
+    dispatchBuilder('1.3', 'agent-own');
+    enter([UNIT]);
+    const building = position().tasks;
+    ok(dir, ['boot'], { env: env() });
+    output(dir, ['render', 'epic-menu', UNIT], { env: env() });
+    const atMenu = position();
+
+    enter([UNIT]);
+
+    assert.deepStrictEqual([building, atMenu, position().tasks], [
+      [{ task: '1.3', builder: 'agent-own', reviewers: [] }, { task: '1.2', builder: null, reviewers: [] }], { name: UNIT, tasks: building }, building,
+    ]);
+  });
+
   it('takes a parked task over in flight, its line saying it waits on its question, no builder going to it until the person answers (12.13.2)', async () => {
     const { conversation } = raiseHelpers(() => dir, () => config, CALL);
     await okSectionsAsync(dir, ['raise', `${UNIT}.implementation`, '--answers', made.where, '--parks', '1.2'], { env: conversation(), stdin: JSON.stringify(CALL) });
@@ -491,7 +526,7 @@ describe('the build\'s standing (P13)', () => {
 describe('the environment setup at the build\'s entry (22.5.1, 12.7.4)', () => {
   /** The steps `prepare` recorded, and what cannot run at once. @param {object[]} prepare @param {string[]} [whats] */
   function recording(prepare, whats = []) {
-    setEnvironment(dir, { prepare, concurrency: whats.map((what) => ({ what, at: FROZEN_AT, by: UNIT })) });
+    confirmEnvironment(dir, { prepare, concurrency: whats.map((what) => ({ what, at: FROZEN_AT, by: UNIT })) });
     commitAll(dir, 'the environment setup');
   }
 

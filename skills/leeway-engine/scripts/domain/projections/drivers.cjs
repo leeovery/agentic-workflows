@@ -14,12 +14,15 @@
 //   instructions live, or failing with its error — never an install
 //   command; then that nothing has been built, and that ready to build
 //   waits until each is put right or, while no build is in flight, the
-//   driver is changed from manage. The yes refused for it says the same in
-//   one line.
+//   driver is changed from manage — the change named only where another
+//   driver of its kind serves the project. The yes refused for it says the
+//   same in one line.
 // - The drivers menu, from manage's d/drivers: each kind's drivers
 //   installed, the one in use marked, and each that does not serve the
 //   project saying so; a numbered row for each other that does, its next
-//   `drivers set`; and back to manage.
+//   `drivers set`, or, where none does, that no other driver serves the
+//   project, and what it works through, with nothing to choose; and back to
+//   manage.
 // ---------------------------------------------------------------------------
 
 const { section, emitAs } = require('./surfaces.cjs');
@@ -33,6 +36,12 @@ const { capitalise } = require('../conventions.cjs');
  * A driver as the check reads it: its kind, name and title, and how each
  * tool it needs stands.
  * @typedef {{kind: 'task'|'landing', driver: string, title: string, tools: ToolState[]}} DriverCheck
+ */
+
+/**
+ * A driver that stops ready to build, and whether another driver of its
+ * kind serves the project, which manage could change it to.
+ * @typedef {DriverCheck & {changeable: boolean}} Stopping
  */
 
 /**
@@ -67,7 +76,7 @@ function standing(tool) {
   return `${tool.label} is installed but fails — ${tool.error}`;
 }
 
-/** The alert's words, after its flag. @param {DriverCheck[]} stopping */
+/** The alert's words, after its flag. @param {Stopping[]} stopping */
 function stopped(stopping) {
   const failing = stopping.flatMap(({ tools }) => tools.filter(notFine));
   const one = stopping.length === 1;
@@ -87,20 +96,28 @@ function account(project, { kind, title, tools }) {
   return `${project} ${DOES[kind]} through ${title}, which needs ${needs}. ${capitalise(tools.map(standing).join('; '))}.`;
 }
 
-/** That nothing was built, and what ready to build waits for. @param {DriverCheck[]} stopping */
+/** The drivers manage could change, as the wait names them; null where it could change none. @param {Stopping[]} stopping */
+function changing(stopping) {
+  const changeable = stopping.filter((check) => check.changeable);
+  if (changeable.length === 0) return null;
+  return changeable.length === 1 ? `the ${changeable[0].kind} driver is` : 'the drivers are';
+}
+
+/** That nothing was built, and what ready to build waits for. @param {Stopping[]} stopping */
 function waiting(stopping) {
   const failing = stopping.flatMap(({ tools }) => tools.filter(notFine));
   const until = listed(failing.map((tool) => `${tool.label} is ${REMEDY[/** @type {keyof typeof REMEDY} */ (tool.state)]}`));
-  const changed = stopping.length === 1 ? `the ${stopping[0].kind} driver is` : 'the drivers are';
-  return `Nothing has been built. Ready to build waits until ${until} — or, while no build is in flight, until ${changed} changed from manage on the start menu.`;
+  const changed = changing(stopping);
+  const or = changed === null ? '' : ` — or, while no build is in flight, until ${changed} changed from manage on the start menu`;
+  return `Nothing has been built. Ready to build waits until ${until}${or}.`;
 }
 
-/** The stop's paragraphs, in order. @param {string} project @param {DriverCheck[]} stopping */
+/** The stop's paragraphs, in order. @param {string} project @param {Stopping[]} stopping */
 const paragraphs = (project, stopping) => [...stopping.map((check) => account(project, check)), waiting(stopping)];
 
 /**
  * The stop at ready to build: its alert, then its account.
- * @param {string} project @param {DriverCheck[]} stopping each driver with a tool not fine
+ * @param {string} project @param {Stopping[]} stopping each driver with a tool not fine
  * @returns {string}
  */
 function driversStopScreen(project, stopping) {
@@ -112,7 +129,7 @@ function driversStopScreen(project, stopping) {
 
 /**
  * The stop in one line, as the yes is refused for it.
- * @param {string} project @param {DriverCheck[]} stopping
+ * @param {string} project @param {Stopping[]} stopping
  * @returns {string}
  */
 function driversStopReason(project, stopping) {
@@ -127,12 +144,20 @@ function marked(inUse, serves) {
 
 const engine = (/** @type {string[]} */ ...argv) => ({ kind: /** @type {const} */ ('engine'), argv });
 
+/** What the project works through, as a sentence says it: each kind's driver in use. @param {string} project @param {KindView[]} kinds */
+function inUse(project, kinds) {
+  const through = kinds.map(({ kind, using, installed }) => `${DOES[kind]} through ${installed.find(({ name }) => name === using)?.title ?? using}`);
+  return `No other driver serves ${project}: it ${listed(through)}.`;
+}
+
 /**
- * The drivers menu's screen: what it shows, its rows and its back.
- * @param {KindView[]} kinds
+ * The drivers menu's screen: what it shows, its rows and its back — where
+ * no other driver serves the project, what it works through, and no
+ * choice asked.
+ * @param {string} project @param {KindView[]} kinds
  * @returns {MenuScreen}
  */
-function driversScreen(kinds) {
+function driversScreen(project, kinds) {
   const shows = kinds.flatMap(({ kind, using, installed }) => [
     `THE ${kind.toUpperCase()} DRIVER`,
     ...installed.map(({ name, title, serves }) => `  · ${title}${marked(name === using, serves)}`),
@@ -140,7 +165,7 @@ function driversScreen(kinds) {
   const choices = kinds.flatMap(({ kind, using, installed }) => installed.filter(({ name, serves }) => serves && name !== using).map(({ name, title }) => ({ kind, name, title })));
   return {
     shows,
-    question: 'Which driver would you like to use?',
+    ...(choices.length === 0 ? { statement: inUse(project, kinds) } : { question: 'Which driver would you like to use?' }),
     rows: choices.map(({ kind, name, title }, at) => /** @type {MenuRow} */ ({ key: at + 1, label: `${CHOOSE[kind]} ${title}`, next: engine('drivers', 'set', kind, name) })),
     back: { label: 'Back to manage', next: engine('render', 'manage') },
   };

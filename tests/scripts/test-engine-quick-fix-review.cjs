@@ -109,7 +109,7 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
 describe('the review\'s briefs for a quick-fix: its record and its fixes\' acceptance, never a spec (19.5.14, 19.5.24)', () => {
   const noSpec = `${UNIT} is a quick-fix, which has no spec: its fixes' acceptance, in their own words, stands for one.`;
   /** The linters, the project having no environment setup (22.5.10). */
-  const NO_SETUP = 'None recorded: the project has no environment setup, so run the tests and linters you find in the repository, asking nothing.';
+  const NO_SETUP = 'None confirmed: the project\'s environment setup is not confirmed yet, so run the tests and linters you find in the repository, asking nothing.';
   const criteria = [
     '- 1.S1, of fix 1.1 Spell the flag --colour: Given the help, when it is read, then it names --colour.',
     '- 2.S1, of fix 1.2 Spell the help --colour: Given the help, when it is read, then it names --colour.',

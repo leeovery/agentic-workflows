@@ -6,8 +6,9 @@
 // build, its progress, phases, tasks and their states — a task building,
 // in review, failed, waiting on a question, at its gate or behind the one
 // in flight — when the build stops and when it goes on, the questions a
-// press can queue, and that reading the tracker writes nothing and never
-// waits on the writer lock. The board's frame is test-engine-board.cjs, a
+// press can queue, a session's tasks in flight read once it has left the
+// build, and that reading the tracker writes nothing and never waits on the
+// writer lock. The board's frame is test-engine-board.cjs, a
 // task's pages test-engine-board-pages.cjs.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
@@ -135,6 +136,26 @@ describe('the build on the board (20.5)', () => {
       { task: line('1.1', 'Take a card', 'failed'), moment: { kind: 'task-failed', at: stopped, topic: null, detail: '1.1' } },
       'waits',
     ]);
+  });
+
+  it('24.2.4: a session that left its build for the start menu, its task still in flight, is at All work, and the unit\'s tab still reads that task\'s stop', () => {
+    enterBuild();
+    position('auto');
+    issued('builder', '1.1', '2026-10-21T10:00:00.000Z');
+    const { stopped } = ok(dir, ['task', 'stopped', UNIT, '1.1'], { env: env() });
+    ok(dir, ['session', 'repair'], { env: env() });
+
+    assert.deepStrictEqual([board().place.unit, board(['--tab', 'unit', '--unit', UNIT]).view.lately.find(({ kind }) => kind === 'task-failed')],
+      [null, { kind: 'task-failed', at: stopped, topic: null, detail: '1.1' }]);
+  });
+
+  it('24.2.4: a task\'s page opened in the build, the session gone to the start menu with the task still in flight, still clocks it by the brief issued for it (P15)', () => {
+    enterBuild();
+    fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
+    issued('reviewer', '1.1', '2026-10-21T10:20:00.000Z');
+    ok(dir, ['session', 'repair'], { env: env() });
+
+    assert.deepStrictEqual(board(['--page', 'task:1.1', '--page-unit', UNIT]).view.line, line('1.1', 'Take a card', 'in-review', { since: '2026-10-21T10:20:00.000Z' }));
   });
 
   it('a brief the conversation issued for another unit\'s task of the same number never clocks this one (P15)', () => {

@@ -20,7 +20,8 @@
 // - Words naming work among other words, several pieces of it, or a unit
 //   that has closed go to the pick, `render work-pick`: a row for each
 //   piece, and one for something new. A row's next is its move; a closed
-//   unit's, the unit in manage, where it is brought back.
+//   unit's, the unit in manage, where it is brought back, its back the pick
+//   again.
 // - Words naming nothing go to Start's type call: discovery, for a piece of
 //   work of no kind yet, the words held by the conversation.
 //
@@ -74,7 +75,12 @@ const PICK = 'work-pick';
 /** The statuses a unit has closed at. */
 const CLOSED = Object.freeze(['completed', 'cancelled']);
 
-/** A piece of work the words may name — a unit, an epic's topic, or a unit closed as `closed` — and where it leads. @typedef {{unit: string, topic?: string, closed?: string, next: Next}} Piece */
+/**
+ * A piece of work the words may name: a unit or an epic's topic in
+ * progress, and the move into it; or a unit closed as `closed`, which the
+ * pick opens in manage.
+ * @typedef {{unit: string, topic?: string, closed?: undefined, next: Next} | {unit: string, topic?: undefined, closed: string}} Piece
+ */
 
 /** A piece, the names it goes by and, for a topic, its epic's, each as words. @typedef {{piece: Piece, names: string[][], epic: string[]}} Candidate */
 
@@ -95,8 +101,8 @@ const invoked = (move) => ({ kind: 'invoke', skill: move.skill, args: move.args 
 /** Start's type call: discovery, for a piece of work of no kind yet. @param {string} cwd @returns {Next} */
 const toStart = (cwd) => invoked(resolveHandoff(cwd, 'leeway-discovery', ['start', 'none']));
 
-/** A closed unit in manage, as the closed units open it. @param {string} unit @returns {Next} */
-const toManage = (unit) => ({ kind: 'engine', argv: ['render', 'manage-unit', unit, '--from', 'closed'] });
+/** A closed unit in manage, opened from the pick over `matches`, which its back draws again. @param {string} unit @param {string} matches @returns {Next} */
+const toManage = (unit, matches) => ({ kind: 'engine', argv: ['render', 'manage-unit', unit, '--from', 'pick', '--matches', matches] });
 
 /** The move `compose` makes, or null where it refuses. @param {() => Handoff} compose @returns {Handoff|null} */
 function composed(compose) {
@@ -124,10 +130,10 @@ function topicsOf(cwd, manifest, epic) {
 
 /** Each piece of work the words could name (the header's). @param {string} cwd @returns {Candidate[]} */
 function piecesIn(cwd) {
-  return loadAllManifests(cwd).flatMap((manifest) => {
+  return loadAllManifests(cwd).flatMap(/** @returns {Candidate[]} */ (manifest) => {
     const unit = manifest.name;
     const names = [wordsOf(unit)];
-    if (CLOSED.includes(manifest.status)) return [{ piece: { unit, closed: manifest.status, next: toManage(unit) }, names, epic: [] }];
+    if (CLOSED.includes(manifest.status)) return [{ piece: { unit, closed: manifest.status }, names, epic: [] }];
     const move = composed(() => unitHandoff(cwd, [unit]));
     const own = move === null ? null : { unit, next: invoked(move) };
     return [...(own === null ? [] : [{ piece: own, names, epic: [] }]), ...(manifest.work_type === 'epic' ? topicsOf(cwd, manifest, own) : [])];
@@ -180,7 +186,7 @@ function namedIn(candidates, words) {
 /** Start's type call with the words. @param {string} cwd @param {string} text @returns {Entry} */
 const startWith = (cwd, text) => ({ go: 'route', route: { kind: 'start', words: text, next: toStart(cwd) } });
 
-/** Into a piece of work in progress. @param {Piece} piece @returns {Entry} */
+/** Into a piece of work in progress. @param {Piece & {next: Next}} piece @returns {Entry} */
 const routeInto = ({ unit, topic, next }) => ({ go: 'route', route: { kind: 'unit', unit, ...(topic === undefined ? {} : { topic }), next } });
 
 /** The pick between pieces. @param {Piece[]} pieces @returns {Entry} */
@@ -193,7 +199,7 @@ const picking = (pieces) => ({ go: 'pick', pick: { surface: PICK, args: ['--matc
  * @param {string} cwd @param {Candidate[]} candidates @param {string} text @returns {Entry}
  */
 function carryingOn(cwd, candidates, text) {
-  const units = new Map(candidates.filter(({ piece }) => piece.topic === undefined && piece.closed === undefined).map(({ piece }) => [piece.unit, piece]));
+  const units = new Map(candidates.flatMap(({ piece }) => (piece.topic === undefined && piece.closed === undefined ? [[piece.unit, piece]] : [])));
   if (units.size === 0) return startWith(cwd, text);
   if (units.size === 1) return routeInto([...units.values()][0]);
   return picking(listed(startMenuRead(cwd).units).flatMap(({ name }) => units.get(name) ?? []));
@@ -217,13 +223,13 @@ function entryOf(cwd, said) {
 }
 
 /**
- * The pick's row for the piece `match` names: into an epic's topic or a
- * unit in progress, its move composed and refused as the move refuses; a
- * closed unit, into manage.
- * @param {string} cwd @param {Map<string, Record<string, any>>} manifests @param {string} match
+ * The pick's row for the piece `match` names, among the pick's `matches`:
+ * into an epic's topic or a unit in progress, its move composed and refused
+ * as the move refuses; a closed unit, into manage.
+ * @param {string} cwd @param {Map<string, Record<string, any>>} manifests @param {string} match @param {string} matches
  * @returns {{label: LabelParts, next: Next}}
  */
-function pickRow(cwd, manifests, match) {
+function pickRow(cwd, manifests, match, matches) {
   const [unit, topic] = match.split('/');
   if (topic !== undefined) {
     const next = invoked(topicHandoff(cwd, [unit, topic]));
@@ -231,7 +237,7 @@ function pickRow(cwd, manifests, match) {
   }
   const closed = manifests.get(unit);
   if (closed !== undefined && CLOSED.includes(closed.status)) {
-    return { label: { head: `Manage ${closed.work_type}: ${titlecase(unit)}`, tail: closed.status }, next: toManage(unit) };
+    return { label: { head: `Manage ${closed.work_type}: ${titlecase(unit)}`, tail: closed.status }, next: toManage(unit, matches) };
   }
   const next = invoked(unitHandoff(cwd, [unit]));
   const manifest = /** @type {Record<string, any>} */ (manifests.get(unit));
@@ -249,7 +255,7 @@ function pickRows(cwd, matches) {
   const said = (matches ?? '').split(',').filter(Boolean);
   if (said.length === 0) throw new Error(`render ${PICK}: --matches names the pieces of work the words named, each <unit> or <unit>/<topic>, comma-joined, as boot's pick gives them`);
   const manifests = new Map(loadAllManifests(cwd).map((manifest) => [manifest.name, manifest]));
-  const rows = said.map((match, at) => ({ key: at + 1, ...pickRow(cwd, manifests, match) }));
+  const rows = said.map((match, at) => ({ key: at + 1, ...pickRow(cwd, manifests, match, said.join(',')) }));
   return [...rows, { key: 's', word: 'start', label: 'Start something new with these words', next: toStart(cwd) }];
 }
 

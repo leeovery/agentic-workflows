@@ -3,24 +3,24 @@
 // ---------------------------------------------------------------------------
 // A feature's one screen, decided and ready to build
 // (leeway-engine/scripts/domain/ready-to-build.cjs, its close's half
-// decided.cjs, drawn by projections/ready-to-build.cjs over closing.cjs):
-// its topic closed into its spec with no gate, `render ready-to-build`
-// draws the topic's close — what the person decided, the product-record
-// lines, the candidates parking on the roadmap and their strike — beside the
-// outline and the cut, Claude's calls on the topic counted with those at the
-// spec, decided's skips first, and decided's verdicts asked at decided
-// before the spec's, counted across the whole close (3.S5, 9.S23, 11.S14,
-// 9.7.3, 9.7.6, 11.8.2); a staged line whose decision changed at the spec
-// refused until staged afresh; a strike draws it again, `--page` carried;
-// and its yes takes the close as the decided gate's yes does — the line
-// landed through the ledger, then in the yes's own commit the candidates
-// parked, the struck recorded, the topic decided and its close taken, with
-// the build begun — every line and candidate checked before anything is
-// written, the review page's marks among it, and landed only once the
-// review has settled (8.S31, 8.10.2, 8.10.11). Between the yes and the
-// build's first task, nothing set up in the tracker yet, the board reads the
-// unit as the start menu's row does, This session's build among it,
-// writing nothing (20.16, 28.2.1).
+// decided.cjs, drawn by projections/ready-to-build.cjs over closing.cjs): its
+// topic closed into its spec with no gate, `render ready-to-build` draws the
+// topic's close — what the person decided, the product-record lines, the
+// candidates parking on the roadmap and their strike — beside the outline and
+// the cut, Claude's calls on the topic counted with those at the spec,
+// decided's skips first, and decided's verdicts asked at decided before the
+// spec's, counted across the whole close (3.S5, 9.S23, 11.S14, 9.7.3, 9.7.6,
+// 11.8.2); a staged line whose decision changed at the spec refused until
+// staged afresh; a strike draws it again, `--page` carried; and its yes takes
+// the close as the decided gate's yes does — the line landed through the
+// ledger, then in the yes's own commit the candidates parked, the struck
+// recorded, the topic decided and its close taken, with the build begun — the
+// drivers' tools, every line and candidate checked before anything is
+// written, the review page's marks among it, and landed only once the review
+// has settled (8.S31, 8.10.2, 8.10.11). Between the yes and the build's first
+// task, nothing set up in the tracker yet, the board reads the unit as the
+// start menu's row does, This session's build among it, writing nothing
+// (20.16, 28.2.1).
 //
 // Layer: verb. World: the ready to build world's feature, and the same with
 // the person's changes of Claude's calls (ready-to-build-world.cjs), copied
@@ -33,11 +33,15 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, output, refuses, refusedPristine, sectionOf, statePath, layout, readState, writeState, readManifest, stateGit, lastMessage, treeSnapshot } = require('./engine-harness.cjs');
+const { ok, output, refuses, refusedPristine, sectionOf, statePath, layout, readState, writeState, readManifest, stateGit, lastMessage, treeSnapshot, toolless } = require('./engine-harness.cjs');
 const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 const { FEATURE, FEATURE_PHASE, SESSION, write, written, cut, closeReady, made, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented } = require('./ready-to-build-world.cjs');
 
 const { progressOf, progressWords } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/progress.cjs'));
+const { listDrivers } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/drivers.cjs'));
+
+/** Whether a kind's default driver needs any tool, which a PATH without them stops. */
+const NEEDS_TOOLS = ['task', 'landing'].some((kind) => listDrivers(kind).some((driver) => driver.isDefault && driver.needs.length > 0));
 
 /** Each block of the screen's display, by its first line. @param {string} out */
 const blocks = (out) => sectionOf(out, 'DISPLAY: ready to build').split('\n\n').map((block) => block.split('\n')[0]);
@@ -161,6 +165,10 @@ describe('the one screen\'s yes (9.7.6, 8.S31)', () => {
     publish();
     const marks = readBack({ s1: { m: { '1-1-1': { s: 'tick' } } } });
     assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', FEATURE, '--position', 'auto', '--marks', marks], { env: SESSION }).error, twin);
+  });
+
+  it('22.4.5: checks the drivers before it lands anything: a tool gone refuses it, writing nothing — no line through the ledger, no close taken', { skip: !NEEDS_TOOLS }, () => {
+    assert.match(refusedPristine(dir(), ['ready-to-build', 'yes', FEATURE, '--position', 'auto'], { env: { ...SESSION, PATH: toolless(path.dirname(dir())) } }).error, /^ready-to-build yes: Ready to build stopped: /);
   });
 
   it('lands nothing while a comment on the review page waits for Claude', () => {

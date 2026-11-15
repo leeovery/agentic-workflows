@@ -34,8 +34,10 @@
 // task nor a note — none again once all have passed there, the marker in
 // the worktree's git directory, a failure refusing with the step's exit
 // code and output and run again by the call after, and a call while
-// another runs them refused (22.5.1, 22.S35). Taking the worktree apart as
-// the task ends, and tasks side by side: test-engine-task-worktree-end.cjs.
+// another runs them refused (22.5.1, 22.S35). A task stays in flight once
+// boot routes the conversation's words, its worktree laid out after
+// (24.2.4). Taking the worktree apart as the task ends, and
+// tasks side by side: test-engine-task-worktree-end.cjs.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -46,11 +48,11 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath, commitAll, setEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
+  ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath, commitAll, confirmEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { NESTED, NESTED_TASKS, TRACKER, commitFiles, followRemedy } = require('./landing-world.cjs');
-const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
+const { readPosition, tasksInFlight } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 const { laidOutOf } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
 const {
   SIDE, UNIT, FEES, SHOW, CAP, taskWorktreeWorld, as, building, isolation, layOut, layOutOrRefusal, madeIn, checkoutsOf,
@@ -370,11 +372,24 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
   });
 });
 
+describe('task worktree after the conversation left its place (24.2.4)', () => {
+  it('a task in flight stays in flight through Claude\'s entry: boot, given words it routes, leaves the place, and the task\'s worktree is laid out after, the place still left — the bare command\'s boot keeping it so, test-engine-position.cjs\'s', () => {
+    const at = project();
+    const session = building(at.dir, ['3.1']);
+    const tree = isolation(at.dir, 'a');
+
+    const routed = ok(at.dir, ['boot'], { ...as(session), stdin: 'make the header blue' }).go;
+    const laid = layOutOrRefusal(tree, session);
+
+    assert.deepStrictEqual([routed, laid, readPosition(session), tasksInFlight(session).map(({ task, worktree }) => [task, worktree])], ['route', {}, null, [['3.1', tree]]]);
+  });
+});
+
 describe('task worktree: the steps that prepare the environment (22.5.1)', () => {
   /** The project with the steps `prepare` names recorded — anything else it writes committed with them — and a builder's worktree for task 3.1. @param {(dir: string) => object[]} prepare */
   function preparing(prepare) {
     const at = project();
-    setEnvironment(at.dir, { prepare: prepare(at.dir) });
+    confirmEnvironment(at.dir, { prepare: prepare(at.dir) });
     commitAll(at.dir, 'the steps that prepare the environment');
     return { at, session: building(at.dir, ['3.1']), tree: isolation(at.dir, 'a') };
   }
