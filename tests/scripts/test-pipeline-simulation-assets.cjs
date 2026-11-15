@@ -50,26 +50,21 @@ describe('pipeline simulation: assets', () => {
     assert.match(sim.sections, new RegExp(`^spike: ${spike.folder}$`, 'm'));
   });
 
-  it('legacy files: an epic holding files the migration kept, its start menu row leading to their read; the pass brings one in — its finding at the unit\'s own level, citing the file where it moved, read at its topic\'s opening — keeps one and discards one, and the row goes', () => {
+  it('legacy files: an epic holding files the migration kept, the start menu\'s row leading to their read; the pass keeps one and records what it holds at the place\'s findings_at, citing it where it moved, read at its topic\'s opening; keeps one whole and discards one', () => {
     const wu = 'fumi';
     const legacy = `${wu}/assets/legacy`;
-    const files = ['plan.md', 'research/sketch.png', 'scratch.md'].map((name) => `${legacy}/${name}`);
-    const isLegacyRow = (/** @type {{next: any}} */ { next }) => next?.kind === 'engine' && next.argv.join(' ') === `asset legacy ${wu}`;
     mappedEpic(sim, wu, ['note-window']);
-    for (const file of files) sim.write(`.leeway/${file}`, `${file}\n`);
+    for (const file of ['plan.md', 'research/sketch.png', 'scratch.md']) sim.write(`.leeway/${legacy}/${file}`, `${file}\n`);
     sim.run(['commit', wu, '-m', 'the migration']);
 
-    const row = startMenu(sim).find(isLegacyRow);
-    assert.ok(row, 'the start menu points the legacy files out');
-    assert.deepStrictEqual(startPick(sim, row.key).files, files);
-    const brought = sim.run(['asset', 'bring', wu, files[0]]);
-    const [{ to }] = brought.moved;
+    const row = startMenu(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'asset legacy');
+    const [{ findings_at: findingsAt }] = startPick(sim, row.key).places;
+    const [{ to }] = sim.run(['asset', 'keep', wu, `${legacy}/plan.md`]).moved;
     const finding = 'The old plan ships notes before spaces.';
-    sim.run(['ledger', 'find', brought.findings_at], null, JSON.stringify({ text: finding, how: 'read in the old plan', known: 'documented', cites: [{ path: to, section: 'plan.md' }], by: 'claude', who_moved_whom: 'none' }));
-    sim.run(['asset', 'keep', wu, files[1]]);
-    sim.run(['asset', 'discard', wu, files[2]]);
+    sim.run(['ledger', 'find', findingsAt], null, JSON.stringify({ text: finding, how: 'read in the old plan', known: 'documented', cites: [{ path: to, section: 'plan.md' }], by: 'claude', who_moved_whom: 'none' }));
+    sim.run(['asset', 'keep', wu, `${legacy}/research`]);
+    sim.run(['asset', 'discard', wu, `${legacy}/scratch.md`]);
 
-    assert.ok(!startMenu(sim).some(isLegacyRow), 'the row goes once the folder is empty');
     const { discovery } = JSON.parse(sim.read(['ledger', 'product', wu, 'note-window']));
     assert.deepStrictEqual(discovery.map((/** @type {{text: string, cites: unknown}} */ { text, cites }) => [text, cites]), [[finding, [{ path: to, section: 'plan.md' }]]]);
   });

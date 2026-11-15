@@ -17,8 +17,9 @@
 //   authority gates, the questions, a decided topic a changed answer holds;
 //   a topic a wait is about is that wait's row alone, never listed again.
 //   While the epic's legacy folder holds files from the migration, one row
-//   after them — "Legacy files from the migration: 41" — whose next reads
-//   them, `asset legacy`, for the pass that sorts them (legacy-files.cjs).
+//   after them — "Sort the legacy files from the migration — 41" — never
+//   the recommended one, whose next reads them, `asset legacy`, for the pass
+//   that sorts them (legacy-files.cjs).
 //   The verdicts waiting on the epic's departures are one row among them,
 //   e/verdicts, its door the verdict page, drawn after the numbered waits.
 // - Then the topics by what they need (18.4.3): those in progress, then
@@ -180,7 +181,7 @@ function waitRows(detail, waits) {
 /** The row of the epic's legacy files, while its folder holds any (the header's). @param {string} cwd @param {string} epic @returns {Row[]} */
 function legacyRows(cwd, epic) {
   const count = legacyFiles(stateRoot(cwd), epic).length;
-  return count === 0 ? [] : [{ label: { head: `Legacy files from the migration: ${count}` }, next: { kind: 'engine', argv: ['asset', 'legacy', epic] } }];
+  return count === 0 ? [] : [{ label: { head: 'Sort the legacy files from the migration', tail: String(count) }, next: { kind: 'engine', argv: ['asset', 'legacy', epic] } }];
 }
 
 /** A topic's row (the header's): into the laboratory where experiments wait for it, else Start or Continue. @param {string} epic @param {EpicDetail} detail @param {MapRow} row @returns {Row} */
@@ -312,7 +313,7 @@ function epicMenuScreen(cwd, manifest, waits) {
   const waiting = new Set(waits.flatMap((wait) => (wait.kind === 'verdict' || wait.topic === null ? [] : [wait.topic])));
   const onward = onwardRows(cwd, manifest, phase, detail, waits);
   const strike = striker(cwd, epic);
-  const waitsDrawn = [...waitRows(detail, waits).map(strike), ...legacyRows(cwd, epic)];
+  const waitsDrawn = waitRows(detail, waits).map(strike);
   const topics = topicRows(epic, detail, waiting).map(strike);
   /** @type {Row[]} */
   const discovery = detail.map_closed ? [] : [{ key: 'd', word: 'discovery', label: { head: MAP_CHANGE }, next: { kind: 'handoff', skill: 'leeway-discovery', args: ['none', epic] } }];
@@ -321,7 +322,7 @@ function epicMenuScreen(cwd, manifest, waits) {
     title,
     shows: shown(detail, waiting),
     ...(detail.old === null ? {} : { statement: detail.old }),
-    rows: ordered([...waitsDrawn, ...verdictRows(waits), ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
+    rows: ordered([...waitsDrawn, ...legacyRows(cwd, epic), ...verdictRows(waits), ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
     back: BACK,
   };
 }

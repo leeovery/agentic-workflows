@@ -18,9 +18,9 @@ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with ro
 
 ## Legacy Files
 
-A row of legacy files leads to `asset legacy {place}`. Run it, then sort them:
+The row of legacy files leads to `asset legacy`. Run it, then sort them:
 
-Load **[legacy-files.md](../../leeway-shared/references/legacy-files.md)** and follow its instructions as written, with place = `{place}`.
+Load **[legacy-files.md](../../leeway-shared/references/legacy-files.md)** and follow its instructions as written.
 
 On return, run **The Menu** again.
 

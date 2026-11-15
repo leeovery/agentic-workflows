@@ -29,7 +29,7 @@ A refusal names the way on: say it in a line.
 
 The answer goes to `gate`; follow its `next`. The legacy files' row leads to `asset legacy {work_unit}`. Run it, then sort them:
 
-Load **[legacy-files.md](../leeway-shared/references/legacy-files.md)** and follow its instructions as written, with place = `{work_unit}`.
+Load **[legacy-files.md](../leeway-shared/references/legacy-files.md)** and follow its instructions as written.
 
 On return, run **The Menu** again.
 

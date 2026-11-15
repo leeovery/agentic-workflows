@@ -7,10 +7,6 @@
 //
 // - What it shows above its question: the inbox as one line, its count by
 //   kind (18.2.8), "Inbox: empty" while nothing is in it (18.2.18).
-// - First, a row for each place holding legacy files from the migration —
-//   "Legacy files from the migration: 41 in Evvi V1" — the units in the
-//   order the project lists them, then the product; its next reads them,
-//   `asset legacy`, for the pass that sorts them (legacy-files.cjs).
 // - A row per unit in progress, type first ("Continue epic: …"), its phase
 //   and progress, and where something waits on the person in it, the count
 //   (18.2.2, 18.2.3, 18.2.6), mail waiting for its topic beside it (10.4.3):
@@ -18,6 +14,10 @@
 //   type — features, bugfixes, quick-fixes, epics — a migrated unit of a
 //   type the reshape retires with the features. Its next is Continue,
 //   `handoff unit` (19.1.3).
+// - Then one row while any place holds legacy files from the migration,
+//   "Sort the legacy files from the migration — 41 in 12 places", the one
+//   place named where only one holds any; its next reads them,
+//   `asset legacy`, for the pass that sorts them (legacy-files.cjs).
 // - Then p/product, always, with its sessions' count and last date once it
 //   has sessions, and the brownfield research while it is owed (18.2.13,
 //   8.12.13); s/start, into discovery, which finds the type (18.2.7);
@@ -99,16 +99,26 @@ const listed = (units) => units
     || typeRank(a.unit.type) - typeRank(b.unit.type) || a.at - b.at)
   .map(({ unit }) => unit);
 
-/** A place's row while legacy files wait in it (the header's). @param {LegacyPlace} place @param {number} at @returns {MenuRow} */
-const legacyRow = ({ place, count }, at) => ({
-  key: at + 1,
-  label: `Legacy files from the migration: ${count} in ${place === PRODUCT ? 'the product' : titlecase(place)}`,
-  next: { kind: 'engine', argv: ['asset', 'legacy', place] },
-});
+/** Where legacy files wait, as the row names it: the one place, or how many. @param {LegacyPlace[]} places */
+const legacyWhere = (places) => {
+  if (places.length > 1) return `${places.length} places`;
+  return places[0].place === PRODUCT ? 'the product' : titlecase(places[0].place);
+};
 
-/** A unit's row: Continue, type first, numbered after the rows before it. @param {number} after @returns {(unit: UnitRow, at: number) => MenuRow} */
-const unitRow = (after) => ({ name, type, progress, waiting, mail }, at) => ({
-  key: after + at + 1,
+/** The legacy files' row, while any place holds them, numbered after the units' (the header's). @param {LegacyPlace[]} places @param {number} after @returns {MenuRow[]} */
+function legacyRows(places, after) {
+  if (places.length === 0) return [];
+  const count = places.reduce((sum, { count: held }) => sum + held, 0);
+  return [{
+    key: after + 1,
+    label: { head: 'Sort the legacy files from the migration', tail: `${count} in ${legacyWhere(places)}` },
+    next: { kind: 'engine', argv: ['asset', 'legacy'] },
+  }];
+}
+
+/** A unit's row: Continue, type first. @param {UnitRow} unit @param {number} at @returns {MenuRow} */
+const unitRow = ({ name, type, progress, waiting, mail }, at) => ({
+  key: at + 1,
   label: { head: `Continue ${type}: ${titlecase(name)}`, tail: progress, cue: noteOf(waiting, mail) },
   next: { kind: 'engine', argv: ['handoff', 'unit', name] },
 });
@@ -140,8 +150,8 @@ function startMenuScreen(read) {
   return {
     shows: [inboxLine(read.inbox)],
     rows: [
-      ...read.legacy.map(legacyRow),
-      ...listed(read.units).map(unitRow(read.legacy.length)),
+      ...listed(read.units).map(unitRow),
+      ...legacyRows(read.legacy, read.units.length),
       productRow(read),
       { key: 's', word: 'start', label: 'Start something new — describe it, and we\'ll find what kind of work it is', next: handoff('leeway-discovery', 'start', 'none') },
       { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },

@@ -8,8 +8,8 @@
 // first, then by type, no topic on any row (18.2.1–18.2.6), read from the
 // ledger in any conversation (12.13.7) and a raise sealed in the
 // conversation that drew it; mail waiting for a unit's topic beside the
-// count, never in it (10.4.3); a row for each place holding legacy files
-// from the migration, ahead of the units; the count leaving the verdicts out, which
+// count, never in it (10.4.3); one row after the units while any place
+// holds legacy files from the migration; the count leaving the verdicts out, which
 // have the project's own row while they wait (18.2.11), a feature's among
 // them, its Continue going where it stands; the inbox as one
 // line (18.2.8); one Start row, the product's row with its sessions and the
@@ -138,28 +138,31 @@ describe('the start menu (18.2.12)', () => {
       '24.S16: each row continues its unit where it stands');
   });
 
-  it('a row for each place holding legacy files from the migration, ahead of the units — a unit of any status, then the product — each leading to the place\'s read; a place\'s row gone once its folder is empty', () => {
+  it('one row after the units while any place holds legacy files from the migration — a unit of any status, or the product — counting them all and how many places, the one place named where only one holds any, leading to their read; gone once none is left', () => {
     writeState(dir(), `${FUMI}/assets/legacy/plan.md`, 'a plan\n');
     writeState(dir(), `${FUMI}/assets/legacy/research/notes.md`, 'notes\n');
     createManifest(dir(), 'gone', { status: 'cancelled' });
     writeState(dir(), 'gone/assets/legacy/old.md', 'old\n');
     writeState(dir(), '.product/assets/legacy/vision.md', 'a vision\n');
     fs.mkdirSync(statePath(dir(), SOLO, 'assets', 'legacy'), { recursive: true });
-    const waiting = startMenu().menu.slice(0, 4);
-    const leads = Object.entries(rowsShown()).slice(0, 3);
+    const rows = startMenu().menu;
+    const leads = rowsShown()['3'];
+    for (const file of [`${FUMI}/assets/legacy`, 'gone/assets/legacy/old.md']) ok(dir(), ['asset', 'discard', file.split('/')[0], file]);
+    const one = startMenu().menu.slice(0, 4);
     ok(dir(), ['asset', 'discard', 'product', '.product/assets/legacy/vision.md']);
 
-    assert.deepStrictEqual([waiting, leads], [[
-      '1 → Legacy files from the migration: 2 in Fumi',
-      '2 → Legacy files from the migration: 1 in Gone',
-      '3 → Legacy files from the migration: 1 in the product',
-      '4 → Continue feature: Solo — discussion',
-    ], [FUMI, 'gone', 'product'].map((place, at) => [String(at + 1), { kind: 'engine', argv: ['asset', 'legacy', place] }])]);
-    assert.deepStrictEqual(startMenu().menu.slice(0, 3), [
-      '1 → Legacy files from the migration: 2 in Fumi',
-      '2 → Legacy files from the migration: 1 in Gone',
-      '3 → Continue feature: Solo — discussion',
-    ]);
+    assert.deepStrictEqual([rows.slice(0, 4), leads, one], [[
+      '1 → Continue feature: Solo — discussion',
+      '2 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
+      '3 → Sort the legacy files from the migration — 4 in 3 places',
+      'p/product → Talk about the product',
+    ], { kind: 'engine', argv: ['asset', 'legacy'] }, [
+      '1 → Continue feature: Solo — discussion',
+      '2 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
+      '3 → Sort the legacy files from the migration — 1 in the product',
+      'p/product → Talk about the product',
+    ]]);
+    assert.deepStrictEqual(startMenu().menu.slice(2, 3), ['p/product → Talk about the product']);
   });
 
   it('18.2.3: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict and an investigation\'s conclude, a learned gate, in none', () => {

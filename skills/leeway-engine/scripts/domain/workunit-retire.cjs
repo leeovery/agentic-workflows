@@ -8,7 +8,10 @@
 //   `migrationRuns`), so its commit is held for the migration's.
 // - What: a unit of a type the reshape retires. Its folder moves whole to
 //   `.product/assets/{unit}/` — its manifest, the specs the move kept as its
-//   assets, its topics' logs — as reference, nothing of it deleted; it comes
+//   assets, its topics' logs — as reference, nothing of it deleted, but its
+//   legacy files, which move to `.product/assets/legacy/{unit}/`, among the
+//   product's to be sorted (legacy-files.cjs), every document's link to one
+//   following it (follow-moves.cjs); it comes
 //   off the registry, its name free for a unit made later; and each map row
 //   and item of a topic an epic promoted to it go from that epic, the
 //   topic's record being the unit's (P4). A source of the roadmap's under
@@ -35,8 +38,10 @@
 //   reshape keeps; `.product/assets/{unit}` held already beside the unit's
 //   own folder; and lines to carry with no session to tag the carry with.
 // - Known edges: a roadmap item joined to the unit keeps its join, which
-//   names no unit once it has gone; and a folder the move left in the epic
-//   for a topic it promoted stays where it is.
+//   names no unit once it has gone; a folder the move left in the epic for a
+//   topic it promoted stays where it is; and the documents' links are
+//   rebased by the run that moves the files alone, so a session killed
+//   between the two leaves them as they were.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -56,6 +61,7 @@ const { roadmapItems } = require('./derivations.cjs');
 const { carrySources } = require('./roadmap.cjs');
 const { PRODUCT_DIR } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { relinkDocuments } = require('./follow-moves.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 
@@ -75,6 +81,12 @@ const SAID = 'workunit retire';
 
 /** Where a retired unit's folder is kept, state-relative. @param {string} unit */
 const keptAt = (unit) => path.posix.join(PRODUCT_DIR, 'assets', unit);
+
+/** Where a retired unit's legacy files go, state-relative, among the product's. @param {string} unit */
+const legacyKeptAt = (unit) => path.posix.join(PRODUCT_DIR, 'assets', 'legacy', unit);
+
+/** The retire's moves, its legacy files' first, which the folder's would otherwise take. @param {string} unit @returns {[string, string][]} */
+const movesOf = (unit) => [[`${unit}/assets/legacy`, legacyKeptAt(unit)], [unit, keptAt(unit)]];
 
 /** The manifest at `{folder}/manifest.json` in the state, or null where there is none. @param {string} root @param {string} folder */
 function manifestIn(root, folder) {
@@ -113,16 +125,24 @@ function carryToProduct(root, unit, warnings) {
   const session = handedSession();
   if (session === null) throw new Error(`${SAID}: ${unit} holds ledger entries, which the retire carries to the product's place in this conversation — Claude Code hands every command it runs a session id, and this one has none`);
   appendEntry(root, {
-    event: 'rehomed', unit: PRODUCT, topic: null, phase: 'discovery', session, lines: ids, files: movedFiles(files, [[unit, keptAt(unit)]]),
+    event: 'rehomed', unit: PRODUCT, topic: null, phase: 'discovery', session, lines: ids, files: movedFiles(files, movesOf(unit)),
   }, warnings);
   return ids.length;
 }
 
-/** The unit's folder moved whole to where it is kept, where it is still in the state. @param {string} root @param {string} unit */
+/**
+ * The unit's legacy files moved among the product's, then its folder whole
+ * to where it is kept, each where it is still in the state: whether this run
+ * moved either.
+ * @param {string} root @param {string} unit
+ */
 function moveFolder(root, unit) {
-  if (!fs.existsSync(path.join(root, unit))) return;
-  fs.mkdirSync(path.join(root, PRODUCT_DIR, 'assets'), { recursive: true });
-  fs.renameSync(path.join(root, unit), path.join(root, keptAt(unit)));
+  const moved = movesOf(unit).filter(([from]) => fs.existsSync(path.join(root, from)));
+  for (const [from, to] of moved) {
+    fs.mkdirSync(path.dirname(path.join(root, to)), { recursive: true });
+    fs.renameSync(path.join(root, from), path.join(root, to));
+  }
+  return moved.length > 0;
 }
 
 /** A phase's items on a manifest, or {}. @param {Record<string, any>} manifest @param {string} phase @returns {Record<string, any>} */
@@ -158,7 +178,7 @@ function deregister(cwd, unit) {
     const project = readProjectManifest(cwd);
     const registered = isObject(project.work_units) && Object.hasOwn(project.work_units, unit);
     if (registered) delete project.work_units[unit];
-    const { rewritten } = carrySources(roadmapItems(project), [[unit, keptAt(unit)]]);
+    const { rewritten } = carrySources(roadmapItems(project), movesOf(unit));
     if (registered || rewritten.length > 0) writeProjectManifestAtomic(cwd, project);
     return rewritten;
   });
@@ -181,11 +201,11 @@ function retireWorkUnit(cwd, unit) {
     return withStateLock(root, () => {
       unitToRetire(root, unit);
       const carried = carryToProduct(root, unit, warnings);
-      moveFolder(root, unit);
+      const relinked = moveFolder(root, unit) ? relinkDocuments(root, movesOf(unit)) : [];
       const promoted = dropPromoted(cwd, unit);
       const rewritten = deregister(cwd, unit);
       purgeWorkUnitCache(cwd, unit);
-      const paths = [unit, keptAt(unit), PROJECT_MANIFEST_SPEC, ...new Set(promoted.map(({ work_unit: epic }) => epic))];
+      const paths = [unit, keptAt(unit), legacyKeptAt(unit), PROJECT_MANIFEST_SPEC, ...relinked, ...new Set(promoted.map(({ work_unit: epic }) => epic))];
       const message = `workflow(${unit}): retire to the product's assets`;
       const outcome = carried > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
       refreshLedgerCopies(cwd, warnings, { remove: [{ workUnit: unit }] });
