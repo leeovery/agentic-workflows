@@ -1,9 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's assets scenario: a discussion's spike, and the
+// The pipeline simulation's assets scenarios: a discussion's spike, and the
 // files its entries link through the asset verbs, each link committing the
-// ledger on the state branch.
+// ledger on the state branch; and the legacy files the migration kept,
+// pointed out on the start menu and sorted by the pass (legacy-files.md).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -15,7 +16,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { Sim, mappedEpic, enterEntry } = require('./pipeline-world.cjs');
+const { Sim, mappedEpic, enterEntry, startMenu, startPick } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: assets', () => {
   let sim;
@@ -47,5 +48,29 @@ describe('pipeline simulation: assets', () => {
     assert.deepStrictEqual([shown.id, shown.assets], [call, [{ path: frame, status: 'reference', into: lifted }, { path: mock, status: 'canonical', into: null }]]);
     enterEntry(sim, wu, 'discussion', 'note-window');
     assert.match(sim.sections, new RegExp(`^spike: ${spike.folder}$`, 'm'));
+  });
+
+  it('legacy files: an epic holding files the migration kept, its start menu row leading to their read; the pass brings one in — its finding at the unit\'s own level, citing the file where it moved, read at its topic\'s opening — keeps one and discards one, and the row goes', () => {
+    const wu = 'fumi';
+    const legacy = `${wu}/assets/legacy`;
+    const files = ['plan.md', 'research/sketch.png', 'scratch.md'].map((name) => `${legacy}/${name}`);
+    const isLegacyRow = (/** @type {{next: any}} */ { next }) => next?.kind === 'engine' && next.argv.join(' ') === `asset legacy ${wu}`;
+    mappedEpic(sim, wu, ['note-window']);
+    for (const file of files) sim.write(`.leeway/${file}`, `${file}\n`);
+    sim.run(['commit', wu, '-m', 'the migration']);
+
+    const row = startMenu(sim).find(isLegacyRow);
+    assert.ok(row, 'the start menu points the legacy files out');
+    assert.deepStrictEqual(startPick(sim, row.key).files, files);
+    const brought = sim.run(['asset', 'bring', wu, files[0]]);
+    const [{ to }] = brought.moved;
+    const finding = 'The old plan ships notes before spaces.';
+    sim.run(['ledger', 'find', brought.findings_at], null, JSON.stringify({ text: finding, how: 'read in the old plan', known: 'documented', cites: [{ path: to, section: 'plan.md' }], by: 'claude', who_moved_whom: 'none' }));
+    sim.run(['asset', 'keep', wu, files[1]]);
+    sim.run(['asset', 'discard', wu, files[2]]);
+
+    assert.ok(!startMenu(sim).some(isLegacyRow), 'the row goes once the folder is empty');
+    const { discovery } = JSON.parse(sim.read(['ledger', 'product', wu, 'note-window']));
+    assert.deepStrictEqual(discovery.map((/** @type {{text: string, cites: unknown}} */ { text, cites }) => [text, cites]), [[finding, [{ path: to, section: 'plan.md' }]]]);
   });
 });

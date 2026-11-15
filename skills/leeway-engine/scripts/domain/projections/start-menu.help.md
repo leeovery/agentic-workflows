@@ -1,6 +1,6 @@
 The start menu is where every piece of work begins and resumes.
 
-# → A number continues that piece of work: a feature, bugfix or quick-fix goes straight to where it stands, an epic opens its menu; the ones with something waiting on you come first.
+# → A number continues that piece of work: a feature, bugfix or quick-fix goes straight to where it stands, an epic opens its menu; the ones with something waiting on you come first. Legacy files from the migration, ahead of them, are files that found no place in Leeway: each is brought into the record, kept as it is or discarded, as you choose.
 p → Product carries on the conversation about the product as a whole: what it is, who it serves and where it is going.
 s → Start begins something new: describe it, and the kind of work is settled as we talk.
 t → Triage works through the inbox, the things you noted down to come back to: work on them now, put them on the roadmap, or archive them.

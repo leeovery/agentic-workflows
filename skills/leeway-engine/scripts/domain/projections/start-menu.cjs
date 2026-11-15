@@ -7,6 +7,10 @@
 //
 // - What it shows above its question: the inbox as one line, its count by
 //   kind (18.2.8), "Inbox: empty" while nothing is in it (18.2.18).
+// - First, a row for each place holding legacy files from the migration —
+//   "Legacy files from the migration: 41 in Evvi V1" — the units in the
+//   order the project lists them, then the product; its next reads them,
+//   `asset legacy`, for the pass that sorts them (legacy-files.cjs).
 // - A row per unit in progress, type first ("Continue epic: …"), its phase
 //   and progress, and where something waits on the person in it, the count
 //   (18.2.2, 18.2.3, 18.2.6), mail waiting for its topic beside it (10.4.3):
@@ -23,6 +27,7 @@
 //   each a menu of its own (projections/manage.cjs). The frame adds h/help.
 // ---------------------------------------------------------------------------
 
+const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { dayMonth } = require('../dates.cjs');
 const { counted } = require('./map.cjs');
@@ -33,6 +38,7 @@ const { startMenuRead } = require('../start-menu.cjs');
 /** @typedef {import('../start-menu.cjs').StartMenuRead} StartMenuRead */
 /** @typedef {import('../start-menu.cjs').UnitRow} UnitRow */
 /** @typedef {import('../start-menu.cjs').Waiting} Waiting */
+/** @typedef {import('../legacy-files.cjs').LegacyPlace} LegacyPlace */
 /** @typedef {import('../menus.cjs').MenuRow} MenuRow */
 /** @typedef {import('../menus.cjs').MenuScreen} MenuScreen */
 /** @typedef {import('./surfaces.cjs').Next} Next */
@@ -93,9 +99,16 @@ const listed = (units) => units
     || typeRank(a.unit.type) - typeRank(b.unit.type) || a.at - b.at)
   .map(({ unit }) => unit);
 
-/** A unit's row: Continue, type first. @param {UnitRow} unit @param {number} at @returns {MenuRow} */
-const unitRow = ({ name, type, progress, waiting, mail }, at) => ({
+/** A place's row while legacy files wait in it (the header's). @param {LegacyPlace} place @param {number} at @returns {MenuRow} */
+const legacyRow = ({ place, count }, at) => ({
   key: at + 1,
+  label: `Legacy files from the migration: ${count} in ${place === PRODUCT ? 'the product' : titlecase(place)}`,
+  next: { kind: 'engine', argv: ['asset', 'legacy', place] },
+});
+
+/** A unit's row: Continue, type first, numbered after the rows before it. @param {number} after @returns {(unit: UnitRow, at: number) => MenuRow} */
+const unitRow = (after) => ({ name, type, progress, waiting, mail }, at) => ({
+  key: after + at + 1,
   label: { head: `Continue ${type}: ${titlecase(name)}`, tail: progress, cue: noteOf(waiting, mail) },
   next: { kind: 'engine', argv: ['handoff', 'unit', name] },
 });
@@ -127,7 +140,8 @@ function startMenuScreen(read) {
   return {
     shows: [inboxLine(read.inbox)],
     rows: [
-      ...listed(read.units).map(unitRow),
+      ...read.legacy.map(legacyRow),
+      ...listed(read.units).map(unitRow(read.legacy.length)),
       productRow(read),
       { key: 's', word: 'start', label: 'Start something new — describe it, and we\'ll find what kind of work it is', next: handoff('leeway-discovery', 'start', 'none') },
       { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },

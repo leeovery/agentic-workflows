@@ -27,4 +27,10 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render epic-menu {work_unit
 
 A refusal names the way on: say it in a line.
 
-The answer goes to `gate`; follow its `next`. A `next` that draws the start menu, `render start-menu`, hands the conversation to the start menu: Load **[start-menu.md](../leeway/references/start-menu.md)** and follow its instructions as written.
+The answer goes to `gate`; follow its `next`. The legacy files' row leads to `asset legacy {work_unit}`. Run it, then sort them:
+
+Load **[legacy-files.md](../leeway-shared/references/legacy-files.md)** and follow its instructions as written, with place = `{work_unit}`.
+
+On return, run **The Menu** again.
+
+A `next` that draws the start menu, `render start-menu`, hands the conversation to the start menu: Load **[start-menu.md](../leeway/references/start-menu.md)** and follow its instructions as written.

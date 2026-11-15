@@ -2,10 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: spikes and assets (9.10, 6.1.11) — `asset spike`, a spike's
-// folder, `asset import`, the files the person shares, and
+// folder, `asset import`, the files the person shares,
 // `asset add|status|lift`, the links from the ledger's entries
-// to the files that inform them. The verb never moves a file: Claude writes
-// it where it lives, and the verb records where that is.
+// to the files that inform them, and `asset legacy|bring|keep|discard`, the
+// files the migration kept with no place in the layout, read and sorted
+// (legacy-files.cjs). A link never moves a file: Claude writes it where it
+// lives, and the link records where that is.
 //
 // - A spike (9.10.10, 4.11.12, 4.11.13): `spike <unit|product> <slug>`
 //   numbers the unit's next spike, or the product's, in the order spikes
@@ -84,6 +86,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { PRODUCT_DIR, SPIKE_HOMES, assetHome } = require('./layout.cjs');
 const { planImports, copyImports, assertLandableSources } = require('./import-landing.cjs');
+const { legacyFiles, sortLegacy } = require('./legacy-files.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
@@ -106,6 +109,10 @@ const VERBS = Object.freeze({
   add: { args: ['<work-unit>', '<path>'], flags: { entry: true, status: false } },
   status: { args: ['<work-unit>', '<path>', `<${ASSET_STATUSES.join('|')}>`], flags: { entry: false } },
   lift: { args: ['<work-unit>', '<path>'], flags: { into: true, entry: true } },
+  legacy: { args: [`<work-unit|${PRODUCT}>`], flags: {} },
+  bring: { args: [`<work-unit|${PRODUCT}>`, '<path>'], flags: {} },
+  keep: { args: [`<work-unit|${PRODUCT}>`, '<path>'], flags: {} },
+  discard: { args: [`<work-unit|${PRODUCT}>`, '<path>'], flags: {} },
 });
 
 /** How each flag's value is shown. @type {Readonly<Record<string, string>>} */
@@ -165,8 +172,9 @@ function unitRoot(cwd, said, unit, { takes } = {}) {
 
 /**
  * The state root, and the folder from it that a spike or an import lands
- * in: the product's, or a live unit's.
- * @param {string} cwd @param {string} said @param {string} name a unit, or `product` @param {string} takes what the call adds
+ * in: the product's, or a unit's, live where `takes` names what the call
+ * adds to it.
+ * @param {string} cwd @param {string} said @param {string} name a unit, or `product` @param {string} [takes]
  * @returns {{root: string, owner: string}}
  */
 function ownerOf(cwd, said, name, takes) {
@@ -533,11 +541,34 @@ function linking(said, reading, unit, rel, prefix) {
   return entry;
 }
 
-/** What each verb does with its argv read. @type {Readonly<Record<string, (cwd: string, positional: string[], flags: Record<string, string>) => Record<string, unknown>>>} */
-const RUNS = Object.freeze({ spike: startSpike, import: importFiles, add: addAsset, status: changeStatus, lift: liftAsset });
+/**
+ * `asset legacy`: the place's legacy files, a unit's whatever its status.
+ * @param {string} cwd @param {string[]} positional
+ */
+function listLegacy(cwd, [name]) {
+  const { root } = ownerOf(cwd, 'asset legacy', name);
+  return { place: name, files: legacyFiles(root, name) };
+}
 
 /**
- * `asset <spike|import|add|status|lift>`: the verb's argv read, then run.
+ * `asset bring|keep|discard`: the legacy files a path names sorted, a unit's
+ * whatever its status.
+ * @param {import('./legacy-files.cjs').Outcome} outcome
+ */
+const sorting = (outcome) => (/** @type {string} */ cwd, /** @type {string[]} */ [name, given]) => {
+  const said = `asset ${outcome}`;
+  ownerOf(cwd, said, name);
+  return sortLegacy(cwd, outcome, name, spelledInState(said, cwd, given));
+};
+
+/** What each verb does with its argv read. @type {Readonly<Record<string, (cwd: string, positional: string[], flags: Record<string, string>) => Record<string, unknown>>>} */
+const RUNS = Object.freeze({
+  spike: startSpike, import: importFiles, add: addAsset, status: changeStatus, lift: liftAsset,
+  legacy: listLegacy, bring: sorting('bring'), keep: sorting('keep'), discard: sorting('discard'),
+});
+
+/**
+ * `asset <verb>`: the verb's argv read, then run.
  * @param {string} cwd @param {string} verb @param {string[]} argv
  * @returns {Record<string, unknown>}
  */
