@@ -9,7 +9,10 @@
 //
 // - Decided once, as the first phase start of the build closes
 //   (checklist.cjs): where no phase start of the build has closed before
-//   and the manifest records none, from the cut as it then stands; a cut
+//   and the manifest records none, from the cut as it then stands, a phase
+//   built before the migration cut the unit counting for none — so a unit
+//   the migration cut mid-build gets its branch as the first phase it still
+//   builds starts, where two or more are left; a cut
 //   that gains or loses phases later never moves where the unit lands. It
 //   is kept as `build.branch` on the unit's manifest, written by that
 //   close's own state commit and nothing else.
@@ -74,7 +77,7 @@ const lg = require('./landing-git.cjs');
 const names = require('./landing-names.cjs');
 const { chosenDriver } = require('./drivers.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
-const { cutPhases, cutLength, phaseStarted } = require('./derivations.cjs');
+const { cutPhases, phaseBuilt, phaseStarted } = require('./derivations.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos, childrenFirst, projectPath, topPath } = require('../kernel/repos.cjs');
 
@@ -99,17 +102,21 @@ const BRANCHED_TYPES = Object.freeze(['epic', 'feature']);
  */
 const landsThroughHost = (driver, remote) => driver.landsOn !== undefined && remote !== null;
 
-/** Whether a phase start of the unit's build has closed: only the cut's phases have one. @param {Record<string, any>} manifest */
-const phaseStartClosed = (manifest) => cutPhases(manifest).some((_, at) => phaseStarted(manifest, at + 1));
+/** The phases of the unit's cut its build builds, by number: each but those built before the migration cut the unit (21.8.6). @param {Record<string, any>} manifest @returns {number[]} */
+const phasesToBuild = (manifest) => cutPhases(manifest).flatMap((_, at) => (phaseBuilt(manifest, at + 1) ? [] : [at + 1]));
+
+/** Whether a phase start of the unit's build has closed: only the cut's phases it builds have one. @param {Record<string, any>} manifest */
+const phaseStartClosed = (manifest) => phasesToBuild(manifest).some((number) => phaseStarted(manifest, number));
 
 /**
  * Whether the phase start closing now gives the unit a branch of its own
- * (the header's): an epic or a feature whose cut holds two or more phases,
- * none recorded, no phase start of its build closed before.
+ * (the header's): an epic or a feature whose cut holds two or more phases
+ * its build builds, none recorded, no phase start of its build closed
+ * before.
  * @param {Record<string, any>} manifest
  */
 function branchWanted(manifest) {
-  return BRANCHED_TYPES.includes(manifest.work_type) && typeof manifest.build?.branch !== 'string' && !phaseStartClosed(manifest) && cutLength(manifest) >= 2;
+  return BRANCHED_TYPES.includes(manifest.work_type) && typeof manifest.build?.branch !== 'string' && !phaseStartClosed(manifest) && phasesToBuild(manifest).length >= 2;
 }
 
 /** Where a branch is, as a refusal names it. @param {BranchHome} home @param {boolean} onHost */

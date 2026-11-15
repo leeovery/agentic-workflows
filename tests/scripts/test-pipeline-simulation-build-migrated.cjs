@@ -17,8 +17,9 @@
 // at the phase's close, with no round, figure, account or landing of its
 // own — its phase review drawing it as landed before, outside the range,
 // with no criteria to hold, and the area its built phase placed as first
-// built there — the merge gate naming it on the default branch already and
-// the stack the tasks built since; and the review reads the whole unit, the
+// built there — the unit, two phases left to build, given its own branch
+// as the first of them starts (unit-branch.cjs), the merge gate naming it
+// on that branch already and the stack the tasks built since; and the review reads the whole unit, the
 // joined spec's area its area. A phase whose every task since was closed,
 // its others done before, passes its review with nothing to read and runs
 // no mutants, its scenarios judged at its landing branch's tip, and closes.
@@ -133,7 +134,7 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
   /** What a task's account screen says of an account not written. @param {string} task */
   const unaccounted = (task) => /No account (?:was|is) written[^\n]*/.exec(sim.render(['task-account', WU, task], { expect: 'content' }))?.[0];
 
-  it('21.8.6–21.8.8: a feature cut mid-build carried on by today\'s build to its review — each adopted phase\'s tasks written; an old task\'s builder briefed under its title on the area its text cites with its phase\'s scenarios, or its phase\'s sections and scenarios; its step gate showing its text for what it does and for the criteria it proves, its phase review given its text for its criteria and the built phase it relies on as in the product already; the task done before the migration passed and landed at its phase\'s close, drawn as landed before and with no account, the stack the tasks built since and the rest on the default branch already', () => {
+  it('21.8.6–21.8.8: a feature cut mid-build carried on by today\'s build to its review — each adopted phase\'s tasks written; an old task\'s builder briefed under its title on the area its text cites with its phase\'s scenarios, or its phase\'s sections and scenarios; its step gate showing its text for what it does and for the criteria it proves, its phase review given its text for its criteria and the built phase it relies on as in the product already; the task done before the migration passed and landed at its phase\'s close, drawn as landed before and with no account, the stack the tasks built since and the rest on the unit\'s own branch already', () => {
     assert.strictEqual(sim.run(['enter', 'implementation', WU]).entered, true);
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('phase: ')), [
       'phase: phase 1 of 3, "Pages": merged — tasks 1.1 done, 1.2 done',
@@ -185,7 +186,7 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     assert.ok(review.includes('- §1, first built in phase 1, before the migration cut the unit'), 'the area first built by the phase built before the migration');
     const criteria = review.slice(review.indexOf('# Its tasks\' criteria'), review.indexOf('# What it relies on'));
     assert.ok(criteria.includes('## 2.3 ') && !criteria.includes('## 2.1 '), 'no criteria held of the task done before the migration');
-    assert.match(merge, /its tasks built since the migration cut the unit land on the default branch as one stack — 2\.1 is on it already\./);
+    assert.match(merge, new RegExp(`its tasks built since the migration cut the unit land on feat/${WU} as one stack — 2\\.1 is on it already\\.`));
     assert.deepStrictEqual([unaccounted('2.1'), unaccounted('1.1')], Array(2).fill('No account was written: it landed before the migration cut the unit.'));
 
     startPhase(sim, WU, 3);

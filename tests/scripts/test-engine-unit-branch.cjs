@@ -7,7 +7,8 @@
 // holds two or more phases, makes `feat/{unit}` at the default branch's tip
 // where the driver lands it, before it is made here, and records it as
 // `build.branch`; a bugfix, a feature of one phase and one whose cut gains
-// a phase later get none. A branch of that name holding a commit the
+// a phase later get none, and a unit the migration cut mid-build counts
+// only the phases it still builds. A branch of that name holding a commit the
 // default branch lacks is refused as another's, nothing made or recorded;
 // one holding nothing it lacks is taken, as a close killed after its push
 // leaves it. A second clone readies the branch from the host's copy, where
@@ -86,6 +87,19 @@ for (const { name } of listDrivers('landing')) {
       const none = { here: '', there: '', recorded: null };
 
       assert.deepStrictEqual([bugfix, single, grown, own(ok(at, openArgs(card))).base], [[undefined, none], [undefined, none], [undefined, none], 'main']);
+    });
+
+    it('a unit the migration cut mid-build counts the phases it still builds alone: one left after a phase built before the migration, its start makes none; two left, the start of the first makes feat/pay and records it, the built phase\'s start no start of the build\'s (21.8.6)', () => {
+      const at = project();
+      const [first, ...rest] = cutOf(3).phases;
+      const migrated = (/** @type {number} */ phases) => createManifest(at, UNIT, { ...readManifest(at, UNIT), checklists: {}, cut: { phases: [{ ...first, built: true }, ...rest.slice(0, phases - 1)] } });
+      migrated(2);
+      const oneLeft = [startClosed(at, 2, side.env).branch, standing(at)];
+      migrated(3);
+      const main = tip(at, 'main');
+      const twoLeft = [startClosed(at, 2, side.env).branch, standing(at)];
+
+      assert.deepStrictEqual([oneLeft, twoLeft], [[undefined, { here: '', there: '', recorded: null }], [BRANCH, { here: main, there: main, recorded: BRANCH }]]);
     });
 
     it('a branch of that name holding a commit the default branch lacks is another\'s: the close refused, naming it and where it is, nothing made or recorded — one holding nothing it lacks taken, brought to the default branch\'s tip (7.S36)', () => {
