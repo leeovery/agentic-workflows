@@ -58,18 +58,18 @@
 // as the product's conversation's (`product_session`). The inbox, the
 // environment setup file and the checkout's knowledge config are carried as
 // they are, but for an inbox file whose name is no item's
-// (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
-// behind; the knowledge store is not, and the next boot builds it from the
-// config, with no setup question (21.9.6). `.roadmap/` is `.product/`
-// (21.5.7): its sessions as they are but for their headings, demoted as a
-// log's documents are, each note out of its kind's folder under its inbox
-// name, and `imports/` as `assets/`, the documents' links to an import
-// rewritten as a unit's are.
+// (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), kept
+// as legacy (below); the knowledge store is not, and the next boot builds it
+// from the config, with no setup question (21.9.6). `.roadmap/` is
+// `.product/` (21.5.7): its sessions as they are but for their headings,
+// demoted as a log's documents are, each note out of its kind's folder under
+// its inbox name, and `imports/` as `assets/`, the documents' links to an
+// import rewritten as a unit's are.
 // `.baseline/`'s docs are reference in `.product/assets/baseline/`, names
 // kept, and so is each interview agenda in `.baseline/.state/`, beside them:
 // it holds the person's answers, which an area under way has woven into no
 // doc yet. Only the status fields go (21.11.1); the research dossiers there
-// go with the analysis (4.10.3).
+// are kept as legacy.
 //
 // The tracker's store (21.5.18): the move names no tracker, and loads no
 // driver, whose code changes with the engine's. Each task driver's folder
@@ -103,12 +103,13 @@
 //     (log-lists.cjs);
 //   - a topic's log, `topics/{topic}/log.md`, is its research, its discussion
 //     and its investigation, each under a heading of its own, its words
-//     kept and its headings demoted, in that order (21.5.2, 21.5.3). A topic is a name the unit's map, discussions or
-//     investigations hold, or, for a feature, bugfix or cross-cutting unit,
-//     the unit's own name; research under any other name fed the topics it
-//     was split into or spawned, and goes to a discovery session of its own,
-//     numbered after the unit's last and headed as the migration's, until the
-//     cut and the merges place it (21.5.4). A topic promoted to a
+//     kept and its headings demoted, in that order (21.5.2, 21.5.3). A
+//     topic is a name the unit's map, discussions or investigations hold,
+//     or, for a feature, bugfix or cross-cutting unit, the unit's own name;
+//     research under any other name fed the topics it was split into or
+//     spawned, and goes to a discovery session of its own, numbered after
+//     the unit's last and headed as the migration's, until the cut and the
+//     merges place it (21.5.4). A topic promoted to a
 //     cross-cutting unit took only its discussion there, so its research
 //     joins that unit's log for it, ahead of the discussion;
 //   - each review the old agent store holds of a topic — in
@@ -122,13 +123,19 @@
 //     a cancelled topic, or of a name no topic holds, goes to the inbox
 //     instead, each message an idea, its first line the title (21.5.6,
 //     10.1.6); either way a message's line naming its sender, today's
-//     `*From: {origin} · {phase} · {date}*`, becomes the line the waiting
-//     mail heads it with, `From {sender} · {16 Oct}` (10.4.2), with no phase;
+//     `*From: {origin} · {phase} · {date}*` under its title or under a
+//     blank line after it, becomes the line the waiting mail heads it with,
+//     its second, `From {sender} · {16 Oct}` (10.4.2): the sender the topic
+//     it surfaced in, which every send of today's names within its unit,
+//     titled, and no phase;
 //   - its brief is `topics/{topic}/brief.md`, and its experiment records sit
-//     in `topics/{topic}/experiments/` as they stood (21.5.13);
+//     in `topics/{topic}/experiments/` as they stood (21.5.13), but for a
+//     record's files other than its problem, design, report and `data/` —
+//     its instruments — which go under its `data/`, at their path from the
+//     record's folder (4.11.15), a sub-experiment's the same;
 //   - nothing lands in a topic's folder no topic owns: a brief, experiment
-//     records, a discussion or an investigation under any other name is left
-//     behind, and the experiments' manifest items with them;
+//     records, a discussion or an investigation under any other name is kept
+//     as legacy, and the experiments' manifest items go;
 //   - discovery's sessions are `discovery/session-NNN.md`, numbers kept,
 //     their headings demoted;
 //   - `imports/` is `assets/`, and every moved document's links to a file
@@ -166,13 +173,14 @@
 //     once the quick-fix is completed — its status says so, or every phase
 //     of its old pipeline, scoping, implementation and review, completed,
 //     whatever its status reads — its spec is its `summary.md` and its plan
-//     goes, its spec and plan items with them (21.5.15, 21.5.16), its
-//     status completed but where it was cancelled (21.5.14);
-//   - implementation folders and the unit's `.state/` go whole, holding
-//     tracking and analysis files only, and so do the spec and plan reviews'
-//     tracking files, each matched by its whole name as those reviews write
-//     it, never by a fragment a topic's or a section's slug can hold
-//     (21.5.17); seeds stay as they are;
+//     is kept as legacy, its spec and plan items going (21.5.15, 21.5.16),
+//     its status completed but where it was cancelled (21.5.14);
+//   - the unit's `.state/` goes whole, holding the old engine's analysis
+//     caches only (21.5.17); implementation folders, holding the build's
+//     analysis and fix reports, and the spec and plan reviews' tracking
+//     files, each matched by its whole name as those reviews write it, never
+//     by a fragment a topic's or a section's slug can hold, are kept as
+//     legacy; seeds stay as they are;
 //   - the files the person's tools leave beside theirs (`.DS_Store` and the
 //     rest of the engine's list) are neither carried nor named;
 //   - a cancelled unit moves as any other (21.5.14).
@@ -210,14 +218,34 @@
 // neither its discovery's close nor a discussion's start.
 // Everything else carries as it stood, the fields 21.5.9 names among them.
 // Each later reshape of a manifest updates this move until it is released
-// (E4): the reshape's own steps written for `.leeway/` before this one —
-// 073's linters — find nothing there when a project comes from
-// `.workflows/`, so this move runs them over what it wrote.
+// (E4): the linters' carry onto the project's environment, written for
+// `.leeway/` (reshape/linters.cjs), runs over what this move wrote, and
+// what it left out is named in the verification addendum.
 //
-// A file the move has no place for is left in `.workflows/` and named in
-// the verification addendum. A project with no `.workflows/`, or in no
-// repository, has nothing to move, and a state branch with a commit already
-// is never written over.
+// Nothing that may hold knowledge is lost: the move drops only what is
+// rebuilt — the old cache's session state, data and scratch, the knowledge
+// store, the old engine's record and a unit's `.state/` — and the tools'
+// sidecars. Every other file it has no place for is kept, byte for byte, as
+// legacy: a unit's under its `assets/legacy/`, its path from the unit's old
+// folder kept, and one of no unit's — a folder under `.workflows/` holding
+// no manifest, an entry the move does not read, a roadmap, baseline or inbox
+// file of no place — under `.product/assets/legacy/`, its path from
+// `.workflows/` kept. The old cache's documents, its agents' reports, which
+// nothing rebuilds, are kept so too, under `cache/`: a unit's at its path
+// below the unit's folder in the cache, any other at its path below the
+// cache. Each is named at its place in the verification addendum, and a
+// roadmap source naming one follows it; so is each experiment instrument
+// moved under its record's `data/`.
+//
+// Every moved document's links and embeds, resolved from where the document
+// was, follow what they name — a file the move places or keeps, a folder
+// whose files all go to one folder, a document folded into a log at the
+// heading it sits under there, a spec joined into `spec.md` at its area's,
+// unless the link names its own anchor — and point at its place from where
+// the document now sits. Mail sent to the inbox is not followed.
+//
+// A project with no `.workflows/`, or in no repository, has nothing to move,
+// and a state branch with a commit already is never written over.
 //
 // Known edges, not built:
 //   - a second clone holding `origin/leeway-state` but no local branch is
@@ -235,9 +263,8 @@
 //   - the tracker's store is read from the project folder, never from a
 //     folder above it a walk up would find;
 //   - two notes of one name under different kinds keep the first, the second
-//     left behind and named;
-//   - a roadmap source naming a file the move dropped or left behind keeps
-//     its old path;
+//     kept as legacy;
+//   - a roadmap source naming a file the move dropped keeps its old path;
 //   - the user-level folders on two filesystems abort the run at the move,
 //     which a run again meets the same way; a kill between the move and the
 //     link leaves the old folder gone and no link, so a project still on
@@ -255,9 +282,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const linters = require('./073-environment-linters.cjs');
+const { carryLinters } = require('./reshape/linters.cjs');
 const {
-  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLeewayStores, unreadStores,
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLeewayStores, unreadStores,
 } = require('./reshape/shared.cjs');
 
 const CODE_GITIGNORE = '.gitignore';
@@ -344,21 +371,38 @@ const SPEC_TITLE = /^# (?:Specification: )?(.*\S)\s*$/;
 // at least and nothing else.
 const SPEC_HEADING = /^(#{1,6})(?= |$)/;
 const SPEC_FENCE = /^[ \t]*(`{3,}|~{3,})/;
+// Where a file the layout has no other place for is kept, byte for byte, its
+// path from its old folder kept: under its unit, or under the product.
+const LEGACY = 'assets/legacy';
+// The old cache, and the folder its documents are kept under as legacy.
+const OLD_CACHE = '.cache';
+const OLD_CACHE_LEGACY = 'cache';
+// The entries of `.workflows/` the move reads, or which hold only what is
+// rebuilt — the cache, the old engine's record, the knowledge store, the
+// engine's own ignore file — beside the units; any other is kept as legacy.
+const READ_OR_REBUILT = ['.cache', '.state', '.knowledge', '.gitignore', '.inbox', '.roadmap', '.baseline', 'manifest.json'];
+// A building unit's spec joined into its `spec.md`, the place a link to it follows.
+const JOINED = Symbol('joined');
 
 const IMPORT_LINK = /(?:\.\.\/)+imports\/([A-Za-z0-9._-]+)/g;
+// An experiment record's folder, a sub-experiment's within it, and the files
+// a record holds beside its data (4.11.15).
+const EXPERIMENT_RECORD = /^E[1-9][0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const EXPERIMENT_SUB_RECORD = /^E[1-9][0-9]*\.[1-9][0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const EXPERIMENT_FILES = ['problem.md', 'design.md', 'report.md'];
 const MAILBOX_MESSAGE = /^(research|discussion|investigation)\/\.mailbox\/([^/]+)\/([^/]+\.md)$/;
 const SESSION = /^discovery\/sessions\/(session-([0-9]{3,})\.md)$/;
 const INBOX_ITEM = /^(?:\.archived\/)?(?:ideas|bugs|quickfixes)\/[0-9]{4}-[0-9]{2}-[0-9]{2}--[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 // The review tracking files today's spec and plan reviews write at the top
-// of their folders, each named whole: a topic's or a section's slug never
-// makes one of these.
+// of their folders, each named whole — a topic's or a section's slug never
+// makes one of these — kept as legacy, never among the plans.
 const TRACKING_FILES = {
   specification: /^review-(?:input|gap-analysis|claims)-tracking-c[0-9]+\.md$/,
   planning: /^review-(?:traceability|integrity)-tracking-c[0-9]+\.md$/,
 };
 // The files the person's tools leave beside theirs, by base name, `*` any
 // run of characters, as the engine lists them (TOOL_SIDECARS): never carried,
-// never named as left behind.
+// never named as kept.
 const TOOL_SIDECARS = [
   '.DS_Store', 'Thumbs.db', 'desktop.ini', '._*',
   '.*.swp', '.*.swo', '.*.swx',
@@ -395,22 +439,6 @@ function newId() {
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-/**
- * `fn` run with the variables that point git at a repository cleared from
- * the process, then put back: every git call the move makes, 073's among
- * them, names its repository by its folder alone.
- * @template T @param {() => T} fn @returns {T}
- */
-function withoutRepositoryEnv(fn) {
-  const held = REPOSITORY_ENV.filter((name) => name in process.env).map((name) => [name, process.env[name]]);
-  for (const [name] of held) delete process.env[name];
-  try {
-    return fn();
-  } finally {
-    for (const [name, value] of held) process.env[name] = value;
-  }
-}
 
 /**
  * The operation git has stopped in the middle of at `cwd`, or null: the
@@ -470,6 +498,52 @@ function relinked(text, at, unit, imported) {
     const name = named.replace(/\.+$/, '');
     return imported.has(name) ? `${hops}/${name}${named.slice(name.length)}` : link;
   });
+}
+
+/** A markdown link's or embed's target, up to the space before a title. */
+const LINK_TARGET = /\]\(([^)\s]+)/g;
+
+/** A target that is a URL, from the root, or an anchor alone: never a file's link. */
+const NO_FILE = /^(?:[a-z][a-z0-9+.-]*:|[/#])/i;
+
+/** @param {string} text */
+function decoded(text) {
+  try {
+    return decodeURI(text);
+  } catch {
+    return text;
+  }
+}
+
+/** The anchor a heading is linked by, as markdown's renderers slug it. @param {string} heading */
+const anchorOf = (heading) => `#${heading.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-')}`;
+
+/**
+ * A document's links and embeds to a file or folder the move places, each
+ * resolved from where the document was, `old`, and pointed at its place from
+ * where the document now sits, `at`: its own anchor kept, else the heading
+ * its place gives; any other as written.
+ * @param {string} text @param {string} old `.workflows/`-relative @param {string} at state-relative @param {Places} places
+ */
+function placedLinked(text, old, at, places) {
+  return text.replace(LINK_TARGET, (link, target) => {
+    if (NO_FILE.test(target)) return link;
+    const hash = target.indexOf('#');
+    const [file, anchor] = hash === -1 ? [target, ''] : [target.slice(0, hash), target.slice(hash)];
+    const place = places.get(path.posix.join(path.posix.dirname(old), decoded(file)).replace(/\/$/, ''));
+    if (place === undefined) return link;
+    const to = path.posix.relative(path.posix.dirname(at), place.to) || '.';
+    return `](${encodeURI(to)}${file.endsWith('/') ? '/' : ''}${anchor || place.anchor}`;
+  });
+}
+
+/**
+ * A document's links pointed from `at`: to a file or folder the move places,
+ * and to an import of `unit`'s.
+ * @param {string} text @param {string} old `.workflows/`-relative @param {string} at state-relative @param {string} unit @param {Set<string>} imported @param {Places} places
+ */
+function linked(text, old, at, unit, imported, places) {
+  return relinked(placedLinked(text, old, at, places), at, unit, imported);
 }
 
 /** @param {Record<string, any>} manifest @param {string} phase @returns {Record<string, any>} */
@@ -621,11 +695,8 @@ const writtenFresh = (manifest) => !isQuickFix(manifest) && !buildingStarted(man
 /** Whether the unit is history, keeping no item of its old plan: completed or cancelled, and not a quick-fix (21.8.11). @param {Record<string, any>} manifest */
 const history = (manifest) => !isQuickFix(manifest) && ['completed', 'cancelled'].includes(manifest.status);
 
-/** When the unit was made, in full: the migration's moment where its manifest holds no day. @param {Record<string, any>} manifest */
-function createdAt({ created }) {
-  const at = typeof created === 'string' ? Date.parse(created) : Number.NaN;
-  return new Date(Number.isNaN(at) ? Date.now() : at).toISOString();
-}
+/** When the unit was made, in full. @param {Record<string, any>} manifest */
+const createdAt = ({ created }) => new Date(created).toISOString();
 
 /**
  * The unit's manifest less research and the retired state: the experiments
@@ -707,6 +778,19 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  */
 
 /**
+ * Each file kept as legacy, `.workflows/`-relative to state-relative.
+ * @typedef {Map<string, string>} Legacy
+ */
+
+/**
+ * Where each file the move places goes, and each folder whose files all go
+ * to one folder: `.workflows/`-relative to state-relative, with the anchor
+ * of the heading a document folded into a log sits under there, else empty;
+ * known before any document is written, so a document's links follow them.
+ * @typedef {Map<string, {to: string, anchor: string}>} Places
+ */
+
+/**
  * One unit's move: where its files come from and go, which of them are
  * accounted for, where each went, and what decides each one's place; a
  * topic whose research went with it, to the unit it went to.
@@ -714,6 +798,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   unit: string,
  *   from: string,
  *   state: string,
+ *   manifest: Record<string, any>,
  *   files: string[],
  *   imported: Set<string>,
  *   accounted: Set<string>,
@@ -723,10 +808,10 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   quickFix: boolean,
  *   quickFixDone: boolean,
  *   joined: string[],
- *   incoming: {topic: string, text: string}[],
+ *   incoming: Promoted[],
  *   outgoing: Map<string, string>,
  *   promotedFrom: Map<string, string>,
- *   holders: Map<string, Set<string>>,
+ *   places: Places,
  * }} UnitMove
  */
 
@@ -745,7 +830,7 @@ function take(move, rel) {
 
 /** A document of the unit's, accounted for, its links pointed from `at`, state-relative. @param {UnitMove} move @param {string} rel @param {string} at */
 function takeDocument(move, rel, at) {
-  return relinked(take(move, rel).toString('utf8'), at, move.unit, move.imported);
+  return linked(take(move, rel).toString('utf8'), `${move.unit}/${rel}`, at, move.unit, move.imported, move.places);
 }
 
 /** @param {UnitMove} move @param {string} at unit-relative @param {string|Buffer} content @param {number} [mode] */
@@ -813,34 +898,63 @@ function unfoldedReviews(move, topic, log) {
 }
 
 /**
+ * Whether a file of the unit's is a document a log takes: research under any
+ * name, a discussion or an investigation under a topic's.
+ * @param {UnitMove} move @param {string} rel
+ */
+function logDocument(move, rel) {
+  const phase = path.posix.dirname(rel);
+  if (!LOG_PHASES.includes(phase) || !rel.endsWith('.md')) return false;
+  return phase === 'research' || move.topics.has(path.posix.basename(rel, '.md'));
+}
+
+/** The number of the migration's discovery session for research no topic holds: the next after the unit's last. @param {UnitMove} move */
+function spreadNumber(move) {
+  const last = Math.max(0, ...move.files.map((f) => SESSION.exec(f)).filter((m) => m !== null).map((m) => Number(m[2])));
+  return String(last + 1).padStart(3, '0');
+}
+
+/**
+ * Where a document a log takes goes, state-relative, under which heading,
+ * and by which rule: promoted research to its topic's log in the unit it
+ * went to, research no topic holds to the migration's discovery session, any
+ * other to its topic's log.
+ * @param {UnitMove} move @param {string} rel
+ * @returns {{to: string, heading: string, kind: 'promoted'|'spread'|'topic'}}
+ */
+function logPlace(move, rel) {
+  const phase = path.posix.dirname(rel);
+  const topic = path.posix.basename(rel, '.md');
+  const promotedTo = phase === 'research' ? move.outgoing.get(topic) : undefined;
+  if (promotedTo !== undefined) return { to: `${promotedTo}/topics/${topic}/log.md`, heading: LOG_HEADINGS.research, kind: 'promoted' };
+  if (!move.topics.has(topic)) return { to: `${move.unit}/discovery/session-${spreadNumber(move)}.md`, heading: `Research: ${topic}`, kind: 'spread' };
+  return { to: `${move.unit}/topics/${topic}/log.md`, heading: LOG_HEADINGS[phase], kind: 'topic' };
+}
+
+/**
  * Each topic's log, its research, discussion and investigation each under
  * its own heading, a promoted topic's research coming from the unit it was
  * promoted from, then each of its reviews never folded in; and research no
  * topic of its name holds, in a discovery session of the migration's,
  * numbered after the unit's last. A discussion or an investigation no topic
- * holds is left behind.
+ * holds is kept as legacy.
  * @param {UnitMove} move
  */
 function moveLogs(move) {
   /** @type {Map<string, {phase: string, text: string}[]>} */
-  const logs = new Map(move.incoming.map(({ topic, text }) => [topic, [{ phase: 'research', text }]]));
-  /** @type {{rel: string, text: string}[]} */
+  const logs = new Map(move.incoming.map((entry) => [entry.topic, [{ phase: 'research', text: promotedText(path.dirname(move.from), entry, move.places) }]]));
+  /** @type {string[]} */
   const spread = [];
   for (const phase of LOG_PHASES) {
-    for (const rel of move.files.filter((f) => path.posix.dirname(f) === phase && f.endsWith('.md'))) {
-      const topic = path.posix.basename(rel, '.md');
-      const promotedTo = phase === 'research' ? move.outgoing.get(topic) : undefined;
-      if (promotedTo !== undefined) {
-        take(move, rel);
-        relocate(move, rel, `${promotedTo}/topics/${topic}/log.md`);
-        continue;
+    for (const rel of move.files.filter((f) => path.posix.dirname(f) === phase && logDocument(move, f))) {
+      const { to, heading, kind } = logPlace(move, rel);
+      relocate(move, rel, to);
+      if (kind === 'promoted') take(move, rel);
+      else if (kind === 'spread') spread.push(`## ${heading}\n\n${endLine(demoted(takeDocument(move, rel, to)))}`);
+      else {
+        const topic = path.posix.basename(rel, '.md');
+        logs.set(topic, [...(logs.get(topic) ?? []), { phase, text: takeDocument(move, rel, to) }]);
       }
-      if (!move.topics.has(topic)) {
-        if (phase === 'research') spread.push({ rel, text: `## Research: ${topic}\n\n${endLine(demoted(takeDocument(move, rel, `${move.unit}/discovery/session.md`)))}` });
-        continue;
-      }
-      logs.set(topic, [...(logs.get(topic) ?? []), { phase, text: takeDocument(move, rel, `${move.unit}/topics/${topic}/log.md`) }]);
-      relocate(move, rel, `${move.unit}/topics/${topic}/log.md`);
     }
   }
   for (const topic of move.topics) {
@@ -850,14 +964,12 @@ function moveLogs(move) {
     if (folded.length > 0) put(move, `topics/${topic}/log.md`, folded.join('\n'));
   }
   if (spread.length === 0) return;
-  const last = Math.max(0, ...move.files.map((f) => SESSION.exec(f)).filter((m) => m !== null).map((m) => Number(m[2])));
-  const number = String(last + 1).padStart(3, '0');
+  const number = spreadNumber(move);
   const head = [
     `# Discovery Session ${number}`, '', `Date: ${today()}`, `Work unit: ${move.unit}`, '',
     'Written by the migration: the research below fed several topics, so it is kept here, on the unit\'s discovery log, until the cut and the merges place it where it bears.',
   ];
-  put(move, `discovery/session-${number}.md`, [...head, '', ...spread.map(({ text }) => text)].join('\n'));
-  for (const { rel } of spread) relocate(move, rel, `${move.unit}/discovery/session-${number}.md`);
+  put(move, `discovery/session-${number}.md`, [...head, '', ...spread].join('\n'));
 }
 
 /** A message's line naming its sender as today's send writes it: its origin, phase and date. */
@@ -869,30 +981,20 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const titled = (name) => name.split(/[-_\s]+/).filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
 /**
- * Who sent a message, as the waiting mail titles them: a topic of another
- * unit, `{unit}.{topic}`, with its unit — a single-topic unit's by its name
- * alone — and any other origin, a topic of the unit among them, title-cased
- * as written.
- * @param {UnitMove} move @param {string} origin
+ * A message with the line where today's send wrote who sent it — under its
+ * title, or under a blank line after it — as the waiting mail heads it
+ * (10.4.2), its second line: `From {sender} · {16 Oct}`, the sender the
+ * topic it surfaced in, titled, and the phase gone; one without that line
+ * as it is.
+ * @param {string} text
  */
-function senderOf(move, origin) {
-  const [unit, topic, ...more] = origin.split('.');
-  if (topic === undefined || more.length > 0 || !move.holders.get(unit)?.has(topic)) return titled(origin);
-  return unit === move.unit || topic === unit ? titled(topic) : `${titled(topic)}, on ${titled(unit)}`;
-}
-
-/**
- * A message with its second line, where today's send wrote who sent it,
- * as the waiting mail heads it (10.4.2): `From {sender} · {16 Oct}`, the
- * phase gone; one without that line as it is.
- * @param {UnitMove} move @param {string} text
- */
-function senderLined(move, text) {
-  const [title, second = '', ...rest] = text.split('\n');
-  const match = OLD_SENDER_LINE.exec(second);
+function senderLined(text) {
+  const [title, ...rest] = text.split('\n');
+  const at = rest[0] === '' ? 1 : 0;
+  const match = OLD_SENDER_LINE.exec(rest[at] ?? '');
   if (match === null) return text;
   const [, origin, month, day] = match;
-  return [title, `From ${senderOf(move, origin)} · ${Number(day)} ${MONTHS[Number(month) - 1]}`, ...rest].join('\n');
+  return [title, `From ${titled(origin)} · ${Number(day)} ${MONTHS[Number(month) - 1]}`, ...rest.slice(at + 1)].join('\n');
 }
 
 /**
@@ -901,7 +1003,7 @@ function senderLined(move, text) {
  * @param {UnitMove} move @param {string} rel @param {string} name
  */
 function messageToInbox(move, rel, name) {
-  const [first, ...rest] = senderLined(move, takeDocument(move, rel, '.inbox/ideas/idea.md')).split('\n');
+  const [first, ...rest] = senderLined(takeDocument(move, rel, '.inbox/ideas/idea.md')).split('\n');
   const named = name.replace(/^[0-9]+-/, '').replace(/\.md$/, '');
   const title = first.replace(/^#+\s*/, '').trim() || named;
   const content = [`# ${title}`, ...rest].join('\n');
@@ -914,12 +1016,13 @@ function messageToInbox(move, rel, name) {
 }
 
 /**
- * Each topic's mail, from every box it had, as one sequence in its own
- * folder — renumbered where it had more than one box — or, for a topic
- * cancelled or none holds, ideas in the inbox.
- * @param {UnitMove} move
+ * Each message of the unit's, in the order its topic's one sequence takes
+ * them from every box the topic had, and where it goes, unit-relative: its
+ * topic's mail folder, renumbered where the topic had more than one box, or
+ * null for a topic cancelled or none holds, whose mail goes to the inbox.
+ * @param {UnitMove} move @returns {{rel: string, name: string, at: string|null}[]}
  */
-function moveMail(move) {
+function mailPlaces(move) {
   /** @type {Map<string, Map<string, {rel: string, name: string}[]>>} */
   const boxes = new Map();
   for (const rel of move.files) {
@@ -930,29 +1033,44 @@ function moveMail(move) {
     box.set(phase, [...(box.get(phase) ?? []), { rel, name }]);
     boxes.set(topic, box);
   }
-  for (const [topic, box] of boxes) {
-    LOG_PHASES.flatMap((phase) => box.get(phase) ?? []).forEach(({ rel, name }, i) => {
-      if (move.cancelled.has(topic) || !move.topics.has(topic)) return messageToInbox(move, rel, name);
-      const renamed = box.size > 1 ? `${String(i + 1).padStart(3, '0')}${name.replace(/^[0-9]+/, '')}` : name;
-      const at = `topics/${topic}/mail/${renamed}`;
-      relocate(move, rel, `${move.unit}/${at}`);
-      return put(move, at, senderLined(move, takeDocument(move, rel, `${move.unit}/${at}`)));
-    });
+  return [...boxes].flatMap(([topic, box]) => LOG_PHASES.flatMap((phase) => box.get(phase) ?? []).map(({ rel, name }, i) => {
+    if (move.cancelled.has(topic) || !move.topics.has(topic)) return { rel, name, at: null };
+    const renamed = box.size > 1 ? `${String(i + 1).padStart(3, '0')}${name.replace(/^[0-9]+/, '')}` : name;
+    return { rel, name, at: `topics/${topic}/mail/${renamed}` };
+  }));
+}
+
+/**
+ * Each topic's mail, from every box it had, as one sequence in its own
+ * folder — renumbered where it had more than one box — or, for a topic
+ * cancelled or none holds, ideas in the inbox.
+ * @param {UnitMove} move
+ */
+function moveMail(move) {
+  for (const { rel, name, at } of mailPlaces(move)) {
+    if (at === null) {
+      messageToInbox(move, rel, name);
+      continue;
+    }
+    relocate(move, rel, `${move.unit}/${at}`);
+    put(move, at, senderLined(takeDocument(move, rel, `${move.unit}/${at}`)));
   }
 }
 
 /**
- * Where a spec not joined, a plan or a review folder's file goes,
- * unit-relative; DROP for one that goes, or null for one the layout has no
- * place for.
+ * Where a spec, a plan or a review folder's file goes, unit-relative;
+ * JOINED for a spec joined into `spec.md`, or null for one the layout has
+ * no place for: a review's tracking file, and a completed quick-fix's plan
+ * among them.
  * @param {UnitMove} move @param {string} top @param {string} topic @param {string} below
  * @returns {string|symbol|null}
  */
 function deliveryPlace(move, top, topic, below) {
-  if (Object.hasOwn(TRACKING_FILES, top) && TRACKING_FILES[top].test(below)) return DROP;
-  if (top === 'planning') return move.quickFixDone ? DROP : `assets/plans/${topic}/${below}`;
+  if (Object.hasOwn(TRACKING_FILES, top) && TRACKING_FILES[top].test(below)) return null;
+  if (top === 'planning') return move.quickFixDone ? null : `assets/plans/${topic}/${below}`;
   if (top === 'review') return `assets/reviews/${topic}/${below}`;
   if (below !== 'specification.md') return null;
+  if (move.joined.includes(topic)) return JOINED;
   return move.quickFixDone ? 'summary.md' : `assets/specs/${topic}.md`;
 }
 
@@ -996,13 +1114,15 @@ function belowParts(rows) {
   return fence === null ? demotedRows : [...demotedRows, fence];
 }
 
+/** An old spec's area heading in `spec.md`, numbered `number`: its title, or its topic's name where it opens with none. @param {string} text @param {number} number @param {string} topic */
+const areaHeading = (text, number, topic) => `${number}. ${SPEC_TITLE.exec(text.split(/\r\n?|\n/)[0])?.[1] ?? titled(topic)}`;
+
 /** An old spec as an area of `spec.md`, numbered `number` (the header's). @param {string} text @param {number} number @param {string} topic */
 function asArea(text, number, topic) {
   const rows = text.split(/\r\n?|\n/);
-  const title = SPEC_TITLE.exec(rows[0]);
-  const words = (title === null ? rows : rows.slice(1)).join('\n').replace(/^(?:[ \t]*\n)+/, '').trimEnd();
+  const words = (SPEC_TITLE.test(rows[0]) ? rows.slice(1) : rows).join('\n').replace(/^(?:[ \t]*\n)+/, '').trimEnd();
   const body = belowParts(words.split('\n')).join('\n');
-  return `## ${number}. ${title === null ? titled(topic) : title[1]}${body === '' ? '' : `\n\n${body}`}`;
+  return `## ${areaHeading(text, number, topic)}${body === '' ? '' : `\n\n${body}`}`;
 }
 
 /**
@@ -1033,6 +1153,25 @@ function briefPlace(move, folder, inside) {
 }
 
 /**
+ * Where a file of an experiment record goes, below `at`, unit-relative: a
+ * record's problem, design and report as they are, its `data/` as it is, a
+ * sub-experiment's the same within it, and any other of its files — its
+ * instruments — under its `data/`, at its path from the record's folder
+ * (4.11.15); null for a file in no record's folder.
+ * @param {string} at @param {string[]} inside the path below the topic's experiments, or below a record's folder
+ * @param {RegExp} [named] what the record's folder is named
+ * @returns {string|null}
+ */
+function experimentPlace(at, inside, named = EXPERIMENT_RECORD) {
+  const [record, ...below] = inside;
+  if (below.length === 0 || !named.test(record)) return null;
+  const [sub, ...within] = below;
+  if (named === EXPERIMENT_RECORD && within.length > 0 && EXPERIMENT_SUB_RECORD.test(sub)) return experimentPlace(`${at}/${record}`, below, EXPERIMENT_SUB_RECORD);
+  const kept = (below.length === 1 && EXPERIMENT_FILES.includes(sub)) || sub === 'data';
+  return `${at}/${record}/${kept ? '' : 'data/'}${below.join('/')}`;
+}
+
+/**
  * Where a file of the unit's goes, unit-relative, by its place today: DROP,
  * or null as `deliveryPlace` says.
  * @param {UnitMove} move @param {string} rel
@@ -1043,11 +1182,11 @@ function placeOf(move, rel) {
   const session = SESSION.exec(rel);
   if (session !== null) return `discovery/${session[1]}`;
   if (below.length === 0) return null;
-  if (top === 'implementation' || top === '.state') return DROP;
+  if (top === '.state') return DROP;
   if (Object.hasOwn(CARRIED, top)) return `${CARRIED[top]}/${below.join('/')}`;
   const [topic, ...inside] = below;
   if (inside.length === 0) return null;
-  if (top === 'experiment') return move.topics.has(topic) ? `topics/${topic}/experiments/${inside.join('/')}` : null;
+  if (top === 'experiment') return move.topics.has(topic) ? experimentPlace(`topics/${topic}/experiments`, inside) : null;
   if (top === 'discovery') return briefPlace(move, topic, inside);
   return DELIVERY_PHASES.includes(top) ? deliveryPlace(move, top, topic, inside.join('/')) : null;
 }
@@ -1070,32 +1209,32 @@ function promotions(manifests) {
 
 /**
  * A promoted topic's research, its links to the imports of the unit it came
- * from pointed from the log it joins.
- * @param {string} workflows @param {Promoted} promoted @returns {{topic: string, text: string}}
+ * from, and to the files and folders the move places, pointed from the log
+ * it joins.
+ * @param {string} workflows @param {Promoted} promoted @param {Places} places @returns {string}
  */
-function promotedText(workflows, { source, target: unit, topic }) {
-  const text = fs.readFileSync(path.join(workflows, source, 'research', `${topic}.md`), 'utf8');
-  return { topic, text: relinked(text, `${unit}/topics/${topic}/log.md`, source, importedNames(path.join(workflows, source))) };
+function promotedText(workflows, { source, target: unit, topic }, places) {
+  const old = `${source}/research/${topic}.md`;
+  return linked(fs.readFileSync(path.join(workflows, old), 'utf8'), old, `${unit}/topics/${topic}/log.md`, source, importedNames(path.join(workflows, source)), places);
 }
 
 /**
- * Move one unit into the layout — every file placed, its place recorded in
- * `relocations`, dropped, or left behind — then its manifest.
+ * One unit's move, nothing written yet: where its files come from and what
+ * decides where each goes, its places filled in once every unit's is known.
  * @param {string} workflows @param {string} state @param {string} unit @param {Record<string, any>} manifest @param {Promoted[]} promoted
  * @param {Relocations} relocations
- * @param {Map<string, Set<string>>} holders  each unit's topics
- * @returns {string[]} the files left behind, unit-relative
+ * @returns {UnitMove}
  */
-function moveUnit(workflows, state, unit, manifest, promoted, relocations, holders) {
+function unitMove(workflows, state, unit, manifest, promoted, relocations) {
   const from = path.join(workflows, unit);
   const topics = topicNames(manifest, unit);
   const reshaped = reshapedManifest(manifest, topics);
   const files = filesUnder(from);
-  /** @type {UnitMove} */
-  const move = {
+  return {
     unit,
     from,
     state,
+    manifest: reshaped,
     files,
     imported: importedNames(from),
     accounted: new Set(['manifest.json']),
@@ -1105,30 +1244,116 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
     quickFix: isQuickFix(manifest),
     quickFixDone: quickFixDone(manifest),
     joined: joinedTopics(manifest, files),
-    incoming: promoted.filter(({ source, target, topic }) => target === unit && fs.existsSync(path.join(workflows, source, 'research', `${topic}.md`)))
-      .map((entry) => promotedText(workflows, entry)),
+    incoming: promoted.filter(({ source, target, topic }) => target === unit && fs.existsSync(path.join(workflows, source, 'research', `${topic}.md`))),
     outgoing: new Map(promoted.filter(({ source }) => source === unit).map(({ topic, target }) => [topic, target])),
     promotedFrom: new Map(promoted.filter(({ target }) => target === unit).map(({ topic, source }) => [topic, source])),
-    holders,
+    places: new Map(),
   };
+}
+
+/**
+ * The unit's files whose place `placeOf` says, unit-relative: each but its
+ * manifest and the documents a log or a mailbox takes.
+ * @param {UnitMove} move @returns {string[]}
+ */
+const filesByPlace = (move) => move.files.filter((rel) => rel !== 'manifest.json' && !MAILBOX_MESSAGE.test(rel) && !logDocument(move, rel));
+
+/**
+ * The unit's files kept as legacy, unit-relative: each given no place,
+ * dropped or joined.
+ * @param {UnitMove} move @returns {string[]}
+ */
+const legacyFiles = (move) => filesByPlace(move).filter((rel) => placeOf(move, rel) === null);
+
+/** @typedef {[string, {to: string, anchor: string}]} PlaceEntry */
+
+/**
+ * Where each file of the unit's the move places goes, but those kept as
+ * legacy, `.workflows/`-relative to state-relative: its manifest where it
+ * was, a document a log takes at the heading it sits under there, and a spec
+ * joined into `spec.md` at its area's.
+ * @param {UnitMove} move @returns {PlaceEntry[]}
+ */
+function unitPlaces(move) {
+  /** @type {[string, string, string][]} */
+  const places = [
+    ['manifest.json', `${move.unit}/manifest.json`, ''],
+    ...move.files.filter((rel) => logDocument(move, rel)).map((rel) => {
+      const { to, heading } = logPlace(move, rel);
+      return /** @type {[string, string, string]} */ ([rel, to, anchorOf(heading)]);
+    }),
+    ...mailPlaces(move).flatMap(({ rel, at }) => (at === null ? [] : [/** @type {[string, string, string]} */ ([rel, `${move.unit}/${at}`, ''])])),
+    ...filesByPlace(move).flatMap((rel) => {
+      const at = placeOf(move, rel);
+      return typeof at === 'string' ? [/** @type {[string, string, string]} */ ([rel, `${move.unit}/${at}`, ''])] : [];
+    }),
+    ...move.joined.map((topic, i) => {
+      const rel = `specification/${topic}/specification.md`;
+      const heading = areaHeading(fs.readFileSync(path.join(move.from, rel), 'utf8'), i + 1, topic);
+      return /** @type {[string, string, string]} */ ([rel, `${move.unit}/${JOINED_SPEC}`, anchorOf(heading)]);
+    }),
+  ];
+  return places.map(([rel, to, anchor]) => [`${move.unit}/${rel}`, { to, anchor }]);
+}
+
+/**
+ * The unit's files the move keeps but gives no place a link can follow,
+ * `.workflows/`-relative: the mail it sends to the inbox.
+ * @param {UnitMove} move @returns {string[]}
+ */
+const unplaced = (move) => mailPlaces(move).filter(({ at }) => at === null).map(({ rel }) => `${move.unit}/${rel}`);
+
+/**
+ * `places` with each folder whose files all go, at their paths below it, to
+ * one folder, at that folder; a folder holding a file that goes elsewhere,
+ * into a log, or, as `held` says, nowhere a link can follow, has none.
+ * @param {Places} places @param {string[]} held `.workflows/`-relative
+ * @returns {Places}
+ */
+function withFolders(places, held) {
+  /** @type {Map<string, string|null>} */
+  const folders = new Map();
+  const note = (/** @type {string} */ rel, /** @type {string|null} */ to) => {
+    for (let folder = path.posix.dirname(rel); folder !== '.'; folder = path.posix.dirname(folder)) {
+      const below = rel.slice(folder.length);
+      const place = to !== null && to.endsWith(below) ? to.slice(0, -below.length) : null;
+      folders.set(folder, folders.has(folder) && folders.get(folder) !== place ? null : place);
+    }
+  };
+  for (const [rel, { to, anchor }] of places) note(rel, anchor === '' ? to : null);
+  for (const rel of held) note(rel, null);
+  for (const [folder, to] of folders) if (to !== null) places.set(folder, { to, anchor: '' });
+  return places;
+}
+
+/**
+ * Whether a file of an experiment record went under its record's `data/`:
+ * its path below the topic's experiments changed.
+ * @param {string} rel unit-relative @param {string} at unit-relative
+ */
+const intoData = (rel, at) => rel.startsWith('experiment/') && !at.endsWith(rel.split('/').slice(2).join('/'));
+
+/**
+ * Move one unit into the layout — every file placed, its place recorded in
+ * `relocations`, or dropped, its legacy kept by `keepLegacy` — then its
+ * manifest.
+ * @param {UnitMove} move
+ */
+function moveUnit(move) {
   moveLogs(move);
   moveMail(move);
   joinSpecs(move);
   for (const rel of move.files.filter((f) => !move.accounted.has(f))) {
     const at = placeOf(move, rel);
-    if (at === null) continue;
-    const mode = modeOf(path.join(from, rel));
-    if (typeof at === 'symbol') {
-      move.accounted.add(rel);
-      continue;
-    }
+    move.accounted.add(rel);
+    if (at === null || typeof at === 'symbol') continue;
+    const mode = modeOf(path.join(move.from, rel));
     if (!rel.endsWith('.md') || Object.hasOwn(CARRIED, rel.split('/')[0])) put(move, at, take(move, rel), mode);
-    else if (SESSION.test(rel)) put(move, at, demoted(takeDocument(move, rel, `${unit}/${at}`)), mode);
-    else put(move, at, takeDocument(move, rel, `${unit}/${at}`), mode);
-    relocate(move, rel, `${unit}/${at}`);
+    else if (SESSION.test(rel)) put(move, at, demoted(takeDocument(move, rel, `${move.unit}/${at}`)), mode);
+    else put(move, at, takeDocument(move, rel, `${move.unit}/${at}`), mode);
+    relocate(move, rel, `${move.unit}/${at}`);
   }
-  put(move, 'manifest.json', jsonText(move.joined.length === 0 ? reshaped : { ...reshaped, spec: { joined: move.joined } }));
-  return move.files.filter((f) => !move.accounted.has(f));
+  put(move, 'manifest.json', jsonText(move.joined.length === 0 ? move.manifest : { ...move.manifest, spec: { joined: move.joined } }));
 }
 
 /**
@@ -1232,24 +1457,31 @@ function moveStores(project, state, stores) {
   }))];
 }
 
+/** The inbox's files named as no item is, `.workflows/`-relative. @param {string} from @returns {string[]} */
+const strayInbox = (from) => filesUnder(path.join(from, '.inbox')).filter((f) => !INBOX_ITEM.test(f)).map((f) => `.inbox/${f}`);
+
 /**
- * The inbox, the environment setup, the checkout's knowledge config and the
- * state's own ignore file, with `ignored` added to it.
+ * The project's files carried into the state at their own paths,
+ * `.workflows/`-relative: the inbox's items, the environment setup and the
+ * checkout's knowledge config.
+ * @param {string} from @returns {string[]}
+ */
+const carriedFiles = (from) => [
+  ...filesUnder(path.join(from, '.inbox')).filter((f) => INBOX_ITEM.test(f)).map((f) => `.inbox/${f}`),
+  ...CARRIED_AS_IS.filter((rel) => fs.existsSync(path.join(from, rel))),
+];
+
+/**
+ * The project's carried files, and the state's own ignore file, with
+ * `ignored` added to it.
  * @param {string} from @param {string} state @param {string[]} ignored
- * @returns {string[]} the inbox's files left behind, named as no item is
  */
 function moveProjectFiles(from, state, ignored) {
-  const inbox = filesUnder(path.join(from, '.inbox'));
-  for (const rel of inbox.filter((f) => INBOX_ITEM.test(f))) {
-    const item = path.join(from, '.inbox', rel);
-    writeFile(path.join(state, '.inbox', rel), fs.readFileSync(item), modeOf(item));
-  }
-  for (const rel of CARRIED_AS_IS) {
+  for (const rel of carriedFiles(from)) {
     const file = path.join(from, rel);
-    if (fs.existsSync(file)) writeFile(path.join(state, rel), fs.readFileSync(file), modeOf(file));
+    writeFile(path.join(state, rel), fs.readFileSync(file), modeOf(file));
   }
   writeFile(path.join(state, '.gitignore'), ignored.length === 0 ? STATE_GITIGNORE : `${STATE_GITIGNORE}${ignored.join('\n')}\n`);
-  return inbox.filter((f) => !INBOX_ITEM.test(f)).map((f) => `.inbox/${f}`);
 }
 
 /**
@@ -1268,8 +1500,9 @@ function productPlace(rel) {
 
 /**
  * Where a file of `.baseline/` goes, `.product/`-relative: a doc as it is,
- * an interview agenda beside the docs; or null for one of the working
- * files that go, the research dossiers among them (4.10.3).
+ * an interview agenda beside the docs; or null for any other of its working
+ * files, the research dossiers among them, which the layout has no place
+ * for.
  * @param {string} rel
  * @returns {string|null}
  */
@@ -1280,37 +1513,50 @@ function baselinePlace(rel) {
 }
 
 /**
- * `.roadmap/` as `.product/`, its documents' links to its imports pointed at
- * the assets (21.5.7) and its sessions' headings demoted, and `.baseline/`'s docs and its interview agendas,
- * which hold the person's answers, in `.product/assets/baseline/` as
- * reference, only its status fields and its dossiers gone (21.11.1, 4.10.3):
- * each file's place recorded in `relocations`. A note whose name another
- * kind's note took is left behind.
- * @param {string} from @param {string} state @param {Relocations} relocations
- * @returns {string[]} the files left behind, `.workflows/`-relative
+ * A file of `.roadmap/` or `.baseline/` and where it goes, `.product/`-
+ * relative, null where the layout has no place for it; whether its links
+ * are pointed from there, and whether its headings are demoted as a log's.
+ * @typedef {{source: string, at: string|null, relink: boolean, log: boolean}} ProductFile
  */
-function moveProduct(from, state, relocations) {
-  const roadmap = path.join(from, ROADMAP);
-  const imported = importedNames(roadmap);
-  const files = [
-    ...filesUnder(roadmap).map((rel) => ({ source: `${ROADMAP}/${rel}`, at: productPlace(rel), relink: rel.endsWith('.md') && !rel.startsWith('imports/'), log: ROADMAP_SESSION.test(rel) })),
-    ...filesUnder(path.join(from, BASELINE)).flatMap((rel) => {
-      const at = baselinePlace(rel);
-      return at === null ? [] : [{ source: `${BASELINE}/${rel}`, at, relink: false, log: false }];
-    }),
-  ];
+
+/**
+ * Where each file of `.roadmap/` and `.baseline/` goes: `.roadmap/` as
+ * `.product/`, and `.baseline/`'s docs and its interview agendas, which hold
+ * the person's answers, in `.product/assets/baseline/` as reference, only
+ * its status fields gone (21.11.1); a note whose name another kind's note
+ * took has no place.
+ * @param {string} from @returns {ProductFile[]}
+ */
+function productPlan(from) {
   /** @type {Set<string>} */
   const taken = new Set();
-  return files.flatMap(({ source, at, relink, log }) => {
-    if (at === null || taken.has(at)) return [source];
-    taken.add(at);
+  return [
+    ...filesUnder(path.join(from, ROADMAP)).map((rel) => ({ source: `${ROADMAP}/${rel}`, at: productPlace(rel), relink: rel.endsWith('.md') && !rel.startsWith('imports/'), log: ROADMAP_SESSION.test(rel) })),
+    ...filesUnder(path.join(from, BASELINE)).map((rel) => ({ source: `${BASELINE}/${rel}`, at: baselinePlace(rel), relink: false, log: false })),
+  ].map((file) => {
+    if (file.at === null || taken.has(file.at)) return { ...file, at: null };
+    taken.add(file.at);
+    return file;
+  });
+}
+
+/**
+ * The product's files written where `plan` puts them, its documents' links
+ * to its imports pointed at the assets (21.5.7), and to the files and
+ * folders the move places, its sessions' headings demoted: each file's place
+ * recorded in `relocations`.
+ * @param {string} from @param {string} state @param {ProductFile[]} plan @param {Relocations} relocations @param {Places} places
+ */
+function moveProduct(from, state, plan, relocations, places) {
+  const imported = importedNames(path.join(from, ROADMAP));
+  for (const { source, at, relink, log } of plan) {
+    if (at === null) continue;
     const file = path.join(from, source);
     const to = `${PRODUCT}/${at}`;
-    const text = relink ? relinked(fs.readFileSync(file, 'utf8'), to, PRODUCT, imported) : fs.readFileSync(file);
+    const text = relink ? linked(fs.readFileSync(file, 'utf8'), source, to, PRODUCT, imported, places) : fs.readFileSync(file);
     writeFile(path.join(state, to), log ? demoted(text.toString()) : text, modeOf(file));
     relocations.set(source, to);
-    return [];
-  });
+  }
 }
 
 /**
@@ -1344,6 +1590,39 @@ function reshapedProject(project, relocations) {
     delete roadmap.active_session;
   }
   return out;
+}
+
+/** The files under `name` in `.workflows/`, the tools' sidecars aside, `.workflows/`-relative; `name` itself where it is a file. @param {string} from @param {string} name @returns {string[]} */
+function filesOf(from, name) {
+  return fs.statSync(path.join(from, name)).isDirectory() ? filesUnder(path.join(from, name)).map((rel) => `${name}/${rel}`) : [name];
+}
+
+/**
+ * The old cache's documents, its agents' reports, which nothing rebuilds,
+ * each to its place as legacy: a unit's under the unit's, at its path below
+ * the unit's folder there, and one of no unit's under the product's, at its
+ * path below the cache, `cache/` heading either.
+ * @param {string} from @param {Set<string>} units @returns {[string, string][]}
+ */
+function cacheReports(from, units) {
+  return filesUnder(path.join(from, OLD_CACHE)).filter((rel) => rel.endsWith('.md')).map((rel) => {
+    const [unit, ...below] = rel.split('/');
+    const to = units.has(unit) ? `${unit}/${LEGACY}/${OLD_CACHE_LEGACY}/${below.join('/')}` : `${PRODUCT}/${LEGACY}/${OLD_CACHE_LEGACY}/${rel}`;
+    return [`${OLD_CACHE}/${rel}`, to];
+  });
+}
+
+/**
+ * Every file kept as legacy written byte for byte at its place, its place
+ * recorded in `relocations`.
+ * @param {string} from @param {string} state @param {Legacy} legacy @param {Relocations} relocations
+ */
+function keepLegacy(from, state, legacy, relocations) {
+  for (const [rel, to] of legacy) {
+    const file = path.join(from, rel);
+    writeFile(path.join(state, to), fs.readFileSync(file), modeOf(file));
+    relocations.set(rel, to);
+  }
 }
 
 /**
@@ -1488,35 +1767,62 @@ function move(projectDir, reportUpdate, reportSkip) {
   /** @type {Relocations} */
   const relocations = new Map();
   const { stores, unread } = preLeewayStores();
-  const projectLeft = [
-    ...moveProjectFiles(from, state, moveStores(project, state, stores)),
-    ...moveProduct(from, state, relocations),
-  ];
-  reportUpdate();
-  const folders = fs.readdirSync(from, { withFileTypes: true })
-    .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json' && !SIDECAR_NAME.test(entry.name))
+  const entries = fs.readdirSync(from, { withFileTypes: true })
+    .filter((entry) => !SIDECAR_NAME.test(entry.name))
     .map((entry) => entry.name)
     .sort();
+  const folders = entries.filter((name) => !name.startsWith('.') && name !== 'manifest.json');
   const manifests = new Map(folders.filter((name) => fs.existsSync(path.join(from, name, 'manifest.json')))
     .map((name) => [name, readManifest(path.join(from, name, 'manifest.json'))]));
   const promoted = promotions(manifests);
-  const holders = new Map([...manifests].map(([name, manifest]) => [name, topicNames(manifest, name)]));
-  const unitsLeft = folders.flatMap((name) => {
-    const manifest = manifests.get(name);
-    if (manifest === undefined) return [name];
-    const unitLeft = moveUnit(from, state, name, manifest, promoted, relocations, holders);
+  const moves = [...manifests].map(([name, manifest]) => unitMove(from, state, name, manifest, promoted, relocations));
+  const product = productPlan(from);
+  const reports = cacheReports(from, new Set(manifests.keys()));
+  /** @type {Legacy} */
+  const legacy = new Map([
+    ...[
+      ...strayInbox(from),
+      ...product.filter(({ at }) => at === null).map(({ source }) => source),
+      ...entries.filter((name) => !READ_OR_REBUILT.includes(name) && !manifests.has(name)).flatMap((name) => filesOf(from, name)),
+    ].map((rel) => /** @type {[string, string]} */ ([rel, `${PRODUCT}/${LEGACY}/${rel}`])),
+    ...reports.filter(([, to]) => to.startsWith(`${PRODUCT}/`)),
+    ...moves.flatMap((unit) => [
+      ...legacyFiles(unit).map((rel) => /** @type {[string, string]} */ ([`${unit.unit}/${rel}`, `${unit.unit}/${LEGACY}/${rel}`])),
+      ...reports.filter(([, to]) => to.startsWith(`${unit.unit}/`)),
+    ]),
+  ]);
+  /** @type {[string, string][]} */
+  const whole = [
+    ...legacy,
+    ...carriedFiles(from).map((rel) => /** @type {[string, string]} */ ([rel, rel])),
+    ...product.flatMap(({ source, at }) => (at === null ? [] : [/** @type {[string, string]} */ ([source, `${PRODUCT}/${at}`])])),
+  ];
+  const places = withFolders(new Map([
+    ...whole.map(([rel, to]) => /** @type {PlaceEntry} */ ([rel, { to, anchor: '' }])),
+    ...moves.flatMap(unitPlaces),
+  ]), moves.flatMap(unplaced));
+  const instruments = moves.flatMap((unit) => filesByPlace(unit).flatMap((rel) => {
+    const at = placeOf(unit, rel);
+    return typeof at === 'string' && intoData(rel, at) ? [`${STATE_DIR}/${unit.unit}/${at}`] : [];
+  }));
+  moveProjectFiles(from, state, moveStores(project, state, stores));
+  moveProduct(from, state, product, relocations, places);
+  reportUpdate();
+  for (const unit of moves) {
+    unit.places = places;
+    moveUnit(unit);
     reportUpdate();
-    return unitLeft.map((rel) => `${name}/${rel}`);
-  });
+  }
+  keepLegacy(from, state, legacy, relocations);
   writeProjectManifest(state, projectManifest, relocations);
   const userNote = moveUserFolder();
-  const left = [...projectLeft, ...unitsLeft];
-  const carried = linters.run({ projectDir, reportUpdate: () => {}, reportSkip: () => {} });
+  const lintersNote = carryLinters(state);
   const notes = [
-    left.length === 0 ? null : `These were not carried into ${STATE_DIR}/, the layout having no place for them: ${left.map((rel) => `${CODE_TREE_STATE}/${rel}`).join(', ')}. Each stays in ${CODE_TREE_STATE}/ until the migration's commit; move any still wanted into its unit's assets/, or the product's.`,
+    legacy.size === 0 ? null : `These had no place of their own in ${STATE_DIR}/, so each is kept, as it was, as legacy, under its unit's ${LEGACY}/ or the product's, ${PRODUCT}/${LEGACY}/, the old cache's reports under ${OLD_CACHE_LEGACY}/ there: ${[...legacy.values()].map((to) => `${STATE_DIR}/${to}`).join(', ')}. Move any into a better place in its unit's assets/, or the product's, as wanted.`,
+    instruments.length === 0 ? null : `These files of experiment records, neither a record's problem, design or report nor in its data/, were moved under its data/, at their paths from the record's folder: ${instruments.join(', ')}. A path a record's text or script spells out is left as written.`,
     settingsNote,
     userNote,
-    carried && carried.verify ? carried.verify : null,
+    lintersNote,
   ].filter((note) => note !== null);
   const notice = unreadStores(unread, 'the move carried no store declared there into the state: a store this project kept for such a tracker stays where it is');
   if (notes.length === 0 && notice === null) return undefined;
@@ -1526,8 +1832,8 @@ function move(projectDir, reportUpdate, reportSkip) {
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .leeway/, the state worktree on an unborn leeway-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/leeway/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; implementation folders, the reviews\' tracking files and the retired manifest state go. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
-    return withoutRepositoryEnv(() => move(projectDir, reportUpdate, reportSkip));
+    return move(projectDir, reportUpdate, reportSkip);
   },
 };

@@ -21,7 +21,7 @@
 // each
 // unit's files in the layout, each review never folded in folded into its
 // topic's log, a person's files named for tracking or
-// analysis kept beside the reviews' tracking files dropped; nothing in a
+// analysis placed as any other; nothing in a
 // topic's folder no topic owns; its manifest less research and the retired
 // state, the dead end off every topic — one whose work concluded keeping its
 // close, any other cancelled with its mail sent to the inbox; the project's manifest with its id, the baseline's skip its
@@ -30,8 +30,19 @@
 // assets; the store and the knowledge config, never the knowledge store, in
 // the state; the hooks naming the engine's new path and the workflows' lines
 // gone from `.worktreeinclude`; the user-level folder moved and linked;
-// every file written in a place the layout holds; the files the layout has
-// no place for, named, the tools' sidecars not. A small project of its own
+// every file written in a place the layout holds; every file the layout has
+// no other place for — implementation folders and the reviews' tracking
+// files, a research folder of its own as evvi's sessions kept one, a unit's
+// design images as portal's, and the old cache's reports, folded in or not,
+// of a topic, of none, with no agent row or of no unit — kept byte for byte
+// as legacy, in its unit's assets or the product's, and named, the old
+// cache's other files, the old ignore file and the tools' sidecars not; the
+// links and embeds of each kind of moved document to them, a folder and an
+// encoded name among them, as portal's, evvi's and pigeon's, followed, and
+// to the documents the move placed elsewhere, a built unit's spec at its
+// area of spec.md; and an experiment record's instruments, a folder and a loose
+// file, under its data/, its problem, design and report as they are, and a
+// file of no record kept as legacy. A small project of its own
 // covers the runner's record and journals already in `.leeway/`, the
 // `.leeway/` ignore line written with hooks off and the caller's git
 // environment cleared, the move run again over one cut short, over one
@@ -50,7 +61,11 @@
 // settings that do not parse, a user-level folder the engine's holds a
 // different copy of a file in, and one that is a link elsewhere. The
 // tracker's store is where its driver's frozen declaration says a project
-// from before Leeway keeps it, read as the move reads it.
+// from before Leeway keeps it, read as the move reads it. The mail holds
+// messages as today's sessions wrote them, the sender's line under the title
+// and under a blank line after it. The linters' carry (reshape/linters.cjs)
+// is driven alone over a state of its own, with the linters' entries of a
+// project's own.
 // Each test that runs the move points both user-level folders at its own,
 // never the machine's.
 //
@@ -62,7 +77,7 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, before, after } = require('node:test');
+const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
@@ -70,6 +85,7 @@ const path = require('path');
 
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
+const { carryLinters } = require('../../skills/leeway-migrate/scripts/migrations/reshape/linters.cjs');
 const { layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
 const { huntIn, HUNT_HEADINGS } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
 const { heardIn } = require('../../skills/leeway-engine/scripts/domain/discovery-log.cjs');
@@ -216,6 +232,25 @@ const message = (title, from) => `### ${title}\n*From: ${from} · discussion · 
 /** A message as the move leaves it, its sender line as the waiting mail heads it. @param {string} title @param {string} sender */
 const moved = (title, sender) => `### ${title}\nFrom ${sender} · 1 Jan\n\nDetails of ${title.toLowerCase()}.\n`;
 
+// Messages as today's sessions wrote them, taken from a project's own: the
+// sender's line under the title, and under a blank line after it.
+const SUPPORT_ADDRESS = '### The website carries the support address\n*From: support-and-diagnostics · discussion · 2026-10-25*\n\n**The case.** An update leaves Fumi crashing at launch.\n';
+const STORAGE_FRAMING = '### The "storage location is yours" framing is formally retired\n\n*From: storage-and-sync · discussion · 2026-08-04*\n\nDiscovery framed Fumi\'s storage posture as **"no hosted cloud"**.\n';
+const EGRESS_CHANNEL = '### The MCP server is a content-egress channel\n\n*From: agent-surface · discussion · 2026-09-13*\n\n**The channel.** A user connects Fumi to Claude.\n';
+
+// A discussion as portal's, evvi's and pigeon's hold them: an embed of a
+// unit's design image, a link into a research folder of its own, to the
+// folder, and to a report of the old cache, a link to the web beside them;
+// an image of an encoded name; and links to the documents the move places
+// elsewhere, as fumi's, tick's and evvi's hold them — its own research, now
+// in its log, a sibling's discussion, its brief, a discovery session, a seed,
+// and a built unit's spec, joined into its spec.md, and the spec's folder.
+const TALLY_DISCUSSION = '# Discussion: Tally\n\nCounting is hard, the research said.\n\n![Active](../design/sessions-multi-select-active.png "Active")\n\n'
+  + 'See [the plan](../research/counting/plan.md), [the dedup dive](../../.cache/tally/discussion/tally/research-dedup.md#findings) and [the docs](https://example.com/plan.md).\n\n'
+  + 'All [the counting](../research/counting/), and ![the flow](../design/flow%20chart.png).\n\n'
+  + 'Per [the research](../research/tally.md), [its ties](../research/tally.md#ties), [ranking](../../shop/discussion/ranking.md), [the brief](../discovery/briefs/tally.md), '
+  + '[the session](../discovery/sessions/session-001.md), [the seed](../seeds/2026-01-01--tally.md), [the idea](../../.inbox/ideas/2026-02-01--dark-mode.md), [its manifest](../manifest.json), [the spec](../../shop/specification/ranking/specification.md) and [its folder](../../shop/specification/ranking/).\n';
+
 const PROJECT_MANIFEST = {
   work_units: {
     core: { work_type: 'epic' }, shop: { work_type: 'epic' }, tally: { work_type: 'feature' }, stall: { work_type: 'bugfix' },
@@ -223,7 +258,7 @@ const PROJECT_MANIFEST = {
     stale: { work_type: 'quick-fix' }, dropped: { work_type: 'quick-fix' },
     gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
   },
-  defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }], tmux_labels: true },
+  defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', lint_command: 'swiftformat . --lint', fix_command: 'swiftformat .' }], tmux_labels: true },
   roadmap: {
     horizons: ['v1'],
     active_session: '002',
@@ -239,6 +274,7 @@ const PROJECT_MANIFEST = {
         horizon: 'v1', summary: 'Exploration', kind: 'idea', origin: 'harvest',
         sources: ['core/research/exploration-superseded-2026-01-01-1200.md', 'core/research/gamma.md', 'core/discussion/.mailbox/beta/001-third.md'],
       },
+      drafts: { horizon: 'v1', summary: 'Drafts', kind: 'idea', origin: 'harvest', sources: ['.roadmap/draft.txt', 'core/notes.txt'] },
     },
   },
   baseline: { status: 'skipped' },
@@ -390,12 +426,18 @@ function todaysProject(dir) {
   w('.cache/core/discussion/alpha/review-002.md', '### F1: Stale\n\nFolded in long ago.\n');
   w('.cache/core/discussion/gamma/state.json', json({ agents: { 'review-003': { id: 'review-003', kind: 'review', status: 'acknowledged' } } }));
   w('.cache/core/discussion/gamma/review-003.md', '### F1: Token reuse\n\nA token outlives its session.\n');
+  w('.cache/core/research/exploration/deep-dive-001.md', '# Deep dive: caching\n\nA topic the split superseded.\n');
+  w('.cache/tally/discussion/tally/research-dedup.md', '# Dedup\n\nNo agent row holds it.\n');
+  w('.cache/tally/discussion/tally/session.json', '{"live":false}\n');
+  w('.cache/retired/discussion/rates/review-001.md', '# Review of a unit no longer here\n');
+  w('.gitignore', '.cache/\n.manifest.json.*.tmp\n.lock\n.knowledge/\n');
+  w('README.md', '# Notes on our workflow\n');
   w('scratch/notes.txt', 'a folder that is no unit\n');
   w('Thumbs.db', 'sidecar\n');
 
   w('.roadmap/sessions/session-001.md', '# Roadmap Session 001\n\nSee [market](../imports/market.md).\n');
-  w('.roadmap/sessions/session-002.md', '# Roadmap Session 002\n');
-  w('.roadmap/notes/bugs/2026-01-03--points-expiry.md', '# Points expiry\n\nPer [market](../../imports/market.md).\n');
+  w('.roadmap/sessions/session-002.md', '# Roadmap Session 002\n\nSee [the draft](../draft.txt).\n');
+  w('.roadmap/notes/bugs/2026-01-03--points-expiry.md', '# Points expiry\n\nPer [market](../../imports/market.md) and [alpha](../../../core/discussion/alpha.md).\n');
   w('.roadmap/notes/ideas/2026-01-03--points-expiry.md', '# Points expiry, an idea of the same name\n');
   w('.roadmap/imports/market.md', '# Market\n');
   w('.roadmap/imports/chart.png', PNG);
@@ -427,19 +469,28 @@ function todaysProject(dir) {
   w('core/research/.mailbox/beta/002-second.md', message('Second', 'alpha'));
   w('core/discussion/.mailbox/beta/001-third.md', message('Third', 'gamma'));
   w('core/discussion/.mailbox/gamma/004-late.md', message('Late', 'alpha'));
-  w('core/discussion/.mailbox/gamma/005-ranking-input.md', message('Ranking input', 'shop.ranking'));
-  w('core/discussion/.mailbox/gamma/006-tally-input.md', message('Tally input', 'tally.tally'));
+  w('core/discussion/.mailbox/gamma/005-support-address.md', SUPPORT_ADDRESS);
+  w('core/discussion/.mailbox/gamma/006-storage-framing.md', STORAGE_FRAMING);
   w('core/discussion/.mailbox/delta/001-a-dropped-thought.md', message('A dropped thought', 'alpha'));
+  w('core/discussion/.mailbox/delta/002-egress-channel.md', EGRESS_CHANNEL);
   w('core/experiment/alpha/E1-frame-budget/problem.md', '# Problem\n\nAgainst [notes](../../../imports/notes.md).\n');
   w('core/experiment/alpha/E1-frame-budget/report.md', '# Report\n');
+  w('core/experiment/alpha/E1-frame-budget/design.md', '# Design\n');
+  w('core/experiment/alpha/notes.md', 'a loose file in a topic\'s experiments\n');
+  w('core/experiment/alpha/scratch/try.txt', 'a folder of no record\n');
+  w('core/experiment/alpha/E1-frame-budget/rubric.md', '# Rubric\n');
+  w('core/experiment/alpha/E1-frame-budget/harness/run.sh', '#!/bin/sh\necho harness\n');
   w('core/experiment/alpha/E1-frame-budget/data/run.csv', 'ms\n12\n');
   w('core/experiment/alpha/E1-frame-budget/data/run.sh', '#!/bin/sh\necho 12\n');
   fs.chmodSync(path.join(dir, '.workflows/core/experiment/alpha/E1-frame-budget/data/run.sh'), 0o755);
-  w('core/research/gamma.md', '# Research: Gamma\n\nSee [notes](../imports/notes.md).\n');
+  w('core/research/gamma.md', '# Research: Gamma\n\nSee [notes](../imports/notes.md) and [the stray](../discussion/stray.md).\n');
   w('core/research/theta.md', '# Research: Theta\n');
+  w('core/research/multi-tenancy/overview.md', '# Multi-tenancy\n\nSee [the case](TenantTestCase.php) and [notes](../../imports/notes.md).\n');
+  w('core/research/multi-tenancy/TenantTestCase.php', '<?php\n\nabstract class TenantTestCase extends TestCase {}\n');
   w('core/research/.mailbox/theta/001-theta-note.md', message('Theta note', 'alpha'));
   w('core/experiment/alpha/E1-frame-budget/E1.1-one-monitor/problem.md', '# Sub-problem\n');
-  w('core/specification/search/specification.md', '# Specification: Search\n\n[n](../../imports/notes.md)\n');
+  w('core/experiment/alpha/E1-frame-budget/E1.1-one-monitor/sample.tsv', 'a\tb\n');
+  w('core/specification/search/specification.md', '# Specification: Search\n\n[n](../../imports/notes.md) and [its notes](order-tracking-notes.md)\n');
   w('core/specification/search/review-input-tracking-c1.md', 'tracking\n');
   w('core/specification/search/order-tracking-notes.md', 'the person\'s own\n');
   w('core/imports/notes.md', '# Notes\n');
@@ -452,6 +503,7 @@ function todaysProject(dir) {
   w('shop/discovery/sessions/session-001.md', '# Discovery Session 001\n');
   w('shop/discussion/ranking.md', '# Discussion: Ranking\n');
   w('shop/specification/ranking/specification.md', '# Specification: Ranking\n');
+  w('shop/specification/ranking/review-input-tracking-c1.md', 'tracking\n');
   w('shop/planning/ranking/planning.md', '# Plan: Ranking\n');
   w('shop/planning/ranking/phase-1-tasks.md', '# Phase 1\n');
   w('shop/planning/ranking/tasks/ranking-1-1.md', '# Task 1.1\n');
@@ -477,11 +529,19 @@ function todaysProject(dir) {
     discussion: { items: { tally: { status: 'in-progress' } } },
   })));
   w('tally/research/tally.md', '# Research: Tally\n\nCounting is hard.\n');
-  w('tally/discussion/tally.md', '# Discussion: Tally\n\nCounting is hard, the research said.\n');
+  w('tally/design/sessions-multi-select-active.png', PNG);
+  w('tally/discussion/tally.md', TALLY_DISCUSSION);
+  w('tally/research/counting/plan.md', '# Counting plan\n');
+  w('tally/design/flow chart.png', PNG);
+  w('tally/discovery/briefs/tally.md', '# Tally brief\n');
+  w('tally/discovery/sessions/session-001.md', '# Discovery Session 001\n');
+  w('tally/seeds/2026-01-01--tally.md', '# Tally\n');
 
   w('stall/manifest.json', json(unit('stall', 'bugfix', 'in-progress', { investigation: { items: { stall: { status: 'in-progress' } } } })));
   w('stall/investigation/stall.md', STALL_INVESTIGATION);
   w('stall/investigation/.mailbox/stall/001-retry-window.md', message('Retry window', 'pay'));
+  w('stall/investigation/.mailbox/stall/002-disk-graph.md', '### Disk graph\n*From: pay · discussion · 2026-01-01*\n\nSee ![the graph](../../disk.png).\n');
+  w('stall/investigation/disk.png', PNG);
 
   w('typo/manifest.json', json(unit('typo', 'quick-fix', 'completed', quickFixPhases('typo', 'completed'))));
   w('typo/specification/typo/specification.md', '# Typo\n\nFix the typo in the header.\n');
@@ -561,21 +621,86 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.deepStrictEqual(tree(state).filter((rel) => layoutPlace(rel) === null), []);
     });
 
-    it('reports an update for the project and one for each unit, and hands back what it could not carry', () => {
+    it('reports an update for the project and one for each unit, and hands back each file it kept as legacy at its place, and each experiment instrument it moved under its record\'s data/', () => {
       assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 13, skips: 0 });
       assert.deepStrictEqual(result.returned, {
-        verify: 'These were not carried into .leeway/, the layout having no place for them: .workflows/.inbox/ideas/rough-notes.md, '
-          + '.workflows/.roadmap/draft.txt, .workflows/.roadmap/notes/ideas/2026-01-03--points-expiry.md, '
-          + '.workflows/core/discovery/briefs/zeta.md, .workflows/core/discussion/stray.md, '
-          + '.workflows/core/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md, '
-          + '.workflows/core/notes.txt, .workflows/core/specification/search/order-tracking-notes.md, .workflows/scratch. '
-          + 'Each stays in .workflows/ until the migration\'s commit; move any still wanted into its unit\'s assets/, or the product\'s.',
+        verify: 'These had no place of their own in .leeway/, so each is kept, as it was, as legacy, under its unit\'s assets/legacy/ or the product\'s, .product/assets/legacy/, '
+          + 'the old cache\'s reports under cache/ there: '
+          + '.leeway/.product/assets/legacy/.inbox/ideas/rough-notes.md, .leeway/.product/assets/legacy/.roadmap/draft.txt, '
+          + '.leeway/.product/assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md, .leeway/.product/assets/legacy/.baseline/.state/dossier-auth.md, '
+          + '.leeway/.product/assets/legacy/README.md, .leeway/.product/assets/legacy/scratch/notes.txt, .leeway/.product/assets/legacy/cache/retired/discussion/rates/review-001.md, '
+          + '.leeway/core/assets/legacy/discovery/briefs/zeta.md, .leeway/core/assets/legacy/discussion/stray.md, '
+          + '.leeway/core/assets/legacy/experiment/alpha/notes.md, .leeway/core/assets/legacy/experiment/alpha/scratch/try.txt, '
+          + '.leeway/core/assets/legacy/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md, .leeway/core/assets/legacy/notes.txt, '
+          + '.leeway/core/assets/legacy/research/multi-tenancy/TenantTestCase.php, .leeway/core/assets/legacy/research/multi-tenancy/overview.md, '
+          + '.leeway/core/assets/legacy/specification/search/order-tracking-notes.md, .leeway/core/assets/legacy/specification/search/review-input-tracking-c1.md, '
+          + '.leeway/core/assets/legacy/cache/discussion/alpha/review-001.md, .leeway/core/assets/legacy/cache/discussion/alpha/review-002.md, '
+          + '.leeway/core/assets/legacy/cache/discussion/alpha/review-004.md, .leeway/core/assets/legacy/cache/discussion/gamma/review-003.md, '
+          + '.leeway/core/assets/legacy/cache/research/exploration/deep-dive-001.md, .leeway/dropped/assets/legacy/planning/dropped/planning.md, '
+          + '.leeway/shop/assets/legacy/implementation/ranking/analysis-tasks-c1.md, .leeway/shop/assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md, '
+          + '.leeway/shop/assets/legacy/planning/ranking/review-integrity-tracking-c1.md, .leeway/shop/assets/legacy/specification/ranking/review-input-tracking-c1.md, .leeway/stale/assets/legacy/planning/stale/planning.md, '
+          + '.leeway/stall/assets/legacy/investigation/disk.png, .leeway/tally/assets/legacy/design/flow chart.png, '
+          + '.leeway/tally/assets/legacy/design/sessions-multi-select-active.png, .leeway/tally/assets/legacy/research/counting/plan.md, '
+          + '.leeway/tally/assets/legacy/cache/discussion/tally/research-dedup.md, .leeway/typo/assets/legacy/planning/typo/planning.md. '
+          + 'Move any into a better place in its unit\'s assets/, or the product\'s, as wanted. '
+          + 'These files of experiment records, neither a record\'s problem, design or report nor in its data/, were moved under its data/, at their paths from the record\'s folder: '
+          + '.leeway/core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv, .leeway/core/topics/alpha/experiments/E1-frame-budget/data/harness/run.sh, '
+          + '.leeway/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written. '
+          + 'The linters were carried into environment.linters as a name and a command, which leaves out swiftformat\'s fix_command ("swiftformat ."). '
+          + 'Change a linter\'s command where any is still wanted, when ready to build asks to confirm the project\'s setup, or now: read the linters recorded with '
+          + '`node .claude/skills/leeway-engine/scripts/engine.cjs environment show`, then record the whole list, those changed, with '
+          + '`node .claude/skills/leeway-engine/scripts/engine.cjs environment set linters`, its JSON on stdin.',
       });
     });
   });
 
+  describe('nothing that may hold knowledge lost', () => {
+    it('keeps every file it names as legacy byte for byte at its place, a file the state\'s first commit takes — a research folder of its own, as evvi\'s sessions kept one, a unit\'s design images, as portal\'s, and the old cache\'s reports, folded in or not, of a topic or of none, with no agent row, or of no unit, among them — so finish, dropping .workflows/, leaves none of them in git\'s history alone', () => {
+      const named = /cache\/ there: (.*?)\. Move any/.exec(String(result.returned && result.returned.verify));
+      const legacy = (named === null ? '' : named[1]).split(', ').map((rel) => rel.replace(/^\.leeway\//, ''));
+      const oldOf = (/** @type {string} */ rel) => {
+        const [, owner, kept] = /^(.+?)\/assets\/legacy\/(.*)$/.exec(rel) ?? [];
+        const report = /^cache\/(.*)$/.exec(kept);
+        if (report !== null) return owner === '.product' ? `.cache/${report[1]}` : `.cache/${owner}/${report[1]}`;
+        return owner === '.product' ? kept : `${owner}/${kept}`;
+      };
+      assert.ok([
+        'core/research/multi-tenancy/overview.md', 'core/research/multi-tenancy/TenantTestCase.php', 'tally/design/sessions-multi-select-active.png',
+        '.cache/core/discussion/alpha/review-001.md', '.cache/core/discussion/alpha/review-002.md', '.cache/core/research/exploration/deep-dive-001.md',
+        '.cache/tally/discussion/tally/research-dedup.md', '.cache/retired/discussion/rates/review-001.md', 'README.md',
+      ].every((rel) => legacy.map(oldOf).includes(rel)));
+      for (const rel of legacy) assert.deepStrictEqual(fs.readFileSync(path.join(state, rel)), fs.readFileSync(path.join(dir, '.workflows', oldOf(rel))), rel);
+      assert.throws(() => git(state, ['check-ignore', '--', ...legacy]), 'none is ignored in the state');
+    });
+
+    it('drops the old cache\'s session state and data, and the old ignore file, keeping and naming neither', () => {
+      const verify = String(result.returned && result.returned.verify);
+      assert.deepStrictEqual([verify.includes('.workflows/.gitignore'), verify.includes('session.json'), verify.includes('state.json')], [false, false, false]);
+      assert.deepStrictEqual(tree(state).filter((rel) => /(^|\/)\.gitignore$|session\.json$|state\.json$/.test(rel)), ['.gitignore']);
+    });
+
+    it('points a moved document\'s links and embeds at the files kept as legacy, from where it now sits — a design image, a research folder\'s file and the folder, a name encoded, a report of the old cache, its anchor kept — a link to the web as written', () => {
+      assert.strictEqual(read('tally/topics/tally/log.md').split('## Discussion: Tally\n\n')[1].split('\n\nPer ')[0], 'Counting is hard, the research said.\n\n'
+        + '![Active](../../assets/legacy/design/sessions-multi-select-active.png "Active")\n\n'
+        + 'See [the plan](../../assets/legacy/research/counting/plan.md), [the dedup dive](../../assets/legacy/cache/discussion/tally/research-dedup.md#findings) and [the docs](https://example.com/plan.md).\n\n'
+        + 'All [the counting](../../assets/legacy/research/counting/), and ![the flow](../../assets/legacy/design/flow%20chart.png).');
+    });
+
+    it('points a moved document\'s links at the documents the move placed elsewhere — research folded into a log at its heading, a link\'s own anchor kept, a sibling\'s discussion, a brief, a session, a seed, an inbox item and its unit\'s manifest, as portal\'s — a built unit\'s spec joined into its spec.md at its area\'s heading — and leaves the spec\'s folder, its tracking file kept as legacy, as written', () => {
+      assert.strictEqual(read('tally/topics/tally/log.md').split('\n\nPer ')[1], '[the research](log.md#research), [its ties](log.md#ties), [ranking](../../../shop/topics/ranking/log.md#discussion), '
+        + '[the brief](brief.md), [the session](../../discovery/session-001.md), [the seed](../../seeds/2026-01-01--tally.md), [the idea](../../../.inbox/ideas/2026-02-01--dark-mode.md), [its manifest](../../manifest.json), [the spec](../../../shop/spec.md#1-ranking) and [its folder](../../shop/specification/ranking/).\n');
+    });
+
+    it('points the links of every kind of document it moves at the files kept as legacy: promoted research, a message, a roadmap session, a spec', () => {
+      assert.match(read('core/assets/specs/search.md'), /\[its notes\]\(\.\.\/legacy\/specification\/search\/order-tracking-notes\.md\)/);
+      assert.match(read('shared/topics/gamma/log.md'), /and \[the stray\]\(\.\.\/\.\.\/\.\.\/core\/assets\/legacy\/discussion\/stray\.md\)\./);
+      assert.strictEqual(read('stall/topics/stall/mail/002-disk-graph.md'), '### Disk graph\nFrom Pay · 1 Jan\n\nSee ![the graph](../../../assets/legacy/investigation/disk.png).\n');
+      assert.strictEqual(read('.product/sessions/session-002.md'), '## Roadmap Session 002\n\nSee [the draft](../assets/legacy/.roadmap/draft.txt).\n');
+    });
+  });
+
   describe('the project (21.5.20, 21.11.2)', () => {
-    it('8.S51, 21.S38, 21.S50: carries the manifest with the project\'s id minted first, the linters on its environment as 073 keeps them, the baseline\'s status gone, its skip the brownfield offer\'s answer, the plan\'s format and the project skills gone from its defaults, the rest kept, and the roadmap\'s open session the product\'s conversation\'s (22.3.1, 22.3.2)', () => {
+    it('8.S51, 21.S38, 21.S50: carries the manifest with the project\'s id minted first, the linters on its environment, each by its check command, the baseline\'s status gone, its skip the brownfield offer\'s answer, the plan\'s format and the project skills gone from its defaults, the rest kept, and the roadmap\'s open session the product\'s conversation\'s (22.3.1, 22.3.2)', () => {
       const project = JSON.parse(read('manifest.json'));
       assert.match(project.project_id, /^[0-9A-Za-z]{21}$/);
       const { items } = PROJECT_MANIFEST.roadmap;
@@ -590,10 +715,11 @@ describe('migration 078: the move into the layout in .leeway/', () => {
             'points-expiry': { ...items['points-expiry'], sources: ['.product/notes/2026-01-03--points-expiry.md'] },
             alpha: { ...items.alpha, sources: ['core/topics/alpha/brief.md', 'core/topics/alpha/log.md', 'core/implementation/gone.md'] },
             exploration: { ...items.exploration, sources: ['core/discovery/session-003.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'] },
+            drafts: { ...items.drafts, sources: ['.product/assets/legacy/.roadmap/draft.txt', 'core/assets/legacy/notes.txt'] },
           },
         },
         brownfield_offer: 'skipped',
-        environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }] },
+        environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', command: 'swiftformat . --lint' }] },
         product_session: '002',
       });
       assert.strictEqual(Object.keys(project)[0], 'project_id');
@@ -627,12 +753,19 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the product (21.5.7, 21.11.1)', () => {
-    it('8.S51, 21.S38: makes .roadmap/ .product/: its sessions as they are but for their headings, one level deeper, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, its dossiers gone', () => {
+    it('8.S51, 21.S38: makes .roadmap/ .product/: its sessions as they are but for their headings, one level deeper, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, and every file of none, its dossiers among them, as legacy, its path from .workflows/ kept', () => {
       assert.deepStrictEqual(tree(state, '.product'), [
         'assets/baseline/agenda-auth.md',
         'assets/baseline/auth.md',
         'assets/baseline/billing.md',
         'assets/chart.png',
+        'assets/legacy/.baseline/.state/dossier-auth.md',
+        'assets/legacy/.inbox/ideas/rough-notes.md',
+        'assets/legacy/.roadmap/draft.txt',
+        'assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md',
+        'assets/legacy/README.md',
+        'assets/legacy/cache/retired/discussion/rates/review-001.md',
+        'assets/legacy/scratch/notes.txt',
         'assets/market.md',
         'notes/2026-01-03--points-expiry.md',
         'sessions/session-001.md',
@@ -643,20 +776,21 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(read('.product/assets/baseline/agenda-auth.md'), '# Agenda: Auth\n\n- Why sessions expire: the person said an hour, for the auditors.\n');
     });
 
-    it('points the product\'s documents\' links into its imports at the assets, from where each now sits, a session\'s headings one level deeper', () => {
+    it('points the product\'s documents\' links into its imports at the assets, and to a unit\'s document at its place, from where each now sits, a session\'s headings one level deeper', () => {
       assert.strictEqual(read('.product/sessions/session-001.md'), '## Roadmap Session 001\n\nSee [market](../assets/market.md).\n');
-      assert.strictEqual(read('.product/notes/2026-01-03--points-expiry.md'), '# Points expiry\n\nPer [market](../assets/market.md).\n');
+      assert.strictEqual(read('.product/notes/2026-01-03--points-expiry.md'), '# Points expiry\n\nPer [market](../assets/market.md) and [alpha](../../core/topics/alpha/log.md#discussion).\n');
     });
 
-    it('points each roadmap item\'s sources at the new places, a unit\'s files among them, once each (21.S15)', () => {
+    it('points each roadmap item\'s sources at the new places, a unit\'s files and the files kept as legacy among them, once each (21.S15)', () => {
       const { roadmap } = JSON.parse(read('manifest.json'));
       assert.deepStrictEqual(Object.fromEntries(Object.entries(roadmap.items).map(([name, item]) => [name, item.sources])), {
         loyalty: ['.product/sessions/session-001.md', '.product/assets/market.md'],
         'points-expiry': ['.product/notes/2026-01-03--points-expiry.md'],
         alpha: ['core/topics/alpha/brief.md', 'core/topics/alpha/log.md', 'core/implementation/gone.md'],
         exploration: ['core/discovery/session-003.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'],
+        drafts: ['.product/assets/legacy/.roadmap/draft.txt', 'core/assets/legacy/notes.txt'],
       });
-      for (const source of [...roadmap.items.loyalty.sources, ...roadmap.items.alpha.sources.slice(0, 2), ...roadmap.items.exploration.sources]) assert.ok(fs.existsSync(path.join(state, source)), source);
+      for (const source of [...roadmap.items.loyalty.sources, ...roadmap.items.alpha.sources.slice(0, 2), ...roadmap.items.exploration.sources, ...roadmap.items.drafts.sources]) assert.ok(fs.existsSync(path.join(state, source)), source);
     });
   });
 
@@ -696,13 +830,13 @@ describe('migration 078: the move into the layout in .leeway/', () => {
 
   describe('topics: logs, mail and experiments', () => {
     it('makes a topic\'s log its research then its discussion, each under its own heading, its words kept and its headings one level deeper (21.S10)', () => {
-      assert.strictEqual(read('tally/topics/tally/log.md'),
-        '## Research\n\n## Research: Tally\n\nCounting is hard.\n\n## Discussion\n\n## Discussion: Tally\n\nCounting is hard, the research said.\n');
+      assert.strictEqual(read('tally/topics/tally/log.md').split('Counting is hard, the research said.')[0],
+        '## Research\n\n## Research: Tally\n\nCounting is hard.\n\n## Discussion\n\n## Discussion: Tally\n\n');
     });
 
     it('joins a promoted topic\'s research to its log in the cross-cutting unit, ahead of its discussion, its links to the imports it came with (21.5.2)', () => {
       assert.strictEqual(read('shared/topics/gamma/log.md'),
-        '## Research\n\n## Research: Gamma\n\nSee [notes](../../../core/assets/notes.md).\n\n## Discussion\n\n## Discussion: Gamma\n\n## Review review-003, never folded in\n\n#### F1: Token reuse\n\nA token outlives its session.\n');
+        '## Research\n\n## Research: Gamma\n\nSee [notes](../../../core/assets/notes.md) and [the stray](../../../core/assets/legacy/discussion/stray.md).\n\n## Discussion\n\n## Discussion: Gamma\n\n## Review review-003, never folded in\n\n#### F1: Token reuse\n\nA token outlives its session.\n');
       assert.ok(!fs.existsSync(path.join(state, 'core/topics/gamma/log.md')), 'not in the epic');
     });
 
@@ -773,29 +907,41 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(read('core/topics/gamma/mail/004-late.md'), moved('Late', 'Alpha'));
     });
 
-    it('heads each message moved with who sent it as the waiting mail does, the phase gone: a topic of the unit, another unit\'s topic with its unit, a single-topic unit by its name, any other origin as written (10.4.2)', () => {
+    it('heads each message moved with who sent it as the waiting mail does, its second line, the sender the topic titled and the phase gone, whether today\'s sender line sat under the title or under a blank line after it (10.4.2)', () => {
       assert.deepStrictEqual(
-        ['core/topics/gamma/mail/005-ranking-input.md', 'core/topics/gamma/mail/006-tally-input.md', 'stall/topics/stall/mail/001-retry-window.md'].map(read),
-        [moved('Ranking input', 'Ranking, on Shop'), moved('Tally input', 'Tally'), moved('Retry window', 'Pay')],
+        ['core/topics/gamma/mail/005-support-address.md', 'core/topics/gamma/mail/006-storage-framing.md', 'stall/topics/stall/mail/001-retry-window.md'].map(read),
+        [
+          '### The website carries the support address\nFrom Support And Diagnostics · 25 Oct\n\n**The case.** An update leaves Fumi crashing at launch.\n',
+          '### The "storage location is yours" framing is formally retired\nFrom Storage And Sync · 4 Aug\n\nDiscovery framed Fumi\'s storage posture as **"no hosted cloud"**.\n',
+          moved('Retry window', 'Pay'),
+        ],
       );
     });
 
-    it('sends a cancelled topic\'s mail to the inbox as an idea, its first line the title, who sent it under it as the waiting mail heads it (21.S14, P5, 10.4.2)', () => {
-      assert.deepStrictEqual(tree(state, '.inbox/ideas').filter((rel) => rel.startsWith(TODAY)), [`${TODAY}--a-dropped-thought.md`, `${TODAY}--cache-sizes.md`, `${TODAY}--theta-note.md`]);
-      assert.strictEqual(read(`.inbox/ideas/${TODAY}--a-dropped-thought.md`),
-        '# A dropped thought\nFrom Alpha · 1 Jan\n\nDetails of a dropped thought.\n');
+    it('sends a cancelled topic\'s mail to the inbox as an idea, its first line the title, who sent it under it as the waiting mail heads it, wherever today\'s sender line sat (21.S14, P5, 10.4.2)', () => {
+      assert.deepStrictEqual(tree(state, '.inbox/ideas').filter((rel) => rel.startsWith(TODAY)), [
+        `${TODAY}--a-dropped-thought.md`, `${TODAY}--cache-sizes.md`, `${TODAY}--the-mcp-server-is-a-content-egress-channel.md`, `${TODAY}--theta-note.md`,
+      ]);
+      assert.deepStrictEqual([`${TODAY}--a-dropped-thought.md`, `${TODAY}--the-mcp-server-is-a-content-egress-channel.md`].map((name) => read(`.inbox/ideas/${name}`)), [
+        '# A dropped thought\nFrom Alpha · 1 Jan\n\nDetails of a dropped thought.\n',
+        '# The MCP server is a content-egress channel\nFrom Agent Surface · 13 Sep\n\n**The channel.** A user connects Fumi to Claude.\n',
+      ]);
     });
 
     it('sends the mail of a name no topic holds to the inbox as ideas, the same way', () => {
       assert.strictEqual(read(`.inbox/ideas/${TODAY}--cache-sizes.md`), '# Cache sizes\nFrom Alpha · 1 Jan\n\nDetails of cache sizes.\n');
     });
 
-    it('leaves a brief, experiment records and a discussion under a name no topic holds behind, the experiments\' items with them', () => {
+    it('keeps a brief, experiment records and a discussion under a name no topic holds as legacy, in no topic\'s folder, the experiments\' items gone', () => {
       assert.deepStrictEqual(tree(state, 'core/topics').map((rel) => rel.split('/')[0]).filter((name, i, all) => all.indexOf(name) === i), ['alpha', 'beta', 'epsilon', 'gamma', 'theta']);
+      assert.strictEqual(read('core/assets/legacy/discussion/stray.md'), '# Discussion: Stray, no item\'s\n');
       assert.deepStrictEqual(Object.keys(manifestOf('core').phases.experiment.items), ['alpha']);
     });
 
-    it('moves a topic\'s experiment records, sub-experiments and data, into the topic\'s own folder (21.S43)', () => {
+    it('moves a topic\'s experiment records, sub-experiments and data, into the topic\'s own folder, a record\'s problem, design and report as they are, each record\'s instruments — a folder and a loose file — under its data/, and a file or a folder of no record in the topic\'s experiments kept as legacy (21.S43, 4.11.15)', () => {
+      assert.deepStrictEqual(['problem.md', 'design.md', 'report.md'].map((name) => fs.existsSync(path.join(state, 'core/topics/alpha/experiments/E1-frame-budget', name))), [true, true, true]);
+      assert.deepStrictEqual(['experiment/alpha/notes.md', 'experiment/alpha/scratch/try.txt'].map((rel) => read(`core/assets/legacy/${rel}`)), ['a loose file in a topic\'s experiments\n', 'a folder of no record\n']);
+      assert.deepStrictEqual(['data/harness/run.sh', 'data/rubric.md', 'E1.1-one-monitor/data/sample.tsv'].map((rel) => read(`core/topics/alpha/experiments/E1-frame-budget/${rel}`)), ['#!/bin/sh\necho harness\n', '# Rubric\n', 'a\tb\n']);
       assert.strictEqual(read('core/topics/alpha/experiments/E1-frame-budget/data/run.csv'), 'ms\n12\n');
       assert.strictEqual(fs.statSync(path.join(state, 'core/topics/alpha/experiments/E1-frame-budget/data/run.sh')).mode & 0o777, 0o755, 'a script kept executable');
       assert.strictEqual(read('core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/problem.md'), '# Sub-problem\n');
@@ -803,9 +949,24 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('an epic mid-discussion', () => {
-    it('places every file it has a place for, and drops its analysis', () => {
+    it('places every file it has a place for, keeps each it has none for as legacy at its path from the unit\'s old folder, the old cache\'s reports under cache/ at their path below the unit\'s folder there, and drops its analysis', () => {
       assert.deepStrictEqual(tree(state, 'core'), [
         'assets/diagram.png',
+        'assets/legacy/cache/discussion/alpha/review-001.md',
+        'assets/legacy/cache/discussion/alpha/review-002.md',
+        'assets/legacy/cache/discussion/alpha/review-004.md',
+        'assets/legacy/cache/discussion/gamma/review-003.md',
+        'assets/legacy/cache/research/exploration/deep-dive-001.md',
+        'assets/legacy/discovery/briefs/zeta.md',
+        'assets/legacy/discussion/stray.md',
+        'assets/legacy/experiment/alpha/notes.md',
+        'assets/legacy/experiment/alpha/scratch/try.txt',
+        'assets/legacy/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md',
+        'assets/legacy/notes.txt',
+        'assets/legacy/research/multi-tenancy/TenantTestCase.php',
+        'assets/legacy/research/multi-tenancy/overview.md',
+        'assets/legacy/specification/search/order-tracking-notes.md',
+        'assets/legacy/specification/search/review-input-tracking-c1.md',
         'assets/notes.md',
         'assets/specs/search.md',
         'discovery/session-001.md',
@@ -814,9 +975,13 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         'manifest.json',
         'seeds/2026-01-01--search.md',
         'topics/alpha/brief.md',
+        'topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv',
         'topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/problem.md',
+        'topics/alpha/experiments/E1-frame-budget/data/harness/run.sh',
+        'topics/alpha/experiments/E1-frame-budget/data/rubric.md',
         'topics/alpha/experiments/E1-frame-budget/data/run.csv',
         'topics/alpha/experiments/E1-frame-budget/data/run.sh',
+        'topics/alpha/experiments/E1-frame-budget/design.md',
         'topics/alpha/experiments/E1-frame-budget/problem.md',
         'topics/alpha/experiments/E1-frame-budget/report.md',
         'topics/alpha/log.md',
@@ -824,7 +989,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         'topics/beta/mail/002-second.md',
         'topics/beta/mail/003-third.md',
         'topics/epsilon/log.md',
-        'topics/gamma/mail/004-late.md', 'topics/gamma/mail/005-ranking-input.md', 'topics/gamma/mail/006-tally-input.md',
+        'topics/gamma/mail/004-late.md', 'topics/gamma/mail/005-support-address.md', 'topics/gamma/mail/006-storage-framing.md',
         'topics/theta/log.md',
       ]);
     });
@@ -834,7 +999,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(read('core/discovery/session-001.md'), '## Discovery Session 001\n\n### Not taken\n\n- Sharding — too early, the person said.\n');
       assert.strictEqual(read('core/seeds/2026-01-01--search.md'), '# Search\n');
       assert.deepStrictEqual(fs.readFileSync(path.join(state, 'core/assets/diagram.png')), PNG);
-      assert.strictEqual(read('core/assets/specs/search.md'), '# Specification: Search\n\n[n](../notes.md)\n');
+      assert.strictEqual(read('core/assets/specs/search.md'), '# Specification: Search\n\n[n](../notes.md) and [its notes](../legacy/specification/search/order-tracking-notes.md)\n');
     });
 
     it('points every moved document\'s links into imports at the assets, from where the document now sits (21.5.7)', () => {
@@ -901,8 +1066,12 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('an epic whose building started (21.S49)', () => {
-    it('keeps its sessions, puts its plans and review folders in its assets with their files\' names, joins its built spec into spec.md, and drops implementation and tracking', () => {
+    it('keeps its sessions, puts its plans and review folders in its assets with their files\' names, joins its built spec into spec.md, and keeps its implementation folders and tracking files as legacy', () => {
       assert.deepStrictEqual(tree(state, 'shop'), [
+        'assets/legacy/implementation/ranking/analysis-tasks-c1.md',
+        'assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md',
+        'assets/legacy/planning/ranking/review-integrity-tracking-c1.md',
+        'assets/legacy/specification/ranking/review-input-tracking-c1.md',
         'assets/plans/event-tracking/planning.md',
         'assets/plans/event-tracking/tasks/event-tracking-1-1.md',
         'assets/plans/ranking/phase-1-tasks.md',
@@ -941,8 +1110,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('quick-fixes, and a cancelled unit', () => {
-    it('makes a completed quick-fix\'s spec its summary, its plan, its spec and plan items and scoping gone (21.S45)', () => {
-      assert.deepStrictEqual(tree(state, 'typo'), ['manifest.json', 'summary.md']);
+    it('makes a completed quick-fix\'s spec its summary, its plan legacy, its spec and plan items and scoping gone (21.S45)', () => {
+      assert.deepStrictEqual(tree(state, 'typo'), ['assets/legacy/planning/typo/planning.md', 'manifest.json', 'summary.md']);
       assert.strictEqual(read('typo/summary.md'), '# Typo\n\nFix the typo in the header.\n');
       assert.deepStrictEqual(manifestOf('typo').phases, { implementation: { items: { typo: { status: 'completed' } } } });
     });
@@ -963,17 +1132,23 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       ]);
     });
 
-    it('moves a quick-fix whose old pipeline completed — its scoping, implementation and review — as a completed one, whatever its status reads: its spec its summary, its plan and their items gone; in progress, it is completed; cancelled, it stays so (21.5.15, 21.5.14)', () => {
+    it('moves a quick-fix whose old pipeline completed — its scoping, implementation and review — as a completed one, whatever its status reads: its spec its summary, its plan legacy and their items gone; in progress, it is completed; cancelled, it stays so (21.5.15, 21.5.14)', () => {
       const done = (/** @type {string} */ wu) => ({ implementation: { items: { [wu]: { status: 'completed' } } }, review: { items: { [wu]: { status: 'completed' } } } });
       assert.deepStrictEqual(['stale', 'dropped'].map((wu) => [tree(state, wu), read(`${wu}/summary.md`), manifestOf(wu).status, manifestOf(wu).phases]), [
-        [['manifest.json', 'summary.md'], '# stale\n\nFixed.\n', 'completed', done('stale')],
-        [['manifest.json', 'summary.md'], '# dropped\n\nFixed.\n', 'cancelled', done('dropped')],
+        [['assets/legacy/planning/stale/planning.md', 'manifest.json', 'summary.md'], '# stale\n\nFixed.\n', 'completed', done('stale')],
+        [['assets/legacy/planning/dropped/planning.md', 'manifest.json', 'summary.md'], '# dropped\n\nFixed.\n', 'cancelled', done('dropped')],
       ]);
     });
 
-    it('drops every tracking and analysis file by its whole name, the review reports and the person\'s files named for tracking or analysis kept (21.S46)', () => {
+    it('keeps every tracking and analysis file as legacy, known by its whole name, the review reports and the person\'s files named for tracking or analysis placed as any other (21.S46)', () => {
       const moved = tree(state).filter((rel) => !rel.startsWith('.'));
       assert.deepStrictEqual(moved.filter((rel) => /tracking|analysis/.test(rel)), [
+        'core/assets/legacy/specification/search/order-tracking-notes.md',
+        'core/assets/legacy/specification/search/review-input-tracking-c1.md',
+        'shop/assets/legacy/implementation/ranking/analysis-tasks-c1.md',
+        'shop/assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md',
+        'shop/assets/legacy/planning/ranking/review-integrity-tracking-c1.md',
+        'shop/assets/legacy/specification/ranking/review-input-tracking-c1.md',
         'shop/assets/plans/event-tracking/planning.md',
         'shop/assets/plans/event-tracking/tasks/event-tracking-1-1.md',
         'shop/assets/plans/usage-analysis/usage-analysis-1-1.md',
@@ -1552,16 +1727,13 @@ describe('migration 078: a small project', () => {
       const held = process.env.GIT_DIR;
       process.env.GIT_DIR = path.join(decoy, '.git');
       let counts;
-      let during;
       try {
         counts = run(dir);
-        during = process.env.GIT_DIR;
       } finally {
         if (held === undefined) delete process.env.GIT_DIR;
         else process.env.GIT_DIR = held;
       }
       assert.deepStrictEqual({ updates: counts.updates, skips: counts.skips }, { updates: 2, skips: 0 });
-      assert.strictEqual(during, path.join(decoy, '.git'), 'the caller\'s environment put back');
       assert.strictEqual(git(path.join(dir, '.leeway'), ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
       assert.ok(!fs.existsSync(marker), 'no hook ran');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'node_modules/\n.leeway/\n');
@@ -1612,5 +1784,107 @@ describe('migration 078: a small project', () => {
     } finally {
       cleanupFixture(dir);
     }
+  });
+});
+
+describe('migration 078: the linters carried onto the project\'s environment (reshape/linters.cjs)', () => {
+  const help = (/** @type {string} */ those) => `read the linters recorded with \`node .claude/skills/leeway-engine/scripts/engine.cjs environment show\`, then record the whole list, ${those}, with \`node .claude/skills/leeway-engine/scripts/engine.cjs environment set linters\`, its JSON on stdin.`;
+  /** @type {string} */
+  let state;
+  const writeState = (/** @type {string} */ rel, /** @type {object|string} */ value) => write(state, rel, typeof value === 'string' ? value : json(value));
+  const readState = (/** @type {string} */ rel) => JSON.parse(fs.readFileSync(path.join(state, rel), 'utf8'));
+  /** A unit whose implementation topics carry `linters` by topic. @param {string} name @param {Record<string, unknown>} linters */
+  const unitWith = (name, linters) => writeState(`${name}/manifest.json`, {
+    name, work_type: 'epic', status: 'in-progress',
+    phases: {
+      discussion: { items: { cards: { status: 'completed' } } },
+      implementation: { items: Object.fromEntries(Object.entries(linters).map(([topic, held]) => [topic, { status: 'in-progress', linters: held, current_task: null }])) },
+    },
+  });
+
+  beforeEach(() => { state = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-078-linters-'))); });
+  afterEach(() => { fs.rmSync(state, { recursive: true, force: true }); });
+
+  it('carries the default\'s linters and each topic\'s onto environment.linters, by name, a name carried already with another command named for the review, and removes the old fields, every other field kept', () => {
+    writeState('manifest.json', { project_id: 'p1', work_units: { pay: {}, cards: {} }, defaults: { project_skills: ['go'], linters: [{ name: 'eslint', detail: 'npx eslint .' }] } });
+    unitWith('pay', { checkout: ['tsc', { name: 'eslint', command: 'eslint src' }] });
+    unitWith('cards', { form: [{ name: 'prettier', command: 'npx prettier --check .' }], store: [{ name: 'vet' }] });
+
+    assert.strictEqual(carryLinters(state), `These linters were not carried into environment.linters, a linter of the same name being carried already with another command: eslint (eslint src). Add each still wanted: ${help('those added')}`);
+    assert.deepStrictEqual(readState('manifest.json'), {
+      project_id: 'p1', work_units: { pay: {}, cards: {} }, defaults: { project_skills: ['go'] },
+      environment: { linters: [
+        { name: 'eslint', command: 'npx eslint .' },
+        { name: 'prettier', command: 'npx prettier --check .' },
+        { name: 'vet', command: 'vet' },
+        { name: 'tsc', command: 'tsc' },
+      ] },
+    });
+    assert.deepStrictEqual(readState('pay/manifest.json').phases.implementation.items, { checkout: { status: 'in-progress', current_task: null } });
+    assert.deepStrictEqual(readState('cards/manifest.json').phases, {
+      discussion: { items: { cards: { status: 'completed' } } },
+      implementation: { items: { form: { status: 'in-progress', current_task: null }, store: { status: 'in-progress', current_task: null } } },
+    });
+  });
+
+  it('carries each linter\'s check command, a lint command beside its fix command among them, and names for the review what the environment\'s linter has no room for — the fix command, a scope — once each', () => {
+    const swiftformat = { name: 'swiftformat', lint_command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0', fix_command: 'swiftformat Sources Tests Package.swift --swiftversion 6.0' };
+    const pint = { name: 'pint', command: 'cd api && composer pint', scope: 'api' };
+    const eslint = { name: 'eslint', command: 'cd app && npm run lint -- --fix', scope: 'app' };
+    writeState('manifest.json', { project_id: 'p1', defaults: { linters: [swiftformat, pint, eslint] } });
+    unitWith('pay', { checkout: [swiftformat, pint] });
+
+    assert.strictEqual(carryLinters(state), 'The linters were carried into environment.linters as a name and a command, which leaves out '
+      + 'swiftformat\'s fix_command ("swiftformat Sources Tests Package.swift --swiftversion 6.0"), pint\'s scope ("api"), eslint\'s scope ("app"). '
+      + `Change a linter's command where any is still wanted, when ready to build asks to confirm the project's setup, or now: ${help('those changed')}`);
+    assert.deepStrictEqual(readState('manifest.json').environment.linters, [
+      { name: 'swiftformat', command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0' },
+      { name: 'pint', command: 'cd api && composer pint' },
+      { name: 'eslint', command: 'cd app && npm run lint -- --fix' },
+    ]);
+  });
+
+  it('carries an entry whose command a linter carried already runs, under another name, as that linter, and names it for the review — portal\'s and tick\'s entries', () => {
+    writeState('manifest.json', { project_id: 'p1', defaults: { linters: [{ name: 'golangci-lint', command: 'golangci-lint run ./...' }, { name: 'go vet', command: 'go vet ./...' }] } });
+    unitWith('pay', { checkout: ['golangci-lint run ./...'], ledger: [{ name: 'go-vet', command: 'go vet ./...' }] });
+
+    assert.strictEqual(carryLinters(state), 'These linters were carried into environment.linters as the linter carried already that runs their command, under its name: '
+      + 'golangci-lint run ./... as golangci-lint, go-vet as go vet.');
+    assert.deepStrictEqual(readState('manifest.json').environment.linters, [{ name: 'golangci-lint', command: 'golangci-lint run ./...' }, { name: 'go vet', command: 'go vet ./...' }]);
+  });
+
+  it('empty arrays, a confirmed none, carry as an empty list, the defaults object going once empty', () => {
+    writeState('manifest.json', { project_id: 'p1', defaults: { linters: [] } });
+    unitWith('pay', { checkout: [] });
+
+    assert.strictEqual(carryLinters(state), null);
+    assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', environment: { linters: [] } });
+  });
+
+  it('a project whose environment records its linters keeps them, the old fields removed all the same', () => {
+    writeState('manifest.json', { project_id: 'p1', defaults: { linters: ['eslint'] }, environment: { run: 'npm start', linters: [{ name: 'tsc', command: 'npx tsc' }] } });
+
+    carryLinters(state);
+
+    assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', environment: { run: 'npm start', linters: [{ name: 'tsc', command: 'npx tsc' }] } });
+  });
+
+  it('an entry of no linter\'s shape is left out and named for the review; a topic\'s linters that are no array carry nothing', () => {
+    writeState('manifest.json', { project_id: 'p1', defaults: { linters: ['eslint', 7, { detail: 'npx tsc' }] } });
+    unitWith('pay', { checkout: 'eslint' });
+
+    assert.strictEqual(carryLinters(state), `These linter entries were not carried into environment.linters, being of no shape a linter was recorded in: 7, {"detail":"npx tsc"}. Add each still wanted: ${help('those added')}`);
+    assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', environment: { linters: [{ name: 'eslint', command: 'eslint' }] } });
+    assert.deepStrictEqual(readState('pay/manifest.json').phases.implementation.items.checkout, { status: 'in-progress', current_task: null });
+  });
+
+  it('leaves a project with no old field as it is, a unit manifest that cannot be read among it', () => {
+    writeState('manifest.json', { project_id: 'p1', defaults: { project_skills: [] } });
+    writeState('pay/manifest.json', '{ not json');
+    unitWith('cards', {});
+
+    assert.strictEqual(carryLinters(state), null);
+    assert.strictEqual(fs.readFileSync(path.join(state, 'pay/manifest.json'), 'utf8'), '{ not json');
+    assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', defaults: { project_skills: [] } });
   });
 });

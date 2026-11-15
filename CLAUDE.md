@@ -94,14 +94,14 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.leeway/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
 - `.leeway/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
 - `.leeway/{work_unit}/seeds/` — the inbox items the unit was started from
-- `.leeway/{work_unit}/assets/` — the files the user shared
+- `.leeway/{work_unit}/assets/` — the files the user shared; `assets/legacy/` the unit's files from before Leeway the migration had no other place for, each at its path from the unit's old folder, and in `assets/legacy/cache/` the old cache's reports, each at its path below the unit's folder in the old cache
 - `.leeway/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
 - `.leeway/.state/` — the migrations ledger, `environment-setup.md`
 - `.leeway/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch, presence and `entered.json`, when the place was last entered, and in `.showings/` the learned gates' showings held there; `.cache/.session-labels/` the tmux label store
 - `.leeway/.cache/.showings/` — the import reprompt's showing held, at no place
 - `.leeway/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
 - `.leeway/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
-- `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `spikes/{NNN}-{slug}/` its spikes
+- `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Leeway of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/cache/` the old cache's reports of no unit's, each at its path below the old cache, `spikes/{NNN}-{slug}/` its spikes
 - `.leeway/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `refs/leeway/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
 - `~/.config/leeway/` (or `LEEWAY_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, and `conversations/{session-id}/`, per-conversation state

@@ -823,7 +823,7 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     for (const file of entries) follow(file);
 
     assert.deepStrictEqual(found, []);
-    assert.ok(seen.has(path.join(migrations, 'reshape/shared.cjs')) && seen.has(path.join(migrations, '073-environment-linters.cjs')), 'the scan follows what the migrations load');
+    assert.ok(seen.has(path.join(migrations, 'reshape/shared.cjs')) && seen.has(path.join(migrations, 'reshape/linters.cjs')), 'the scan follows what the migrations load');
   });
 
   it('the reshape\'s frozen steps and the runtime never load each other: nothing in migrations/ loads old-layout.cjs, and nothing outside it loads migrations/reshape/', () => {

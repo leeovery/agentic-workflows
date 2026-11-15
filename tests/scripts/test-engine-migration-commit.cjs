@@ -40,7 +40,7 @@
 // synced from that stop on, labels off, each naming the installed engine, a
 // second live session meeting it going no further, the fix made in
 // `.workflows/` carried by the move and the check marked made (21.10.13),
-// and a directive recorded unrun left out of the review's directives, 073's
+// and a directive recorded unrun left out of the review's directives, the move's
 // linters check made through the calls it names, the code commit taking the
 // settings boot synced, and a linked worktree's first boot after it
 // committing its hooks there, each naming the installed engine. The
