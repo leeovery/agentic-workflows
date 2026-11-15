@@ -198,9 +198,6 @@
 // Known edges, not built:
 //   - a second clone holding `origin/leeway-state` but no local branch is
 //     moved into a state of its own (only the local branch is read);
-//   - the state worktree's HEAD log records the code HEAD it was added at,
-//     which boot's repair of a lost branch would read — 29.17's wiring of the
-//     unborn branch;
 //   - a research item and its topic's discussion both waiting on
 //     experiments keep only the discussion's wait;
 //   - a branch's `.workflows/` work not on the main checkout is not moved;
@@ -211,9 +208,6 @@
 //   - a symlinked folder under `.workflows/` aborts the run, unrecorded;
 //   - research left unstarted with mail under a discussion already decided
 //     folds into a decided topic holding mail, as reopened research does;
-//   - a settings hook naming the old engine fails on every tool call between
-//     the skills' update and `/leeway`, where the move renames it — the
-//     guard (29.17) runs first;
 //   - the tracker's store is read from the project folder, never from a
 //     folder above it a walk up would find;
 //   - two notes of one name under different kinds keep the first, the second

@@ -38,6 +38,16 @@
 // epic's at the unit itself, and the product's conversation at
 // `product/discovery/product` — the product, which has no directory of its
 // own, keeping its row beside the units'.
+//
+// So does the migration, while a session carries it on (21.10.10, P7): one
+// row, in the folder the runner journals in, which the reshape's commit
+// clears with the journals, and which boot drops once it reaches the work,
+// the migration done (`dropMigrationRow`). Boot's stop at a directive, or
+// for the checks before the reshape's move, stamps it for the session it
+// stops, unless another live session holds it, whose row the stop then names
+// (`migrationCarrier`); `migrate check` and `migrate checked`, which the
+// session runs as it works, re-stamp a row it owns; and the exit sweep drops
+// it with the session's other rows.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -47,6 +57,7 @@ const { PRODUCT, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { workTree } = require('../kernel/isolated-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { MIGRATION_JOURNALS } = require('./migration-commit.cjs');
 
 // Every phase a session sits in.
 const PHASES = VALID_PHASES;
@@ -56,6 +67,11 @@ const CODE_PHASES = ['implementation', 'review'];
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
   return statePath(cwd, '.cache', wu, phase, topic, 'presence');
+}
+
+/** The migration's row. @param {string} cwd */
+function migrationPresencePath(cwd) {
+  return statePath(cwd, MIGRATION_JOURNALS, 'presence');
 }
 
 /** @param {string} cwd @param {string} workUnit @param {string} [phase] @param {string} [topic] */
@@ -105,14 +121,21 @@ function fmtAge(seconds) {
  */
 function beatPresence(cwd, workUnit, phase, topic) {
   assertArgs(cwd, workUnit, phase, topic);
-  const p = presencePath(cwd, workUnit, phase, topic);
-  fs.mkdirSync(path.dirname(p), { recursive: true });
+  stampRow(cwd, presencePath(cwd, workUnit, phase, topic));
+  return { work_unit: workUnit, phase, topic, beat: true };
+}
+
+/**
+ * Write the calling session's identity record to the row `file`.
+ * @param {string} cwd @param {string} file
+ */
+function stampRow(cwd, file) {
   const owner = callerIdentity();
   if (!owner.pid) throw new Error('presence beat: CLAUDE_PID is not set — a heartbeat without identity is never held, so none is written');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   /** @type {PresenceRecord} */
   const record = { ...owner, checkout: workTree(codeRoot(cwd)) };
-  fs.writeFileSync(p, JSON.stringify(record) + '\n');
-  return { work_unit: workUnit, phase, topic, beat: true };
+  fs.writeFileSync(file, JSON.stringify(record) + '\n');
 }
 
 /**
@@ -218,14 +241,23 @@ function heldBy(record, startOf) {
  * @returns {PresenceRow|null}
  */
 function rowAt(cwd, workUnit, phase, topic, startOf) {
-  const file = presencePath(cwd, workUnit, phase, topic);
+  const row = rowOf(presencePath(cwd, workUnit, phase, topic), startOf);
+  return row === null ? null : { phase, topic, ...row };
+}
+
+/**
+ * The heartbeat at `file` as a row, but for its place, the held verdict
+ * applied; null where there is none.
+ * @param {string} file @param {(pid: number) => string|null|undefined} startOf
+ * @returns {Omit<PresenceRow, 'phase'|'topic'>|null}
+ */
+function rowOf(file, startOf) {
   let stat;
   try {
     stat = fs.statSync(file);
   } catch { return null; }
   const record = readRecord(file);
   return {
-    phase, topic,
     age_seconds: Math.max(0, Math.floor((Date.now() - stat.mtimeMs) / 1000)),
     held: heldBy(record, startOf),
     session_id: record ? record.session_id || null : null,
@@ -269,6 +301,47 @@ function peerHold(cwd, workUnit, phase, topic) {
   if (!PHASES.includes(phase)) return null;
   const row = rowAt(cwd, workUnit, phase, topic, startTimeReader());
   return row !== null && row.held && !ownsRow(row) ? row : null;
+}
+
+/**
+ * The row of another live session carrying the migration on — naming when
+ * it was last active — or null where none does: no row, its owner gone, or
+ * the caller's own.
+ * @param {string} cwd
+ * @returns {Omit<PresenceRow, 'phase'|'topic'>|null}
+ */
+function migrationCarrier(cwd) {
+  const row = rowOf(migrationPresencePath(cwd), startTimeReader());
+  return row !== null && row.held && !ownsRow(row) ? row : null;
+}
+
+/**
+ * The calling session's row at the migration's place, stamped as boot stops
+ * it where it carries the migration on. Silent, as `beatQuietly` is.
+ * @param {string} cwd
+ */
+function beatMigrationQuietly(cwd) {
+  try {
+    stampRow(cwd, migrationPresencePath(cwd));
+  } catch { /* liveness is advisory — never fail a verb over it */ }
+}
+
+/**
+ * The migration's row re-stamped where the calling session owns it, and
+ * only then, as `refreshQuietly` keeps a topic's. Same silence.
+ * @param {string} cwd
+ */
+function refreshMigrationQuietly(cwd) {
+  try {
+    const file = migrationPresencePath(cwd);
+    const record = readRecord(file);
+    if (record && ownsRow(record)) stampRow(cwd, file);
+  } catch { /* liveness is advisory — never fail a verb over it */ }
+}
+
+/** The migration's row gone, whoever wrote it: the migration is done. @param {string} cwd */
+function dropMigrationRow(cwd) {
+  fs.rmSync(migrationPresencePath(cwd), { force: true });
 }
 
 /**
@@ -334,16 +407,31 @@ function heldCodeSessions(cwd) {
     && !ownsRow(row));
 }
 
+/** A place the exit sweep cleared: a topic's, or the migration's. @typedef {{work_unit: string, phase: string, topic: string}|{place: 'migration'}} Cleared */
+
 /**
- * Sweep every heartbeat the named session owns, across all work units — the
- * SessionEnd hook's target, covering the exits that keep the process alive
- * (/clear, logout). Never throws on malformed or missing state: a hook must
- * exit clean.
+ * Drop the row at `file` where the named session owns it.
+ * @param {string} file @param {string} sessionId @returns {boolean} it was dropped
+ */
+function dropOwned(file, sessionId) {
+  const record = readRecord(file);
+  if (!record || record.session_id !== sessionId) return false;
+  try {
+    fs.unlinkSync(file);
+    return true;
+  } catch { return false; /* raced away */ }
+}
+
+/**
+ * Sweep every heartbeat the named session owns, across all work units, and
+ * its row at the migration's place — the SessionEnd hook's target, covering
+ * the exits that keep the process alive (/clear, logout). Never throws on
+ * malformed or missing state: a hook must exit clean.
  * @param {string} cwd @param {string|null} sessionId
- * @returns {{session_id: string|null, cleared: {work_unit: string, phase: string, topic: string}[]}}
+ * @returns {{session_id: string|null, cleared: Cleared[]}}
  */
 function cleanupPresence(cwd, sessionId) {
-  /** @type {{work_unit: string, phase: string, topic: string}[]} */
+  /** @type {Cleared[]} */
   const cleared = [];
   if (!sessionId) return { session_id: null, cleared };
   /** @type {string} */
@@ -363,22 +451,17 @@ function cleanupPresence(cwd, sessionId) {
         topics = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
       } catch { continue; }
       for (const topic of topics) {
-        const file = path.join(dir, topic, 'presence');
-        const record = readRecord(file);
-        if (record && record.session_id === sessionId) {
-          try {
-            fs.unlinkSync(file);
-            cleared.push({ work_unit: wu, phase, topic });
-          } catch { /* raced away */ }
-        }
+        if (dropOwned(path.join(dir, topic, 'presence'), sessionId)) cleared.push({ work_unit: wu, phase, topic });
       }
     }
   }
+  if (dropOwned(migrationPresencePath(cwd), sessionId)) cleared.push({ place: 'migration' });
   return { session_id: sessionId, cleared };
 }
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
   scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence,
+  migrationCarrier, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
   fmtAge, ownsRow,
 };

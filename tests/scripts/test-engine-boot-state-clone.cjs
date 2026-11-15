@@ -116,7 +116,7 @@ describe('two boots at once (4.S3)', () => {
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.deepStrictEqual(madeOnce(main), {
       roots: 1, registrations: ['-leeway'], ignore: '.leeway/\n',
-      code: ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state', 'code'],
+      code: ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state', 'code'],
     });
     bootsWithNothingToDo(main, null);
   });

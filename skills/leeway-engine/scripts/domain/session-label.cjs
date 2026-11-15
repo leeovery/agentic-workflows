@@ -39,7 +39,8 @@
 // `brief guard` before Agent and SendMessage (domain/brief-guard), and
 // `shell guard` before Bash (domain/shell-guard). Recording the choice syncs
 // the hooks (`recordLabelChoice`) and every boot re-syncs them
-// (`syncSessionHooks`).
+// (`syncSessionHooks`), a hook of ours whose command is not the one the
+// sync writes rewritten to it where it stands.
 //
 // The original name is stashed in the state's cache (`.cache/.session-labels/`,
 // keyed by tmux socket + session id), git-ignored, so no other clone's engine
@@ -91,8 +92,9 @@ const BRIEF_GUARD_COMMAND = `${HOOK_ENGINE} brief guard`;
 const SHELL_GUARD_COMMAND = `${HOOK_ENGINE} shell guard`;
 // What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
 // before it and any arguments after are free, so a hook under another
-// install prefix or carrying a timeout is recognised and never twinned; the
-// closing quote is part of the mark, so a re-quoted command is not.
+// install prefix is recognised, never twinned, and rewritten to the command
+// the sync writes; the closing quote is part of the mark, so a re-quoted
+// command is not.
 const hookMark = (/** @type {string} */ command) => command.slice(command.indexOf('engine.cjs"'));
 const HOOK_MARKS = wantedGroups({ session: true, workflows: true }).flatMap((g) => g.commands.map(hookMark));
 
@@ -188,18 +190,20 @@ function wantedByEvent(want) {
 }
 
 /**
- * One event's groups with ours reconciled to the wanted groups: null when
- * the marks found already make up exactly the wanted set, wherever and
- * however they sit (a recognised hook is never rewritten, never twinned,
- * never reordered); otherwise ours are stripped from every group — a group
- * emptied by that goes, one still holding foreign hooks keeps them and its
- * matcher — and each wanted group lands after them, one per matcher.
+ * One event's groups with ours reconciled to the wanted groups. Where the
+ * marks found already make up exactly the wanted set, wherever and however
+ * they sit, nothing is twinned or moved: null when each hook of ours runs
+ * the command the sync writes, else the groups with each that does not
+ * rewritten to it, its other fields kept. Otherwise ours are stripped from
+ * every group — a group emptied by that goes, one still holding foreign
+ * hooks keeps them and its matcher — and each wanted group lands after
+ * them, one per matcher.
  * @param {any[]} groups @param {WantedGroup[]} wanted
  * @returns {any[]|null}
  */
 function reconcileEventGroups(groups, wanted) {
-  const marks = wanted.flatMap((w) => w.commands.map(hookMark));
-  if (groups.flatMap(marksOf).sort().join('\n') === marks.sort().join('\n')) return null;
+  const commands = new Map(wanted.flatMap((w) => w.commands.map((command) => [hookMark(command), command])));
+  if (groups.flatMap(marksOf).sort().join('\n') === [...commands.keys()].sort().join('\n')) return currentCommands(groups, commands);
   const kept = groups.flatMap((g) => {
     if (marksOf(g).length === 0) return [g];
     const foreign = g.hooks.filter((/** @type {unknown} */ h) => !ourMark(h));
@@ -213,6 +217,30 @@ function reconcileEventGroups(groups, wanted) {
 }
 
 /**
+ * The groups with each hook of ours running the command the sync writes for
+ * its mark, or null where every one runs it already.
+ * @param {any[]} groups @param {Map<string, string>} commands
+ * @returns {any[]|null}
+ */
+function currentCommands(groups, commands) {
+  let rewritten = false;
+  const next = groups.map((group) => {
+    if (marksOf(group).length === 0) return group;
+    return {
+      ...group,
+      hooks: group.hooks.map((/** @type {any} */ hook) => {
+        const mark = ourMark(hook);
+        const command = mark === null ? undefined : commands.get(mark);
+        if (command === undefined || hook.command === command) return hook;
+        rewritten = true;
+        return { ...hook, command };
+      }),
+    };
+  });
+  return rewritten ? next : null;
+}
+
+/**
  * A settings document with the session hooks as wanted: SessionEnd carries
  * `session cleanup` iff `session`, and `presence cleanup` and `conversation
  * end` iff `workflows`; SessionStart carries `session resume` iff `session`;
@@ -220,7 +248,8 @@ function reconcileEventGroups(groups, wanted) {
  * in its own group, iff `workflows` — each event reconciled on its own,
  * every other key (permissions, other events, foreign groups and their
  * matchers) preserved, an event emptied by a removal gone. Null where the
- * document already carries exactly those.
+ * document already carries exactly those, each running the command the
+ * sync writes.
  * @param {Record<string, any>} settings @param {{session: boolean, workflows: boolean}} want
  * @returns {Record<string, any>|null}
  */

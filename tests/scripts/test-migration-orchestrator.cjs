@@ -6,18 +6,18 @@
 // Three layers:
 //   - Real fleet: run the actual migrate.cjs against a temp project, as far
 //     as its first directive — the bash-3.2 execution path, idempotency,
-//     PROJECT_DIR pinning, and a
-//     project with no state in its code tree left untouched.
+//     PROJECT_DIR pinning, and a project with no state in its code tree left
+//     untouched, the reshape's directives recorded unrun with their unrun
+//     lines.
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
 //     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
 //     failure-aborts-without-recording (both extensions), delete-log-reruns,
 //     a run killed as it writes a journal losing nothing journaled before,
 //     the code-tree fleet recorded unrun where there is no code-tree state;
-//     a directive stopping the run, recorded unrun in the reshape's sequence
-//     where there is no code-tree state, and a run with nothing pending
-//     reading the migrations folder once (21.10.4; the engine's side is
-//     test-migration-directives.cjs's); a refusal from any migration but the
-//     reshape's guard failing the run.
+//     a directive stopping the run, there too past the reshape's sequence;
+//     and a run with nothing pending reading the migrations folder once
+//     (21.10.4; the engine's side is test-migration-directives.cjs's); a
+//     refusal from any migration but the reshape's guard failing the run.
 //   - The reshape's contract, over the synthetic fleet: the handbacks kept
 //     while the reshape is owed; the guard run first while it is owed, its
 //     refusal writing nothing, and the record
@@ -224,9 +224,9 @@ describe('migrate.cjs — real fleet', () => {
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.deepStrictEqual(fs.readdirSync(project), ['.leeway'], 'nothing written but the record');
     assert.deepStrictEqual(fs.readdirSync(path.join(project, '.leeway/.state')), ['migrations']);
-    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), REAL_IDS, 'every migration recorded');
-    // The code-tree fleet and the reshape's directives are recorded unrun; the code migrations past it run and find nothing to do.
+    // The code-tree fleet and the reshape's directives are recorded unrun, each directive with its unrun line; the code migrations past it run and find nothing to do.
     const directives = new Set(REAL_DIRECTIVES.map(idOf));
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), [...REAL_IDS, ...[...directives].map((id) => `${id} unrun`)].sort(), 'every migration recorded');
     assert.deepStrictEqual(runReport(res.stdout), { ran: REAL_IDS.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION && !directives.has(id)).length });
   });
 
@@ -637,15 +637,14 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.deepStrictEqual(fs.readdirSync(path.join(project, JOURNALS)), [], 'what was owed is cleared once reported');
   });
 
-  it('records a directive of the reshape\'s sequence unrun where the code tree holds no state; one past the sequence stops the run all the same', () => {
-    const [reshape, later] = [LAST_CODE_TREE_DIRECTIVE, LAST_CODE_TREE_DIRECTIVE + 1].map((n) => String(n).padStart(3, '0'));
-    const { migrate } = synthFleet({ [`${reshape}-records.md`]: directive('Records'), [`${later}-later.md`]: directive('Later') });
+  it('stops at a directive past the reshape\'s sequence where the code tree holds no state, as anywhere', () => {
+    const later = String(LAST_CODE_TREE_DIRECTIVE + 1).padStart(3, '0');
+    const { migrate } = synthFleet({ [`${later}-later.md`]: directive('Later') });
     const project = tmp('mig-orch-none-');
 
     const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
 
-    assert.strictEqual(res.stdout, `---DIRECTIVE: ${later}-later---\n`);
-    assert.deepStrictEqual(trackingLog(project).trim().split('\n'), [reshape]);
+    assert.deepStrictEqual([res.stdout, trackingLog(project)], [`---DIRECTIVE: ${later}-later---\n`, '']);
   });
 
   it('a run with nothing pending looks at the migrations folder once and reads nothing in it', () => {

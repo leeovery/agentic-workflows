@@ -79,9 +79,10 @@ verification addendum and notice.
   `skills/leeway-migrate/scripts/migrations/NNN-description.cjs`, the
   next number after the highest. The `*.sh` files are the frozen fleet:
   nothing new is written in bash.
-- Migration 066, which edits the user's own Claude Code settings, is the
-  one migration that writes outside the project; its verification
-  addendum names the change, since the review diff cannot show it.
+- Two migrations write outside the project. 066 edits the user's own
+  Claude Code settings, and its verification addendum names the change,
+  since the review diff cannot show it. 078 moves the user-level folder
+  to `~/.config/leeway/`, leaving a link to it in its place.
 - Its suite is `tests/scripts/test-migration-NNN.cjs`, registered in
   `package.json`'s `test` script. Like its siblings it drives `run()`
   against a temp `projectDir` with counting `reportUpdate`/`reportSkip`

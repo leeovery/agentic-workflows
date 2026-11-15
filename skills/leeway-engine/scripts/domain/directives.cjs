@@ -11,12 +11,13 @@
 //
 // - `migrate check <id>` runs the directive's check: each piece of its work
 //   done, or what it still lacks. It reads, and answers whether the
-//   directive passes and how many of its pieces are done. A directive whose
-//   own steps end in raises (079's points no source settles) exports them
-//   beside its check, `raises()`; once it passes, the answer lists each
-//   still to raise — its question open, no raise of it sealed in the calling
-//   conversation (raise.cjs) — so a session compacted part-way reads them
-//   back (21.6.10).
+//   directive passes and how many of its pieces are done, then re-stamps
+//   the calling session's row at the migration's place where it carries the
+//   migration on (presence.cjs). A directive whose own steps end in raises
+//   (079's points no source settles) exports them beside its check,
+//   `raises()`; once it passes, the answer lists each still to raise — its
+//   question open, no raise of it sealed in the calling conversation
+//   (raise.cjs) — so a session compacted part-way reads them back (21.6.10).
 // - The runner asks a directive's pieces (`piecesOf`) as it meets it: a
 //   directive whose check answers none leaves the session nothing to do,
 //   and the runner records it unrun (21.4.3), its line and beside it the
@@ -29,13 +30,19 @@
 //   of them, which `render directive-stop` draws (21.10.11). A session that
 //   died part-way may leave what the check trips on (21.10.9): the stop then
 //   answers without the counts, and `migrate check` names what failed.
+// - Boot's `taken` stop, where another live session carries the migration
+//   on (P7), answers the step it carries on from — a directive, or the
+//   checks before the reshape's move — and the whole seconds since it was
+//   last active, which `render migration-taken-stop` draws: that step's own
+//   screen, saying this session stops there.
 // - `migrate checked` records the checks the chain before the reshape
 //   handed back as made: the line the runner's stop before the move waits
 //   on (old-layout.cjs, `CHECKS_DONE`), appended to the migrations record
 //   where it is not there yet, as a directive's close records it — so a
 //   session killed before it meets the stop again, and the next run marks
 //   those checks made, for the review at the migration's end, and carries
-//   on past it.
+//   on past it. It re-stamps the calling session's row at the migration's
+//   place as `migrate check` does.
 // - `migrate review` is what the migration review reads before the gate
 //   whose yes makes the migration's commit (migration-commit.cjs): the
 //   state's folder and the code side's, absolute, so the review reads them
@@ -56,12 +63,13 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { directiveStop } = require('./projections/boot.cjs');
+const { directiveStop, migrationChecksStop } = require('./projections/boot.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
 const { topicsOf } = require('./ledger-units.cjs');
 const { MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit.cjs');
+const { refreshMigrationQuietly } = require('./presence.cjs');
 const { CHECKS_DONE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
@@ -269,15 +277,42 @@ function directiveStopped(cwd, id) {
 }
 
 /**
+ * The screen of boot's stop at the directive `id`, `carrier` the whole
+ * seconds since another session carrying it on was last active, or null
+ * where this session carries it on.
+ * @param {string} cwd @param {string} id @param {number|null} carrier
+ * @returns {string}
+ */
+function stopAt(cwd, id, carrier) {
+  directiveOf(id);
+  return directiveStop({ project: projectName(cwd), step: id.replace(/^[0-9]+-/, '').replace(/-/g, ' '), progress: progressOf(cwd, id), carrier });
+}
+
+/**
  * `render directive-stop --directive <id>`: the screen of boot's stop at it.
  * @param {string} cwd @param {Record<string, string|undefined>} args
  * @returns {string}
  */
 function directiveStopSurface(cwd, args) {
-  const id = args.directive;
-  if (id === undefined) throw new Error('render directive-stop: --directive <id> names the directive boot stopped at');
-  directiveOf(id);
-  return directiveStop({ project: projectName(cwd), step: id.replace(/^[0-9]+-/, '').replace(/-/g, ' '), progress: progressOf(cwd, id) });
+  if (args.directive === undefined) throw new Error('render directive-stop: --directive <id> names the directive boot stopped at');
+  return stopAt(cwd, args.directive, null);
+}
+
+/**
+ * `render migration-taken-stop --at <step> --active <seconds>`: the screen
+ * of boot's `taken` stop — the stop at the step another session carries the
+ * migration on from, a directive's id or `checks`, naming the whole seconds
+ * since it was last active.
+ * @param {string} cwd @param {Record<string, string|undefined>} args
+ * @returns {string}
+ */
+function takenStopSurface(cwd, args) {
+  const { at, active } = args;
+  if (at === undefined) throw new Error('render migration-taken-stop: --at <step> names the step another session carries the migration on from, a directive\'s id or checks');
+  if (active === undefined || !/^(0|[1-9][0-9]*)$/.test(active)) {
+    throw new Error(`render migration-taken-stop: --active takes the seconds since the session carrying the migration on was last active${active === undefined ? '' : `, got "${active}"`}`);
+  }
+  return at === 'checks' ? migrationChecksStop(Number(active)) : stopAt(cwd, at, Number(active));
 }
 
 /**
@@ -339,14 +374,19 @@ function runMigrateVerb(cwd, argv) {
   if (verb === 'review' && argv.length === 1) return reviewMigration(cwd);
   if (verb === 'checked' && argv.length === 1) {
     recordLine(cwd, CHECKS_DONE);
+    refreshMigrationQuietly(cwd);
     return {};
   }
   if (verb !== 'check' || id === undefined || rest.length > 0) throw new Error(`Usage: ${MIGRATE_USAGE.split('\n').map((form) => `engine ${form}`).join(' | ')}`);
+  /** @type {Checked} */
+  let checked;
   try {
-    return checkDirective(cwd, id);
+    checked = checkDirective(cwd, id);
   } catch (err) {
     throw new Error(`migrate check: ${messageOf(err)}`);
   }
+  refreshMigrationQuietly(cwd);
+  return checked;
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, runMigrateVerb };

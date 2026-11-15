@@ -257,7 +257,7 @@ describe('engine boot', () => {
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
     assert.deepStrictEqual(git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [
-      'chore: install workflow session hooks',
+      'chore: install Leeway session hooks',
       'init',
     ]);
     assert.deepStrictEqual(stateGit(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [

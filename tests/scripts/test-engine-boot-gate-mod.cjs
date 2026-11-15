@@ -198,7 +198,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(res.session_hooks_installed, true);
     assert.deepStrictEqual(standing(res), COULD);
     assert.strictEqual(projectSettingsText(), hooked(WORKFLOW_HOOKS));
-    assert.deepStrictEqual(head(), { subject: 'chore: install workflow session hooks', files: ['.claude/settings.json'] });
+    assert.deepStrictEqual(head(), { subject: 'chore: install Leeway session hooks', files: ['.claude/settings.json'] });
   });
 
   it('a project settings file the hook sync rewrites keeps its permission mode', () => {

@@ -12,7 +12,9 @@
 // guard refusing over uncommitted changes and over a live session, boot
 // stopping with nothing written (21.S5, 21.S6), and a project at 070 running
 // the guard, then the chain from its old record, then the move, a run killed
-// once the guard has placed the state carried on by the next boot (21.S2).
+// once the guard has placed the state carried on by the next boot, its
+// settings, as today's product left them, given the session hooks by its
+// stop at the records directive, the brief hook among them (21.S2).
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), made once per
 // process and copied; the engine is the repo's own.
@@ -31,6 +33,7 @@ const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS,
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
+const { briefPath } = require(path.join(REAL_SCRIPTS, 'domain/brief-names.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrate.cjs'));
@@ -87,14 +90,14 @@ describe('engine boot (real scripts)', () => {
     // The code-tree fleet has no `.workflows/` to upgrade: every one is
     // recorded unrun, none creates the folder, and the settings stay as found;
     // the migrations past it run and find nothing to do, its directives
-    // recorded unrun beside it.
+    // recorded unrun beside it, each with its unrun line.
     const names = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrations'))
       .filter((f) => /^[0-9]+-/.test(f) && !f.endsWith('.check.cjs'));
     const idOf = (/** @type {string} */ f) => f.slice(0, f.indexOf('-'));
     const fleet = names.map(idOf).sort();
     const directives = new Set(names.filter((f) => f.endsWith('.md')).map(idOf));
     assert.strictEqual(first.migrations.ran, fleet.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION && !directives.has(id)).length);
-    assert.deepStrictEqual(fs.readFileSync(statePath(project, layout.migrations), 'utf8').trim().split('\n').sort(), fleet);
+    assert.deepStrictEqual(recordOf(project).sort(), [...fleet, ...[...directives].map((id) => `${id} unrun`)].sort());
     assert.ok(!fs.existsSync(path.join(project, '.workflows')), 'no legacy state folder made from nothing');
     assert.strictEqual(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), settingsBefore);
     // The migrations record, the only dirt, committed on the state branch — the code
@@ -245,19 +248,29 @@ describe('engine boot runs the reshape (real scripts)', () => {
     ]);
   });
 
-  it('21.S2: a project at 070 runs the guard, then the chain from the old record, 071 on, then the split, nothing in it to split, and the move — 072\'s kind on the moved roadmap — to the records directive; a run killed once the guard has placed the state is carried on by the next boot', () => {
+  it('21.S2: a project at 070, its hooks as today\'s product leaves them, naming that engine and no guard, runs the guard, then the chain from the old record, 071 on, then the split, nothing in it to split, and the move — 072\'s kind on the moved roadmap — to the records directive, where its session hooks stand synced, written for the migration\'s commit and not committed, the guards before the new engine and the label hooks kept, so the brief hook hands the records\' agent its brief; a run killed once the guard has placed the state is carried on by the next boot', () => {
+    const session = { ...env, CLAUDE_CODE_SESSION_ID: 'carrying' };
+    const code = git(project, ['rev-parse', 'HEAD']).trim();
     const kill = path.join(root, 'kill-after-guard.cjs');
     fs.writeFileSync(kill, "const fs = require('fs');\nconst real = fs.appendFileSync;\nfs.appendFileSync = (file, data, ...rest) => { real(file, data, ...rest); if (String(file).endsWith('.state/migrations') && data === '074\\n') process.exit(9); };\n");
 
     assert.match(runEngineFails(real, project, ['boot'], { ...env, NODE_OPTIONS: `--require ${kill}` }).error, /migrate\.cjs failed/);
     assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074']);
 
-    const stopped = runEngine(real, project, ['boot'], env);
+    const stopped = runEngine(real, project, ['boot'], session);
 
     assert.deepStrictEqual([stopped.state, stopped.id], ['directive', '079-records']);
     assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '075', '076', '076 unrun', '077', '078']);
     assert.strictEqual(JSON.parse(fs.readFileSync(statePath(project, layout.projectManifest), 'utf8')).roadmap.items['dark-mode'].kind, 'idea');
     assert.strictEqual(git(project, ['for-each-ref', 'refs/heads/leeway-state']), '', 'nothing committed before the migration\'s commit');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8')), JSON.parse(LABELS_ON));
+    assert.deepStrictEqual([git(project, ['rev-parse', 'HEAD']).trim(), git(project, ['status', '--porcelain', '--', '.claude']).trim()], [code, 'M .claude/settings.json']);
+
+    const { id, pointer, agent } = runEngine(real, project, ['brief', 'migration-topic', '--topic', 'payments.discussion.payments', '--directive', '079-records'], session);
+    const dispatch = { description: 'The records of payments', prompt: pointer, subagent_type: agent };
+    const answered = real.call(project, ['brief', 'guard'], { env: session, stdin: JSON.stringify({ session_id: 'carrying', cwd: project, hook_event_name: 'PreToolUse', tool_name: 'Agent', tool_input: dispatch }) });
+
+    assert.deepStrictEqual(JSON.parse(answered.stdout), { hookSpecificOutput: { hookEventName: 'PreToolUse', updatedInput: { ...dispatch, prompt: fs.readFileSync(briefPath('carrying', id), 'utf8') } } });
   });
 });
 

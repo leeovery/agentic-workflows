@@ -131,7 +131,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(res.session_hooks_installed, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'main']).trim(), 'chore: install workflow session hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'main']).trim(), 'chore: install Leeway session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'main']).trim().split('\n'), ['.claude/settings.json']);
     assert.strictEqual(stateGit(fix.project, ['rev-parse', 'HEAD']).trim(), stateHead, 'no commit on leeway-state');
     assert.strictEqual(fs.existsSync(path.join(state, '.claude')), false);
@@ -145,7 +145,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(first.warnings, []);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install workflow session hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Leeway session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
@@ -161,7 +161,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [theirs, ...GUARD_GROUPS] } });
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install workflow session hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Leeway session hooks');
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
     assert.strictEqual(bootWith().session_hooks_installed, false);
@@ -186,7 +186,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
       assert.strictEqual(bootWith().session_hooks_installed, true);
       assert.deepStrictEqual(settings().hooks.PreToolUse, GUARD_GROUPS);
-      assert.strictEqual(git(fix.project, ['log', '-1', '--format=%B', 'feature']), 'chore: install workflow session hooks\n\n', 'the subject alone, no Leeway-Task trailer');
+      assert.strictEqual(git(fix.project, ['log', '-1', '--format=%B', 'feature']), 'chore: install Leeway session hooks\n\n', 'the subject alone, no Leeway-Task trailer');
       assert.strictEqual(git(fix.project, ['rev-parse', 'main']), main, 'the branch checked out takes the commit');
 
       fs.mkdirSync(path.join(fix.project, '.claude', 'skills'));
