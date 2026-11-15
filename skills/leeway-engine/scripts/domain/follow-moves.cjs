@@ -27,7 +27,6 @@ const { handedSession } = require('../kernel/process.cjs');
 const { appendEntries } = require('./ledger.cjs');
 const { foldLedger } = require('./ledger-fold.cjs');
 const { newId } = require('./ledger-ids.cjs');
-const { movedFiles } = require('./workunit-absorb.cjs');
 const { roadmapItems } = require('./derivations.cjs');
 const { carrySources, landingOf } = require('./roadmap.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
@@ -109,7 +108,7 @@ function carryNamings(root, said, moves, warnings) {
   const session = handedSession();
   if (session === null) throw new Error(`${said}: ledger entries name what moves, and their carry is tagged with this conversation — Claude Code hands every command it runs a session id, and this one has none`);
   appendEntries(root, [...groups.values()].map(({ unit, topic, phase, ids, files }) => ({
-    fields: { event: 'rehomed', unit, topic, phase, session, lines: ids, files: movedFiles(files, moves) },
+    fields: { event: 'rehomed', unit, topic, phase, session, lines: ids, files: [...files].map((file) => [file, landingOf(file, moves)]) },
     id: newId(),
   })), warnings);
   return [...groups.values()].reduce((sum, { ids }) => sum + ids.length, 0);
