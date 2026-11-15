@@ -167,6 +167,15 @@ describe('the rules each file merges by', () => {
     });
   });
 
+  it('keeps the remote\'s landing record where both clones recorded one task\'s landing in one repository differently, never a choice — either says it landed; records of other tasks or repositories joined; the project manifest\'s like any field (landing-record.cjs)', () => {
+    const record = (/** @type {string} */ by) => ({ commit: 'c', tip: 't', first: 'c', by, at: 'a' });
+    const here = { landings: { 'pay-1-1': { '.': record('engine'), ext: record('engine') }, 'pay-1-2': { '.': record('read') } } };
+    const there = { landings: { 'pay-1-1': { '.': record('read') }, 'pay-1-3': { '.': record('engine') } } };
+
+    assert.deepStrictEqual(merged(undefined, here, there), { value: { landings: { 'pay-1-1': { '.': record('read'), ext: record('engine') }, 'pay-1-3': { '.': record('engine') }, 'pay-1-2': { '.': record('read') } } }, conflicts: [] });
+    assert.deepStrictEqual(mergeManifest(layout.projectManifest, undefined, here, there).conflicts.map((c) => c.field), [['landings', 'pay-1-1', '.', 'by']]);
+  });
+
   it('takes the picked side where a pick is given for the choice', () => {
     const pickOf = (choice) => (choice.field.join('.') === 'a' && choice.remote.set && choice.remote.value === 3 ? 'local' : null);
     assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 3 }, pickOf), { value: { a: 2 }, conflicts: [{ field: ['a'], local: { set: true, value: 2 }, remote: { set: true, value: 3 }, pick: 'local' }] });

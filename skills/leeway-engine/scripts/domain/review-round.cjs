@@ -359,11 +359,12 @@ function phaseStatuses(cwd, unit, phase) {
 
 /**
  * What each scenario of the cut stands at, at the change's tips — the
- * code the round read.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {number} round @param {Repo[]} repos
+ * code the round read — the landings its read found recorded
+ * (`changeOf`), their commit's warnings pushed to `warnings`.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {number} round @param {Repo[]} repos @param {string[]} warnings
  */
-function scenarioStandings(cwd, unit, manifest, round, repos) {
-  return cutStandings(cwd, unit, manifest, changeOf(cwd, unit, fixPhase(manifest, round), null, repos));
+function scenarioStandings(cwd, unit, manifest, round, repos, warnings) {
+  return cutStandings(cwd, unit, manifest, changeOf(cwd, unit, fixPhase(manifest, round), null, repos, warnings));
 }
 
 /**
@@ -440,7 +441,7 @@ function recordRound(cwd, unit, file) {
     scenarios: [],
   };
   verdictHeld(round, unit, phase, record, refuse);
-  record.scenarios = refusing(said, () => scenarioStandings(cwd, unit, manifest, round, repos));
+  record.scenarios = refusing(said, () => scenarioStandings(cwd, unit, manifest, round, repos, warnings));
   const recorded = [...rounds, record];
   const rels = [roundRecordPath(unit, round), roundReportFile(unit, round), roundChecksFile(unit, round)];
   writeJsonAtomic(statePath(cwd, rels[0]), record);

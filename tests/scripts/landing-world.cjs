@@ -4,7 +4,8 @@
 // test-engine-landing-conformance.cjs): the project world, its default
 // branch `main` holding the code a build starts from, tagged
 // `landing-base`, and the task branches Claude would leave behind, each one
-// commit off the branch it was cut from (`TASKS`), each in the tracker, as
+// commit off the branch it was cut from (`TASKS`), stamped with its task as
+// the door stamps it (`commitFiles`), each in the tracker, as
 // the unit and its phases are — through the default task driver, its real
 // tool, where a test puts any other task it opens (`track`), for `land
 // open` reads a task's type and title there — and each passed by its pair,
@@ -21,10 +22,17 @@
 // a nested conformance suite through its driver's side (`nestedConformance`)
 // — readies the unit for finish's landing, its build through a cut of every
 // phase the tracker holds and its review phase passed, as `land finish`
-// asks (`finishReady`), reads a verb's answer for the project's own repository (`own`), checks a
+// asks (`finishReady`), or for a phase's merge and close, its review
+// passed (`phaseReviewed`), reads a verb's answer for the project's own repository (`own`), whether a
+// task has landed on main here, or each of several on one read
+// (`landedHere`, `tasksLandedHere`), and what a branch holds of a
+// file (`heldOn`), merges main into a task's branch as Claude merges it
+// back (`mergedInto`), spaces every commit the world's helpers make a
+// second past the last where a suite asks it (`spaceCommits`, `stepped`),
+// checks a
 // refusal moved nothing in the repository (`refusedMoving`), as an answer
 // finding its work done already does (`alreadyMoving`), and follows the
-// remedy it names (`followRemedy`); the
+// remedy it names (`followRemedy`), on a task's branch, a rebase's conflicts settled the task's way (`followedOn`); the
 // remedy table (landing-remedies.cjs) is followed a row a test, in a state
 // of the person's worktrees, or of their config (`personState`,
 // `followed`), against the way on it should read there (`way`), every
@@ -40,14 +48,17 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const {
-  ok, git, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles, readManifest, FROZEN_AT,
+  ok, git, withEnv, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles, readManifest, FROZEN_AT,
 } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, datedAt } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 const { roundReportPath } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
 const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
 const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
+const { unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
+const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
 
 const UNIT = 'pay';
 const BASE = 'landing-base';
@@ -144,24 +155,87 @@ function cutTask(dir, shown, type, title, from, files, opts) {
 
 
 /**
+ * The message a commit on `branch` is made under where the test names none:
+ * a task's branch's stamped with the task, as the door stamps it
+ * (commit-task.cjs, `workMessage`), so it reads as a task's work does.
+ * @param {string} branch
+ */
+function workOn(branch) {
+  const ref = names.taskOfBranch(UNIT, branch);
+  return ref === null ? `work on ${branch}` : workMessage(`work on ${branch}`, ref);
+}
+
+/**
+ * The clock the world's commits keep once a suite spaces them
+ * (`spaceCommits`): the last second it gave. Null while they are made now.
+ * @type {{last: number}|null}
+ */
+let spacing = null;
+
+/**
+ * Every commit the world's helpers make in this process from now on, and
+ * each act `stepped` runs, made a second past the last, as a person's
+ * commits come however fast the machine — never in the second of the one
+ * before.
+ */
+function spaceCommits() {
+  spacing ??= { last: 0 };
+}
+
+/** The next second of the spaced clock, never before now. @param {{last: number}} clock */
+function nextSecond(clock) {
+  clock.last = Math.max(Math.floor(Date.now() / 1000), clock.last + 1);
+  return clock.last;
+}
+
+/**
+ * `act`, every commit it makes dated the next second of the spaced clock
+ * where the world keeps one (`spaceCommits`) and no date is pinned already
+ * — as it is, else.
+ * @template T @param {() => T} act @returns {T}
+ */
+function stepped(act) {
+  return spacing === null || process.env.GIT_COMMITTER_DATE !== undefined ? act() : datedAt(`${nextSecond(spacing)} +0000`, act);
+}
+
+/** The second a pinned date names, in seconds — git's raw date or one `Date` reads — undefined where none is pinned. */
+function pinnedSecond() {
+  const pinned = process.env.GIT_COMMITTER_DATE;
+  if (pinned === undefined) return undefined;
+  const raw = /^@?(\d+) [+-]\d{4}$/.exec(pinned);
+  return raw === null ? Math.floor(Date.parse(pinned) / 1000) : Number(raw[1]);
+}
+
+/**
  * `files` committed over `from`, less the paths `removed`, and each of
  * `gitlinks` as a nested repository's pointer at its commit, made the tip
- * of `branch` under `message`, no checkout touched.
+ * of `branch` under `message` (`workOn` where none is given), committed at
+ * `at`, in seconds, where given, else at the date pinned, else the spaced
+ * clock's next second where the world keeps one, else now, no checkout
+ * touched.
  * @param {string} dir @param {string} branch @param {string} from @param {Record<string, string>} files
- * @param {{gitlinks?: Record<string, string>, removed?: string[], message?: string}} [opts]
+ * @param {{gitlinks?: Record<string, string>, removed?: string[], message?: string, at?: number}} [opts]
  * @returns {string} the commit
  */
-function commitFiles(dir, branch, from, files, { gitlinks = {}, removed = [], message = `work on ${branch}` } = {}) {
+function commitFiles(dir, branch, from, files, { gitlinks = {}, removed = [], message = workOn(branch), at: given } = {}) {
+  const at = given ?? pinnedSecond() ?? (spacing === null ? undefined : nextSecond(spacing));
   const data = (/** @type {string} */ text) => `data ${Buffer.byteLength(text)}\n${text}`;
   const stream = [
-    `commit refs/heads/${branch}`, 'mark :1', `committer ${IDENTITY} now`, data(message), `from ${from}^0`,
+    `commit refs/heads/${branch}`, 'mark :1', `committer ${IDENTITY} ${at === undefined ? 'now' : `${at} +0000`}`, data(message), `from ${from}^0`,
     ...removed.map((file) => `D ${file}`),
     ...Object.entries(files).map(([file, text]) => `M 100644 inline ${file}\n${data(text)}`),
     ...Object.entries(gitlinks).map(([folder, commit]) => `M 160000 ${commit} ${folder}`),
     '', 'get-mark :1', 'done', '',
   ].join('\n');
-  return execFileSync('git', ['-c', 'core.ignoreCase=false', 'fast-import', '--quiet', '--force', '--date-format=now', '--done'], { cwd: dir, encoding: 'utf8', input: stream }).trim();
+  return execFileSync('git', ['-c', 'core.ignoreCase=false', 'fast-import', '--quiet', '--force', `--date-format=${at === undefined ? 'now' : 'raw'}`, '--done'], { cwd: dir, encoding: 'utf8', input: stream }).trim();
 }
+
+/**
+ * A minute before the commit `rev` was made, in seconds, as `commitFiles`
+ * takes a time: work done before it.
+ * @param {string} dir @param {string} rev
+ */
+const minuteBefore = (dir, rev) => Number(git(dir, ['log', '-1', '--format=%ct', rev]).trim()) - 60;
 
 /**
  * `onto` merged into `branch`, as Claude merges a parallel task back onto
@@ -212,6 +286,18 @@ function finishReady(dir) {
     [layout.unit(UNIT, 'spec.md')]: '# Pay\n\n## 1. Paying\n\n### 1.1 The card\n\n1.1.1 A card is taken.\n',
     [layout.unit(UNIT, 'review', 'round-1.json')]: `${JSON.stringify({ reports: [], passed: true, can_now: [], findings: [], settled: null, scenarios: [] })}\n`,
   }, 'the review passed');
+}
+
+/**
+ * The unit building in `position` through a cut of a phase for each the
+ * tracker holds, phase `phase`'s review passed — a passing report from each
+ * reviewer of the count — as `land phase` and the phase's close ask it.
+ * @param {string} dir @param {number} phase @param {'auto'|'step'} position
+ */
+function phaseReviewed(dir, phase, position) {
+  const numbers = Array.from({ length: PHASES }, (_, at) => at + 1);
+  createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position }, cut: { phases: numbers.map((at) => ({ name: `Phase ${at}`, scenarios: [], sections: ['1'], relies_on: [] })) } });
+  for (const letter of REVIEWER_LETTERS) writeState(dir, layout.unit(UNIT, 'build', 'phases', `phase-${phase}`, `review-${letter}.md`), PASSING);
 }
 
 /** A repository's first commit: `file`, holding its name, committed in its checkout. @param {string} repo @param {string} file */
@@ -318,6 +404,16 @@ function landedOn(dir, branch) {
     });
 }
 
+/** Each landing a branch gained past the base on its first-parent line, oldest first: the task it lands and the commit it is. @param {string} dir @param {string} [into] @returns {string[][]} */
+const landingCommits = (dir, into = 'main') => git(dir, ['log', '--reverse', '--first-parent', '--format=%(trailers:key=Task,valueonly,separator=%x2C)%x1f%H', `${BASE}..${into}`])
+  .split('\n').filter(Boolean).map((line) => line.split('\x1f'));
+
+/** Each landing on the project's default branch, oldest first: the task it lands and where it points the submodule at `folder`. @param {string} dir @param {string} [folder] */
+const pointersOn = (dir, folder = NESTED.ext.folder) => landingCommits(dir).map(([task, sha]) => [task, git(dir, ['rev-parse', `${sha}:${folder}`]).trim()]);
+
+/** The nested world's submodule's upstream, beside the project, its commits the submodule's checkout lacks until fetched. @param {Nested} at */
+const extUpstream = (at) => path.join(path.dirname(at.dir), NESTED.ext.folder);
+
 /**
  * A copy of the landing world at each call in a test of the calling file,
  * every copy removed after the test; the world built once per process, and
@@ -356,14 +452,18 @@ function useNestedWorld(prefix, ready = () => {}) {
  * branch and the default branch, `main` where it is not told;
  * `byHandKeeping`, the ways that keep the branch's own commits on the
  * default branch here; `deleted`, a branch deleted, here and on any host,
- * a checkout that has it out put on the default branch; and `quickFixOpen`,
- * whether a quick-fix is open in a repository, as the driver opens one.
+ * a checkout that has it out put on the default branch; `quickFixOpen`,
+ * whether a quick-fix is open in a repository, as the driver opens one; and
+ * `phaseByHand`, the ways a person lands a phase whole onto main outside
+ * the engine, main here then holding it, each by what it does, told the
+ * phase.
  * @typedef {{
  *   env: Record<string, string|undefined>, prepare: (dir: string) => void, nest: (dir: string, into: string) => void, on: (dir: string) => string,
  *   landed: (dir: string, into?: string) => {subject: string, task: string|null}[], holds: (dir: string, into?: string) => string[],
  *   defaultTip: (dir: string, into?: string) => string, opened: (dir: string) => string[], refuseMerge: (dir: string) => {env: Record<string, string>, undo: () => void},
  *   byHand: Record<string, (dir: string, branch: string, into?: string) => void>, byHandKeeping: Record<string, (dir: string, branch: string, into?: string) => void>,
  *   deleted: (dir: string, branch: string, into?: string) => void, quickFixOpen: (dir: string, unit: string) => boolean,
+ *   phaseByHand: Record<string, (dir: string, phase: number) => void>,
  * }} DriverSide
  */
 
@@ -502,6 +602,24 @@ function followRemedy(dir, refusal, settle) {
       run(command);
     }
   }
+}
+
+/**
+ * The way on `refusal` names followed on `branch` in the main checkout,
+ * under `env`, as the person follows it: each conflict a rebase stops at
+ * settled the task's way — the commit it replays — and the rebase gone on;
+ * the checkout put back where it was.
+ * @param {string} dir @param {string} branch @param {string} refusal @param {Record<string, string|undefined>} [env]
+ */
+function followedOn(dir, branch, refusal, env = {}) {
+  const back = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
+  git(dir, ['switch', '-q', branch]);
+  withEnv(env, () => followRemedy(dir, refusal, (there) => {
+    git(there, ['checkout', '--theirs', '--', '.']);
+    git(there, ['add', '-A']);
+    git(there, ['-c', 'core.editor=true', 'rebase', '--continue']);
+  }));
+  git(dir, ['switch', '-q', back]);
 }
 
 /**
@@ -877,8 +995,42 @@ function pathsOn(dir, branch) {
   return git(dir, ['ls-tree', '-r', '--name-only', branch]).split('\n').filter(Boolean);
 }
 
+/** Whether each of tasks `shown` of the unit has landed on main here, as one read reads them. @param {string} dir @param {string[]} shown */
+function tasksLandedHere(dir, shown) {
+  const read = unitLanded(dir, UNIT, projectRepos(dir), null);
+  return shown.map((one) => read.landed(parseShownTask(UNIT, one)));
+}
+
+/** Whether task `shown` of the unit has landed on main here, as the one read reads it. @param {string} dir @param {string} shown */
+const landedHere = (dir, shown) => tasksLandedHere(dir, [shown])[0];
+
+/** What a branch of the repository at `dir` holds of `file`, null for nothing. @param {string} dir @param {string} file @param {string} [branch] */
+function heldOn(dir, file, branch = 'main') {
+  try {
+    return git(dir, ['show', `${branch}:${file}`]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `from` merged into a task's branch in the main checkout, as Claude merges
+ * main back, each conflict settled the task's way (`ours`) or `from`'s
+ * (`theirs`) — fast-forwarded where it can be, else, or where `forward`
+ * is false, by a merge commit, a second of its own on the spaced clock
+ * (`stepped`) — the checkout put back where it was.
+ * @param {string} dir @param {string} branch @param {string} [from] @param {'ours'|'theirs'} [settled] @param {boolean} [forward]
+ */
+function mergedInto(dir, branch, from = 'main', settled = 'ours', forward = true) {
+  const back = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
+  git(dir, ['switch', '-q', branch]);
+  stepped(() => git(dir, ['merge', '-q', '--no-edit', ...(forward ? [] : ['--no-ff']), '-X', settled, from]));
+  git(dir, ['switch', '-q', back]);
+}
+
 module.exports = {
-  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, finishReady,
-  refusedMoving, alreadyMoving, commandsOf, followRemedy,
+  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pointersOn, extUpstream, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, finishReady, phaseReviewed,
+  landedHere, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped,
+  refusedMoving, alreadyMoving, wordsOf, commandsOf, rebaseStopped, followRemedy, followedOn,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

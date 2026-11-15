@@ -14,7 +14,9 @@
 // whatever it squashes into (7.2.18); a phase stacked on a higher one,
 // merged after it, its lone pull request based on the default branch and
 // merged once GitHub has worked it out again; which pull request is a
-// task's, and which is no task's; and a phase's close in step judging its
+// task's, and which is no task's; `land phase` and `finish` each listing
+// the pull requests once and fetching main once, and once more after each
+// merge of its own; and a phase's close in step judging its
 // tasks in their stack on one read of the pull requests, a task not opened
 // read as not in it, nothing fetched. What stops it, and where it leaves
 // the default branch here, are test-landing-stops.cjs's; across nested
@@ -32,9 +34,9 @@ const { TASKS, openArgs, own, cutTask, mergeBack, landedOn, useLandingWorld, fin
 const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
-const { github, onGithub, bareOf, calls, closeByHand, defaultOnGithub, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
+const { REPOSITORY, github, onGithub, bareOf, calls, closeByHand, defaultOnGithub, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
 
-const { git, tip, readManifest } = harness;
+const { git, tip, readManifest, traced } = harness;
 const { createManifest } = require('../../scripts/discovery-test-utils.cjs');
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('github-landing-', side.prepare);
@@ -159,17 +161,7 @@ describe('phases and their pull requests', () => {
     ]);
     const made = calls(dir);
     assert.deepStrictEqual(made.filter((call) => call.startsWith('pr view ')), [view(1), view(2), view(4), view(4), view(4)], 'phase 4, which nothing moved, is read once');
-    assert.deepStrictEqual(made.slice(-6, -1), ['pr edit 4 --base main', view(4), view(4), view(4), 'pr merge 4 --squash --subject fix(pay): Fix four (#4) --body Task: pay-3-2']);
-  });
-
-  it('a task opened into a phase merged already: refused, to number it in a phase not yet merged, nothing pushed', () => {
-    const dir = project();
-    ok(dir, openArgs(card));
-    ok(dir, ['land', 'phase', 'pay', '1']);
-    const late = cutTask(dir, '1.5', 'feat', 'Add late', 'main', { 'late.txt': 'late\n' });
-
-    assert.strictEqual(refused(dir, openArgs(late)), 'land: phase 1 is merged into main — task 1.5 lands in a phase not yet merged, so number it in one');
-    assert.deepStrictEqual([tipOnGithub(dir, late.branch), pulls(dir).length], ['', 1]);
+    assert.deepStrictEqual(made.slice(-5), ['pr edit 4 --base main', view(4), view(4), view(4), 'pr merge 4 --squash --subject fix(pay): Fix four (#4) --body Task: pay-3-2']);
   });
 
   it('a task with nothing past the chain\'s tip: refused as every driver refuses it, no pull request opened and nothing pushed', () => {
@@ -212,6 +204,31 @@ describe('phases and their pull requests', () => {
       'land: task 3.3\'s pull request #3 was closed on GitHub without being merged — reopen it there, as `gh pr reopen 3` does, and land again (finish merged phase 1 before it)',
     );
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ task }) => task), ['pay-1-1']);
+  });
+});
+
+describe('what a feature\'s verbs read of GitHub', () => {
+  /** What a run read of GitHub: its gh calls, each by its verb, and its fetches of main. @param {string} dir @param {() => unknown} run */
+  function reads(dir, run) {
+    const before = calls(dir).length;
+    const fetched = traced(run).commands.filter((command) => command.startsWith('fetch ') && command.endsWith(' +refs/heads/main:refs/remotes/origin/main'));
+    return { gh: calls(dir).slice(before).map((call) => call.split(' ').slice(0, 2).join(' ')), main: fetched.length };
+  }
+
+  it('each lists the pull requests once and fetches main once, and once more after each merge of its own: land phase merging a stack, land phase answering it merged already, and finish merging the phase left', () => {
+    const dir = project();
+    stackOfTwo(dir);
+    ok(dir, openArgs(rounding));
+    const merged = reads(dir, () => ok(dir, ['land', 'phase', 'pay', '1']));
+    const already = reads(dir, () => ok(dir, ['land', 'phase', 'pay', '1']));
+    finishReady(dir);
+    const finished = reads(dir, () => ok(dir, ['land', 'finish', 'pay']));
+
+    assert.deepStrictEqual([merged, already, finished], [
+      { gh: ['pr list', `api repos/${REPOSITORY}`, 'stack link', 'pr view', 'pr view', 'stack merge'], main: 2 },
+      { gh: ['pr list'], main: 1 },
+      { gh: ['pr list', 'pr view', 'pr merge'], main: 2 },
+    ]);
   });
 });
 

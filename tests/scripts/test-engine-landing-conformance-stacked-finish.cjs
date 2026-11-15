@@ -6,16 +6,21 @@
 // of 7.S19): the contract every landing driver meets for fix phases stacked
 // on a phase that moved the submodule's pointer, cut from its top before it
 // merges, run through the `land` verbs against each shipped driver in turn.
-// One of two tasks moving the pointer, and one of one leaving it alone,
-// land after it at finish — the project's default branch pointing the
-// submodule at the submodule's after each, every landing under its task's
-// subject (7.2.18), each repository holding what its tasks changed. One
-// merged as a phase is test-engine-landing-conformance-stacked.cjs's; the
-// walk itself is test-engine-landing-conformance-nested.cjs's. A driver's
-// side (tests/drivers/{name}/landing.cjs) readies each repository and reads
-// what landed where; this file names no driver and no tool. Conformance
-// layer: the nested world (landing-world.cjs), built once per driver and
-// copied for each test.
+// Phase 1 lands with every commit of its landing — the engine's own pointing
+// the submodule at its landing, and the squashes landing it — made in one
+// second, read landed as it is a second apart. One of two tasks moving the
+// pointer, and one of one leaving it alone, land after it at finish — the
+// project's default branch pointing the submodule at the submodule's after
+// each, every landing under its task's subject (7.2.18), each repository
+// holding what its tasks changed, phase 1 never landed again, each task
+// recorded landed by the engine in every repository holding its work and
+// in none where its branch holds none (landing-record.cjs). One merged as
+// a phase is test-engine-landing-conformance-stacked.cjs's; the walk itself
+// is test-engine-landing-conformance-nested.cjs's. A driver's side
+// (tests/drivers/{name}/landing.cjs) readies each repository and reads what
+// landed where; this file names no driver and no tool. Conformance layer:
+// the nested world (landing-world.cjs), built once per driver and copied for
+// each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -23,13 +28,16 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { tip } = require('./engine-harness.cjs');
-const { NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, nestedConformance, finishReady } = require('./landing-world.cjs');
+const { tip, datedAt, readManifest } = require('./engine-harness.cjs');
+const { NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, finishReady, nestedConformance } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { rates, show } = NESTED_TASKS;
 
 /** @typedef {import('./landing-world.cjs').Nested} Nested */
+
+/** Each task's landing records, by task, as `{repository} {by}`. @param {string} dir */
+const recordedBy = (dir) => Object.fromEntries(Object.entries(readManifest(dir, 'pay').landings).sort().map(([id, byRepo]) => [id, Object.entries(/** @type {Record<string, {by: string}>} */ (byRepo)).map(([repo, { by }]) => `${repo} ${by}`).sort()]));
 
 /**
  * Fix phases stacked on phase 1, cut from its top before it merges: 4, two
@@ -52,14 +60,14 @@ for (const { name } of listDrivers('landing')) {
   const { side, project, repos, ok, tasksLanded, pointsAtSubmodule } = nestedConformance(name, `engine-landing-stacked-finish-${name}-`);
 
   describe(`the ${name} landing driver's fix phases stacked across nested repositories, landed at finish (7.2.6, 7.2.17, 7.S19)`, () => {
-    it('fix phases stacked on the phase that moved the submodule\'s pointer land after it at finish, moving the pointer or not — the project\'s default branch pointing the submodule at the submodule\'s after each, every landing under its task\'s subject', () => {
+    it('fix phases stacked on the phase that moved the submodule\'s pointer, landed every commit of it in one second, land after it at finish, moving the pointer or not — the project\'s default branch pointing the submodule at the submodule\'s after each, every landing under its task\'s subject, phase 1 never landed again, each task recorded by the engine in every repository holding its work and in none where its branch holds none', () => {
       const at = project();
       const fixes = fixPhases(at);
       for (const task of [rates, show, ...fixes]) ok(at.dir, openArgs(task));
       for (const top of ['1.2', '4.2']) ok(at.dir, ['land', 'chain', 'pay', top]);
       assert.deepStrictEqual([at.dir, at.ext, at.lib].map(side.opened), [['pay-1-1', 'pay-1-2', 'pay-4-1', 'pay-4-2', 'pay-5-1'], ['pay-1-1', 'pay-4-1', 'pay-4-2'], ['pay-1-1']]);
 
-      ok(at.dir, ['land', 'phase', 'pay', '1']);
+      datedAt(`${Math.floor(Date.now() / 1000)} +0000`, () => ok(at.dir, ['land', 'phase', 'pay', '1']));
       assert.ok(pointsAtSubmodule(at), 'phase 1 left the submodule\'s pointer off its default branch');
       finishReady(at.dir);
       const finished = ok(at.dir, ['land', 'finish', 'pay']);
@@ -75,6 +83,9 @@ for (const { name } of listDrivers('landing')) {
         ['ext-4.1.txt', 'ext-4.2.txt', 'ext-rates.txt', 'ext.txt'], ['lib-rates.txt', 'lib.txt'],
       ]);
       for (const [dir, into] of Object.values(repos(at))) assert.strictEqual(tip(dir, into), side.defaultTip(dir, into), `${dir}'s default branch here does not hold its landing`);
+      assert.deepStrictEqual(recordedBy(at.dir), {
+        'pay-1-1': ['. engine', 'ext engine', 'lib engine'], 'pay-1-2': ['. engine'], 'pay-4-1': ['. engine', 'ext engine'], 'pay-4-2': ['. engine', 'ext engine'], 'pay-5-1': ['. engine'],
+      });
     });
   });
 }

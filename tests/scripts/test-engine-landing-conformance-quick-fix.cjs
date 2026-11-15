@@ -27,7 +27,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, git, tip } = require('./engine-harness.cjs');
+const { ok, git, tip, readManifest } = require('./engine-harness.cjs');
 const { UNIT, DESCRIPTION, BRANCH, SET, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
@@ -35,7 +35,7 @@ for (const { name } of listDrivers('landing')) {
   const { side, as, project, record, built, landed } = quickFixConformance(name, `engine-landing-quick-fix-${name}-`);
 
   describe(`the ${name} landing driver's quick-fix, landed as one pull request (19.5.15)`, () => {
-    it('19.S38: three fixes, each its own commit on the quick-fix\'s one branch cut from the default branch, land through one pull request — the first opening it, each later one pushing to it — squashed at the close into one commit naming every fix, the checkout back on the default branch', () => {
+    it('19.S38: three fixes, each its own commit on the quick-fix\'s one branch cut from the default branch, land through one pull request — the first opening it, each later one pushing to it — squashed at the close into one commit naming every fix, each fix recorded landed there by the engine, the checkout back on the default branch', () => {
       const at = project();
       const base = tip(at, 'main');
       const opened = SET.map((_, n) => built(at, n + 1));
@@ -51,6 +51,7 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual([closed.landed.map((/** @type {any} */ { repo, merged }) => [repo, merged]), closed.checkout], [[['.', ['1.1', '1.2', '1.3']]], 'main']);
       assert.deepStrictEqual(landed(at), [[`fix(${UNIT}): ${DESCRIPTION}`, SET.map(({ file }) => file).sort()]]);
       assert.deepStrictEqual(message.match(/^Task: .*$/gm), [`Task: ${UNIT}-1-1`, `Task: ${UNIT}-1-2`, `Task: ${UNIT}-1-3`]);
+      assert.deepStrictEqual(Object.entries(readManifest(at, UNIT).landings).map(([id, { '.': { commit, by } }]) => [id, commit, by]), SET.map((_, n) => [`${UNIT}-1-${n + 1}`, tip(at, 'main'), 'engine']));
       assert.deepStrictEqual([git(at, ['symbolic-ref', '--short', 'HEAD']).trim(), tip(at, 'main')], ['main', side.defaultTip(at)]);
     });
   });

@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // What the local landing driver (leeway-engine/scripts/drivers/landing/
 // local/driver.cjs) records, and the shapes of landing it reads: where each
-// task's branch stood when it opened, dropped only when its phase lands, its
+// task's branch stood when it opened, and the commit its opening made on
+// its phase's branch, kept once its phase lands and dropped only when its
 // phase's stack begins again without it, or the unit finishes; a task
 // landed by hand, which nothing records, passed over; a task its phase
 // holds already, and a phase merged, answered as done already, a task with
@@ -12,7 +13,7 @@
 // a commit naming tasks of two phases no task of either; a phase merged on
 // a merge's second parent; a task whose commits change nothing past the tip
 // opening as a landing that changes nothing, and why; landings squashed
-// into one commit, each landing; a work commit naming its task by the
+// into one commit, each landing; a work commit stamped with its task by the
 // commit door's trailer never read as that task landed; the oldest task a
 // stacked phase's base lacks named first; and a subject, title or path the
 // person wrote named with no backquote left to open a command. Its stacks
@@ -28,7 +29,7 @@ const path = require('path');
 
 const { ok, git, tip, initRepo } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, own, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, followRemedy, commandsOf, short, finishReady,
+  TASKS, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, followRemedy, commandsOf, short, finishReady,
 } = require('./landing-world.cjs');
 const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
 const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
@@ -37,33 +38,40 @@ const { card, total, rounding } = TASKS;
 const project = useLandingWorld('engine-land-reads-');
 
 describe('land: what the local driver records, and the shapes of landing it reads', () => {
-  it('records where a task\'s branch stood when it opened, kept while its phase\'s branch is gone, and dropped when its phase lands — replayed or fast-forwarded — when its phase\'s stack begins again without it, or at finish', () => {
+  it('records where a task\'s branch stood when it opened, and the commit its opening made, kept while its phase\'s branch is gone and once its phase lands — replayed or fast-forwarded — and dropped when its phase\'s stack begins again without it, or at finish', () => {
     const dir = project();
-    const opened = () => git(dir, ['for-each-ref', '--format=%(refname:lstrip=4) %(objectname)', 'refs/leeway/opened/pay/']).split('\n').filter(Boolean);
+    /** The unit's refs under `kind`, each task's shown name and commit. @param {string} kind */
+    const refs = (kind) => git(dir, ['for-each-ref', '--format=%(refname:lstrip=4) %(objectname)', `refs/leeway/${kind}/pay/`]).split('\n').filter(Boolean);
+    const opened = () => refs('opened');
+    const made = () => refs('phase-commit').map((line) => line.split(' ')[0]);
     git(dir, ['checkout', '-q', '-b', 'wip']);
     ok(dir, openArgs(card));
     ok(dir, openArgs(rounding));
-    assert.deepStrictEqual(opened(), [`1.1 ${tip(dir, card.branch)}`, `2.1 ${tip(dir, rounding.branch)}`]);
+    assert.deepStrictEqual([opened(), refs('phase-commit')], [
+      [`1.1 ${tip(dir, card.branch)}`, `2.1 ${tip(dir, rounding.branch)}`], [`1.1 ${tip(dir, 'feat/pay-phase-1')}`, `2.1 ${tip(dir, 'feat/pay-phase-2')}`],
+    ]);
     const landing = tip(dir, 'feat/pay-phase-1');
     git(dir, ['branch', '-D', 'feat/pay-phase-1']);
     commitFiles(dir, 'main', 'main', { 'other.txt': 'other\n' }, { message: 'other work' });
     ok(dir, ['land', 'phase', 'pay', '2']);
-    assert.deepStrictEqual(opened(), [`1.1 ${tip(dir, card.branch)}`]);
+    const rounded = `2.1 ${tip(dir, rounding.branch)}`;
+    assert.deepStrictEqual(opened(), [`1.1 ${tip(dir, card.branch)}`, rounded]);
     git(dir, ['branch', 'feat/pay-phase-1', landing]);
     commitFiles(dir, card.branch, card.branch, { 'card.txt': 'card, fixed\n' });
     assert.match(refusedMoving(dir, ['land', 'phase', 'pay', '1']), /^land: task 1\.1's branch feat\/pay-1\.1-add-card has moved since it was opened/);
     git(dir, ['branch', '-f', 'feat/pay-phase-1', 'main']);
     const more = cutTask(dir, '1.4', 'feat', 'More', 'main', { 'more.txt': 'more\n' });
     ok(dir, openArgs(more));
-    assert.deepStrictEqual(opened(), [`1.4 ${tip(dir, more.branch)}`]);
+    const fours = [`1.4 ${tip(dir, more.branch)}`, rounded];
+    assert.deepStrictEqual([opened(), made()], [fours, ['1.4', '2.1']]);
     const forward = tip(dir, 'feat/pay-phase-1');
     assert.strictEqual(own(ok(dir, ['land', 'phase', 'pay', '1'])).commit, forward);
-    assert.deepStrictEqual(opened(), []);
+    assert.deepStrictEqual(opened(), fours);
     ok(dir, openArgs(cutTask(dir, '5.1', 'fix', 'Five', 'main', { 'five.txt': 'five\n' })));
     git(dir, ['branch', '-D', 'feat/pay-phase-5']);
     finishReady(dir);
     assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).repos, []);
-    assert.deepStrictEqual(opened(), []);
+    assert.deepStrictEqual([opened(), made()], [[], []]);
   });
 
   it('passes over a task landed by hand, which nothing records the opening of: its gone branch is made again at the commit a task holds with its tree, and its phase merges', () => {
@@ -150,20 +158,21 @@ describe('land: what the local driver records, and the shapes of landing it read
     assert.deepStrictEqual(alreadyMoving(dir, ['land', 'phase', 'pay', '2']), { ok: true, phase: 2, already: true, repos: [], driver: 'local' });
   });
 
-  it('opens a task that changes nothing past the tip — its change landed by hand and merged back, or undone by its own commits — as a landing that changes nothing, saying which; replayed, it is no landing found empty', () => {
+  it('opens a task that changes nothing past the tip — its change made by the task before it in its chain and merged back, or undone by its own commits — as a landing that changes nothing, saying which; replayed, it is no landing found empty', () => {
     const dir = project();
     git(dir, ['checkout', '-q', '-b', 'wip']);
     commitFiles(dir, total.branch, total.branch, {}, { removed: ['total.txt'], message: 'not the total after all' });
     const undone = own(ok(dir, openArgs(total))).landed_empty;
-    commitFiles(dir, 'main', 'main', rounding.files, { message: 'round the totals, by hand' });
-    mergeBack(dir, rounding.branch, 'main');
-    assert.deepStrictEqual([undone, own(ok(dir, openArgs(rounding))).landed_empty], [
+    ok(dir, openArgs(rounding));
+    const again = cutTask(dir, '2.2', 'fix', 'Round again', 'main', rounding.files);
+    mergeBack(dir, again.branch, rounding.branch);
+    assert.deepStrictEqual([undone, own(ok(dir, openArgs(again))).landed_empty], [
       [{ task: '1.2', why: 'its commits change nothing' }],
-      [{ task: '2.1', why: 'its change was on main already' }],
+      [{ task: '2.2', why: `its change was on ${rounding.branch} already` }],
     ]);
     const replayed = ['1', '2'].map((phase) => own(ok(dir, ['land', 'phase', 'pay', phase])));
-    assert.deepStrictEqual(replayed.map(({ merged, landed_empty }) => [merged, landed_empty]), [[['1.2'], undefined], [['2.1'], undefined]]);
-    assert.deepStrictEqual(landedOn(dir, 'main').map(({ task, paths }) => [task, paths]), [[null, ['round.txt']], ['pay-1-2', []], ['pay-2-1', []]]);
+    assert.deepStrictEqual(replayed.map(({ merged, landed_empty }) => [merged, landed_empty]), [[['1.2'], undefined], [['2.1', '2.2'], undefined]]);
+    assert.deepStrictEqual(landedOn(dir, 'main').map(({ task, paths }) => [task, paths]), [['pay-1-2', []], ['pay-2-1', ['round.txt']], ['pay-2-2', []]]);
   });
 
   it('lands each task a commit names, where landings were squashed into one, their messages joined — replayed once onto a default branch that moved on', () => {
@@ -196,16 +205,19 @@ describe('land: what the local driver records, and the shapes of landing it read
     assert.match(refusedMoving(dir, ['land', 'phase', 'pay', '3']), /^land: phase 3 is built on task 2\.1, which main does not hold/);
   });
 
-  it('never reads the commit door\'s trailer as a task landed: a work commit brought onto a phase\'s branch by hand is no task of the phase, and one merged into the default branch merges no phase', () => {
+  it('reads a work commit the commit door\'s trailer stamps with a task as the one read does: brought onto a phase\'s branch by hand, no task of the phase; merged into the default branch, never the task\'s landing, made before its own last commit or after, as only content decides one (R28)', () => {
     const onPhase = project();
     ok(onPhase, openArgs(card));
     commitFiles(onPhase, 'feat/pay-phase-1', 'feat/pay-phase-1', { 'more.txt': 'more\n' }, { message: workMessage('Show more', parseShownTask('pay', '1.2')) });
     assert.match(refusedMoving(onPhase, openArgs(total)), /^land: feat\/pay-phase-1 holds \w+ "Show more", which is no task of phase 1 — /);
 
-    const onMain = project();
-    ok(onMain, openArgs(card));
-    commitFiles(onMain, 'wip', 'main', { 'more.txt': 'more\n' }, { message: workMessage('Add more', parseShownTask('pay', '1.1')) });
-    mergeBack(onMain, 'main', 'wip');
-    assert.deepStrictEqual(own(ok(onMain, ['land', 'phase', 'pay', '1'])).merged, ['1.1']);
+    const merged = [true, false].map((earlier) => {
+      const onMain = project();
+      ok(onMain, openArgs(card));
+      commitFiles(onMain, 'wip', 'main', { 'more.txt': 'more\n' }, { message: workMessage('Add more', parseShownTask('pay', '1.1')), ...(earlier ? { at: minuteBefore(onMain, card.branch) } : {}) });
+      mergeBack(onMain, 'main', 'wip');
+      return own(ok(onMain, ['land', 'phase', 'pay', '1'])).merged;
+    });
+    assert.deepStrictEqual(merged, [['1.1'], ['1.1']]);
   });
 });

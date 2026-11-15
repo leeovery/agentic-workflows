@@ -10,7 +10,9 @@
 // it on the branch the merge left, has that commit replayed once the branch
 // is cut again from the branch it lands on as the host has it — at its
 // opening, which then opens a pull request of its own holding it alone —
-// and lands at the close. The side's other ways are
+// and lands at the close. A fix started after the merge records the fix
+// it landed, by its read, as the start cuts the branch again
+// (landing-record.cjs). The side's other ways are
 // test-engine-landing-conformance-quick-fix-by-hand-ways.cjs's; a commit
 // that does not apply where the branch is cut again,
 // test-engine-landing-conformance-quick-fix-left-off.cjs's; the branch
@@ -25,9 +27,11 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
+const assert = require('node:assert');
 
-const { quickFixConformance } = require('./quick-fix-world.cjs');
-const { MID_SET, mergedMidSet } = require('./quick-fix-by-hand.cjs');
+const { ok, readManifest } = require('./engine-harness.cjs');
+const { UNIT, BRANCH, createFix, quickFixConformance } = require('./quick-fix-world.cjs');
+const { HELP, MID_SET, mergedMidSet } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
@@ -36,5 +40,15 @@ for (const { name } of listDrivers('landing')) {
 
   describe(MID_SET.title(name, how), () => {
     it(MID_SET.test, () => mergedMidSet(conf, merge));
+
+    it('a fix started after the merge records the fix it landed, by its read, as the start cuts the branch again', () => {
+      const at = conf.project();
+      conf.built(at, 1);
+      merge(at, BRANCH);
+      createFix(at, 2, HELP.title, conf.as());
+      ok(at, ['task', 'start', UNIT, '1.2'], conf.as());
+
+      assert.deepStrictEqual(Object.entries(readManifest(at, UNIT).landings ?? {}).map(([id, { '.': { by } }]) => [id, by]), [[`${UNIT}-1-1`, 'read']]);
+    });
   });
 }

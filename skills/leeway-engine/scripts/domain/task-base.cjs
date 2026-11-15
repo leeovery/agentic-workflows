@@ -10,11 +10,15 @@
 //   quick-fix's, every task of it, the quick-fix's one branch, `fix/{unit}`
 //   (19.5.15).
 // - A task's own work starts, in each repository holding its branch, at the
-//   later of the commit it was laid out at by `task worktree`
-//   (round-report.cjs, `laidOutOf`) and the tip of the work below it
+//   latest of the commit it was laid out at by `task worktree`
+//   (round-report.cjs, `laidOutOf`), the tip of the work below it
 //   (review-change.cjs, `workBelow`) that its branch holds since, merged
-//   back onto its chain — else at the branch the repository lands on, as
-//   the landing picks it.
+//   back onto its chain — else the branch the repository lands on, as the
+//   landing picks it, where its branch holds that — and where its own
+//   commits start, as the one read of whose work a commit is reads it
+//   (task-landed.cjs, `ownStart`, R32), so the person's own commit below
+//   its first is no work of its. Where those make no one line — later work
+//   merged back past its first commit — the latest of the others.
 // - A quick-fix's task's own work is its own commits alone, wherever they
 //   stand on the one branch the fixes share — a fix parked and built again
 //   once another fix has its commits between its own (fix-aside.cjs): in
@@ -29,9 +33,11 @@ const { quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { taskId, taskName } = require('./task-id.cjs');
-const { branches, branchesHeldBy, defaultBranch, landsOn, isAncestor, latestOf, stampedPast } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, landingBranch, isAncestor, latestOf, stampedPast } = require('./landing-git.cjs');
 const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
+const { repoLanded } = require('./task-landed.cjs');
+const { dayBefore } = require('./dates.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -63,6 +69,11 @@ function workBranch(cwd, ref, { type, title }) {
   return taskBranch(ref, type, title);
 }
 
+/** A base a task's own work may start at: as the range names it, and its commit. @typedef {{base: string, commit: string}} Under */
+
+/** The latest of `under`, where they make one line, else undefined. @param {Repo} repo @param {Under[]} under */
+const latestUnder = (repo, under) => under[latestOf(repo.path, under.map(({ commit }) => commit))];
+
 /**
  * Each repository's base for the task's own work (the header's), by
  * `holding`'s order: a commit or a branch.
@@ -72,15 +83,21 @@ function workBranch(cwd, ref, { type, title }) {
 function builtOnBases(cwd, ref, holding, branch) {
   const laid = laidOutOf(cwd, ref);
   const below = workBelow(cwd, ref.unit, ref.phase).flatMap((task) => (task.type === null ? [] : [taskBranch(task.ref, task.type, task.title)]));
+  const since = dayBefore(manifestOf(stateRoot(cwd), ref.unit)?.created);
   return holding.map((repo) => {
     const local = branches(repo.path);
     const merged = branchesHeldBy(repo.path, `refs/heads/${branch}`);
+    const landsOn = landingBranch(cwd, repo);
     const at = laid[repo.dir];
+    /** @type {Under[]} */
     const under = [
       ...(at !== undefined && isAncestor(repo.path, at, `refs/heads/${branch}`) ? [{ base: at, commit: at }] : []),
       ...below.filter((other) => other !== branch && merged.has(other)).map((other) => ({ base: other, commit: /** @type {string} */ (local.get(other)) })),
     ];
-    return under[latestOf(repo.path, under.map(({ commit }) => commit))]?.base ?? landsOn(cwd, repo);
+    const floor = under.length > 0 || !merged.has(landsOn) ? under : [{ base: landsOn, commit: /** @type {string} */ (local.get(landsOn)) }];
+    const start = repoLanded(repo.path, ref.unit, `refs/heads/${landsOn}`, { since }).ownStart(ref);
+    const own = start === null ? undefined : latestUnder(repo, [...floor, { base: start, commit: start }]);
+    return (own ?? latestUnder(repo, under))?.base ?? landsOn;
   });
 }
 
@@ -92,7 +109,7 @@ function builtOnBases(cwd, ref, holding, branch) {
  */
 function ownCommits(cwd, ref, repo) {
   const id = taskId(ref);
-  return stampedPast(repo.path, `refs/heads/${quickFixBranch(ref.unit)}`, landsOn(cwd, repo), stampKey())
+  return stampedPast(repo.path, `refs/heads/${quickFixBranch(ref.unit)}`, landingBranch(cwd, repo), stampKey())
     .filter(({ value }) => value === id).map(({ sha, message }) => ({ sha, subject: message.split('\n')[0] }));
 }
 

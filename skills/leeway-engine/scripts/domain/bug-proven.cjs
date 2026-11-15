@@ -37,8 +37,8 @@
 //   made is built on task 1.1's work: in each repository holding its
 //   branch, HEAD — and, while a merge is in progress there, the commit it
 //   takes in, MERGE_HEAD — descends from that branch's tip or holds task
-//   1.1's landing, as the landing reads one (landing.cjs, `landedTasks`),
-//   since every landing squashes; then the series' command runs after the
+//   1.1's change, as every landing of it is read (task-landed.cjs), whether
+//   squashed, merged or rebased; then the series' command runs after the
 //   tests as one of the door's checks, and must pass (15.5.4). Every refusal
 //   names the way on, and one of a commit not built on task 1.1's work the
 //   repository behind; a branch is taken in by a merge through the door,
@@ -67,12 +67,9 @@ const { dayBefore } = require('./dates.cjs');
 const { unfixedRuns, latestSeries } = require('./runs.cjs');
 const { shownTask, taskName, phaseName } = require('./task-id.cjs');
 const { taskOfBranch } = require('./landing-names.cjs');
-const { branches, isAncestor, landsOn, quoted } = require('./landing-git.cjs');
+const { branches, isAncestor, landingBranch, quoted } = require('./landing-git.cjs');
+const { unitLanded } = require('./task-landed.cjs');
 const { repoNamed } = require('./phase-stack.cjs');
-
-// What landed, loaded at its call: the landing reaches this module through
-// the task verbs.
-const landing = () => require('./landing.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./runs.cjs').Series} Series */
@@ -177,20 +174,23 @@ function seriesWhy(unit, series, held) {
 }
 
 /**
- * Whether task 1.1 of `unit` has landed in a repository, as the landing
- * reads what landed, searched from `from`: on the branch it lands on, or,
- * where `revs` are given, in what they hold.
- * @param {string} cwd @param {string} unit @param {Repo} repo @param {string|null} from @param {string[]} [revs]
+ * Whether task 1.1 of `unit` has landed in a repository, as `read` reads it
+ * (task-landed.cjs): on the branch it lands on, or, where `revs` are given,
+ * in any of them, its last commit read once for every one.
+ * @param {import('./task-landed.cjs').UnitLanded} read @param {string} unit @param {Repo} repo @param {string[]} [revs]
  */
-const landedIn = (cwd, unit, repo, from, revs) => landing().landedTasks(cwd, unit, [repo], from, revs === undefined ? undefined : () => revs).has(REPRODUCING_SHOWN);
+function landedIn(read, unit, repo, revs) {
+  const ref = reproducingRef(unit);
+  return revs === undefined ? read.inRepo(repo)?.task(ref).landed === true : revs.some((rev) => read.on(repo, rev).task(ref).landed);
+}
 
 /** What the checkout's next commit in a repository is made of: HEAD, and the commit a merge in progress there takes in. @param {Repo} repo */
 const making = (repo) => (mergeInProgress(repo.path) ? ['HEAD', 'MERGE_HEAD'] : ['HEAD']);
 
-/** Whether the checkout's next commit where `held` is is built on task 1.1's work: its tip below it, or its landing in it. @param {string} cwd @param {string} unit @param {Held} held @param {string|null} from */
-function builtOn(cwd, unit, { repo, tip }, from) {
+/** Whether the checkout's next commit where `held` is is built on task 1.1's work, as `read` reads its landing: its tip below it, or its landing in it. @param {import('./task-landed.cjs').UnitLanded} read @param {string} unit @param {Held} held */
+function builtOn(read, unit, { repo, tip }) {
   const revs = making(repo);
-  return revs.some((rev) => isAncestor(repo.path, tip, rev)) || landedIn(cwd, unit, repo, from, revs);
+  return revs.some((rev) => isAncestor(repo.path, tip, rev)) || landedIn(read, unit, repo, revs);
 }
 
 /** Git run in a repository of the checkout: in its own folder for a nested one, as the landing's ways on run it. @param {Repo} repo */
@@ -214,14 +214,14 @@ const mergeWay = (named, rev, git = 'git') => `merge ${named} in with \`${git} m
  * @returns {string|null}
  */
 function builtOnWhy(cwd, manifest, ref, held) {
-  const from = dayBefore(manifest.created);
-  const behind = held.find((one) => !builtOn(cwd, ref.unit, one, from));
+  const read = unitLanded(cwd, ref.unit, held.map(({ repo }) => repo), dayBefore(manifest.created));
+  const behind = held.find((one) => !builtOn(read, ref.unit, one));
   if (behind === undefined) return null;
   const { repo, branch } = behind;
-  const into = landsOn(cwd, repo);
+  const into = landingBranch(cwd, repo);
   const where = `in ${repoNamed(repo)}, this commit holds neither ${branch}, task 1.1's branch, where the test was proven, nor its landing`;
   const git = gitIn(repo);
-  if (landedIn(cwd, ref.unit, repo, from)) return `${where}, which is on ${into} — ${mergeWay(into, into, git)}`;
+  if (landedIn(read, ref.unit, repo)) return `${where}, which is on ${into} — ${mergeWay(into, into, git)}`;
   if (ref.phase !== REPRODUCING.phase) return `${where} — task 1.1 lands with ${phaseName(ref.unit, REPRODUCING.phase)}: once that phase has merged, ${mergeWay(into, into, git)}`;
   return `${where} — ${mergeWay('it', branch, git)}`;
 }
@@ -295,5 +295,5 @@ function rerunRefusal(unit, { series, reruns }) {
 const rerunPassed = (reruns) => reruns.some(({ verdict }) => verdict === 'pass');
 
 module.exports = {
-  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, isReproducing, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, reproducingHold, reproducingClose, rerunRefusal, rerunPassed,
+  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, reproducingHold, reproducingClose, rerunRefusal, rerunPassed,
 };

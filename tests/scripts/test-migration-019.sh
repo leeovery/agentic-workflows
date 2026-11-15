@@ -387,11 +387,11 @@ test_preserves_fields() {
 
   json=$(get_json "preserve")
 
-  assert_eq "Name preserved" "true" "$(echo "$json" | grep -qF '"name": "preserve"' && echo true || echo false)"
-  assert_eq "Work type preserved" "true" "$(echo "$json" | grep -qF '"work_type": "feature"' && echo true || echo false)"
-  assert_eq "Created date preserved" "true" "$(echo "$json" | grep -qF '"created": "2026-01-15"' && echo true || echo false)"
-  assert_eq "Description preserved" "true" "$(echo "$json" | grep -qF '"description": "test feature"' && echo true || echo false)"
-  assert_eq "Discussion phase status preserved" "true" "$(echo "$json" | grep -qF '"status": "concluded"' && echo true || echo false)"
+  assert_eq "Name preserved" "true" "$(grep -qF '"name": "preserve"' <<<"$json" && echo true || echo false)"
+  assert_eq "Work type preserved" "true" "$(grep -qF '"work_type": "feature"' <<<"$json" && echo true || echo false)"
+  assert_eq "Created date preserved" "true" "$(grep -qF '"created": "2026-01-15"' <<<"$json" && echo true || echo false)"
+  assert_eq "Description preserved" "true" "$(grep -qF '"description": "test feature"' <<<"$json" && echo true || echo false)"
+  assert_eq "Discussion phase status preserved" "true" "$(grep -qF '"status": "concluded"' <<<"$json" && echo true || echo false)"
 
   teardown
 }

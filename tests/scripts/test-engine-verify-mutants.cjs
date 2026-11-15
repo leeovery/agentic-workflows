@@ -14,7 +14,13 @@
 // repository holding its work, by their paths from that folder, as they
 // stand at its tip, and the verb answers what survived on them, read
 // whatever the tool's exit code, each survivor's path read as the
-// project's, a survivor on none of the changed files refused — writing
+// project's, a survivor on none of the changed files refused — the person's
+// own commits on a task's branch past its first commit the phase's work,
+// fast-forwarded onto main or not, as the one read of what has landed reads
+// whose work a commit is (R32), a squash by hand its task's record names
+// that task's wherever the phase's tip holds it, never the person's own on
+// main or below a task's first commit, its commits read alike whatever
+// clock dated them — writing
 // nothing but the survivors, left in the unit's cache under the tips it ran
 // at (15.S9, 15.6.3, 15.6.6, 7.2.17).
 //
@@ -30,7 +36,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, setEnvironment, layout,
+  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, setEnvironment, layout, datedAt, accountTaken,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, setupArgs, world } = require('./verify-world.cjs');
 
@@ -110,6 +116,68 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     const cached = { [`.cache/${UNIT}/build/mutants/phase-1/${key}.json`]: `${JSON.stringify({ commits, survivors }, null, 2)}\n` };
     assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir) }, { ...before, tree: { ...before.tree, ...cached } });
     assert.deepStrictEqual([fs.existsSync(scratch()), git(dir, ['worktree', 'list', '--porcelain']).includes(scratch())], [false, false], 'the scratch worktree is taken apart');
+  });
+
+  for (const [clock, step] of /** @type {const} */ ([['as the clock runs', 0], ['each commit dated a second before the one before it', -1]])) it(`the person's own commits on a task's branch past its first commit, between its own fast-forwarded onto main and past its last, are the phase's work as the one read of what has landed reads whose work a commit is (R32), ${clock}: their lines handed to the tool, from before the phase's first commit — never the person's own on main, on the branch below the task's first commit, nor on a later task's branch cut from it below that task's first`, () => {
+    let second = Math.floor(Date.now() / 1000);
+    /** `act`, its commit dated by the clock. @param {() => void} act */
+    const dated = (act) => (step === 0 ? act() : datedAt(`${(second += step)} +0000`, act));
+    /** The person's own commit of `file`. @param {string} file @param {string} message */
+    const byHand = (file, message) => {
+      createFile(dir, file, `${file}\n`);
+      dated(() => commitCode(dir, message));
+    };
+    /** A commit of the phase's. @param {Record<string, string>} files @param {string} trailer */
+    const ofPhase = (files, trailer) => dated(() => commitWith(dir, files, trailer));
+    byHand('src/hotfix.js', 'my own hotfix on main');
+    git(dir, ['checkout', '-q', '-b', branchOf(1)]);
+    byHand('src/start.js', 'my own start');
+    ofPhase({ 'src/pin.js': 'pin\n' }, 'Leeway-Task: pay-1-1');
+    byHand('src/note.js', 'my own words between');
+    git(dir, ['checkout', '-q', 'main']);
+    git(dir, ['merge', '-q', '--ff-only', branchOf(1)]);
+    git(dir, ['checkout', '-q', branchOf(1)]);
+    ofPhase({ 'src/pin.js': 'pin\npin again\n' }, 'Leeway-Task: pay-1-1');
+    byHand('src/tail.js', 'my own words past it');
+    git(dir, ['checkout', '-q', '-b', branchOf(2)]);
+    byHand('src/before.js', 'my own words before its first');
+    ofPhase({ 'src/form.js': 'form\n' }, 'Leeway-Task: pay-1-2');
+    git(dir, ['checkout', '-q', 'main']);
+    surviving([]);
+
+    ok(dir, ['verify', 'mutants', UNIT, '1']);
+
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(steer(dir), 'changed.json'), 'utf8')), [
+      { path: 'src/form.js', lines: [[1, 1]] },
+      { path: 'src/note.js', lines: [[1, 1]] },
+      { path: 'src/pin.js', lines: [[1, 2]] },
+      { path: 'src/tail.js', lines: [[1, 1]] },
+    ]);
+  });
+
+  it('a task squashed by hand under the person\'s own message, main merged back into a later task\'s branch cut before it, and that task\'s open recording the squash by its read: the squash is its task\'s work as its record reads it, its lines handed to the tool at the phase\'s tip (R32)', () => {
+    git(dir, ['checkout', '-q', '-b', branchOf(1)]);
+    commitWith(dir, { 'src/card.js': 'const card = 2;\n' }, 'Leeway-Task: pay-1-1');
+    git(dir, ['checkout', '-q', '-b', branchOf(2), 'main']);
+    commitWith(dir, { 'src/total.js': 'total\n' }, 'Leeway-Task: pay-1-2');
+    git(dir, ['checkout', '-q', 'main']);
+    for (const task of ['1.1', '1.2']) accountTaken(dir, UNIT, task);
+    ok(dir, ['land', 'open', UNIT, '1.1']);
+    git(dir, ['merge', '-q', '--squash', branchOf(1)]);
+    commitCode(dir, 'Spell it the British way');
+    git(dir, ['branch', '-q', '-D', branchOf(1)]);
+    git(dir, ['checkout', '-q', branchOf(2)]);
+    git(dir, ['merge', '-q', '--no-edit', 'main']);
+    git(dir, ['checkout', '-q', 'main']);
+    ok(dir, ['land', 'open', UNIT, '1.2']);
+    surviving([]);
+
+    ok(dir, ['verify', 'mutants', UNIT, '1']);
+
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(steer(dir), 'changed.json'), 'utf8')), [
+      { path: 'src/card.js', lines: [[1, 1]] },
+      { path: 'src/total.js', lines: [[1, 1]] },
+    ]);
   });
 
   it('a scratch worktree an interrupted run left behind, registered in each repository, is taken apart before the layout, and the run goes on', () => {

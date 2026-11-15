@@ -7,7 +7,7 @@
 // them (13.4.6); each scenario proven at the phase's tips or reported not
 // proven in every report (15.4.3, 12.S6, 11.S6); its notes consolidated; its
 // stack merged, or in step its merge waiting at its gate holding every task
-// of the phase (7.2.4, 7.S7); phase 1's close refused until the verify setup
+// of the phase not landed (7.2.4, 7.S7); phase 1's close refused until the verify setup
 // is recorded (12.3.3, 12.S5); and a close committing every record its
 // phase's folder holds. Its review's item and the settlement are
 // test-engine-build-checklists-review.cjs; a phase's start, -start.cjs; the
@@ -34,23 +34,24 @@ const {
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const landingGit = require(path.join(SCRIPTS, 'domain/landing-git.cjs'));
+const { TRAILER } = require(path.join(SCRIPTS, 'domain/commit-task.cjs'));
 
 /**
- * What `act` answers, and how many times the landing read the branches of a
- * repository while it ran.
+ * What `act` answers, and how many times the landing driver read a
+ * repository's stacks while it ran (landing-git.cjs, `readOnce`).
  * @template T @param {() => T} act @returns {[T, number]}
  */
-function branchReads(act) {
-  const { branches } = landingGit;
+function stackReads(act) {
+  const { readOnce } = landingGit;
   let reads = 0;
-  landingGit.branches = (/** @type {string} */ root) => {
+  landingGit.readOnce = (/** @type {{reads?: Map<string, unknown>}} */ ctx, /** @type {string} */ key, /** @type {() => unknown} */ read) => readOnce(ctx, key, key === 'stacks' ? () => {
     reads += 1;
-    return branches(root);
-  };
+    return read();
+  } : read);
   try {
     return [act(), reads];
   } finally {
-    landingGit.branches = branches;
+    landingGit.readOnce = readOnce;
   }
 }
 
@@ -155,7 +156,7 @@ describe('a phase\'s close (6.4.9)', () => {
     ok(dir, ['land', 'open', UNIT, '1.1'], { env: SESSION });
     seen.push(merged());
     ok(dir, ['land', 'open', UNIT, '1.2'], { env: SESSION });
-    const [both, reads] = branchReads(merged);
+    const [both, reads] = stackReads(merged);
     seen.push(both);
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Mask a card', ['A card is masked.'])]);
     const unbranched = show('phase-close', 1);
@@ -168,6 +169,24 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.deepStrictEqual([...seen, merged()], ['open', 'open', 'done', 'open', 'open', 'done', 'open', 'open'], 'a phase with no task holds no stack; in auto a stack waits at no gate, merged once landed');
     assert.match(unbranched.warnings.join('\n'), /^land: task 1\.3 has no branch feat\/pay-1\.3-mask-a-card, /m);
     assert.strictEqual(reads, 1, 'the one repository\'s stacks are read once for both tasks');
+  });
+
+  it('in step, reads its stack merged with every task of the phase opened into it but one, its commit through the door, merged by hand by a merge commit — a landed task never asked to be in its stack (7.2.4)', () => {
+    manifestWith({ build: { position: 'step' } });
+    for (const task of ['1.1', '1.2']) {
+      accountTaken(dir, UNIT, task);
+      ok(dir, ['land', 'open', UNIT, task], { env: SESSION });
+    }
+    ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Mask a card', ['A card is masked.'])]);
+    const masked = 'feat/pay-1.3-mask-a-card';
+    git(dir, ['switch', '-q', '-c', masked, 'main']);
+    fs.writeFileSync(path.join(dir, '1.3.txt'), 'Mask a card\n');
+    git(dir, ['add', '1.3.txt']);
+    git(dir, ['commit', '-q', '-m', 'feat(pay): mask a card', '-m', `${TRAILER}: ${UNIT}-1-3`]);
+    git(dir, ['switch', '-q', 'main']);
+    git(dir, ['merge', '-q', '--no-ff', '-m', `Merge ${masked}`, masked]);
+
+    assert.strictEqual(item('phase-close', 1, 'stack-merged'), 'done');
   });
 
   it('closes phase 1 only once the verify setup is recorded, every item holding (12.3.3, 12.S5); a later phase\'s close asks none', () => {

@@ -6,8 +6,10 @@
 // scenario makes —
 //   - every manifest parses and is schema-valid (statuses in vocabulary,
 //     discovery items status-less, no phase-named shadow roots, a
-//     quick-fix's record naming each nested repository it touched once),
-//     the project's keeping the project_id setup gave it,
+//     quick-fix's record naming each nested repository it touched once,
+//     the landing record naming the unit's own tasks landed in the
+//     project's repositories at commits each holds), the project's keeping
+//     the project_id setup gave it,
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
 //   - every navigation menu (the start menu, an epic's) reads and renders
@@ -64,7 +66,8 @@ const {
   resolveHandoff, HANDOFF_TARGETS, topicHandoff,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
-const { ledgerEntries, stateGit } = require('./engine-harness.cjs');
+const { ledgerEntries, stateGit, git } = require('./engine-harness.cjs');
+const { stepOfId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/task-id.cjs'));
 const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
@@ -92,6 +95,32 @@ function listWorkUnits(dir) {
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
     .filter((e) => fs.existsSync(path.join(wf, e.name, 'manifest.json')))
     .map((e) => e.name);
+}
+
+/**
+ * A unit's landing record (landing-record.cjs) held to its shape: each of
+ * the unit's own tasks, by its internal id, landed in repositories of the
+ * project's — `.` its own — each record its fields alone, `by` in the
+ * schema, `at` an instant, and its commit, tip and first landing commits
+ * that repository holds.
+ * @param {string} dir @param {string} wu @param {unknown} landings @param {(why: string) => string} ctx
+ */
+function auditLandings(dir, wu, landings, ctx) {
+  assert.ok(landings !== null && typeof landings === 'object' && !Array.isArray(landings), ctx(`${wu}: landings is not a record by task`));
+  /** @type {Map<string, string[]>} the commits each repository's records name */
+  const named = new Map();
+  for (const [id, byRepo] of Object.entries(/** @type {Record<string, Record<string, any>>} */ (landings))) {
+    assert.strictEqual(stepOfId(id)?.prefix, wu, ctx(`${wu}: landings names ${id}, no task of its own`));
+    for (const [repo, record] of Object.entries(byRepo)) {
+      assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: ${id} landed in ${repo}, no repository of the project's`));
+      assert.deepStrictEqual(Object.keys(record).sort(), [...schema.LANDING_RECORD_FIELDS].sort(), ctx(`${wu}: ${id}'s landing in ${repo} is not a landing record`));
+      assert.ok(schema.LANDING_BY.includes(record.by) && !Number.isNaN(Date.parse(record.at)), ctx(`${wu}: ${id}'s landing in ${repo} by ${record.by} at ${record.at}`));
+      named.set(repo, [...(named.get(repo) ?? []), record.commit, record.tip, record.first]);
+    }
+  }
+  for (const [repo, shas] of named) {
+    assert.doesNotThrow(() => git(path.join(dir, repo), ['rev-list', '--no-walk', ...new Set(shas)]), ctx(`${wu}: a landing in ${repo} names a commit ${repo} lacks`));
+  }
 }
 
 // The project_id each project's state was minted with, by its folder, while
@@ -196,6 +225,8 @@ function auditState(dir, label) {
       assert.ok(Array.isArray(repos) && new Set(repos).size === repos.length, ctx(`${wu}: fixes.repos ${JSON.stringify(repos)} is not a list naming each repository once`));
       for (const repo of repos) assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: fixes.repos names ${repo}, no repository of the project's`));
     }
+
+    if (manifest[schema.LANDINGS] !== undefined) auditLandings(dir, wu, manifest[schema.LANDINGS], ctx);
 
     // A review asked for at a quick-fix's close is recorded on its fixes as
     // the instant it was asked, a quick-fix's alone.

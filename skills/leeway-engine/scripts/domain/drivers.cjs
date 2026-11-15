@@ -60,8 +60,8 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint']),
-    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'finished', 'protectBranch', 'setSquashDefault']),
+    required: /** @type {const} */ (['serves', 'taken', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint']),
+    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'pushedOver', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
 
@@ -222,11 +222,19 @@ const METHODS = Object.freeze({
  * merge lands onto (`landsOn`), fetched, and that commit as last fetched,
  * fetching nothing (`landsOnAsFetched`), as a read asking no host takes
  * it — the seam reads the local branch's tip where it does not.
+ * `taken` answers the commit it took each of the unit's tasks at, by its
+ * internal id — where its branch stood as it opened, its pull request's
+ * head — each a commit the repository holds, writing nothing but heads
+ * fetched, which the seam reads where each task stands against its landing
+ * (landing.cjs); a driver decides that of no task. A driver landing
+ * through a host answers the command a way on that remakes a task's
+ * branch here ends with, pushing it over its copy there (`pushedOver`),
+ * null where the host holds none.
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
  * null where the task's phase's stack holds it already; `holds`, whether it
  * does, fetching and writing nothing, as the close in step asks it of every
- * task of a phase, the stacks read once on a context that keeps its reads
+ * task of a phase, the stacks read once on its context
  * (landing-git.cjs, `readOnce`); `chain`, null where the task is not open
  * there; `mergePhase`, null where no task of the phase is open there, and
  * `already` where each of its tasks' changes is on the branch it lands on —
@@ -244,16 +252,18 @@ const METHODS = Object.freeze({
  * ones merged, each a commit the repository holds — the host's copy of the
  * branch, held here, null where the host has none, and the driver's words
  * for a pull request closed by hand, null where the latest was not —
- * writing nothing but heads fetched; `openQuickFix` opens it at the branch
- * as it stands, under the
- * landing's message, a push replacing the host's copy only while it stands
+ * writing nothing but heads fetched, and carrying what more the driver's
+ * verbs below need of it, since the seam hands that read back to them, so
+ * a verb reads the host's pull requests once; `openQuickFix` opens it at
+ * the branch as it stands, under the landing's message, from the read the
+ * landing carries, a push replacing the host's copy only while it stands
  * where the landing read it, `already` where it is; `mergeQuickFix` merges
- * it, the branch squashed onto the branch it lands on as one commit under
- * that message, each submodule the landing names pointed as it names it,
- * or, given no landing, brings that branch here to the host's, answering
- * `already`; and `closeQuickFix` closes the one open unmerged, as a move
- * closes it, answering whether it did — the last three reading the pull
- * requests as `quickFixPull` does. `repoint` points the default branch's
+ * the one that opening answered, given with the landing, the branch
+ * squashed onto the branch it lands on as one commit under that message,
+ * each submodule the landing names pointed as it names it, or, given no
+ * landing, brings that branch here to the host's, answering `already`; and
+ * `closeQuickFix` closes the one open unmerged the read given found, as a
+ * move closes it, answering whether it did. `repoint` points the default branch's
  * submodules, by their paths from the repository's top, at the commits
  * given — one commit onto the branch it lands on, landed as the driver
  * lands a change, a host's through a pull request of its own — answering
@@ -267,9 +277,11 @@ const METHODS = Object.freeze({
  * @typedef {(root: string, url: string) => {repository: string, unset: string|null}} HostSetting
  * @typedef {{
  *   serves: (url: string) => boolean,
+ *   taken: (ctx: LandingContext) => Map<string, string>,
  *   assertServes?: (ctx: LandingContext) => void,
  *   landsOn?: (ctx: LandingContext) => string,
  *   landsOnAsFetched?: (ctx: LandingContext) => string,
+ *   pushedOver?: (ctx: LandingContext, branch: string) => string|null,
  *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
  *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,
@@ -280,8 +292,8 @@ const METHODS = Object.freeze({
  *   nextMerge: (ctx: LandingContext) => {phase: number, merge: () => {into: string, merged: string[], warnings?: string[]}}|null,
  *   quickFixPull: (ctx: LandingContext, branch: string, since: string|null) => QuickFixPull,
  *   openQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {already?: true, warnings?: string[]},
- *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
- *   closeQuickFix: (ctx: LandingContext, branch: string, since: string|null) => {closed: boolean},
+ *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null, opened?: Record<string, any>) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
+ *   closeQuickFix: (ctx: LandingContext, pull: QuickFixPull) => {closed: boolean},
  *   repoint: (ctx: LandingContext, pointers: Map<string, string>) => {commit?: string, pull_request?: number, warnings?: string[]},
  *   finished?: (ctx: LandingContext) => void,
  * }} LandingMethods

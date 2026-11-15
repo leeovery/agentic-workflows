@@ -8,7 +8,9 @@
 // nothing, warning of it and naming its change made again there through the
 // door; `task done` refused naming the same; followed through the shell
 // guard and the door, it lands. The merge mid-set itself is
-// test-engine-landing-conformance-quick-fix-by-hand*.cjs's. A driver's side
+// test-engine-landing-conformance-quick-fix-by-hand*.cjs's; a commit its
+// fix's later commit rewrote, never left off,
+// test-engine-landing-conformance-quick-fix-rewritten*.cjs's. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies the world, merges by hand and
 // reads what landed where; this file names no driver and no tool.
 // Conformance layer: the quick-fix of quick-fix-world.cjs

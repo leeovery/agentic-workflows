@@ -17,8 +17,9 @@
 // the last by the letters it holds and the last against the count
 // (13.3.4, 2.4.6); the verb's answer, the account, every round's reports
 // and the figures committed in one state commit (12.S42), the figures the
-// task's own change across its repositories, a stack's earlier task and a
-// submodule's pointer not counted, its criteria, its additions, whoever
+// task's own change across its repositories, a stack's earlier task, the
+// person's own commit below its first commit (R32) and a submodule's
+// pointer not counted, its criteria, its additions, whoever
 // made them (13.11.3), and when it started — the tracker's, outliving a
 // state merge that drops the start's commit — and finished (15.3.4); a
 // failed last round
@@ -388,6 +389,18 @@ describe('task account (12.14.4, 6.3.13)', () => {
     workCommit(dir, 'pay-1-1', { 'src/card.css': '.card {}\n.take {}\n' });
     git(dir, ['checkout', '-q', RECEIPT]);
     git(dir, ['merge', '-q', '--no-ff', '--no-edit', CARD]);
+    git(dir, ['checkout', '-q', 'main']);
+
+    assert.deepStrictEqual([own, (({ files, added, removed }) => ({ files, added, removed }))(take().figures)], [{ files: 4, added: 7, removed: 1 }, { files: 4, added: 7, removed: 1 }]);
+  });
+
+  it('15.3.4, R32: the person\'s own commit on the task\'s branch past where it was laid out, below its first commit, is no task\'s work: its figures leave it out', () => {
+    const own = (({ files, added, removed }) => ({ files, added, removed }))(take().figures);
+    git(dir, ['checkout', '-q', '--detach', CARD]);
+    fs.writeFileSync(path.join(dir, 'notes.md'), 'my own notes\nmore of them\n');
+    git(dir, ['add', 'notes.md']);
+    git(dir, ['commit', '-q', '-m', 'my own notes']);
+    git(dir, ['rebase', '-q', '--onto', 'HEAD', CARD, RECEIPT]);
     git(dir, ['checkout', '-q', 'main']);
 
     assert.deepStrictEqual([own, (({ files, added, removed }) => ({ files, added, removed }))(take().figures)], [{ files: 4, added: 7, removed: 1 }, { files: 4, added: 7, removed: 1 }]);

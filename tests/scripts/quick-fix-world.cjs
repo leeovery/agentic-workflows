@@ -13,9 +13,12 @@
 // door (`fixChanged`) — and the fix built, the quick-fix's pull request
 // then opened, or its commit pushed to it, its pair's pass and its account
 // taken, and the fix done (`fixBuilt`), or any task of it so ended
-// (`fixDone`); a task's account taken through the engine, its figures
+// (`fixDone`); fix 1.1 built in two commits, the second rewriting the
+// first's line (`fixRewritten`), and what a start's cut again left off
+// (`cutLeftOff`); a task's account taken through the engine, its figures
 // counted from its commits (`accountFigures`); a builder's question,
-// asked and raised parking its fix (`CALL`, `parkedOn`); its short record's file (`recordFile`), fixes 1.1 and 1.2's
+// asked and raised parking its fix (`CALL`, `parkedOn`); its short
+// record's file (`recordFile`), fixes 1.1 and 1.2's
 // as Claude writes them (`RECORDS`); three fixes' titles, files and texts
 // (`SET`); the quick-fix entered by a conversation gone since, the set's
 // first two fixes built (`twoFixesBuilt`); what a quick-fix conformance
@@ -168,6 +171,27 @@ async function parkedOn(dir, task, as) {
   return (await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked, '--parks', task], { ...as, stdin: JSON.stringify(CALL) })).res;
 }
 
+/** Fix 1.1's first go at its line, which its second commit rewrites (`fixRewritten`). */
+const FIRST_GO = 'const flag = \'colr\';\n';
+
+/**
+ * Fix 1.1 made in two commits through the door in the conversation `as`
+ * names, the second rewriting the line the first wrote (`FIRST_GO`), then
+ * opened and ended (`fixDone`).
+ * @param {string} dir @param {As} as
+ */
+function fixRewritten(dir, as) {
+  const [flag] = SET;
+  fixChanged(dir, 1, flag.title, flag.file, FIRST_GO, as);
+  createFile(dir, flag.file, flag.text);
+  ok(dir, ['commit', '--paths', flag.file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag again`], as);
+  ok(dir, ['land', 'open', UNIT, '1.1'], as);
+  fixDone(dir, '1.1', as);
+}
+
+/** What a task start's cut again left off, and what it warned of. @param {Record<string, any>} start */
+const cutLeftOff = (start) => [start.cut_again.flatMap((/** @type {{left_off?: string[]}} */ cut) => cut.left_off ?? []), start.warnings ?? []];
+
 /** A fix's short record, as Claude writes it: its file, absolute. @param {string} dir @param {number} n @param {{changed: string, why: string, leaves: string}} record */
 const recordFile = (dir, n, { changed, why, leaves }) => writeState(dir, layout.cache(`record-${n}.md`), ['## What changed', changed, '', '## Why', why, '', '## Leaves out', leaves, ''].join('\n'));
 
@@ -192,7 +216,9 @@ function twoFixesBuilt(dir, { ready = () => {}, env = {} } = {}) {
  * (tests/drivers/{name}/landing.cjs); the calls' options under the side's
  * environment, in the suite's conversation; a copy at each call of the
  * quick-fix readied for the driver, its code tagged `landing-base`, built
- * once per process, entered — every copy removed after its test; fix `n`
+ * once per process, entered — every copy removed after its test — or of
+ * that world with fix 1.1 of `SET` built by a conversation gone since, built
+ * once per process too, for the suites whose tests all begin there; fix `n`
  * of `SET` changed (`fixChanged`) and recorded; what the default branch
  * gained, each landing by its subject and the paths it changed; and fixes
  * 1.1 and 1.2 recorded and the close made, landing them.
@@ -202,10 +228,19 @@ function quickFixConformance(name, prefix) {
   /** @type {import('./landing-world.cjs').DriverSide} */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const config = useTempFolder(`${prefix}config-`);
-  const world = fixtureFrom(prefix, (dir) => {
+  /** The quick-fix readied for the driver, its code tagged `landing-base`. @param {string} dir */
+  const readied = (dir) => {
     quickFix(dir);
     git(dir, ['tag', 'landing-base']);
     side.prepare(dir);
+  };
+  const world = fixtureFrom(prefix, readied);
+  const firstWorld = fixtureFrom(`${prefix}first-`, (dir) => {
+    readied(dir);
+    asGone((gone) => {
+      entered(dir, gone);
+      fixBuilt(dir, 1, SET[0].title, SET[0].file, SET[0].text, gone);
+    }, side.env);
   });
   /** @type {string[]} */
   let made = [];
@@ -217,17 +252,21 @@ function quickFixConformance(name, prefix) {
   const as = () => ({ env: { ...side.env, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
   /** @param {string} at @param {number} n */
   const record = (at, n) => ok(at, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
+  /** A copy of the world `from` makes, the quick-fix entered by the suite's conversation. @param {() => string} from */
+  const copied = (from) => {
+    const dir = from();
+    made.push(dir);
+    entered(dir, as());
+    return dir;
+  };
   return {
     side,
     as,
     record,
     /** A copy of the world, the quick-fix entered by the suite's conversation. */
-    project: () => {
-      const dir = world();
-      made.push(dir);
-      entered(dir, as());
-      return dir;
-    },
+    project: () => copied(world),
+    /** A copy of the world with fix 1.1 built, the quick-fix entered by the suite's conversation. */
+    firstBuilt: () => copied(firstWorld),
     /** Fix `n` of the set changed in the suite's conversation. @param {string} at @param {number} n */
     changed: (at, n) => fixChanged(at, n, SET[n - 1].title, SET[n - 1].file, SET[n - 1].text, as()),
     /** Fix `n` of the set built in the suite's conversation (`fixBuilt`). @param {string} at @param {number} n */
@@ -247,12 +286,36 @@ function quickFixConformance(name, prefix) {
 /** A copy of the quick-fix nesting repositories: the project, and its submodule's and clone's checkouts. @typedef {{dir: string, ext: string, lib: string}} NestedQuickFix */
 
 /**
+ * The quick-fix in a project nesting a submodule and a clone (landing-
+ * world.cjs's `NESTED`), each repository's code tagged `landing-base`, no
+ * landing driver yet readying it: built once per process and copied into
+ * each driver's world (`quickFixNestedConformance`).
+ */
+const nestedQuickFix = folderFrom('quick-fix-nested-', (folder) => {
+  const dir = setupFixtureAt(path.join(folder, 'project'));
+  const upstream = initRepo(path.join(folder, NESTED.ext.folder));
+  createFile(upstream, 'ext.txt', 'ext\n');
+  commitCode(upstream, 'the ext');
+  const ext = addSubmodule(dir, NESTED.ext.folder, upstream);
+  git(ext, ['remote', 'remove', 'origin']);
+  const lib = initRepo(path.join(dir, NESTED.lib.folder));
+  git(lib, ['symbolic-ref', 'HEAD', `refs/heads/${NESTED.lib.into}`]);
+  git(lib, ['config', 'init.defaultBranch', NESTED.lib.into]);
+  createFile(lib, 'lib.txt', 'lib\n');
+  commitCode(lib, 'the lib');
+  fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
+  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.lib.folder}/\n`);
+  quickFix(dir);
+  for (const repo of [dir, ext, lib]) git(repo, ['tag', 'landing-base']);
+});
+
+/**
  * What a quick-fix suite across nested repositories reads a landing driver
  * by (7.2.24): its side; the calls' options in the suite's conversation; a
  * copy at each call of the quick-fix in a project nesting a submodule and a
- * clone (landing-world.cjs's `NESTED`), each repository's code tagged
- * `landing-base` and readied for the driver, built once per process,
- * entered — every copy removed after its test; fix `n` opened through the
+ * clone (`nestedQuickFix`, built once per process for every driver),
+ * readied for the driver once per process, entered — every copy removed
+ * after its test; fix `n` opened through the
  * door from the files it writes, each by its path in the project —
  * started, committed and opened, the opening's answer; ended, done and
  * recorded; and built, both, the opening's answer; the close made, its
@@ -268,21 +331,8 @@ function quickFixNestedConformance(name, prefix) {
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const config = useTempFolder(`${prefix}config-`);
   const world = folderFrom(prefix, (folder) => {
-    const dir = setupFixtureAt(path.join(folder, 'project'));
-    const upstream = initRepo(path.join(folder, NESTED.ext.folder));
-    createFile(upstream, 'ext.txt', 'ext\n');
-    commitCode(upstream, 'the ext');
-    const ext = addSubmodule(dir, NESTED.ext.folder, upstream);
-    git(ext, ['remote', 'remove', 'origin']);
-    const lib = initRepo(path.join(dir, NESTED.lib.folder));
-    git(lib, ['symbolic-ref', 'HEAD', `refs/heads/${NESTED.lib.into}`]);
-    git(lib, ['config', 'init.defaultBranch', NESTED.lib.into]);
-    createFile(lib, 'lib.txt', 'lib\n');
-    commitCode(lib, 'the lib');
-    fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
-    fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.lib.folder}/\n`);
-    quickFix(dir);
-    for (const repo of [dir, ext, lib]) git(repo, ['tag', 'landing-base']);
+    nestedQuickFix(folder);
+    const dir = path.join(folder, 'project');
     side.prepare(dir);
     for (const { folder: at, into } of Object.values(NESTED)) side.nest(path.join(dir, at), into);
   });
@@ -450,6 +500,6 @@ function entered(dir, as) {
 }
 
 module.exports = {
-  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, CALL, fixFile, parkedOn, quickFix, createFix, fixChanged, fixBuilt, fixDone, accountFigures, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
+  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, CALL, FIRST_GO, fixFile, parkedOn, quickFix, createFix, fixChanged, fixBuilt, fixDone, fixRewritten, cutLeftOff, accountFigures, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
   guardedGit, ownCommit, ownBranchCommit, checklistClosed, fixesRecorded, closeYes, asGone, entered,
 };

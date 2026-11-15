@@ -16,8 +16,9 @@
 // test-engine-landing-conformance-quick-fix.cjs's. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies the world and reads what
 // landed where; this file names no driver and no tool. Conformance layer:
-// the quick-fix of quick-fix-world.cjs (`quickFixConformance`), built once
-// per driver and copied for each test.
+// the quick-fix of quick-fix-world.cjs (`quickFixConformance`) with fix 1.1
+// built, where each test begins, built once per driver and copied for each
+// test (`firstBuilt`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -32,12 +33,11 @@ const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drive
 const BACK = 'Put the flag back';
 
 for (const { name } of listDrivers('landing')) {
-  const { side, as, project, changed, built, landed, record } = quickFixConformance(name, `engine-landing-quick-fix-unended-${name}-`);
+  const { side, as, firstBuilt, changed, landed, record } = quickFixConformance(name, `engine-landing-quick-fix-unended-${name}-`);
 
   describe(`the ${name} landing driver's quick-fix, its pull request landed only once each fix has ended (R11)`, () => {
     it('refuses it landed, its phase or whole, while a fix is neither done nor closed, naming each, and lands nothing', () => {
-      const at = project();
-      built(at, 1);
+      const at = firstBuilt();
       changed(at, 2);
       createFix(at, 3, SET[2].title, as());
       const phase = refuses(at, ['land', 'phase', UNIT, '1'], as()).error;
@@ -49,8 +49,7 @@ for (const { name } of listDrivers('landing')) {
     });
 
     it('lands it once each has ended, a fix reverting the one before it on the one branch: that fix read as landed still, its commit in the pull request merged — the close drawn saying the fixes have landed, its opening refused as done', () => {
-      const at = project();
-      built(at, 1);
+      const at = firstBuilt();
       const first = git(at, ['rev-parse', BRANCH]).trim();
       createFix(at, 2, BACK, as());
       ok(at, ['task', 'start', UNIT, '1.2'], as());

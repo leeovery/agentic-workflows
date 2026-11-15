@@ -22,9 +22,10 @@
 // the yes closing it unmerged and keeping its commits on its branch under
 // moved/; one holding a fix done and recorded moving, its summary.md set
 // aside, which the first opening names; and the yes refusing a checkout
-// holding changes no fix holds, lines with no conversation to carry them in, and a fix
-// landed. What the holder of the checkout has not committed, which the yes
-// sets aside: test-engine-landing-conformance-quick-fix-move-holder.cjs.
+// holding changes no fix holds, lines with no conversation to carry them
+// in, and a fix landed — by hand, or recorded landed by a land verb and
+// changed since. What the holder of the checkout has not committed, which
+// the yes sets aside: test-engine-landing-conformance-quick-fix-move-holder.cjs.
 // What the move refuses at its stage and its yes run again, a
 // bugfix moved and what the new type's build meets are
 // test-engine-workunit-move-after.cjs's.
@@ -53,6 +54,8 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { callsOf } = require(path.join(SCRIPTS, 'domain/build-screens.cjs'));
 const { quickFixLanding } = require(path.join(SCRIPTS, 'domain/landing.cjs'));
+const { recordLandings } = require(path.join(SCRIPTS, 'domain/landing-record.cjs'));
+const { TRAILER } = require(path.join(SCRIPTS, 'domain/commit-task.cjs'));
 const { RECORDS } = require(path.join(SCRIPTS, 'domain/brief-records.cjs'));
 const { unitHistory } = require(path.join(SCRIPTS, 'domain/state-history.cjs'));
 
@@ -199,6 +202,20 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
 
     assert.strictEqual(refusedStage(QF, 'feature'), `${QF}'s fix 1.1 has landed — finish the quick-fix, then start the feature as work of its own`);
     assert.strictEqual(ok(dir, ['task', 'list', QF, '1']).tasks[0].status, 'in-progress');
+  });
+
+  it('refuses a quick-fix a fix of which a land verb recorded landed, its branch given a commit of the fix\'s since, so the landing reads it changed: the record says it landed, and no record is carried into a type whose tasks are numbered again', () => {
+    dir = world();
+    git(dir, ['branch', '-f', 'main', BRANCH]);
+    const landing = git(dir, ['rev-parse', 'main']).trim();
+    recordLandings(dir, QF, [{ id: `${QF}-1-1`, repo: '.', root: dir, commit: landing, tip: landing, by: 'engine' }], []);
+    createFile(dir, 'src/more.js', 'more\n');
+    git(dir, ['add', 'src/more.js']);
+    git(dir, ['commit', '-q', '-m', `fix(${QF}): more`, '-m', `${TRAILER}: ${QF}-1-1`]);
+
+    assert.deepStrictEqual([quickFixLanding(dir, QF).task({ unit: QF, phase: 1, n: 1 }).landedAny, refusedStage(QF, 'feature')], [
+      false, `${QF}'s fix 1.1 has landed — finish the quick-fix, then start the feature as work of its own`,
+    ]);
   });
 
   it('a quick-fix whose pull request is open moves, the yes closing the pull request unmerged and keeping its fix\'s commit on its branch renamed under moved/', () => {

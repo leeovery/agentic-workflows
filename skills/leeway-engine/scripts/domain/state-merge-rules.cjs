@@ -44,6 +44,10 @@
 //   key: the remote's in its order, then this clone's new ones in its. A
 //   thing that cannot run at once learned on both sides, in the same words,
 //   is one record: the earlier, with the unit that learned it then (4.7.4).
+//   A unit's landing record (`landings.{task}.{repo}`, landing-record.cjs)
+//   is never a choice either: where both sides recorded one task's landing
+//   in one repository differently, the remote's record stands — either
+//   says the task landed.
 // - The tracker's store: each file a task driver names (`storeFiles`) is
 //   merged by that driver (`mergeStore`), which reads the tracker's own
 //   records (7.5, 29.14.9); the fields both sides changed differently are
@@ -74,7 +78,7 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
-const { ENVIRONMENT_SETS } = require('../kernel/manifest-schema.cjs');
+const { ENVIRONMENT_SETS, LANDINGS } = require('../kernel/manifest-schema.cjs');
 
 const MIGRATIONS = '.state/migrations';
 // The project's manifest and each unit's; a unit's name never starts with
@@ -86,6 +90,9 @@ const NOTES = /^[^./][^/]*\/build\/notes\.md$/;
 const REPORT = /^([^./][^/]*)\/build\/phases\/phase-([1-9][0-9]*)\/consolidation\.md$/;
 const PROJECT_KEY = ['manifest.json', 'project_id'];
 const ENVIRONMENT = 'environment';
+
+/** Whether `field` of the manifest `file` is one landing record: a unit's `landings.{task}.{repo}`. @param {string} file @param {string[]} field */
+const landingRecord = (file, field) => file !== PROJECT_KEY[0] && field.length === 3 && field[0] === LANDINGS;
 
 /** @typedef {'ledger'|'migrations'|'manifest'|'store'|'notes'|'whole'|'file'} MergeRule */
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
@@ -500,14 +507,14 @@ function mergeManifest(file, base, local, remote, pickOf) {
 
 /**
  * How a field of the manifest `file` merges, where it is not as any other
- * (the header's): the project's id, the remote's; the environment setup's
- * person's yes, the earlier; its verify setup, one value; its lists, each a
- * keyed set, each entry one value, a record of what cannot run at once the
- * earlier by when it was made.
+ * (the header's): the project's id and a unit's landing record, the
+ * remote's; the environment setup's person's yes, the earlier; its verify
+ * setup, one value; its lists, each a keyed set, each entry one value, a
+ * record of what cannot run at once the earlier by when it was made.
  * @param {string} file @param {string[]} field @returns {FieldRule|null}
  */
 function manifestRule(file, field) {
-  if (same([file, ...field], PROJECT_KEY)) return 'remote';
+  if (same([file, ...field], PROJECT_KEY) || landingRecord(file, field)) return 'remote';
   if (file !== PROJECT_KEY[0] || field[0] !== ENVIRONMENT) return null;
   const [, part] = field;
   if (field.length === 2 && part === 'confirmed') return { earliestBy: null };

@@ -10,7 +10,9 @@
 // that it landed already, the unit left in progress — naming its change
 // made again through the door, which takes it though the fix is done;
 // followed through the shell guard and the door, the close lands it. A fix
-// in flight left off is test-engine-landing-conformance-quick-fix-left-off.cjs's.
+// in flight left off is test-engine-landing-conformance-quick-fix-left-off.cjs's;
+// a fix whose last commit was dropped from its branch before it opened,
+// test-engine-landing-conformance-quick-fix-close-dropped.cjs's.
 // A driver's side (tests/drivers/{name}/landing.cjs) readies the world and
 // reads what landed where; this file names no driver and no tool.
 // Conformance layer: the quick-fix of quick-fix-world.cjs

@@ -223,4 +223,4 @@ function latestSeries(runs) {
   };
 }
 
-module.exports = { VERDICTS, SCENARIO, runsRel, recordRun, recordingPath, readRuns, behindHead, runsOf, unfixedRuns, latestSeries };
+module.exports = { VERDICTS, SCENARIO, runsRel, recordRun, recordingPath, behindHead, runsOf, unfixedRuns, latestSeries };

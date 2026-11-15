@@ -86,10 +86,14 @@
 //   in a task's (worktree-prep.cjs) — as in the unfixed code's worktree
 //   above. The tool runs in the project's folder there, and the worktree is
 //   taken apart again, whatever the tool did.
-//   In each repository there, the commits whose `Leeway-Task` trailer names
-//   a task of the phase (commit-task.cjs), and the change from the parent
-//   of the earliest to the tip, confined to the files those commits touched
-//   — each file's lines as they stand at the tip, a submodule's pointer
+//   In each repository there, the commits of the phase — those whose
+//   `Leeway-Task` trailer names a task of it (commit-task.cjs), and the
+//   person's own commits since the unit's work began, past the branch it
+//   lands on or on it, that are one of its tasks' work, as the one read of
+//   what has landed reads whose work a commit is (task-landed.cjs,
+//   `ownedSince`, R32) — and the change from the
+//   parent of the earliest to the tip, confined to the files those commits
+//   touched — each file's lines as they stand at the tip, a submodule's pointer
 //   never one of them. The lines go to the tool as `$LEEWAY_CHANGED`, a
 //   JSON file, `[{path, lines: [[from, to], …]}]`, each path from the
 //   project's root; the tool writes
@@ -159,9 +163,11 @@ const { holdsScenario } = require('./task-file.cjs');
 const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
 const { phaseStack, repoNamed } = require('./phase-stack.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { holdingBranch, holdsBeyond, landsOn } = require('./landing-git.cjs');
+const { holdingBranch, holdsBeyond, landingBranch } = require('./landing-git.cjs');
 const { layOutAt, layOutCommits, scratchTop, takeApart } = require('./project-layout.cjs');
-const { isoNow } = require('./dates.cjs');
+const { isoNow, dayBefore } = require('./dates.cjs');
+const { repoLanded } = require('./task-landed.cjs');
+const { recordsIn } = require('./landing-record.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
 const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
 const {
@@ -502,7 +508,7 @@ function unfixedLayout(cwd, unit, task, series, command, repos) {
     return (top) => layOutCommits(own.path, repos, commits, top);
   }
   const branch = taskBranch(task.ref, /** @type {string} */ (task.type), task.title);
-  const holding = holdingBranch(unit, repos, branch).holding.filter((repo) => repo.dir !== '' || holdsBeyond(repo.path, [branch], [landsOn(cwd, repo)]));
+  const holding = holdingBranch(unit, repos, branch).holding.filter((repo) => repo.dir !== '' || holdsBeyond(repo.path, [branch], [landingBranch(cwd, repo)]));
   if (holding.length === 0) {
     throw new Error(`no repository of the project holds a commit on ${branch}, task 1.1's branch, beyond the branch it lands on — its test is committed there through the door first: engine commit --paths <the test's files> --task ${unit} 1.1 -m "<message>" (15.5.1)`);
   }
@@ -665,25 +671,50 @@ function recordSetup(cwd, unit, file, scenario) {
 }
 
 /**
- * A repository's commits naming a task of the phase in their trailer, oldest
- * first, each with the paths it touched, a submodule's pointer left out.
- * @param {Repo} repo @param {string} unit @param {number} phase
- * @returns {{sha: string, paths: string[]}[]}
+ * The commits `git log` lists for `args` in a repository, each with the
+ * tasks its trailer names and the paths it touched, a submodule's pointer
+ * left out.
+ * @param {Repo} repo @param {string[]} args
+ * @returns {{sha: string, tasks: string[], paths: string[]}[]}
  */
-function phaseCommits(repo, unit, phase) {
-  if (!hasCommits(repo.path)) return [];
-  const out = git(repo.path, ['log', '--reverse', '--relative', '--no-renames', '--no-show-signature', '--fixed-strings', `--grep=${TRAILER}: ${unit}-${phase}-`,
-    `--format=%x1e%H%x09%(trailers:key=${TRAILER},valueonly,separator=%x09)`, '--name-only', '-z']);
-  return out.split('\x1e').slice(1).flatMap((record) => {
+function commitsTouching(repo, args) {
+  const out = git(repo.path, ['log', '--relative', '--no-renames', '--no-show-signature', `--format=%x1e%H%x09%(trailers:key=${TRAILER},valueonly,separator=%x09)`, '--name-only', '-z', ...args]);
+  return out.split('\x1e').slice(1).map((record) => {
     const end = record.search(/[\n\0]/);
     const [sha, ...tasks] = (end < 0 ? record : record.slice(0, end)).split('\t');
-    const ours = tasks.some((id) => {
-      const step = stepOfId(id.trim());
-      return step !== null && step.prefix === unit && step.phase === phase;
-    });
     const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, '')).filter((p) => p !== '' && !repo.submodules.includes(p));
-    return ours && paths.length > 0 ? [{ sha, paths }] : [];
+    return { sha, tasks: tasks.map((id) => id.trim()), paths };
   });
+}
+
+/**
+ * A repository's commits of the phase, each with the paths it touched, a
+ * submodule's pointer left out: `stamped`, those naming a task of it in
+ * their trailer, oldest first; `own`, the person's own commits since the
+ * unit's work began that the commit it has out holds — past the branch it
+ * lands on, or on it, as a fast-forward lays them — the work of a task of
+ * it as the one read of what has landed reads whose work a commit is, a
+ * recorded landing's commit its task's (task-landed.cjs, `ownedSince`,
+ * R32), oldest first.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @param {number} phase @param {string|null} since the time the unit's work is read from
+ * @returns {{stamped: {sha: string, paths: string[]}[], own: {sha: string, paths: string[]}[]}}
+ */
+function phaseCommits(cwd, repo, unit, phase, since) {
+  if (!hasCommits(repo.path)) return { stamped: [], own: [] };
+  /** @param {string} id */
+  const ofPhase = (id) => {
+    const step = stepOfId(id);
+    return step !== null && step.prefix === unit && step.phase === phase;
+  };
+  const stamped = commitsTouching(repo, ['--reverse', '--topo-order', '--fixed-strings', `--grep=${TRAILER}: ${unit}-${phase}-`]).filter(({ tasks }) => tasks.some(ofPhase));
+  const held = new Set(stamped.map(({ sha }) => sha));
+  const recorded = recordsIn(manifestOf(stateRoot(cwd), unit), repoName(repo));
+  const owned = repoLanded(repo.path, unit, landingBranch(cwd, repo), { since, recorded }).ownedSince('HEAD')
+    .filter(({ sha, owners }) => !held.has(sha) && owners.some(ofPhase)).map(({ sha }) => sha);
+  const own = owned.length === 0 ? [] : commitsTouching(repo, ['--no-walk=unsorted', ...owned]);
+  /** @param {{sha: string, paths: string[]}[]} commits */
+  const touching = (commits) => commits.filter(({ paths }) => paths.length > 0).map(({ sha, paths }) => ({ sha, paths }));
+  return { stamped: touching(stamped), own: touching(own) };
 }
 
 /**
@@ -703,16 +734,20 @@ function changedLines(cwd, base, file) {
 
 /**
  * The lines phase `phase` changed, in every repository of a checkout, each
- * file named from the project's root.
- * @param {Repo[]} repos @param {string} unit @param {number} phase
+ * file named from the project's root: from the parent of the earliest of
+ * its commits (`phaseCommits`) — one stamped with a task of it, the
+ * person's own commits of its lying past their task's first (R32) — in the
+ * files they touched.
+ * @param {string} cwd @param {Repo[]} repos @param {string} unit @param {number} phase
  * @returns {Changed[]}
  */
-function phaseChanges(repos, unit, phase) {
+function phaseChanges(cwd, repos, unit, phase) {
+  const since = dayBefore(manifestOf(stateRoot(cwd), unit)?.created);
   return repos.flatMap((repo) => {
-    const commits = phaseCommits(repo, unit, phase);
-    if (commits.length === 0) return [];
-    const base = parentOrEmptyTree(repo.path, commits[0].sha);
-    const files = [...new Set(commits.flatMap((commit) => commit.paths))].sort();
+    const { stamped, own } = phaseCommits(cwd, repo, unit, phase, since);
+    if (stamped.length === 0) return [];
+    const base = parentOrEmptyTree(repo.path, stamped[0].sha);
+    const files = [...new Set([...stamped, ...own].flatMap((commit) => commit.paths))].sort();
     return files.flatMap((file) => {
       const lines = changedLines(repo.path, base, file);
       return lines.length === 0 ? [] : [{ path: projectPath(repo.dir, file), lines }];
@@ -815,7 +850,7 @@ function inScratch(repos, name, lay, fn) {
  */
 function mutantsAt(cwd, unit, phase, mutation, laid) {
   const [{ path: root }] = laid;
-  const changed = phaseChanges(laid, unit, phase);
+  const changed = phaseChanges(cwd, laid, unit, phase);
   if (changed.length === 0) throw new Error(`no commit of phase ${phase} of ${unit} changes a line at its tips`);
   const ran = inRunFolder((run) => {
     const listing = path.join(run, 'changed.json');

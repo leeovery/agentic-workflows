@@ -78,7 +78,6 @@ const TITLE = 'Spell the flag --colour';
 const SECOND = 'Spell the help --colour';
 const BRANCH = quickFixBranch(UNIT);
 const MESSAGE = 'fix(typo): spell the flag --colour';
-const AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 /** Fix 1.1 in flight with no builder of this conversation's, as the entry and the note read it. */
 const IN_FLIGHT = 'in flight: task 1.1, no builder dispatched here — its builder and pair go afresh on its branch';
 // A process that runs and is not this suite's.
@@ -192,7 +191,7 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
       [`implementation(${UNIT}): start`, `task(${UNIT}): write phase 1`],
       [],
     ]);
-    assert.match(readManifest(dir, UNIT).fixes.began, AT);
+    assert.deepStrictEqual(readManifest(dir, UNIT).fixes, {});
     assert.strictEqual(sections, quickFixData('none yet'));
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT });
   });

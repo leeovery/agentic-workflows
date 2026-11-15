@@ -12,8 +12,9 @@
 // below; a task landed twice, either copy; a stack a task is built on that
 // something stops; a phase's commit changed; a task's branch moved,
 // reworded, or gone. What a task holds and what a phase waits on
-// (`MERGE_ROWS`): a task holding a task not opened, or one landed in a
-// phase off its chain; a task short of its chain's tip; a stacked phase
+// (`MERGE_ROWS`): a task holding the work of a task not opened, or of one
+// opened in a phase off its chain, not landed; a task short of its chain's
+// tip; a stacked phase
 // whose base the default branch lacks a task of — its phase not merged, its
 // branches deleted, landed by hand, or merged without it; a replay that
 // conflicts. The hostile-stacks and hostile-merges suites follow every row
@@ -312,21 +313,21 @@ const MERGE_ROWS = [
       git(dir, ['branch', 'fix/pay-4.5-not-begun', 'main']);
       return {
         args: openArgs(show),
-        refusal: 'land: task 4.1\'s branch fix/pay-4.1-show-rounding holds fix/pay-2.2-round-down, not opened — open task 2.2 first',
+        refusal: 'land: task 4.1\'s branch fix/pay-4.1-show-rounding holds the work of task 2.2, not opened — open task 2.2 first',
         follow: (at) => ok(at, openArgs(down)),
       };
     },
   },
   {
-    name: 'a task holding a task landed in a phase off its chain: that phase merged first',
+    name: 'a task holding a task opened in a phase off its chain, not landed: that phase landed first',
     setup: (dir) => {
       const both = track(dir, '1.5', 'feat', 'Both');
       commitFiles(dir, both.branch, card.branch, { 'both.txt': 'both\n' });
       mergeBack(dir, both.branch, rounding.branch);
       return {
         args: openArgs(both),
-        refusal: `land: task 1.5's branch feat/pay-1.5-both holds ${rounding.branch}, landed in a phase's stack off its chain — `
-          + `merge that phase first with \`land phase pay 2\`, or cut the branch again from ${card.branch} without it, and land again`,
+        refusal: `land: task 1.5's branch feat/pay-1.5-both holds the work of task 2.1, not landed — land it first with \`land phase pay 2\`, `
+          + `or cut the branch again from ${card.branch} without it, and land again`,
       };
     },
   },
@@ -368,7 +369,7 @@ const MERGE_ROWS = [
       return {
         args: ['land', 'phase', 'pay', '3'],
         refusal: 'land: phase 3 stacks on phase 2, which has not merged — merge it first with `land phase pay 2`, then land again',
-        check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], [], ['down.txt'], ['cd.txt']]),
+        check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], ['down.txt'], ['cd.txt']]),
       };
     },
   },
@@ -397,26 +398,6 @@ const MERGE_ROWS = [
           + `make it again with \`git branch ${rounding.branch} ${s(was)}\`, `
           + 'open it again with `land open pay 2.1`, merge it with `land phase pay 2`, and land again',
         check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], ['currency.txt']]),
-      };
-    },
-  },
-  {
-    name: 'a phase stacked on a task landed on the default branch by hand with no trailer: the task merged back, opened as a landing that changes nothing, and merged',
-    setup: (dir) => {
-      ok(dir, openArgs(currency));
-      git(dir, ['branch', '-D', PHASE_TWO]);
-      git(dir, ['checkout', '-q', '-b', 'wip']);
-      commitFiles(dir, 'main', 'main', rounding.files, { message: 'round the totals, by hand' });
-      return {
-        args: ['land', 'phase', 'pay', '3'],
-        refusal: 'land: phase 3 is built on task 2.1, which main does not hold and no branch of phase 2 lands — '
-          + 'open it again with `land open pay 2.1`, merge it with `land phase pay 2`, and land again',
-        follow: (at, refusal) => {
-          assert.match(refuses(at, openArgs(rounding)).error, /does not descend from the chain's tip, main .* — merge it back onto main first$/);
-          mergeBack(at, rounding.branch, 'main');
-          followRemedy(at, refusal);
-        },
-        check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], [], ['currency.txt']]),
       };
     },
   },

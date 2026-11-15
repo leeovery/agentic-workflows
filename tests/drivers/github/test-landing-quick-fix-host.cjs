@@ -8,7 +8,10 @@
 // commits GitHub's copy holds brought in — a review's suggestion committed
 // on the pull request's page, and the site's update of the branch, though
 // it holds no change the branch here lacks, each kept by the next push and
-// landing with the squash. A suggestion conflicting with a commit here is
+// landing with the squash; and a later commit of a fix merged by hand
+// mid-set, made elsewhere and pushed there, taken by the next start, never
+// read as landed with the fix's earlier work, and landed at the close. A
+// suggestion conflicting with a commit here is
 // test-landing-quick-fix-host-conflict.cjs's; a second clone, and a push
 // leased against the head it read, -host-clone's. Git layer:
 // quick-fix-world.cjs's two fixes built on a fake GitHub (world.cjs), their
@@ -26,12 +29,15 @@ const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded } =
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, madeOnGithub } = require('./world.cjs');
 const lg = require('../../../skills/leeway-engine/scripts/domain/landing-git.cjs');
+const { TRAILER } = require('../../../skills/leeway-engine/scripts/domain/commit-task.cjs');
 
 const { ok, git, fixtureFrom, cleanupFixture } = harness;
 
 const world = fixtureFrom('github-landing-quick-fix-host-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-host-config-');
 const SUGGESTED = 'const flag = \'colour\'; // suggested\n';
+/** Fix 1.1's line as its later commit, made elsewhere, writes it. */
+const AGAIN = 'const flag = \'colour\'; // again\n';
 
 let dir = ''; // the project
 
@@ -84,5 +90,17 @@ describe('a quick-fix\'s branch as GitHub has it, the truth for what its pull re
     const held = closedWithThird(() => holdsOnGithub(update, BRANCH));
 
     assert.deepStrictEqual([held, git(bare, ['log', '-1', '--format=%P', 'main']).trim(), git(bare, ['diff', '--name-only', moved, 'main']).trim().split('\n')], [true, moved, SET.map(({ file }) => file).sort()]);
+  });
+
+  it('a fix merged by hand mid-set, then a later commit of it made through the door elsewhere and pushed to the branch on GitHub: the next fix\'s start takes it, never reading it landed with the fix\'s earlier work, and the close lands it', () => {
+    dir = world();
+    const [[, mergedByHand]] = Object.entries(side.byHand);
+    mergedByHand(dir, BRANCH);
+    madeOnGithub(dir, BRANCH, { [SET[0].file]: AGAIN }, `fix(${UNIT}): spell the flag once more\n\n${TRAILER}: ${UNIT}-1-1`);
+    third();
+    const taken = git(dir, ['show', `${BRANCH}:${SET[0].file}`]);
+    closedWithThird(() => null);
+
+    assert.deepStrictEqual([taken, git(bareOf(dir), ['show', `main:${SET[0].file}`])], [AGAIN, AGAIN]);
   });
 });

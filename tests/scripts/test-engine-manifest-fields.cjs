@@ -356,6 +356,23 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     return p;
   }
 
+  it('refuses set, push, pull, delete and apply on the unit\'s landing record, or under it, the manifest byte-unchanged: the land verbs write it (landing-record.cjs)', () => {
+    const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    const refusal = '"landings" is the engine\'s own landing record: a land verb writes it as it lands a task, and a verb acting on a landing as it reads one made by hand';
+    for (const args of [
+      ['set', 'payments', 'landings.payments-1-1', '{}'],
+      ['push', 'payments', 'landings', 'x'],
+      ['pull', 'payments', 'landings', 'x'],
+      ['delete', 'payments', 'landings'],
+      ['apply', 'payments', '--file', payload([{ op: 'set', path: 'payments', fields: { 'landings.payments-1-1.x.by': 'read' } }])],
+      ['apply', 'payments', '--file', payload([{ op: 'delete', path: 'payments', field: 'landings.payments-1-1' }])],
+    ]) {
+      assert.strictEqual(runFails(dir, args).error, refusal, args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  });
+
   it('order refuses the push route — a scalar never becomes an array', () => {
     const err = runFails(dir, ['push', 'payments.specification.anchor', 'order', '3']);
     assert.match(err.error, /order is a scalar — use `manifest set`/);

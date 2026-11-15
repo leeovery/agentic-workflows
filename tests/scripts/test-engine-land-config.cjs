@@ -6,7 +6,9 @@
 // `PINNED`) holds where the remedy table's rows never reach it. A stack is
 // read by its own commits where the person signs them and every log shows
 // signatures; the landing and a replay are signed with the person's key, as
-// their own commits are, and one git cannot sign is refused in git's words;
+// their own commits are, the replay recorded landed as every log shows its
+// signature (landing-record.cjs), and one git cannot sign is refused in
+// git's words;
 // a replay keeps a message that is not ASCII, recorded as UTF-8;
 // it follows renames, however many, stops where a folder the task moved
 // gains a file, where both sides changed one line, and where line endings
@@ -21,7 +23,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { ok, git } = require('./engine-harness.cjs');
+const { ok, git, readManifest } = require('./engine-harness.cjs');
 const {
   TASKS, openArgs, own, cutTask, commitFiles, landedOn, refusedMoving, followRemedy, personState, signatures, short, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
@@ -96,7 +98,7 @@ describe('land: under the person\'s config, hostile to it', () => {
     commitFiles(dir, 'main', 'main', { 'other.txt': 'other\n' });
     const replayed = own(ok(dir, MERGE_FOUR)).commit;
     assert.notStrictEqual(replayed, landing);
-    assert.deepStrictEqual(signatures(dir, [landing, replayed]), ['G', 'G']);
+    assert.deepStrictEqual([signatures(dir, [landing, replayed]), readManifest(dir, 'pay').landings?.['pay-4-1']?.['.']?.commit], [['G', 'G'], replayed]);
   });
 
   it('refuses a landing and a replay git cannot sign, in git\'s own words, naming the commit, and moves nothing', () => {

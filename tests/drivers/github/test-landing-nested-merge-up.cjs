@@ -10,7 +10,9 @@
 // bottom, each branch into the one above, every task then landing under
 // its own subject and the default branch pointing the submodule at the
 // submodule's (7.2.17, 7.2.18); refused before anything is pushed where a
-// merge conflicts in a file or a branch here is checked out with changes;
+// merge conflicts in a file — a stack on a phase GitHub squashed naming its
+// own commits rebased onto the default branch (S3) — or a branch here is
+// checked out with changes;
 // its merge refused where GitHub has not worked out by the driver's wait's
 // end that each pull request pushed to can merge; and landed, once, by
 // landing again where its merges were pushed but never moved here, each
@@ -73,7 +75,7 @@ describe('GitHub\'s landing driver bringing a stack up to date across nested rep
     const heads = [lower, upper].map((task) => tipOnGithub(at.dir, task.branch));
     assert.strictEqual(
       refused(at.dir, ['land', 'phase', 'pay', '4']),
-      `land: ${upper.branch} conflicts with origin/main at fix.txt, so nothing was pushed and nothing merged — merge origin/main into ${upper.branch}, settling the conflict, push it, and land again`,
+      `land: ${upper.branch} conflicts with origin/main at fix.txt, so nothing was pushed and nothing merged — rebase phase 4's own commits onto origin/main, settling the conflict, with \`git rebase --onto origin/main ${git(at.dir, ['rev-parse', `${lower.branch}^`]).trim().slice(0, 7)} ${upper.branch} --update-refs\`, push its branches with \`git push --force-with-lease origin ${lower.branch} ${upper.branch}\`, and land again`,
     );
     assert.deepStrictEqual([[lower, upper].map((task) => tipOnGithub(at.dir, task.branch)), [lower, upper].map((task) => tip(at.dir, task.branch))], [heads, heads]);
     assert.deepStrictEqual(pullStates(at.dir), ['MERGED', 'MERGED', 'MERGED', 'OPEN', 'OPEN', 'OPEN', 'OPEN']);
