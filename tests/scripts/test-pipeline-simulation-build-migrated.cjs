@@ -21,7 +21,8 @@
 // the stack the tasks built since; and the review reads the whole unit, the
 // joined spec's area its area. A phase whose every task since was closed,
 // its others done before, passes its review with nothing to read and runs
-// no mutants. The review itself is test-pipeline-simulation-review-migrated-
+// no mutants, its scenarios judged at its landing branch's tip, and closes.
+// The review itself is test-pipeline-simulation-review-migrated-
 // feature.cjs's and -epic.cjs's.
 //
 // Layer: simulation. World: this file's own — a project in the layout from
@@ -201,20 +202,26 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('area: ')), [`area: 1-${WU} — §1 Folio`]);
   });
 
-  it('21.8.8: a phase whose every task since the migration was closed, the rest done before it, passes its review with nothing to read, its last close naming no mutation run', () => {
+  it('21.8.8: a phase whose every task since the migration was closed, the rest done before it, passes its review with nothing to read, its last close naming no mutation run, its scenario judged at the tip of the branch it lands on — no stack holding it — and closes', () => {
+    for (const [file, text] of Object.entries(VERIFY_FILES)) {
+      fs.mkdirSync(path.dirname(path.join(sim.dir, file)), { recursive: true });
+      fs.writeFileSync(path.join(sim.dir, file), text, { mode: 0o755 });
+    }
+    git(sim.dir, ['add', '--', ...Object.keys(VERIFY_FILES)]);
+    git(sim.dir, ['commit', '-q', '-m', 'chore: the verify setup']);
     sim.run(['enter', 'implementation', WU]);
     startPhase(sim, WU, 2);
     sim.run(['enter', 'implementation', WU]);
     const builder = loop.brief(['builder', WU, '2.2']);
-    const editing = loop.isolated('2.2');
-    loop.committed(editing, '2.2', VERIFY_FILES);
-    loop.setUp(editing, builder, '1.S1');
+    loop.setUp(loop.isolated('2.2'), builder, '1.S1');
     sim.run(['task', 'close', WU, '2.2', '--reason', 'Editing waits for the page\'s history.']);
     sim.run(['task', 'start', WU, '2.3']);
     assert.strictEqual(sim.run(['task', 'close', WU, '2.3', '--reason', 'Undo waits for the page\'s history.']).next, undefined, 'nothing built since to run mutants over');
 
     const items = JSON.parse(sim.read(['checklist', 'show', 'phase-close', WU, '2'])).items;
-    assert.strictEqual(items.find((/** @type {{key: string}} */ item) => item.key === 'phase-review-passed').state, 'done');
+    assert.deepStrictEqual(['phase-review-passed', 'scenarios-reported'].map((key) => items.find((/** @type {{key: string}} */ item) => item.key === key).state), ['done', 'done'],
+      'its review passed with nothing to read, 1.S1 proven by its run at the default branch\'s tip');
     sim.refuses(['brief', 'phase-review', WU, '2', '--letter', 'a'], /phase 2 of folio has nothing built since the migration cut the unit — each task of it landed before or was closed — so its review passes with nothing to read/);
+    sim.run(['checklist', 'close', 'phase-close', WU, '2']);
   });
 });

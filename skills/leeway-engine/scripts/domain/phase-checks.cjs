@@ -33,8 +33,11 @@
 //   fixes the phase owes, which the build's standing says.
 // - Each scenario proven or reported not proven: proven by its runs at the
 //   phase's tips (phase-stack.cjs, runs.cjs), else named in every report of
-//   the phase review by a finding in its standing's words (15.4.3). A stack
-//   whose tips cannot be read proves nothing, said as a warning.
+//   the phase review by a finding in its standing's words (15.4.3). A phase
+//   with nothing built since the migration cut its unit has no stack: its
+//   tips are the tip of the branch each repository lands on (landing.cjs,
+//   `landingTips`). Tips that cannot be read prove nothing, said as a
+//   warning.
 // - Its notes consolidated: as notes.cjs reads the consolidation's record.
 // - Its stack merged: every task not closed landed (task-landed.cjs), one at
 //   least — or, in step, its merge waiting at its gate, every task not
@@ -57,7 +60,7 @@
 
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { projectRepos } = require('../kernel/repos.cjs');
+const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
@@ -72,7 +75,7 @@ const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
 const { consolidationFaults } = require('./notes.cjs');
 const { verifySetup } = require('./environment.cjs');
-const { allChained } = require('./landing.cjs');
+const { allChained, landingTips } = require('./landing.cjs');
 const { unitLanded } = require('./task-landed.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { phaseName, shownTask } = require('./task-id.cjs');
@@ -308,13 +311,26 @@ function fixesOwed(at, phase) {
   return faults.length > 0 || allPass(reports) ? [] : phaseReviewFaults(at, phase);
 }
 
-/** The phase's stack's tips, read once a call; null where they cannot be read, said as a warning. @param {Reading} at @param {number} phase @returns {RepoCommit[]|null} */
+/** Each repository at the tip of the branch it lands on, named as a run names its commits. @param {Reading} at @returns {RepoCommit[]} */
+function landingTipsOf(at) {
+  const repos = reposOf(at);
+  const tips = landingTips(at.cwd, at.unit, repos, repos);
+  return repos.map((repo) => ({ repo: repoName(repo), commit: tips.get(repo.dir) ?? null }));
+}
+
+/**
+ * The phase's tips, read once a call: its stack's, or, for a phase with
+ * nothing built since the migration cut its unit, which no stack holds, its
+ * landing branch's (`landingTipsOf`); null where they cannot be read, said
+ * as a warning.
+ * @param {Reading} at @param {number} phase @returns {RepoCommit[]|null}
+ */
 function phaseTips(at, phase) {
   return once(at, `tips ${phase}`, () => {
     try {
-      return tipCommits(phaseStack(at.cwd, at.unit, phase, builtSince(at.manifest, phaseTasks(at, phase) ?? [])));
+      return nothingSince(at, phase) ? landingTipsOf(at) : tipCommits(phaseStack(at.cwd, at.unit, phase, builtSince(at.manifest, phaseTasks(at, phase) ?? [])));
     } catch (err) {
-      at.warnings.push(`${phaseName(at.unit, phase)}'s scenarios are judged at its stack's tips, which cannot be read — ${messageOf(err)}`);
+      at.warnings.push(`${phaseName(at.unit, phase)}'s scenarios are judged at its tips, which cannot be read — ${messageOf(err)}`);
       return null;
     }
   });
@@ -346,7 +362,7 @@ const scenariosReported = (at, phase) => unreported(at, phase)?.length === 0;
 /** What stands between the phase and each scenario proven or reported, with the way on. @param {Reading} at @param {number} phase */
 function scenariosWay(at, phase) {
   const left = unreported(at, phase);
-  if (left === null) return `${phaseName(at.unit, phase)}'s stack's tips cannot be read, as the warning says`;
+  if (left === null) return `${phaseName(at.unit, phase)}'s tips cannot be read, as the warning says`;
   return left.map(({ scenario, standing }) => `${scenario} is ${standing} at the phase's tips — run it from a worktree at them, verify run ${at.unit} ${scenario}, or the phase review's reports each name it ${standing}`).join('; ');
 }
 

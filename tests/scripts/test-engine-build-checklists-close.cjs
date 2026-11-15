@@ -113,7 +113,7 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.deepStrictEqual([unrun, skipped, way()], [
       `${ways('1.S1', 'not proven')}; ${ways('1.S2', 'not proven')}`,
       ways('1.S2', 'named, not run'),
-      `phase 1 of ${UNIT}'s stack's tips cannot be read, as the warning says`,
+      `phase 1 of ${UNIT}'s tips cannot be read, as the warning says`,
     ]);
   });
 
@@ -124,7 +124,7 @@ describe('a phase\'s close (6.4.9)', () => {
     const answer = show('phase-close', 1);
 
     assert.strictEqual(answer.items.find((/** @type {{key: string}} */ shown) => shown.key === 'scenarios-reported').state, 'open');
-    assert.match(answer.warnings.join('\n'), /^phase 1 of pay's scenarios are judged at its stack's tips, which cannot be read — no repository of the project holds work on phase 1 of pay's tasks$/m);
+    assert.match(answer.warnings.join('\n'), /^phase 1 of pay's scenarios are judged at its tips, which cannot be read — no repository of the project holds work on phase 1 of pay's tasks$/m);
   });
 
   it('reads its notes consolidated once a note waiting is taken by the consolidation\'s record', () => {
