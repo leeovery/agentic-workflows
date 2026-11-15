@@ -23,7 +23,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { stateGit, sectionOf, completeUnit, startItem } = require('./engine-harness.cjs');
+const { stateGit, sectionOf, completeUnit, startItem, git, githubOffline } = require('./engine-harness.cjs');
 const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn, epicRow, startMenu, answerGate } = require('./pipeline-world.cjs');
 
 const { SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
@@ -132,7 +132,9 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual([JSON.parse(sim.read(['environment', 'show'])).linters, Object.values(back.rows).some((next) => next.argv?.[2] === wu)], [linters, true], 'the linters recorded, and manage drawn again with the unit');
   });
 
-  it('22.S11, 7.S18: a driver changed from manage — d draws the drivers, a number sets the one it names, and the drivers are drawn again with it in use', () => {
+  it('22.S11, 7.S18: a driver changed from manage — on a project whose remote is on GitHub, out of reach, d draws the drivers, a number sets the one it names, and the drivers are drawn again with it in use', () => {
+    git(sim.dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
+    sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
     assert.ok(startMenu(sim).some(({ key }) => key === 'm'), 'the start menu offers manage');
     picked(sim, 'start menu', 'm');
     const { rows } = picked(sim, 'manage', 'd');

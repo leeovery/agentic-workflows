@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The engine's runtime (22.1.4, 22.S32): every module the workflows ship
 // requires Node's built-ins or a file of the workflows' own, never a
-// package — a scan of each `require` naming its module in a literal; the
-// few that compute their path load a driver, a directive's check or a
+// package — a scan of each `require` naming its module in a literal, quoted
+// or a template with nothing in it computed; the few that compute their
+// path load a driver, a directive's check or a
 // migration from the workflows' own folders. Nothing is installed or built
 // to run it: the repository declares no dependencies and no step at
 // install. A ledger entry's id is drawn from Node's own crypto.
@@ -31,8 +32,11 @@ const modules = () => fs.readdirSync(SKILLS, { recursive: true, encoding: 'utf8'
   .filter((rel) => rel.endsWith('.cjs') && !rel.split(path.sep).includes('tests'))
   .map((rel) => path.join(SKILLS, rel));
 
-/** What a module requires in a literal, each by the name it gives. @param {string} file */
-const required = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/\brequire\(\s*(['"])([^'"]+)\1\s*\)/g)].map((m) => m[2]);
+/** What a text requires in a literal, each by the name it gives. @param {string} text */
+const requiredIn = (text) => [...text.matchAll(/\brequire\(\s*(['"`])([^'"`$]+)\1\s*\)/g)].map((m) => m[2]);
+
+/** What a module requires in a literal. @param {string} file */
+const required = (file) => requiredIn(fs.readFileSync(file, 'utf8'));
 
 /** Whether a required name is a module of Node's own. @param {string} name */
 const builtIn = (name) => builtinModules.includes(name.replace(/^node:/, ''));
@@ -46,6 +50,10 @@ describe('the engine\'s runtime (22.1.4, 22.S32)', () => {
 
     assert.ok(shipped.some((file) => required(file).includes('fs')) && shipped.some((file) => required(file).some((name) => name.startsWith('./'))), 'the scan reads requires of both kinds');
     assert.deepStrictEqual(strays, []);
+  });
+
+  it('reads a require in a template literal as one quoted, and leaves one whose name is computed', () => {
+    assert.deepStrictEqual(requiredIn("require('fs'); require(\"./a.cjs\"); require(`left-pad`); require(`./${name}.cjs`); require(path)"), ['fs', './a.cjs', 'left-pad']);
   });
 
   it('installs and builds nothing: the repository declares no dependencies and no step at install', () => {

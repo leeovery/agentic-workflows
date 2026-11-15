@@ -2,121 +2,128 @@
 
 // ---------------------------------------------------------------------------
 // Ready to build's drivers' check (leeway-engine/scripts/domain/
-// ready-to-build.cjs over domain/drivers-verbs.cjs): the drivers checked
-// against the tools they need at the screen, the stop drawn in its place
-// where a tool is missing or older than its floor — what is missing, or the
-// version found, the one needed and where its update instructions live,
-// never an install command (22.4.5–22.4.9, 7.2.10) — and again at the yes,
-// so a tool gone while the screen waited still stops the build (O20); and
-// the yes writing each driver's setting the project lacks, as the first
-// verb needing it would (22.4.3, F7). The stop's every wording is
-// test-engine-drivers-verbs.cjs's; the defaults resolved from a remote
-// test-engine-drivers-remote.cjs's.
+// ready-to-build.cjs over domain/drivers-verbs.cjs), over the drivers that
+// ship, read from their declarations, so no tool is named here (7.1.10):
+// the drivers checked against the tools they need at the screen, after the
+// environment setup, the stop drawn in the screen's place where a tool is
+// not fine (22.4.5–22.4.9, 7.2.10), and again at the yes, so a tool gone
+// while the screen waited still stops the build (O20); and the yes writing
+// each driver's setting the project lacks, as the first verb needing it
+// would (22.4.3, F7). The stop's every wording is
+// test-engine-drivers-verbs.cjs's; each shipped driver's tools missing,
+// older or failing at ready to build, and a remote on a host, its own
+// suite's (tests/drivers/{name}/test-drivers.cjs); the defaults resolved
+// from a remote test-engine-drivers-remote.cjs's.
 //
 // Layer: verb. World: the ready to build world closed
 // (ready-to-build-world.cjs), copied for each test into a folder named
-// `lantern`, the tools the check reads stood in for (drivers-world.cjs).
+// `lantern`, the tools the check reads stood in for at their floors
+// (engine-harness.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { ok, output, refusedPristine, sectionOf, readManifest, readState, git, bareRepo, githubOffline, killedAt, stateGit } = require('./engine-harness.cjs');
+const path = require('path');
+
+const { ok, output, refusedPristine, sectionOf, readManifest, readState, git, bareRepo, killedAt, stateGit, toolless, setEnvironment, commitAll } = require('./engine-harness.cjs');
 const { UNIT, SESSION, closed, useReadyWorld } = require('./ready-to-build-world.cjs');
-const { toolsEnv } = require('./drivers-world.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
+const { driversStopScreen, driversStopReason } = require(path.join(SCRIPTS, 'domain/projections/drivers.cjs'));
+
+/** @typedef {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').Driver} Driver */
+
+/** A kind's default: the driver it flags. @param {'task'|'landing'} kind */
+const flagged = (kind) => /** @type {Driver} */ (listDrivers(kind).find((driver) => driver.isDefault));
+const TASK = flagged('task');
+const LANDING = flagged('landing');
+
+/** The task driver's stop, its every tool not installed. */
+const TASK_MISSING = Object.freeze([{
+  kind: /** @type {const} */ ('task'),
+  driver: TASK.name,
+  title: TASK.title,
+  tools: TASK.needs.map(({ tool, label, floor, update }) => ({ tool, label, floor, update, found: null, state: /** @type {const} */ ('missing') })),
+}]);
 
 const dir = useReadyWorld(closed, 'lantern');
 
-/** A call's environment: the conversation's, the tools stood in for, `more` over them. @param {Record<string, string>} [more] */
-const env = (more = {}) => ({ ...SESSION, ...toolsEnv(more) });
+/** A call's environment: the conversation's, `more` over it. @param {Record<string, string>} [more] */
+const env = (more = {}) => ({ ...SESSION, ...more });
+
+/** No tool a driver needs on the PATH. */
+const withoutTools = () => env({ PATH: toolless(path.dirname(dir())) });
 
 /** The project's drivers setting. */
 const drivers = () => JSON.parse(readState(dir(), 'manifest.json')).drivers;
 
-/** The project on GitHub's driver, set through manage's verb. */
-const onGithub = () => ok(dir(), ['drivers', 'set', 'landing', 'github'], { env: env() });
+/** The screen as `callEnv` leaves the tools. @param {Record<string, string>} [callEnv] */
+const screen = (callEnv = env()) => output(dir(), ['render', 'ready-to-build', UNIT], { env: callEnv });
 
-/** The screen as `more` leaves the tools. @param {Record<string, string>} [more] */
-const screen = (more) => output(dir(), ['render', 'ready-to-build', UNIT], { env: env(more) });
-
-/** The yes in auto, as `more` leaves the tools. @param {Record<string, string>} [more] */
-const yes = (more) => ok(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env(more) });
+/** The yes in auto. */
+const yes = () => ok(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env() });
 
 describe('the drivers checked at ready to build (22.4.5–22.4.9)', () => {
-  it('a project on GitHub\'s driver with every tool at its floor draws the screen, asking nothing of the drivers, and its yes begins the build', () => {
-    onGithub();
-
+  it('with every tool at its floor, the screen draws, asking nothing of the drivers, and its yes begins the build', () => {
     assert.ok(sectionOf(screen(), 'MENU: ready to build').includes('a/auto'));
     assert.deepStrictEqual(yes().position, 'auto');
   });
 
-  it('22.S12, 7.S14, 22.4.8: the stack extension missing — the stop drawn in the screen\'s place, saying what is missing and no install command, with no gate', () => {
-    onGithub();
-    const out = screen({ GH_STUB_NO_STACK: '1' });
+  it('22.4.8, 7.S14: a tool not installed — the stop drawn in the screen\'s place, with no gate', { skip: TASK.needs.length === 0 }, () => {
+    const out = screen(withoutTools());
 
     assert.deepStrictEqual([...out.matchAll(/^=== (.+?) \(/gm)].map((m) => m[1]), ['DISPLAY: drivers stop', 'DISPLAY: drivers account']);
-    assert.strictEqual(sectionOf(out, 'DISPLAY: drivers stop').trim(), '⚑ Ready to build stopped: the landing driver is missing a tool');
-    assert.strictEqual(sectionOf(out, 'DISPLAY: drivers account').trim(), [
-      '> Lantern lands its work through GitHub\'s driver, which needs GitHub\'s CLI 2.30.0 or newer and GitHub\'s stack extension 0.1.0 or newer. GitHub\'s CLI is here; GitHub\'s stack extension isn\'t installed.',
-      '>',
-      '> Nothing has been built. Ready to build waits until GitHub\'s stack extension is installed, or until the landing driver is changed from manage on the start menu.',
-    ].join('\n'));
+    assert.strictEqual(out, driversStopScreen('Lantern', TASK_MISSING));
   });
 
-  it('22.S34, 22.4.9: a tool older than its floor stops it, naming the version found, the one needed and where its update instructions live', () => {
-    const out = screen({ TICK_STUB_VERSION: '0.2.9' });
-
-    assert.strictEqual(sectionOf(out, 'DISPLAY: drivers stop').trim(), '⚑ Ready to build stopped: the task driver needs a newer tool');
-    assert.strictEqual(sectionOf(out, 'DISPLAY: drivers account').split('\n')[0],
-      '> Lantern tracks its tasks through Tick\'s driver, which needs Tick 0.3.0 or newer. Tick is 0.2.9, older than 0.3.0 — its update instructions are at https://github.com/leeovery/tick.');
-  });
-
-  it('22.4.5, O20: a tool gone while the screen waited stops the yes, refused with the stop, writing nothing', () => {
-    onGithub();
+  it('22.4.5, O20: a tool gone while the screen waited stops the yes, refused with the stop, writing nothing', { skip: TASK.needs.length === 0 }, () => {
     assert.ok(sectionOf(screen(), 'MENU: ready to build').includes('a/auto'));
 
-    assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env({ GH_STUB_NO_STACK: '1' }) }).error,
-      'ready-to-build yes: Ready to build stopped: the landing driver is missing a tool — Lantern lands its work through GitHub\'s driver, which needs GitHub\'s CLI 2.30.0 or newer and GitHub\'s stack extension 0.1.0 or newer. GitHub\'s CLI is here; GitHub\'s stack extension isn\'t installed. Nothing has been built. Ready to build waits until GitHub\'s stack extension is installed, or until the landing driver is changed from manage on the start menu.');
+    assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: withoutTools() }).error,
+      `ready-to-build yes: ${driversStopReason('Lantern', TASK_MISSING)}`);
     assert.strictEqual(readManifest(dir(), UNIT).build, undefined);
+  });
+
+  it('22.5.3: the environment setup comes first — where it is not recorded, the screen is refused for it before the drivers are checked', { skip: TASK.needs.length === 0 }, () => {
+    setEnvironment(dir(), undefined);
+    commitAll(dir(), 'the environment setup never asked');
+
+    assert.strictEqual(refusedPristine(dir(), ['render', 'ready-to-build', UNIT], { env: withoutTools() }).error,
+      'render ready-to-build: ready-to-build has items open since its close: environment-recorded — they are worked, and it is closed again');
   });
 });
 
 describe('the yes writes both drivers\' settings (22.4.3, F7)', () => {
-  it('22.S10, 7.S1: a project with no remote records Tick\'s driver and the local driver, unasked', () => {
+  it('22.S10, 7.S1: a project with no remote records each kind\'s default, unasked', () => {
     assert.strictEqual(drivers(), undefined);
     yes();
 
-    assert.deepStrictEqual(drivers(), { task: 'tick', landing: 'local' });
+    assert.deepStrictEqual(drivers(), { task: TASK.name, landing: LANDING.name });
   });
 
-  it('22.S25, 7.S18: a project whose remote is not on GitHub records the local driver', () => {
+  it('22.S25, 7.S18: a project whose remote is on no host a driver serves records the landing default', () => {
     git(dir(), ['remote', 'add', 'origin', bareRepo(`${dir()}-elsewhere.git`)]);
     yes();
 
-    assert.deepStrictEqual(drivers(), { task: 'tick', landing: 'local' });
-  });
-
-  it('22.S9: a project whose remote is on GitHub records GitHub\'s driver, unasked', () => {
-    git(dir(), ['remote', 'add', 'origin', 'git@github.com:acme/lantern.git']);
-    yes(githubOffline(dir()));
-
-    assert.deepStrictEqual(drivers(), { task: 'tick', landing: 'github' });
+    assert.deepStrictEqual(drivers(), { task: TASK.name, landing: LANDING.name });
   });
 
   it('keeps a setting the project holds, writing only the one it lacks', () => {
-    onGithub();
+    ok(dir(), ['drivers', 'set', 'landing', LANDING.name], { env: env() });
     yes();
 
-    assert.deepStrictEqual(drivers(), { landing: 'github', task: 'tick' });
+    assert.deepStrictEqual(Object.entries(drivers()), [['landing', LANDING.name], ['task', TASK.name]]);
   });
 
   it('killed once a setting is written, the yes run again begins the build, its commit carrying both and nothing left uncommitted', () => {
     killedAt({ method: 'renameSync', file: '.leeway/manifest.json', when: 'after' }, dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env() });
-    assert.deepStrictEqual([drivers(), readManifest(dir(), UNIT).build], [{ task: 'tick' }, undefined]);
+    assert.deepStrictEqual([drivers(), readManifest(dir(), UNIT).build], [{ task: TASK.name }, undefined]);
 
     yes();
-    assert.deepStrictEqual([drivers(), readManifest(dir(), UNIT).build], [{ task: 'tick', landing: 'local' }, { position: 'auto' }]);
+    assert.deepStrictEqual([drivers(), readManifest(dir(), UNIT).build], [{ task: TASK.name, landing: LANDING.name }, { position: 'auto' }]);
     assert.strictEqual(stateGit(dir(), ['status', '--porcelain']), '');
   });
 });

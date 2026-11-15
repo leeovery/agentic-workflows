@@ -35,7 +35,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip, accountTaken,
+  ok, refuses, refusedPristine, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip, accountTaken, toolless,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -132,16 +132,6 @@ function refusePristine(refusals, env) {
   assert.deepStrictEqual(written(), { ...before, uncommitted: '' }, 'nothing written');
 }
 
-/** A folder beside the project holding git and ps alone, for a PATH without the driver's tools. */
-function toolless() {
-  const bin = fs.mkdtempSync(path.join(path.dirname(dir), 'bin-'));
-  for (const tool of ['git', 'ps']) {
-    const found = (process.env.PATH ?? '').split(path.delimiter).map((folder) => path.join(folder, tool)).find((file) => fs.existsSync(file));
-    if (found !== undefined) fs.symlinkSync(found, path.join(bin, tool));
-  }
-  return bin;
-}
-
 /** One refusal's words, nothing written. @param {string[]} args @param {Record<string, string>} [env] */
 function refusesPristine(args, env) {
   const before = written();
@@ -234,7 +224,7 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
   it('refuses where the state\'s ignore file is gone, saying how to bring it back, whatever tools are installed, the store not made', () => {
     fs.rmSync(statePath(dir, '.gitignore'));
 
-    const { error } = refuses(dir, ['task', 'ready', UNIT], { env: { PATH: toolless() } });
+    const { error } = refuses(dir, ['task', 'ready', UNIT], { env: { PATH: toolless(path.dirname(dir)) } });
 
     assert.strictEqual(error, `the state's .gitignore is gone from ${statePath(dir, '.')} — bring it back as ${STATE_BRANCH} holds it: git -C "${statePath(dir, '.')}" checkout HEAD -- .gitignore`);
     assert.ok(DRIVER.storeFiles().every((file) => !fs.existsSync(statePath(dir, file))), 'no store made');
@@ -590,7 +580,7 @@ describe('a driver whose tools are not installed', () => {
   beforeEach(() => { dir = inFolder(phasedWorld); });
 
   it('is refused in the engine\'s words where a verb runs them, naming every tool missing and where its updates are, and passing through the error of one that runs and fails, writing nothing', { skip: DRIVER.needs.length === 0 }, () => {
-    const bin = toolless();
+    const bin = toolless(path.dirname(dir));
     const adding = ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'page', template('Page the ledger'))];
 
     const error = refusesPristine(adding, { PATH: bin });

@@ -31,7 +31,9 @@
 // is refused, naming those they do. The code host's driver, which acts on
 // the remote's host for setup, is the landing driver that serves the
 // remote, whatever the setting; which driver a project lands through can be
-// read without settling it. The loader names no host: a driver for
+// read without settling it. A driver serves the project unless it lands
+// through a host (`assertServes`) the project's remote is not on
+// (`projectDrivers`). The loader names no host: a driver for
 // another one is a folder of its own and nothing else.
 // ---------------------------------------------------------------------------
 
@@ -40,7 +42,7 @@ const path = require('path');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { DRIVER_KINDS } = require('../kernel/manifest-schema.cjs');
-const { atLeast } = require('../kernel/version.cjs');
+const { releaseOf, atLeast } = require('../kernel/version.cjs');
 
 /** @typedef {typeof DRIVER_KINDS[number]} DriverKind */
 
@@ -299,16 +301,6 @@ function isText(value) {
   return typeof value === 'string' && value !== '';
 }
 
-/**
- * A release as its parts, or null where the text reads as none: `2.30.0`,
- * `v2.30`, a third part absent reading as 0.
- * @param {string} text @returns {number[]|null}
- */
-function releaseOf(text) {
-  const m = /^v?(\d+)\.(\d+)(?:\.(\d+))?/.exec(text);
-  return m ? [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)] : null;
-}
-
 /** @param {unknown} need @returns {boolean} */
 function isNeed(need) {
   return isObject(need) && isText(need.tool) && isText(need.label) && isText(need.floor) && releaseOf(need.floor) !== null
@@ -436,6 +428,42 @@ function settingOf(project, kind) {
 }
 
 /**
+ * The URL of the project's remote where a kind's drivers read it — the
+ * landing drivers' — else null.
+ * @param {string} cwd @param {DriverKind} kind
+ * @returns {string|null}
+ */
+function remoteOf(cwd, kind) {
+  // Loaded here, not with the module: the layout guard reads the drivers
+  // before every write under the state, and remote.cjs brings the state
+  // worktree's modules with it.
+  return kind === 'landing' ? require('./remote.cjs').remoteUrl(cwd) : null;
+}
+
+/**
+ * Whether a driver serves a project whose remote's URL is `url`: a task
+ * driver serves any, as does a landing driver landing through no host; one
+ * landing through a host (`assertServes`) serves only a remote it serves.
+ * @param {Driver} driver @param {string|null} url
+ * @returns {boolean}
+ */
+function servesRemote(driver, url) {
+  if (driver.kind !== 'landing') return true;
+  const landing = /** @type {LandingDriver} */ (driver);
+  return landing.assertServes === undefined || (url !== null && landing.serves(url));
+}
+
+/**
+ * A kind's shipped drivers, each with whether it serves the project.
+ * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
+ * @returns {{driver: Driver, serves: boolean}[]}
+ */
+function projectDrivers(cwd, kind, root = DRIVERS_ROOT) {
+  const url = remoteOf(cwd, kind);
+  return listDrivers(kind, root).map((driver) => ({ driver, serves: servesRemote(driver, url) }));
+}
+
+/**
  * The project's driver of a kind as things stand, writing nothing: the one
  * its setting names, or the kind's default; `set` says the setting names it.
  * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
@@ -444,11 +472,7 @@ function settingOf(project, kind) {
 function chosenDriver(cwd, kind, root = DRIVERS_ROOT) {
   const set = settingOf(readProjectManifest(cwd), kind);
   if (set !== null) return { driver: loadDriver(kind, set, root), set: true };
-  // Loaded here, not with the module: the layout guard reads the drivers
-  // before every write under the state, and remote.cjs brings the state
-  // worktree's modules with it.
-  const url = kind === 'landing' ? require('./remote.cjs').remoteUrl(cwd) : null;
-  return { driver: defaultDriver(kind, listDrivers(kind, root), url), set: false };
+  return { driver: defaultDriver(kind, listDrivers(kind, root), remoteOf(cwd, kind)), set: false };
 }
 
 /**
@@ -515,4 +539,4 @@ function needsRefusal(driver) {
   return faults.length === 0 ? null : `the ${driver.kind} driver ${faults.join('; and ')}`;
 }
 
-module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, hostDriver, chosenDriver, resolveDriver, settingOf, toolStates, needsRefusal };
+module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, hostDriver, chosenDriver, resolveDriver, settingOf, toolStates, needsRefusal, projectDrivers };

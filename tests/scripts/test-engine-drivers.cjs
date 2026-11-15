@@ -197,8 +197,8 @@ describe('a driver\'s tools against their floors (22.4.9)', () => {
     assert.deepStrictEqual(Object.keys(states[0]), ['tool', 'label', 'floor', 'update', 'found', 'state'], 'each state carries the words a screen names its tool by, its floor and its update instructions');
   });
 
-  it('toolStates: a floor without its third part reads it as 0, and a release short of it is older', () => {
-    assert.deepStrictEqual(toolStates(driver([need('ay', () => '1.1.99', '1.2'), need('bee', () => '1.2', '1.2.0')])).map(({ state }) => state), ['older', 'fine']);
+  it('toolStates: a release without its third part reads it as 0, a floor\'s or a version found, and a release short of it is older', () => {
+    assert.deepStrictEqual(toolStates(driver([need('ay', () => '1.1.99', '1.2'), need('bee', () => '1.2', '1.2.0'), need('sea', () => '1.2', '1.2.1')])).map(({ state }) => state), ['older', 'fine', 'older']);
   });
 
   it('needsRefusal: names every tool not installed and where its updates are, each older with the version found, and passes through the error of each that fails', () => {

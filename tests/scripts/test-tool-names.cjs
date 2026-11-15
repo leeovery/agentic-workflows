@@ -1,13 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The tracker and the code host's CLI named only in their drivers (7.1.10,
-// 7.2.13, 7.S2), by the scan in tool-names.cjs: its forms find a tool's
-// command, a spawn of its binary, its package, its store and its ids, and
-// pass the bare words prose and code use for other things; run over the
-// skills, the references, the agent definitions and the engine's code —
-// released migrations, the drivers and test fixtures aside, and nothing
-// else — it finds neither tool, where it finds both in the drivers.
+// The tools the drivers wrap named only in their drivers (7.1.10, 7.2.13,
+// 7.S2), by the scan in tool-names.cjs: run over the skills, the
+// references, the agent definitions, the engine's code and every migration
+// — the drivers and test fixtures aside, and nothing else — it finds no
+// tool, where it finds each driver's tool in that driver's own code. Each
+// driver's forms are pinned beside its fixtures (tests/drivers/{name}/
+// test-tool-names.cjs).
 //
 // Layer: unit. World: the repository's own files, read.
 // ---------------------------------------------------------------------------
@@ -19,66 +19,32 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { NAMED_HERE, toolNamesIn, shippedFiles, REPO } = require('./tool-names.cjs');
+const { DRIVER_FORMS, DRIVERS, toolNamesIn, shippedFiles, REPO } = require('./tool-names.cjs');
 
-/** The forms a text names a tool in, each once. @param {string} text */
-const formsIn = (text) => [...new Set(toolNamesIn(text).map(({ tool, form }) => `${tool}: ${form}`))];
+/** Each file under a folder, from the repository's root. @param {string} rel */
+const filesUnder = (rel) => fs.readdirSync(path.join(REPO, rel), { recursive: true, encoding: 'utf8' })
+  .map((file) => path.join(rel, file))
+  .filter((file) => fs.statSync(path.join(REPO, file)).isFile());
 
 describe('the tool-name scan (7.1.10, 7.2.13)', () => {
-  it('finds each form a tool is named in', () => {
-    assert.deepStrictEqual([
-      'run `tick create "Title"` in the store',
-      'tick --json list',
-      'brew install leeovery/tick',
-      'the store at .tick/tasks.jsonl',
-      'closed tick-a1b2c3 by hand',
-      'gh pr view 12',
-      'gh --version',
-      'gh extension install github/gh-stack',
-      'updates at https://cli.github.com',
-      "spawnSync('tick', ['version'])",
-      'execFileSync("gh", args)',
-    ].map(formsIn), [
-      ['tracker: a command'],
-      ['tracker: a command'],
-      ['tracker: its package'],
-      ['tracker: its store'],
-      ['tracker: its ids'],
-      ['code host: a command'],
-      ['code host: a command'],
-      ['code host: a command', 'code host: its package'],
-      ['code host: its package'],
-      ['either: a spawn of its binary'],
-      ['either: a spawn of its binary'],
-    ]);
-  });
-
-  it('passes the bare words prose and code use for other things', () => {
-    for (const text of [
-      'Tick a line you agree with, or comment on it.',
-      'a tick closes the line\'s conversation',
-      "if (mark.s === 'tick') state = 'approved';",
-      '--tick: #1b7a4e;',
-      'next tick saved 0',
-      'Publish failure swallows gh stderr',
-      'the ticket at tick-box.md',
-    ]) assert.deepStrictEqual(toolNamesIn(text), [], text);
-  });
-
-  it('7.S2: names neither tool in the skills, the references, the agent definitions or the engine\'s code, released migrations aside', () => {
+  it('7.S2: names no tool in the skills, the references, the agent definitions, the engine\'s code or any migration', () => {
     const files = shippedFiles();
     const found = files.flatMap((rel) => toolNamesIn(fs.readFileSync(path.join(REPO, rel), 'utf8')).map(({ line, text }) => `${rel}:${line}: ${text}`));
+    const reads = (/** @type {string} */ rel) => files.includes(rel) || files.some((file) => file.startsWith(`${rel}${path.sep}`));
 
-    assert.ok(files.includes(path.join('agents', 'leeway-builder.md')) && files.includes(path.join('skills', 'leeway-engine', 'scripts', 'engine.cjs')), 'the scan reads the agents and the engine');
+    assert.deepStrictEqual(
+      ['agents/leeway-builder.md', 'skills/leeway-engine/scripts/engine.cjs', 'skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs', 'skills/leeway-migrate/scripts/migrations/reshape'].filter((rel) => !reads(rel)),
+      [], 'the scan reads the agents, the engine, the migrations and the reshape\'s move');
     assert.deepStrictEqual(found, []);
   });
 
-  it('finds both tools in their drivers, which the rule lets name them', () => {
-    const drivers = path.join(REPO, NAMED_HERE[0]);
-    const forms = fs.readdirSync(drivers, { recursive: true, encoding: 'utf8' })
-      .filter((rel) => rel.endsWith('.cjs'))
-      .flatMap((rel) => toolNamesIn(fs.readFileSync(path.join(drivers, rel), 'utf8')).map(({ tool }) => tool));
+  it('finds each driver\'s tool in that driver\'s own code, which the rule lets name it', () => {
+    const drivers = filesUnder(DRIVERS);
+    const named = DRIVER_FORMS.map(({ driver }) => drivers
+      .filter((rel) => rel.split(path.sep).at(-2) === driver)
+      .some((rel) => toolNamesIn(fs.readFileSync(path.join(REPO, rel), 'utf8')).some((at) => at.driver === driver)));
 
-    assert.deepStrictEqual([forms.includes('tracker'), forms.includes('code host')], [true, true]);
+    assert.ok(DRIVER_FORMS.length > 0, 'a driver declares how its tool is named');
+    assert.deepStrictEqual(named, DRIVER_FORMS.map(() => true));
   });
 });

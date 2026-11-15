@@ -10,11 +10,14 @@
 // ---------------------------------------------------------------------------
 
 const { gitFloorStop } = require('./projections/boot.cjs');
-const { atLeast } = require('../kernel/version.cjs');
+const { releaseOf, atLeast } = require('../kernel/version.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 
 /** The oldest git the engine runs on. */
 const GIT_FLOOR = [2, 40, 0];
+
+/** What `git --version` answers before its version. */
+const SAID = 'git version ';
 
 /**
  * How the git on the PATH falls short of the floor: null where it meets it,
@@ -32,8 +35,7 @@ const GIT_FLOOR = [2, 40, 0];
  * @returns {number[]|null}
  */
 function versionOf(answer) {
-  const m = /^git version (\d+)\.(\d+)(?:\.(\d+))?/.exec(answer);
-  return m ? [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)] : null;
+  return answer.startsWith(SAID) ? releaseOf(answer.slice(SAID.length)) : null;
 }
 
 /** @returns {GitShortfall} */

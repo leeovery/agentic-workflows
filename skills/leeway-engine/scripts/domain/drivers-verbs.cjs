@@ -16,10 +16,12 @@
 //   manifest's lock, and commits it alone, pushed (`drivers: the {kind}
 //   driver is {name}`); run again where its write stands, it commits what a
 //   kill left uncommitted. It refuses a name no shipped driver answers to,
-//   naming those that do, and refuses while a build is in flight in any
-//   unit — one in progress whose build has begun, or a quick-fix whose
-//   fixes have — naming each, since a build never changes driver under it
-//   (22.4.3). Its next draws the drivers again.
+//   naming those that do; a driver that does not serve the project — one
+//   landing through a host its remote is not on — naming those that do;
+//   and refuses while a build is in flight in any unit — one in progress
+//   whose tracker holds its tasks (`tasksBegun`) — naming each, since a
+//   build never changes driver under it (22.4.3). Its next draws the
+//   drivers again.
 // - `render drivers` draws the menu manage's d/drivers opens; `render
 //   drivers-stop` the stop, refused where nothing stops.
 // ---------------------------------------------------------------------------
@@ -27,14 +29,15 @@
 const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { DRIVER_KINDS } = require('../kernel/manifest-schema.cjs');
-const { chosenDriver, listDrivers, settingOf, toolStates } = require('./drivers.cjs');
+const { chosenDriver, projectDrivers, settingOf, toolStates } = require('./drivers.cjs');
 const { loadActiveManifests } = require('./reads.cjs');
-const { buildBegun, quickFixBuild, fixesBegun } = require('./derivations.cjs');
+const { tasksBegun } = require('./derivations.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { MENUS, drawMenu } = require('./menus.cjs');
-const { driversStopScreen, driversStopReason, driversScreen } = require('./projections/drivers.cjs');
+const { UNSERVED, listed, driversStopScreen, driversStopReason, driversScreen } = require('./projections/drivers.cjs');
+const { capitalise } = require('./conventions.cjs');
 
 /** @typedef {typeof DRIVER_KINDS[number]} DriverKind */
 /** @typedef {import('./projections/drivers.cjs').DriverCheck} DriverCheck */
@@ -76,11 +79,9 @@ function driversStop(cwd) {
   return { screen: () => driversStopScreen(project, stopping), reason: driversStopReason(project, stopping) };
 }
 
-/** Each unit whose build is in flight: in progress, its build begun, or a quick-fix's fixes. @param {string} cwd @returns {string[]} */
+/** Each unit in progress whose build is in flight: the tracker holds its tasks. @param {string} cwd @returns {string[]} */
 function buildsInFlight(cwd) {
-  return loadActiveManifests(cwd)
-    .filter((manifest) => buildBegun(manifest) || (quickFixBuild(manifest) && fixesBegun(manifest)))
-    .map((manifest) => manifest.name);
+  return loadActiveManifests(cwd).filter(tasksBegun).map((manifest) => manifest.name);
 }
 
 /** @param {string} kind @returns {kind is DriverKind} */
@@ -93,13 +94,17 @@ const isKind = (kind) => (/** @type {readonly string[]} */ (DRIVER_KINDS)).inclu
  */
 function setDriver(cwd, kind, name) {
   if (!isKind(kind)) throw new Error(`there is no kind of driver "${kind}" — the kinds are ${DRIVER_KINDS.join(', ')}`);
-  const installed = listDrivers(kind);
-  const driver = installed.find((each) => each.name === name);
-  if (driver === undefined) throw new Error(`no ${kind} driver "${name}" is installed — the ${kind} drivers are ${installed.map((each) => each.name).join(', ')}`);
+  const installed = projectDrivers(cwd, kind);
+  const found = installed.find((each) => each.driver.name === name);
+  if (found === undefined) throw new Error(`no ${kind} driver "${name}" is installed — the ${kind} drivers are ${installed.map((each) => each.driver.name).join(', ')}`);
+  const { driver } = found;
+  if (!found.serves) {
+    const serving = installed.filter((each) => each.serves).map((each) => each.driver.name);
+    throw new Error(`${capitalise(driver.title)} ${UNSERVED} — the ${kind} drivers that serve this project are ${serving.join(', ')}`);
+  }
   const building = buildsInFlight(cwd);
   if (building.length > 0) {
-    const units = building.length === 1 ? building[0] : `${building.slice(0, -1).join(', ')} and ${building.at(-1)}`;
-    throw new Error(`a build is in flight in ${units}, and a build never changes driver under it — change the ${kind} driver once ${building.length === 1 ? 'it finishes' : 'each finishes'}`);
+    throw new Error(`a build is in flight in ${listed(building)}, and a build never changes driver under it — change the ${kind} driver once ${building.length === 1 ? 'it finishes' : 'each finishes'}`);
   }
   const was = settingOf(readProjectManifest(cwd), kind);
   withProjectLock(cwd, () => {
@@ -142,7 +147,7 @@ function driversSurface(cwd) {
   return refusing('render drivers', () => drawMenu(cwd, MENUS.drivers, {}, driversScreen(DRIVER_KINDS.map((kind) => ({
     kind,
     using: chosenDriver(cwd, kind).driver.name,
-    installed: listDrivers(kind).map(({ name, title }) => ({ name, title })),
+    installed: projectDrivers(cwd, kind).map(({ driver, serves }) => ({ name: driver.name, title: driver.title, serves })),
   })))));
 }
 

@@ -13,14 +13,17 @@
 //   here, not installed, older than its floor with where its update
 //   instructions live, or failing with its error — never an install
 //   command; then that nothing has been built, and that ready to build
-//   waits until each is put right or the driver is changed from manage. The
-//   yes refused for it says the same in one line.
+//   waits until each is put right or, while no build is in flight, the
+//   driver is changed from manage. The yes refused for it says the same in
+//   one line.
 // - The drivers menu, from manage's d/drivers: each kind's drivers
-//   installed, the one in use marked; a numbered row for each other, its
-//   next `drivers set`; and back to manage.
+//   installed, the one in use marked, and each that does not serve the
+//   project saying so; a numbered row for each other that does, its next
+//   `drivers set`; and back to manage.
 // ---------------------------------------------------------------------------
 
 const { section, emitAs } = require('./surfaces.cjs');
+const { capitalise } = require('../conventions.cjs');
 
 /** @typedef {import('../drivers.cjs').ToolState} ToolState */
 /** @typedef {import('../menus.cjs').MenuScreen} MenuScreen */
@@ -34,8 +37,8 @@ const { section, emitAs } = require('./surfaces.cjs');
 
 /**
  * The drivers menu as it is drawn: each kind's drivers installed, by name
- * and title, and the one in use.
- * @typedef {{kind: 'task'|'landing', using: string, installed: {name: string, title: string}[]}} KindView
+ * and title, with whether each serves the project, and the one in use.
+ * @typedef {{kind: 'task'|'landing', using: string, installed: {name: string, title: string, serves: boolean}[]}} KindView
  */
 
 /** What the project does through each kind of driver, as a sentence says it. */
@@ -50,8 +53,8 @@ const REMEDY = Object.freeze({ missing: 'installed', older: 'updated', failing: 
 /** @param {ToolState} tool */
 const notFine = (tool) => tool.state !== 'fine';
 
-/** @param {string} text */
-const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+/** Why a driver does not serve the project, after its title. */
+const UNSERVED = "lands through a host this project's remote isn't on";
 
 /** Items in a sentence: `a`, `a and b`, `a, b and c`. @param {string[]} items */
 const listed = (items) => (items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`);
@@ -81,7 +84,7 @@ function stopped(stopping) {
 /** What the project does through a driver, what it needs and how each stands. @param {string} project @param {DriverCheck} check */
 function account(project, { kind, title, tools }) {
   const needs = listed(tools.map(({ label, floor }) => `${label} ${floor} or newer`));
-  return `${project} ${DOES[kind]} through ${title}, which needs ${needs}. ${capital(tools.map(standing).join('; '))}.`;
+  return `${project} ${DOES[kind]} through ${title}, which needs ${needs}. ${capitalise(tools.map(standing).join('; '))}.`;
 }
 
 /** That nothing was built, and what ready to build waits for. @param {DriverCheck[]} stopping */
@@ -89,7 +92,7 @@ function waiting(stopping) {
   const failing = stopping.flatMap(({ tools }) => tools.filter(notFine));
   const until = listed(failing.map((tool) => `${tool.label} is ${REMEDY[/** @type {keyof typeof REMEDY} */ (tool.state)]}`));
   const changed = stopping.length === 1 ? `the ${stopping[0].kind} driver is` : 'the drivers are';
-  return `Nothing has been built. Ready to build waits until ${until}, or until ${changed} changed from manage on the start menu.`;
+  return `Nothing has been built. Ready to build waits until ${until} — or, while no build is in flight, until ${changed} changed from manage on the start menu.`;
 }
 
 /** The stop's paragraphs, in order. @param {string} project @param {DriverCheck[]} stopping */
@@ -116,6 +119,12 @@ function driversStopReason(project, stopping) {
   return `${stopped(stopping)} — ${paragraphs(project, stopping).join(' ')}`;
 }
 
+/** A driver's mark on the menu. @param {boolean} inUse @param {boolean} serves */
+function marked(inUse, serves) {
+  if (inUse) return ' — in use';
+  return serves ? '' : ` — ${UNSERVED}`;
+}
+
 const engine = (/** @type {string[]} */ ...argv) => ({ kind: /** @type {const} */ ('engine'), argv });
 
 /**
@@ -126,9 +135,9 @@ const engine = (/** @type {string[]} */ ...argv) => ({ kind: /** @type {const} *
 function driversScreen(kinds) {
   const shows = kinds.flatMap(({ kind, using, installed }) => [
     `THE ${kind.toUpperCase()} DRIVER`,
-    ...installed.map(({ name, title }) => `  · ${title}${name === using ? ' — in use' : ''}`),
+    ...installed.map(({ name, title, serves }) => `  · ${title}${marked(name === using, serves)}`),
   ]);
-  const choices = kinds.flatMap(({ kind, using, installed }) => installed.filter(({ name }) => name !== using).map(({ name, title }) => ({ kind, name, title })));
+  const choices = kinds.flatMap(({ kind, using, installed }) => installed.filter(({ name, serves }) => serves && name !== using).map(({ name, title }) => ({ kind, name, title })));
   return {
     shows,
     question: 'Which driver would you like to use?',
@@ -137,4 +146,4 @@ function driversScreen(kinds) {
   };
 }
 
-module.exports = { driversStopScreen, driversStopReason, driversScreen };
+module.exports = { UNSERVED, listed, driversStopScreen, driversStopReason, driversScreen };

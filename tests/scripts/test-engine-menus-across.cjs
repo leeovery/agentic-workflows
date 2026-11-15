@@ -28,7 +28,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { ok, output, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
+const { ok, output, cleanupFixture, sectionOf, git } = require('./engine-harness.cjs');
 const { setupFixture, createManifest, createFile, writeState, readState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
@@ -121,9 +121,12 @@ before(() => {
     ['verdicts', []],
     ['care', []],
     ['matrix', []],
-    ['drivers', []],
   ];
   menus = drawnAs.map(([id, args]) => ({ id, args, rows: drawn([id, ...args]).rows }));
+  // The drivers menu offers a driver landing through a host only on a
+  // project whose remote is on it.
+  git(dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
+  menus.push({ id: 'drivers', args: [], rows: drawn(['drivers']).rows });
 });
 
 after(() => {

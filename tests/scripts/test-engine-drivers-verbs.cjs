@@ -2,22 +2,27 @@
 
 // ---------------------------------------------------------------------------
 // The drivers' verbs and screens (leeway-engine/scripts/domain/
-// drivers-verbs.cjs, the screens domain/projections/drivers.cjs; 22.4):
-// `drivers check`, each kind's driver as things stand and how each tool it
-// needs stands, writing nothing; `drivers set`, the setting for one kind
-// written and committed alone, refused for a driver no shipped one answers
-// to and while a build is in flight in any unit (O5), and finished by a run
-// again after a kill; `render drivers`, manage's d/drivers (22.4.4,
-// 22.5.8); `render drivers-stop`, the stop at ready to build in every
-// wording its tools can give it, drawn from the drivers' declarations alone
-// (7.2.13). Where ready to build draws the stop and refuses its yes is
+// drivers-verbs.cjs, the screens domain/projections/drivers.cjs; 22.4),
+// over the drivers that ship, read from their declarations, so no tool is
+// named here (7.1.10): `drivers check`, each kind's driver as things stand
+// and how each tool it needs stands, writing nothing; `drivers set`, the
+// setting for one kind written and committed alone, refused for a driver
+// no shipped one answers to, for one that does not serve the project, and
+// while a build is in flight in any unit (O5), and finished by a run again
+// after a kill; `render drivers`, manage's d/drivers (22.4.4, 22.5.8);
+// `render drivers-stop`, the stop at ready to build, in every wording its
+// tools can give it, drawn from the drivers' declarations alone (7.2.13).
+// What each shipped driver's tools answer, and a driver serving a host, are
+// its own suite's (tests/drivers/{name}/test-drivers.cjs); where ready to
+// build draws the stop and refuses its yes,
 // test-engine-ready-to-build-drivers.cjs's; manage's d row
 // test-engine-manage.cjs's.
 //
 // Layer: verb. World: this file's own, built once and copied for each test
-// into a folder named `lantern` — a feature whose build is under way, a
-// quick-fix whose fixes have begun, and a feature complete — the tools the
-// check reads stood in for (drivers-world.cjs).
+// into a folder named `lantern`: a project with no remote and a feature
+// complete — `idle`; and the same with a feature whose build is under way
+// and a quick-fix whose fixes have begun — `building`. The tools the check
+// reads are stood in for at their floors (engine-harness.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -28,179 +33,191 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { ok, output, refusedPristine, screenOf, sectionOf, commitAll, fixtureFrom, cleanupFixture, killedAt, treeSnapshot, head, lastMessage, touched, statePath, stateGit } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, screenOf, sectionOf, commitAll, fixtureFrom, cleanupFixture, killedAt, treeSnapshot, head, lastMessage, touched, statePath, stateGit, toolless } = require('./engine-harness.cjs');
 const { createManifest, readState } = require('./discovery-test-utils.cjs');
-const { toolsEnv } = require('./drivers-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { driversStopScreen } = require(path.join(SCRIPTS, 'domain/projections/drivers.cjs'));
+const { capitalise } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
+
+/** @typedef {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').Driver} Driver */
+/** @typedef {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').ToolState} ToolState */
 
 const SESSION = 'drivers-session';
 const BUILDING = 'lazy-resume-on-attach';
 const FIXING = 'typo-in-the-banner';
 const COMPLETE = 'enter-attaches-from-preview';
 
-const world = fixtureFrom('leeway-drivers-', (dir) => {
+/** A kind's default: the driver it flags. @param {'task'|'landing'} kind */
+const flagged = (kind) => /** @type {Driver} */ (listDrivers(kind).find((driver) => driver.isDefault));
+const TASK = flagged('task');
+const LANDING = flagged('landing');
+
+/** The landing drivers that land through a host, which serve only a remote on it. */
+const HOSTED = listDrivers('landing').filter((driver) => 'assertServes' in driver);
+
+/** Each tool a driver needs as the stand-ins answer it, at its floor. @param {Driver} driver @returns {ToolState[]} */
+const atFloor = (driver) => driver.needs.map(({ tool, label, floor, update }) => ({ tool, label, floor, update, found: floor, state: 'fine' }));
+
+/** Each tool a driver needs, not installed. @param {Driver} driver @returns {ToolState[]} */
+const missing = (driver) => driver.needs.map(({ tool, label, floor, update }) => ({ tool, label, floor, update, found: null, state: 'missing' }));
+
+const idle = fixtureFrom('leeway-drivers-', (dir) => {
+  createManifest(dir, COMPLETE, { status: 'completed', build: { position: 'auto' } });
+  commitAll(dir, 'a unit complete');
+});
+
+const building = fixtureFrom('leeway-drivers-building-', (dir) => {
   createManifest(dir, BUILDING, { build: { position: 'auto' } });
   createManifest(dir, FIXING, { work_type: 'quick-fix', fixes: {} });
   createManifest(dir, COMPLETE, { status: 'completed', build: { position: 'auto' } });
   commitAll(dir, 'the units the drivers verbs tell apart');
 });
 
-/** A call's environment: the conversation's, the tools stood in for, `more` over them. @param {Record<string, string>} [more] */
-const env = (more = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, ...toolsEnv(more) });
+/** A call's environment: the conversation's, `more` over it. @param {Record<string, string>} [more] */
+const env = (more = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, ...more });
 
 /** The project's drivers setting. @param {string} dir */
 const drivers = (dir) => JSON.parse(readState(dir, 'manifest.json')).drivers;
 
-/** A unit's build and fixes taken off, so no build is in flight. @param {string} dir @param {string} unit */
-function finished(dir, unit) {
-  createManifest(dir, unit, { status: 'completed' });
-  commitAll(dir, `${unit} finished`);
-}
+/** A world copied into a folder named `lantern`. @param {(dir: string) => string} world */
+const lantern = (world) => world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-drivers-')), 'lantern'));
 
 describe('the drivers\' verbs (22.4)', () => {
   /** @type {string} */
   let dir;
-  beforeEach(() => {
-    dir = world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-drivers-')), 'lantern'));
-    finished(dir, BUILDING);
-    finished(dir, FIXING);
-  });
+  beforeEach(() => { dir = lantern(idle); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('check: each kind\'s driver as things stand — the task driver its kind\'s default, the landing driver the one set — and each tool with its floor and the version found, writing nothing', () => {
-    ok(dir, ['drivers', 'set', 'landing', 'github'], { env: env() });
+  it('check: each kind\'s driver as things stand — its kind\'s default where none is set, the one set where one is — and each tool with its floor and the version found, writing nothing', () => {
+    ok(dir, ['drivers', 'set', 'landing', LANDING.name], { env: env() });
     const before = { tree: treeSnapshot(dir), head: head(dir) };
 
-    assert.deepStrictEqual(ok(dir, ['drivers', 'check'], { env: env({ TICK_STUB_VERSION: '0.3.2' }) }), {
+    assert.deepStrictEqual(ok(dir, ['drivers', 'check'], { env: env() }), {
       ok: true,
       drivers: [
-        { kind: 'task', driver: 'tick', title: 'Tick\'s driver', set: false, tools: [{ tool: 'tick', label: 'Tick', floor: '0.3.0', update: 'https://github.com/leeovery/tick', found: '0.3.2', state: 'fine' }] },
-        {
-          kind: 'landing', driver: 'github', title: 'GitHub\'s driver', set: true, tools: [
-            { tool: 'gh', label: 'GitHub\'s CLI', floor: '2.30.0', update: 'https://cli.github.com', found: '2.30.0', state: 'fine' },
-            { tool: 'gh-stack', label: 'GitHub\'s stack extension', floor: '0.1.0', update: 'https://github.com/github/gh-stack', found: '0.1.0', state: 'fine' },
-          ],
-        },
+        { kind: 'task', driver: TASK.name, title: TASK.title, set: false, tools: atFloor(TASK) },
+        { kind: 'landing', driver: LANDING.name, title: LANDING.title, set: true, tools: atFloor(LANDING) },
       ],
       stopped: false,
     });
     assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir) }, before);
   });
 
-  it('check: stopped where a tool the driver in use needs is missing; the local driver, needing nothing, never stops it', () => {
-    const missing = env({ GH_STUB_NO_STACK: '1' });
-    assert.deepStrictEqual([ok(dir, ['drivers', 'check'], { env: missing }).stopped, ok(dir, ['drivers', 'check'], { env: missing }).drivers[1].tools], [false, []]);
+  it('check: stopped where a tool a driver in use needs is not installed, each such tool missing; a driver needing nothing never stops it', { skip: TASK.needs.length === 0 }, () => {
+    const { drivers: [task, landing], stopped } = ok(dir, ['drivers', 'check'], { env: env({ PATH: toolless(path.dirname(dir)) }) });
 
-    ok(dir, ['drivers', 'set', 'landing', 'github'], { env: env() });
-    const { drivers: [, landing], stopped } = ok(dir, ['drivers', 'check'], { env: missing });
-    assert.deepStrictEqual([stopped, landing.tools.map(({ found, state }) => ({ found, state }))], [true, [{ found: '2.30.0', state: 'fine' }, { found: null, state: 'missing' }]]);
+    assert.deepStrictEqual([stopped, task.tools, landing.tools], [true, missing(TASK), missing(LANDING)]);
+    assert.deepStrictEqual(LANDING.needs, [], 'the landing default needs nothing');
   });
 
   it('22.S11, 7.S18: set writes the kind\'s setting, the other kept, committed alone, and draws the drivers again; run again, it commits nothing', () => {
-    ok(dir, ['drivers', 'set', 'task', 'tick'], { env: env() });
-    const answer = ok(dir, ['drivers', 'set', 'landing', 'github'], { env: env() });
+    ok(dir, ['drivers', 'set', 'task', TASK.name], { env: env() });
+    const answer = ok(dir, ['drivers', 'set', 'landing', LANDING.name], { env: env() });
 
-    assert.deepStrictEqual(answer, { ok: true, kind: 'landing', driver: 'github', title: 'GitHub\'s driver', was: null, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'engine', argv: ['render', 'drivers'] } });
-    assert.deepStrictEqual([drivers(dir), lastMessage(dir), touched(statePath(dir), 'HEAD')], [{ task: 'tick', landing: 'github' }, 'drivers: the landing driver is github', ['M\tmanifest.json']]);
+    assert.deepStrictEqual(answer, { ok: true, kind: 'landing', driver: LANDING.name, title: LANDING.title, was: null, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'engine', argv: ['render', 'drivers'] } });
+    assert.deepStrictEqual([drivers(dir), lastMessage(dir), touched(statePath(dir), 'HEAD')], [{ task: TASK.name, landing: LANDING.name }, `drivers: the landing driver is ${LANDING.name}`, ['M\tmanifest.json']]);
 
-    const back = ok(dir, ['drivers', 'set', 'landing', 'local'], { env: env() });
-    const again = ok(dir, ['drivers', 'set', 'landing', 'local'], { env: env() });
-    assert.deepStrictEqual([back.was, again.was, again.committed, drivers(dir).landing], ['github', 'local', null, 'local']);
+    const again = ok(dir, ['drivers', 'set', 'landing', LANDING.name], { env: env() });
+    assert.deepStrictEqual([again.was, again.committed, drivers(dir)], [LANDING.name, null, { task: TASK.name, landing: LANDING.name }]);
   });
 
   it('set killed once its setting is written: run again, it commits what the kill left', () => {
-    killedAt({ method: 'renameSync', file: '.leeway/manifest.json', when: 'after' }, dir, ['drivers', 'set', 'landing', 'github'], { env: env() });
+    killedAt({ method: 'renameSync', file: '.leeway/manifest.json', when: 'after' }, dir, ['drivers', 'set', 'task', TASK.name], { env: env() });
     assert.notStrictEqual(stateGit(dir, ['status', '--porcelain']), '');
 
-    const answer = ok(dir, ['drivers', 'set', 'landing', 'github'], { env: env() });
-    assert.deepStrictEqual([answer.was, answer.committed === null, stateGit(dir, ['status', '--porcelain']), lastMessage(dir)], ['github', false, '', 'drivers: the landing driver is github']);
+    const answer = ok(dir, ['drivers', 'set', 'task', TASK.name], { env: env() });
+    assert.deepStrictEqual([answer.was, answer.committed === null, stateGit(dir, ['status', '--porcelain']), lastMessage(dir)], [TASK.name, false, '', `drivers: the task driver is ${TASK.name}`]);
   });
 
   it('set refuses a name no driver of the kind ships, naming those that do, and a kind or arguments of another shape, writing nothing', () => {
     const refused = (/** @type {string[]} */ args) => refusedPristine(dir, ['drivers', ...args], { env: env() }).error;
 
-    assert.strictEqual(refused(['set', 'task', 'gamma']), 'drivers set: no task driver "gamma" is installed — the task drivers are tick');
-    assert.strictEqual(refused(['set', 'tracker', 'tick']), 'drivers set: there is no kind of driver "tracker" — the kinds are task, landing');
-    for (const args of [['set', 'task'], ['set', 'task', 'tick', '--force'], ['check', 'now'], ['adopt'], []]) {
+    assert.strictEqual(refused(['set', 'task', 'gamma']), `drivers set: no task driver "gamma" is installed — the task drivers are ${listDrivers('task').map(({ name }) => name).join(', ')}`);
+    assert.strictEqual(refused(['set', 'tracker', TASK.name]), 'drivers set: there is no kind of driver "tracker" — the kinds are task, landing');
+    for (const args of [['set', 'task'], ['set', 'task', TASK.name, '--force'], ['check', 'now'], ['adopt'], []]) {
       assert.strictEqual(refused(args), 'Usage: engine drivers check | engine drivers set <task|landing> <name>', args.join(' '));
     }
   });
 
-  it('render drivers-stop draws the stop where a tool stops ready to build, and is refused where nothing does', () => {
+  it('set refuses a driver landing through a host the project has no remote on, naming the drivers that serve it, writing nothing', () => {
+    const serving = listDrivers('landing').filter((driver) => !HOSTED.includes(driver)).map(({ name }) => name).join(', ');
+    assert.ok(HOSTED.length > 0, 'a landing driver lands through a host');
+
+    for (const driver of HOSTED) {
+      assert.strictEqual(refusedPristine(dir, ['drivers', 'set', 'landing', driver.name], { env: env() }).error,
+        `drivers set: ${capitalise(driver.title)} lands through a host this project's remote isn't on — the landing drivers that serve this project are ${serving}`);
+    }
+  });
+
+  it('render drivers-stop draws the stop where a tool stops ready to build, from the drivers\' declarations, and is refused where nothing does', { skip: TASK.needs.length === 0 }, () => {
     assert.strictEqual(refusedPristine(dir, ['render', 'drivers-stop'], { env: env() }).error, 'render drivers-stop: every tool the drivers need is here — nothing stops ready to build');
 
-    assert.strictEqual(sectionOf(output(dir, ['render', 'drivers-stop'], { env: env({ TICK_STUB_VERSION: '0.2.9' }) }), 'DISPLAY: drivers stop').trim(), '⚑ Ready to build stopped: the task driver needs a newer tool');
+    assert.strictEqual(output(dir, ['render', 'drivers-stop'], { env: env({ PATH: toolless(path.dirname(dir)) }) }),
+      driversStopScreen('Lantern', [{ kind: 'task', driver: TASK.name, title: TASK.title, tools: missing(TASK) }]));
   });
 });
 
 describe('set while a build is in flight (O5, 22.4.3)', () => {
   /** @type {string} */
   let dir;
-  beforeEach(() => { dir = world(); });
+  beforeEach(() => { dir = building(); });
   afterEach(() => cleanupFixture(dir));
 
   it('refuses, naming each unit whose build is in flight — one whose build has begun, a quick-fix whose fixes have — and a complete unit\'s build holds nothing', () => {
-    assert.strictEqual(refusedPristine(dir, ['drivers', 'set', 'landing', 'github'], { env: env() }).error,
+    assert.strictEqual(refusedPristine(dir, ['drivers', 'set', 'landing', LANDING.name], { env: env() }).error,
       `drivers set: a build is in flight in ${BUILDING} and ${FIXING}, and a build never changes driver under it — change the landing driver once each finishes`);
 
-    finished(dir, FIXING);
-    assert.strictEqual(refusedPristine(dir, ['drivers', 'set', 'task', 'tick'], { env: env() }).error,
+    createManifest(dir, FIXING, { status: 'completed' });
+    commitAll(dir, `${FIXING} finished`);
+    assert.strictEqual(refusedPristine(dir, ['drivers', 'set', 'task', TASK.name], { env: env() }).error,
       `drivers set: a build is in flight in ${BUILDING}, and a build never changes driver under it — change the task driver once it finishes`);
-    finished(dir, BUILDING);
-    assert.strictEqual(ok(dir, ['drivers', 'set', 'task', 'tick'], { env: env() }).driver, 'tick');
   });
 });
 
 describe('the drivers menu (22.4.4, 22.5.8)', () => {
   /** @type {string} */
   let dir;
-  beforeEach(() => {
-    dir = world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-drivers-')), 'lantern'));
-    finished(dir, BUILDING);
-    finished(dir, FIXING);
-  });
+  beforeEach(() => { dir = lantern(idle); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('shows each kind\'s drivers that ship, the one in use marked, a numbered row for each other leading to set, and back to manage', () => {
+  it('shows each kind\'s drivers that ship, the one in use marked, each landing through a host the project has no remote on saying so, a numbered row for each other, and back to manage', () => {
     const out = output(dir, ['render', 'drivers'], { env: env() });
     const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
+    const others = listDrivers('task').filter((driver) => driver !== TASK);
+    const marked = (/** @type {Driver} */ driver) => {
+      if (driver === LANDING) return ' — in use';
+      return HOSTED.includes(driver) ? ' — lands through a host this project\'s remote isn\'t on' : '';
+    };
 
     assert.deepStrictEqual(sectionOf(out, 'DISPLAY: drivers').trim().split('\n'), [
       'THE TASK DRIVER',
-      '  · Tick\'s driver — in use',
+      ...listDrivers('task').map((driver) => `  · ${driver.title}${driver === TASK ? ' — in use' : ''}`),
       'THE LANDING DRIVER',
-      '  · GitHub\'s driver',
-      '  · the local driver — in use',
+      ...listDrivers('landing').map((driver) => `  · ${driver.title}${marked(driver)}`),
     ]);
     assert.deepStrictEqual(screenOf(out, 'MENU: drivers'), [
       '· · · · · · · · · · · ·',
       '◆ Which driver would you like to use?',
       '',
-      '1      → Land work through GitHub\'s driver',
+      ...others.map((driver, at) => `${at + 1}      → Track tasks through ${driver.title}`),
       'h/help → What this menu is for, row by row',
       'b/back → Back to manage',
     ]);
     assert.deepStrictEqual(Object.fromEntries(shown.options.map((/** @type {{key: string, next: unknown}} */ { key, next }) => [key, next])), {
-      1: { kind: 'engine', argv: ['drivers', 'set', 'landing', 'github'] },
+      ...Object.fromEntries(others.map((driver, at) => [at + 1, { kind: 'engine', argv: ['drivers', 'set', 'task', driver.name] }])),
       h: { kind: 'engine', argv: ['render', 'help', 'drivers'] },
       b: { kind: 'engine', argv: ['render', 'manage'] },
     });
   });
-
-  it('marks the driver a setting names in use, once set, and offers the other', () => {
-    ok(dir, ['drivers', 'set', 'landing', 'github'], { env: env() });
-
-    assert.deepStrictEqual(screenOf(output(dir, ['render', 'drivers'], { env: env() }), 'MENU: drivers')[3], '1      → Land work through the local driver');
-  });
 });
 
 describe('the stop\'s words (22.4.7–22.4.9, 7.2.13)', () => {
-  /** @param {string} tool @param {Partial<import('../../skills/leeway-engine/scripts/domain/drivers.cjs').ToolState>} state */
-  const tool = (tool, state) => /** @type {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').ToolState} */ ({ tool, label: tool.toUpperCase(), floor: '1.2.0', update: `https://example.invalid/${tool}`, found: '1.2.0', state: 'fine', ...state });
-  /** @param {'task'|'landing'} kind @param {ReturnType<typeof tool>[]} tools */
+  /** @param {string} tool @param {Partial<ToolState>} state @returns {ToolState} */
+  const tool = (tool, state) => ({ tool, label: tool.toUpperCase(), floor: '1.2.0', update: `https://example.invalid/${tool}`, found: '1.2.0', state: 'fine', ...state });
+  /** @param {'task'|'landing'} kind @param {ToolState[]} tools */
   const check = (kind, tools) => ({ kind, driver: kind, title: `the ${kind} stand-in`, tools });
   /** The stop's alert and account. @param {ReturnType<typeof check>[]} stopping */
   const stop = (stopping) => {
@@ -208,7 +225,7 @@ describe('the stop\'s words (22.4.7–22.4.9, 7.2.13)', () => {
     return [sectionOf(out, 'DISPLAY: drivers stop').trim(), ...sectionOf(out, 'DISPLAY: drivers account').trim().split('\n>\n')];
   };
 
-  it('names both drivers where both stop, each tool as it stands — missing, older with its update instructions, failing with its error — and each put right in turn', () => {
+  it('names both drivers where both stop, each tool as it stands — missing, older with its update instructions, failing with its error — and each put right in turn, or the drivers changed once no build is in flight', () => {
     assert.deepStrictEqual(stop([
       check('task', [tool('ay', { found: null, state: 'missing' }), tool('bee', { found: '1.1.0', state: 'older' })]),
       check('landing', [tool('sea', { found: null, state: 'failing', error: 'exited 3' }), tool('dee', {})]),
@@ -216,12 +233,12 @@ describe('the stop\'s words (22.4.7–22.4.9, 7.2.13)', () => {
       '⚑ Ready to build stopped: the drivers are held up by their tools',
       '> Lantern tracks its tasks through the task stand-in, which needs AY 1.2.0 or newer and BEE 1.2.0 or newer. AY isn\'t installed; BEE is 1.1.0, older than 1.2.0 — its update instructions are at https://example.invalid/bee.',
       '> Lantern lands its work through the landing stand-in, which needs SEA 1.2.0 or newer and DEE 1.2.0 or newer. SEA is installed but fails — exited 3; DEE is here.',
-      '> Nothing has been built. Ready to build waits until AY is installed, BEE is updated and SEA is working, or until the drivers are changed from manage on the start menu.',
+      '> Nothing has been built. Ready to build waits until AY is installed, BEE is updated and SEA is working — or, while no build is in flight, until the drivers are changed from manage on the start menu.',
     ]);
   });
 
   it('says what one driver lacks by how its tools stand: missing tools, newer ones, or one held up', () => {
-    const alert = (/** @type {ReturnType<typeof tool>[]} */ tools) => stop([check('landing', tools)])[0];
+    const alert = (/** @type {ToolState[]} */ tools) => stop([check('landing', tools)])[0];
 
     assert.deepStrictEqual([
       alert([tool('ay', { found: null, state: 'missing' }), tool('bee', { found: null, state: 'missing' })]),

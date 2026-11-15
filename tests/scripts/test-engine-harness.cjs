@@ -316,6 +316,20 @@ describe('engine harness — locks, and a `ps` that fails', () => {
     assert.deepStrictEqual(heldAt, [true, true]);
   });
 
+  it('puts each driver\'s stand-ins first on the PATH, so a call finds no tool of the machine\'s ahead of them', () => {
+    const dirs = (process.env.PATH ?? '').split(path.delimiter);
+
+    assert.ok(harness.STAND_INS.length > 0, 'a driver stands its tools in');
+    assert.deepStrictEqual(dirs.slice(0, harness.STAND_INS.length), [...harness.STAND_INS]);
+  });
+
+  it('toolless makes a PATH holding git and ps alone', () => {
+    const bin = harness.toolless(dir);
+
+    assert.deepStrictEqual(fs.readdirSync(bin).sort(), ['git', 'ps']);
+    assert.strictEqual(spawnSync('git', ['--version'], { env: { PATH: bin }, encoding: 'utf8' }).status, 0);
+  });
+
   it('failingPs puts first on the PATH a `ps` that answers nothing and fails, logging what each run asked for', () => {
     const ps = harness.failingPs(dir);
     const res = spawnSync('ps', ['-p', String(process.pid), '-o', 'lstart='], { env: { ...process.env, PATH: ps.path }, encoding: 'utf8' });
