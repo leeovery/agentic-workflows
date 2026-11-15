@@ -174,7 +174,7 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
 
   test('a task landed before the migration cut its unit says why no account was written', () => {
     expect(sectionOf(onPage(task({ account: null, before: true, reviews: [] })), 'WHAT WAS DONE')).toEqual([
-      'WHAT WAS DONE ───────────────────────────────────────────────', 'No account was written: it landed before the migration cut the unit.',
+      'WHAT WAS DONE ───────────────────────────────────────────────', 'No account was written: it landed before the migration cut the', 'unit.',
     ])
   })
 
