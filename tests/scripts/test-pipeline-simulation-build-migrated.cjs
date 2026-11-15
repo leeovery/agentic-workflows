@@ -159,7 +159,9 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     assert.match(gate, /WHAT IT DOES\n+ +\*\*Problem\*\*: A page's text is fixed once written\./, 'an old task, holding no Outcome, shown by its text');
     assert.match(gate, /✓ Proves the criteria in its text · /, 'an old task\'s criteria, which its figures count none of, in its text');
     const { view: page } = sim.board(['--tab', 'unit', '--unit', WU, '--page', 'task:2.2']);
-    assert.deepStrictEqual([page.criteria, page.account.figures.criteria], [null, null], 'the board\'s task page counting none either');
+    assert.deepStrictEqual([page.criteria, page.account.figures.criteria, page.before], [null, null, false], 'the board\'s task page counting none either');
+    const { view: before } = sim.board(['--tab', 'unit', '--unit', WU, '--page', 'task:2.1']);
+    assert.deepStrictEqual([before.before, before.account], [true, null], 'the task done before the migration, its page saying so where no account was written');
 
     // 2.3 cites nothing: its phase's sections and scenarios stand for it.
     sim.run(['task', 'start', WU, '2.3']);

@@ -503,7 +503,7 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const {
-  dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, landedBefore, landedAnyBefore, citedAreas, areaBuilt,
+  dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, nothingBuiltSince, landedBefore, landedAnyBefore, citedAreas, areaBuilt,
 } = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
@@ -1245,7 +1245,7 @@ function drawSpecScenarios(filling) {
 }
 
 /** What the test surface's reader is told of a unit with work landed before the migration cut it. */
-const TESTS_BEFORE = 'Some of the unit\'s work landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips, and no commit of the change carries them. Read the tests there, those that landed before beside those the change adds or changes.';
+const TESTS_BEFORE = 'Work of the unit landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips, and no commit of the change carries them. Read the tests there, those that landed before beside those the change adds or changes.';
 
 /** The part a statement or its screen is in, `N.M`. @param {string} number */
 const partOf = (number) => number.split('.').slice(0, 2).join('.');
@@ -1838,9 +1838,8 @@ function drawReliedOn(filling) {
 const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {import('./phase-stack.cjs').PhaseStack} */ (filling) => {
   const { unit, phase } = phaseOf(filling);
   const manifest = unitManifest(filling);
-  const since = builtSince(manifest, writtenPhase(filling));
-  if (landedAnyBefore(manifest) && !since.some(({ status }) => status !== 'closed')) throw new Error(`${phaseName(unit, phase)} has nothing built since the migration cut the unit — each task of it landed before or was closed — so its review passes with nothing to read`);
-  return phaseStack(filling.cwd, unit, phase, since);
+  if (nothingBuiltSince(manifest, writtenPhase(filling))) throw new Error(`${phaseName(unit, phase)} has nothing built since the migration cut the unit — each task of it landed before or was closed — so its review passes with nothing to read`);
+  return phaseStack(filling.cwd, unit, phase, builtSince(manifest, writtenPhase(filling)));
 });
 
 /** @param {Filling} filling @param {string[]} warnings */

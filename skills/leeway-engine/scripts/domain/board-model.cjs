@@ -109,14 +109,15 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * A task's page (20.5.4–20.5.6): its line; its phase; when it started, null
  * where it never has, and when it finished, as its account was taken, null
  * where none is; what it does and its count of acceptance criteria, null
- * where its text writes them in the form from before Leeway; its
+ * where its text writes them in the form from before Leeway; whether it
+ * landed before the migration cut the unit, so no account was written; its
  * account, null where none is taken; each round's summary; each call it
  * made; what running the product proved of its scenarios, null where it
  * holds none; each question parking it, whole, none where none does;
  * and, for a fix task, each finding of the review it fixes (D17), else none.
  * @typedef {{
  *   kind: 'task', unit: string, phase: number, phase_name: string, line: TaskLine, started: string|null, finished: string|null,
- *   does: string, criteria: number|null,
+ *   does: string, criteria: number|null, before: boolean,
  *   account: {done: string, where: string, tests: string, differences: string[], figures: Figures}|null,
  *   reviews: {round: string, summary: string}[], calls: {id: string, text: string}[], ran: Ran[]|null, questions: Question[],
  *   fixes: FoundLine[],

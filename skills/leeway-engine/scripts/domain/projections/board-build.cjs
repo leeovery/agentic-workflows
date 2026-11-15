@@ -60,7 +60,7 @@ const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { standingOf, buildPhases } = require('../build-entry.cjs');
 const { reviewStanding, reviewGoesOn, recordedRounds } = require('../review-phase.cjs');
-const { cutLength, specJoined } = require('../derivations.cjs');
+const { cutLength, specJoined, landedBefore } = require('../derivations.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf, taskHead, runsAt } = require('../build-screens.cjs');
@@ -342,6 +342,7 @@ function taskPage(at, given) {
     finished: account?.figures.finished ?? null,
     does: outcomeOf(task.text),
     criteria: criteria.length || null,
+    before: landedBefore(at.manifest)(ref),
     account: account === null ? null : {
       done: sections['What was done'],
       where: sections['Where in the code'],

@@ -29,10 +29,11 @@
 // a quick-fix's never are — and one this cut has marked (below); a plan it
 // cannot read, or of another shape; scenarios for an area `spec.md` lacks,
 // or text that is not one line; a note holding nothing, or a heading at
-// level one or two (notes.cjs); two phases naming one tracker parent; an
-// area of `spec.md` no phase places, naming it, its sections or a
-// scenario; and the cut, against `spec.md` as its scenarios leave it, as
-// `cut` refuses it.
+// level one or two (notes.cjs); two phases naming one tracker parent; a
+// phase marked built naming no tracker parent, or no section, and one still
+// to build placing no scenario; an area of `spec.md` no phase places,
+// naming it, its sections or a scenario; and the cut, against `spec.md` as
+// its scenarios leave it, as `cut` refuses it.
 // Unlike `cut`, it marks a phase built and names its tracker parent anywhere
 // in the cut, and replaces every phase whole: a run killed before its mark
 // starts the unit from the top.
@@ -41,7 +42,9 @@
 // top: the tracker's steps (task-verbs.cjs, `migratedTracker`) — the phases
 // read as their adoption would leave them and refused, every fault named
 // and the tracker left as it was, where a phase marked built holds a task
-// neither done nor closed, a phase not marked built holds none, or a link
+// neither done nor closed or names a section outside the area of its old
+// plan's topic — the topic its plan's root names, a single-topic unit's
+// plan the whole spec's — a phase not marked built holds none, or a link
 // holds a task neither done nor closed after one neither, of a later phase
 // or another unit's; then each phase naming its parent adopted, and each
 // task neither done nor closed given its type, fix in a bugfix or quick-fix
@@ -161,6 +164,22 @@ function trackerFaults(phases) {
   return phases.flatMap((phase, at) => {
     const first = phases.findIndex((other) => other.tracker !== undefined && other.tracker === phase.tracker);
     return first !== -1 && first < at ? [`phases ${first + 1} and ${at + 1} name one tracker parent, ${phase.tracker}`] : [];
+  });
+}
+
+/**
+ * The faults of a phase of the plan as the migration holds it: one marked
+ * built naming no tracker parent, or no section; one still to build placing
+ * no scenario, as ready to build holds every cut (6.4.7).
+ * @param {Phase[]} phases
+ */
+function migratedFaults(phases) {
+  return phases.flatMap((phase, at) => {
+    if (!('built' in phase)) return phase.scenarios.length === 0 ? [`phase ${at + 1} places no scenario — a phase still to build proves one at least`] : [];
+    return [
+      ...(phase.tracker === undefined ? [`phase ${at + 1} is marked built and names no tracker parent — a phase built before the migration is its old plan's, adopted from the tracker`] : []),
+      ...(phase.sections.length === 0 ? [`phase ${at + 1} is marked built and names no section — a phase built before the migration names the area its old plan built`] : []),
+    ];
   });
 }
 
@@ -291,11 +310,11 @@ function cuttable(cwd, unit) {
 /**
  * The tracker's steps (`migratedTracker`), a refusal of theirs opening
  * `cut: ` as every refusal of the verb does.
- * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean}[]} parents @param {string} type
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean, sections: string[]}[]} parents @param {string} type @param {string[]|null} topics
  */
-function cutTracker(cwd, unit, parents, type) {
+function cutTracker(cwd, unit, parents, type, topics) {
   try {
-    return migratedTracker(cwd, unit, parents, type);
+    return migratedTracker(cwd, unit, parents, type, topics);
   } catch (err) {
     if (err instanceof Error) err.message = `cut: ${err.message}`;
     throw err;
@@ -310,10 +329,11 @@ function cutMigrating(cwd, unit, file) {
   const manifest = cuttable(cwd, unit);
   const plan = planIn(path.resolve(cwd, file));
   const text = plannedSpec(cwd, unit, plan);
-  const faults = [...trackerFaults(plan.phases), ...placedFaults(text, plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
+  const faults = [...trackerFaults(plan.phases), ...migratedFaults(plan.phases), ...placedFaults(text, plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
   if (faults.length > 0) refuse(faults);
-  const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{ phase: at + 1, parent: phase.tracker, built: 'built' in phase }]));
-  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type));
+  const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{ phase: at + 1, parent: phase.tracker, built: 'built' in phase, sections: phase.sections }]));
+  const topics = manifest.work_type === 'epic' ? joinedTopics(manifest) : null;
+  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type), topics);
   const notes = withWorkUnitLock(cwd, unit, () => {
     writeTextAtomic(specPath(cwd, unit), text);
     const wrote = writeNotes(cwd, unit, plan.notes);

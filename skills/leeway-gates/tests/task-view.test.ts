@@ -172,6 +172,12 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
     ])
   })
 
+  test('a task landed before the migration cut its unit says why no account was written', () => {
+    expect(sectionOf(onPage(task({ account: null, before: true, reviews: [] })), 'WHAT WAS DONE')).toEqual([
+      'WHAT WAS DONE ───────────────────────────────────────────────', 'No account was written: it landed before the migration cut the unit.',
+    ])
+  })
+
   test('D14, D41: DIFFERS FROM THE TASK always shows, saying nothing differs where nothing does; one criterion, one file and one round each read in the one', () => {
     const account = { ...(TASK.account as object), differences: [], figures: { files: 1, added: 4, removed: 0, criteria: 1 } }
     const rows = onPage(task({ criteria: 1, account }))

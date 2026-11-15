@@ -474,12 +474,12 @@ for (const driver of listDrivers('task')) {
         }
       });
 
-      it('reads what adopting the phases in turn would name, writing nothing: each phase\'s tasks as adopt then shows them', () => {
+      it('reads what adopting the phases in turn would name, writing nothing: each phase\'s tasks as adopt then shows them, and the name its old plan carries on its root', () => {
         const before = store();
         const read = driver.adoption(root, OLD, [{ phase: 1, parent: plan.phases[0] }, { phase: 2, parent: plan.phases[1] }]);
         assert.deepStrictEqual(store(), before);
         adoptBoth();
-        assert.deepStrictEqual(read, [1, 2].map((phase) => ({ phase, tasks: [1, 2, 3].map((n) => driver.show(root, old(phase, n))) })));
+        assert.deepStrictEqual(read, [1, 2].map((phase) => ({ phase, plan: OLD, tasks: [1, 2, 3].map((n) => driver.show(root, old(phase, n))) })));
       });
 
       it('a task\'s type is its tag of the template\'s types — the old plan\'s own tags never read as one — and it takes a type with its other tags kept (21.8.8)', () => {

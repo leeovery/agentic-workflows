@@ -454,9 +454,15 @@ function withNames(ids, names) {
   return { ...ids, byRef, byId };
 }
 
+/** The name a phase's old plan carries on its root, its topic's: the root's first ref no name of the engine's, null where it has none. @param {Ids} ids @param {Held} parent */
+function planNameOf(ids, parent) {
+  const root = parent.parent === undefined ? undefined : ids.held.get(parent.parent);
+  return root?.refs?.find((ref) => nameIn(ref) === null) ?? null;
+}
+
 /**
  * @param {string} root @param {string} unit @param {{phase: number, parent: string}[]} phases
- * @returns {{phase: number, tasks: TaskDetail[]}[]}
+ * @returns {{phase: number, plan: string|null, tasks: TaskDetail[]}[]}
  */
 function adoption(root, unit, phases) {
   let ids = idsIn(root);
@@ -466,7 +472,9 @@ function adoption(root, unit, phases) {
     ids = withNames(ids, names);
   }
   const named = ids;
-  return phases.map(({ phase, parent }) => ({ phase, tasks: namedTasks(named, descendants(named, parent)).map(({ ref, task }) => detailOf(named, ref, task)) }));
+  return phases.map(({ phase, parent }) => ({
+    phase, plan: planNameOf(named, adoptedParent(named, unit, phase, parent)), tasks: namedTasks(named, descendants(named, parent)).map(({ ref, task }) => detailOf(named, ref, task)),
+  }));
 }
 
 /** @param {string} root @param {string} unit @param {number} phase @param {string} parent @returns {TaskRef[]} */

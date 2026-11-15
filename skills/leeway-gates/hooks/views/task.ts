@@ -12,9 +12,10 @@
  * text — and `▸ read the task`; for a fix task, WHAT IT FIXES
  * (D17); for a parked task, each question it waits on, as the page holds
  * it wherever the session has gone, with its `▸ discuss` while the session
- * is in the task's unit (20.5.6, 20.3.5); once done, WHAT WAS DONE from its account, or that none was
- * written (D8), DIFFERS FROM THE TASK, always, saying so where nothing
- * differs (D14), and REVIEWS, each round's `▸ read` opening its two reports
+ * is in the task's unit (20.5.6, 20.3.5); once done, WHAT WAS DONE from
+ * its account, or that none was written (D8) — for a task landed before the
+ * migration cut its unit, why — DIFFERS FROM THE TASK, always, saying so
+ * where nothing differs (D14), and REVIEWS, each round's `▸ read` opening its two reports
  * (D15); and CALLS MADE. Nothing on it sends the account to the
  * conversation (20.5.7).
  */
@@ -36,6 +37,7 @@ type TaskPage = View & {
   finished: string | null
   does: string
   criteria: number | null
+  before: boolean
   account: {
     done: string
     where: string
@@ -243,7 +245,7 @@ function reviewsOf({ line, reviews }: TaskPage, kit: Kit): Line[] {
   ]
 }
 
-/** WHAT WAS DONE, once the task is done: its account, or that none was written (D8); then what differs and its reviews. */
+/** WHAT WAS DONE, once the task is done: its account, or that none was written (D8) — for a task landed before the migration cut its unit, why; then what differs and its reviews. */
 function doneOf(page: TaskPage, kit: Kit): Line[] {
   const { account } = page
 
@@ -254,7 +256,8 @@ function doneOf(page: TaskPage, kit: Kit): Line[] {
   const head = [blank('done'), section('done', 'WHAT WAS DONE', COLOUR.done, kit.width)]
 
   if (account === null) {
-    return [...head, ...prose('done', 'No account was written for this task as it landed.', COLOUR.secondary), ...reviewsOf(page, kit)]
+    const none = page.before ? 'No account was written: it landed before the migration cut the unit.' : 'No account was written for this task as it landed.'
+    return [...head, ...prose('done', none, COLOUR.secondary), ...reviewsOf(page, kit)]
   }
 
   return [

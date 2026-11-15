@@ -70,8 +70,8 @@
 // change. Refused where no repository holds any — but for a unit that
 // landed work before the migration cut it (`landedAnyBefore`), whose change
 // is what landed since (21.8.8): none holding any, its change is empty,
-// standing at each repository's base, where the review reads every area
-// built before as the default branch holds it.
+// standing at each repository's base, its tips there, where the review
+// reads every area built before at the change's tips.
 // The cut's scenarios — a quick-fix's, its fixes' (fix-acceptance.cjs) —
 // stand where their runs at or behind the change's tips put them
 // (`cutStandings`), as a round records them and the board shows

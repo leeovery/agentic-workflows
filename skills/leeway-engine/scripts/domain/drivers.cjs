@@ -165,8 +165,11 @@ const METHODS = Object.freeze({
  * take, and a name another task holds. `adoption` reads the phases named,
  * each by its parent, as their adoption in that order would leave them —
  * each phase's tasks whole, as `tasks` gives them, a link resolved through
- * the names the adoption gives — writing nothing, and refusing as `adopt`
- * refuses: what the migration's cut checks before its first write.
+ * the names the adoption gives, and the name its old plan carries on its
+ * root, its topic's (`--refs` before Leeway), the root's first ref no name
+ * of the engine's, null where it has none — writing nothing, and refusing
+ * as `adopt` refuses: what the migration's cut checks before its first
+ * write.
  * `closePlan` closes a plan the tracker held from before Leeway whose unit
  * built nothing (21.8.4): under the root the migration names, by the
  * tracker's own id, each task holding no task of its own, neither done nor
@@ -214,7 +217,7 @@ const METHODS = Object.freeze({
  *   createUnit: (root: string, unit: string) => boolean,
  *   createPhase: (root: string, unit: string, phase: number, title: string) => void,
  *   createTask: (root: string, ref: TaskRef, task: {title: string, type: string, text: string}) => void,
- *   adoption: (root: string, unit: string, phases: {phase: number, parent: string}[]) => {phase: number, tasks: TaskDetail[]}[],
+ *   adoption: (root: string, unit: string, phases: {phase: number, parent: string}[]) => {phase: number, plan: string|null, tasks: TaskDetail[]}[],
  *   adopt: (root: string, unit: string, phase: number, parent: string) => TaskRef[],
  *   closePlan: (root: string, unit: string, parent: string, reason: string) => number,
  *   add: (root: string, ref: TaskRef, addition: TaskAddition) => void,

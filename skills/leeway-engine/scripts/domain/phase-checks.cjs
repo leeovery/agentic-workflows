@@ -65,7 +65,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
 const {
-  phaseClosed, phaseBuilt, phaseAdopted, cutPhases, cutLength, landedBefore, hasLanded, landedAnyBefore, builtSince,
+  phaseClosed, phaseBuilt, phaseAdopted, cutPhases, cutLength, landedBefore, hasLanded, builtSince, nothingBuiltSince,
 } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
@@ -227,17 +227,8 @@ function tasksPassed(at, phase) {
   return rows.length > 0 && rows.every((row) => before(at, row) || passed(at, row.ref));
 }
 
-/**
- * Whether a phase of a unit the migration cut has nothing built since:
- * every task of it not closed, one at least, landed before the migration
- * (`builtSince`) — its review passing with nothing to read.
- * @param {Reading} at @param {number} phase
- */
-function nothingSince(at, phase) {
-  if (!landedAnyBefore(at.manifest)) return false;
-  const rows = liveRows(at, phase);
-  return rows.length > 0 && builtSince(at.manifest, rows).length === 0;
-}
+/** Whether the phase has nothing built since the migration cut the unit (derivations.cjs, `nothingBuiltSince`). @param {Reading} at @param {number} phase */
+const nothingSince = (at, phase) => nothingBuiltSince(at.manifest, liveRows(at, phase));
 
 /** The phase review's reports, read once a call (round-report.cjs). @param {Reading} at @param {number} phase @returns {Reviewed} */
 const reviewed = (at, phase) => once(at, `review ${phase}`, () => phaseReports(at.cwd, at.unit, phase));

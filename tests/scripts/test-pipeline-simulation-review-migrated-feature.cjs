@@ -127,7 +127,7 @@ describe('pipeline simulation: the review of a feature the migration cut mid-bui
     landed(placeIn(sim, second, 'Where your report goes'), PASSED_REPORT);
     landed(placeIn(sim, first, 'Where your report goes'), UNDONE);
     const tests = sim.run(['brief', 'test-surface', WU, '--base', 'main']);
-    assert.ok(briefOf(sim, tests).includes('Some of the unit\'s work landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips'), 'the test surface read at the tips, the tests landed before among them');
+    assert.ok(briefOf(sim, tests).includes('Work of the unit landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips'), 'the test surface read at the tips, the tests landed before among them');
     landed(placeIn(sim, tests, 'Where your report goes'), PASSED_REPORT);
     const { view } = sim.board();
     assert.deepStrictEqual([view.kind, view.areas.map(({ area, before, state }) => [area, before, state]), view.not_proven.map(({ scenario }) => scenario)], ['review', [['1', 'partly', 'read'], ['tests', null, 'read']], ['1.S1']],

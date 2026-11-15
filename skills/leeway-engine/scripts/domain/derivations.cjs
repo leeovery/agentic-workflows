@@ -145,6 +145,17 @@ function builtSince(manifest, tasks) {
   return tasks.filter(({ ref }) => !before(ref));
 }
 
+/**
+ * Whether a phase's tasks hold nothing built since the migration cut the
+ * unit: one at least not closed, each landed before it (`builtSince`) — the
+ * phase's review passing with nothing to read.
+ * @param {Record<string, any>} manifest @param {{ref: TaskRef, status: string}[]} tasks
+ */
+function nothingBuiltSince(manifest, tasks) {
+  const live = tasks.filter(({ status }) => status !== 'closed');
+  return live.length > 0 && builtSince(manifest, live).length === 0;
+}
+
 /** Whether a phase of the unit's cut names its parent in the tracker, adopted by the migration (21.8.8): its tasks the old plan's, written. @param {Record<string, any>} manifest @param {number} number */
 const phaseAdopted = (manifest, number) => cutPhases(manifest)[number - 1]?.tracker !== undefined;
 
@@ -1472,11 +1483,11 @@ module.exports = {
   hasLanded,
   landedAnyBefore,
   builtSince,
+  nothingBuiltSince,
   phaseAdopted,
   citedAreas,
   areaOfAddress,
   doneBeforeIn,
-  placesArea,
   areaBuilt,
   cutLength,
   isFixPhase,

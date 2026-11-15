@@ -32,11 +32,13 @@
 // nothing else of them changed (21.8.8); and the plan of a unit that built
 // nothing is closed under its root (`task close-plan`, 21.8.4,
 // drivers.cjs), the driver refusing a plan holding a task done: the tracker
-// wins (21.8.8). The migration's cut runs its tracker steps here too
-// (`migratedTracker`, cut-migrating.cjs): the phases it names the parents
-// of read as their adoption would leave them, writing nothing, and refused,
-// every fault named at once — a phase it marks built holding a task neither
-// done nor closed, a phase it leaves unbuilt holding none, and a link
+// wins (21.8.8). Neither verb takes a unit whose spec the migration joined:
+// its cut adopts its plans. The migration's cut runs its tracker steps here
+// too (`migratedTracker`, cut-migrating.cjs): the phases it names the
+// parents of read as their adoption would leave them, writing nothing, and
+// refused, every fault named at once — a phase it marks built holding a
+// task neither done nor closed, or naming a section outside the area of its
+// old plan's topic, a phase it leaves unbuilt holding none, and a link
 // holding a task neither done nor closed after one neither, of a later
 // phase or another unit's, which `task link` refuses and the build would
 // wait on for ever (12.6.4, 7.1.14; a link after an ended task holds
@@ -145,7 +147,7 @@ const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = requ
 const { recordTask, clearTask, clearTasks, recordStop } = require('./position.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const {
-  phaseStarted, cutLength, quickFixBuild, FIXES_PHASE,
+  phaseStarted, cutLength, quickFixBuild, specJoined, areaOfAddress, FIXES_PHASE,
 } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
@@ -504,29 +506,37 @@ function refuseUnlessMigrating(cwd) {
   if (!migrationRuns(stateRoot(cwd))) throw new Error('a plan from before Leeway is taken in only while the migration runs — the state branch has its first commit, so the migration is done');
 }
 
+/** Refuses a unit whose spec the migration joined, its building started: its cut, alone, carries its plans on. @param {string} cwd @param {string} unit @param {string} what */
+function refuseJoined(cwd, unit, what) {
+  if (specJoined(loadWorkUnitManifest(cwd, unit))) throw new Error(`${unit}'s building started before the migration — its specs joined — so ${what}: cut ${unit} --migrating --file <plan.json>`);
+}
+
 /**
  * `task adopt`: a phase of a plan the tracker held from before Leeway given
  * the engine's names (21.8.8), its parent named by the tracker's own id,
- * only while the migration runs (E13).
+ * only while the migration runs (E13), and never for a unit whose spec it
+ * joined, whose cut adopts its plans.
  * @param {string} cwd @param {string} unit @param {string} given @param {string} parent
  */
 function adoptPhase(cwd, unit, given, parent) {
   const phase = parsePhase(given);
   refuseUnlessMigrating(cwd);
   requireUnit(cwd, unit);
+  refuseJoined(cwd, unit, 'its plans are adopted by its cut alone');
   return withTracker(cwd, unit, `adopt phase ${phase}`, (driver, root) => ({ phase, parent, tasks: driver.adopt(root, unit, phase, parent).map(shownTask) }));
 }
 
 /**
  * `task close-plan`: the plan the tracker held from before Leeway of a unit
  * that built nothing closed under its root (21.8.4), named by the tracker's
- * own id, only while the migration runs (E13) — refused by the driver for a
- * plan holding a task done.
+ * own id, only while the migration runs (E13) — refused for a unit whose
+ * spec it joined, and by the driver for a plan holding a task done.
  * @param {string} cwd @param {string} unit @param {string} parent
  */
 function closePlan(cwd, unit, parent) {
   refuseUnlessMigrating(cwd);
   requireUnit(cwd, unit);
+  refuseJoined(cwd, unit, 'its plan is not closed — its cut carries it on');
   return withTracker(cwd, unit, 'close the plan from before Leeway', (driver, root) => ({ parent, closed: driver.closePlan(root, unit, parent, PLAN_CLOSED) }));
 }
 
@@ -565,6 +575,22 @@ function builtFaults({ phase, built, tasks }) {
 }
 
 /**
+ * Where a phase marked built names a section outside the area its old plan
+ * built — its plan's topic's place among the topics joined, `topics` — that
+ * fault; none for a single-topic unit, `topics` null, whose plan built the
+ * whole spec.
+ * @param {{phase: number, built: boolean, sections: string[], plan: string|null}} held @param {string[]|null} topics
+ */
+function areaFaults({ phase, built, sections, plan }, topics) {
+  if (!built || topics === null) return [];
+  const area = String(topics.indexOf(plan ?? '') + 1);
+  if (area === '0') return [`phase ${phase} is marked built, and its old plan's root names ${plan === null ? 'no topic' : `${plan}, a topic`} the migration joined into no area — so what it built is no area of the spec`];
+  const outside = sections.filter((address) => areaOfAddress(address) !== area);
+  if (outside.length === 0) return [];
+  return [`phase ${phase} is marked built with ${outside.map((address) => `§${address}`).join(', ')}, outside §${area}, the area of its old plan's topic, ${plan} — a phase built before the migration names only what its old plan built`];
+}
+
+/**
  * The migration's cut's tracker steps, one tracker commit (the header's):
  * the phases read as their adoption would leave them and refused, every
  * fault named and nothing written; then each phase naming its parent
@@ -572,13 +598,14 @@ function builtFaults({ phase, built, tasks }) {
  * another; answering, too, the tasks of the phases not built that the
  * tracker holds done, and those neither done nor closed with their text. A
  * run again adopts and types only what the last left out.
- * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean}[]} phases @param {string} type
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean, sections: string[]}[]} phases
+ * @param {string} type @param {string[]|null} topics the topics joined, area by area — null for a single-topic unit (`areaFaults`)
  * @returns {{adopted: {phase: number, tasks: string[]}[], typed: string[], done: string[], open: {task: string, text: string}[], committed?: string|null, note?: string, warnings?: string[]}}
  */
-function migratedTracker(cwd, unit, phases, type) {
+function migratedTracker(cwd, unit, phases, type, topics) {
   return withTracker(cwd, unit, 'adopt the plan', (driver, root) => {
-    const held = driver.adoption(root, unit, phases).map(({ phase, tasks }, at) => ({ phase, built: phases[at].built, tasks }));
-    const faults = [...held.flatMap(builtFaults), ...linkFaults(driver, root, unit, held.flatMap(({ tasks }) => tasks))];
+    const held = driver.adoption(root, unit, phases).map(({ phase, plan, tasks }, at) => ({ phase, plan, built: phases[at].built, sections: phases[at].sections, tasks }));
+    const faults = [...held.flatMap(builtFaults), ...held.flatMap((each) => areaFaults(each, topics)), ...linkFaults(driver, root, unit, held.flatMap(({ tasks }) => tasks))];
     if (faults.length > 0) throw new TaskRefusal(faults.join('; '));
     const adopted = phases.map(({ phase, parent }) => ({ phase, tasks: driver.adopt(root, unit, phase, parent).map(shownTask) }));
     const typed = held.flatMap(({ tasks }) => tasks
