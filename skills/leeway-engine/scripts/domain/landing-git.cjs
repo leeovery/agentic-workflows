@@ -1428,9 +1428,9 @@ const rebasedSince = (branch, onto, landed) => `rebase ${plain(branch)}'s commit
 const rebasedPast = (branch, onto, from) => `rebase ${plain(branch)}'s commits past ${short(from)} onto ${plain(onto)}, settling the conflict in the rebase, with \`git rebase --onto ${quoted(onto)} ${short(from)} ${quoted(branch)}\``;
 
 /**
- * The way on of a task's branch behind its landing with work of its own
- * (task-landed.cjs, `behindWith`): that work laid on its tip at that
- * landing, `landed`, which the default branch's landing holds.
+ * The way on of a task's branch apart from its landing (task-landed.cjs,
+ * `apart`): its work laid on its tip at that landing, `landed`, which the
+ * default branch's landing holds.
  * @param {string} branch @param {string} landed
  */
 const laidOn = (branch, landed) => `lay ${plain(branch)}'s own work on that commit with \`git rebase ${short(landed)} ${quoted(branch)}\``;
@@ -1974,7 +1974,7 @@ const trackedTip = (root, remote, branch) => tryGit(root, ['rev-parse', '--verif
 function fetchedCommit(root, remote, ref, commit) {
   if (holdsCommit(root, commit)) return true;
   try {
-    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--recurse-submodules=no', remote, ref], FETCH_TIMEOUT_MS);
+    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--refmap=', '--recurse-submodules=no', remote, ref], FETCH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     return false;

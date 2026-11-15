@@ -1,23 +1,21 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A recorded task's branch behind its landing (task-landed.cjs, `apartOf`,
-// `behindWith`), against each shipped driver in turn. Landed by the engine,
+// A recorded task's branch behind its landing (task-landed.cjs, `apart`),
+// against each shipped driver in turn. Landed by the engine,
 // its branch then made again at the commit below its recorded tip, never
 // having stood there, as a second clone's leaves it: its landing's tip
 // holds it, so it has nothing new — `land phase` answers already and `land
 // finish` lands nothing, the default branch keeping all it landed. Landed
 // by the engine with a commit of the person's own on its branch, its
-// branch then made again below that commit with new work, none of its own
-// commits the landing took dropped: `land open` refuses before anything
-// moves, naming the commit that landed and the way on — its own work laid
-// on that commit, pushed over its copy on the host where the host holds
-// one; followed, `land phase` lands the new work, the default branch
-// keeping the person's commit. A branch that dropped a commit of its own
-// the landing took is F1's,
-// test-engine-landing-conformance-record-rewritten.cjs's. Conformance
-// layer: the landing world (landing-world.cjs), built once per driver and
-// copied for each test.
+// branch then made again below that commit with new work: `land open`
+// refuses before anything moves, naming the commit that landed and the way
+// on — its own work laid on that commit, pushed over its copy on the host
+// where the host holds one; followed, `land phase` lands the new work, the
+// default branch keeping the person's commit. One stale behind commits of
+// the task's own is test-engine-landing-conformance-record-stale.cjs's.
+// Conformance layer: the landing world (landing-world.cjs), built once per
+// driver and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -97,7 +95,7 @@ for (const { name } of listDrivers('landing')) {
       const merged = own(ok(at, PHASE)).merged;
 
       assert.deepStrictEqual([refusal, stood, merged, ['card.txt', 'own.txt', 'more.txt'].map((file) => side.holds(at).includes(file))], [
-        `land: task 1.1's branch ${card.branch} is behind its work's landing on main (${short(landing)}): its commit ${short(mine)} landed, which the branch lacks, and the branch holds work of its own past where the two part — `
+        `land: task 1.1's branch ${card.branch} has moved apart from where its work landed on main (${short(landing)}): its commit ${short(mine)} landed, which the branch lacks — `
           + `lay ${card.branch}'s own work on that commit with \`git rebase ${short(mine)} ${card.branch}\`${push === null ? '' : `, push it with \`${push}\``}, and open the task with \`land open ${UNIT} 1.1\``,
         before, ['1.1'], [true, true, true],
       ]);

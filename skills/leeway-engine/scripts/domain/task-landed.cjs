@@ -69,20 +69,16 @@
 // display records nothing. Anything else a branch does after its landing
 // `open`, `phase` and `finish` refuse before anything moves, `open`
 // before it reads the task landed (landing.cjs): its branch apart from its
-// landing point (`apartOf`) — holding neither its tip nor the commit that
-// landed it, nor held by that tip — with one of its own commits that tip
-// holds amended, folded or dropped, the stated edge (`rewritten`, F1), its
-// way on that tip with the branch's work on it as one commit; apart with
-// none dropped, behind that tip with work of its own, as the host's copy
-// moving past the branch here before its landing leaves it
-// (`behindWith`), its way on that work laid on that tip; and a merge on
-// its branch past that tip as its record or read set it, never the lower
-// one its own change judges it by, the engine's own aside (`mergedPast`),
-// its way on the branch's own commits since that tip made again on the
-// default branch. Known edges: a task landed by hand that no verb read,
-// then rewritten by hand, is read by its content; a merge straight past
-// such a landing carrying no change of its own is read as part of it, as
-// one made before it is.
+// landing point (`apart`) — holding neither its tip nor the commit that
+// landed it, nor held by that tip — rewritten or behind it, its way on the
+// branch's work laid on that tip, never taking landed work off the default
+// branch; and a merge on its branch past that tip as its record or read set
+// it, never the lower one its own change judges it by, the engine's own
+// aside (`mergedPast`), its way on the branch's own commits since that tip
+// made again on the default branch. Known edges: a task landed by hand
+// that no verb read, then rewritten by hand, is read by its content; a
+// merge straight past such a landing carrying no change of its own is read
+// as part of it, as one made before it is.
 //
 // A task has landed in a repository once the revision it lands on held its
 // change, however it got there — the engine's squash, or a merge by hand by
@@ -971,11 +967,10 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
    * is read so — over that tip all the same, since a branch brought up whose
    * own work the default branch then holds has that work read landed, its
    * landing point moved onto it; one apart from its landing or merged into
-   * past it is refused before a verb reads it (`rewritten`, `behindWith`,
-   * `mergedPast`); a task landed only by its branch's tip read whole never
-   * changed. Every task read with it (`readWith`) read at
-   * once, at the first asked; the change read only of those whose branch
-   * moved off that tip.
+   * past it is refused before a verb reads it (`apart`, `mergedPast`); a
+   * task landed only by its branch's tip read whole never changed. Every
+   * task read with it (`readWith`) read at once, at the first asked; the
+   * change read only of those whose branch moved off that tip.
    * @param {string} id
    */
   const changedSince = (id) => {
@@ -1677,53 +1672,29 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     const point = at === undefined ? null : pointOf(id);
     return at === undefined || point === null || point.tip === null ? null : { at, branch: /** @type {string} */ (work.names().get(id)), point, landed: point.tip, landing: point.commit };
   };
-  /** @type {Map<string, {branch: string, sha: string, landing: string|null, dropped: boolean}|null>} */
+  /** @type {Map<string, {branch: string, sha: string, landing: string|null}|null>} */
   const apartRead = new Map();
   /**
    * Where the task's branch here stands apart from its landing point
    * (`pointOf`, L): holding neither its tip nor the commit that landed it,
-   * nor held by that tip — a branch behind that tip has nothing new, and
-   * has landed — with that tip, named `sha`, its landing, the branch, and
-   * whether a commit that tip holds past the branch is stamped with the
-   * task, one of its own commits the branch amended, folded or dropped
-   * (`dropped`); null where it stands otherwise, or git no longer holds a
-   * recorded tip (`heldTip`).
-   * @param {string} id
+   * nor held by that tip — rewritten since, or behind it with work of its
+   * own, as a clone stale behind it or the host's copy moved past the
+   * branch here before its landing leaves it; a branch behind that tip
+   * alone has nothing new, and has landed — with that tip, named `sha`, its
+   * landing and the branch; null where it stands otherwise, or git no
+   * longer holds a recorded tip (`heldTip`). A task landed by hand that no
+   * verb read, then rewritten, has no point to stand apart from, and is
+   * read by its content.
+   * @param {TaskRef} ref @returns {{branch: string, sha: string, landing: string|null}|null}
    */
-  const apartOf = (id) => {
+  const apart = (ref) => {
+    const id = taskId(ref);
     if (!apartRead.has(id)) {
       const here = pointHere(id);
-      const apart = here !== null && !holdsCommit(here.at, here.landed) && !(here.landing !== null && holdsCommit(here.at, here.landing)) && heldTip(here.point) !== null && !holdsCommit(here.landed, here.at);
-      apartRead.set(id, here === null || !apart ? null : {
-        branch: here.branch, sha: here.landed, landing: here.landing, dropped: lg.stampedPast(root, here.landed, here.at, key).some(({ value }) => value === id),
-      });
+      const off = here !== null && !holdsCommit(here.at, here.landed) && !(here.landing !== null && holdsCommit(here.at, here.landing)) && heldTip(here.point) !== null && !holdsCommit(here.landed, here.at);
+      apartRead.set(id, here === null || !off ? null : { branch: here.branch, sha: here.landed, landing: here.landing });
     }
-    return /** @type {{branch: string, sha: string, landing: string|null, dropped: boolean}|null} */ (apartRead.get(id));
-  };
-  /**
-   * The stated edge (F1): the task's branch apart from its landing point
-   * (`apartOf`), one of its own commits that point's tip holds amended,
-   * folded or dropped from it: that tip, with its landing and the branch;
-   * null otherwise. A task landed by hand that no verb read, then
-   * rewritten, has no point its branch dropped, and is read by its content.
-   * @param {TaskRef} ref @returns {{branch: string, sha: string, landing: string|null}|null}
-   */
-  const rewritten = (ref) => {
-    const apart = apartOf(taskId(ref));
-    return apart === null || !apart.dropped ? null : { branch: apart.branch, sha: apart.sha, landing: apart.landing };
-  };
-  /**
-   * The task's branch apart from its landing point (`apartOf`) with none of
-   * its own commits that point's tip holds dropped: behind that tip, as the
-   * host's copy it landed from moved past the branch here leaves it, with
-   * work of its own past where the two part — that tip, with its landing
-   * and the branch; null otherwise. Where it cannot be told from a rewrite,
-   * the way on keeps the tip, taking no landed work off the default branch.
-   * @param {TaskRef} ref @returns {{branch: string, sha: string, landing: string|null}|null}
-   */
-  const behindWith = (ref) => {
-    const apart = apartOf(taskId(ref));
-    return apart === null || apart.dropped ? null : { branch: apart.branch, sha: apart.sha, landing: apart.landing };
+    return /** @type {{branch: string, sha: string, landing: string|null}|null} */ (apartRead.get(id));
   };
   /**
    * A merge on the task's branch past its landing point (`pointOf`, L) as
@@ -1735,7 +1706,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
    * commit its driver took it at, as the engine's own merge of a pull
    * request's base into it leaves one; with the branch, that tip and the
    * landing. Null where none stands there, or its branch does not hold that
-   * tip (`rewritten`).
+   * tip (`apart`).
    * @param {TaskRef} ref @returns {{branch: string, merge: string, sha: string, landing: string|null}|null}
    */
   const mergedPast = (ref) => {
@@ -1757,7 +1728,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
   };
   /** The unit's tasks the repository holds work of — stamped, on a branch of theirs, or named on the tip — by their refs. @returns {TaskRef[]} */
   const known = () => [...new Set([...work.lasts().keys(), ...tips().keys(), ...marked().named.keys()])].sort(byStep).flatMap(unitTask);
-  /** The unit's tasks with a branch here, by their refs: those whose branch `rewritten` reads. @returns {TaskRef[]} */
+  /** The unit's tasks with a branch here, by their refs: those whose branch `apart` reads. @returns {TaskRef[]} */
   const branched = () => [...tips().keys()].sort(byStep).flatMap(unitTask);
   /**
    * Where the task's own work starts on its branch (R32): the first parent
@@ -1783,8 +1754,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     ownedSince,
     ownersPast,
     ownStart,
-    rewritten,
-    behindWith,
+    apart,
     mergedPast,
     found,
     earlier,

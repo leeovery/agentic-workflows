@@ -12,12 +12,18 @@
 // GitHub's site, a squash of its pull request. Its
 // branch then changes one way, before or after a verb read that landing:
 // the file it added deleted, that file deleted and added back, the branch
-// rewritten (F1, where a verb read the landing), or rebased onto the
-// default branch, its commits dropped there as applied; or that file taken
-// back in its own commits, its last commit amended (`amended`), or every
-// commit folded into one under its own stamp; or its last commit's message
-// amended alone, nothing of its work changed; or its last commit dropped,
-// its branch then behind its landing, nothing new, its record kept. The
+// rewritten, or rebased onto the default branch, its commits dropped there
+// as applied; or that file taken back in its own commits, its last commit
+// amended (`amended`), or every commit folded into one under its own
+// stamp; or its last commit's message amended alone, or every commit folded
+// into one, nothing of its work changed; or its last commit dropped, its
+// branch then behind its landing, nothing new, its record kept. A rewrite
+// after a verb read the landing is refused as apart from it, its way on
+// the branch's work laid on that landing: what a replayed commit removes
+// comes through, a conflict settled the branch's way, and what it only
+// leaves out — a fold's take-back, a file the branch rewritten from the
+// default branch never adds — is nothing new, the default branch keeping
+// it. The
 // verbs run as the person runs them, every way on followed as the engine
 // words it, and each row holds the
 // default branch's tree, the task's record — who landed it last, its first
@@ -102,7 +108,7 @@ const CHANGES = {
     },
     paths: WORK, card: 'card\n', lands: false,
   },
-  'its branch rewritten': { change: (at) => commitFiles(at, card.branch, BASE, { 'card.txt': 'card, rewritten\n', 'more.txt': 'more\n' }), paths: ['card.txt', 'more.txt'], card: 'card, rewritten\n', lands: true },
+  'its branch rewritten': { change: (at) => commitFiles(at, card.branch, BASE, { 'card.txt': 'card, rewritten\n', 'more.txt': 'more\n' }), paths: WORK, card: 'card, rewritten\n', lands: true },
   'its branch rebased onto the default branch, its commits dropped there as applied': {
     change: (at) => {
       const back = git(at, ['symbolic-ref', '--short', 'HEAD']).trim();
@@ -119,7 +125,11 @@ const CHANGES = {
   },
   'its commits folded into one under its own stamp, taking back the file it added': {
     change: (at) => onBranch(at, card.branch, [['reset', '-q', '--soft', BASE], ['rm', '-q', '-f', 'extra.txt'], ['commit', '-q', '-C', 'ORIG_HEAD']]),
-    paths: ['card.txt', 'more.txt'], card: 'card\n', lands: true,
+    paths: WORK, card: 'card\n', lands: false,
+  },
+  'its commits folded into one under its own stamp, nothing else changed': {
+    change: (at) => onBranch(at, card.branch, [['reset', '-q', '--soft', BASE], ['commit', '-q', '-C', 'ORIG_HEAD']]),
+    paths: WORK, card: 'card\n', lands: false,
   },
 };
 

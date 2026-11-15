@@ -134,8 +134,8 @@ describe('a feature\'s task changed after its pull request merged on GitHub, Git
     const merged = own(ok(dir, PHASE)).merged;
 
     assert.deepStrictEqual([refusal, merged, heldOn(bareOf(dir), 'card.txt')], [
-      `land: task 1.1's branch ${card.branch} was rewritten after its work landed on main (${short(landing)}): its commit ${short(landed)} landed, and the branch no longer holds it — `
-        + `on ${card.branch}, make its work as it stands one commit on that one, under its tip's message, with \`git reset --soft ${short(landed)}\` then \`git diff --cached --quiet || git commit -C ORIG_HEAD\`${pushedOver(held)}`,
+      `land: task 1.1's branch ${card.branch} has moved apart from where its work landed on main (${short(landing)}): its commit ${short(landed)} landed, which the branch lacks — `
+        + `lay ${card.branch}'s own work on that commit with \`git rebase ${short(landed)} ${card.branch}\`${pushedOver(held)}`,
       ['1.1'], 'card, amended\n',
     ]);
   });

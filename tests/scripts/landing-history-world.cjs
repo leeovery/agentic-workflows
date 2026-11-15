@@ -12,12 +12,15 @@
 // under the person's own message or git's, merged by a merge commit,
 // fast-forwarded, or its own commits picked onto main, a squash or a merge
 // carrying a change of the person's own or not — or, where its pull request
-// is open on the host, merged on the host's site, pulled or not; a commit
+// is open on the host, merged on the host's site, pulled or not, a rewrite
+// of its branch since it was pushed pushed over it first (`republished`);
+// a commit
 // on a task's branch adding, rewriting or taking back a file, a take-back
 // by a commit of its own, an amend — the last commit dropped where it did
 // nothing else, left empty once the task has landed, a branch dropped
 // below its landing having nothing new — or a fold under the task's stamp,
-// or adding a file it took back as it was; main merged back into a task's
+// once it has landed only where its branch stands at its landing, or
+// adding a file it took back as it was; main merged back into a task's
 // branch, the merge carrying
 // a change of its own or not; the person's own commit on main, or one
 // rewording a landed task's file there; a later task (`LATER`) cut from
@@ -26,7 +29,11 @@
 // read its landing (`reshapeable`) — then opened at once, the refusal of
 // what no verb reads past a landing followed, the merge carrying no change
 // of its own, which that way on leaves out — never after a landing by
-// hand no verb read, an edge never built. Then the verbs land
+// hand no verb read, an edge never built. A rewrite of what a task landed
+// is laid on its landing again by that way on (`replayed`): its take-back
+// comes through only where the commit replayed removes the file from what
+// its first parent held, else it is nothing new, the default branch keeping
+// the file, and the model with it. Then the verbs land
 // everything still to land: each task opened, then its phase landed. Every
 // refusal's way on is followed as the person follows it, each conflict
 // settled as the person means it: to the file's last write, where a side
@@ -193,6 +200,27 @@ const taskOf = (spec, below, cut) => ({ shown: spec.shown, branch: branchOf(spec
 
 /** Whether a verb has read a task's landing: its landing record. @param {History} h @param {Task} task */
 const recorded = (h, task) => readManifest(h.at, UNIT).landings?.[taskId(parseShownTask(UNIT, task.shown))]?.['.'] !== undefined;
+
+/** A task's tip at its landing as its record holds it, null where none does. @param {History} h @param {Task} task @returns {string|null} */
+const recordedTip = (h, task) => readManifest(h.at, UNIT).landings?.[taskId(parseShownTask(UNIT, task.shown))]?.['.']?.tip ?? null;
+
+/** Whether `rev` landed with a task: its record's tip holds it. @param {History} h @param {Task} task @param {string} rev */
+const landedWith = (h, task, rev) => {
+  const at = recordedTip(h, task);
+  return at !== null && tried(h.at, ['merge-base', '--is-ancestor', rev, at]).status === 0;
+};
+
+/**
+ * Whether a take-back of `file` amended into a task's last commit comes
+ * through, the branch checked out: always where that commit has not
+ * landed; where it has, only where it is no merge, which a rebase leaves
+ * out, and its first parent holds the file, so the commit laid on its
+ * landing again — as the way on of a branch apart from its landing lays it
+ * — removes it, else it is nothing new.
+ * @param {History} h @param {Task} task @param {string} file
+ */
+const replayed = (h, task, file) => !landedWith(h, task, 'HEAD')
+  || (tried(h.at, ['rev-parse', '-q', '--verify', 'HEAD^2']).status !== 0 && tried(h.at, ['cat-file', '-e', `HEAD^:${file}`]).status === 0);
 
 /** Whether a task's branch may be rewritten or merged into: before its task lands, or once a verb read its landing. @param {History} h @param {Task} task */
 const reshapeable = (h, task) => !task.landed || recorded(h, task);
@@ -368,14 +396,14 @@ function followed(h, refusal, depth) {
 /**
  * The commands a way on names, run in order: a `land` verb as `attempt`
  * runs it, anything else in a shell at the project — on the task's branch
- * where the way on says to make its work one commit there, or to pull its
- * copy on the host first, else from main, main out again after, as a
- * rebase of a task's branch leaves that branch out — each rebase, merge or
- * pick that stops settled (`settled`) and gone on with.
+ * where the way on says to pull its copy on the host first, else from
+ * main, main out again after, as a rebase of a task's branch leaves that
+ * branch out — each rebase, merge or pick that stops settled (`settled`)
+ * and gone on with.
  * @param {History} h @param {string} refusal @param {string[]} commands @param {number} depth
  */
 function ranWayOn(h, refusal, commands, depth) {
-  const on = /— on (\S+), (?:make its work|pull its copy)/.exec(refusal)?.[1];
+  const on = /— on (\S+), pull its copy/.exec(refusal)?.[1];
   h.steps.push(`${'  '.repeat(depth)}  followed: ${commands.join('; ')}`);
   /** @type {{land: boolean, run: string[]}[]} */
   const groups = [];
@@ -567,10 +595,24 @@ function squashed(h, task, message) {
 }
 
 /**
+ * A task's branch pushed over its copy on the host where the person
+ * rewrote it since it was pushed — that copy's head, held here, no longer
+ * on it — as the person updating their pull request does before merging it
+ * on the site; a branch only gone on past that head left as it is.
+ * @param {History} h @param {Task} task
+ */
+function republished(h, task) {
+  const [held] = tried(h.at, ['ls-remote', 'origin', `refs/heads/${task.branch}`]).stdout.split('\t');
+  if (held === '' || tried(h.at, ['cat-file', '-e', `${held}^{commit}`]).status !== 0 || tried(h.at, ['merge-base', '--is-ancestor', held, task.branch]).status === 0) return;
+  git(h.at, ['push', '-q', '--force', 'origin', task.branch]);
+  h.steps.push(`${task.shown}'s branch, rewritten since it was pushed, pushed over its pull request`);
+}
+
+/**
  * A task landed by hand: on the host's site where its pull request is open
- * there, else in the person's checkout, then pushed — each file main held as
- * the model ends it, that work landed, which the landing changed then the
- * model's as main holds it (`overridden`).
+ * there (`republished` first), else in the person's checkout, then pushed —
+ * each file main held as the model ends it, that work landed, which the
+ * landing changed then the model's as main holds it (`overridden`).
  * @param {History} h @param {Task} task
  */
 function byHand(h, task) {
@@ -578,6 +620,7 @@ function byHand(h, task) {
   if (h.side.mergedOnHost !== null && task.opened && chance(h, 0.5)) {
     const method = pick(h, ['squash', 'merge', 'rebase']);
     const pulled = chance(h, 0.5);
+    republished(h, task);
     if (h.side.mergedOnHost(h.at, task.branch, method, pulled)) {
       overridden(h, before);
       return landedByHand(h, task, `merged on the host's site by ${method}, ${pulled ? 'pulled' : 'not pulled'}`, true);
@@ -622,11 +665,13 @@ function overridden(h, before) {
  * another file, so its work still changes something. An amend is for a
  * task no other is cut from — its last commit, where it did nothing else,
  * dropped before the task lands, else left empty, a branch dropped below
- * its landing having nothing new — a fold for one cut from main whose branch
- * holds no merge; each `rewrites` the branch (`reshapeable`). Adding back
- * writes a file the task took back as it held it. Each acts on a file of
- * those `from` names, else of those the task may write.
- * @type {Record<string, {can: (task: Task) => boolean, rewrites?: boolean, from?: (task: Task) => string[], act: (h: History, task: Task, file: string) => string}>}
+ * its landing having nothing new, a take-back only where it comes through
+ * (`replayed`) — a fold for one cut from main whose branch holds no merge,
+ * once it has landed only where its branch stands at its landing, its
+ * take-back then nothing new; each `rewrites` the branch (`reshapeable`).
+ * Adding back writes a file the task took back as it held it. Each acts on
+ * a file of those `from` names, else of those the task may write.
+ * @type {Record<string, {can: (task: Task, h: History) => boolean, rewrites?: boolean, from?: (task: Task) => string[], act: (h: History, task: Task, file: string) => string}>}
  */
 const COMMITS = {
   adding: {
@@ -663,22 +708,23 @@ const COMMITS = {
     can: (task) => takeable(task) && task.above.length === 0,
     rewrites: true,
     act: (h, task, file) => {
-      const how = onBranch(h, task.branch, () => {
+      const [how, through] = onBranch(h, task.branch, () => {
+        const comes = replayed(h, task, file);
         git(h.at, ['rm', '-q', '--', file]);
         const empty = tried(h.at, ['diff', '--cached', '--quiet', 'HEAD^']).status === 0;
         if (empty && !task.landed) {
           git(h.at, ['reset', '-q', '--hard', 'HEAD^']);
-          return 'dropping its last commit, which did nothing else';
+          return ['dropping its last commit, which did nothing else', comes];
         }
         git(h.at, ['commit', '-q', '--amend', '--no-edit', '--allow-empty']);
-        return empty ? 'amending its last commit, which then does nothing' : 'amending its last commit';
+        return [empty ? 'amending its last commit, which then does nothing' : 'amending its last commit', comes];
       });
-      wrote(h, task, file, null);
-      return `${file} taken back by ${how}`;
+      if (through) wrote(h, task, file, null);
+      return `${file} taken back by ${how}${through ? '' : ', which landed — nothing new laid on its landing'}`;
     },
   },
   'folding a take-back': {
-    can: (task) => takeable(task) && task.above.length === 0 && task.below === null && !task.merged,
+    can: (task, h) => takeable(task) && task.above.length === 0 && task.below === null && !task.merged && (!task.landed || tip(h.at, task.branch) === recordedTip(h, task)),
     rewrites: true,
     act: (h, task, file) => {
       const old = tip(h.at, task.branch);
@@ -687,8 +733,8 @@ const COMMITS = {
         git(h.at, ['rm', '-q', '-f', '--', file]);
         git(h.at, ['commit', '-q', '-C', old]);
       });
-      wrote(h, task, file, null);
-      return `${file} taken back by folding the branch into one commit under its tip's message`;
+      if (!task.landed) wrote(h, task, file, null);
+      return `${file} taken back by folding the branch into one commit under its tip's message${task.landed ? ', which landed — nothing new laid on its landing' : ''}`;
     },
   },
 };
@@ -702,7 +748,7 @@ const COMMITS = {
  */
 function commitOn(h, task) {
   const read = task.landed && recorded(h, task);
-  const how = pick(h, Object.keys(COMMITS).filter((name) => COMMITS[name].can(task) && (COMMITS[name].rewrites !== true || !task.landed || read)));
+  const how = pick(h, Object.keys(COMMITS).filter((name) => COMMITS[name].can(task, h) && (COMMITS[name].rewrites !== true || !task.landed || read)));
   const { act, from = writable, rewrites = false } = COMMITS[how];
   h.steps.push(`${task.shown}: ${act(h, task, pick(h, from(task)))}`);
   if (rewrites && read) opened(h, task);

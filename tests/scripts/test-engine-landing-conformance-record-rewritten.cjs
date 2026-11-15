@@ -2,14 +2,15 @@
 
 // ---------------------------------------------------------------------------
 // The landing record of a task whose branch was rewritten after its
-// landing (task-landed.cjs, `rewritten`, 7.2.22), against each shipped
-// driver in turn. A task no driver took, squashed by hand and read by a
-// verb, whose branch is then rewritten past the default branch, no longer
+// landing (task-landed.cjs, `apart`, 7.2.22), against each shipped driver
+// in turn. A task no driver took, squashed by hand and read by a verb,
+// whose branch is then rewritten past the default branch, no longer
 // holding its landing point, is refused by `land open`, `land phase` and
 // `land finish` alike, before anything moves, naming the commit that
-// landed and the way on, while another phase lands; its way on followed,
+// landed and the way on — its work laid on that commit — while another
+// phase lands; its way on followed, its conflict settled the branch's way,
 // squashed or merged by a merge commit, the rewrite lands, its branch
-// losing none of it, its record's first landing the one by hand (F1). One
+// holding that commit, its record's first landing the one by hand. One
 // the driver took, squashed by hand, its branch then rebased onto the
 // default branch and given a fix, changed after its landing, lands the
 // fix, its first landing the squash (N1). A branch merged into past its
@@ -56,10 +57,9 @@ for (const { name } of listDrivers('landing')) {
     if (dir !== null) cleanupFixture(dir);
     dir = null;
   });
-  /** F1's refusal of 1.1, whose commit `landed` landed at `landing`. @param {string} landing @param {string} landed */
-  const rewrittenRefusal = (landing, landed) => `land: task 1.1's branch ${card.branch} was rewritten after its work landed on main (${short(landing)}): its commit ${short(landed)} landed, and the branch no longer holds it — `
-    + `on ${card.branch}, make its work as it stands one commit on that one, under its tip's message, with \`git reset --soft ${short(landed)}\` then \`git diff --cached --quiet || git commit -C ORIG_HEAD\`, `
-    + `and open the task with \`land open ${UNIT} 1.1\``;
+  /** The refusal of 1.1's branch apart from its landing, whose commit `landed` landed at `landing`. @param {string} landing @param {string} landed */
+  const rewrittenRefusal = (landing, landed) => `land: task 1.1's branch ${card.branch} has moved apart from where its work landed on main (${short(landing)}): its commit ${short(landed)} landed, which the branch lacks — `
+    + `lay ${card.branch}'s own work on that commit with \`git rebase ${short(landed)} ${card.branch}\`, and open the task with \`land open ${UNIT} 1.1\``;
   /**
    * Whether 1.1's branch holds its commit `landed`, the card on that branch
    * and on the default branch, and 1.1's record: who landed it, its first
@@ -74,7 +74,7 @@ for (const { name } of listDrivers('landing')) {
   const landedOver = (at, landing) => [true, 'card, rewritten\n', 'card, rewritten\n', ['engine', landing, tip(at, 'main')]];
 
   describe(`the ${name} landing driver's landing record of a task whose branch was rewritten after its landing (7.2.22)`, () => {
-    it('a task no driver took, squashed by hand and read by a verb, then its branch rewritten past the default branch: land open, land phase and land finish each refuse before anything moves, naming the commit that landed and the way on, and land phase lands another phase all the same; the way on followed, land finish lands the rewrite, the branch losing none of it, the landing by hand its record\'s first (F1)', () => {
+    it('a task no driver took, squashed by hand and read by a verb, then its branch rewritten past the default branch: land open, land phase and land finish each refuse before anything moves, naming the commit that landed and the way on, and land phase lands another phase all the same; the way on followed, land finish lands the rewrite, the branch holding that commit, the landing by hand its record\'s first', () => {
       const at = (dir = world());
       ok(at, openArgs(rounding));
       const landed = tip(at, card.branch);
@@ -95,7 +95,7 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual([refusals, stood, other, rewriteLanded(at, landed)], [Array(3).fill(rewrittenRefusal(landing, landed)), [landing, otherLanded], ['2.1'], landedOver(at, landing)]);
     });
 
-    it('a task no driver took, merged by hand by a merge commit and read by a verb, then its branch rewritten past the default branch: land open refuses, naming the commit that landed and the way on; followed, land phase lands the rewrite, the branch losing none of it, the landing by hand its record\'s first (F1)', () => {
+    it('a task no driver took, merged by hand by a merge commit and read by a verb, then its branch rewritten past the default branch: land open refuses, naming the commit that landed and the way on; followed, land phase lands the rewrite, the branch holding that commit, the landing by hand its record\'s first', () => {
       const at = (dir = world());
       const landed = tip(at, card.branch);
       side.mergedHere(at, card.branch);

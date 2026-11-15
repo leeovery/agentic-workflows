@@ -40,11 +40,11 @@ function squashed(dir) {
 }
 
 /**
- * The refusal of 1.1's branch behind its landing at `landing`, which landed
- * `head`, holding work of its own.
+ * The refusal of 1.1's branch apart from its landing at `landing`, which
+ * landed `head`, behind it with work of its own.
  * @param {string} head @param {string} landing
  */
-const behind = (head, landing) => `land: task 1.1's branch ${card.branch} is behind its work's landing on main (${short(landing)}): its commit ${short(head)} landed, which the branch lacks, and the branch holds work of its own past where the two part — `
+const behind = (head, landing) => `land: task 1.1's branch ${card.branch} has moved apart from where its work landed on main (${short(landing)}): its commit ${short(head)} landed, which the branch lacks — `
   + `lay ${card.branch}'s own work on that commit with \`git rebase ${short(head)} ${card.branch}\`, and open the task with \`land open ${UNIT} 1.1\``;
 
 /**

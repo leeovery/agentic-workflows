@@ -813,7 +813,7 @@ describe('repoLanded: a task landed where its branch\'s tip has (R29, 12.14)', (
     assert.deepStrictEqual(reads, reads.map(({ read }) => ({ read: read.map(() => [false, 'changed']), commands: reads[0].commands })));
   });
 
-  it('a task of two commits squashed by hand into the person\'s own commit beside work of their own, then its last commit amended with no change: landed at its branch\'s tip, a commit its branch holds landed too — never its branch rewritten past its landing (F1)', () => {
+  it('a task of two commits squashed by hand into the person\'s own commit beside work of their own, then its last commit amended with no change: landed at its branch\'s tip, a commit its branch holds landed too — never its branch apart from its landing', () => {
     const dir = repo(laidWorld);
     const branch = branchOf(6);
     git(dir, ['switch', '-q', '-c', branch, 'main']);
@@ -828,7 +828,7 @@ describe('repoLanded: a task landed where its branch\'s tip has (R29, 12.14)', (
     const ref = { unit: UNIT, phase: 1, n: 6 };
     const read = repoLanded(dir, UNIT, MAIN, { since: null });
 
-    assert.deepStrictEqual([read.stands(ref), read.rewritten(ref)], ['landed', null]);
+    assert.deepStrictEqual([read.stands(ref), read.apart(ref)], ['landed', null]);
   });
 });
 

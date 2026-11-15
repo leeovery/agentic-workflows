@@ -60,10 +60,9 @@
 // of the record, `land({unit}): record …`, follows the verb's, and none is
 // made where nothing new landed; the landing finish's yes makes carries it
 // in the completion's commit (`finishMerge`). `open`, `phase` and `finish`
-// refuse, before anything moves, a task landed by hand whose branch was
-// rewritten after it before any verb read it (task-landed.cjs,
-// `rewritten`), naming the commit that landed and the way on that keeps
-// the branch's work.
+// refuse, before anything moves, a task whose branch moved apart from where
+// its work landed (task-landed.cjs, `apart`), naming the commit that
+// landed and the way on that lays the branch's work on it.
 //
 // Where a task stands against its landing is decided there once, for every
 // driver and however the task landed (R29): from the commit the driver took
@@ -899,16 +898,15 @@ const didWith = (did) => (answer) => {
 /**
  * Refuse, before anything moves, a task of `refs` whose branch in one
  * repository did, after its landing on the default branch here, at `into`,
- * what no verb reads (task-landed.cjs): one of its own commits its landing
- * point's tip holds amended, folded or dropped (the stated edge,
- * `rewritten`, F1), the way on its work as it stands made one commit on
- * that tip, where that stages anything; apart from that tip with none
- * dropped, behind it with work of its own (`behindWith`), the way on that
- * work laid on that tip; or merged into past that tip (`mergedPast`), the
- * way on its own commits since that tip — its first-parent line's, the
- * merges left out (`lg.ownLinePast`) — made again on the default branch as
- * the driver lands on it (`theirsOf`), so neither the merge nor what it
- * brought in is replayed. Each way on pushes the branch over its copy on
+ * what no verb reads (task-landed.cjs): moved apart from its landing
+ * point's tip, rewritten or behind it (`apart`), the way on its work laid
+ * on that tip, so no landed work leaves the default branch — an amend or a
+ * fold of what landed coming through as a conflict to settle, or as
+ * nothing new; or merged into past that tip (`mergedPast`), the way on its
+ * own commits since that tip — its first-parent line's, the merges left out
+ * (`lg.ownLinePast`) — made again on the default branch as the driver lands
+ * on it (`theirsOf`), so neither the merge nor what it brought in is
+ * replayed. Each way on pushes the branch over its copy on
  * the host, where the driver holds one (`pushedOver`), so that copy
  * stands where the branch here does, then opens the task: the one refusal
  * of it every land verb acting on a task's landing makes.
@@ -925,15 +923,10 @@ function refuseAfterLanding(ctx, into, refs, driver) {
     };
     /** @param {string|null} landing */
     const landed = (landing) => (landing === null ? '' : ` (${lg.short(landing)})`);
-    const off = read.rewritten(ref);
+    const off = read.apart(ref);
     if (off !== null) {
-      throw new Error(`land: task ${shown}'s branch ${off.branch} was rewritten after its work landed on ${ctx.into}${landed(off.landing)}: its commit ${lg.short(off.sha)} landed, and the branch no longer holds it — `
-        + `on ${off.branch}, make its work as it stands one commit on that one, under its tip's message, with \`git reset --soft ${lg.short(off.sha)}\` then \`git diff --cached --quiet || git commit -C ORIG_HEAD\`${then(off.branch)}`);
-    }
-    const behind = read.behindWith(ref);
-    if (behind !== null) {
-      throw new Error(`land: task ${shown}'s branch ${behind.branch} is behind its work's landing on ${ctx.into}${landed(behind.landing)}: its commit ${lg.short(behind.sha)} landed, which the branch lacks, and the branch holds work of its own past where the two part — `
-        + `${lg.laidOn(behind.branch, behind.sha)}${then(behind.branch)}`);
+      throw new Error(`land: task ${shown}'s branch ${off.branch} has moved apart from where its work landed on ${ctx.into}${landed(off.landing)}: its commit ${lg.short(off.sha)} landed, which the branch lacks — `
+        + `${lg.laidOn(off.branch, off.sha)}${then(off.branch)}`);
     }
     const merge = read.mergedPast(ref);
     if (merge !== null) {

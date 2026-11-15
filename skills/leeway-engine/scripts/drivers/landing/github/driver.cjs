@@ -513,18 +513,10 @@ const LANDED_HEADS = 'landed heads';
 /**
  * The branches of the unit's pull requests not open, as GitHub holds them,
  * by name, read once on a context in one call, writing nothing — one GitHub
- * holds no more left out, and one another of them was merged into, as the
- * site's button merges a pull request into its own base, which the stack's
- * finish opens again onto the default branch (`finishStack`).
+ * holds no more left out.
  * @param {LandingContext} ctx @param {Host} host @returns {Map<string, string>}
  */
-function headsOnGithub(ctx, host) {
-  return lg.readOnce(ctx, LANDED_HEADS, () => {
-    const pulls = pullsRead(ctx, host);
-    const mergedInto = new Set(pulls.filter((pull) => pull.state === 'MERGED').map(({ base }) => base));
-    return lg.remoteHeads(ctx.root, host.remote, pulls.filter((pull) => pull.state !== 'OPEN' && !mergedInto.has(pull.head)).map(({ head }) => head));
-  });
-}
+const headsOnGithub = (ctx, host) => lg.readOnce(ctx, LANDED_HEADS, () => lg.remoteHeads(ctx.root, host.remote, pullsRead(ctx, host).filter((pull) => pull.state !== 'OPEN').map(({ head }) => head)));
 
 /**
  * Refuse, before anything merges or closes, a task of a stack whose branch
@@ -549,7 +541,8 @@ function refuseAfterLanding(ctx, host, stack) {
  * (`pullFirst`). One GitHub holds at its pull request's head, or holds no
  * more, passes on the one read of them all (`headsOnGithub`); one moved,
  * fetched as GitHub holds it, passes where it holds nothing past the task's
- * landing (the seam's `landedAs`), as a squash of it there leaves it.
+ * landing (the seam's `landedAs`), as a squash of it there leaves it, or
+ * nothing past a pull request of the unit merged into it (`mergedOnly`).
  * @param {LandingContext} ctx @param {Host} host @param {Pull[]} pulls @param {() => string} tip
  */
 function refuseMovedSince(ctx, host, pulls, tip) {
@@ -557,10 +550,20 @@ function refuseMovedSince(ctx, host, pulls, tip) {
   for (const pull of pulls) {
     const at = there.get(pull.head);
     if (at === undefined || at === pull.oid || !landedPull(ctx, pull, tip)) continue;
-    if (!lg.fetchedCommit(ctx.root, host.remote, `refs/heads/${pull.head}`, at) || ctx.landedOn(tip()).landedAs(pull.ref, at)) continue;
+    if (!lg.fetchedCommit(ctx.root, host.remote, `refs/heads/${pull.head}`, at) || ctx.landedOn(tip()).landedAs(pull.ref, at) || mergedOnly(ctx, host, pull.head, at)) continue;
     throw new Error(`land: task ${shownTask(pull.ref)}'s branch ${pull.head} on GitHub, at ${lg.short(at)}, holds work made since its pull request #${pull.number} landed, which ${ctx.into} lacks, and nothing merged — ${pullFirst(host, pull.head)}, and land again`);
   }
 }
+
+/**
+ * Whether a branch GitHub holds at `at` holds nothing past a pull request
+ * of the unit merged into it, as the site's button merging one into its
+ * own base leaves it — which the stack's finish opens again onto the
+ * default branch (`finishStack`) — a commit made there since refused.
+ * @param {LandingContext} ctx @param {Host} host @param {string} branch @param {string} at
+ */
+const mergedOnly = (ctx, host, branch, at) => pullsRead(ctx, host).some((pull) => pull.state === 'MERGED' && pull.base === branch
+  && lg.fetchedCommit(ctx.root, host.remote, `refs/pull/${pull.number}/head`, pull.oid) && lg.holdsChange(ctx.root, pull.oid, at));
 
 /**
  * The push a way on that remakes a task's branch here ends with, over its
