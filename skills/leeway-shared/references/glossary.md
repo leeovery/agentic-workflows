@@ -294,11 +294,11 @@ Taking a piece of work, or one topic of an epic, out of active work while keepin
 Bringing a cancelled piece of work or topic back into active work.
 
 **postpone**:
-Sending one topic of an epic to the roadmap to be done later. The topic leaves whole — nothing deleted, nothing moved — and comes back when it is pulled forward into its epic.
+Sending one topic of an epic to the roadmap to be done later. The topic leaves whole — nothing deleted, nothing moved — and comes back when it is pulled forward into an epic whose map is still open: its own, where it returns as it was, or another, where it opens as a fresh topic that reads the earlier record and never changes it.
 _Avoid_: defer
 
 **pull forward**:
-Bringing a postponed topic back from the roadmap into its own epic, through the epic's discovery row, while the epic's map is still open — before its spec is first written.
+Bringing a postponed topic back from the roadmap, through an epic's discovery row while that epic's map is open. Into its own epic, the topic returns as it was; into another epic, it opens as a fresh topic that reads the earlier record and never changes it.
 
 **reopen**:
 Opening a finished feature's, bugfix's or quick-fix's decision again, which takes it back into its build with the change; a finished epic is not reopened, and a later change to it is new work. An epic's decided topic is reopened from its discovery row until the spec is first written.
