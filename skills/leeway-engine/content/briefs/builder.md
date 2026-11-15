@@ -99,7 +99,3 @@ As the task lands, write its account to the file under "Where your account goes"
 
 {what the round found, and what was done about it}
 ```
-
-# The workflows' own references
-
-The workflows' own references never go into the product's code or comments: task ids, phase numbers and spec sections. Beyond that, quality is held by the project's own rules and checks.
