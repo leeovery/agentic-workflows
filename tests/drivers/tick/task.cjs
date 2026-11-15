@@ -277,6 +277,6 @@ const LOOKALIKE_FOLDER = path.join('tick-cafe', 'x+tick-cafe-old');
 const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
-  projectStore, addRef, makeTask, typeCleared, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone,
+  idOf, projectStore, addRef, makeTask, typeCleared, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone,
   oldPlan, taskByHand, fillRefs, tagsOf, apartFromNames, planStanding, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };

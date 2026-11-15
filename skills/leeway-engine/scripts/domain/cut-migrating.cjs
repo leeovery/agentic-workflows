@@ -46,7 +46,9 @@
 // plan's topic — the topic its plan's root names, a single-topic unit's
 // plan the whole spec's — a phase not marked built holds none, or a link
 // holds a task neither done nor closed after one neither, of a later phase
-// or another unit's; then each phase naming its parent adopted, and each
+// or another unit's; then each phase naming its parent adopted, its tasks named in its old
+// plan's order — the plan's task ids by number, then the letters after it
+// (`oldPlanOrder`) — and each
 // task neither done nor closed given its type, fix in a bugfix or quick-fix
 // and feat in any other (21.5.21); then the unit's files, `spec.md` with the
 // plan's blocks of scenarios, any a run before wrote replaced,
@@ -157,6 +159,32 @@ function noteFaults(notes) {
     const heading = topHeading(note);
     return heading === null ? [] : [`note ${at + 1} holds a heading at level one or two, which would read as another note — "${heading}"`];
   });
+}
+
+/** An old plan's task id below its phase's: its number, and the letters after it. */
+const OLD_TASK = /^([0-9]+)([a-z]*)$/;
+
+/**
+ * The tracker's ids of the tasks of the old plan's phase whose parent is
+ * `parent`, in the plan's own order (21.8.8): its task ids from the
+ * manifest's `task_map`, `{phase id}-{n}`, by number, then by the letters
+ * after it — 1 < 1b < 2, 9 < 9a < 10 — what adoption names them by; none
+ * where no old plan's phase has that parent.
+ * @param {Record<string, any>} manifest @param {string} parent
+ * @returns {string[]}
+ */
+function oldPlanOrder(manifest, parent) {
+  const maps = Object.values(isObject(manifest.phases?.planning?.items) ? manifest.phases.planning.items : {})
+    .map((item) => (isObject(item) && isObject(item.task_map) ? item.task_map : {}));
+  const map = maps.find((each) => Object.values(each).includes(parent)) ?? {};
+  const phaseId = Object.keys(map).find((id) => map[id] === parent);
+  return Object.entries(map)
+    .flatMap(([id, tracker]) => {
+      const task = phaseId !== undefined && id.startsWith(`${phaseId}-`) ? OLD_TASK.exec(id.slice(phaseId.length + 1)) : null;
+      return task === null || typeof tracker !== 'string' ? [] : [{ n: Number(task[1]), letters: task[2], tracker }];
+    })
+    .sort((a, b) => a.n - b.n || (a.letters < b.letters ? -1 : a.letters > b.letters ? 1 : 0))
+    .map(({ tracker }) => tracker);
 }
 
 /** The faults of two phases naming one tracker parent. @param {Phase[]} phases */
@@ -310,7 +338,7 @@ function cuttable(cwd, unit) {
 /**
  * The tracker's steps (`migratedTracker`), a refusal of theirs opening
  * `cut: ` as every refusal of the verb does.
- * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean, sections: string[]}[]} parents @param {string} type @param {string[]|null} topics
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[], built: boolean, sections: string[]}[]} parents @param {string} type @param {string[]|null} topics
  */
 function cutTracker(cwd, unit, parents, type, topics) {
   try {
@@ -331,7 +359,9 @@ function cutMigrating(cwd, unit, file) {
   const text = plannedSpec(cwd, unit, plan);
   const faults = [...trackerFaults(plan.phases), ...migratedFaults(plan.phases), ...placedFaults(text, plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
   if (faults.length > 0) refuse(faults);
-  const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{ phase: at + 1, parent: phase.tracker, built: 'built' in phase, sections: phase.sections }]));
+  const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{
+    phase: at + 1, parent: phase.tracker, order: oldPlanOrder(manifest, phase.tracker), built: 'built' in phase, sections: phase.sections,
+  }]));
   const topics = manifest.work_type === 'epic' ? joinedTopics(manifest) : null;
   const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type), topics);
   const notes = withWorkUnitLock(cwd, unit, () => {
@@ -363,4 +393,4 @@ function cutMigrating(cwd, unit, file) {
   return result;
 }
 
-module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType };
+module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder };

@@ -49,9 +49,10 @@
 //
 // A plan from before Leeway is adopted phase by phase (21.8.8): the task the
 // migration names as a phase's parent takes the phase's name, each of its
-// own children, in the order Tick made them (`seq`), the name of the
-// phase's next task, and the parent's own parent, the plan's root, the
-// unit's, where no task holds it and the root carries no name of the
+// own children the name of the phase's next task — one named so already
+// keeping its number, the rest in the numbers left, in the order the
+// migration gives, by Tick's ids, then in the order Tick made them (`seq`)
+// — and the parent's own parent, the plan's root, the unit's, where no task holds it and the root carries no name of the
 // engine's. Each name is added beside the refs the task has, through Tick's
 // update, which keeps its status and its history, and a name a task has
 // already is left: a run again adds only what the last left out. A task
@@ -387,22 +388,46 @@ function ready(root, unit, phase) {
   return rowsOf(ids, parents.flatMap((parent) => descendants(ids, /** @type {string} */ (parent))).filter((task) => readyIn(ids, task)));
 }
 
-/** A task's own children, in the order Tick made them. @param {Ids} ids @param {string} parent @returns {Held[]} */
-const madeUnder = (ids, parent) => [...(ids.children.get(parent) ?? [])].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+/**
+ * A phase's own tasks in the order its adoption names them (the header's):
+ * one holding a task's name of the phase already in its number's place, and
+ * the rest in the places left, as `order` lists them, then in the order
+ * Tick made them.
+ * @param {Ids} ids @param {string} unit @param {number} phase @param {string} parent @param {string[]} order Tick's ids
+ * @returns {Held[]}
+ */
+function madeUnder(ids, unit, phase, parent, order) {
+  const children = ids.children.get(parent) ?? [];
+  const heldAt = (/** @type {Held} */ { id }) => {
+    const name = ids.byId.get(id);
+    return name?.kind === 'task' && name.task.unit === unit && name.task.phase === phase ? name.task.n - 1 : null;
+  };
+  const listed = (/** @type {Held} */ { id }) => (order.includes(id) ? order.indexOf(id) : order.length);
+  const rest = children.filter((child) => heldAt(child) === null).sort((a, b) => listed(a) - listed(b) || (a.seq ?? 0) - (b.seq ?? 0));
+  /** @type {(Held|undefined)[]} */
+  const places = [];
+  for (const child of children) {
+    const at = heldAt(child);
+    if (at !== null) places[at] = child;
+  }
+  return Array.from({ length: Math.max(children.length, places.length) }, (_, at) => places[at] ?? rest.shift())
+    .filter(/** @returns {child is Held} */ (child) => child !== undefined);
+}
 
 /**
  * The names a phase's adoption gives, each to Tick's id (the header's): the
  * plan's root the unit's, where it may take it; the parent the phase's; and
- * its children its tasks'.
- * @param {Ids} ids @param {string} unit @param {number} phase @param {Held} parent @returns {[string, string][]}
+ * its children its tasks', in the order `madeUnder` gives.
+ * @param {Ids} ids @param {string} unit @param {number} phase @param {Held} parent @param {string[]} order Tick's ids
+ * @returns {[string, string][]}
  */
-function adoptedNames(ids, unit, phase, parent) {
+function adoptedNames(ids, unit, phase, parent, order) {
   const root = parent.parent;
   const rootTakes = root !== undefined && !ids.byRef.has(unitRef(unit)) && !ids.byId.has(root);
   return [
     ...(rootTakes ? /** @type {[string, string][]} */ ([[root, unitRef(unit)]]) : []),
     [parent.id, phaseRef(unit, phase)],
-    ...madeUnder(ids, parent.id).map((child, at) => /** @type {[string, string]} */ ([child.id, taskRef({ unit, phase, n: at + 1 })])),
+    ...madeUnder(ids, unit, phase, parent.id, order).map((child, at) => /** @type {[string, string]} */ ([child.id, taskRef({ unit, phase, n: at + 1 })])),
   ];
 }
 
@@ -461,13 +486,13 @@ function planNameOf(ids, parent) {
 }
 
 /**
- * @param {string} root @param {string} unit @param {{phase: number, parent: string}[]} phases
+ * @param {string} root @param {string} unit @param {{phase: number, parent: string, order?: string[]}[]} phases
  * @returns {{phase: number, plan: string|null, tasks: TaskDetail[]}[]}
  */
 function adoption(root, unit, phases) {
   let ids = idsIn(root);
-  for (const { phase, parent } of phases) {
-    const names = adoptedNames(ids, unit, phase, adoptedParent(ids, unit, phase, parent));
+  for (const { phase, parent, order = [] } of phases) {
+    const names = adoptedNames(ids, unit, phase, adoptedParent(ids, unit, phase, parent), order);
     refuseNames(ids, names);
     ids = withNames(ids, names);
   }
@@ -477,10 +502,10 @@ function adoption(root, unit, phases) {
   }));
 }
 
-/** @param {string} root @param {string} unit @param {number} phase @param {string} parent @returns {TaskRef[]} */
-function adopt(root, unit, phase, parent) {
+/** @param {string} root @param {string} unit @param {number} phase @param {string} parent @param {string[]} [order] @returns {TaskRef[]} */
+function adopt(root, unit, phase, parent, order = []) {
   const ids = idsIn(root);
-  const names = adoptedNames(ids, unit, phase, adoptedParent(ids, unit, phase, parent));
+  const names = adoptedNames(ids, unit, phase, adoptedParent(ids, unit, phase, parent), order);
   giveNames(root, ids, names);
   return names.flatMap(([, ref]) => {
     const name = nameIn(ref);

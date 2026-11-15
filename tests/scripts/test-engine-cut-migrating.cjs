@@ -35,7 +35,11 @@
 // outside the migration, a unit marked or not joined, a plan of another
 // shape or whose cut the spec refuses. A run killed at each of its writes
 // run again to what a whole run leaves, and a run again whose plan holds no
-// notes taking away those a run before wrote. `task adopt` in the migration
+// notes taking away those a run before wrote. Each phase's tasks named in
+// its old plan's order, its task ids from the unit's task map by number and
+// then the letters after them, pigeon's five phases the tracker holds out of
+// that order among them, and a run again after the task map went keeping
+// each name. `task adopt` in the migration
 // alone: a phase of a plan adopted, a unit whose spec the migration joined
 // refused — its cut adopts. `task close-plan` in the migration alone: the
 // plan of a unit that built nothing closed under its root, a bugfix's
@@ -68,7 +72,7 @@ const { DRIVER, SIDE, oldTask, movedProject } = require('./migrated-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
-const { markPath, migratedType } = require(path.join(SCRIPTS, 'domain/cut-migrating.cjs'));
+const { markPath, migratedType, oldPlanOrder } = require(path.join(SCRIPTS, 'domain/cut-migrating.cjs'));
 const { areaBuilt } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
 
 const HELD = 'held for the migration\'s commit';
@@ -113,7 +117,7 @@ const CRASH = {
 const OLD = {
   'README.md': '# Shop\n',
   '.workflows/manifest.json': jsonText({
-    work_units: Object.fromEntries([['shop', 'epic'], ['tally', 'feature'], ['memo', 'feature'], ['crash', 'bugfix']].map(([name, type]) => [name, { work_type: type }])),
+    work_units: Object.fromEntries([['shop', 'epic'], ['tally', 'feature'], ['memo', 'feature'], ['crash', 'bugfix'], ['relay', 'feature']].map(([name, type]) => [name, { work_type: type }])),
   }),
   '.workflows/shop/manifest.json': jsonText(OLD_SHOP),
   '.workflows/shop/discussion/cart.md': '# Discussion: Cart\n',
@@ -126,6 +130,9 @@ const OLD = {
   '.workflows/memo/manifest.json': jsonText(feature('memo', null)),
   '.workflows/memo/discussion/memo.md': '# Discussion: Memo\n',
   '.workflows/memo/specification/memo/specification.md': '# Specification: Memo\n\n## Writing\n\nOne line.\n',
+  '.workflows/relay/manifest.json': jsonText(feature('relay', 'completed')),
+  '.workflows/relay/discussion/relay.md': '# Discussion: Relay\n',
+  '.workflows/relay/specification/relay/specification.md': '# Specification: Relay\n\n## Relaying\n\nOne hop.\n',
   '.workflows/crash/manifest.json': jsonText(CRASH),
   '.workflows/crash/investigation/crash.md': '# Investigation: Crash\n',
   '.workflows/crash/specification/crash/specification.md': '# Specification: Crash\n\n## The fix\n\nNo crash on save.\n',
@@ -149,7 +156,7 @@ const NOTES = [
 ];
 
 /** @typedef {import('./migrated-world.cjs').OldPlan} OldPlan */
-/** The tracker's ids of each old plan's root and phases, the same in every copy of the world. @type {Record<'cart'|'pay'|'tally'|'memo'|'crash', OldPlan>} */
+/** The tracker's ids of each old plan's root and phases, the same in every copy of the world. @type {Record<'cart'|'pay'|'tally'|'memo'|'crash'|'relay', OldPlan>} */
 let PLANS;
 
 /** @param {string} dir */
@@ -171,10 +178,12 @@ function buildWorld(dir) {
     tally: [{ title: 'Counts', tasks: ['Count a day'] }, { title: 'Totals', tasks: ['Total a week'] }],
     memo: [{ title: 'Memos', tasks: ['Write a memo', 'Pin a memo'] }],
     crash: [{ title: 'The crash', tasks: ['Reproduce the crash', 'Fix the crash'] }],
+    relay: [{ title: 'Relays', tasks: ['Relay 1', 'Relay 2', 'Relay 1b'] }],
   }, [
     ['done', 'Hold items'], ['done', 'Show the cart'], ['done', 'Save the cart'], ['cancel', 'Share the cart'],
     ['done', 'Take a card'], ['done', 'Charge the card'], ['start', 'Refund a charge'], ['cancel', 'Export as sheets'],
     ['done', 'Count a day'], ['done', 'Total a week'],
+    ['done', 'Relay 1'], ['done', 'Relay 2'], ['done', 'Relay 1b'],
   ]);
 }
 
@@ -518,6 +527,80 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     } finally {
       cleanupFixture(path.dirname(whole));
     }
+  });
+});
+
+describe('the old plan\'s task order, which the migration\'s cut gives adoption (21.8.8)', () => {
+  // pigeon's five phases the tracker holds out of their plan's order, each
+  // task named by the tracker's id `t:{task id}` and listed in the store's
+  // order, the task added late last: app-shell-and-ux 5 (5-1b) and 10
+  // (10-15b) beside 1, whose ids 10's share a prefix with; bluetooth-
+  // switching 4 (4-9a); peer-networking 2 (2-7) and 5 (5-0, first); and a
+  // phase whose store holds a lettered task before the one it follows.
+  const run = (/** @type {number} */ from, /** @type {number} */ to) => Array.from({ length: to - from + 1 }, (_, at) => String(from + at));
+  /**
+   * A phase of an old plan and its task ids in the store's order: `late`, then `moved`, after the rest.
+   * @param {string} phase @param {number} last @param {string[]} late @param {string[]} [moved] @returns {[string, string[]]}
+   */
+  const phaseOf = (phase, last, late, moved = []) => [phase, [...run(1, last).filter((n) => !moved.includes(n)), ...late, ...moved].map((n) => `${phase}-${n}`)];
+  /** A topic's old plan's task map, each id the tracker's `t:{id}`. @param {string} topic @param {[string, string[]][]} phases */
+  const mapOf = (topic, phases) => ({ task_map: Object.fromEntries([topic, ...phases.flatMap(([phase, ids]) => [phase, ...ids])].map((id) => [id, `t:${id}`])) });
+  const PIGEON = {
+    phases: {
+      planning: {
+        items: {
+          'app-shell-and-ux': mapOf('app-shell-and-ux', [phaseOf('app-shell-and-ux-1', 3, []), phaseOf('app-shell-and-ux-5', 13, ['1b']), phaseOf('app-shell-and-ux-10', 19, ['15b'])]),
+          'bluetooth-switching': mapOf('bluetooth-switching', [phaseOf('bluetooth-switching-4', 17, ['9a'])]),
+          'peer-networking': mapOf('peer-networking', [phaseOf('peer-networking-2', 16, [], ['7']), phaseOf('peer-networking-5', 14, ['0'])]),
+          reordered: mapOf('reordered', [['reordered-1', ['reordered-1-2b', 'reordered-1-1', 'reordered-1-2']]]),
+        },
+      },
+    },
+  };
+  const ordered = (/** @type {string} */ phase, /** @type {string[]} */ ns) => ns.map((n) => `t:${phase}-${n}`);
+
+  it('orders each phase\'s tasks by the old plan\'s own ids, by number and then the letters after it — 1 < 1b < 2, 9 < 9a < 10 — never the store\'s order, and a phase\'s ids apart from another\'s that shares their prefix', () => {
+    assert.deepStrictEqual([
+      oldPlanOrder(PIGEON, 't:app-shell-and-ux-5'),
+      oldPlanOrder(PIGEON, 't:app-shell-and-ux-10'),
+      oldPlanOrder(PIGEON, 't:app-shell-and-ux-1'),
+      oldPlanOrder(PIGEON, 't:bluetooth-switching-4'),
+      oldPlanOrder(PIGEON, 't:peer-networking-2'),
+      oldPlanOrder(PIGEON, 't:peer-networking-5'),
+      oldPlanOrder(PIGEON, 't:reordered-1'),
+    ], [
+      ordered('app-shell-and-ux-5', ['1', '1b', ...run(2, 13)]),
+      ordered('app-shell-and-ux-10', [...run(1, 15), '15b', ...run(16, 19)]),
+      ordered('app-shell-and-ux-1', run(1, 3)),
+      ordered('bluetooth-switching-4', [...run(1, 9), '9a', ...run(10, 17)]),
+      ordered('peer-networking-2', run(1, 16)),
+      ordered('peer-networking-5', run(0, 14)),
+      ordered('reordered-1', ['1', '2', '2b']),
+    ]);
+  });
+
+  it('gives no order for a parent no old plan\'s phase holds, or a unit with no old plan', () => {
+    assert.deepStrictEqual([oldPlanOrder(PIGEON, 't:app-shell-and-ux-5-1'), oldPlanOrder(PIGEON, 't:elsewhere'), oldPlanOrder({ phases: {} }, 't:app-shell-and-ux-5')], [[], [], []]);
+  });
+
+  describe('through the cut', () => {
+    beforeEach(() => { dir = world(); });
+    afterEach(() => cleanupFixture(path.dirname(dir)));
+
+    it('names a phase\'s tasks in the old plan\'s order from the unit\'s task map — a task the plan added late, 1b, after 1 and before 2 — where the tracker made them in another; and a run again killed after the manifest, its task map gone with the old plan\'s items, keeps each name', () => {
+      const root = statePath(dir);
+      const manifest = manifestOf('relay');
+      const ids = Object.fromEntries(['relay-1-1', 'relay-1-2', 'relay-1-1b'].map((id, at) => [id, SIDE.idOf(root, ['Relay 1', 'Relay 2', 'Relay 1b'][at])]));
+      manifest.phases.planning.items.relay.task_map = { relay: PLANS.relay.root, 'relay-1': PLANS.relay.phases[0], ...ids };
+      writeState(dir, 'relay/manifest.json', jsonText(manifest));
+      const plan = { phases: [{ name: 'Relays', goal: 'Hops relayed.', sections: ['1'], built: true, tracker: PLANS.relay.phases[0] }] };
+      const named = () => (DRIVER.tasks(root, 'relay', 1) ?? []).map(({ ref, title }) => `${ref.phase}.${ref.n} ${title}`);
+      assert.deepStrictEqual(cut('relay', plan).adopted, [{ phase: 1, tasks: ['1.1', '1.2', '1.3'] }]);
+      assert.deepStrictEqual(named(), ['1.1 Relay 1', '1.2 Relay 1b', '1.3 Relay 2']);
+
+      fs.rmSync(markPath(dir, 'relay'));
+      assert.deepStrictEqual([cut('relay', plan).adopted, named()], [[{ phase: 1, tasks: ['1.1', '1.2', '1.3'] }], ['1.1 Relay 1', '1.2 Relay 1b', '1.3 Relay 2']]);
+    });
   });
 });
 
