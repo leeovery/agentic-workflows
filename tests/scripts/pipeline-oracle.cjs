@@ -1124,9 +1124,6 @@ function auditTrust(sim, label, ran = []) {
   }
 }
 
-// The skills a menu's route reaches in place: another menu, or help.
-const IN_PLACE_SKILLS = ['leeway-help'];
-
 // A route the engine builds into a work skill hands off as it stands, so the
 // handoff table must take it whole and carry it unchanged — a route and the
 // table can never drift.
@@ -1135,18 +1132,14 @@ function auditRoutes(dir, keys, label) {
   for (const { route } of keys) {
     if (!route) continue;
     const [named, ...args] = shellWords(route);
-    const skill = named.slice(1);
-    if (HANDOFF_TARGETS.includes(skill)) {
-      let text;
-      try {
-        ({ text } = resolveHandoff(dir, named, args));
-      } catch (err) {
-        assert.fail(`[${label}] the handoff refuses ${route}: ${err.message}`);
-      }
-      assert.strictEqual(text, `Invoke \`${route}\`.`, `[${label}] the handoff does not carry ${route} as it stands`);
-    } else {
-      assert.ok(IN_PLACE_SKILLS.includes(skill), `[${label}] ${route} reaches neither a handoff target nor a menu`);
+    assert.ok(HANDOFF_TARGETS.includes(named.slice(1)), `[${label}] ${route} reaches no handoff target`);
+    let text;
+    try {
+      ({ text } = resolveHandoff(dir, named, args));
+    } catch (err) {
+      assert.fail(`[${label}] the handoff refuses ${route}: ${err.message}`);
     }
+    assert.strictEqual(text, `Invoke \`${route}\`.`, `[${label}] the handoff does not carry ${route} as it stands`);
   }
 }
 

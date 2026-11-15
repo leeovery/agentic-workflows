@@ -20,7 +20,7 @@ Record the answer — written and committed in one call. If it fails (`ok: false
 node .claude/skills/leeway-engine/scripts/engine.cjs walkthrough record walked
 ```
 
-→ Load **[walk.md](../../leeway-help/references/walk.md)** with origin = `first-run`.
+→ Load **[walk.md](walk.md)** with origin = `first-run`.
 
 → On return, return to caller.
 

@@ -16,8 +16,11 @@
 // outside the drivers and test fixtures, the places 7.1.10 names. 7.1.10
 // lets a released migration name a tool too, but none does in a form the
 // scan finds, so every migration is scanned, the reshape's among them
-// (21.5.18). test-tool-names.cjs runs it over the repository; each
-// driver's test-tool-names.cjs pins its forms.
+// (21.5.18). Help is held closer (23.1.3): `helpNamesIn` finds a tool by
+// its name as a word too, as each driver declares it, which no help screen,
+// walkthrough fixture, help content file or glossary entry says, and
+// `helpFiles` lists them. test-tool-names.cjs runs both over the
+// repository; each driver's test-tool-names.cjs pins its forms.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -27,8 +30,9 @@ const REPO = path.join(__dirname, '..', '..');
 const DRIVER_FIXTURES = path.join(__dirname, '..', 'drivers');
 
 /**
- * How a driver's tool is named, as its test fixtures declare it.
- * @typedef {{binary: string, commands: string[], quoted: boolean, forms: {form: string, pattern: RegExp}[]}} ToolNaming
+ * How a driver's tool is named, as its test fixtures declare it: its own
+ * forms, and its name as a word, which only help is held to.
+ * @typedef {{binary: string, commands: string[], quoted: boolean, forms: {form: string, pattern: RegExp}[], named: {form: string, pattern: RegExp}[]}} ToolNaming
  */
 
 /** @param {string} text */
@@ -51,22 +55,28 @@ function formsOf({ binary, commands, quoted, forms }) {
   ];
 }
 
-/** Each driver's forms, by the driver's name. */
-const DRIVER_FORMS = Object.freeze(fs.readdirSync(DRIVER_FIXTURES)
+/** How each driver's tool is named, by the driver's name. @type {{driver: string, naming: ToolNaming}[]} */
+const NAMINGS = fs.readdirSync(DRIVER_FIXTURES)
   .filter((driver) => fs.existsSync(path.join(DRIVER_FIXTURES, driver, 'tool-names.cjs')))
-  .map((driver) => ({ driver, forms: formsOf(require(path.join(DRIVER_FIXTURES, driver, 'tool-names.cjs'))) })));
+  .map((driver) => ({ driver, naming: require(path.join(DRIVER_FIXTURES, driver, 'tool-names.cjs')) }));
+
+/** Each driver's forms, by the driver's name. */
+const DRIVER_FORMS = Object.freeze(NAMINGS.map(({ driver, naming }) => ({ driver, forms: formsOf(naming) })));
+
+/** Each driver's forms in help (23.1.3): its forms anywhere, and its name as a word. */
+const HELP_FORMS = Object.freeze(NAMINGS.map(({ driver, naming }) => ({ driver, forms: [...formsOf(naming), ...naming.named] })));
 
 /**
  * Each line of `text` naming a tool, once for each form, with its driver
  * and the form; a form run onto the next line is found on the line it
  * opens.
- * @param {string} text
+ * @param {string} text @param {readonly {driver: string, forms: {form: string, pattern: RegExp}[]}[]} [driverForms]
  * @returns {{line: number, driver: string, form: string, text: string}[]}
  */
-function toolNamesIn(text) {
+function toolNamesIn(text, driverForms = DRIVER_FORMS) {
   const lines = text.split('\n');
   const lineAt = (/** @type {number} */ index) => text.slice(0, index).split('\n').length;
-  const found = DRIVER_FORMS.flatMap(({ driver, forms }) => forms.flatMap(({ form, pattern }) => [...text.matchAll(new RegExp(pattern.source, 'g'))]
+  const found = driverForms.flatMap(({ driver, forms }) => forms.flatMap(({ form, pattern }) => [...text.matchAll(new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`))]
     .map((m) => ({ line: lineAt(/** @type {number} */ (m.index)), driver, form }))));
   const seen = new Set();
   return found
@@ -94,4 +104,27 @@ function shippedFiles(repo = REPO) {
     .sort();
 }
 
-module.exports = { DRIVER_FORMS, DRIVERS, toolNamesIn, shippedFiles, REPO };
+/** Each line of a help file's `text` naming a tool, its name as a word among the forms (`toolNamesIn`). @param {string} text */
+const helpNamesIn = (text) => toolNamesIn(text, HELP_FORMS);
+
+/** The places help is held closer in, from the repository's root (23.1.3): the walkthrough's content and fixtures, each menu's help file, and the glossary. */
+const HELP_PLACES = [
+  path.join('skills', 'leeway-engine', 'content', 'walkthrough'),
+  path.join('skills', 'leeway-engine', 'scripts', 'domain', 'projections'),
+  path.join('skills', 'leeway-shared', 'references', 'glossary.md'),
+];
+
+/**
+ * Every help file, from the repository's root (the header's): every file
+ * under the walkthrough's content, each `*.help.md`, and the glossary.
+ * @param {string} [repo] @returns {string[]}
+ */
+function helpFiles(repo = REPO) {
+  return HELP_PLACES.flatMap((place) => (fs.statSync(path.join(repo, place)).isFile() ? [place]
+    : fs.readdirSync(path.join(repo, place), { recursive: true, encoding: 'utf8' }).map((rel) => path.join(place, rel))))
+    .filter((rel) => fs.statSync(path.join(repo, rel)).isFile())
+    .filter((rel) => !rel.startsWith(HELP_PLACES[1]) || rel.endsWith('.help.md'))
+    .sort();
+}
+
+module.exports = { DRIVER_FORMS, HELP_FORMS, DRIVERS, toolNamesIn, helpNamesIn, shippedFiles, helpFiles, REPO };

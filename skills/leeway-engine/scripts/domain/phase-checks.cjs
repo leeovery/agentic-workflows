@@ -88,6 +88,22 @@ const { phaseName, shownTask } = require('./task-id.cjs');
 const reading = (cwd, unit, manifest, warnings = [], repos) => ({ cwd, unit, manifest, warnings, repos, reads: new Map() });
 
 /**
+ * A reading whose tracker's answers are given, not read: each phase's tasks
+ * whole, in order, null for one not written — a world shipped as files,
+ * which no tracker holds.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {(TaskDetail[]|null)[]} phases
+ * @returns {Reading}
+ */
+function trackerGiven(cwd, unit, manifest, phases) {
+  const at = reading(cwd, unit, manifest);
+  phases.forEach((tasks, i) => {
+    at.reads.set(`list ${i + 1}`, tasks);
+    at.reads.set(`tasks ${i + 1}`, tasks);
+  });
+  return at;
+}
+
+/**
  * What `read` answers, read once a call.
  * @template T @param {Reading} at @param {string} key @param {() => T} read @returns {T}
  */
@@ -370,6 +386,6 @@ function reviewRefusalOf(at, phase) {
 }
 
 module.exports = {
-  reading, once, reposOf, landedOf, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
+  reading, trackerGiven, once, reposOf, landedOf, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
   tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, scenariosWay, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf, landedPhase,
 };

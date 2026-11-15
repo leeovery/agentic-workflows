@@ -8,8 +8,10 @@
 // notation if it re-flows without overflowing. The samples are pinned as
 // goldens too — a sample renders through the live surface's own derivation
 // and projection, so a golden here moves when that surface moves, which is
-// the whole point of rendering it rather than drawing it. The screens are
-// pinned whole, prose included, and driven at the same three widths.
+// the whole point of rendering it rather than drawing it; and each is drawn
+// from its own fixture, a change there showing in it (23.1.1, 23.1.2). The
+// screens are pinned whole, prose included, and driven at the same three
+// widths.
 //
 // Layer: unit.
 
@@ -43,56 +45,55 @@ const SOURCE = {
   flow: [
     'a piece of work, described in your own words',
     '↓',
-    'DISCOVERY | discussion · experiment',
-    '  → what was explored, what you decided, and why',
+    'DISCOVERY | discovery · discussion · experiment · investigation',
+    '  → what the work is, what you decided, and why',
     '↓',
-    'DEFINITION | specification · planning',
-    '  → the contract you approve, and the plan built from it',
+    'DEFINITION | specification',
+    '  → the contract you approve, cut into phases',
     '↓',
     'DELIVERY | implementation · review',
     '  → the code, built test-first by agents and held to your specification',
     '↓',
-    'the knowledge base keeps every finished document, so the next piece of work starts from what this one decided',
+    'the knowledge base keeps every current decision, so the next piece of work starts from what this one decided',
   ].join('\n'),
   kinds: [
     ' | DISCOVERY | DEFINITION | DELIVERY',
-    'feature | discussion | spec · plan | build · review',
-    'epic | per topic | per topic | per topic',
-    'bugfix | investigation | spec · plan | build · review',
-    'quick-fix |  | scoping | build · review',
-    'cross-cutting | discussion | spec |',
-  ].join('\n'),
-  phases: [
-    '── DISCOVERY',
-    'discussion | the design argued through to conclusions',
-    'experiment | a number measured, when a decision rests on one',
-    '',
-    '── DEFINITION',
-    'specification | the contract everything after it is built from',
-    'planning | phases and tasks, each with acceptance criteria',
-    '',
-    '── DELIVERY',
-    'implementation | the code, built test-first, one task at a time',
-    'review | the finished work held to the specification',
+    'feature | discussion | spec | build · review',
+    'epic | discussion, per topic | spec | build · review',
+    'bugfix | investigation | spec | build · review',
+    'quick-fix |  |  | fixes · close',
   ].join('\n'),
   effort: [
     'discovery | 1 | you lead',
     'discussion | 0.8 | you shape',
     'specification | 0.5 | you approve',
-    'planning | 0.3 | you check',
-    'implementation | 0.18 | gates, or auto',
-    'review | 0.1 | agent-led',
+    'implementation | 0.2 | auto, or step',
+    'review | 0.15 | finish is yours',
   ].join('\n'),
   situations: [
     'a stray thought | log it as an idea, a bug or a quick-fix; it waits in the inbox',
-    'a later-release idea | park it on the roadmap in one line',
+    'a later-release idea | put it on the roadmap in one line',
     'a feature grows | pivot it into an epic, in place',
     'a stray feature | absorb it into an epic as a topic',
-    'a topic not worth it | cancel it; reactivate it later if it is',
-    'a decision was wrong | reopen the phase; what was built on it reads "input moved" until reconciled',
-    'something is unclear | h/help on the start menu, or just ask',
+    'a topic not worth it | cancel it; bring it back later if it is',
+    'a decision was wrong | change it; what relied on it is flagged',
+    'something is unclear | h/help on any menu, or just ask',
   ].join('\n'),
 };
+
+/** A banded table, which the table layout keeps though no screen carries one. */
+const BANDED = [
+  '── DISCOVERY',
+  'discussion | the design argued through to conclusions',
+  'experiment | a number measured, when a decision rests on one',
+  '',
+  '── DEFINITION',
+  'specification | the contract everything after it is built from',
+  '',
+  '── DELIVERY',
+  'implementation | the code, built test-first, one task at a time',
+  'review | the finished work held to the specification',
+].join('\n');
 
 /** Every tagged fence in the walk, in screen order — the notation as the screens actually carry it. */
 function screenFences() {
@@ -111,14 +112,15 @@ function fits(label, text, width) {
 }
 
 describe('walkthrough diagram layouts', () => {
-  it('the notation driven here is the notation the screens carry, one diagram to a screen', () => {
+  it('the notation driven here is the notation the screens carry', () => {
     assert.deepStrictEqual(screenFences(), [
       { screen: '01-the-idea.md', tag: 'flow', text: SOURCE.flow },
       { screen: '02-where-everything-starts.md', tag: 'sample start-menu', text: '' },
       { screen: '03-what-the-work-is.md', tag: 'table', text: SOURCE.kinds },
       { screen: '04-the-product-takes-shape.md', tag: 'sample roadmap', text: '' },
       { screen: '05-an-epic-and-its-topics.md', tag: 'sample epic-menu', text: '' },
-      { screen: '06-the-journey-of-one-piece-of-work.md', tag: 'table', text: SOURCE.phases },
+      { screen: '06-the-journey-of-one-piece-of-work.md', tag: 'sample discussion-map', text: '' },
+      { screen: '06-the-journey-of-one-piece-of-work.md', tag: 'sample build-progress', text: '' },
       { screen: '07-how-much-of-you-it-needs.md', tag: 'bars', text: SOURCE.effort },
       { screen: '08-living-with-it.md', tag: 'table', text: SOURCE.situations },
     ]);
@@ -128,41 +130,40 @@ describe('walkthrough diagram layouts', () => {
     assert.strictEqual(flowDiagram(SOURCE.flow, FALLBACK), [
       '   a piece of work, described in your own words',
       '     ↓',
-      '   DISCOVERY     discussion · experiment',
-      '     → what was explored, what you decided, and why',
+      '   DISCOVERY     discovery · discussion · experiment ·',
+      '                 investigation',
+      '     → what the work is, what you decided, and why',
       '     ↓',
-      '   DEFINITION    specification · planning',
-      '     → the contract you approve, and the plan built from it',
+      '   DEFINITION    specification',
+      '     → the contract you approve, cut into phases',
       '     ↓',
       '   DELIVERY      implementation · review',
       '     → the code, built test-first by agents and held to your',
       '       specification',
       '     ↓',
-      '   the knowledge base keeps every finished document, so the next',
+      '   the knowledge base keeps every current decision, so the next',
       '   piece of work starts from what this one decided',
     ].join('\n'));
   });
 
   it('table: fixed columns take the longest cell plus a gap, the last takes the rest', () => {
     assert.strictEqual(tableDiagram(SOURCE.kinds, FALLBACK), [
-      '                  DISCOVERY      DEFINITION   DELIVERY',
-      '   feature        discussion     spec · plan  build · review',
-      '   epic           per topic      per topic    per topic',
-      '   bugfix         investigation  spec · plan  build · review',
-      '   quick-fix                     scoping      build · review',
-      '   cross-cutting  discussion     spec',
+      '              DISCOVERY              DEFINITION  DELIVERY',
+      '   feature    discussion             spec        build · review',
+      '   epic       discussion, per topic  spec        build · review',
+      '   bugfix     investigation          spec        build · review',
+      '   quick-fix                                     fixes · close',
     ].join('\n'));
   });
 
   it('table: a band divider fills the width and its rows indent two beneath it', () => {
-    assert.strictEqual(tableDiagram(SOURCE.phases, FALLBACK), [
+    assert.strictEqual(tableDiagram(BANDED, FALLBACK), [
       '── DISCOVERY ────────────────────────────────────────────────────',
       '  discussion      the design argued through to conclusions',
       '  experiment      a number measured, when a decision rests on one',
       '',
       '── DEFINITION ───────────────────────────────────────────────────',
       '  specification   the contract everything after it is built from',
-      '  planning        phases and tasks, each with acceptance criteria',
       '',
       '── DELIVERY ─────────────────────────────────────────────────────',
       '  implementation  the code, built test-first, one task at a time',
@@ -174,24 +175,22 @@ describe('walkthrough diagram layouts', () => {
     assert.strictEqual(tableDiagram(SOURCE.situations, FALLBACK), [
       '   a stray thought       log it as an idea, a bug or a quick-fix;',
       '                         it waits in the inbox',
-      '   a later-release idea  park it on the roadmap in one line',
+      '   a later-release idea  put it on the roadmap in one line',
       '   a feature grows       pivot it into an epic, in place',
       '   a stray feature       absorb it into an epic as a topic',
-      '   a topic not worth it  cancel it; reactivate it later if it is',
-      '   a decision was wrong  reopen the phase; what was built on it',
-      '                         reads "input moved" until reconciled',
-      '   something is unclear  h/help on the start menu, or just ask',
+      '   a topic not worth it  cancel it; bring it back later if it is',
+      '   a decision was wrong  change it; what relied on it is flagged',
+      '   something is unclear  h/help on any menu, or just ask',
     ].join('\n'));
   });
 
   it('bars: the bar takes what is left between the label column and the note column', () => {
     assert.strictEqual(barsDiagram(SOURCE.effort, FALLBACK), [
-      '   discovery        ████████████████████████████   you lead',
-      '   discussion       ██████████████████████         you shape',
-      '   specification    ██████████████                 you approve',
-      '   planning         ████████                       you check',
-      '   implementation   █████                          gates, or auto',
-      '   review           ███                            agent-led',
+      '   discovery        ███████████████████████████   you lead',
+      '   discussion       ██████████████████████        you shape',
+      '   specification    ██████████████                you approve',
+      '   implementation   █████                         auto, or step',
+      '   review           ████                          finish is yours',
     ].join('\n'));
   });
 
@@ -199,7 +198,7 @@ describe('walkthrough diagram layouts', () => {
     for (const width of [MIN, FALLBACK, CAP]) {
       fits('flow', flowDiagram(SOURCE.flow, width), width);
       fits('bars', barsDiagram(SOURCE.effort, width), width);
-      for (const [name, src] of Object.entries(SOURCE)) {
+      for (const [name, src] of [...Object.entries(SOURCE), ['banded', BANDED]]) {
         if (name === 'flow' || name === 'effort') continue;
         fits(`table ${name}`, tableDiagram(src, width), width);
       }
@@ -208,11 +207,11 @@ describe('walkthrough diagram layouts', () => {
 
   it('table: a last column with no room falls back to one block per row, under its header label', () => {
     const kinds = tableDiagram(SOURCE.kinds, MIN);
-    assert.match(kinds, /^ {3}feature\n {5}DISCOVERY: discussion\n {5}DEFINITION: spec · plan\n {5}DELIVERY: build · review$/m);
+    assert.match(kinds, /^ {3}feature\n {5}DISCOVERY: discussion\n {5}DEFINITION: spec\n {5}DELIVERY: build · review$/m);
     // The header row is the source of those labels, so it never renders as a row of its own.
     assert.ok(!kinds.split('\n')[0].includes('DEFINITION      DELIVERY'), kinds);
     // A row whose cell is empty contributes no line.
-    assert.match(kinds, /^ {3}quick-fix\n {5}DEFINITION: scoping$/m);
+    assert.match(kinds, /^ {3}quick-fix\n {5}DELIVERY: fixes · close$/m);
     // A headerless table's cells stand alone beneath the first.
     assert.match(tableDiagram(SOURCE.situations, MIN), /^ {3}a feature grows\n {5}pivot it into an epic, in place$/m);
     // A row short of the table's columns keeps its cells in their own
@@ -222,7 +221,7 @@ describe('walkthrough diagram layouts', () => {
       '   beta   three',
     ].join('\n'));
     // Two columns still fit at the floor — the fallback engages on need, never on width alone.
-    assert.match(tableDiagram(SOURCE.phases, MIN), /^ {2}discussion {6}the design argued$/m);
+    assert.match(tableDiagram(BANDED, MIN), /^ {2}discussion {6}the design argued$/m);
   });
 
   it('bars scale with the pane', () => {
@@ -244,7 +243,7 @@ describe('walkthrough diagram layouts', () => {
     assert.ok(isDiagramKind('sample start-menu'));
     assert.ok(!isDiagramKind('mermaid'));
     assert.throws(() => renderDiagram('sample nowhere', '', FALLBACK),
-      /`sample` names one of start-menu, roadmap, epic-menu — got "nowhere"/);
+      /`sample` names one of start-menu, roadmap, epic-menu, discussion-map, build-progress — got "nowhere"/);
   });
 });
 
@@ -287,22 +286,23 @@ describe('walkthrough content fences', () => {
 });
 
 describe('walkthrough sample surfaces', () => {
-  it('start-menu: the inbox line, then the menu as plain text, its units first and h/help last', () => {
+  it('start-menu: the inbox line, then the menu as plain text, its units first with their progress and h/help last', () => {
     const out = sampleDiagram('start-menu');
     assert.strictEqual(out, [
-      'Inbox: empty',
+      'Inbox: 2 ideas · 1 bug · 1 quick-fix',
       '',
       '◆ What would you like to do?',
       '',
-      '1         → Continue feature: Saved Filters — discussion',
+      '1         → Continue feature: Saved Filters — build, phase 1 of 3',
       '2         → Continue bugfix: Export Timeout — investigation',
-      '3         → Continue epic: Payments Overhaul — discovery, 2',
-      '            topics on the map',
+      '3         → Continue epic: Payments Overhaul — discussion, 1 of 3',
+      '            topics decided',
       'p/product → Talk about the product',
       's/start   → Start something new — describe it, and we\'ll find',
       '            what kind of work it is',
       't/triage  → Triage the inbox',
       'r/roadmap → Open the product roadmap',
+      'v/view    → View completed & cancelled work units',
       'm/manage  → Manage work units',
       'h/help    → How Leeway works',
     ].join('\n'));
@@ -351,6 +351,91 @@ describe('walkthrough sample surfaces', () => {
     ].join('\n'));
     assert.ok(!out.includes('⚑'), 'a sample carries no callout');
     assert.ok(!/Key:|Status:/.test(out), 'a sample carries no legend');
+  });
+
+  it('discussion-map: a topic\'s map as the conversation shows it — Claude\'s call since the last look above the person\'s questions and Claude\'s calls', () => {
+    assert.strictEqual(sampleDiagram('discussion-map'), [
+      'Map — Billing',
+      '4 of yours: 3 decided, 1 open · 2 calls by Claude',
+      '',
+      'SINCE YOU LAST LOOKED (1 call by Claude)',
+      '  └─ ◇ The currency the pricing page shows',
+      '        The customer\'s own, from their billing address.',
+      '',
+      'OPEN (1 of yours)',
+      '  └─ ○ Whether invoices go out by email       [yours]',
+      '',
+      'DECIDED (3 of yours · 2 calls by Claude)',
+      '  ├─ ✓ Which plans launch                     [yours]',
+      '  ├─ ✓ When a card payment fails              [yours]',
+      '  ├─ ◇ Where invoice numbers start            [Claude\'s call]',
+      '  ├─ ✓ Whether a plan can change mid-cycle    [yours]',
+      '  └─ ◇ The currency the pricing page shows    [Claude\'s call]',
+    ].join('\n'));
+  });
+
+  it('build-progress: a build part-way through its first phase, the tracker\'s answer taken from beside its state, the phases not yet written listed', () => {
+    assert.strictEqual(sampleDiagram('build-progress'), [
+      '1 of 4 tasks done · 1 running',
+      '',
+      '  ├─ Phase 1 of 3 · Saving a filter          [running]',
+      '  │  ├─ ✓ 1.1 Store a named filter set       [done]',
+      '  │  ├─ ◐ 1.2 Save from the filter bar       [in progress]',
+      '  │  ├─ ○ 1.3 Refuse a name already taken    [after 1.2]',
+      '  │  └─ ○ 1.4 List the saved filter sets     [not started]',
+      '  │',
+      '  ├─ Phase 2 of 3 · Coming back to one       [not yet written]',
+      '  │',
+      '  └─ Phase 3 of 3 · Sharing a filter         [not yet written]',
+    ].join('\n'));
+  });
+
+  it('a sample reads its world as it stands and writes nothing into it', () => {
+    const before = fs.readdirSync(FIXTURES_DIR, { recursive: true }).sort();
+    for (const surface of SAMPLE_SURFACES) sampleDiagram(surface);
+    assert.deepStrictEqual(fs.readdirSync(FIXTURES_DIR, { recursive: true }).sort(), before);
+  });
+
+  it('23.S1: each sample is drawn from its own fixture, a change to the fixture showing in the sample', (t) => {
+    const read = fs.readFileSync;
+    t.after(() => { fs.readFileSync = read; });
+    /** @type {Record<string, [string, string, string, string]>} the file changed, the text and its change, and the line the sample then shows */
+    const changes = {
+      'start-menu': ['.leeway/payments-overhaul/manifest.json', '"completed"', '"in-progress"', '3         → Continue epic: Payments Overhaul — discussion, 0 of 3'],
+      roadmap: ['.leeway/manifest.json', '"marketplace"', '"storefront"', '  └─ 3. Storefront           idea · discovery'],
+      'epic-menu': ['.leeway/launch-core/manifest.json', '"completed"', '"in-progress"', '3 topics · 2 in progress · 1 not started'],
+      'discussion-map': ['.leeway/.cache/.marks/launch-core.json', '"nMkNSvJzL45sKoQcD9fwF"', '', 'SINCE YOU LAST LOOKED (2 calls by Claude)'],
+      'build-progress': ['tracker.json', 'Store a named filter set', 'Keep a named filter set', '  │  ├─ ✓ 1.1 Keep a named filter set        [done]'],
+    };
+    const shown = Object.entries(changes).map(([surface, [rel, from, to, line]]) => {
+      const file = path.join(FIXTURES_DIR, surface, rel);
+      assert.ok(read(file, 'utf8').includes(from), `${surface}: ${rel} holds ${from}`);
+      fs.readFileSync = /** @type {typeof fs.readFileSync} */ (/** @type {unknown} */ ((/** @type {any} */ at, /** @type {any} */ options) => {
+        const text = read(at, options);
+        return at === file ? String(text).split(from).join(to) : text;
+      }));
+      try {
+        return sampleDiagram(surface).split('\n').includes(line);
+      } finally {
+        fs.readFileSync = read;
+      }
+    });
+
+    assert.deepStrictEqual(shown, SAMPLE_SURFACES.map(() => true));
+    assert.deepStrictEqual(Object.keys(changes), [...SAMPLE_SURFACES]);
+  });
+
+  it('23.S2: a change to the start menu\'s projection shows in the walkthrough\'s start-menu sample', (t) => {
+    const projection = require(path.join(SCRIPTS, 'domain', 'projections', 'start-menu.cjs'));
+    const { startMenuScreen } = projection;
+    t.after(() => {
+      projection.startMenuScreen = startMenuScreen;
+      delete require.cache[DIAGRAMS];
+    });
+    projection.startMenuScreen = (/** @type {any} */ read) => ({ ...startMenuScreen(read), shows: ['Inbox: drawn afresh'] });
+    delete require.cache[DIAGRAMS];
+
+    assert.match(require(DIAGRAMS).sampleDiagram('start-menu'), /^Inbox: drawn afresh\n/);
   });
 
   it('every sample re-flows with the surface it depicts', () => {
@@ -420,29 +505,30 @@ describe('walkthrough screens', () => {
   const SCREENS = [
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 1 of 8 · The idea`**",
+      "# **`■ How Leeway works · 1 of 8 · The idea`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Claude Code is a capable engineer with two gaps. It forgets everything between sessions, and it has no process for how a piece of work should unfold, so every session starts cold and improvises from there. The workflows fill both. Every piece of work goes through a phased process in which each phase produces a document the next phase is built from, and a knowledge base keeps those documents once the work is done, so nothing decided is decided twice.",
+      "Claude Code is a capable engineer with two gaps. It forgets everything between sessions, and it has no process for how a piece of work should unfold, so every session starts cold and improvises from there. Leeway fills both. Every piece of work goes through phases, each building on what the last one recorded, and every question, finding and decision lands on a record that outlives the session, so nothing decided is decided twice.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "   a piece of work, described in your own words",
       "     ↓",
-      "   DISCOVERY     discussion · experiment",
-      "     → what was explored, what you decided, and why",
+      "   DISCOVERY     discovery · discussion · experiment ·",
+      "                 investigation",
+      "     → what the work is, what you decided, and why",
       "     ↓",
-      "   DEFINITION    specification · planning",
-      "     → the contract you approve, and the plan built from it",
+      "   DEFINITION    specification",
+      "     → the contract you approve, cut into phases",
       "     ↓",
       "   DELIVERY      implementation · review",
       "     → the code, built test-first by agents and held to your",
       "       specification",
       "     ↓",
-      "   the knowledge base keeps every finished document, so the next",
+      "   the knowledge base keeps every current decision, so the next",
       "   piece of work starts from what this one decided",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "You are the engineer throughout. What to build, why, and what it must do are your decisions, made in the early phases where a wrong turn costs a sentence to correct, and everything downstream is built from them rather than from memory. The system's part is to argue back where it should, keep the record straight, build from the record, and check its own work against it.",
+      "You are the engineer throughout. What to build, why, and what it must do are your decisions, made in the early phases where a wrong turn costs a sentence to correct. Leeway's part is to argue back where it should, find the questions nobody has answered yet while you're still talking the product through, keep the record straight, and build from it. Claude answers most of the smaller calls the way you would, learning from your own answers, and brings you the ones you'd want to make yourself.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -455,32 +541,33 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 2 of 8 · Where everything starts`**",
+      "# **`■ How Leeway works · 2 of 8 · Where everything starts`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Everything begins at `/leeway`, and everything resumes there. It opens on a menu of every piece of work in flight, each with where it has got to and what is waiting on you there, the ones waiting on you first. The reason it is one command rather than several is that the system keeps track of where each piece of work is, not you: there is no phase to remember and no separate command to continue anything. Picking a piece of work takes you straight to where it stands.",
+      "Everything begins at `/leeway`, and everything resumes there. It opens on the start menu: every piece of work in flight, each with where it has got to and what is waiting on you there, the ones waiting on you first. Leeway keeps track of where each piece of work is, not you, so there is no phase to remember and no separate command to continue anything. Picking a piece of work takes you straight to where it stands.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
-      "Inbox: empty",
+      "Inbox: 2 ideas · 1 bug · 1 quick-fix",
       "",
       "◆ What would you like to do?",
       "",
-      "1         → Continue feature: Saved Filters — discussion",
+      "1         → Continue feature: Saved Filters — build, phase 1 of 3",
       "2         → Continue bugfix: Export Timeout — investigation",
-      "3         → Continue epic: Payments Overhaul — discovery, 2",
-      "            topics on the map",
+      "3         → Continue epic: Payments Overhaul — discussion, 1 of 3",
+      "            topics decided",
       "p/product → Talk about the product",
       "s/start   → Start something new — describe it, and we'll find",
       "            what kind of work it is",
       "t/triage  → Triage the inbox",
       "r/roadmap → Open the product roadmap",
+      "v/view    → View completed & cancelled work units",
       "m/manage  → Manage work units",
       "h/help    → How Leeway works",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Starting something new is one row: `s` takes a description in your own words, and the discovery phase settles the kind of work from it. What happens next is a short exchange about what the work actually is, which is the subject of the next screen.",
+      "Starting something new is one row: `s` takes a description in your own words, and the kind of work is settled from it as you talk. You don't even need the menu for that. Ask Claude for a change in the middle of a conversation and it takes your words into Leeway itself, going straight to the work they name.",
       "",
-      "Inside a piece of work the rhythm is the same everywhere. The system carries on with the work until it reaches a decision that is genuinely yours, then it stops at a gate, shows a menu, and waits. The menu beneath this screen is one. You can answer with a key, in plain words, go back, or close the terminal — where the Claude Code mod runs, a click on a row picks it and a second click sends it. Everything a session produces is committed to git as it goes, which is why leaving part-way costs nothing: the next `/leeway` shows the menu again, with that piece of work exactly where you left it.",
+      "Inside a piece of work the rhythm is the same everywhere. Leeway carries on until it reaches a decision that is genuinely yours, then it stops at a gate, shows a menu, and waits. The menu beneath this screen is one. You can answer with a key, in plain words, or close the terminal — where the Claude Code mod runs, a click on a row picks it and a second click sends it. Everything a session produces is committed to git as it goes, so leaving part-way costs nothing: the next `/leeway` shows the menu again, with that piece of work exactly where you left it.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -494,23 +581,22 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 3 of 8 · What the work is`**",
+      "# **`■ How Leeway works · 3 of 8 · What the work is`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Whatever you start with, the first phase is discovery, and its only job is to settle what the work is. It never starts solving the problem. The reason it comes first is that the kind of work decides the route through the three stages, and settling the kind is what puts the work on the right one.",
+      "Whatever you start with, the first phase is discovery, and its job is to settle what the work is. It never starts solving the problem. The kind of work decides the route through the three stages, and settling the kind is what puts the work on the right one.",
       "",
-      "There are five kinds. A feature is one coherent thing to build. An epic is several distinct things wearing one name, which becomes topics that each travel on their own. A bugfix is something that used to work and now doesn't. A quick-fix is small and mechanical, with nothing to debate. A cross-cutting concern is a standard for the codebase to follow rather than something to ship. Sometimes what you describe is none of these but the product as a whole, with no single thing to build yet. Discovery notices that and carries on at that level instead, which the next screen covers.",
+      "There are four kinds. A feature is one coherent thing to build. An epic is several distinct things wearing one name, which become topics that each travel on their own. A bugfix is something that used to work and now doesn't, with its cause still to find. A quick-fix is settled work of any size, a tweak or an update that needs no decision from you beyond a quick call. Sometimes what you describe is none of these but the product as a whole, with no single thing to build yet. Discovery notices that and carries on at that level instead, which the next screen covers.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
-      "                  DISCOVERY      DEFINITION   DELIVERY",
-      "   feature        discussion     spec · plan  build · review",
-      "   epic           per topic      per topic    per topic",
-      "   bugfix         investigation  spec · plan  build · review",
-      "   quick-fix                     scoping      build · review",
-      "   cross-cutting  discussion     spec",
+      "              DISCOVERY              DEFINITION  DELIVERY",
+      "   feature    discussion             spec        build · review",
+      "   epic       discussion, per topic  spec        build · review",
+      "   bugfix     investigation          spec        build · review",
+      "   quick-fix                                     fixes · close",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Discovery works by asking one question at a time and saying back what it is hearing, so a wrong reading is corrected the moment it appears rather than three phases later. If you have notes, a design document or an error report, hand them over here and they travel with the work. When the picture holds steady it says what it thinks the work is and why, and asks whether that's right. Nothing is written to the repository until you say yes. At that point the work is saved, together with what you told it, and routed into its first real phase.",
+      "Discovery asks one question at a time and says back what it is hearing, so a wrong reading is corrected the moment it appears rather than three phases later. If you have notes, a design document or an error report, hand them over here and they travel with the work. When the picture holds steady it says what it thinks the work is and why, and asks whether that's right. Nothing is created until you say yes. At that point the work is saved, together with what you told it, and moves into its first real phase.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -524,12 +610,12 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 4 of 8 · The product takes shape`**",
+      "# **`■ How Leeway works · 4 of 8 · The product takes shape`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Not everything you describe is a piece of work. Sometimes it is the product: what it is, what has to exist before launch, what can wait until there is revenue. Turning that into a work unit straight away would force a shape onto it too early, so the workflows keep a layer above the pieces of work for exactly this, the roadmap. Discovery carries on at that altitude, listening for how you stage things, and when you ask for it laid out it proposes the roadmap as items, at the grain you would move around a real roadmap, grouped into horizons you name yourself, in the order you mean them.",
+      "Not everything you describe is a piece of work. Sometimes it is the product: what it is, who it serves, what has to exist before launch and what can wait. Turning that into a piece of work straight away would force a shape onto it too early, so Leeway keeps a conversation about the product as a whole, the start menu's `p` row, and above the pieces of work a roadmap. When you ask for it laid out, Claude proposes the roadmap as items, at the grain you would move around a real roadmap, grouped into horizons you name yourself, in the order you mean them.",
       "",
-      "The roadmap is also where a thought goes when it belongs to a later release. In the middle of any session, saying where something belongs (\"that's a v2 thing\") parks it there in one line and you carry on. Work begins when you choose items to start. Ideas become an epic or a feature, and a bug or a quick-fix rides along without adding size or starts as a fix of its own; the new piece of work is fenced to exactly those items while the rest stay on the roadmap, visibly waiting. Each started item records which piece of work took it, so the roadmap stays true as things ship.",
+      "The roadmap is also where a thought goes when it belongs to a later release. In the middle of any session, saying where something belongs (\"that's a v2 thing\") puts it there in one line and you carry on. Work begins when you pick items to start: they go into discovery together, which settles what kind of work they make, while the rest stay on the roadmap, visibly waiting. Each started item records which piece of work took it, so the roadmap stays true as things ship.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "launch (1)",
@@ -565,12 +651,12 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 5 of 8 · An epic and its topics`**",
+      "# **`■ How Leeway works · 5 of 8 · An epic and its topics`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "An epic is what a piece of work becomes when it turns out to be several things wearing one name. Confirming one doesn't end discovery. It opens into a design session across the whole of it, with the system as a second senior engineer who is willing to disagree, and who writes down not only what was decided but what was considered and dropped. The reason the whole is designed before any part is that the parts share decisions: a choice about accounts constrains billing, and a decision made twice is a decision made differently. Only when you say the ground is covered are the topics drawn out, and each leaves with a brief carrying the decisions, the rejected paths and the open questions that concern it.",
+      "An epic is what a piece of work becomes when it turns out to be several things wearing one name. Confirming one doesn't end discovery. It opens into a conversation across the whole of it, because the parts share decisions: a choice about accounts constrains billing, and a decision made twice is a decision made differently. Only when you say the ground is covered are the topics drawn out as the epic's map, which you approve, and each topic leaves with a brief carrying what concerns it and the questions still open.",
       "",
-      "From then on the epic is lived through its menu: the phase it is in as the heading, how many topics are decided and how many are still open, and a row for each topic you can pick up, the recommended one first. Each topic is talked through in a conversation of its own, and the epic moves on to its spec once every one is decided, cancelled or postponed.",
+      "From then on the epic is lived through its menu: the phase it is in as the heading, how many topics are decided, in progress and not started, and a row for each topic you can pick up, the recommended one first. Each topic is talked through in a conversation of its own, topics send each other messages when one turns up something another owns, and the epic moves on to its specification once every topic is decided, cancelled or postponed.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "■ Discussion — Launch Core",
@@ -587,7 +673,7 @@ describe('walkthrough screens', () => {
       "              pull forward, reactivate, or reopen a decided topic",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Here Sign In is decided, Billing is still being talked through and Usage Limits hasn't started.",
+      "Here Sign In is decided, Billing is still being talked through and Usage Limits hasn't started. Changing the map, a new topic or one set aside, goes through the discovery row.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -601,28 +687,49 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 6 of 8 · The journey of one piece of work`**",
+      "# **`■ How Leeway works · 6 of 8 · The journey of one piece of work`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each phase ends by writing a document the next one is built from. That chain is the reason the system can pick up cold: nothing downstream depends on remembering a session, only on reading what it left.",
+      "Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each builds on what the last one recorded. That is why Leeway can pick up cold: nothing downstream depends on remembering a session, only on the record.",
       "",
-      "Discovery is where the thinking happens. A discussion argues the design through to conclusions, guided by a live map of what is settled and what is still open, and if a decision turns out to rest on a number nobody has measured, an experiment is designed, run and reported before the decision is taken. Definition turns those conclusions into a specification, the contract everything after it is built from, and breaks it into a plan of phases and tasks with acceptance criteria. Delivery is where agents take the tasks one at a time, writing the tests before the code, and a review at the end holds the finished work to the specification and says plainly whether the two match.",
+      "A discussion argues the design through, one conversation per topic. Its map lists your questions and the calls Claude made, each with where it stands, and the calls made since you last looked come first, so you can overrule one when it's made rather than at the end. The topic is done when nothing of yours is open. If a decision would rest on a number nobody has measured, an experiment measures it first.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
-      "── DISCOVERY ────────────────────────────────────────────────────",
-      "  discussion      the design argued through to conclusions",
-      "  experiment      a number measured, when a decision rests on one",
+      "Map — Billing",
+      "4 of yours: 3 decided, 1 open · 2 calls by Claude",
       "",
-      "── DEFINITION ───────────────────────────────────────────────────",
-      "  specification   the contract everything after it is built from",
-      "  planning        phases and tasks, each with acceptance criteria",
+      "SINCE YOU LAST LOOKED (1 call by Claude)",
+      "  └─ ◇ The currency the pricing page shows",
+      "        The customer's own, from their billing address.",
       "",
-      "── DELIVERY ─────────────────────────────────────────────────────",
-      "  implementation  the code, built test-first, one task at a time",
-      "  review          the finished work held to the specification",
+      "OPEN (1 of yours)",
+      "  └─ ○ Whether invoices go out by email       [yours]",
+      "",
+      "DECIDED (3 of yours · 2 calls by Claude)",
+      "  ├─ ✓ Which plans launch                     [yours]",
+      "  ├─ ✓ When a card payment fails              [yours]",
+      "  ├─ ◇ Where invoice numbers start            [Claude's call]",
+      "  ├─ ✓ Whether a plan can change mid-cycle    [yours]",
+      "  └─ ◇ The currency the pricing page shows    [Claude's call]",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "A bugfix replaces the discussion with an investigation into why things broke, a quick-fix does the whole of Definition in one scoping pass, and a cross-cutting concern, being a standard rather than something to ship, ends at its specification. When a phase concludes, its document is indexed into the knowledge base, so later work can find what this one decided.",
+      "The specification turns the decisions into the contract the build works from, every statement traced to a decision, and cuts it into phases. Ready to build is one screen: you approve the outline and the cut, and choose how the build runs. The build writes each phase's tasks as the phase starts; agents build them test-first, side by side, and a pair of reviewers reads each one until both pass. A review phase then holds the whole change to the specification, and finish waits for you.",
+      "",
+      "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
+      "1 of 4 tasks done · 1 running",
+      "",
+      "  ├─ Phase 1 of 3 · Saving a filter          [running]",
+      "  │  ├─ ✓ 1.1 Store a named filter set       [done]",
+      "  │  ├─ ◐ 1.2 Save from the filter bar       [in progress]",
+      "  │  ├─ ○ 1.3 Refuse a name already taken    [after 1.2]",
+      "  │  └─ ○ 1.4 List the saved filter sets     [not started]",
+      "  │",
+      "  ├─ Phase 2 of 3 · Coming back to one       [not yet written]",
+      "  │",
+      "  └─ Phase 3 of 3 · Sharing a filter         [not yet written]",
+      "",
+      "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
+      "A bugfix finds the cause in an investigation instead of a discussion, and proves the bug with a failing test before fixing it. A quick-fix skips straight to its fixes, each built and reviewed the same way, in one session.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -636,21 +743,22 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 7 of 8 · How much of you it needs`**",
+      "# **`■ How Leeway works · 7 of 8 · How much of you it needs`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "The amount of you each phase needs falls as the work goes on, and that is by design. At the start nearly every stop is a decision that is yours: discovery and discussion stop often, because a wrong turn caught there costs a sentence to put right and the same wrong turn caught in review costs a rebuild. By the time the specification is being written the decisions are already on record, so your part shifts to reading and approving. Planning and implementation run almost entirely on their own, pausing at gates, and review is agent-led from beginning to end.",
+      "The amount of you each phase needs falls as the work goes on, and that is by design. At the start nearly every turn is yours: discovery and discussion are conversations, because a wrong turn caught there costs a sentence to put right and the same wrong turn caught in review costs a rebuild. By the specification the decisions are already on record, so your part shifts to approving. The build and the review phase run largely on their own.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
-      "   discovery        ████████████████████████████   you lead",
-      "   discussion       ██████████████████████         you shape",
-      "   specification    ██████████████                 you approve",
-      "   planning         ████████                       you check",
-      "   implementation   █████                          gates, or auto",
-      "   review           ███                            agent-led",
+      "   discovery        ███████████████████████████   you lead",
+      "   discussion       ██████████████████████        you shape",
+      "   specification    ██████████████                you approve",
+      "   implementation   █████                         auto, or step",
+      "   review           ████                          finish is yours",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "A gate is never answered on your behalf, however reasonable the answer might look. If you would rather not be asked at a particular gate, you say so, and `auto` hands that one gate over for the rest of the sitting. It is scoped that narrowly on purpose: a standing preference would turn into a way of skipping decisions without noticing. A few gates never yield at all, because what they guard would otherwise be quietly overwritten.",
+      "A few gates always stop for you: starting the work, approving an epic's map, a topic's decision, ready to build and finish. Everything smaller is a call, and Claude makes most of them the way you would, learning from your own answers. It asks you only where its calls of that kind have been missing more often than you allow, and a call that would be hard to undo, or that could lose data or weaken security, asks sooner or always. When you change one of its calls, you're later asked what its answer would have cost, so it learns. A routine gate you always answer the same way stops asking and reports in a line, and asks again once your answers vary.",
+      "",
+      "The build runs in one of two positions, chosen at ready to build. In auto it runs on its own and stops only for what needs you. In step it also stops after each task, for you to review and try it. You can switch at any time by saying so.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -664,26 +772,25 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work · 8 of 8 · Living with it`**",
+      "# **`■ How Leeway works · 8 of 8 · Living with it`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Once the product exists, the everyday rhythm is the same command and the same habit: `/leeway`, describe the feature or the bug or the small fix, and the work takes the route its kind calls for. Thoughts that arrive at the wrong moment don't have to derail anything. Say \"log that as an idea\", or as a bug, or as a quick-fix, and it lands in the inbox to be picked up from the start menu whenever you are ready. Say where a thought belongs on the roadmap and it is parked there instead.",
+      "Once the product exists, the everyday rhythm is the same command and the same habit: `/leeway`, or just ask Claude, describe the feature or the bug or the small change, and the work takes the route its kind calls for. Thoughts that arrive at the wrong moment don't have to derail anything. Say \"log that as an idea\", or as a bug, or as a quick-fix, and it lands in the inbox, waiting for you to triage it from the start menu: work on it now, put it on the roadmap, or archive it.",
       "",
-      "Nor is work locked to the shape it began with, because that shape was a reading made early, before the work had shown its size. A feature that outgrows itself becomes an epic in place, a stray feature can be absorbed into one as a topic, topics can be cancelled and brought back, and any finished phase can be reopened. When one is, everything built on it is marked as having its input moved, and nothing downstream is recommended again until that phase has taken the change into account, so nothing stale is trusted by mistake.",
+      "Nor is work locked to the shape it began with, because that shape was a reading made early, before the work had shown its size. A feature that outgrows itself becomes an epic in place, a stray feature can be absorbed into an epic as a topic, topics can be cancelled, postponed and brought back, and a finished feature's decision can be reopened. When a decision changes, everything that relied on it is flagged, so nothing stale is trusted by mistake.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "   a stray thought       log it as an idea, a bug or a quick-fix;",
       "                         it waits in the inbox",
-      "   a later-release idea  park it on the roadmap in one line",
+      "   a later-release idea  put it on the roadmap in one line",
       "   a feature grows       pivot it into an epic, in place",
       "   a stray feature       absorb it into an epic as a topic",
-      "   a topic not worth it  cancel it; reactivate it later if it is",
-      "   a decision was wrong  reopen the phase; what was built on it",
-      "                         reads \"input moved\" until reconciled",
-      "   something is unclear  h/help on the start menu, or just ask",
+      "   a topic not worth it  cancel it; bring it back later if it is",
+      "   a decision was wrong  change it; what relied on it is flagged",
+      "   something is unclear  h/help on any menu, or just ask",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Whenever something on screen is unclear, `h` from the start menu brings you back here, and any session will answer a question about how the workflows work and then put you back where you were.",
+      "Whenever something on screen is unclear, `h` on any menu says what that screen is for, and the start menu's help brings you back here. Any session will answer a question about how Leeway works and then put you back where you were.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -707,10 +814,10 @@ describe('walkthrough screens', () => {
   it('the first-run offer renders whole at the pinned width', () => {
     assert.strictEqual(walkthroughOffer(false), [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How the workflows work`**",
+      "# **`■ How Leeway works`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Before your first piece of work, there's a short guide to how this all fits together: what happens when you start something, what gets written down, and where you come in. It's worth reading once, because everything you meet afterwards makes more sense with the shape already in your head.",
+      "Before your first piece of work, there's a short guide to how Leeway fits together: what happens when you start something, what gets written down, and where you come in. It's worth reading once, because everything you meet afterwards makes more sense with the shape already in your head.",
       "",
       "Eight screens, about five minutes. Leave whenever you like.",
       "",
@@ -720,7 +827,7 @@ describe('walkthrough screens', () => {
       "",
       "**`y/yes`**  → Let's do it",
       "**`s/skip`** → Skip for now — it's under h/help whenever you want it",
-      "**Ask**    → Ask anything about how the workflows work",
+      "**Ask**    → Ask anything about how Leeway works",
       "",
     ].join('\n'));
   });

@@ -9,6 +9,9 @@
     },
     "export-timeout": {
       "work_type": "bugfix"
+    },
+    "csv-import": {
+      "work_type": "feature"
     }
   }
 }

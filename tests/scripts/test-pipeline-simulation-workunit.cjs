@@ -401,14 +401,16 @@ describe('pipeline simulation: workunit', () => {
     assert.match(answer.committed, /^[0-9a-f]+$/, 'the answer commits in the same call');
     assert.strictEqual(sim.read(['manifest', 'get', 'project.walkthrough.status']), 'walked');
     sim.refuses(['walkthrough', 'record', 'skipped'], /recorded once/);
-    assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How the workflows work · 1 of 8/);
+    assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How Leeway works · 1 of 8/);
     // Screen 2 draws the start menu as its sample; the gate it stops at is its own.
     assert.match(sim.render(['walkthrough-screen', '--screen', '2', '--from', 'help'], { expect: 'content' }), /n\/next/);
-    assert.match(sim.render(['walkthrough-home'], { expect: 'content' }), /What would you like to do\?/);
-    // A card is also shown mid-conversation, so it carries no gate; the help
-    // flow fetches the card's menu beneath it.
-    assert.doesNotMatch(sim.render(['walkthrough-topic', '--name', 'the-inbox'], { expect: 'content' }), /^=== MENU/m);
-    assert.match(sim.render(['walkthrough-topic', '--name', 'the-inbox', '--menu-only'], { expect: 'content' }), /t\/topics/);
+    // The start menu's help reaches the reference cards, each card's back
+    // drawing the cards again; a card shown in an answer carries no gate.
+    sim.render(['help', 'start-menu'], { expect: 'content' });
+    sim.render(answerGate(sim, 'help', '--pick', 't').next.argv.slice(1), { expect: 'content' });
+    sim.render(answerGate(sim, 'help topics', '--pick', '7').next.argv.slice(1), { expect: 'content' });
+    assert.deepStrictEqual(answerGate(sim, 'walkthrough card', '--pick', 'b').next, { kind: 'engine', argv: ['render', 'help-topics'] });
+    sim.render(['walkthrough-topic', '--name', 'the-inbox-and-triage', '--content-only'], { expect: 'content' });
     sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
     assert.match(sim.render(['walkthrough-screen', '--screen', '8', '--from', 'help', '--menu-only'], { expect: 'content' }), /d\/done/);
 

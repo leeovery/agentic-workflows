@@ -1,15 +1,16 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Across the menus (18.9.3, 18.9.4, 23.2.1, 23.2.4): every menu the registry
+// Across the menus (18.9.3, 18.9.4, 23.2.1–23.2.4): every menu the registry
 // holds (domain/menus.cjs) has its help file beside its projection, telling
 // exactly the rows it registers, and no help file stands for a menu it does
 // not hold (23.S7); every menu drawn carries h/help, which opens the menu's
 // help as it was drawn — what the screen is for, a line a row, and the
-// invitation to ask about anything else (23.S4); and archive is a, work w,
-// back b and help h on every menu that offers them (18.S39), each menu drawn
-// in the states that bring every row it registers. Each menu's own screen is
-// its suite's.
+// invitation to ask about anything else (23.S4); the start menu's help, the
+// help home, reaches the walk and the reference cards, each card and back
+// (18.S40, 23.S6); and archive is a, work w, back b and help h on every menu
+// that offers them (18.S39), each menu drawn in the states that bring every
+// row it registers. Each menu's own screen is its suite's.
 //
 // Layer: verb. World: the project from the fixture library, built once and
 // only read: an epic whose topic's call of Claude's the person replaced, a
@@ -33,6 +34,7 @@ const { setupFixture, createManifest, createFile, writeState, readState, statePa
 const { MADE } = require('./ledger-world.cjs');
 
 const PROJECTIONS = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/projections');
+const TOPICS = path.join(__dirname, '../../skills/leeway-engine/content/walkthrough/topics');
 const { MENUS } = require('../../skills/leeway-engine/scripts/domain/menus.cjs');
 const { parseHelp, menusDrift } = require(path.join(PROJECTIONS, 'help.cjs'));
 
@@ -121,6 +123,7 @@ before(() => {
     ['verdicts', []],
     ['care', []],
     ['matrix', []],
+    ['help-topics', []],
   ];
   menus = drawnAs.map(([id, args]) => ({ id, args, rows: drawn([id, ...args]).rows }));
   // The drivers menu offers a driver landing through a host only on a
@@ -170,6 +173,44 @@ describe('h on every menu (18.9.4, 23.2.1, 23.2.2)', () => {
       assert.strictEqual(bullets.length, helpOf(id).rows.length, `${id}: a line for each row`);
       assert.match(closing[0] ?? '', /^Ask about anything else\b/, `${id}: the invitation closes it`);
     }
+  });
+});
+
+describe('the help home and the reference cards (18.9.5, 23.2.3)', () => {
+  /** The rows of a screen drawn by a row's next, by key. @param {Row} row */
+  const follow = (row) => drawn(row.next.argv.slice(1));
+  const startMenu = () => /** @type {{rows: Record<string, Row>}} */ (menus.find(({ id }) => id === 'start-menu'));
+
+  it('18.S40: triage\'s help says what triage is for, then a line for each of its rows, then the invitation to ask', () => {
+    const triage = /** @type {{rows: Record<string, Row>}} */ (menus.find(({ id }) => id === 'triage'));
+    const shows = sectionOf(follow(triage.rows.h).out, 'DISPLAY: help').trimEnd().split('\n');
+
+    assert.match(shows[0], /^Triage works through the inbox/);
+    assert.deepStrictEqual(shows.filter((line) => line.startsWith('  · ')).length, helpOf('triage').rows.length);
+    assert.strictEqual(shows.at(-1), 'Ask about anything else.');
+  });
+
+  it('18.S40, 23.S6: the start menu\'s help opens the help home, whose w carries on into the walk and t draws the reference cards, back to the start menu', () => {
+    const home = follow(startMenu().rows.h);
+
+    assert.strictEqual(sectionOf(home.out, 'TITLE'), '# **`■ Help`**\n');
+    assert.deepStrictEqual(Object.fromEntries(Object.entries(home.rows).map(([key, { next }]) => [key, next])), {
+      w: { kind: 'continue' },
+      t: { kind: 'engine', argv: ['render', 'help-topics'] },
+      b: { kind: 'engine', argv: ['render', 'start-menu'] },
+    });
+  });
+
+  it('23.S6: the cards list every card by its title, each opening that card, whose back draws the cards again, and the cards\' back draws the help home', () => {
+    const cards = follow(startMenu().rows.h).rows.t;
+    const shown = follow(cards);
+    const numbered = Object.entries(shown.rows).filter(([key]) => /^\d+$/.test(key));
+    const titles = fs.readdirSync(TOPICS).sort().map((file) => fs.readFileSync(path.join(TOPICS, file), 'utf8').split('\n')[0].slice(2));
+    const card = follow(numbered[0][1]);
+
+    assert.strictEqual(sectionOf(shown.out, 'TITLE'), '# **`■ Help · Topics`**\n');
+    assert.deepStrictEqual(numbered.map(([, row]) => sectionOf(follow(row).out, 'TITLE').trimEnd()), titles.map((title) => `# **\`■ Help · ${title}\`**`));
+    assert.deepStrictEqual([card.rows.b.next, shown.rows.b.next], [cards.next, { kind: 'engine', argv: ['render', 'help', 'start-menu'] }]);
   });
 });
 

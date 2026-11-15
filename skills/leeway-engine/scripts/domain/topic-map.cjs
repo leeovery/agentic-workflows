@@ -34,6 +34,7 @@ const { mapScreen } = require('./projections/map.cjs');
 
 /** @typedef {import('./projections/map.cjs').DrawnRow} DrawnRow */
 /** @typedef {import('./projections/map.cjs').MapView} MapView */
+/** @typedef {import('./ledger-read.cjs').Shower} Shower */
 
 /** An answer on a map row, as `ledger map` shows it. @typedef {{id: string, by: string, given: string, text: string}} RowAnswer */
 
@@ -200,6 +201,18 @@ function topicAddress(root, address, surface) {
 }
 
 /**
+ * The topic's map as it is drawn, over the ledger `shower` read, the calls
+ * `shown` listed since the person last looked.
+ * @param {string} root @param {Shower} shower @param {{unit: string, topic: string}} place @param {{id: string, text: string}[]} shown
+ * @returns {MapView}
+ */
+function mapView(root, shower, place, shown) {
+  const rows = /** @type {Row[]} */ (answerMap(shower, place, root).questions);
+  const named = topicNamer(root);
+  return { title: named(place.unit, place.topic), since: sinceRows(rows, shown), ...mapSections(rows, place.unit, named) };
+}
+
+/**
  * `render map <unit>.<topic>`: the topic's map, the calls it lists since the
  * person last looked marked shown on this machine as it is drawn.
  * @param {string} cwd @param {{dotpath?: string}} args
@@ -212,15 +225,11 @@ function mapSurface(cwd, { dotpath }) {
     const root = stateRoot(cwd);
     const { unit, topic } = topicAddress(root, dotpath, 'map');
     const place = { unit, topic };
-    return readShown(root, warnings, (shower) => {
-      const rows = /** @type {Row[]} */ (answerMap(shower, place, root).questions);
-      const shown = /** @type {{id: string, text: string}[]} */ (/** @type {unknown} */ (answerShown(shower, place, root, warnings).calls));
-      const named = topicNamer(root);
-      return mapScreen({ title: named(unit, topic), since: sinceRows(rows, shown), ...mapSections(rows, unit, named) });
-    });
+    return readShown(root, warnings, (shower) => mapScreen(mapView(root, shower, place,
+      /** @type {{id: string, text: string}[]} */ (/** @type {unknown} */ (answerShown(shower, place, root, warnings).calls)))));
   } catch (err) {
     throw carrying(err, warnings);
   }
 }
 
-module.exports = { rowStanding, answersOn, claudesCalls, handedTag, topicAddress, mapSurface };
+module.exports = { rowStanding, answersOn, claudesCalls, handedTag, topicAddress, mapView, mapSurface };

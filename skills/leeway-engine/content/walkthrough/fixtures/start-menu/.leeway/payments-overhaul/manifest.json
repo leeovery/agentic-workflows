@@ -10,18 +10,30 @@
         "card-capture": {
           "source": "discovery",
           "summary": "How card details are taken and stored.",
-          "description": "How card details are taken and stored."
+          "description": "How card details are taken and stored.",
+          "order": 1
         },
         "reconciliation": {
           "source": "discovery",
           "summary": "Matching settlements against invoices.",
-          "description": "Matching settlements against invoices."
+          "description": "Matching settlements against invoices.",
+          "order": 2
+        },
+        "refunds": {
+          "source": "discovery",
+          "summary": "Giving money back, in part or in full.",
+          "description": "Giving money back, in part or in full.",
+          "order": 3
         }
-      }
+      },
+      "approved_at": "2026-01-01T09:00:00.000Z"
     },
     "discussion": {
       "items": {
         "card-capture": {
+          "status": "completed"
+        },
+        "reconciliation": {
           "status": "in-progress"
         }
       }

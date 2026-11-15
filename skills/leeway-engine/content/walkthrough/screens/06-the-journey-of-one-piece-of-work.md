@@ -1,21 +1,15 @@
 # The journey of one piece of work
 
-Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each phase ends by writing a document the next one is built from. That chain is the reason the system can pick up cold: nothing downstream depends on remembering a session, only on reading what it left.
+Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each builds on what the last one recorded. That is why Leeway can pick up cold: nothing downstream depends on remembering a session, only on the record.
 
-Discovery is where the thinking happens. A discussion argues the design through to conclusions, guided by a live map of what is settled and what is still open, and if a decision turns out to rest on a number nobody has measured, an experiment is designed, run and reported before the decision is taken. Definition turns those conclusions into a specification, the contract everything after it is built from, and breaks it into a plan of phases and tasks with acceptance criteria. Delivery is where agents take the tasks one at a time, writing the tests before the code, and a review at the end holds the finished work to the specification and says plainly whether the two match.
+A discussion argues the design through, one conversation per topic. Its map lists your questions and the calls Claude made, each with where it stands, and the calls made since you last looked come first, so you can overrule one when it's made rather than at the end. The topic is done when nothing of yours is open. If a decision would rest on a number nobody has measured, an experiment measures it first.
 
-```table
-── DISCOVERY
-discussion | the design argued through to conclusions
-experiment | a number measured, when a decision rests on one
-
-── DEFINITION
-specification | the contract everything after it is built from
-planning | phases and tasks, each with acceptance criteria
-
-── DELIVERY
-implementation | the code, built test-first, one task at a time
-review | the finished work held to the specification
+```sample discussion-map
 ```
 
-A bugfix replaces the discussion with an investigation into why things broke, a quick-fix does the whole of Definition in one scoping pass, and a cross-cutting concern, being a standard rather than something to ship, ends at its specification. When a phase concludes, its document is indexed into the knowledge base, so later work can find what this one decided.
+The specification turns the decisions into the contract the build works from, every statement traced to a decision, and cuts it into phases. Ready to build is one screen: you approve the outline and the cut, and choose how the build runs. The build writes each phase's tasks as the phase starts; agents build them test-first, side by side, and a pair of reviewers reads each one until both pass. A review phase then holds the whole change to the specification, and finish waits for you.
+
+```sample build-progress
+```
+
+A bugfix finds the cause in an investigation instead of a discussion, and proves the bug with a failing test before fixing it. A quick-fix skips straight to its fixes, each built and reviewed the same way, in one session.

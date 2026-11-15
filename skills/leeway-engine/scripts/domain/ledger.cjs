@@ -141,6 +141,16 @@ function withOneCheck(fn) {
   return checkedRoots.run(new Set(), fn);
 }
 
+/**
+ * Run `fn` over a world shipped as files, its state root pinned
+ * (state-root.cjs, `pinStateRoot`): its ledger read as it stands, there
+ * being no state branch to check it against.
+ * @template T @param {string} root @param {() => T} fn @returns {T}
+ */
+function asShipped(root, fn) {
+  return checkedRoots.run(new Set([root]), fn);
+}
+
 /** A line read as an entry, refused where it is none. @typedef {(line: string, number: number) => {id?: unknown}} EntryReader */
 
 /**
@@ -481,4 +491,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, checkLedger, withOneCheck, checkLines, commitUncommitted, commitLedger, withLedger, appendEntry, appendEntries, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, checkLedger, withOneCheck, asShipped, checkLines, commitUncommitted, commitLedger, withLedger, appendEntry, appendEntries, carrying, ledgerStopSurface };

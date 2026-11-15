@@ -10,16 +10,30 @@
 // into bands. `bars` is a share of a budget against a note. `sample` is not
 // drawn here at all: it renders a live surface from a fixture through that
 // surface's own derivation and projection, so the picture cannot drift from
-// the thing it depicts.
+// the thing it depicts. A fixture is a world shipped as files, its state
+// pinned to its folder and its ledger read as it stands (ledger.cjs,
+// `asShipped`); the build's, which no tracker holds, carries the tracker's
+// answer beside its state, as any task driver gives it (`tracker.json`).
 //
 // Pure over (source, width) — nothing here knows a screen — and every layout
 // is left-anchored on the gutter: the arrow spine, the label column and the
 // tree glyphs only line up when everything hangs off one column.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
 const { wrap, wrapWithPrefix, signpost } = require('../../kernel/render.cjs');
 const { loadActiveManifests } = require('../reads.cjs');
+const { asShipped } = require('../ledger.cjs');
+const { readShownOnce } = require('../ledger-read.cjs');
+const { answerSince } = require('../ledger-since.cjs');
+const { finishedUnits } = require('../ledger-units.cjs');
+const { mapView } = require('../topic-map.cjs');
+const { trackerGiven } = require('../phase-checks.cjs');
+const { standingOf } = require('../build-entry.cjs');
+const { buildBegun } = require('../derivations.cjs');
+const { mapText } = require('./map.cjs');
+const { progressText } = require('./build.cjs');
 const { startMenuRead } = require('../start-menu.cjs');
 const { MENUS, menuBody, QUESTION, rowOf } = require('../menus.cjs');
 const { roadmapState } = require('../roadmap.cjs');
@@ -58,7 +72,7 @@ const BAR_GLYPH = '█';
 const DIAGRAM_KINDS = ['flow', 'table', 'bars', 'sample'];
 
 /** The live surfaces a `sample` fence may name. */
-const SAMPLE_SURFACES = ['start-menu', 'roadmap', 'epic-menu'];
+const SAMPLE_SURFACES = ['start-menu', 'roadmap', 'epic-menu', 'discussion-map', 'build-progress'];
 
 const FIXTURES_DIR = path.join(__dirname, '..', '..', '..', 'content', 'walkthrough', 'fixtures');
 
@@ -321,11 +335,35 @@ function epicSample() {
   return asPlainText(`■ ${title}\n${shows.join('\n')}\n\n${drawn}`);
 }
 
+/** A topic's map mid-discussion, as the conversation shows it: the person's questions and Claude's calls, those since the person last looked above. @returns {string} */
+function mapSample() {
+  const dir = fixtureDir('discussion-map');
+  const root = path.join(dir, STATE_DIR_NAME);
+  const epic = loadActiveManifests(dir).find((m) => m.work_type === 'epic');
+  const topic = Object.entries(epic?.phases?.discussion?.items ?? {}).find(([, item]) => item.status === 'in-progress')?.[0];
+  if (!epic || topic === undefined) throw new Error('walkthrough sample discussion-map: the fixture holds no epic with a topic in discussion');
+  const place = { unit: epic.name, topic };
+  return asShipped(root, () => readShownOnce(root, [], (shower) => mapText(mapView(root, shower, place,
+    /** @type {{id: string, text: string}[]} */ (/** @type {unknown} */ (answerSince(shower, place, root, []).calls))))));
+}
+
+/** A build part-way through its first phase: its tasks counted, then its phases and tasks with where each stands. @returns {string} */
+function buildSample() {
+  const dir = fixtureDir('build-progress');
+  const root = path.join(dir, STATE_DIR_NAME);
+  const manifest = loadActiveManifests(dir).find(buildBegun);
+  if (!manifest) throw new Error('walkthrough sample build-progress: the fixture holds no unit whose build has begun');
+  const { phases } = JSON.parse(fs.readFileSync(path.join(dir, 'tracker.json'), 'utf8'));
+  return asShipped(root, () => progressText(standingOf(trackerGiven(dir, manifest.name, manifest, phases), []), finishedUnits(root)).trimEnd());
+}
+
 /** @type {Record<string, () => string>} */
 const SAMPLES = {
   'start-menu': startSample,
   roadmap: roadmapSample,
   'epic-menu': epicSample,
+  'discussion-map': mapSample,
+  'build-progress': buildSample,
 };
 
 /**

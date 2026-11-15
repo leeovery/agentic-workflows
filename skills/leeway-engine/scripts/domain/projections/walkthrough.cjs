@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the walkthrough's screens, the reference cards, and the help
-// home. The prose lives beside the code as markdown (`content/walkthrough/`)
+// Domain ring: the walkthrough's screens and the reference cards. The prose
+// lives beside the code as markdown (`content/walkthrough/`)
 // rather than in string literals — it is written and read as writing. Screens
 // and cards share one format and one loader: each file opens on its `# Title`
 // and marks its diagrams with fences, and this module splits a file on those
@@ -14,14 +14,16 @@
 //
 // The menu is the walk: its rows differ by the screen's position and by where
 // the walk was entered from, and nothing else about a screen is conditional.
-// A card's menu is the same at every card — a card is read, not walked. The
-// first-run offer stands before the walk and outside it: it is not a screen,
-// so it carries no position and never counts toward the walk's length.
+// A card's menu is the same at every card — a card is read, not walked — its
+// back drawing the cards again (projections/help-topics.cjs); a card shown
+// in an answer, mid-conversation, is drawn with no menu. The first-run offer
+// stands before the walk and outside it: it is not a screen, so it carries no
+// position and never counts toward the walk's length.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { section, titleSection, dataSection, menu, cmdOption, promptOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, titleSection, menu, cmdOption, promptOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { DIAGRAM_KINDS, isDiagramKind, renderDiagram } = require('./walkthrough-diagrams.cjs');
 
@@ -39,7 +41,7 @@ const ORIGINS = ['first-run', 'help'];
 
 const SCREEN_ASK_PROMPT = "Ask anything about what's on this screen";
 const CARD_ASK_PROMPT = "Ask anything about what's on this card";
-const HELP_ASK_PROMPT = 'Ask anything about how the workflows work';
+const HELP_ASK_PROMPT = 'Ask anything about how Leeway works';
 const CLOSING_PROMPT = "Tell me what you're likely to start with, and I'll say what path it will take";
 
 /**
@@ -162,9 +164,8 @@ function cards() {
 }
 
 /**
- * The named card. The refusal names every slug: `--name` is addressed by a
- * session reading the topics menu's DATA rows, so a miss means the two have
- * drifted and the reader needs the real set to land on.
+ * The named card. The refusal names every slug, so a session naming one
+ * that is not there has the real set to land on.
  * @param {string|undefined} name
  * @returns {Card}
  */
@@ -213,12 +214,11 @@ function screenMenu(s, origin) {
   return section('MENU: walkthrough screen', MENU_INSTRUCTION, menu('What next?', options));
 }
 
-/** A card's menu — the way back to the index, the way out, and a question. @returns {string} */
+/** A card's menu — the way back to the cards, and a question. @returns {string} */
 function cardMenu() {
   return section('MENU: walkthrough card', MENU_INSTRUCTION, menu('What next?', [
-    cmdOption('t', 'topics', 'Back to the topics'),
-    cmdOption('b', 'back', 'Back to help'),
-    promptOption('Ask', CARD_ASK_PROMPT),
+    cmdOption('b', 'back', 'Back to the reference cards', { next: { kind: 'engine', argv: ['render', 'help-topics'] } }),
+    promptOption('Ask', CARD_ASK_PROMPT, { next: { kind: 'continue' } }),
   ]));
 }
 
@@ -232,7 +232,7 @@ function cardMenu() {
 function walkthroughScreen(s, origin, menuOnly) {
   if (menuOnly) return screenMenu(s, origin);
   return [
-    titleSection(`How the workflows work · ${s.index} of ${s.total} · ${s.title}`),
+    titleSection(`How Leeway works · ${s.index} of ${s.total} · ${s.title}`),
     ...chunkSections(s.chunks),
     screenMenu(s, origin),
   ].join('\n');
@@ -263,61 +263,18 @@ function walkthroughOffer(menuOnly) {
   ].join('\n');
 }
 
-/**
- * The help home — the walk, the reference cards, a question, and the way back.
- * @returns {string}
- */
-function walkthroughHome() {
-  return [
-    titleSection('Help'),
-    section('MENU: walkthrough home', MENU_INSTRUCTION, menu(
-      'What would you like to do?',
-      [
-        cmdOption('w', 'walk', `Walk through how the workflows work (${contentFiles(SCREENS_DIR).length} short screens)`),
-        cmdOption('t', 'topics', 'Read about one area in more depth'),
-        cmdOption('b', 'back', 'Back to the start menu'),
-        promptOption('Ask', HELP_ASK_PROMPT),
-      ],
-    )),
-  ].join('\n');
-}
+/** How much of a card is drawn: whole, its menu alone after a question, or its content alone in an answer. @typedef {'whole'|'menu'|'content'} CardPart */
 
 /**
- * The index of reference cards. The rows are numbered for the reader and the
- * DATA table carries each number's slug, because a card's title does not
- * determine it ("The kinds of work" is `kinds-of-work`) — routing rides the
- * table, never the labels.
+ * One reference card: its heading, its content in file order and its menu —
+ * or the part of it `part` names.
+ * @param {Card} card @param {CardPart} part
  * @returns {string}
  */
-function walkthroughTopics() {
-  const all = cards();
-  return [
-    titleSection('Help · Topics'),
-    dataSection([
-      'CARDS (key  name):',
-      ...all.map((c, i) => `  ${i + 1}  ${c.slug}`),
-    ]),
-    section('MENU: walkthrough topics', MENU_INSTRUCTION, menu('Which area?', [
-      ...all.map((c, i) => cmdOption(String(i + 1), null, c.title)),
-      cmdOption('b', 'back', 'Back to help'),
-      promptOption('Ask', HELP_ASK_PROMPT),
-    ])),
-  ].join('\n');
+function walkthroughTopic(card, part) {
+  if (part === 'menu') return cardMenu();
+  const content = [titleSection(`Help · ${card.title}`), ...chunkSections(card.chunks)];
+  return [...content, ...(part === 'whole' ? [cardMenu()] : [])].join('\n');
 }
 
-/**
- * One reference card: its heading and its content in file order — or, with
- * `menuOnly`, the card's menu alone. A card is also shown mid-conversation,
- * where it carries no gate, so its menu is fetched apart.
- * @param {Card} card @param {boolean} menuOnly
- * @returns {string}
- */
-function walkthroughTopic(card, menuOnly) {
-  if (menuOnly) return cardMenu();
-  return [
-    titleSection(`Help · ${card.title}`),
-    ...chunkSections(card.chunks),
-  ].join('\n');
-}
-
-module.exports = { ORIGINS, parseContent, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic };
+module.exports = { ORIGINS, parseContent, loadScreen, cards, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic };
