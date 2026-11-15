@@ -152,9 +152,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /** An area's state in a round: read, being read, waiting, or not read again (20.10.2). @typedef {'read'|'reading'|'waiting'|'unchanged'} AreaState */
 /**
  * An area of a round, or the reader over the tests (`tests`): its number
- * and title, its state, the checks of its scenarios the round ran, what it
- * found, and since when it is read, else null.
- * @typedef {{area: string, title: string, state: AreaState, ran: number, found: number, since: string|null}} AreaLine
+ * and title, whether it was built before the migration cut the unit, read
+ * as the default branch holds it (21.8.8), its state, the checks of its
+ * scenarios the round ran, what it found, and since when it is read, else
+ * null.
+ * @typedef {{area: string, title: string, before: boolean, state: AreaState, ran: number, found: number, since: string|null}} AreaLine
  */
 /**
  * The review phase's This session (20.10): the unit, its title, the project

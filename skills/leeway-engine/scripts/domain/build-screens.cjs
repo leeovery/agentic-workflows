@@ -68,7 +68,7 @@ const { reviewStanding, reviewGoesOn } = require('./review-phase.cjs');
 const { cutPhases, cutLength, quickFixBuild, reviewAsked } = require('./derivations.cjs');
 const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
-const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
+const { outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
 const { taskRounds } = require('./round-report.cjs');
@@ -145,7 +145,7 @@ function accountView(cwd, manifest, ref, task, account) {
   const { phases: [rows] } = withStateLock(stateRoot(cwd), () => trackedLists(cwd, ref.unit, [ref.phase]));
   const tasks = (rows ?? []).map((row) => shownTask(row.ref));
   return {
-    head: headOf(manifest, ref, task), at: tasks.indexOf(shownTask(ref)) + 1, of: tasks.length, does: fieldOf(task.text, 'Outcome') ?? '', closed: task.status === 'closed', account,
+    head: headOf(manifest, ref, task), at: tasks.indexOf(shownTask(ref)) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', account,
   };
 }
 

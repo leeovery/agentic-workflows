@@ -13,6 +13,8 @@ const { loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { shownTask } = require('./task-id.cjs');
+
+/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, LEGACY_PHASES, LEGACY_PLANNING, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -102,23 +104,82 @@ const joinedTopics = (manifest) => (Array.isArray(manifest.spec?.joined) ? manif
 /** Whether the unit's spec is its old specs joined by the migration (21.8.5): history, concluded and never corrected. @param {Record<string, any>} manifest */
 const specJoined = (manifest) => joinedTopics(manifest).length > 0;
 
-/**
- * The tasks of the cut's phases not built that the tracker held done as the
- * migration adopted them, `build.done_before`, shown (21.8.8): built and
- * landed before Leeway, so each counts as passed and landed, and no stack
- * of the build holds it; none for a unit the migration did not cut.
- * @param {Record<string, any>} manifest @returns {Set<string>}
- */
-const doneBefore = (manifest) => new Set(Array.isArray(manifest.build?.done_before) ? manifest.build.done_before : []);
+/** The tasks of the cut's phases not built that the tracker held done as the migration adopted them, shown, `build.done_before` (21.8.8). @param {Record<string, any>} manifest @returns {string[]} */
+const doneBefore = (manifest) => (Array.isArray(manifest.build?.done_before) ? manifest.build.done_before : []);
 
 /**
- * Of a phase's tasks, those the build built since the migration: each but
- * those done before it (`doneBefore`), which no stack holds.
- * @template {{ref: import('./task-id.cjs').TaskRef}} T @param {Record<string, any>} manifest @param {T[]} tasks @returns {T[]}
+ * Whether each of the unit's tasks landed before the migration cut the unit
+ * (21.8.8): a task of a phase built before it, or one the tracker held done
+ * as the migration adopted its phase (`build.done_before`) — built and
+ * landed before Leeway, so wherever a task's standing is read it is passed
+ * and landed, no landing naming it and no stack of the build holding it.
+ * @param {Record<string, any>} manifest @returns {(ref: TaskRef) => boolean}
+ */
+function landedBefore(manifest) {
+  const done = new Set(doneBefore(manifest));
+  return (ref) => phaseBuilt(manifest, ref.phase) || done.has(shownTask(ref));
+}
+
+/**
+ * Whether each of the unit's tasks has landed: landed before the migration
+ * (`landedBefore`), else as the landing record reads it, `landed`
+ * (task-landed.cjs).
+ * @param {Record<string, any>} manifest @param {(ref: TaskRef) => boolean} landed @returns {(ref: TaskRef) => boolean}
+ */
+function hasLanded(manifest, landed) {
+  const before = landedBefore(manifest);
+  return (ref) => before(ref) || landed(ref);
+}
+
+/** Whether the unit landed any work before the migration cut it: a phase built, or a task done, before it (`landedBefore`). @param {Record<string, any>} manifest */
+const landedAnyBefore = (manifest) => cutPhases(manifest).some(({ built }) => built === true) || doneBefore(manifest).length > 0;
+
+/**
+ * Of tasks of the unit, those the build built since the migration: each but
+ * those landed before it (`landedBefore`), which no stack holds.
+ * @template {{ref: TaskRef}} T @param {Record<string, any>} manifest @param {T[]} tasks @returns {T[]}
  */
 function builtSince(manifest, tasks) {
-  const before = doneBefore(manifest);
-  return tasks.filter(({ ref }) => !before.has(shownTask(ref)));
+  const before = landedBefore(manifest);
+  return tasks.filter(({ ref }) => !before(ref));
+}
+
+/** Whether a phase of the unit's cut names its parent in the tracker, adopted by the migration (21.8.8): its tasks the old plan's, written. @param {Record<string, any>} manifest @param {number} number */
+const phaseAdopted = (manifest, number) => cutPhases(manifest)[number - 1]?.tracker !== undefined;
+
+/**
+ * The areas of the joined spec each task of the old plan cites, as the
+ * migration's cut found them in its text, `build.cites` (21.8.8): by the
+ * task, the areas' numbers, none for a task it found citing none.
+ * @param {Record<string, any>} manifest @returns {(ref: TaskRef) => string[]}
+ */
+function citedAreas(manifest) {
+  const cites = isObject(manifest.build?.cites) ? manifest.build.cites : {};
+  return (ref) => (Array.isArray(cites[shownTask(ref)]) ? cites[shownTask(ref)] : []);
+}
+
+/** The area a section, `N` or `N.M`, or a scenario, `N.Sk`, belongs to. @param {string} address */
+const areaOfAddress = (address) => address.split('.')[0];
+
+/**
+ * Whether an area of the unit's spec was built whole before the migration
+ * cut the unit (21.8.8), the review reading it as the default branch holds
+ * it: the unit landed work before the migration, and each phase of the cut
+ * built since that places a section or scenario of the area, or holds a
+ * task citing it (`citedAreas`), has tasks, every one not closed landed
+ * before it (`landedBefore`). `lists` holds each phase's tasks in turn,
+ * null for one not written.
+ * @param {Record<string, any>} manifest @param {string} area @param {({ref: TaskRef, status: string}[]|null|undefined)[]} lists
+ */
+function areaBuiltBefore(manifest, area, lists) {
+  if (!landedAnyBefore(manifest)) return false;
+  const before = landedBefore(manifest);
+  const cited = citedAreas(manifest);
+  return cutPhases(manifest).every((phase, at) => {
+    const live = (lists[at] ?? []).filter(({ status }) => status !== 'closed');
+    const places = [...phase.sections, ...phase.scenarios].some((address) => areaOfAddress(address) === area) || live.some(({ ref }) => cited(ref).includes(area));
+    return !places || (live.length > 0 && live.every(({ ref }) => before(ref)));
+  });
 }
 
 /** How many phases the unit's cut holds, none where it has none. @param {Record<string, any>} manifest */
@@ -1400,8 +1461,13 @@ module.exports = {
   cutPhases,
   specJoined,
   joinedTopics,
-  doneBefore,
+  landedBefore,
+  hasLanded,
+  landedAnyBefore,
   builtSince,
+  phaseAdopted,
+  citedAreas,
+  areaBuiltBefore,
   cutLength,
   isFixPhase,
   legacyBuild,

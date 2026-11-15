@@ -64,7 +64,7 @@ const { cutLength, specJoined } = require('../derivations.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf, taskHead, runsAt } = require('../build-screens.cjs');
-const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
+const { fieldOf, outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
 const { specPath, specReading, DRAWS_ON } = require('../spec-sections.cjs');
 const { figuresPath, takenFigures } = require('../task-account.cjs');
 const { roundReportPath, wholeRounds } = require('../round-report.cjs');
@@ -340,7 +340,7 @@ function taskPage(at, given) {
     line: line ?? taskLine(at, { task: given, title: task.title, status: task.status, parked: [], after: [] }),
     started: account === null ? at.tracker().started : account.figures.started,
     finished: account?.figures.finished ?? null,
-    does: fieldOf(task.text, 'Outcome') ?? '',
+    does: outcomeOf(task.text),
     criteria: criteria.length,
     account: account === null ? null : {
       done: sections['What was done'],

@@ -199,6 +199,11 @@ function taskByHand(root, act, title) {
   tick(root, [act, idOf(root, title)]);
 }
 
+/** The tags the task titled `title` holds, as the store keeps them: the driver keeps a task's type among them. @param {string} root @param {string} title @returns {string[]} */
+function tagsOf(root, title) {
+  return /** @type {{title: string, tags?: string[]}[]} */ (records(root)).find((held) => held.title === title)?.tags ?? [];
+}
+
 /** The task titled `title` given refs of a person's own up to the ten Tick keeps on one. @param {string} root @param {string} title */
 function fillRefs(root, title) {
   const id = idOf(root, title);
@@ -273,5 +278,5 @@ const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
   projectStore, addRef, makeTask, typeCleared, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone,
-  oldPlan, taskByHand, fillRefs, apartFromNames, planStanding, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
+  oldPlan, taskByHand, fillRefs, tagsOf, apartFromNames, planStanding, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };

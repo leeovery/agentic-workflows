@@ -48,6 +48,9 @@
 //   engine's): every one whose findings made fix tasks among them — each
 //   read whose report holds an item such a finding answers — the test
 //   surface as one of them, others added but none dropped (14.3.3).
+// - An area of a unit the migration cut built whole before it, whose
+//   findings made no fix task, is read as the default branch holds it
+//   (`readBuiltBefore`, 21.8.8).
 // - A note for later a fix task's builder banks (`task note`, notes.cjs)
 //   is one no phase's consolidation takes, a fix phase having none: the
 //   review phase answers it, as it answers a reader's note — `notes#{k}`
@@ -109,7 +112,7 @@ const { handedTag } = require('./topic-map.cjs');
 const { heldBackIn } = require('./questions.cjs');
 const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
-const { buildLength, quickFixBuild, specJoined } = require('./derivations.cjs');
+const { buildLength, cutLength, quickFixBuild, specJoined, areaBuiltBefore } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesUntaken, answeredAtClose } = require('./notes.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
@@ -276,6 +279,18 @@ const readOfItem = (item) => item.replace(/#\d+$/, '').replace(new RegExp(`-(${R
 function fixedReads(areas, round) {
   const fixed = new Set(round.findings.filter(({ fix }) => typeof fix === 'string').flatMap(({ area, from }) => [area, ...from.map(readOfItem)]));
   return everyRead(areas).filter((read) => fixed.has(read));
+}
+
+/**
+ * Whether the review reads an area as the default branch holds it (21.8.8):
+ * built whole before the migration cut the unit (`areaBuiltBefore`), and
+ * no round's findings on it made fix tasks (`fixedReads`), whose work
+ * lands on it since.
+ * @param {Reading} at @param {{areas: Area[], rounds: RoundRecord[]}} standing @param {Area} area
+ */
+function readBuiltBefore(at, { areas, rounds }, area) {
+  if (rounds.some((round) => fixedReads(areas, round).includes(area.name))) return false;
+  return areaBuiltBefore(at.manifest, area.number, phaseLists(at, Array.from({ length: cutLength(at.manifest) }, (_, k) => k + 1)));
 }
 
 /**
@@ -590,7 +605,7 @@ function callsForThePerson(shower, unit) {
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, notesStanding, reviewStanding, reportsIn, reviewGoesOn, everyRead,
+  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, readBuiltBefore, endsReview, fixPhase, notesStanding, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, callsForThePerson, reviewCallFault, inTheBuild,

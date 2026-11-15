@@ -163,13 +163,12 @@ const METHODS = Object.freeze({
  * again adds only what the last left out; and it refuses, adding nothing,
  * a parent the tracker lacks, a task named apart from the name it would
  * take, and a name another task holds. `closePlan` closes a plan the
- * tracker held from before Leeway whose unit built nothing (21.8.4): the
- * root the migration names, by the tracker's own id, takes the unit's name
- * where the unit has none and the root no name of the engine's, and each
- * task under it holding no task of its own, neither done nor closed, is
- * closed with the reason given, the parents ended by the tracker, so the
- * phases the build writes take names none of it holds; it answers how many
- * it closed, a run again closing none. `removePhase` takes a phase written out of the tracker for good,
+ * tracker held from before Leeway whose unit built nothing (21.8.4): under
+ * the root the migration names, by the tracker's own id, each task holding
+ * no task of its own, neither done nor closed, is closed with the reason
+ * given, the parents ended by the tracker, the plan given no name of the
+ * engine's, so the unit's parent and the phases the build writes are made
+ * afresh; it answers how many it closed, a run again closing none. `removePhase` takes a phase written out of the tracker for good,
  * every task under it with it and every link to them dropped, so it reads
  * as never written and its number and its tasks' names are made again as
  * new. `add` puts an addition onto a task, after any before it;

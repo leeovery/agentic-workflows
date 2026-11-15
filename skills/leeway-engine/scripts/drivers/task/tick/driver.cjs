@@ -29,7 +29,9 @@
 // by its own rule — open, no blocker the store holds that is not done or
 // cancelled, no child open or in progress, and no ancestor with such a
 // blocker — under the phase, or under every phase of the unit, wherever its
-// parent sits; a task whole is its line, which holds every field Tick's show
+// parent sits; a task's type is its one tag a type of the template's, the
+// person's own tags beside it kept as it takes another, and none where it
+// holds none; a task whole is its line, which holds every field Tick's show
 // gives; and when a task started is its first transition into progress,
 // which the store alone holds. Tick's own ids in a refusal it makes are put
 // in the engine's words. A task's text is its
@@ -56,11 +58,10 @@
 // holding another of the engine's names, a name another task holds, and a
 // task holding as many refs as Tick keeps on one, ten, are refused before
 // anything is added. A plan whose unit built nothing is closed under its
-// root (21.8.4): the root takes the unit's name, as above, and each task
-// under it holding no task of its own, neither done nor cancelled, is
-// cancelled with the reason, Tick ending the parents itself, so a phase
-// the build writes later reopens the root Tick ended and the plan's phases
-// take none of the build's names.
+// root (21.8.4): each task under the root holding no task of its own,
+// neither done nor cancelled, is cancelled with the reason, Tick ending the
+// parents itself, and the plan keeps no name of the engine's — history,
+// the build making its own unit's parent as it writes its first phase.
 //
 // The store's merge between two clones is merge.cjs's, given the driver's
 // names for what the store holds. It is loaded only as the store merges:
@@ -81,6 +82,7 @@ const { workUnitNameRefusal } = require('../../../kernel/manifest-schema.cjs');
 const {
   taskId, stepOfId, shownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
 } = require('../../../domain/task-id.cjs');
+const { TASK_TYPES } = require('../../../domain/task-file.cjs');
 
 /** @typedef {import('../../../domain/drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('../../../domain/drivers.cjs').TaskStatus} TaskStatus */
@@ -331,8 +333,14 @@ function add(root, ref, { by, text }) {
 
 /** @param {string} root @param {TaskRef} ref @param {string} type */
 function setType(root, ref, type) {
-  tick(root, ['update', idOf(idsIn(root), taskRef(ref)), '--tags', type]);
+  const ids = idsIn(root);
+  const id = idOf(ids, taskRef(ref));
+  const others = (/** @type {Held} */ (ids.held.get(id)).tags ?? []).filter((tag) => !TASK_TYPES.includes(tag));
+  tick(root, ['update', id, '--tags', [type, ...others].join(',')]);
 }
+
+/** A task's type: its tag that is a type of the template's, null where it holds none. @param {Held} task */
+const typeOf = ({ tags = [] }) => tags.find((tag) => TASK_TYPES.includes(tag)) ?? null;
 
 /** @param {string} root @param {TaskRef} task @param {TaskRef} after */
 function link(root, task, after) {
@@ -433,7 +441,6 @@ function adopt(root, unit, phase, parent) {
 function closePlan(root, unit, parent, reason) {
   const ids = idsIn(root);
   if (!ids.held.has(parent)) throw new Error(`the tracker holds no task ${parent} to close as the root of a plan from before Leeway of ${unitName(unit)}`);
-  if (!ids.byRef.has(unitRef(unit)) && !ids.byId.has(parent)) giveNames(root, ids, [[parent, unitRef(unit)]]);
   const open = descendants(ids, parent).filter(({ id, status }) => (ids.children.get(id) ?? []).length === 0 && status !== 'done' && status !== 'cancelled');
   for (const { id } of open) {
     tick(root, ['note', 'add', id, '--', `${CLOSED}${reason}`]);
@@ -480,7 +487,7 @@ function detailOf(ids, ref, task) {
     ref,
     title: task.title,
     status,
-    type: task.tags?.[0] ?? null,
+    type: typeOf(task),
     text: task.description ?? '',
     additions: notes.flatMap((held) => {
       const added = ADDED.exec(held.text);

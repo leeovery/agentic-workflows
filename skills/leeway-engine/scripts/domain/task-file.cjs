@@ -112,6 +112,9 @@ function fieldOf(text, field) {
   return bodies.length === 1 && bodies[0] !== '' ? bodies[0] : null;
 }
 
+/** What a task does, as a screen says it: its Outcome as written, else its text whole. @param {string} text */
+const outcomeOf = (text) => fieldOf(text, 'Outcome') ?? text.trim();
+
 /**
  * The spec reference a task's text holds, as written; null where it holds
  * none, or more than one.
@@ -180,4 +183,4 @@ function criterionScenario(criterion) {
   return OPENING_ID.exec(criterion)?.[1] ?? null;
 }
 
-module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };
+module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, outcomeOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };

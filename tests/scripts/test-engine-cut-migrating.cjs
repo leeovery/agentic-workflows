@@ -1,41 +1,47 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine cut <unit> --migrating --file <plan.json>` and `engine task adopt`
-// (leeway-engine/scripts/domain/cut-migrating.cjs, task-verbs.cjs; 21.7.1,
-// 21.8.4–21.8.8, 21.5.21, 11.5.8, 11.5.9, P3, E6, E13): a unit whose
-// building started cut by the migration, its plan applied whole — its old
-// plans' phases the cut, the built ones name, goal and built, the
-// unfinished ones their scenarios, written into the joined spec's block for
-// their area, their sections and what they rely on; each phase's tracker
-// parent adopted, every task's id and tracker state as they stood but the
-// type of each not ended, and the tasks of the phases not built it holds
-// done named done before; the notes for later written whole; the build
-// begun in step and the old plan's items gone; all held for the migration's
-// commit, then the unit marked. The unit read after as the build reads it:
-// its built phases merged and closed, with no checklist, in the build's
-// standing, its progress and its review's fix numbering; its joined spec's
-// areas on the board's section page, in the task writer's and builder's
-// briefs and as the review's areas; concluded from the move on, before any
-// cut, for the spec's land and the layout's hook. A plan
-// marking built a phase with a task open refused, the tracker winning; every
-// refusal of the verb's own writing nothing — outside the migration, a unit
-// marked or not joined, a plan of another shape or whose cut the spec
-// refuses; and a run killed at each of its writes run again to what a whole
-// run leaves. `task adopt` in the migration alone: a phase of a building
-// unit's plan adopted; the plan of a unit that built nothing closed under
-// its root, a bugfix's reproducing task among its tasks, the build's first
-// phase then written free of it (21.8.4); a quick-fix's tasks typed fix
-// (21.5.21). A completed and a cancelled unit the move leaves as history,
-// keeping no item of the old plan and waiting on no cut (21.8.11).
+// `engine cut <unit> --migrating --file <plan.json>`, `engine task adopt`
+// and `engine task close-plan` (leeway-engine/scripts/domain/cut-migrating.cjs,
+// task-verbs.cjs; 21.7.1, 21.8.4–21.8.8, 21.5.21, 11.5.8, 11.5.9, P3, E6,
+// E13): a unit whose building started cut by the migration, its plan
+// applied whole — its old plans' phases the cut, the built ones name, goal
+// and built, the unfinished ones their scenarios, written into the joined
+// spec's block for their area, their sections and what they rely on; each
+// phase's tracker parent adopted, every task's id and tracker state as they
+// stood but the type of each not ended, its other tags kept; the tasks of
+// the phases not built it holds done named done before, a cancelled one
+// not among them; the areas each task of them not ended cites by an old
+// spec's path, in each of its forms, recorded, a path naming another unit
+// citing none; the notes for later written whole; the build begun in step
+// and the old plan's items gone; all held for the migration's commit, then
+// the unit marked. The unit read after as the build reads it: its built
+// phases merged and closed, with no checklist, in the build's standing, its
+// progress, an adopted phase written, and its review's fix numbering; an
+// area built before the migration told from one a phase built since places
+// or a task of it cites; its joined spec's areas on the board's section
+// page, in the task writer's and builder's briefs and as the review's
+// areas; concluded from the move on, before any cut, for the spec's land
+// and the layout's hook. A plan marking built a phase with a task open
+// refused, the tracker winning; a link holding a task not ended after an
+// unfinished one of a later phase or another unit's refused, naming each;
+// every refusal of the verb's own writing nothing — outside the migration,
+// a unit marked or not joined, a plan of another shape or whose cut the
+// spec refuses; a run killed at each of its writes run again to what a
+// whole run leaves, and a run again whose plan holds no notes taking away
+// those a run before wrote. `task adopt` in the migration alone: a phase of
+// a building unit's plan adopted. `task close-plan` in the migration alone:
+// the plan of a unit that built nothing closed under its root, a bugfix's
+// reproducing task among its tasks, the build's first phase then written
+// free of it (21.8.4); a unit whose spec the migration joined refused. A
+// quick-fix's tasks typed fix (21.5.21).
 //
 // Layer: verb, the kills spawned. World: a project in today's layout — an
 // epic of two specs, one built and one partly, a feature built with its
-// review owed, a feature and a bugfix with nothing built, each with its old
-// plan in the project's tracker, and a completed and a cancelled feature —
-// moved by the real move (078), so the specs are joined as the move joins
-// them; made once and copied for each test. The
-// tracker is the default task driver's, its side the one place it is named.
+// review owed, and a feature and a bugfix with nothing built, each with its
+// old plan in the project's tracker — moved by the real move (078)
+// (migrated-world.cjs), so the specs are joined as the move joins them;
+// made once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -46,20 +52,17 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { ok, refuses, okSections, git, initRepo, createFile, statePath, readState, writeState, cleanupFixture, killedAt } = harness;
+const { ok, refuses, okSections, git, statePath, readState, writeState, cleanupFixture, killedAt } = harness;
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const { SESSION, stateUnborn, refusedUntouched } = require('./migration-world.cjs');
+const { DRIVER, SIDE, oldTask, movedProject } = require('./migrated-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { markPath, migratedType } = require(path.join(SCRIPTS, 'domain/cut-migrating.cjs'));
-const { awaitsCut } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
-const MOVE = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
+const { areaBuiltBefore } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
 
-const DRIVER = /** @type {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').TaskDriver} */ (listDrivers('task').find(({ isDefault }) => isDefault));
-const SIDE = require(path.join(__dirname, '../drivers', DRIVER.name, 'task.cjs'));
 const HELD = 'held for the migration\'s commit';
 
 const OLD_SHOP = {
@@ -89,17 +92,6 @@ const feature = (name, building) => ({
   },
 });
 
-/** A unit finished or given up: its building done, its old plan's items standing. @param {string} name @param {string} type @param {string} status */
-const history = (name, type, status) => ({
-  name, work_type: type, status, description: name, created: '2026-01-01',
-  phases: {
-    discussion: { items: { [name]: { status: 'completed' } } },
-    specification: { items: { [name]: { status: 'completed' } } },
-    planning: { items: { [name]: { status: 'completed', format: 'sample-format' } } },
-    implementation: { items: { [name]: { status: 'completed' } } },
-  },
-});
-
 /** A bugfix whose investigation and spec concluded and whose plan was written, nothing built. */
 const CRASH = {
   name: 'crash', work_type: 'bugfix', status: 'in-progress', description: 'crash', created: '2026-01-01',
@@ -113,7 +105,7 @@ const CRASH = {
 const OLD = {
   'README.md': '# Shop\n',
   '.workflows/manifest.json': jsonText({
-    work_units: Object.fromEntries([['shop', 'epic'], ['tally', 'feature'], ['memo', 'feature'], ['crash', 'bugfix'], ['done', 'feature'], ['gone', 'feature']].map(([name, type]) => [name, { work_type: type }])),
+    work_units: Object.fromEntries([['shop', 'epic'], ['tally', 'feature'], ['memo', 'feature'], ['crash', 'bugfix']].map(([name, type]) => [name, { work_type: type }])),
   }),
   '.workflows/shop/manifest.json': jsonText(OLD_SHOP),
   '.workflows/shop/discussion/cart.md': '# Discussion: Cart\n',
@@ -129,12 +121,6 @@ const OLD = {
   '.workflows/crash/manifest.json': jsonText(CRASH),
   '.workflows/crash/investigation/crash.md': '# Investigation: Crash\n',
   '.workflows/crash/specification/crash/specification.md': '# Specification: Crash\n\n## The fix\n\nNo crash on save.\n',
-  '.workflows/done/manifest.json': jsonText(history('done', 'feature', 'completed')),
-  '.workflows/done/discussion/done.md': '# Discussion: Done\n',
-  '.workflows/done/specification/done/specification.md': '# Specification: Done\n\n## Done\n\nAll of it.\n',
-  '.workflows/gone/manifest.json': jsonText(history('gone', 'feature', 'cancelled')),
-  '.workflows/gone/discussion/gone.md': '# Discussion: Gone\n',
-  '.workflows/gone/specification/gone/specification.md': '# Specification: Gone\n\n## Gone\n\nNone of it.\n',
 };
 
 /** The joined spec the move writes for the epic. */
@@ -154,35 +140,34 @@ const NOTES = [
   'The manifest credits task 4.2 as done, and the tracker holds it in progress — the tracker\'s state stands.',
 ];
 
-/** @typedef {{root: string, phases: string[]}} OldPlan */
-/** The tracker's ids of each old plan's root and phases, the same in every copy of the world. @type {{cart: OldPlan, pay: OldPlan, tally: OldPlan, memo: OldPlan, crash: OldPlan}} */
+/** @typedef {import('./migrated-world.cjs').OldPlan} OldPlan */
+/** The tracker's ids of each old plan's root and phases, the same in every copy of the world. @type {Record<'cart'|'pay'|'tally'|'memo'|'crash', OldPlan>} */
 let PLANS;
 
 /** @param {string} dir */
 function buildWorld(dir) {
-  initRepo(dir);
-  for (const [rel, text] of Object.entries(OLD)) createFile(dir, rel, text);
-  SIDE.projectStore(dir);
-  const plans = {
-    cart: SIDE.oldPlan(dir, 'cart', [{ title: 'The cart', tasks: ['Hold items', 'Show the cart'] }, { title: 'Saving', tasks: ['Save the cart', 'Share the cart'] }]),
-    pay: SIDE.oldPlan(dir, 'pay', [
+  return movedProject(dir, OLD, {
+    cart: [{ title: 'The cart', tasks: ['Hold items', 'Show the cart'] }, { title: 'Saving', tasks: ['Save the cart', 'Share the cart'] }],
+    pay: [
       { title: 'Cards', tasks: ['Take a card'] },
-      { title: 'Charges', tasks: ['Charge the card', 'Refund a charge', 'Email a receipt'] },
-      { title: 'Export', tasks: ['Export payments'] },
-    ]),
-    tally: SIDE.oldPlan(dir, 'tally', [{ title: 'Counts', tasks: ['Count a day'] }, { title: 'Totals', tasks: ['Total a week'] }]),
-    memo: SIDE.oldPlan(dir, 'memo', [{ title: 'Memos', tasks: ['Write a memo', 'Pin a memo'] }]),
-    crash: SIDE.oldPlan(dir, 'crash', [{ title: 'The crash', tasks: ['Reproduce the crash', 'Fix the crash'] }]),
-  };
-  for (const [act, title] of [
+      {
+        title: 'Charges',
+        tasks: [
+          { title: 'Charge the card', text: oldTask('Nothing is charged.', '.workflows/specification/pay/specification.md') },
+          { title: 'Refund a charge', text: oldTask('A charge is kept for good.', 'docs/workflow/specification/pay.md') },
+          { title: 'Email a receipt', text: oldTask(`A charge is silent: \`docs/workflow/specification/pay/specification.md\`, and \`.workflows/specification/cart/specification.md\`.`) },
+        ],
+      },
+      { title: 'Export', tasks: [{ title: 'Export payments', text: oldTask('Payments stay in the shop, as till\'s `.workflows/till/specification/cart/specification.md` keeps its carts.', '.workflows/shop/specification/pay/specification.md') }, 'Export as sheets'] },
+    ],
+    tally: [{ title: 'Counts', tasks: ['Count a day'] }, { title: 'Totals', tasks: ['Total a week'] }],
+    memo: [{ title: 'Memos', tasks: ['Write a memo', 'Pin a memo'] }],
+    crash: [{ title: 'The crash', tasks: ['Reproduce the crash', 'Fix the crash'] }],
+  }, [
     ['done', 'Hold items'], ['done', 'Show the cart'], ['done', 'Save the cart'], ['cancel', 'Share the cart'],
-    ['done', 'Take a card'], ['done', 'Charge the card'], ['start', 'Refund a charge'],
+    ['done', 'Take a card'], ['done', 'Charge the card'], ['start', 'Refund a charge'], ['cancel', 'Export as sheets'],
     ['done', 'Count a day'], ['done', 'Total a week'],
-  ]) SIDE.taskByHand(dir, act, title);
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', 'the old layout']);
-  MOVE.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
-  return plans;
+  ]);
 }
 
 /** @type {string|null} */
@@ -261,22 +246,25 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('21.S28: two specs joined, one built and one partly, cut through the verbs — the built plan\'s phases name, goal and built, the unfinished ones their scenarios, sections and relies-on, their scenarios in spec.md\'s block for their area; each phase naming its tracker parent; every task\'s id and tracker state as they stood, each neither done nor closed now typed feat; the build begun in step and the old plan\'s items gone, all held, the unit marked (21.5.21, 11.5.8, 11.5.9, P3)', () => {
+  it('21.S28: two specs joined, one built and one partly, cut through the verbs — the built plan\'s phases name, goal and built, the unfinished ones their scenarios, sections and relies-on, their scenarios in spec.md\'s block for their area; each phase naming its tracker parent; every task\'s id and tracker state as they stood, each neither done nor closed now typed feat beside its other tags; the tasks done before, and the areas each task not ended cites; the build begun in step and the old plan\'s items gone, all held, the unit marked (21.5.21, 11.5.8, 11.5.9, P3)', () => {
     const before = SIDE.apartFromNames(statePath(dir), 'shop', false);
     const plan = shopPlan();
 
     assert.deepStrictEqual(cut('shop', plan), {
       ok: true, unit: 'shop', phases: 5, built: 3,
-      adopted: [{ phase: 1, tasks: ['1.1', '1.2'] }, { phase: 2, tasks: ['2.1', '2.2'] }, { phase: 3, tasks: ['3.1'] }, { phase: 4, tasks: ['4.1', '4.2', '4.3'] }, { phase: 5, tasks: ['5.1'] }],
+      adopted: [{ phase: 1, tasks: ['1.1', '1.2'] }, { phase: 2, tasks: ['2.1', '2.2'] }, { phase: 3, tasks: ['3.1'] }, { phase: 4, tasks: ['4.1', '4.2', '4.3'] }, { phase: 5, tasks: ['5.1', '5.2'] }],
       typed: ['4.2', '4.3', '5.1'], scenarios: 3, notes: 2, committed: null, note: HELD,
     });
     const { phases, spec, cut: written, build } = manifestOf('shop');
-    assert.deepStrictEqual([written, build, Object.keys(phases), spec], [{ phases: plan.phases }, { position: 'step', done_before: ['4.1'] }, ['discovery', 'discussion'], { joined: ['cart', 'pay'] }]);
+    assert.deepStrictEqual([written, Object.keys(phases), spec], [{ phases: plan.phases }, ['discovery', 'discussion'], { joined: ['cart', 'pay'] }]);
+    assert.deepStrictEqual(build, { position: 'step', done_before: ['4.1'], cites: { '4.2': ['2'], '4.3': ['1', '2'], '5.1': ['2'] } },
+      'done before: the done task of a phase not built, never a cancelled one; cites: an old spec by each of its paths, a path naming another unit citing none');
     assert.strictEqual(readState(dir, 'shop/spec.md'), CUT_SPEC);
     assert.deepStrictEqual(SIDE.apartFromNames(statePath(dir), 'shop', false), before);
     assert.deepStrictEqual(tracked('shop', 5), [
-      ['1.1 done api', '1.2 done api'], ['2.1 done api', '2.2 closed api'], ['3.1 done api'], ['4.1 done api', '4.2 in-progress feat', '4.3 open feat'], ['5.1 open feat'],
+      ['1.1 done null', '1.2 done null'], ['2.1 done null', '2.2 closed null'], ['3.1 done null'], ['4.1 done null', '4.2 in-progress feat', '4.3 open feat'], ['5.1 open feat', '5.2 closed null'],
     ]);
+    assert.deepStrictEqual(SIDE.tagsOf(statePath(dir), 'Refund a charge').toSorted(), ['api', 'feat', 'planned'], 'typed, its old tags kept');
     assert.deepStrictEqual([stateUnborn(dir), fs.existsSync(markPath(dir, 'shop'))], [true, true]);
   });
 
@@ -290,15 +278,26 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
       'phase: phase 2 of 5, "Saving": merged — tasks 2.1 done, 2.2 closed',
       'phase: phase 3 of 5, "Cards": merged — tasks 3.1 done',
       'phase: phase 4 of 5, "Charges": written — tasks 4.1 done, 4.2 in progress, 4.3 not started',
-      'phase: phase 5 of 5, "Export": written — tasks 5.1 not started',
+      'phase: phase 5 of 5, "Export": written — tasks 5.1 not started, 5.2 closed',
     ]);
     const menu = harness.output(dir, ['render', 'start-menu'], { env: SESSION }).replace(/\*\n\s+\*/g, ' ');
-    assert.deepStrictEqual(['Tally', 'Shop'].map((title) => new RegExp(`${title} — \\*([^*]+)\\*`).exec(menu)?.[1]), ['waiting on the migration\'s cut', 'build, phase 4 of 5, not yet written']);
+    assert.deepStrictEqual(['Tally', 'Shop'].map((title) => new RegExp(`${title} — \\*([^*]+)\\*`).exec(menu)?.[1]), ['waiting on the migration\'s cut', 'build, phase 4 of 5'],
+      'the phase the build goes on in written, its tasks the old plan\'s');
     for (const end of ['start', 'close']) {
       assert.strictEqual(refuses(dir, ['checklist', 'show', `phase-${end}`, 'shop', '2'], { env: SESSION }).error,
         `checklist show: shop's phase 2 was built before the migration cut it, so it has no checklist to ${end} it`);
     }
     assert.deepStrictEqual(ok(dir, ['checklist', 'show', 'phase-start', 'shop', '4'], { env: SESSION }).items.find(({ key }) => key === 'relies-on-done').state, 'done');
+  });
+
+  it('tells an area built before the migration — no task left to land placed on it, by its phase or by its citation — from one a task left to land cites, a closed one placing nothing (21.8.8)', () => {
+    cut('shop', shopPlan());
+    const root = statePath(dir);
+    const before = () => ['1', '2'].map((area) => areaBuiltBefore(manifestOf('shop'), area, [1, 2, 3, 4, 5].map((phase) => DRIVER.list(root, 'shop', phase))));
+    const citing = before();
+    ok(dir, ['task', 'close', 'shop', '4.3', '--reason', 'The receipt waits for the shop\'s logo.'], { env: SESSION });
+
+    assert.deepStrictEqual([citing, before()], [[false, false], [true, false]]);
   });
 
   it('reads the joined spec as joined: an area whole on the board\'s section page and in the task writer\'s brief, an area a builder\'s task cites in its brief, the spec complete on the board', () => {
@@ -346,7 +345,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.strictEqual(refuses(dir, cutArgs('shop', { ...built, scenarios: { 2: [SCENARIOS[2]] }, phases: built.phases.map((phase, at) => (at === 4 ? { ...phase, scenarios: ['2.S1'] } : phase)) }), { env: SESSION }).error,
       'phase 4 is marked built, and the tracker holds task 4.2, task 4.3 neither done nor closed — the tracker wins: a phase built has every task ended');
     assert.deepStrictEqual([readState(dir, 'shop/spec.md'), readState(dir, 'shop/manifest.json'), fs.existsSync(markPath(dir, 'shop')), stateUnborn(dir)], [spec, manifest, false, true]);
-    assert.deepStrictEqual(tracked('shop', 4)[3], ['4.1 done api', '4.2 in-progress api', '4.3 open api']);
+    assert.deepStrictEqual(tracked('shop', 4)[3], ['4.1 done null', '4.2 in-progress null', '4.3 open null']);
 
     cut('shop', plan);
     assert.deepStrictEqual([readState(dir, 'shop/build/notes.md'), DRIVER.show(statePath(dir), { unit: 'shop', phase: 4, n: 2 })?.status],
@@ -362,10 +361,31 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.ok(!/staging|bank/.test(readState(dir, 'shop/manifest.json')), 'no staging, banked finding or old item stands on the manifest');
   });
 
-  it('runs only while the migration does, as `task adopt` does, writing nothing outside it (E13)', () => {
+  it('refuses, the names given kept and nothing else written, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up', () => {
+    const root = statePath(dir);
+    for (const [unit, parent] of [['memo', PLANS.memo.phases[0]], ['tally', PLANS.tally.phases[0]]]) ok(dir, ['task', 'adopt', unit, '1', '--parent', parent], { env: SESSION });
+    for (const [title, after] of [['Refund a charge', 'Export payments'], ['Email a receipt', 'Take a card'], ['Email a receipt', 'Write a memo'], ['Refund a charge', 'Count a day'], ['Charge the card', 'Export payments']]) SIDE.linkBy(root, title, after);
+    const spec = readState(dir, 'shop/spec.md');
+    const manifest = readState(dir, 'shop/manifest.json');
+
+    assert.strictEqual(refuses(dir, cutArgs('shop', shopPlan()), { env: SESSION }).error, [
+      'task 4.2 is held after task 5.1, of a later phase — a task waits on its own phase\'s or an earlier one\'s alone, so 4.2 would never start: cut the phases in the order the link holds, or take the link off in the tracker',
+      'task 4.3 is held after task 1.1 of memo, another unit\'s — a task waits on its own unit\'s alone, so 4.3 would never start: take the link off in the tracker',
+    ].join('; '));
+    assert.deepStrictEqual([readState(dir, 'shop/spec.md'), readState(dir, 'shop/manifest.json'), fs.existsSync(markPath(dir, 'shop')), stateUnborn(dir)], [spec, manifest, false, true]);
+    assert.deepStrictEqual(tracked('shop', 5)[3], ['4.1 done null', '4.2 in-progress null', '4.3 open null']);
+  });
+
+  it('a run again whose plan holds no notes takes away the notes a run killed before its mark wrote', () => {
+    writeState(dir, 'shop/build/notes.md', '## Note 1\n\nWritten by a run killed before its mark.\n');
+    cut('shop', { ...shopPlan(), notes: [] });
+    assert.strictEqual(fs.existsSync(statePath(dir, 'shop/build/notes.md')), false);
+  });
+
+  it('runs only while the migration does, as `task adopt` and `task close-plan` do, writing nothing outside it (E13)', () => {
     migrationDone();
     const head = git(statePath(dir), ['rev-parse', 'HEAD']);
-    const outside = [cutArgs('shop', shopPlan()), ['task', 'adopt', 'memo', '1', '--parent', PLANS.memo.phases[0]]].map((args) => {
+    const outside = [cutArgs('shop', shopPlan()), ['task', 'adopt', 'memo', '1', '--parent', PLANS.memo.phases[0]], ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]].map((args) => {
       const before = harness.treeSnapshot(dir);
       const { error } = refuses(dir, args, { env: SESSION });
       assert.deepStrictEqual(harness.treeSnapshot(dir), before, `engine ${args.join(' ')} wrote on refusing`);
@@ -374,7 +394,8 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
 
     assert.deepStrictEqual(outside, [
       'cut: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done',
-      'a plan from before Leeway is adopted only while the migration runs — the state branch has its first commit, so the migration is done',
+      'a plan from before Leeway is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
+      'a plan from before Leeway is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
     ]);
     assert.strictEqual(git(statePath(dir), ['rev-parse', 'HEAD']), head);
   });
@@ -425,7 +446,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
   });
 });
 
-describe('a plan from before Leeway adopted through the task verbs (21.8.8, 21.8.4)', () => {
+describe('a plan from before Leeway taken in through the task verbs (21.8.8, 21.8.4)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
@@ -437,11 +458,11 @@ describe('a plan from before Leeway adopted through the task verbs (21.8.8, 21.8
     assert.deepStrictEqual(ok(dir, args, { env: SESSION }), { ok: true, phase: 4, parent: PLANS.pay.phases[1], tasks: ['4.1', '4.2', '4.3'], committed: null, note: HELD });
     const once = store();
     assert.deepStrictEqual([ok(dir, args, { env: SESSION }).tasks, store()], [['4.1', '4.2', '4.3'], once]);
-    assert.deepStrictEqual([tracked('shop', 4)[3], stateUnborn(dir)], [['4.1 done api', '4.2 in-progress api', '4.3 open api'], true]);
+    assert.deepStrictEqual([tracked('shop', 4)[3], stateUnborn(dir)], [['4.1 done null', '4.2 in-progress null', '4.3 open null'], true]);
   });
 
-  it('closes the plan of a unit that built nothing under its root, each task not ended with the migration\'s reason, its phases none of the build\'s — the build\'s first phase written after it — a run again closing nothing (21.8.4)', () => {
-    const args = ['task', 'adopt', 'memo', '--parent', PLANS.memo.root];
+  it('closes the plan of a unit that built nothing under its root, each task not ended with the migration\'s reason, the plan none of the build\'s — the build\'s first phase written after it — a run again closing nothing (21.8.4)', () => {
+    const args = ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root];
     assert.deepStrictEqual(ok(dir, args, { env: SESSION }), { ok: true, parent: PLANS.memo.root, closed: 2, committed: null, note: HELD });
     const reason = 'closed by the migration — nothing of its unit was built, so the unit\'s build is planned afresh from its spec';
     assert.deepStrictEqual(SIDE.planStanding(statePath(dir), 'memo'), { 'Write a memo': ['closed', reason], 'Pin a memo': ['closed', reason] });
@@ -452,24 +473,16 @@ describe('a plan from before Leeway adopted through the task verbs (21.8.8, 21.8
   });
 
   it('closes a nothing-built bugfix\'s plan whole, its first task, the reproducing one, among them (21.8.4)', () => {
-    assert.strictEqual(ok(dir, ['task', 'adopt', 'crash', '--parent', PLANS.crash.root], { env: SESSION }).closed, 2);
+    assert.strictEqual(ok(dir, ['task', 'close-plan', 'crash', '--parent', PLANS.crash.root], { env: SESSION }).closed, 2);
     assert.deepStrictEqual(Object.values(SIDE.planStanding(statePath(dir), 'crash')).map(([status]) => status), ['closed', 'closed']);
+  });
+
+  it('refuses, closing nothing, the plan of a unit whose spec the migration joined, its building started (21.8.4)', () => {
+    assert.strictEqual(untouched(['task', 'close-plan', 'shop', '--parent', PLANS.pay.root]),
+      'shop\'s building started before the migration — its specs joined, its plan carried on by its cut — so its plan is not closed: cut shop --migrating --file <plan.json>');
   });
 
   it('types a quick-fix\'s tasks fix, as a bugfix\'s, and any other unit\'s feat (21.5.21)', () => {
     assert.deepStrictEqual(['quick-fix', 'bugfix', 'feature', 'epic'].map(migratedType), ['fix', 'fix', 'feat', 'feat']);
-  });
-});
-
-describe('the units the move leaves as history (21.8.11)', () => {
-  beforeEach(() => { dir = world(); });
-  afterEach(() => cleanupFixture(path.dirname(dir)));
-
-  it('a completed and a cancelled unit keep no item of the old plan, their specs joined, and wait on no cut', () => {
-    for (const unit of ['done', 'gone']) {
-      const { phases, spec } = manifestOf(unit);
-      assert.deepStrictEqual([Object.keys(phases), spec], [['discussion'], { joined: [unit] }], unit);
-    }
-    assert.deepStrictEqual(['done', 'gone'].map((unit) => awaitsCut(manifestOf(unit))), [false, false]);
   });
 });

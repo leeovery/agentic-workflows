@@ -22,16 +22,18 @@
 // ended in the tracker, cancelled or done — a parent the tracker ended itself
 // is reopened. A plan the tracker held from before Leeway adopted phase by
 // phase (21.8.8): the engine's names added in the order the tracker made
-// its tasks, the unit's on the plan's root where it is free, nothing else
-// of a task changed and nothing made or reopened; a run again adding only
-// what the last left out; a parent the tracker lacks, a task named apart, a
-// name held elsewhere and a task holding all the refs the tracker keeps on
-// one refused, adding nothing; and ready across every
-// phase of the unit wherever its parent sits. A plan whose unit built
-// nothing closed under its root (21.8.4): each task neither done nor closed
-// closed with the reason, the root the unit's, the build's first phase then
-// written under it; a run again closing nothing; a root the tracker lacks
-// refused. 7.S5: the shipped task drivers are exactly one, the default.
+// its tasks, the unit's on the plan's root where it is free — a root
+// another unit's taking none — nothing else of a task changed and nothing
+// made or reopened; a task's type its tag of the template's types, its
+// other tags kept as it takes one; a run again adding only what the last
+// left out; a parent the tracker lacks, a task named apart, a name held
+// elsewhere and a task holding all the refs the tracker keeps on one
+// refused, adding nothing; and ready across every phase of the unit
+// wherever its parent sits. A plan whose unit built nothing closed under
+// its root (21.8.4): each task neither done nor closed closed with the
+// reason, the plan given no name of the engine's, the build's first phase
+// then written under a parent of its own; a run again closing nothing; a
+// root the tracker lacks refused. 7.S5: the shipped task drivers are exactly one, the default.
 // The store merged between two clones (7.5.5–7.5.7): each side's changes
 // kept, a field both set differently the person's choice in the engine's
 // words, a name both made the remote's, this machine's set aside and named,
@@ -463,8 +465,16 @@ for (const driver of listDrivers('task')) {
           const tool = side.toolAnswers(root, OLD, phase);
           assert.deepStrictEqual({ list: phase === null ? tool.list : driver.list(root, OLD, phase), ready: driver.ready(root, OLD, phase) }, tool, `phase ${phase}`);
         }
+      });
+
+      it('a task\'s type is its tag of the template\'s types — the old plan\'s own tags never read as one — and it takes a type with its other tags kept (21.8.8)', () => {
+        adoptBoth();
+        const typed = () => [driver.show(root, old(2, 2))?.type, side.tagsOf(root, 'Count the till').toSorted()];
+        const before = typed();
         driver.setType(root, old(2, 2), 'fix');
-        assert.deepStrictEqual(driver.show(root, old(2, 2))?.type, 'fix');
+        const fixed = typed();
+        driver.setType(root, old(2, 2), 'feat');
+        assert.deepStrictEqual([before, fixed, typed()], [[null, ['api', 'planned']], ['fix', ['api', 'fix', 'planned']], ['feat', ['api', 'feat', 'planned']]]);
       });
 
       it('adds to what each task holds, changing nothing else — its status, its history, its type and the old plan\'s refs — and makes and reopens nothing', () => {
@@ -493,6 +503,12 @@ for (const driver of listDrivers('task')) {
         assert.deepStrictEqual(shown(driver.ready(root, OLD, null)), ['2.1', '3.1']);
       });
 
+      it('a plan\'s root another unit\'s already takes no second name: the phase and its tasks are named, the root left as it is', () => {
+        driver.adopt(root, 'shop-extras', 1, plan.phases[1]);
+        assert.deepStrictEqual(driver.adopt(root, OLD, 1, plan.phases[0]), [old(1, 1), old(1, 2), old(1, 3)]);
+        assert.deepStrictEqual([driver.createUnit(root, 'shop-extras'), driver.createUnit(root, OLD)], [false, true]);
+      });
+
       it('refuses, adding nothing, a parent the tracker lacks, a task named apart from the name it would take, a name another task holds, and a task holding all the refs the tracker keeps on one', () => {
         for (const [setUp, phase, parent, named] of /** @type {const} */ ([
           [() => {}, 1, () => 'no-such-task', [phaseName(OLD, 1)]],
@@ -510,14 +526,14 @@ for (const driver of listDrivers('task')) {
       describe('closePlan (21.8.4): the plan of a unit that built nothing closed under its root', () => {
         const REASON = 'its unit built nothing';
 
-        it('closes each task neither done nor closed with the reason, naming the root the unit, the parents ended by the tracker — so the build\'s first phase is written under the root, its names the plan\'s none', () => {
+        it('closes each task neither done nor closed with the reason, the parents ended by the tracker, the plan given no name of the engine\'s — so the build\'s first phase is written under a parent of its own, its names the plan\'s none', () => {
           assert.strictEqual(driver.closePlan(root, OLD, plan.root, REASON), 3);
           const closed = ['closed', REASON];
           assert.deepStrictEqual(side.planStanding(root, OLD), {
             'Hold the basket': ['done', null], 'Price the basket': ['done', null], 'Empty the basket': ['closed', null],
             'Open the till': closed, 'Count the till': closed, 'Close the till': closed,
           });
-          assert.deepStrictEqual([driver.list(root, OLD, 1), driver.createUnit(root, OLD)], [null, false]);
+          assert.deepStrictEqual([driver.list(root, OLD, 1), driver.createUnit(root, OLD)], [null, true]);
           driver.createPhase(root, OLD, 1, 'The basket, afresh');
           driver.createTask(root, old(1, 1), task('Hold the basket afresh'));
           assert.deepStrictEqual(driver.list(root, OLD, 1), side.toolAnswers(root, OLD, 1).list);

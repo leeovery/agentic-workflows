@@ -139,22 +139,28 @@
 //     `assets/reviews/{topic}/`, names kept; a spec goes to
 //     `assets/specs/{topic}.md` where the unit's building has not started —
 //     an implementation item in progress or completed; where it has, every
-//     live spec — not cancelled, superseded, promoted or postponed — is
-//     joined into `spec.md`, read from the working tree (21.8.5, E5): each
+//     spec past its gate — its item completed — is joined into `spec.md`,
+//     read from the working tree (21.8.5, E5): each
 //     one area, `## N. {title}`, in build order, by the old order and then,
 //     for a spec with none, in the order its manifest lists them; its title
 //     its first line's after `Specification:`, or its topic's name where it
 //     opens with no title; its words kept but for each heading outside a
-//     fenced block, as the spec's reader reads one, demoted below the
-//     parts' level — level 4 at least, two deeper where it can go — a
-//     fenced block it leaves open closed, so the next area reads, and its
+//     fenced block, as the spec's reader reads one — opened by a line
+//     holding, at any indent, three backticks or tildes at least, and closed
+//     by one holding as many of that mark at least and nothing else
+//     (spec-sections.cjs, `fences`) — demoted below the parts' level, level
+//     4 at least, two deeper where it can go, a fenced block it leaves open
+//     closed by its own mark, so the next area reads, and its
 //     links to the imports pointed from `spec.md`; the spec titled with the
 //     unit's name, and its manifest naming the topics joined, area by area,
 //     `spec: {joined: [topic, …]}`, which every reader of it reads
 //     (spec-sections.cjs), an old task's citation of its topic's spec read
 //     through its area (brief-records.cjs) — the
 //     migration's cut adds its scenarios (cut-migrating.cjs) — and the
-//     unit's other specs going to `assets/specs/`; a quick-fix's spec goes to `assets/specs/` whatever its building, and
+//     unit's other specs going to `assets/specs/`, a spec still being
+//     written, its item in progress, among them, its item going so its
+//     topics are decided topics in no spec, which leave the unit (21.8.9);
+//     a quick-fix's spec goes to `assets/specs/` whatever its building, and
 //     once the quick-fix is completed — its status says so, or every phase
 //     of its old pipeline, scoping, implementation and review, completed,
 //     whatever its status reads — its spec is its `summary.md` and its plan
@@ -191,7 +197,8 @@
 // fresh once its topics are decided (21.8.2, 21.8.3); a unit completed or
 // cancelled keeps no spec, planning or implementation items either, history
 // that waits on no cut (21.8.11); a unit whose building started keeps them
-// for the cut and the merges, and a quick-fix's scoping keeps its own. An epic's topics are on its map — one that was not in
+// for the cut and the merges, but the item of a spec still being written,
+// and a quick-fix's scoping keeps its own. An epic's topics are on its map — one that was not in
 // progress when 038 seeded the maps gains them from its discussions — each
 // holding its place in the order: a topic with no order, as 038 left every
 // one, takes the next after the highest the map uses, in the order its old
@@ -319,12 +326,16 @@ const CARRIED = { imports: 'assets', seeds: 'seeds' };
 const DROP = Symbol('drop');
 // A building unit's specs, joined (21.8.5).
 const JOINED_SPEC = 'spec.md';
-// The specs a building unit joins none of: those its build order left out.
-const UNJOINED_SPECS = ['cancelled', 'superseded', 'promoted', 'postponed'];
+// The spec a building unit joins: one past its gate.
+const CONCLUDED_SPEC = 'completed';
+// A spec still being written, whose item a building unit drops.
+const WRITTEN_SPEC = 'in-progress';
 const SPEC_TITLE = /^# (?:Specification: )?(.*\S)\s*$/;
-// A heading and a fence as the spec's reader reads them: at the line's start.
+// A heading as the spec's reader reads one, at the line's start; a fence's
+// mark, at any indent, which closes the fence it opens on a line of as many
+// at least and nothing else.
 const SPEC_HEADING = /^(#{1,6})(?= |$)/;
-const SPEC_FENCE = /^```/;
+const SPEC_FENCE = /^[ \t]*(`{3,}|~{3,})/;
 
 const IMPORT_LINK = /(?:\.\.\/)+imports\/([A-Za-z0-9._-]+)/g;
 const MAILBOX_MESSAGE = /^(research|discussion|investigation)\/\.mailbox\/([^/]+)\/([^/]+\.md)$/;
@@ -630,6 +641,7 @@ function reshapedManifest(manifest, topics) {
     for (const name of Object.keys(experiments)) if (!topics.has(name)) delete experiments[name];
     if (quickFixDone(manifest)) for (const phase of QUICK_FIX_SPENT) delete out.phases[phase];
     if (writtenFresh(manifest)) for (const phase of ['specification', 'planning']) delete out.phases[phase];
+    else if (!isQuickFix(manifest)) dropWrittenSpecs(out);
     if (history(manifest)) for (const phase of OLD_PLAN) delete out.phases[phase];
     if (out.work_type === 'epic') mapTopics(out);
     if (out.work_type === 'epic' && Object.keys(itemsOf(out, 'discovery')).length > 0) out.phases.discovery.approved_at = createdAt(manifest);
@@ -637,6 +649,12 @@ function reshapedManifest(manifest, topics) {
   if (Array.isArray(out.imports)) out.imports = out.imports.map(asAsset);
   if (quickFixDone(manifest) && manifest.status !== 'cancelled') out.status = 'completed';
   return out;
+}
+
+/** A unit's spec items still being written taken off, its topics decided in no spec (21.8.9). @param {Record<string, any>} out */
+function dropWrittenSpecs(out) {
+  const specs = itemsOf(out, 'specification');
+  for (const [topic, item] of Object.entries(specs)) if (isObject(item) && item.status === WRITTEN_SPEC) delete specs[topic];
 }
 
 /** An `imports[]` entry, its path following its file into `assets/`. @param {unknown} entry */
@@ -921,9 +939,9 @@ function deliveryPlace(move, top, topic, below) {
 
 /**
  * The topics whose specs a unit whose building started joins, in build
- * order: its live spec items with a spec, by their order, then those with
- * none in the order the manifest lists them; none for any other unit, a
- * quick-fix among them.
+ * order: its spec items past their gate with a spec, by their order, then
+ * those with none in the order the manifest lists them; none for any other
+ * unit, a quick-fix among them.
  * @param {Record<string, any>} manifest @param {string[]} files unit-relative
  * @returns {string[]}
  */
@@ -931,7 +949,7 @@ function joinedTopics(manifest, files) {
   if (isQuickFix(manifest) || !buildingStarted(manifest)) return [];
   const orderOf = (/** @type {Record<string, any>} */ item) => (Number.isInteger(item.order) ? item.order : Infinity);
   return Object.entries(itemsOf(manifest, 'specification'))
-    .filter(([topic, item]) => isObject(item) && !UNJOINED_SPECS.includes(item.status) && files.includes(`specification/${topic}/specification.md`))
+    .filter(([topic, item]) => isObject(item) && item.status === CONCLUDED_SPEC && files.includes(`specification/${topic}/specification.md`))
     .map(([topic, item], at) => ({ topic, order: orderOf(item), at }))
     .sort((a, b) => a.order - b.order || a.at - b.at)
     .map(({ topic }) => topic);
@@ -939,17 +957,24 @@ function joinedTopics(manifest, files) {
 
 /**
  * An old spec's lines below its title, each heading outside a fenced block
- * demoted below the parts' level, and a fenced block left open closed.
+ * demoted below the parts' level, and a fenced block left open closed by
+ * its own mark (the header's).
  * @param {string[]} rows
  */
 function belowParts(rows) {
-  let fenced = false;
+  /** @type {string|null} */
+  let fence = null;
   const demotedRows = rows.map((row) => {
-    if (SPEC_FENCE.test(row)) fenced = !fenced;
-    const heading = fenced ? null : SPEC_HEADING.exec(row);
+    const mark = SPEC_FENCE.exec(row)?.[1];
+    if (fence === null && mark !== undefined) fence = mark;
+    else if (fence !== null && mark !== undefined && mark[0] === fence[0] && mark.length >= fence.length && row.trim() === mark) {
+      fence = null;
+      return row;
+    }
+    const heading = fence === null ? SPEC_HEADING.exec(row) : null;
     return heading === null ? row : `${'#'.repeat(Math.min(6, Math.max(4, heading[1].length + 2)))}${row.slice(heading[1].length)}`;
   });
-  return fenced ? [...demotedRows, '```'] : demotedRows;
+  return fence === null ? demotedRows : [...demotedRows, fence];
 }
 
 /** An old spec as an area of `spec.md`, numbered `number` (the header's). @param {string} text @param {number} number @param {string} topic */

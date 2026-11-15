@@ -15,7 +15,7 @@
 //   names one at least — an acceptance scenario of exactly one task of it
 //   not closed in the tracker (12.4.3); `task link` keeps each link where
 //   it may run (12.6.4). A phase whose parent the migration adopted, its
-//   tasks the old plan's, has its tasks written (21.8.8).
+//   tasks the old plan's, has its tasks written (21.8.8, `phaseAdopted`).
 // - What it relies on done: an earlier phase closed and its stack merged,
 //   since in step a phase closes with its stack waiting at its gate
 //   (7.2.5); another unit completed (12.6.2). A phase relying on nothing
@@ -44,8 +44,8 @@
 //   refusal of the close, not an item, so the checklist lists 6.4.9's items
 //   alone (6.S14).
 //
-// A task the tracker held done as the migration adopted its phase
-// (`doneBefore`) was built and landed before Leeway: it counts as passed
+// A task that landed before the migration cut the unit (`landedBefore`,
+// derivations.cjs) was built and landed before Leeway: it counts as passed
 // and landed, and only the tasks built since make the phase's stack.
 //
 // A call reads each thing once for all its checks (`Reading`): a phase's
@@ -59,7 +59,9 @@ const { projectRepos } = require('../kernel/repos.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
-const { phaseClosed, phaseBuilt, cutPhases, cutLength, doneBefore, builtSince } = require('./derivations.cjs');
+const {
+  phaseClosed, phaseBuilt, phaseAdopted, cutPhases, cutLength, landedBefore, hasLanded, builtSince,
+} = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
 const { taskPassed, phaseReports } = require('./round-report.cjs');
@@ -153,8 +155,8 @@ function phaseTasks(at, phase) {
 /** Of a phase's tasks, those not closed: the phase's work. @template {TaskRow} T @param {T[]|null} tasks @returns {T[]} */
 const live = (tasks) => (tasks ?? []).filter(({ status }) => status !== 'closed');
 
-/** Whether the task was done before the migration adopted its phase (`doneBefore`). @param {Reading} at @param {TaskRow} task */
-const before = (at, { ref }) => once(at, 'done before', () => doneBefore(at.manifest)).has(shownTask(ref));
+/** Whether the task landed before the migration cut the unit (`landedBefore`). @param {Reading} at @param {TaskRow} task */
+const before = (at, { ref }) => once(at, 'landed before', () => landedBefore(at.manifest))(ref);
 
 /** The phase's tasks not closed, by their rows. @param {Reading} at @param {number} phase */
 const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseLists(at, [phase])[0]);
@@ -162,12 +164,15 @@ const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseList
 /** What has landed of the unit's tasks (task-landed.cjs), read once a call. @param {Reading} at @returns {import('./task-landed.cjs').UnitLanded} */
 const landedOf = (at) => once(at, 'landed', () => unitLanded(at.cwd, at.unit, reposOf(at), dayBefore(at.manifest.created)));
 
-/** Whether the phase's stack has merged: every task not closed landed, one at least, or done before the migration — a phase built before it, on the default branch already. @param {Reading} at @param {number} phase */
+/** Whether each of the unit's tasks has landed (`hasLanded`), read once a call. @param {Reading} at */
+const landedTask = (at) => once(at, 'has landed', () => hasLanded(at.manifest, landedOf(at).landed));
+
+/** Whether the phase's stack has merged: every task not closed landed, one at least — a phase built before the migration on the default branch already. @param {Reading} at @param {number} phase */
 function phaseLanded(at, phase) {
   if (phaseBuilt(at.manifest, phase)) return true;
   const rows = liveRows(at, phase);
-  const { landed } = landedOf(at);
-  return rows.length > 0 && rows.every((row) => before(at, row) || landed(row.ref));
+  const landed = landedTask(at);
+  return rows.length > 0 && rows.every(({ ref }) => landed(ref));
 }
 
 /**
@@ -189,8 +194,8 @@ function mergeWaiting(at, last) {
 
 /** The phase's tasks written: each phase scenario held by exactly one task not closed (12.4.3), or the phase's parent adopted by the migration. @param {Reading} at @param {number} phase */
 function tasksWritten(at, phase) {
-  const { scenarios, tracker } = cutPhases(at.manifest)[phase - 1];
-  if (tracker !== undefined) return true;
+  if (phaseAdopted(at.manifest, phase)) return true;
+  const { scenarios } = cutPhases(at.manifest)[phase - 1];
   const tasks = live(phaseTasks(at, phase));
   return scenarios.every((scenario) => tasks.filter(({ text }) => holdsScenario(text, scenario)).length === 1);
 }
@@ -211,7 +216,7 @@ function passed(at, ref) {
   }
 }
 
-/** Every task of the phase not closed, one at least, passed by its pair (13.4.6), or done before the migration. @param {Reading} at @param {number} phase */
+/** Every task of the phase not closed, one at least, passed by its pair (13.4.6), or landed before the migration. @param {Reading} at @param {number} phase */
 function tasksPassed(at, phase) {
   const rows = liveRows(at, phase);
   return rows.length > 0 && rows.every((row) => before(at, row) || passed(at, row.ref));
@@ -335,13 +340,13 @@ const notesConsolidated = (at, phase) => consolidationFaults(at.cwd, at.unit, ph
 
 /**
  * Whether every task of the phase built since the migration, one at least,
- * is in its stack: landed (`landedOf`), else chained into it (landing.cjs);
+ * is in its stack: landed (`landedTask`), else chained into it (landing.cjs);
  * not where one cannot be read so, said as a warning.
  * @param {Reading} at @param {number} phase
  */
 function chained(at, phase) {
   const tasks = builtSince(at.manifest, live(phaseTasks(at, phase)));
-  const { landed } = landedOf(at);
+  const landed = landedTask(at);
   try {
     return tasks.length > 0 && allChained(at.cwd, at.unit, tasks.filter(({ ref }) => !landed(ref)));
   } catch (err) {

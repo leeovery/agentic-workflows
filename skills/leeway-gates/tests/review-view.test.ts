@@ -21,7 +21,7 @@ const review = (change: Record<string, unknown>, from: View = REVIEW): View => (
 /** The board at the review phase, its view `view`, `questions` waiting on the person. */
 const answered = (view: View, questions: Question[] = []): Answer => ({ kind: 'board', board: { ...BUILD, place: { ...BUILD.place, phase: 'review' }, questions, view } as Board })
 
-type Area = { area: string; title: string; state: string; ran: number; found: number; since: string | null }
+type Area = { area: string; title: string; before: boolean; state: string; ran: number; found: number; since: string | null }
 
 const AREAS = REVIEW.areas as Area[]
 
@@ -321,6 +321,18 @@ describe('the review phase\'s This session (20.10)', () => {
       'round 1 · 17 of 19 areas read · ◐ 2 being read',
       ['◐ §18 Documentation and the Setup Guide           reading 2:18', '◐ Tests held against the specification            reading 2:18'],
       ['VERDICT ─────────────────────────────────────────────────────', '○ once every area is read'],
+    ])
+  })
+
+  test('21.8.8: an area built before the migration cut the unit says so beside its state, its title giving way', () => {
+    const migrated = review({ areas: AREAS.map(area => (area.area === '1' || area.area === '4' ? { ...area, before: true } : area)) })
+    const rows = paneDrawn(answered(migrated), { now: NOW })
+
+    expect(rows.filter(row => /^✓ §[1-4] /.test(row))).toEqual([
+      '✓ §1 Purpose … built before Leeway · unchanged, not read again',
+      '✓ §2 The Lean Default AI Command     unchanged, not read again',
+      '✓ §3 Quote-Aware ai_command Parsing  unchanged, not read again',
+      '✓ §4 The Per-Call Size Cap built before Leeway · nothing found',
     ])
   })
 

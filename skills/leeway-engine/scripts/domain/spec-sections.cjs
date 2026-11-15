@@ -8,7 +8,11 @@
 // numbered heading at level two, `## N. Title`, and a part of it one at
 // level three, `### N.M Title`. A section runs from its heading to the next
 // heading at its level or above, so an area holds its parts. Headings inside
-// a fenced block are text. A spec that numbers one section twice, or a part
+// a fenced block are text: a block opened by a line holding, at any indent,
+// a list item's among them, three backticks or tildes at least, and closed
+// by one holding as many of that mark at least and nothing else — the one
+// fence rule every reader here keeps, and the migration's join of old specs
+// (078) with it (`fences`). A spec that numbers one section twice, or a part
 // under another area's number, is refused: its sections cannot be addressed.
 //
 // A reference cites sections in runs. A run opens at `§` or `§§` and goes
@@ -27,8 +31,7 @@
 // rows split at `\n`, `\r\n` or `\r`. The spec opens with its title,
 // `# Title`, and what comes before its first area — a contents section,
 // `## Contents`, among it — is its introduction. The rest is read in blocks
-// split on blank lines, a fenced block — opened and closed by a line opening
-// ``` — kept whole:
+// split on blank lines, a fenced block kept whole:
 // - A block opening with a number and a space starts a line: `N.M.K `, a
 //   statement, in the part `### N.M`; or `N.Sk `, a scenario, in its area's
 //   block of scenarios, `## N-S. …`, after the area.
@@ -100,8 +103,8 @@ const NUMBERED = [
 /** A heading's level, in its marks. */
 const HEADING = /^(#{1,6})(?: |$)/;
 
-/** A line of the spec that opens or closes a fenced block. */
-const SPEC_FENCE = /^```/;
+/** A line that opens a fenced block, or may close one: at any indent, three backticks or tildes at least. */
+const FENCE = /^[ \t]*(`{3,}|~{3,})/;
 
 /** Where the spec's areas begin: its first heading at level two but its contents. */
 const BODY = /^## (?!Contents\b)/;
@@ -209,26 +212,27 @@ function citedSections(reference) {
 }
 
 /**
- * The lines' fenced blocks: whether each line is in one, its fences among
- * them, and the line a block left open at their end opens on, null for none.
- * @param {string[]} lines @returns {{fenced: boolean[], open: number|null}}
+ * The lines' fenced blocks (the header's): whether each line is in one, its
+ * fences among them, whether it opens one and whether it closes one, and
+ * the line a block left open at their end opens on, null for none.
+ * @param {string[]} lines @returns {{fenced: boolean[], opens: boolean[], closes: boolean[], open: number|null}}
  */
 function fences(lines) {
   /** @type {{mark: string, length: number, at: number}|null} */
   let fence = null;
-  /** @type {boolean[]} */
-  const fenced = [];
+  /** @type {{fenced: boolean[], opens: boolean[], closes: boolean[]}} */
+  const read = { fenced: [], opens: [], closes: [] };
   for (const [at, line] of lines.entries()) {
-    const opens = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-    if (fence === null) {
-      if (opens !== null) fence = { mark: opens[1][0], length: opens[1].length, at };
-      fenced.push(opens !== null);
-    } else {
-      if (opens !== null && opens[1][0] === fence.mark && opens[1].length >= fence.length && line.trim() === opens[1]) fence = null;
-      fenced.push(true);
-    }
+    const marks = FENCE.exec(line);
+    const opens = fence === null && marks !== null;
+    const closes = fence !== null && marks !== null && marks[1][0] === fence.mark && marks[1].length >= fence.length && line.trim() === marks[1];
+    read.fenced.push(fence !== null || opens);
+    read.opens.push(opens);
+    read.closes.push(closes);
+    if (opens) fence = { mark: marks[1][0], length: marks[1].length, at };
+    else if (closes) fence = null;
   }
-  return { fenced, open: fence === null ? null : fence.at };
+  return { ...read, open: fence === null ? null : fence.at };
 }
 
 /** Whether each line is in a fenced block, its fences among them. @param {string[]} lines @returns {boolean[]} */
@@ -237,29 +241,11 @@ const fencedLines = (lines) => fences(lines).fenced;
 /** The line a fenced block the lines leave open opens on, null for none. @param {string[]} lines @returns {number|null} */
 const unclosedFence = (lines) => fences(lines).open;
 
-/**
- * Whether each line of a spec is in a fenced block as the spec's page reads
- * one, opened and closed by a line opening ```, its fences among them.
- * @param {string[]} lines @returns {boolean[]}
- */
-function specFencedLines(lines) {
-  let open = false;
-  return lines.map((line) => {
-    const fence = SPEC_FENCE.test(line);
-    const inside = open || fence;
-    if (fence) open = !open;
-    return inside;
-  });
-}
-
 /** A spec's rows, split at each newline as its page reads one: `\n`, `\r\n` or `\r`. @param {string} text */
 const rowsOf = (text) => text.split(/\r\n?|\n/);
 
 /** A line's heading level, 0 for a line that is no heading. @param {string} line */
 const levelOf = (line) => HEADING.exec(line)?.[1].length ?? 0;
-
-/** Each line's heading level, 0 for one that is no heading or is `fenced`. @param {string[]} lines @param {boolean[]} fenced */
-const levelsOf = (lines, fenced) => lines.map((line, at) => (fenced[at] ? 0 : levelOf(line)));
 
 /**
  * Each line's heading level, 0 for a line that is no heading — a line in a
@@ -267,7 +253,8 @@ const levelsOf = (lines, fenced) => lines.map((line, at) => (fenced[at] ? 0 : le
  * @param {string[]} lines @returns {number[]}
  */
 function headingLevels(lines) {
-  return levelsOf(lines, fencedLines(lines));
+  const fenced = fencedLines(lines);
+  return lines.map((line, at) => (fenced[at] ? 0 : levelOf(line)));
 }
 
 /** Where the section a heading at `level` opens on line `at` ends: at the next heading at its level or above. @param {number[]} levels @param {number} at @param {number} level */
@@ -286,7 +273,7 @@ function sectionEnd(levels, at, level) {
  */
 function specSections(text) {
   const lines = rowsOf(text);
-  const levels = levelsOf(lines, specFencedLines(lines));
+  const levels = headingLevels(lines);
   /** @type {Map<string, Section>} */
   const sections = new Map();
   /** @type {string|null} */
@@ -325,7 +312,7 @@ function specIntroduction(text) {
  */
 function scenarioBlocks(text) {
   const lines = rowsOf(text);
-  const levels = levelsOf(lines, specFencedLines(lines));
+  const levels = headingLevels(lines);
   /** @type {Map<string, string>} */
   const blocks = new Map();
   lines.forEach((line, at) => {
@@ -347,6 +334,7 @@ function scenarioBlocks(text) {
 
 /** A spec's body, from line `from`, as its blocks, in order. @param {string[]} lines @param {number} from @returns {Block[]} */
 function blocksOf(lines, from) {
+  const { opens, closes } = fences(lines);
   /** @type {Block[]} */
   const blocks = [];
   /** @type {Pick<Block, 'kind'|'at'>|null} */
@@ -356,10 +344,9 @@ function blocksOf(lines, from) {
     open = null;
   };
   for (let at = from; at < lines.length; at += 1) {
-    const fence = SPEC_FENCE.test(lines[at]);
     if (open?.kind === 'fence') {
-      if (fence) close(at + 1, true);
-    } else if (fence) {
+      if (closes[at]) close(at + 1, true);
+    } else if (opens[at]) {
       close(at);
       open = { kind: 'fence', at };
     } else if (lines[at].trim() === '') {
@@ -742,5 +729,5 @@ function readCitedSections(cwd, unit, reference) {
 
 module.exports = {
   SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, readCitedSections,
-  specIntroduction, areaText, fencedLines, unclosedFence, rowsOf, specFencedLines, DRAWS_ON,
+  specIntroduction, areaText, fencedLines, unclosedFence, rowsOf, DRAWS_ON,
 };

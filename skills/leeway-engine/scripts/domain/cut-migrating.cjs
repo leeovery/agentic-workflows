@@ -36,18 +36,30 @@
 // Then, in this order, each step whole, so a run again takes it from the
 // top: the tracker's steps (task-verbs.cjs, `migratedTracker`) — each phase
 // naming its parent adopted, refused where a phase marked built holds a
-// task neither done nor closed, and each task neither done nor closed given
-// its type, fix in a bugfix or quick-fix and feat in any other (21.5.21);
-// then the unit's files, `spec.md` with the plan's blocks of scenarios, any
-// a run before wrote replaced, `build/notes.md` the notes whole, numbered
-// from 1, and the manifest — the cut, the build begun in step, `build:
-// {position: 'step'}`, which the person switches with `workunit position`
-// (P3), naming the tasks of the phases not built that the tracker holds
-// done, `done_before`, each built and landed before Leeway (derivations.cjs,
-// `doneBefore`), and the old plan's spec, planning and implementation items
-// dropped (P12) — committed to the state branch, the commit held for the
-// migration's (21.9.3). Last, the mark, `.cache/migrate/cut/{unit}.json` in
-// the state.
+// task neither done nor closed, or a link holds a task neither done nor
+// closed after one neither, of a later phase or another unit's, and each
+// task neither done nor closed given its type, fix in a bugfix or quick-fix
+// and feat in any other (21.5.21); then the unit's files, `spec.md` with the
+// plan's blocks of scenarios, any a run before wrote replaced,
+// `build/notes.md` the notes whole, numbered from 1, and the manifest — the
+// cut, the build begun in step, `build: {position: 'step'}`, which the
+// person switches with `workunit position` (P3), naming the tasks of the
+// phases not built that the tracker holds done, `done_before`, each built
+// and landed before Leeway (derivations.cjs, `landedBefore`), and the areas
+// each task of them neither done nor closed cites, `cites: {"N.n": ["<area>",
+// …]}`, a task citing none left out (`citedAreas`), and the old plan's spec,
+// planning and implementation items dropped (P12) — committed to the state
+// branch, the commit held for the migration's (21.9.3). Last, the mark,
+// `.cache/migrate/cut/{unit}.json` in the state.
+//
+// A task of the old plan cites an old spec by its path in the layout before
+// Leeway, in any of its forms: `docs/workflow/specification/{topic}.md`,
+// before 15 February 2026; `{root}/specification/{topic}/specification.md`
+// from then, its root `docs/workflow` or `.workflows`; and
+// `.workflows/{unit}/specification/{topic}/specification.md` once the work
+// was kept by unit, the unit the one cut. Each topic joined is the area of
+// its place in `spec.joined`, the areas in the spec's order; a path naming
+// another unit, or a topic not joined, cites none.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -59,8 +71,8 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { migrationRuns } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { specJoined, OLD_PLAN_PHASES } = require('./derivations.cjs');
-const { readSpec, specPath, specReading, rowsOf, specFencedLines, SPEC_FILE } = require('./spec-sections.cjs');
+const { specJoined, joinedTopics, OLD_PLAN_PHASES } = require('./derivations.cjs');
+const { readSpec, specPath, specReading, rowsOf, fencedLines, SPEC_FILE } = require('./spec-sections.cjs');
 const { phasesOf, placing, specIn, againstSpec, refuse } = require('./cut.cjs');
 const { notesPath, notesAppended, topHeading } = require('./notes.cjs');
 const { migratedTracker } = require('./task-verbs.cjs');
@@ -87,6 +99,30 @@ const LEVEL_TWO = /^## /;
 const AREA_OF = /^## ([0-9]+)\. /;
 const SCENARIOS_OF = /^## [0-9]+-S\. /;
 const AREA_NUMBER = /^[1-9][0-9]*$/;
+
+/** An old spec's path in a task's text (the header's): the unit's folder where it names one, and the topic. */
+const OLD_SPEC_PATH = /(?:docs\/workflow|\.workflows)\/(?:([^/\s`'"()]+)\/)?specification\/([^/\s`'"()]+?)(?:\/specification)?\.md/g;
+
+/**
+ * The areas an old task's text cites (the header's), in the spec's order.
+ * @param {string} text @param {string} unit @param {string[]} topics the topics joined, area by area @returns {string[]}
+ */
+function oldCitations(text, unit, topics) {
+  const areas = [...text.matchAll(OLD_SPEC_PATH)].flatMap(([, folder, topic]) => (folder === undefined || folder === unit ? [topics.indexOf(topic) + 1] : []));
+  return [...new Set(areas.filter((area) => area > 0))].sort((a, b) => a - b).map(String);
+}
+
+/**
+ * The areas each task neither done nor closed cites, by the task, shown; a
+ * task citing none left out.
+ * @param {{task: string, text: string}[]} open @param {string} unit @param {string[]} topics @returns {Record<string, string[]>}
+ */
+function citesOf(open, unit, topics) {
+  return Object.fromEntries(open.flatMap(({ task, text }) => {
+    const areas = oldCitations(text, unit, topics);
+    return areas.length === 0 ? [] : [[task, areas]];
+  }));
+}
 
 /** Where the cut marks a unit it has cut, in the state. @param {string} cwd @param {string} unit */
 const markPath = (cwd, unit) => statePath(cwd, '.cache', 'migrate', 'cut', `${unit}.json`);
@@ -151,7 +187,7 @@ function planIn(file) {
  */
 function partsOf(text) {
   const rows = rowsOf(text.trimEnd());
-  const fenced = specFencedLines(rows);
+  const fenced = fencedLines(rows);
   /** @type {string[][]} */
   const parts = [[]];
   rows.forEach((row, at) => {
@@ -207,11 +243,14 @@ function writeNotes(cwd, unit, notes) {
   return true;
 }
 
-/** The manifest's cut and build written, the old plan's items dropped (the header's). @param {string} cwd @param {string} unit @param {Phase[]} phases @param {string[]} done the tasks done before, shown */
-function writeManifest(cwd, unit, phases, done) {
+/**
+ * The manifest's cut and build written, the old plan's items dropped (the header's).
+ * @param {string} cwd @param {string} unit @param {Phase[]} phases @param {string[]} done the tasks done before, shown @param {Record<string, string[]>} cites
+ */
+function writeManifest(cwd, unit, phases, done, cites) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   manifest.cut = { phases };
-  manifest.build = { position: 'step', ...(done.length === 0 ? {} : { done_before: done }) };
+  manifest.build = { position: 'step', ...(done.length === 0 ? {} : { done_before: done }), ...(Object.keys(cites).length === 0 ? {} : { cites }) };
   if (isObject(manifest.phases)) for (const phase of OLD_PLAN_PHASES) delete manifest.phases[phase];
   saveWorkUnitManifest(cwd, unit, manifest);
 }
@@ -242,11 +281,11 @@ function cutMigrating(cwd, unit, file) {
   const faults = [...trackerFaults(plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
   if (faults.length > 0) refuse(faults);
   const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{ phase: at + 1, parent: phase.tracker, built: 'built' in phase }]));
-  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [] } : migratedTracker(cwd, unit, parents, migratedType(manifest.work_type));
+  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [], open: [] } : migratedTracker(cwd, unit, parents, migratedType(manifest.work_type));
   const notes = withWorkUnitLock(cwd, unit, () => {
     writeTextAtomic(specPath(cwd, unit), text);
     const wrote = writeNotes(cwd, unit, plan.notes);
-    writeManifest(cwd, unit, plan.phases, tracker.done);
+    writeManifest(cwd, unit, plan.phases, tracker.done, citesOf(tracker.open, unit, joinedTopics(manifest)));
     return wrote;
   });
   /** @type {string[]} */
