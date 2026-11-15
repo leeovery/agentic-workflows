@@ -31,8 +31,9 @@
 //   roadmap — so a session killed part-way finishes on its next run, the
 //   epic found holding every topic named on its map once it is made. Every
 //   run renders the ledger's copies at its end, so a redo renders those a
-//   run killed before them left behind, and the knowledge base indexes each
-//   moved topic's copy at its new path, its old one gone.
+//   run killed before them left behind, and on every run the knowledge base
+//   drops each moved topic's old copy and indexes its new one, whatever the
+//   copies on disk already show.
 // - It refuses, writing nothing: outside the migration; a unit that is no
 //   epic; no topic named, or one named twice; a topic not on the unit's map,
 //   or set aside on it, cancelled or postponed; a topic the epic a split
@@ -65,6 +66,7 @@ const { purgeTopicCache } = require('./cache.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
+const { recordFile, recordScope } = require('./knowledge/artifacts.cjs');
 
 const SAID = 'workunit split';
 
@@ -323,7 +325,10 @@ function splitWorkUnit(cwd, unit, asked) {
       const paths = [unit, split.into, PROJECT_MANIFEST_SPEC];
       const message = `workflow(${unit}): split ${split.topics.join(', ')} into ${split.into}`;
       const outcome = carried > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
-      refreshLedgerCopies(cwd, warnings);
+      refreshLedgerCopies(cwd, warnings, {
+        remove: split.topics.map((topic) => recordScope(recordFile(unit, topic))),
+        index: split.topics.map((topic) => recordFile(split.into, topic)),
+      });
       /** @type {WorkUnitSplitResult} */
       const result = {
         work_unit: unit, epic: split.into, topics: split.topics, session_log: statePath(cwd, split.into, FIRST_LOG), carried, committed: outcome.committed, warnings,

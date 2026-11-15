@@ -2,14 +2,15 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a postponed topic's earlier record (18.8.17). A topic an epic
-// postponed, pulled into other work, opens reading the record it left in
-// that epic as input, never changing it: its brief, its ledger record —
-// its entries as they stood, which `ledger earlier` reads, though none is
-// current while it is set aside (ledger-read.cjs) — its log and its mail. Where it sits is the epic's map row's `prior` for an
-// epic's topic, or for a one-topic unit the `postponed_from` of the roadmap
-// item joined to the unit; a waiting roadmap item names it by its own
-// `postponed_from`. A pull back into the epic that postponed it returns the
-// topic as it was, and reads nothing here.
+// postponed, pulled into other work, opens reading the record it left in that
+// epic as input, never changing it: its brief, its ledger record — its
+// entries as they stood, which `ledger earlier` reads, though none is current
+// while it is set aside (ledger-read.cjs) — its log and its mail. Where it
+// sits is the epic's map row's `prior` for an epic's topic, or for a
+// one-topic unit the `postponed_from` of the roadmap item joined to the unit;
+// a waiting roadmap item names it by its own `postponed_from`. A pull back
+// into the epic that postponed it returns the topic as it was, and reads
+// nothing here.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

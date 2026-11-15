@@ -29,13 +29,14 @@
 //   current entries, never copied, the entries standing elsewhere that were
 //   made there, that it relies on, that its merges that hold went into, or
 //   that answer its questions (5.8.4, 5.8.19). `ledger product` reads the
-//   product record (5.8.6), the product's questions — those standing at its
-//   place that discovery did not ask, a retired unit's (21.7.5), open or
-//   answered — and, under a heading of its own, what discovery
-//   found (9.3.12): the findings at the product's place (8.12.9), given a
-//   unit those at the unit's own level, which no topic's record shows, and
-//   given a topic too, what discovery left on it, which a topic's first
-//   opening reads here, reading no record. The one exception to the rule
+//   product record (5.8.6); named with no unit, the product's questions —
+//   those standing at its place that discovery did not ask, a retired
+//   unit's (21.7.5), open or answered — which the product's conversation
+//   alone opens on; and, under a heading of its own, what discovery found
+//   (9.3.12): the findings at the product's place (8.12.9), given a unit
+//   those at the unit's own level, which no topic's record shows, and given
+//   a topic too, what discovery left on it, which a topic's first opening
+//   reads here, reading no record. The one exception to the rule
 //   is `ledger earlier`, the record a topic set aside left: its entries as
 //   they stood, read as `ledger record` reads a live topic's, for a later
 //   topic it was pulled into to read as input (18.8.17, 21.8.9) — marked
@@ -281,18 +282,20 @@ function answerMap(shower, { unit, topic }, root) {
 }
 
 /**
- * `ledger product`: the product record, the product's questions, and apart
- * from them what discovery found of the product and, given a unit, of the
- * unit, and given a topic too, of the topic — each entry with its chain,
- * its confirmations and its keeps.
+ * `ledger product`: the product record; at the product's own place, named
+ * with no unit, the product's questions, which its conversation opens on;
+ * and apart from them what discovery found of the product and, given a
+ * unit, of the unit, and given a topic too, of the topic — each entry with
+ * its chain, its confirmations and its keeps.
  * @param {Shower} shower @param {Place} place
  */
 function answerProduct(shower, { unit, topic }) {
   const ids = productOf(shower.folded);
+  const asked = unit === null ? { questions: productQuestionsOf(shower.folded).map((id) => chained(shower, id)) } : {};
   return {
     findings: ids.findings.map((id) => chained(shower, id)),
     decisions: ids.decisions.map((id) => chained(shower, id)),
-    questions: productQuestionsOf(shower.folded).map((id) => chained(shower, id)),
+    ...asked,
     discovery: discoveredOf(shower.folded, unit, topic).map((id) => chained(shower, id)),
   };
 }

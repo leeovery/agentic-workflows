@@ -7,18 +7,19 @@
 // third postponed to the roadmap, then the reshape's finish (081) and the
 // migration's commit. The retired unit's product-wide entries the product
 // record's and no unit's, its questions the product's, which the product's
-// conversation opens on, its spec and its topic's log reference in the
-// product's assets, the oracle's audit passing over the state as committed
-// (21.S26); the epic nothing of which was built sitting in discussion, its
-// specs and its plan reference in its assets, its topics where they stood,
-// and once every topic is decided its one spec written fresh through the
-// review and ready to build (21.S27); a topic split away entered in
-// discussion on its new epic, reading the record and the mail it carried,
-// none of it an earlier record, and the topic postponed, pulled into that
-// epic, opening on the record it left, its entries as they stood
-// (21.8.9, 18.8.17). The tracker's tasks the directive closes for a
-// unit nothing of which was built are the task driver's (`task close`),
-// which nothing from the spec's entry to ready to build reads.
+// conversation opens on and no topic's opening reads, its spec and its
+// topic's log reference in the product's assets, the oracle's audit passing
+// over the state as committed (21.S26); the epic nothing of which was built
+// sitting in discussion, its specs and its plan reference in its assets,
+// its topics where they stood, and once every topic is decided its one spec
+// written fresh through the review and ready to build (21.S27); a topic
+// split away entered in discussion on its new epic, reading the record and
+// the mail it carried, none of it an earlier record, and the topic
+// postponed, pulled into that epic, opening on the record it left, its
+// entries as they stood (21.8.9, 18.8.17). The tracker's tasks the
+// directive closes for a unit nothing of which was built are the task
+// driver's (`task close`), which nothing from the spec's entry to ready to
+// build reads.
 //
 // Layer: simulation. World: the cut and the merges' (migration-world.cjs)
 // taken through the verbs, the finish and the commit, and made ready for a
@@ -79,7 +80,7 @@ describe('pipeline simulation: from the migration\'s cut and merges', () => {
   beforeEach(() => { sim = new Sim(migrated); });
   afterEach(() => { sim.destroy(); });
 
-  it('21.S26: the cross-cutting unit\'s product-wide entries the product record\'s and no unit\'s, its questions the product\'s, which the product\'s conversation opens on, its spec and its topic\'s log reference in the product\'s assets, off the registry; the oracle\'s audit passing over the state the migration committed (21.7.3, 21.7.5, 19.6.7, 21.6.9)', () => {
+  it('21.S26: the cross-cutting unit\'s product-wide entries the product record\'s and no unit\'s, its questions the product\'s, which the product\'s conversation opens on and no topic\'s does, its spec and its topic\'s log reference in the product\'s assets, off the registry; the oracle\'s audit passing over the state the migration committed (21.7.3, 21.7.5, 19.6.7, 21.6.9)', () => {
     auditState(sim.dir, 'the state the migration committed');
 
     sim.run(['enter', 'discovery', 'product']);
@@ -88,6 +89,12 @@ describe('pipeline simulation: from the migration\'s cut and merges', () => {
     const product = JSON.parse(sim.read(call.split(' ')));
     assert.deepStrictEqual([product.findings.map(({ text }) => text), product.decisions.map(({ text }) => text), product.questions.map(({ text }) => text)],
       [['An entry lives an hour at most.'], ['Every write purges its keys.'], ['When is a cached key purged?', 'Do reads ever purge a key?']]);
+    enterEntry(sim, 'gateway', 'discussion', 'errors');
+    const topicCall = /^product: `node \S+ (ledger product gateway errors)`$/m.exec(sim.sections)?.[1];
+    assert.strictEqual(topicCall, 'ledger product gateway errors', sim.sections);
+    const topicRead = JSON.parse(sim.read(topicCall.split(' ')));
+    assert.deepStrictEqual([topicRead.findings.map(({ text }) => text), topicRead.decisions.map(({ text }) => text), Object.hasOwn(topicRead, 'questions')],
+      [['An entry lives an hour at most.'], ['Every write purges its keys.'], false], 'a topic\'s opening reads the product record, never the product\'s questions');
     assert.deepStrictEqual([layout.assets('caching', 'specs', 'caching.md'), layout.topic('caching', 'invalidation', 'log.md')].map((rel) => fs.existsSync(statePath(sim.dir, layout.productAssets(rel)))), [true, true]);
     assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(statePath(sim.dir, layout.projectManifest), 'utf8')).work_units).sort(), ['gateway', 'shop', 'storefront']);
     assert.match(fs.readFileSync(statePath(sim.dir, layout.knowledge('product.md')), 'utf8'), /^Every write purges its keys\.$/m);

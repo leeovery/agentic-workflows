@@ -8,21 +8,20 @@
 // topics a split takes from a building unit to a new epic
 // (workunit-split.cjs), a retired cross-cutting unit's, to the product's
 // place (workunit-retire.cjs) — and each file they name that the move took
-// elsewhere. Every read takes a line a carry lists as made in the unit and
-// on the topic the carry is made at, and each file it names — a
-// citation's, an asset link's — at the path it moved to. Its phase is the
-// carry's where the carry is made in the unit the line stands in — a move,
-// which re-types the unit, so the phases the line was made in are the old
-// type's — and its own where the carry takes it into another unit or to
-// the product's place — an absorb, the feature's phases being the epic
-// topic's, a split and a retire. A line
-// carried twice — a quick-fix moved to a feature, then absorbed — is read
-// where the latest carry took it, each carry taking it from where the one
-// before left it, and each file it names followed through every carry's
-// moves in the ledger's order, a later carry's `from` being where an
-// earlier one took the file. A carry sits after the lines it carries, so a
-// read gathers the carries before it reads any line: the fold
-// (ledger-fold.cjs), and the files every ledger commit takes (ledger.cjs).
+// elsewhere. Every read takes a line a carry lists as made in the unit and on
+// the topic the carry is made at, and each file it names — a citation's, an
+// asset link's — at the path it moved to. Its phase is the carry's where the
+// carry is made in the unit the line stands in — a move, which re-types the
+// unit, so the phases the line was made in are the old type's — and its own
+// where the carry takes it into another unit or to the product's place — an
+// absorb, the feature's phases being the epic topic's, a split and a retire.
+// A line carried twice — a quick-fix moved to a feature, then absorbed — is
+// read where the latest carry took it, each carry taking it from where the
+// one before left it, and each file it names followed through every carry's
+// moves in the ledger's order, a later carry's `from` being where an earlier
+// one took the file. A carry sits after the lines it carries, so a read
+// gathers the carries before it reads any line: the fold (ledger-fold.cjs),
+// and the files every ledger commit takes (ledger.cjs).
 // ---------------------------------------------------------------------------
 
 /**

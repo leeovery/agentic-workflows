@@ -4,18 +4,18 @@
 // `engine workunit retire` (leeway-engine/scripts/domain/workunit-retire.cjs;
 // 21.7.3, 21.7.5, 19.6.7): a cross-cutting unit leaving the registry while
 // the migration runs — its folder kept whole in the product's assets, its
-// manifest, its spec and its topic's log among it, nothing of it deleted;
-// off the registry, its name free for a unit made later, which meets none of
-// its entries; its ledger lines the product's, `ledger product` showing its
+// manifest, its spec and its topic's log among it, nothing of it deleted; off
+// the registry, its name free for a unit made later, which meets none of its
+// entries; its ledger lines the product's, `ledger product` showing its
 // product-wide entries and its questions with each cite where the move took
-// its file, and no unit's record or copy showing any, so the knowledge
-// store holds none, read at once; its cache purged; each epic's topic
-// promoted to it gone from that epic's map and items (P4); a roadmap source
-// under its folder following its file; the commit held for the
-// migration's. Retired again it
-// finds everything done; a session killed after each step, retired again,
-// leaves what a run never killed leaves. Every refusal writes nothing. The
-// records directive's rule that a cross-cutting unit's entries are
+// its file, and no unit's record or copy showing any, so the knowledge store
+// holds none, read at once; its cache purged; each epic's topic promoted to
+// it gone from that epic's map and items (P4); a roadmap source under its
+// folder following its file; the commit held for the migration's. Retired
+// again it finds everything done; a session killed after each step, retired
+// again, leaves what a run never killed leaves, the store among it. Every
+// refusal writes nothing.
+// The records directive's rule that a cross-cutting unit's entries are
 // product-wide is test-migration-079.cjs's.
 //
 // Layer: verb, the kills spawned. World: the cut and the merges'
@@ -95,6 +95,7 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
       [spec],
       [['When is a cached key purged?', [log]], ['Do reads ever purge a key?', [log]]],
     ]);
+    assert.ok(!Object.hasOwn(run(['ledger', 'product', 'gateway', 'errors']), 'questions'), 'read for a topic, the product record alone: its questions are the product\'s conversation\'s');
     assert.deepStrictEqual(Object.keys(afterwards).filter((rel) => rel.startsWith(layout.knowledge('records'))).sort(),
       [layout.record('gateway', 'auth'), layout.record('gateway', 'errors'), layout.record('gateway', 'limits'), layout.record('shop', 'gifts'), layout.record('shop', 'reviews'), layout.record('shop', 'weights'), layout.record('shop', 'wishlist')]);
     assert.match(afterwards[layout.knowledge('product.md')], /^Every write purges its keys\.$[\s\S]*^## Finding: An entry lives an hour at most\.$/m);
@@ -177,6 +178,18 @@ describe('a retire killed part-way finishes on its next run', () => {
       assert.deepStrictEqual(settledState(dir), clean);
     });
   }
+
+  it('killed with the unit\'s copy gone, the store not yet told: retired again, the store is a clean run\'s, the unit\'s documents out of it', async () => {
+    keywordOnlyKnowledge(dir);
+    const indexed = await callAsync(dir, ['knowledge', 'index'], { env: SESSION });
+    assert.strictEqual(indexed.code, 0, indexed.stderr);
+    const others = indexedFiles(dir).filter((file) => file !== layout.record('caching', 'invalidation'));
+    killedAt({ method: 'rmSync', file: layout.record('caching', 'invalidation'), when: 'after' }, dir, RETIRE, { env: SESSION });
+
+    run(RETIRE);
+
+    assert.deepStrictEqual(indexedFiles(dir), others);
+  });
 });
 
 describe('the refusals, nothing written', () => {

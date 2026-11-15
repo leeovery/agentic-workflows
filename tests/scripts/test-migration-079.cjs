@@ -5,35 +5,35 @@
 // (079-records.check.cjs), run through `engine migrate check`, and the rules
 // it holds a topic's record to, which `ledger carry` holds the record to
 // before it writes. One piece for each topic of each unit, completed,
-// cancelled, building and never-started ones among them, but a topic
-// promoted to a cross-cutting unit, carried there, its research's threads
-// read where it was promoted from; each done once its record is carried —
-// an entry at least where its log holds anything, and every import come in
-// from it whose file the state holds linked, a unit of one topic's from its
-// discovery among them and an epic's from its discovery as a whole asked of
-// none; a record of none keeping every rule but the cites; every entry
-// citing a heading its file holds once, in a file of its topic's own or the
-// unit's — its log and the reviews the move folded into it, its brief, an
-// experiment's record, the unit's assets, or its spec.md as its specs
-// under `.workflows/` hold, joined, where its building started — never the
-// cache, another topic's or its mail; every subtopic its old map shows
-// decided carried, one entry settling several, every one still undecided
-// and every thread still open carried by an open question. A record
-// breaking a rule is refused at the carry, the refusal written beside the
-// record and nothing else, and leaves nothing in the way of the record
-// mended. Once it passes, the check lists each point marked to raise on a
-// live topic until the conversation raises it — none on a topic never
-// started, carried in discovery, whose first opening reads it with the rest
-// of its record, and none of a cross-cutting unit, whose record is the
-// product's, so the directive closes over it. `.workflows/` is read where the move read it, the working
-// tree in the main checkout, the old chain's and the split's changes
-// uncommitted there among it, and the record where the state keeps it, from
-// a linked worktree too. The check rests on
-// the record the carry kept and its ids in the ledger, and reads what the
-// real move (078) writes. The directive's own example record carries, and
-// the directive spells no path from the session's folder. The directive's
-// head is linted with every directive's (test-migration-directives.cjs);
-// the carry's mechanics are test-engine-ledger-carry.cjs's.
+// cancelled, building and never-started ones among them, but a topic promoted
+// to a cross-cutting unit, carried there, its research's threads read where
+// it was promoted from; each done once its record is carried — an entry at
+// least where its log holds anything, and every import come in from it whose
+// file the state holds linked, a unit of one topic's from its discovery among
+// them and an epic's from its discovery as a whole asked of none; a record of
+// none keeping every rule but the cites; every entry citing a heading its
+// file holds once, in a file of its topic's own or the unit's — its log and
+// the reviews the move folded into it, its brief, an experiment's record, the
+// unit's assets, or its spec.md as its specs under `.workflows/` hold,
+// joined, where its building started — never the cache, another topic's or
+// its mail; every subtopic its old map shows decided carried, one entry
+// settling several, every one still undecided and every thread still open
+// carried by an open question. A record breaking a rule is refused at the
+// carry, the refusal written beside the record and nothing else, and leaves
+// nothing in the way of the record mended. Once it passes, the check lists
+// each point marked to raise on a live topic until the conversation raises it
+// — none on a topic never started, carried in discovery, whose first opening
+// reads it with the rest of its record, and none of a cross-cutting unit,
+// whose record is the product's, so the directive closes over it.
+// `.workflows/` is read where the move read it, the working tree in the main
+// checkout, the old chain's and the split's changes uncommitted there among
+// it, and the record where the state keeps it, from a linked worktree too.
+// The check rests on the record the carry kept and its ids in the ledger, and
+// reads what the real move (078) writes. The directive's own example record
+// carries, and the directive spells no path from the session's folder. The
+// directive's head is linted with every directive's
+// (test-migration-directives.cjs); the carry's mechanics are
+// test-engine-ledger-carry.cjs's.
 //
 // Layer: migration. Budget: 8 s — every carry and check is the engine's
 // over a copied repository with its state worktree, and one case runs the

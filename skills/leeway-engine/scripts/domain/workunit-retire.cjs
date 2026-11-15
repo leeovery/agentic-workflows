@@ -20,16 +20,16 @@
 //   product-wide entries — the records directive carries each finding and
 //   decision of a cross-cutting unit's product-wide — and `ledger product`
 //   its questions, open or answered, the product's (21.7.5); no unit's
-//   record or copy shows any of them, so the knowledge base drops the
-//   unit's copies as they go, and a unit made later under the name meets
-//   none.
+//   record or copy shows any of them, and a unit made later under the name
+//   meets none.
 // - Once: each step is one a redo repeats or finds done — the carry, of the
 //   lines the ledger still reads in the unit; the folder's move; each
 //   epic's promoted topic; the registry and the roadmap's sources — so a
 //   session killed part-way finishes on its next run, the unit found at
 //   `.product/assets/{unit}/` once its folder has moved. Every run renders
 //   the ledger's copies at its end, so a redo renders those a run killed
-//   before them left behind.
+//   before them left behind, and on every run the knowledge base drops the
+//   unit's documents, whatever the copies on disk already show.
 // - It refuses, writing nothing: outside the migration; a name that is no
 //   unit's, or a unit neither in the state nor moved; a unit of a type the
 //   reshape keeps; `.product/assets/{unit}` held already beside the unit's
@@ -188,7 +188,7 @@ function retireWorkUnit(cwd, unit) {
       const paths = [unit, keptAt(unit), PROJECT_MANIFEST_SPEC, ...new Set(promoted.map(({ work_unit: epic }) => epic))];
       const message = `workflow(${unit}): retire to the product's assets`;
       const outcome = carried > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
-      refreshLedgerCopies(cwd, warnings);
+      refreshLedgerCopies(cwd, warnings, { remove: [{ workUnit: unit }] });
       /** @type {WorkUnitRetireResult} */
       const result = { work_unit: unit, kept: statePath(cwd, keptAt(unit)), carried, promoted, committed: outcome.committed, warnings };
       if (rewritten.length > 0) result.roadmap_sources_rewritten = rewritten;

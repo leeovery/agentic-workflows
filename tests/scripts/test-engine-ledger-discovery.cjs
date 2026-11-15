@@ -108,7 +108,7 @@ describe('what discovery found (9.3.12)', () => {
     const wide = find(NOTE, 'Notes sync through iCloud.', [], { product_wide: true });
 
     assert.deepStrictEqual(read('product'), { ok: true, findings: [current(wide)], decisions: [], questions: [], discovery: [current(product)] });
-    assert.deepStrictEqual(read('product', UNIT), { ok: true, findings: [current(wide)], decisions: [], questions: [], discovery: [current(product), current(unitLevel)] });
+    assert.deepStrictEqual(read('product', UNIT), { ok: true, findings: [current(wide)], decisions: [], discovery: [current(product), current(unitLevel)] });
     assert.deepStrictEqual(read('product', UNIT, 'note-window').discovery, [current(product), current(unitLevel), current(spiked)]);
   });
 
