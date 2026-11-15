@@ -24,6 +24,14 @@ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with ro
 node .claude/skills/leeway-engine/scripts/engine.cjs render help start-menu
 ```
 
+## The Reference Cards
+
+A question asked at a reference card is answered per **[answering-how-it-works.md](../../leeway-shared/references/answering-how-it-works.md)**, and the menu it puts back is that card's alone, emitted verbatim per its markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render walkthrough-topic --name {card} --menu-only
+```
+
 ## Triage
 
 Once triage is drawn: Load **[triage.md](triage.md)** and follow its instructions as written.

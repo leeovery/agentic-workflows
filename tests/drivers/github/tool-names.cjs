@@ -16,6 +16,6 @@ module.exports = {
     { form: 'its package', pattern: /\bgh-stack\b|\bcli\.github\.com\b|\bcli\/cli\b/ },
   ],
   named: [
-    { form: 'its name', pattern: /\bgh\b|\bGitHub CLI\b/i },
+    { form: 'its name', pattern: /\bgh\b|\bGitHub(?:'s)? (?:CLI|command line)\b/i },
   ],
 };

@@ -31,12 +31,13 @@ const WALKTHROUGH = path.join(SCRIPTS, 'domain', 'projections', 'walkthrough.cjs
 const SCREENS_DIR = path.join(ROOT, 'skills', 'leeway-engine', 'content', 'walkthrough', 'screens');
 
 const {
-  DIAGRAM_KINDS, SAMPLE_SURFACES, FIXTURES_DIR,
+  DIAGRAM_KINDS, SAMPLE_SURFACES, FIXTURES_DIR, FIXTURE_STATE,
   isDiagramKind, renderDiagram, flowDiagram, tableDiagram, barsDiagram, sampleDiagram,
 } = require(DIAGRAMS);
 const { parseContent, loadScreen, walkthroughOffer, walkthroughScreen } = require(WALKTHROUGH);
 const { MIN, CAP, FALLBACK } = require(path.join(SCRIPTS, 'kernel', 'terminal.cjs'));
 const schema = require(path.join(SCRIPTS, 'kernel', 'manifest-schema.cjs'));
+const { STATE_DIR_NAME } = require(path.join(SCRIPTS, 'kernel', 'state-root.cjs'));
 const derivations = require(path.join(SCRIPTS, 'domain', 'derivations.cjs'));
 const { roadmapState } = require(path.join(SCRIPTS, 'domain', 'roadmap.cjs'));
 
@@ -81,19 +82,6 @@ const SOURCE = {
   ].join('\n'),
 };
 
-/** A banded table, which the table layout keeps though no screen carries one. */
-const BANDED = [
-  '── DISCOVERY',
-  'discussion | the design argued through to conclusions',
-  'experiment | a number measured, when a decision rests on one',
-  '',
-  '── DEFINITION',
-  'specification | the contract everything after it is built from',
-  '',
-  '── DELIVERY',
-  'implementation | the code, built test-first, one task at a time',
-  'review | the finished work held to the specification',
-].join('\n');
 
 /** Every tagged fence in the walk, in screen order — the notation as the screens actually carry it. */
 function screenFences() {
@@ -118,10 +106,10 @@ function samplesAndSurfaces(scripts, into) {
   const nodeFs = require('fs');
   const nodePath = require('path');
   const at = (/** @type {string} */ rel) => require(nodePath.join(scripts, rel));
-  const { sampleDiagram: sampled, FIXTURES_DIR: fixtures } = at('domain/projections/walkthrough-diagrams.cjs');
+  const { sampleDiagram: sampled, FIXTURES_DIR: fixtures, FIXTURE_STATE: state } = at('domain/projections/walkthrough-diagrams.cjs');
   const { SURFACES } = at('domain/render.cjs');
   const { asShipped } = at('domain/ledger.cjs');
-  const { pinStateRoot, STATE_DIR_NAME } = at('kernel/state-root.cjs');
+  const { pinStateRoot } = at('kernel/state-root.cjs');
   const { progressScreen } = at('domain/projections/build.cjs');
   const { trackerGiven } = at('domain/phase-checks.cjs');
   const { standingOf } = at('domain/build-entry.cjs');
@@ -138,7 +126,7 @@ function samplesAndSurfaces(scripts, into) {
   };
   return Object.fromEntries(Object.entries(draw).map(([surface, drawn]) => {
     const dir = nodePath.join(into, surface);
-    const root = nodePath.join(dir, STATE_DIR_NAME);
+    const root = nodePath.join(dir, state);
     nodeFs.cpSync(nodePath.join(fixtures, surface), dir, { recursive: true });
     nodeFs.writeFileSync(nodePath.join(root, 'manifest.json'), JSON.stringify({ ...json(nodePath.join(root, 'manifest.json')), project_id: 'wAlKtHrOuGhSaMpLeS001' }));
     pinStateRoot(dir, root);
@@ -215,21 +203,6 @@ describe('walkthrough diagram layouts', () => {
     ].join('\n'));
   });
 
-  it('table: a band divider fills the width and its rows indent two beneath it', () => {
-    assert.strictEqual(tableDiagram(BANDED, FALLBACK), [
-      '── DISCOVERY ────────────────────────────────────────────────────',
-      '  discussion      the design argued through to conclusions',
-      '  experiment      a number measured, when a decision rests on one',
-      '',
-      '── DEFINITION ───────────────────────────────────────────────────',
-      '  specification   the contract everything after it is built from',
-      '',
-      '── DELIVERY ─────────────────────────────────────────────────────',
-      '  implementation  the code, built test-first, one task at a time',
-      '  review          the finished work held to the specification',
-    ].join('\n'));
-  });
-
   it('table: the last column wraps under itself', () => {
     assert.strictEqual(tableDiagram(SOURCE.situations, FALLBACK), [
       '   a stray thought       log it as an idea, a bug or a quick-fix;',
@@ -257,7 +230,7 @@ describe('walkthrough diagram layouts', () => {
     for (const width of [MIN, FALLBACK, CAP]) {
       fits('flow', flowDiagram(SOURCE.flow, width), width);
       fits('bars', barsDiagram(SOURCE.effort, width), width);
-      for (const [name, src] of [...Object.entries(SOURCE), ['banded', BANDED]]) {
+      for (const [name, src] of Object.entries(SOURCE)) {
         if (name === 'flow' || name === 'effort') continue;
         fits(`table ${name}`, tableDiagram(src, width), width);
       }
@@ -280,7 +253,7 @@ describe('walkthrough diagram layouts', () => {
       '   beta   three',
     ].join('\n'));
     // Two columns still fit at the floor — the fallback engages on need, never on width alone.
-    assert.match(tableDiagram(BANDED, MIN), /^ {2}discussion {6}the design argued$/m);
+    assert.match(tableDiagram('alpha | one two three', MIN), /^ {3}alpha {2}one two three$/m);
   });
 
   it('bars scale with the pane', () => {
@@ -460,10 +433,10 @@ describe('walkthrough sample surfaces', () => {
     t.after(() => { fs.readFileSync = read; });
     /** @type {Record<string, [string, string, string, string]>} the file changed, the text and its change, and the line the sample then shows */
     const changes = {
-      'start-menu': ['.leeway/payments-overhaul/manifest.json', '"completed"', '"in-progress"', '3         → Continue epic: Payments Overhaul — discussion, 0 of 3'],
-      roadmap: ['.leeway/manifest.json', '"marketplace"', '"storefront"', '  └─ 3. Storefront           idea · discovery'],
-      'epic-menu': ['.leeway/launch-core/manifest.json', '"completed"', '"in-progress"', '3 topics · 2 in progress · 1 not started'],
-      'discussion-map': ['.leeway/.cache/.marks/launch-core.json', '"nMkNSvJzL45sKoQcD9fwF"', '', 'SINCE YOU LAST LOOKED (2 calls by Claude)'],
+      'start-menu': ['state/payments-overhaul/manifest.json', '"completed"', '"in-progress"', '3         → Continue epic: Payments Overhaul — discussion, 0 of 3'],
+      roadmap: ['state/manifest.json', '"marketplace"', '"storefront"', '  └─ 3. Storefront           idea · discovery'],
+      'epic-menu': ['state/launch-core/manifest.json', '"completed"', '"in-progress"', '3 topics · 2 in progress · 1 not started'],
+      'discussion-map': ['state/.cache/.marks/launch-core.json', '"nMkNSvJzL45sKoQcD9fwF"', '', 'SINCE YOU LAST LOOKED (2 calls by Claude)'],
       'build-progress': ['tracker.json', 'Store a named filter set', 'Keep a named filter set', '  │  ├─ ✓ 1.1 Keep a named filter set        [done]'],
     };
     const shown = Object.entries(changes).map(([surface, [rel, from, to, line]]) => {
@@ -497,7 +470,7 @@ describe('walkthrough sample surfaces', () => {
     assert.match(require(DIAGRAMS).sampleDiagram('start-menu'), /^Inbox: drawn afresh\n/);
   });
 
-  it('every sample re-flows with the surface it depicts: at the floor, the fallback and the cap, it is the surface drawn at that width', (t) => {
+  it('every sample re-flows with the surface it depicts: at the floor, the fallback and the cap, the surface drawn at that width draws each of the sample\'s lines, in order', (t) => {
     const into = fs.mkdtempSync(path.join(os.tmpdir(), 'walkthrough-samples-'));
     t.after(() => fs.rmSync(into, { recursive: true, force: true }));
     const at = (/** @type {number} */ width) => {
@@ -515,11 +488,20 @@ describe('walkthrough sample surfaces', () => {
     }
   });
 
-  it('every fixture is a schema-valid .leeway tree', () => {
+  it('no file the skills and agents ship sits in a folder named for Leeway\'s own state, which a project\'s ignore line hides', () => {
+    const shipped = ['skills', 'agents'].flatMap((top) => fs.readdirSync(path.join(ROOT, top), { recursive: true, encoding: 'utf8' })
+      .map((rel) => path.join(top, rel)));
+    const hidden = shipped.filter((rel) => rel.split(path.sep).slice(0, -1).includes(STATE_DIR_NAME));
+
+    assert.ok(shipped.some((rel) => rel.startsWith(path.join('skills', 'leeway-engine', 'content', 'walkthrough', 'fixtures', 'start-menu', FIXTURE_STATE, ''))), 'the scan reads the fixtures');
+    assert.deepStrictEqual(hidden, []);
+  });
+
+  it('every fixture is a schema-valid state tree', () => {
     assert.deepStrictEqual(fs.readdirSync(FIXTURES_DIR).sort(), [...SAMPLE_SURFACES].sort());
     for (const surface of SAMPLE_SURFACES) {
       const dir = path.join(FIXTURES_DIR, surface);
-      const wf = path.join(dir, '.leeway');
+      const wf = path.join(dir, FIXTURE_STATE);
       JSON.parse(fs.readFileSync(path.join(wf, 'manifest.json'), 'utf8'));
       // The roadmap derives from the project manifest alone; every item's
       // state has to land in vocabulary (lifecycle by join, never stored).
@@ -699,7 +681,7 @@ describe('walkthrough screens', () => {
       "p/product → Talk about the product as a whole",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Here two of the launch items have been started together as one epic, and the rest wait their turn.",
+      "Here only what still waits shows, one item to each horizon: an item leaves the roadmap once its work starts.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",

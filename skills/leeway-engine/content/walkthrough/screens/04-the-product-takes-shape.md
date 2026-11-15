@@ -7,4 +7,4 @@ The roadmap is also where a thought goes when it belongs to a later release. In 
 ```sample roadmap
 ```
 
-Here two of the launch items have been started together as one epic, and the rest wait their turn.
+Here only what still waits shows, one item to each horizon: an item leaves the roadmap once its work starts.

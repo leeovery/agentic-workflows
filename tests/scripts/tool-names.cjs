@@ -18,8 +18,8 @@
 // scan finds, so every migration is scanned, the reshape's among them
 // (21.5.18). Help is held closer (23.1.3): `helpNamesIn` finds a tool by
 // its name as a word too, as each driver declares it, which no help screen,
-// walkthrough fixture, help content file or glossary entry says, and
-// `helpFiles` lists them. test-tool-names.cjs runs both over the
+// walkthrough fixture, help content file, glossary entry or the code that
+// draws help's own screens says, and `helpFiles` lists them. test-tool-names.cjs runs both over the
 // repository; each driver's test-tool-names.cjs pins its forms.
 // ---------------------------------------------------------------------------
 
@@ -107,24 +107,30 @@ function shippedFiles(repo = REPO) {
 /** Each line of a help file's `text` naming a tool, its name as a word among the forms (`toolNamesIn`). @param {string} text */
 const helpNamesIn = (text) => toolNamesIn(text, HELP_FORMS);
 
-/** The places help is held closer in, from the repository's root (23.1.3): the walkthrough's content and fixtures, each menu's help file, and the glossary. */
-const HELP_PLACES = [
-  path.join('skills', 'leeway-engine', 'content', 'walkthrough'),
-  path.join('skills', 'leeway-engine', 'scripts', 'domain', 'projections'),
-  path.join('skills', 'leeway-shared', 'references', 'glossary.md'),
+const WALKTHROUGH = path.join('skills', 'leeway-engine', 'content', 'walkthrough');
+const PROJECTIONS = path.join('skills', 'leeway-engine', 'scripts', 'domain', 'projections');
+const GLOSSARY = path.join('skills', 'leeway-shared', 'references', 'glossary.md');
+
+/** The code that draws help's own screens: the help home's rows, each menu's help, the reference cards, and the walk's and the cards' menus. */
+const HELP_CODE = [
+  path.join('skills', 'leeway-engine', 'scripts', 'domain', 'menus.cjs'),
+  path.join(PROJECTIONS, 'help.cjs'),
+  path.join(PROJECTIONS, 'help-topics.cjs'),
+  path.join(PROJECTIONS, 'walkthrough.cjs'),
 ];
 
 /**
- * Every help file, from the repository's root (the header's): every file
- * under the walkthrough's content, each `*.help.md`, and the glossary.
+ * Every file help is held closer in, from the repository's root (the
+ * header's; 23.1.3): every file under the walkthrough's content, its
+ * fixtures among them, each menu's `*.help.md`, the glossary, and the code
+ * that draws help's own screens.
  * @param {string} [repo] @returns {string[]}
  */
 function helpFiles(repo = REPO) {
-  return HELP_PLACES.flatMap((place) => (fs.statSync(path.join(repo, place)).isFile() ? [place]
-    : fs.readdirSync(path.join(repo, place), { recursive: true, encoding: 'utf8' }).map((rel) => path.join(place, rel))))
-    .filter((rel) => fs.statSync(path.join(repo, rel)).isFile())
-    .filter((rel) => !rel.startsWith(HELP_PLACES[1]) || rel.endsWith('.help.md'))
-    .sort();
+  const under = (/** @type {string} */ dir) => fs.readdirSync(path.join(repo, dir), { recursive: true, encoding: 'utf8' })
+    .map((rel) => path.join(dir, rel))
+    .filter((rel) => fs.statSync(path.join(repo, rel)).isFile());
+  return [...under(WALKTHROUGH), ...under(PROJECTIONS).filter((rel) => rel.endsWith('.help.md')), GLOSSARY, ...HELP_CODE].sort();
 }
 
-module.exports = { DRIVER_FORMS, HELP_FORMS, DRIVERS, toolNamesIn, helpNamesIn, shippedFiles, helpFiles, REPO };
+module.exports = { DRIVER_FORMS, HELP_FORMS, HELP_CODE, DRIVERS, toolNamesIn, helpNamesIn, shippedFiles, helpFiles, REPO };

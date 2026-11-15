@@ -7,8 +7,8 @@
 // — the drivers and test fixtures aside, and nothing else — it finds no
 // tool, where it finds each driver's tool in that driver's own code; and
 // run over help — the walkthrough's content and fixtures, each menu's help
-// file and the glossary — it finds no tool by any form or by its name as a
-// word (23.1.3). Each driver's forms are pinned beside its fixtures
+// file, the glossary and the code that draws help's own screens — it finds
+// no tool by any form or by its name as a word (23.1.3). Each driver's forms are pinned beside its fixtures
 // (tests/drivers/{name}/test-tool-names.cjs).
 //
 // Layer: unit. World: the repository's own files, read.
@@ -21,7 +21,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DRIVER_FORMS, HELP_FORMS, DRIVERS, toolNamesIn, helpNamesIn, shippedFiles, helpFiles, REPO } = require('./tool-names.cjs');
+const { DRIVER_FORMS, HELP_FORMS, HELP_CODE, DRIVERS, toolNamesIn, helpNamesIn, shippedFiles, helpFiles, REPO } = require('./tool-names.cjs');
 
 /** Each file under a folder, from the repository's root. @param {string} rel */
 const filesUnder = (rel) => fs.readdirSync(path.join(REPO, rel), { recursive: true, encoding: 'utf8' })
@@ -52,7 +52,7 @@ describe('the tool-name scan (7.1.10, 7.2.13)', () => {
 });
 
 describe('help names no tool (23.1.3)', () => {
-  it('23.S3: no walkthrough screen, card, fixture, menu\'s help file or glossary entry names a tool, by any form or by its name', () => {
+  it('23.S3: no walkthrough screen, card, fixture, menu\'s help file, glossary entry or code drawing help names a tool, by any form or by its name', () => {
     const files = helpFiles();
     const found = files.flatMap((rel) => helpNamesIn(fs.readFileSync(path.join(REPO, rel), 'utf8')).map(({ line, text }) => `${rel}:${line}: ${text}`));
     const reads = (/** @type {string} */ rel) => files.some((file) => file === rel || file.startsWith(`${rel}${path.sep}`));
@@ -60,7 +60,8 @@ describe('help names no tool (23.1.3)', () => {
 
     assert.deepStrictEqual([...places, 'skills/leeway-engine/scripts/domain/projections/start-menu.help.md', 'skills/leeway-shared/references/glossary.md'].filter((rel) => !reads(rel)),
       [], 'the scan reads the walkthrough, its fixtures, the help files and the glossary');
-    assert.deepStrictEqual(files.filter((rel) => rel.endsWith('.cjs')), [], 'the scan reads no code');
+    assert.deepStrictEqual(files.filter((rel) => rel.endsWith('.cjs')), [...HELP_CODE].sort(), 'the scan reads the code drawing help, and no other');
+    assert.deepStrictEqual(HELP_CODE.filter((rel) => !fs.existsSync(path.join(REPO, rel))), [], 'the code drawing help stands where the scan reads it');
     assert.deepStrictEqual(found, []);
   });
 

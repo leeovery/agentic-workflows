@@ -64,9 +64,9 @@ A gate set aside — by a reply that answered no row, or by a request that inter
 - A set-aside gate moves forward only by being shown again and answered there. A yes to being ready is never its answer, whatever the gate offers, and neither is a go-ahead or a pick the person volunteers in the conversation ("ok, let's move ahead", "fine, conclude it"): each says they are ready, so show the gate again at once, without asking first, in the turn that answers whatever else they said.
 - An answered question opens a conversation: never put the gate straight back after answering it. Readiness brings the gate back; only an answer given at the gate moves past it, however plainly its one way forward or its recommended row looks like what they mean.
 
-## Questions About the Workflows
+## Questions About Leeway
 
-At a question about how the workflows work — the system, the words it uses, what a screen is saying — load **[answering-how-it-works.md](answering-how-it-works.md)** and follow its instructions as written.
+At a question about how Leeway works — the system, the words it uses, what a screen is saying — load **[answering-how-it-works.md](answering-how-it-works.md)** and follow its instructions as written.
 
 ## What You Write
 

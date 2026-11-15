@@ -53,6 +53,6 @@ describe('GitHub\'s CLI as the tool-name scan finds it (7.1.10)', () => {
   it('finds GitHub\'s CLI by its name in help', () => {
     const named = (/** @type {string} */ text) => helpNamesIn(text).some(({ driver, form }) => driver === 'github' && form === 'its name');
 
-    assert.deepStrictEqual(['Publish failure swallows gh stderr', 'the GitHub CLI opens the pull request', 'a high road', 'see github.com/leeovery'].map(named), [true, true, false, false]);
+    assert.deepStrictEqual(['Publish failure swallows gh stderr', 'the GitHub CLI opens the pull request', 'Install GitHub\'s CLI first.', 'the GitHub command line', 'a high road', 'see github.com/leeovery', 'GitHub\'s pull requests'].map(named), [true, true, true, true, false, false, false]);
   });
 });

@@ -6,14 +6,16 @@
 // module turns that notation into laid-out text at the pane's width.
 //
 // Four kinds. `flow` is a spine of nodes and arrows — the one strict
-// sequence in the walk. `table` is rows against columns, optionally split
-// into bands. `bars` is a share of a budget against a note. `sample` is not
-// drawn here at all: it renders a live surface from a fixture through that
-// surface's own derivation and projection, so the picture cannot drift from
-// the thing it depicts. A fixture is a world shipped as files, its state
-// pinned to its folder and its ledger read as it stands (ledger.cjs,
-// `asShipped`); the build's, which no tracker holds, carries the tracker's
-// answer beside its state, as any task driver gives it (`tracker.json`).
+// sequence in the walk. `table` is rows against columns. `bars` is a share
+// of a budget against a note. `sample` is not drawn here at all: it renders
+// a live surface from a fixture through that surface's own derivation and
+// projection, so the picture cannot drift from the thing it depicts. A
+// fixture is a world shipped as files, its state pinned to its `state/`
+// folder and its ledger read as it stands (ledger.cjs, `asShipped`); the
+// build's, which no tracker holds, carries the tracker's answer beside its
+// state, as any task driver gives it (`tracker.json`). The state folder is
+// never named for Leeway's own: a project that commits its installed skills
+// ignores every folder of that name, and a clone would have no fixtures.
 //
 // Pure over (source, width) — nothing here knows a screen — and every layout
 // is left-anchored on the gutter: the arrow spine, the label column and the
@@ -22,7 +24,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { wrap, wrapWithPrefix, signpost } = require('../../kernel/render.cjs');
+const { wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { loadActiveManifests } = require('../reads.cjs');
 const { asShipped } = require('../ledger.cjs');
 const { readShownOnce } = require('../ledger-read.cjs');
@@ -41,7 +43,7 @@ const { startMenuScreen } = require('./start-menu.cjs');
 const { roadmapScreen } = require('./roadmap.cjs');
 const { epicMenuScreen } = require('./epic-menu.cjs');
 const { illustrate, menu } = require('./surfaces.cjs');
-const { STATE_DIR_NAME, pinStateRoot } = require('../../kernel/state-root.cjs');
+const { pinStateRoot } = require('../../kernel/state-root.cjs');
 
 // The column every diagram hangs off. Three columns reads as a figure inset
 // from the prose around it without costing the narrowest pane a wrap.
@@ -56,9 +58,8 @@ const ARROW = '↓';
 
 // Table: blank columns between the longest cell of a column and the next.
 const CELL_GAP = 2;
-// Rows indent three under a plain table and two beneath band dividers.
+// Rows hang off the gutter.
 const TABLE_INDENT = GUTTER;
-const BAND_ROW_INDENT = 2;
 // Below this the last column stops being a column and the table renders one
 // block per row instead.
 const MIN_LAST_COLUMN = 16;
@@ -75,6 +76,9 @@ const DIAGRAM_KINDS = ['flow', 'table', 'bars', 'sample'];
 const SAMPLE_SURFACES = ['start-menu', 'roadmap', 'epic-menu', 'discussion-map', 'build-progress'];
 
 const FIXTURES_DIR = path.join(__dirname, '..', '..', '..', 'content', 'walkthrough', 'fixtures');
+
+/** The folder in each fixture its state is in. */
+const FIXTURE_STATE = 'state';
 
 /** @param {number} n */
 function pad(n) {
@@ -149,8 +153,7 @@ function flowDiagram(source, width) {
 
 /**
  * @typedef {object} TableLine
- * @property {'band'|'blank'|'row'} kind
- * @property {string} [name]
+ * @property {'blank'|'row'} kind
  * @property {string[]} [cells]
  */
 
@@ -158,14 +161,12 @@ function flowDiagram(source, width) {
 function tableLine(line) {
   const t = line.trim();
   if (t === '') return { kind: 'blank' };
-  if (t.startsWith('── ')) return { kind: 'band', name: t.slice(3).trim() };
   return { kind: 'row', cells: t.split('|').map((c) => c.trim()) };
 }
 
 /**
- * Rows of ` | `-separated cells. A `── NAME` line is a band divider filled to
- * the width; a row whose first cell is empty is the header, rendered in
- * place; a blank source line is a blank output line. Fixed columns take the
+ * Rows of ` | `-separated cells. A row whose first cell is empty is the
+ * header, rendered in place; a blank source line is a blank output line. Fixed columns take the
  * longest cell plus a gap and the last column takes the rest, wrapping under
  * itself. When the fixed columns leave the last one no room, the table falls
  * back to one block per row.
@@ -177,12 +178,10 @@ function tableDiagram(source, width) {
   const rows = /** @type {string[][]} */ (lines.filter((l) => l.kind === 'row').map((l) => l.cells));
   if (rows.length === 0) return '';
   const columns = Math.max(...rows.map((r) => r.length));
-  const banded = lines.some((l) => l.kind === 'band');
-  const indent = banded ? BAND_ROW_INDENT : TABLE_INDENT;
   const header = rows[0][0] === '' ? rows[0] : null;
 
   /** @type {number[]} the left column of each cell */
-  const at = [indent];
+  const at = [TABLE_INDENT];
   for (let c = 0; c < columns - 1; c += 1) {
     const widest = Math.max(0, ...rows.map((r) => (r[c] || '').length));
     at.push(at[c] + widest + CELL_GAP);
@@ -193,10 +192,9 @@ function tableDiagram(source, width) {
   const out = [];
   for (const line of lines) {
     if (line.kind === 'blank') { out.push(''); continue; }
-    if (line.kind === 'band') { out.push(signpost(String(line.name), { width })); continue; }
     const cells = /** @type {string[]} */ (line.cells);
     if (cells === header && blocks) continue;
-    out.push(...(blocks ? rowBlock(cells, header, width, indent) : rowLine(cells, at, width, columns)));
+    out.push(...(blocks ? rowBlock(cells, header, width) : rowLine(cells, at, width, columns)));
   }
   return out.join('\n');
 }
@@ -218,10 +216,10 @@ function rowLine(cells, at, width, columns) {
   ];
 }
 
-/** One row as a block: the first cell at the gutter, the rest beneath it under their header labels. @param {string[]} cells @param {string[]|null} header @param {number} width @param {number} indent @returns {string[]} */
-function rowBlock(cells, header, width, indent) {
-  const prefix = pad(indent + CELL_GAP);
-  const out = wrapWithPrefix(cells[0], { width, prefix: pad(indent), hang: CELL_GAP });
+/** One row as a block: the first cell at the gutter, the rest beneath it under their header labels. @param {string[]} cells @param {string[]|null} header @param {number} width @returns {string[]} */
+function rowBlock(cells, header, width) {
+  const prefix = pad(TABLE_INDENT + CELL_GAP);
+  const out = wrapWithPrefix(cells[0], { width, prefix: pad(TABLE_INDENT), hang: CELL_GAP });
   for (let c = 1; c < cells.length; c += 1) {
     if (cells[c] === '') continue;
     const label = header && header[c] ? `${header[c]}: ` : '';
@@ -301,7 +299,7 @@ function asPlainText(text) {
  */
 function fixtureDir(surface) {
   const dir = path.join(FIXTURES_DIR, surface);
-  pinStateRoot(dir, path.join(dir, STATE_DIR_NAME));
+  pinStateRoot(dir, path.join(dir, FIXTURE_STATE));
   return dir;
 }
 
@@ -338,7 +336,7 @@ function epicSample() {
 /** A topic's map mid-discussion, as the conversation shows it: the person's questions and Claude's calls, those since the person last looked above. @returns {string} */
 function mapSample() {
   const dir = fixtureDir('discussion-map');
-  const root = path.join(dir, STATE_DIR_NAME);
+  const root = path.join(dir, FIXTURE_STATE);
   const epic = loadActiveManifests(dir).find((m) => m.work_type === 'epic');
   const topic = Object.entries(epic?.phases?.discussion?.items ?? {}).find(([, item]) => item.status === 'in-progress')?.[0];
   if (!epic || topic === undefined) throw new Error('walkthrough sample discussion-map: the fixture holds no epic with a topic in discussion');
@@ -350,7 +348,7 @@ function mapSample() {
 /** A build part-way through its first phase: its tasks counted, then its phases and tasks with where each stands. @returns {string} */
 function buildSample() {
   const dir = fixtureDir('build-progress');
-  const root = path.join(dir, STATE_DIR_NAME);
+  const root = path.join(dir, FIXTURE_STATE);
   const manifest = loadActiveManifests(dir).find(buildBegun);
   if (!manifest) throw new Error('walkthrough sample build-progress: the fixture holds no unit whose build has begun');
   const { phases } = JSON.parse(fs.readFileSync(path.join(dir, 'tracker.json'), 'utf8'));
@@ -408,6 +406,7 @@ module.exports = {
   DIAGRAM_KINDS,
   SAMPLE_SURFACES,
   FIXTURES_DIR,
+  FIXTURE_STATE,
   isDiagramKind,
   renderDiagram,
   flowDiagram,

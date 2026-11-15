@@ -278,6 +278,14 @@ describe('walkthrough surfaces', () => {
     assert.deepStrictEqual(named?.[1].split('|'), SLUGS);
   });
 
+  it('a question asked at a card puts back the card\'s menu alone, as the start skill fetches it', () => {
+    const prose = fs.readFileSync(path.join(__dirname, '..', '..', 'skills', 'leeway', 'references', 'start-menu.md'), 'utf8');
+    const call = /^node \S+engine\.cjs render (walkthrough-topic --name \{card\} .+)$/m.exec(prose.split('## The Reference Cards')[1] ?? '')?.[1];
+
+    assert.strictEqual(call, 'walkthrough-topic --name {card} --menu-only');
+    assert.match(renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0], 'menu-only': true }), /^=== MENU: walkthrough card/);
+  });
+
   it('refuses a missing or unknown card, naming the ones there are', () => {
     const named = new RegExp(`--name is one of ${SLUGS.join(', ')} — got`);
     for (const name of [undefined, '', 'the-map', '01-kinds-of-work', 'Kinds-Of-Work']) {
