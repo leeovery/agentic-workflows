@@ -103,6 +103,65 @@ function screenFences() {
       .map((c) => ({ screen: name, tag: c.tag, text: c.text })));
 }
 
+/**
+ * Each sample and the live surface it depicts, drawn in this process at its
+ * width — run in a process of its own for each width, the width being
+ * resolved once a process. Each surface is drawn by its own render over a
+ * copy of the sample's fixture in `into`, which its drawing may write to,
+ * given the project id setup would; the build's progress by its screen, from
+ * the tracker's answer the fixture holds, no tracker standing behind a
+ * shipped world.
+ * @param {string} scripts @param {string} into
+ * @returns {Record<string, {sample: string, surface: string}>}
+ */
+function samplesAndSurfaces(scripts, into) {
+  const nodeFs = require('fs');
+  const nodePath = require('path');
+  const at = (/** @type {string} */ rel) => require(nodePath.join(scripts, rel));
+  const { sampleDiagram: sampled, FIXTURES_DIR: fixtures } = at('domain/projections/walkthrough-diagrams.cjs');
+  const { SURFACES } = at('domain/render.cjs');
+  const { asShipped } = at('domain/ledger.cjs');
+  const { pinStateRoot, STATE_DIR_NAME } = at('kernel/state-root.cjs');
+  const { progressScreen } = at('domain/projections/build.cjs');
+  const { trackerGiven } = at('domain/phase-checks.cjs');
+  const { standingOf } = at('domain/build-entry.cjs');
+  const { finishedUnits } = at('domain/ledger-units.cjs');
+  const json = (/** @type {string} */ file) => JSON.parse(nodeFs.readFileSync(file, 'utf8'));
+  /** @type {Record<string, (dir: string, root: string) => string>} */
+  const draw = {
+    'start-menu': (dir) => SURFACES['start-menu'](dir, {}),
+    roadmap: (dir) => SURFACES.roadmap(dir, {}),
+    'epic-menu': (dir) => SURFACES['epic-menu'](dir, { dotpath: 'launch-core' }),
+    'discussion-map': (dir) => SURFACES.map(dir, { dotpath: 'launch-core.billing' }),
+    'build-progress': (dir, root) => progressScreen(standingOf(trackerGiven(dir, 'saved-filters',
+      json(nodePath.join(root, 'saved-filters', 'manifest.json')), json(nodePath.join(dir, 'tracker.json')).phases), []), finishedUnits(root)),
+  };
+  return Object.fromEntries(Object.entries(draw).map(([surface, drawn]) => {
+    const dir = nodePath.join(into, surface);
+    const root = nodePath.join(dir, STATE_DIR_NAME);
+    nodeFs.cpSync(nodePath.join(fixtures, surface), dir, { recursive: true });
+    nodeFs.writeFileSync(nodePath.join(root, 'manifest.json'), JSON.stringify({ ...json(nodePath.join(root, 'manifest.json')), project_id: 'wAlKtHrOuGhSaMpLeS001' }));
+    pinStateRoot(dir, root);
+    return [surface, { sample: sampled(surface), surface: asShipped(root, () => drawn(dir, root)) }];
+  }));
+}
+
+/**
+ * The first line of a sample the surface does not draw where the sample has
+ * it, null when it draws them all in order: the surface read as plain text,
+ * its section headers dropped, and the sample's blank lines and the rows the
+ * surface frames it with — its help and back, its dot rule — set aside.
+ * @param {string} sample @param {string} surface @returns {string|null}
+ */
+function notDrawn(sample, surface) {
+  const drawn = surface.split('\n').filter((line) => !line.startsWith('=== '))
+    .map((line) => line.replace(/^# /, '').replace(/\*\*|\*|`/g, '').split('\u00a0').join(' ').trimEnd());
+  const lines = sample.split('\n').filter(Boolean);
+  let next = 0;
+  for (const line of drawn) if (line === lines[next]) next += 1;
+  return lines[next] ?? null;
+}
+
 // Characters, not bytes: the diagrams are drawn with arrows and blocks, each
 // of which is several bytes wide.
 /** @param {string} label @param {string} text @param {number} width */
@@ -438,19 +497,22 @@ describe('walkthrough sample surfaces', () => {
     assert.match(require(DIAGRAMS).sampleDiagram('start-menu'), /^Inbox: drawn afresh\n/);
   });
 
-  it('every sample re-flows with the surface it depicts', () => {
-    // The tree width is resolved once per process, so a second width is a
-    // second process — the subject here IS the resolution.
-    const at = (width) => {
-      const script = `const d=require(${JSON.stringify(DIAGRAMS)});`
-        + `for(const s of ${JSON.stringify(SAMPLE_SURFACES)})process.stdout.write(d.sampleDiagram(s)+"\\n");`;
-      return execFileSync(process.execPath, ['-e', script], {
+  it('every sample re-flows with the surface it depicts: at the floor, the fallback and the cap, it is the surface drawn at that width', (t) => {
+    const into = fs.mkdtempSync(path.join(os.tmpdir(), 'walkthrough-samples-'));
+    t.after(() => fs.rmSync(into, { recursive: true, force: true }));
+    const at = (/** @type {number} */ width) => {
+      const script = `process.stdout.write(JSON.stringify((${samplesAndSurfaces})(${JSON.stringify(SCRIPTS)}, ${JSON.stringify(path.join(into, String(width)))})));`;
+      /** @type {Record<string, {sample: string, surface: string}>} */
+      const drawn = JSON.parse(execFileSync(process.execPath, ['-e', script], {
         encoding: 'utf8',
         env: { ...process.env, ...HERMETIC, LEEWAY_DISPLAY_WIDTH: String(width) },
-      });
+      }));
+      return Object.entries(drawn).map(([surface, { sample, surface: live }]) => [surface, notDrawn(sample, live)]);
     };
-    fits('samples', at(CAP), CAP);
-    fits('samples', at(MIN), MIN);
+
+    for (const width of [MIN, FALLBACK, CAP]) {
+      assert.deepStrictEqual(at(width), SAMPLE_SURFACES.map((surface) => [surface, null]), `at ${width}`);
+    }
   });
 
   it('every fixture is a schema-valid .leeway tree', () => {
@@ -832,17 +894,21 @@ describe('walkthrough screens', () => {
     ].join('\n'));
   });
 
-  it('no diagram on any screen overflows the floor, the fallback or the cap', () => {
+  it('no diagram on any screen overflows the floor, the fallback or the cap, and a sample is drawn as it stands at that width', () => {
     // The width is resolved once per process, so a second width is a second
     // process. Prose is markdown and re-flows in the reader's client; only
-    // what emits as a code block has columns to hold.
+    // what emits as a code block has columns to hold. A sample is the live
+    // surface, so its columns are the surface's at that width, which the
+    // samples' own test holds.
     const at = (width) => {
-      const script = `const w=require(${JSON.stringify(WALKTHROUGH)});`
+      const script = `const w=require(${JSON.stringify(WALKTHROUGH)}),d=require(${JSON.stringify(DIAGRAMS)});`
         + 'const n=Number(process.env.LEEWAY_DISPLAY_WIDTH),o=[];'
-        + "for(let i=1;i<=w.loadScreen('1').total;i+=1){let d=false;"
-        + "for(const l of w.walkthroughScreen(w.loadScreen(String(i)),'first-run',false).split('\\n')){"
-        + "if(l.startsWith('=== ')){d=l.startsWith('=== DISPLAY: walkthrough diagram');continue;}"
-        + 'if(d&&[...l].length>n)o.push({screen:i,line:l});}}'
+        + "for(let i=1;i<=w.loadScreen('1').total;i+=1){const s=w.loadScreen(String(i));"
+        + "const tags=s.chunks.filter((c)=>c.kind==='diagram').map((c)=>c.tag);"
+        + "const blocks=w.walkthroughScreen(s,'first-run',false).split(/^=== /m).filter((b)=>b.startsWith('DISPLAY: walkthrough diagram')).map((b)=>b.split('\\n').slice(1).join('\\n').trimEnd());"
+        + "blocks.forEach((b,k)=>{const[kind,surface]=tags[k].split(' ');"
+        + "if(kind==='sample'){if(b!==d.sampleDiagram(surface))o.push({screen:i,sample:surface});return;}"
+        + 'for(const l of b.split(\'\\n\'))if([...l].length>n)o.push({screen:i,line:l});});}'
         + 'process.stdout.write(JSON.stringify(o));';
       return JSON.parse(execFileSync(process.execPath, ['-e', script], {
         encoding: 'utf8',
