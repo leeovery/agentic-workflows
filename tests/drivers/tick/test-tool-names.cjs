@@ -6,7 +6,8 @@
 // spawn of its binary, run onto the next line or not, a constant holding
 // it, an install, its package, its store and its ids — and the words prose
 // and code use for other things, the spec page's "Tick a line" and its
-// review marks among them, passed.
+// review marks among them, passed; and in help, its name as a word, which
+// those words say (23.1.3).
 //
 // Layer: unit. World: texts, read.
 // ---------------------------------------------------------------------------
@@ -16,7 +17,7 @@ require('../../scripts/hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { toolNamesIn } = require('../../scripts/tool-names.cjs');
+const { toolNamesIn, helpNamesIn } = require('../../scripts/tool-names.cjs');
 
 /** The forms a text names Tick in, each once. @param {string} text */
 const formsIn = (text) => [...new Set(toolNamesIn(text).filter(({ driver }) => driver === 'tick').map(({ form }) => form))];
@@ -57,5 +58,12 @@ describe('Tick as the tool-name scan finds it (7.1.10)', () => {
       'the ticket at tick-box.md',
       'a tick\ncreates nothing',
     ]) assert.deepStrictEqual(formsIn(text), [], text);
+  });
+
+  it('finds Tick by its name in help, where no other word says it', () => {
+    const named = (/** @type {string} */ text) => helpNamesIn(text).some(({ driver, form }) => driver === 'tick' && form === 'its name');
+
+    assert.deepStrictEqual(['the tasks live in Tick', 'Tick a line you agree with', 'tick'].map(named), [true, true, true]);
+    assert.deepStrictEqual(['the ticket', 'sticky'].map(named), [false, false]);
   });
 });

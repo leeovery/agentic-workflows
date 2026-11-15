@@ -96,12 +96,15 @@ const HELP_LABEL = 'What this menu is for, row by row';
  */
 const registered = (id, gate, named, arrival, keys, help = {}) => Object.freeze({ id, gate, named, arrival, keys: Object.freeze(keys), help: Object.freeze({ label: HELP_LABEL, ...help }) });
 
-/** The start menu's help: "■ Help", the walk through Leeway reached from it, which the start skill carries on into (23.2.3). @type {Partial<MenuHelp>} */
+/** The start menu's help, the help home: "■ Help", the walk through Leeway, which the start skill carries on into, and the reference cards, reached from it (23.2.3). @type {Partial<MenuHelp>} */
 const START_HELP = Object.freeze({
   label: 'How Leeway works',
   heading: 'Help',
   closing: 'Ask about anything else, or walk through the whole thing.',
-  rows: Object.freeze([{ key: 'w', word: 'walk', label: 'Walk through how Leeway works', next: Object.freeze({ kind: 'continue' }) }]),
+  rows: Object.freeze([
+    { key: 'w', word: 'walk', label: 'Walk through how Leeway works', next: Object.freeze({ kind: 'continue' }) },
+    { key: 't', word: 'topics', label: 'Read about one area in more depth', next: Object.freeze({ kind: 'engine', argv: ['render', 'help-topics'] }) },
+  ]),
 });
 
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */
@@ -119,6 +122,7 @@ const MENUS = Object.freeze({
   care: registered('care', 'care entries', 'the care entries', 'none', ['n', 'd', 'b'], { label: 'What this screen is for, row by row' }),
   matrix: registered('matrix', 'matrix', 'the matrix', 'none', ['t', 'u', 'c', BACK], { label: 'What this screen is for, row by row' }),
   drivers: registered('drivers', 'drivers', 'the drivers', 'none', [NUMBERED, BACK]),
+  'help-topics': registered('help-topics', 'help topics', 'the reference cards', 'none', [NUMBERED, BACK]),
 });
 
 /** The menu a render names, refused where none is. @param {string|undefined} id @returns {Menu} */

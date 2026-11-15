@@ -339,9 +339,12 @@ function taskCounts({ phases }) {
   return `${tasks.filter(({ status }) => status === 'done').length} of ${counted(tasks.length, 'task')} done · ${running} running`;
 }
 
+/** The build's tasks counted, then its phases and tasks, each with its state and what holds it. @param {BuildStanding} standing @param {Finished} finished */
+const progressText = (standing, finished) => `${taskCounts(standing)}\n\n${phaseTree(standing, finished)}`;
+
 /** The build's phases and tasks, each with its state and what holds it (12.12.11) — a quick-fix's where `quickFix` says. @param {BuildStanding} standing @param {Finished} finished @param {boolean} [quickFix] */
 function progressScreen(standing, finished, quickFix = false) {
-  return markerSection(standing, quickFix) + section('DISPLAY: build progress', CONTINUE_INSTRUCTION, `${taskCounts(standing)}\n\n${phaseTree(standing, finished)}`);
+  return markerSection(standing, quickFix) + section('DISPLAY: build progress', CONTINUE_INSTRUCTION, progressText(standing, finished));
 }
 
 /** What has stopped: the review, a quick-fix's fixes, or the build. @param {boolean} reviewing @param {boolean} quickFix */
@@ -384,4 +387,4 @@ function stopScreen(standing, finished, quickFix = false) {
   return markerSection(standing, quickFix) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
 }
 
-module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen };
+module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressText, progressScreen, stopScreen };

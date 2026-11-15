@@ -29,8 +29,9 @@ const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { logClaims } = require('./inbox.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
 const {
-  ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
+  ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
+const { helpTopicsSurface } = require('./projections/help-topics.cjs');
 const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { pickRows } = require('./boot-route.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
@@ -1019,24 +1020,18 @@ function walkthroughScreenSurface(_cwd, args) {
   return walkthroughScreen(loadScreen(args.screen), origin, Boolean(args['menu-only']));
 }
 
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function walkthroughHomeSurface(_cwd, _args) {
-  return walkthroughHome();
-}
-
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function walkthroughTopicsSurface(_cwd, _args) {
-  return walkthroughTopics();
-}
-
 /**
- * One reference card, addressed by the slug the topics menu's DATA table
- * gives for the number the reader pressed. `--menu-only` serves the card's
- * menu alone, fetched by the help flow where it shows it.
+ * One reference card, addressed by its slug, as the cards' row for it names
+ * it: whole, with its menu. `--menu-only` serves the return from a question,
+ * the card already on the reader's terminal; `--content-only`, a card shown
+ * in an answer, mid-conversation, where it carries no gate.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function walkthroughTopicSurface(_cwd, args) {
-  return walkthroughTopic(loadCard(args.name), Boolean(args['menu-only']));
+  if (args['menu-only'] && args['content-only']) throw new Error('render walkthrough-topic: --menu-only and --content-only each draw part of the card — give one');
+  const card = loadCard(args.name);
+  if (args['menu-only']) return walkthroughTopic(card, 'menu');
+  return walkthroughTopic(card, args['content-only'] ? 'content' : 'whole');
 }
 
 // The flags each knowledge gate variant takes: the reuse variant's system
@@ -1114,8 +1109,6 @@ const SURFACES = {
   'brownfield-offer-gate': brownfieldOfferGateSurface,
   'walkthrough-offer': walkthroughOfferSurface,
   'walkthrough-screen': walkthroughScreenSurface,
-  'walkthrough-home': walkthroughHomeSurface,
-  'walkthrough-topics': walkthroughTopicsSurface,
   'walkthrough-topic': walkthroughTopicSurface,
   'migrations-applied': migrationsAppliedSurface,
   'migration-gate': (cwd) => migrationGate({ codeOnly: finishing(cwd)?.commits.includes('state') === false }),
@@ -1177,6 +1170,7 @@ const SURFACES = {
   'matrix-replay': (cwd, { threshold, build }) => replaySurface(cwd, { threshold, build }),
   'environment-setup': (cwd, { from }) => environmentSetupSurface(cwd, { from }),
   drivers: (cwd) => driversSurface(cwd),
+  'help-topics': (cwd) => helpTopicsSurface(cwd),
 };
 
 /**

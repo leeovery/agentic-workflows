@@ -402,9 +402,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render brownfield-offer-gate
   render walkthrough-offer [--menu-only]
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
-  render walkthrough-home
-  render walkthrough-topics
-  render walkthrough-topic --name <slug> [--menu-only]
+  render walkthrough-topic --name <slug> [--menu-only | --content-only]
   render send-report <work-unit>.<topic> --sent <path>
   render map <work-unit>.<topic>
   render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
@@ -465,6 +463,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render matrix-replay --threshold <percent> | --build <percent>
   render environment-setup [--from manage]
   render drivers
+  render help-topics
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -2483,7 +2482,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['warn', 'menu-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
+const RENDER_FLAGS = ['warn', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
 
 /** The render family's refusal of a surface it does not draw, naming every one it does, its three dev aids among them. */
 const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpost', 'tree', 'wrap'].join('|')}> …`;
@@ -2691,7 +2690,7 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
   'state-merge': ['pick'],
   render: Object.freeze([
     ...Object.values(BOOT_STOPS), 'migrations-applied', 'migration-gate',
-    'walkthrough-offer', 'walkthrough-screen', 'walkthrough-home', 'walkthrough-topics', 'walkthrough-topic', 'help',
+    'walkthrough-offer', 'walkthrough-screen', 'walkthrough-topic', 'help', 'help-topics',
   ]),
   gate: ['state lost gate', 'state merge gate', 'migration gate'],
   commit: ['--migrations', '--inbox'],

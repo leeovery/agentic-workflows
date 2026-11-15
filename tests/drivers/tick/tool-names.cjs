@@ -3,6 +3,7 @@
 // How Tick is named, for the tool-name scan (tests/scripts/tool-names.cjs):
 // its binary, its commands and flags, and the forms only Tick takes. Its
 // binary quoted bare is left out: the spec page's review marks are 'tick'.
+// Its name as a word, which help never says (23.1.3).
 
 module.exports = {
   binary: 'tick',
@@ -15,5 +16,8 @@ module.exports = {
     { form: 'its package', pattern: /\bleeovery\/tick\b/ },
     { form: 'its store', pattern: /(?<![\w-])\.tick\// },
     { form: 'its ids', pattern: /(?<![\w./-])tick-[0-9a-f]{6}\b/ },
+  ],
+  named: [
+    { form: 'its name', pattern: /\btick\b/i },
   ],
 };

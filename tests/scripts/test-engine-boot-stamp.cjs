@@ -170,7 +170,7 @@ describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
       'state-merge': ['pick'],
       render: [
         'git-floor-stop', 'repo-stop', 'state-lost-gate', 'migration-guard-stop', 'migration-checks-stop', 'state-merge-gate', 'migration-taken-stop', 'migrations-applied', 'migration-gate',
-        'walkthrough-offer', 'walkthrough-screen', 'walkthrough-home', 'walkthrough-topics', 'walkthrough-topic', 'help',
+        'walkthrough-offer', 'walkthrough-screen', 'walkthrough-topic', 'help', 'help-topics',
       ],
       gate: ['state lost gate', 'state merge gate', 'migration gate'],
       commit: ['--migrations', '--inbox'],

@@ -12,13 +12,25 @@ Fetch the start menu and emit its sections verbatim per their markers:
 node .claude/skills/leeway-engine/scripts/engine.cjs render start-menu
 ```
 
-The answer goes to `gate`; follow its `next`. Any other screen it draws — help, the verdicts, triage, manage or the closed units — is emitted the same way, verbatim per its markers, and its answer goes to `gate` in turn. A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
+The answer goes to `gate`; follow its `next`. Any other screen it draws — help and its reference cards, the verdicts, triage, manage or the closed units — is emitted the same way, verbatim per its markers, and its answer goes to `gate` in turn. A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
 
 Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/{skill} {args}` for a handoff, or `unit {work_unit}` for a Continue.
 
 ## The Walk
 
-**w/walk**, on the start menu's help, carries on here: Load **[walk.md](../../leeway-help/references/walk.md)** with origin = `help`. On return, run **The Menu** again.
+**w/walk**, on the start menu's help, carries on here: Load **[walk.md](walk.md)** with origin = `help`. On return, draw the start menu's help again, emit its sections verbatim per their markers, and carry on there:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render help start-menu
+```
+
+## The Reference Cards
+
+A question asked at a reference card is answered per **[answering-how-it-works.md](../../leeway-shared/references/answering-how-it-works.md)**, and the menu it puts back is that card's alone, emitted verbatim per its markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render walkthrough-topic --name {card} --menu-only
+```
 
 ## Triage
 

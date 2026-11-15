@@ -68,11 +68,11 @@ function sinceTree(since) {
 }
 
 /**
- * The map screen.
+ * The map as drawn: its heading and counts, then each section it holds.
  * @param {MapView} view
  * @returns {string}
  */
-function mapScreen({ title, counts, since, open, decided, moved }) {
+function mapText({ title, counts, since, open, decided, moved }) {
   const blocks = [`Map — ${title}`];
   const column = Math.max(0, ...[...open, ...decided, ...moved].map((row) => rowHead(row).length)) + TAG_GAP;
   if (counts.yours + counts.calls + counts.carried === 0) {
@@ -84,7 +84,10 @@ function mapScreen({ title, counts, since, open, decided, moved }) {
   if (open.length > 0) blocks.push(`OPEN (${open.length} of yours)\n${rowTree(open, column)}`);
   if (decided.length > 0) blocks.push(`DECIDED (${counts.decided} of yours · ${besides(counts)})\n${rowTree(decided, column)}`);
   if (moved.length > 0) blocks.push(`MOVED ON (${moved.length} of yours)\n${rowTree(moved, column)}`);
-  return section('DISPLAY: map', CONTINUE_INSTRUCTION, blocks.map((block) => block.replace(/\n+$/, '')).join('\n\n'));
+  return blocks.map((block) => block.replace(/\n+$/, '')).join('\n\n');
 }
 
-module.exports = { ROW_MAX, counted, mapScreen };
+/** The map screen. @param {MapView} view @returns {string} */
+const mapScreen = (view) => section('DISPLAY: map', CONTINUE_INSTRUCTION, mapText(view));
+
+module.exports = { ROW_MAX, counted, mapText, mapScreen };

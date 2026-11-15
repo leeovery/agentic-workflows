@@ -455,7 +455,7 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['leeway-discovery', 'leeway-engine', 'leeway-help']);
+  const H1_KNOWN = new Set(['leeway-discovery', 'leeway-engine']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !isOurs(name)) continue; // only workflow backbones

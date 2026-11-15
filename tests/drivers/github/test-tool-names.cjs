@@ -6,7 +6,7 @@
 // or a flag, a spawn of its binary, run onto the next line or not, its
 // binary quoted bare — in a constant, an argument list or a code span — an
 // install, and its packages; and a unit's name that says gh in passing,
-// passed.
+// passed; and in help, its name as a word, which that name says (23.1.3).
 //
 // Layer: unit. World: texts, read.
 // ---------------------------------------------------------------------------
@@ -16,7 +16,7 @@ require('../../scripts/hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { toolNamesIn } = require('../../scripts/tool-names.cjs');
+const { toolNamesIn, helpNamesIn } = require('../../scripts/tool-names.cjs');
 
 /** The forms a text names GitHub's CLI in, each once. @param {string} text */
 const formsIn = (text) => [...new Set(toolNamesIn(text).filter(({ driver }) => driver === 'github').map(({ form }) => form))];
@@ -48,5 +48,11 @@ describe('GitHub\'s CLI as the tool-name scan finds it (7.1.10)', () => {
 
   it('passes a unit\'s name that says gh in passing', () => {
     for (const text of ['Publish failure swallows gh stderr', 'the gh-pages branch', 'a high road']) assert.deepStrictEqual(formsIn(text), [], text);
+  });
+
+  it('finds GitHub\'s CLI by its name in help', () => {
+    const named = (/** @type {string} */ text) => helpNamesIn(text).some(({ driver, form }) => driver === 'github' && form === 'its name');
+
+    assert.deepStrictEqual(['Publish failure swallows gh stderr', 'the GitHub CLI opens the pull request', 'Install GitHub\'s CLI first.', 'the GitHub command line', 'a high road', 'see github.com/leeovery', 'GitHub\'s pull requests'].map(named), [true, true, true, true, false, false, false]);
   });
 });
