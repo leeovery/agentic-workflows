@@ -1034,9 +1034,13 @@ function unitFinished(h) {
  * at `main`, holds — but one the person wrote last, which the model holds
  * main to (`checked`): a branch laid on the unit's own branch carries the
  * person's writes there, which a later write of theirs on main overrides.
+ * None where main holds the branch's tip: a way on that makes it again on
+ * the branch it lands on leaves it there, carrying other tasks' work as
+ * that branch held it, which main may hold rewritten since.
  * @param {History} h @param {string} tip @param {string} branch @param {string} main
  */
 function lackedPast(h, tip, branch, main) {
+  if (tried(h.at, ['merge-base', '--is-ancestor', branch, 'main']).status === 0) return [];
   const [tree, ...conflicted] = tried(h.at, ['merge-tree', '--write-tree', '--name-only', '--no-messages', `--merge-base=${tip}`, 'main', branch]).stdout.split('\n').filter(Boolean);
   if (tree === main) return [];
   const differing = git(h.at, ['diff', '--name-only', '-z', tree, main]).split('\0').filter(Boolean);
