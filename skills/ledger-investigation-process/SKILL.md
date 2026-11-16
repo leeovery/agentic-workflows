@@ -112,7 +112,7 @@ Once the fix is decided, log the fix direction (`investigation-log fix-direction
 
 ### Mail
 
-At natural pauses, check `topic mailbox {work_unit} {work_unit}`: a message is what another phase needs settled here, such as a gap the spec sent back. Put the question it raises on the map, then remove the message: `topic answered {work_unit} {work_unit} {NNN-slug} --entry {question}`.
+At natural pauses, check `topic mailbox {work_unit} {work_unit}`: a message is what was found elsewhere for this investigation to settle, such as one carried into its mailbox from before Ledger. Put the question it raises on the map, then remove the message: `topic answered {work_unit} {work_unit} {NNN-slug} --entry {question}`.
 
 ### The Log
 

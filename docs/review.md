@@ -12,7 +12,7 @@ The review works in rounds. Each round reads, lands what it finds, and reports t
 
 **The findings.** Every item of every report is answered by exactly one finding, and every finding lands somewhere:
 
-- **In the change**, in what this work delivered: a fix task, however small, since no code changes outside a task. One below the floor, or not real, is dropped with its reason.
+- **In the change**, in what this work delivered: a fix task, however small, since no code changes outside a task. One too slight to be worth a fix, or not real, is dropped with its reason.
 - **Beside the change**: what is not worth doing is dropped, related findings are grouped into one item, and the rest are filed to the inbox, to be triaged like anything else. Nothing out of scope is put to you as a decision.
 - **Notes for later**, from the readers or from the builders of a round's fixes, lie beyond the change by definition: each is filed or dropped, never fixed here.
 
@@ -36,11 +36,11 @@ The review takes its turn in the project's checkout and leaves the working tree 
 
 ## Finish
 
-Once a round has passed, or been settled, and its fix tasks are done, finish is drawn. Before it, Claude checks the inbox against what was built and claims each item the work resolved.
+Once a round has passed, or been settled, and its fix tasks are done, finish is drawn. Before it, Claude checks the inbox against what was built and archives each item the work resolved, as closed by this work.
 
-**Finish** is the gate that ends the work. It shows the finish report, asks a verdict on each call you changed during the build and the review, and names each inbox item the work resolved, which its yes archives, closed by this work, so nothing is silently discarded. An item closed wrongly can be asked back to the inbox.
+**Finish** is the gate that ends the work. It shows the finish report, asks a verdict on each call you changed during the build and the review, and names each inbox item the work resolved and archived, so nothing is silently discarded. An item closed wrongly can be asked back to the inbox.
 
-Your yes lands what is left to land, the review's fix phases last, and a work unit with a branch of its own lands it on the default branch. A refusal names the way on, such as a conflict with the default branch to settle with you first. Then the work is complete: it leaves the start menu for the closed units, its decisions stay current in the [knowledge base](knowledge-base.md), and it stays finished. A later change to it is new work.
+Your yes lands what is left to land, the review's fix phases last, and a work unit with a branch of its own lands it on the default branch. A refusal names the way on, such as a conflict with the default branch to settle with you first. Then the work is complete: it leaves the start menu for the list behind its `v/view` row, its decisions stay current in the [knowledge base](knowledge-base.md), and it stays finished. A later change to it is new work.
 
 ## A quick-fix's review
 

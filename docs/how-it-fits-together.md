@@ -22,7 +22,7 @@ Picking work on the start menu or an epic's menu hands off the same way, so the 
 
 Two kinds of thing are written as the work goes, and they are kept apart on purpose.
 
-The **ledger** is the record: one file for the project, `.ledger/.ledger.jsonl`, one entry a line, every question, finding and decision by either side. It only ever grows. A topic's **record** is a view drawn from it, the topic's current decisions with their reasons and what they rule out, the answers they replaced folded beneath them; a topic's **map** is another, what is being decided and where each point stands. Later phases, the knowledge base and every screen read the record, never a conversation.
+The **ledger** is where every entry is written: one file for the project, `.ledger/.ledger.jsonl`, one entry a line, every question, finding and decision by either side. It only ever grows. A topic's **record** is a view drawn from it, the topic's current decisions with their reasons and what they rule out, the answers they replaced folded beneath them; a topic's **map** is another, what is being decided and where each point stands. Later phases, the knowledge base and every screen read the record, never a conversation.
 
 A **log** is the journey: the options weighed, the false paths and why they were dropped, the reversals and what changed a mind. Discovery keeps one per session, each topic keeps one across its sessions, and the build keeps one for itself. A log is appended and never rewritten, and points at ledger entries by their short ids rather than restating them.
 
@@ -34,7 +34,7 @@ Ledger keeps its records in `.ledger/`, in your repository but on a branch of it
 
 Each piece of work gets a folder of its own, `.ledger/{work-unit}/`, holding its manifest; its discovery session logs; a folder for each topic with its brief, its log, its experiments and its mail; the one specification; the build's log, notes and task reports; the review phase's rounds; the inbox items it started from; and the files shared with it. Above the pieces of work sit the inbox, `.ledger/.inbox/`, and the product's own conversation, `.ledger/.product/`, with its session logs, the roadmap items' notes and the files shared with it. The roadmap and the registry of work live in the project manifest, `.ledger/manifest.json`.
 
-One folder stays out of git: `.ledger/.cache/`, the scratch each session keeps so an interrupted one can pick up, and the marks that say which session is working where. Nothing in it is the record, and the knowledge base's store, `.ledger/.knowledge/`, is rebuilt from the record in each copy of the project.
+Two folders stay out of git. `.ledger/.cache/` holds the scratch each session keeps so an interrupted one can pick up, and the marks that say which session is working where; nothing in it is the record. `.ledger/.knowledge/` holds the knowledge base's store, rebuilt from the ledger in each copy of the project.
 
 ## Working in parallel
 

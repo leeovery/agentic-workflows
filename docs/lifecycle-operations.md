@@ -36,14 +36,14 @@ Nothing is lost. The branches and the work set aside wait for you, and the recei
 
 ## An epic's topics
 
-Inside an epic, topics have their own lifecycle, apart from the epic's. Each move is asked for in your own words, made as you asked and reported in a line; only a cancel asks first.
+Inside an epic, topics have their own lifecycle, apart from the epic's. Each move is asked for in your own words. In the epic's discovery it is made as you asked and reported in a line, and only a cancel asks first; a postpone asked in a topic's discussion, or in the split at the specification, asks first too.
 
 - **Cancel** a topic that turns out not worth pursuing, started or not, without touching the rest of the epic. It stays listed as the record that it was raised and declined, drops out of the epic's counts, and stops holding up the specification. Any experiment open under it ends as abandoned, and the question each was measuring is open again, raised when the topic comes back. **Reactivate** brings it back as it was.
 - **Postpone** a topic that is wanted but belongs to a later release. It goes to the [roadmap](tracking.md) on a horizon you name, whole: nothing is deleted and nothing moves, and a message sent to it waits in its mail for its return. It comes back when it is **pulled forward** into an epic whose map is still open: its own, where it returns as it was, in its old place in the order where that is still free; or another, where it opens as a fresh topic that reads the earlier record in full and decides again, never changing it.
 - **Remove** a topic that should never have been on the map, a mistake or a duplicate, while nothing has started under it. Its name is struck from the map, so a later pass does not propose it again unasked; asking for it back by name brings it back.
-- **Reopen** a decided topic by sending it a message carrying why. It comes back among what waits on you, and closes again through a fresh closing pass.
+- **Reopen** a decided topic by sending it a message carrying why. It goes back to in progress, its row on the epic's menu shows *mail waiting*, and it closes again through a fresh closing pass.
 
-All of these close when the epic's specification is first written. From then the map is closed: no topic is added, cancelled, postponed or reopened, and a decision that must change is settled in the phase the epic is in. Abandoning the whole effort is the epic's own cancel.
+Adding, removing, cancelling, reactivating and reopening a topic close when the epic's specification is first written. From then the map is closed, and a decision that must change is settled in the phase the epic is in. Postponing stays open until ready to build's yes, because it is how an epic is split: a whole decided topic moved to a next epic on the roadmap ([specification](specification.md#splitting-an-epic)). Abandoning the whole effort is the epic's own cancel.
 
 A single-topic piece of work has nothing to postpone or cancel apart from itself: its topic is the work, so its "not now" is a cancel of the work.
 
@@ -66,7 +66,7 @@ A decision is never edited. A changed mind, a new fact, another topic's decision
 
 ## The legacy files
 
-A project moved across from Ledger's earlier version can hold files the move found no place for: old plans, agent reports, research. They are kept as **legacy files**, with their piece of work or with the product, until each is sorted. While any wait, the start menu shows a row for them, *Sort the legacy files from the migration*, and an epic's menu shows its own.
+A project moved across from before Ledger can hold files the move found no place for: old plans, agent reports, research. They are kept as **legacy files**, with their piece of work or with the product, until each is sorted. While any wait, the start menu shows a row for them, *Sort the legacy files from the migration*, and an epic's menu shows its own.
 
 Sorting is a short pass, at your pace:
 

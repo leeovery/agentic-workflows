@@ -6,11 +6,11 @@ Every question, finding and decision lands on the ledger as it is made. The topi
 
 ## The opening
 
-Before it says anything, Claude reads what the topic starts from: its brief, and for a feature or a bugfix the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, from the [knowledge base](knowledge-base.md). A topic that waited on the roadmap, or a piece of work that moved here from another kind, also reads what it left from before, as input it never changes.
+Before it says anything, Claude reads what the topic starts from: its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, from the [knowledge base](knowledge-base.md). A topic that waited on the roadmap, or a piece of work that moved here from another kind, also reads what it left from before, as input it never changes.
 
 The opening fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what earlier decisions already settle and where from, and the open questions, with Claude's lean on any where a logical one exists. Each open question it names goes on the map. The opening decides nothing.
 
-What you decided in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself.
+What you settled on in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself.
 
 ## The conversation
 
@@ -31,7 +31,7 @@ A claim about the code, a number or the platform is checked before it is said. W
 
 Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone. Where several ways are open it puts ideas forward and asks what you think; where one way is clear it sets out how it sees it working and invites you to pull it apart.
 
-<!-- 19.12 -->Once the shape is agreed, Claude fills in the rest. A call it leans on goes on the map as a question and is raised at a natural pause; whether it reaches you is decided by the ask rule, from how often your answers have changed Claude's on calls of that kind, never by Claude's own confidence. A call that reaches you shows Claude's lean beside it, sealed before you answer. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
+<!-- 19.12 -->Once the shape is agreed, Claude fills in the rest. A call it leans on goes on the map as a question and is raised at a natural pause; whether it reaches you is decided by the ask rule, from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
 
 ### The map
 
@@ -61,7 +61,7 @@ A feature has no other topic. A point of its own that needs decisions of its own
 
 - **Backlogging** — "roadmap it", "push it back": a question of this topic, or work no topic owns, goes on the roadmap on a horizon you name, and the question closes.
 - **Postponing** — an epic's topic you want later, this one or another by name, goes to the roadmap whole and comes back when it is pulled forward. A feature's topic is the work itself, so its "not now" is a cancel.
-- **Cancelling** — a topic not worth pursuing leaves the epic, keeping its record. Any experiment still running under it is abandoned, and a message waiting for it goes to the inbox.
+- **Cancelling** — a topic not worth pursuing leaves active work, still listed on the epic's menu as the record that it was raised and declined. Any experiment still running under it is abandoned, and a message waiting for it goes to the inbox.
 
 ## Closing a topic
 

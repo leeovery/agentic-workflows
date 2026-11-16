@@ -8,7 +8,7 @@ You never have to choose. You describe the work in your own words and [discovery
 
 | Kind | What it is | Its route |
 |---|---|---|
-| **Epic** | Several distinct things wearing one name, each needing decisions of its own. | Discovery, then per topic: Discussion (Experiment) → Specification → Build → Review |
+| **Epic** | Several distinct things wearing one name, each needing decisions of its own. | Discovery → Discussion per topic (Experiment) → Specification → Build → Review |
 | **Feature** | One coherent thing to build, needing real discussion. | Discovery → Discussion (Experiment) → Specification → Build → Review |
 | **Bugfix** | Something that used to work and now fails, its cause still to find. | Discovery → Investigation → Specification → Build → Review |
 | **Quick-fix** | Settled work of any size, needing no decision beyond a quick call. | Discovery → its fixes → its close (Review, if you ask) |

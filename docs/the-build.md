@@ -21,7 +21,7 @@ The phases run in the cut's order, each through three stretches: its start, its 
 
 The build's first entry runs the project's steps that prepare its environment, from the [environment setup](verification.md), which can take minutes.
 
-An epic or a feature whose build starts with two or more phases gets a **branch of its own**, `feat/{unit}`: each phase's stack starts from it and merges into it, and it lands on the default branch once, at finish. Every other piece of work lands on the default branch directly. Each phase start brings the default branch into the unit's branch, and the review phase does again before its first round; where the two conflict, the conflicts are settled with you in the conversation before the work goes on.
+An epic or a feature whose build starts with two or more phases gets a **branch of its own**, `feat/{unit}`: each phase's stack starts from it and merges into it, and it lands on the default branch once, at finish. Every other piece of work lands on the default branch directly. Each phase start brings the default branch into the work's own branch, and the review phase does again before its first round; where the two conflict, the conflicts are settled with you in the conversation before the work goes on.
 
 ### The phase start
 

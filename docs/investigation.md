@@ -49,7 +49,7 @@ A finding that does not hold up is declined, with why in the log.
 
 Before any fix is set out, Claude steps back from the bug. Was the implementation wrong, or was it right and an edge case has turned up? Is there another way to do it, a different abstraction or mechanism, that thinking higher up reveals?
 
-The **fix direction** is then a question, each answer a way to fix it said as what you would notice, with what the step back found beside it. Where the cause sits in the design, or the area keeps breaking, it carries one way more: rework the area as a feature. The direction says what the fix does, never how it is written; that is the specification's.
+<!-- 19.12 -->The **fix direction** is then a question, each answer a way to fix it said as what you would notice, with what the step back found beside it. Where the cause sits in the design, or the area keeps breaking, it carries one way more: rework the area as a feature. Where the root cause is a design problem, the fix direction always comes to you; any other goes through the [ask rule](trust.md) like any call. The direction says what the fix does, never how it is written; that is the specification's.
 
 ## Reworking it as a feature
 
@@ -61,11 +61,11 @@ The investigation closes once the root cause and the fix stand, both validated s
 
 The **conclude** gate shows the recap and asks a verdict on each call you changed along the way: what Claude's answer would have cost, nothing, a fix later, or a real loss. Your yes concludes the investigation and hands the work into its specification; keep going carries the hunt on.
 
-From there a bugfix runs as a feature does, with one difference: [the build](the-build.md)'s first task writes the test that reproduces the bug, and it lands only once that test has failed on the unfixed code, five times in a row.
+From there a bugfix runs as a feature does, with two differences. [The build](the-build.md)'s first task writes the test that reproduces the bug, and it lands only once that test has failed on the unfixed code, five times in a row. And before its first round, the [review phase](review.md) runs that test on the unfixed code again: a pass there is a finding, since the test no longer proves the bug.
 
-## Mail, setting aside and cancelling
+## Setting aside and cancelling
 
-A later phase can need something settled here. A gap the specification meets in the fix, for instance, comes back as a message, waiting in the investigation's mail and raised as a question when it next opens.
+Once the investigation has concluded, nothing comes back to it from the phases after it: a gap the specification meets in the fix is decided at the specification, as any gap is. A message waiting in the investigation's mail, such as one carried over from before Ledger, is raised as a question when the investigation next opens, and it cannot conclude while one waits.
 
 A bug or an idea that surfaces along the way is put aside to the roadmap or the inbox in a line. A bugfix's topic is the work itself, so there is nothing to postpone: its "not now" is a cancel, which keeps its record.
 

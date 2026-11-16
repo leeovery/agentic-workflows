@@ -41,7 +41,7 @@ Then open the conversation; never stop in silence once you have read. The openin
 
 What you say is your own and fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what earlier decisions already settle and where from — the product record cited — the open questions with your lean on any where a logical one exists, and perhaps where to start. A principle the person stated in the product's conversation is your position in the first topic it bears on. Each open question you name goes on the map (`ledger ask`) in the same turn. The opening decides nothing.
 
-The brief, the seeds and discovery's log are the inherited position: what the person decided in discovery is working ground to build on, never asked again. It moves when something here contradicts it, or when the person reopens it. With nothing to open from, open on the problem, its constraints and the code worth reading.
+The brief, the seeds and discovery's log are the inherited position: what the person settled on in discovery is working ground to build on, never asked again. It moves when something here contradicts it, or when the person reopens it. With nothing to open from, open on the problem, its constraints and the code worth reading.
 
 ## The Conversation
 
