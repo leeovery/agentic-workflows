@@ -46,11 +46,11 @@
 // plan's topic — the topic its plan's root names, a single-topic unit's
 // plan the whole spec's — a phase not marked built holds none, or a link
 // holds a task neither done nor closed after one neither, of a later phase
-// or another unit's; then each phase naming its parent adopted, its tasks named in its old
-// plan's order — the plan's task ids by number, then the letters after it
-// (`oldPlanOrder`) — and each
-// task neither done nor closed given its type, fix in a bugfix or quick-fix
-// and feat in any other (21.5.21); then the unit's files, `spec.md` with the
+// or another unit's; then each phase naming its parent adopted, its tasks
+// named in its old plan's order — the plan's task ids by number, then the
+// letters after it (`oldPlanOrder`) — and each task neither done nor closed
+// given its type, fix in a bugfix or quick-fix and feat in any other
+// (21.5.21); then the unit's files, `spec.md` with the
 // plan's blocks of scenarios, any a run before wrote replaced,
 // `build/notes.md` the notes whole, numbered from 1, and the manifest — the
 // cut, the build begun in step, `build: {position: 'step'}`, which the

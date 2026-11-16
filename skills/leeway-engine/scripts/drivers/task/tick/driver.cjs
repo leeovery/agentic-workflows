@@ -52,8 +52,9 @@
 // own children the name of the phase's next task — one named so already
 // keeping its number, the rest in the numbers left, in the order the
 // migration gives, by Tick's ids, then in the order Tick made them (`seq`)
-// — and the parent's own parent, the plan's root, the unit's, where no task holds it and the root carries no name of the
-// engine's. Each name is added beside the refs the task has, through Tick's
+// — and the parent's own parent, the plan's root, the unit's, where no task
+// holds it and the root carries no name of the engine's. Each name is added
+// beside the refs the task has, through Tick's
 // update, which keeps its status and its history, and a name a task has
 // already is left: a run again adds only what the last left out. A task
 // holding another of the engine's names, a name another task holds, and a
