@@ -1,10 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The gate over a working tree changed under a round (leeway-engine/scripts/
+// The gate over a working tree changed under a round (ledger-engine/scripts/
 // domain/review-tree.cjs, its screen projections/review-phase.cjs, the
 // snapshot review-phase.cjs): `engine render review-tree <unit>`, listing
-// every change outside `.leeway/` since the round's snapshot, a rename as
+// every change outside `.ledger/` since the round's snapshot, a rename as
 // its two paths, each the engine does not put back marked with why — a path
 // changed already when the round began, one holding what such a path held
 // then, one ignored then or in a folder ignored whole, a folder git lists
@@ -60,9 +60,9 @@ describe('render review-tree and review restore-tree: put it back, or keep it as
     const res = putBack();
     const changed = ['src/added.js', 'src/card.js', 'src/paid.js', 'src/receipt.js', 'src/stray.js'];
 
-    assert.ok(display.includes(`CHANGED OUTSIDE .leeway/ (${changed.length})`), display);
+    assert.ok(display.includes(`CHANGED OUTSIDE .ledger/ (${changed.length})`), display);
     for (const file of changed) assert.ok(display.includes(file), file);
-    assert.ok(flat(menu.replaceAll('*', '')).includes('Put it back as the round found it — what it changes is set aside under .leeway/, nothing deleted'), menu);
+    assert.ok(flat(menu.replaceAll('*', '')).includes('Put it back as the round found it — what it changes is set aside under .ledger/, nothing deleted'), menu);
     assert.ok(menu.includes('**Comment**'), menu);
     assert.deepStrictEqual([put.argv.slice(0, 4), keep], [['review', 'restore-tree', UNIT, '--listed'], { kind: 'engine', argv: ['review', 'accept-tree', UNIT] }]);
     assert.deepStrictEqual(res, {
@@ -108,7 +108,7 @@ describe('render review-tree and review restore-tree: put it back, or keep it as
     ]) assert.ok(display.includes(line), line);
     assert.deepStrictEqual([res.restored, res.kept], [['coverage.json'], ['local.json', 'src/banner.js', 'trees/side/']]);
     assert.deepStrictEqual([held('coverage.json'), held('local.json'), held('src/banner.js'), fs.existsSync(at('trees/side'))], [null, '{"secret": 1}\n', 'export const banner = \'again\';\n', true]);
-    assert.match(again, /^review round: the working tree outside \.leeway\/ changed since the snapshot the round is held to: local\.json, src\/banner\.js, trees\/side\/ — /);
+    assert.match(again, /^review round: the working tree outside \.ledger\/ changed since the snapshot the round is held to: local\.json, src\/banner\.js, trees\/side\/ — /);
     assert.ok(!after.menu.includes('`p/put`') && after.menu.includes('`k/keep`'), after.menu);
     assert.ok(after.display.includes(`SET ASIDE BY PUT BACK (1) — kept there until you remove them ${statePath(dir, ASIDE)} round-1/put-1/coverage.json`), after.display);
     assert.ok(!display.includes('SET ASIDE'), display);
@@ -271,7 +271,7 @@ describe('render review-tree and review restore-tree: put it back, or keep it as
     assert.deepStrictEqual([moved, kept, clean, refusedRestore(put.argv[4], ['src/card.js'])], [
       `review restore-tree: the working tree changed since the gate listed it — render review-tree ${UNIT} lists it as it stands`,
       `review restore-tree: src/banner.js — not put back here: changed already when the round began — the person puts it back by hand, or keeps the tree as it is: review accept-tree ${UNIT}`,
-      `review restore-tree: the working tree outside .leeway/ is as round 1's snapshot holds it — record the round: review round ${UNIT} --file <round.json>`,
+      `review restore-tree: the working tree outside .ledger/ is as round 1's snapshot holds it — record the round: review round ${UNIT} --file <round.json>`,
       `review restore-tree: no snapshot of round 1's working tree is held — its cache is gone, so nothing can be put back: render review-tree ${UNIT} asks the person whether the tree stands as it is`,
     ]);
   });

@@ -12,8 +12,8 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { tokenize } = require('../../skills/leeway-engine/scripts/kernel/knowledge/keyword.cjs');
-const { excerpt } = require('../../skills/leeway-engine/scripts/kernel/knowledge/excerpt.cjs');
+const { tokenize } = require('../../skills/ledger-engine/scripts/kernel/knowledge/keyword.cjs');
+const { excerpt } = require('../../skills/ledger-engine/scripts/kernel/knowledge/excerpt.cjs');
 
 /** The query's words, as the search tokenizes them. @param {string} query */
 const wordsOf = (query) => new Set(tokenize(query));

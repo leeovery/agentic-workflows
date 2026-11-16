@@ -54,10 +54,10 @@ const {
 const { leaningCall } = require('./ledger-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
-const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
-const { manageUnitScreen } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/projections/manage.cjs'));
-const decisionPoint = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/decision-point.cjs'));
-const { RAISE_SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
+const { taskBranch } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/landing-names.cjs'));
+const { manageUnitScreen } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/projections/manage.cjs'));
+const decisionPoint = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/decision-point.cjs'));
+const { RAISE_SHOWN } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/gate.cjs'));
 
 const WU = SPEC_TO_BUILD_UNIT;
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
@@ -80,7 +80,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     const ready = sim.run(['task', 'ready', WU]).tasks.map((/** @type {{task: string}} */ t) => t.task);
     assert.deepStrictEqual(ready, ['1.1', '1.2'], 'two tasks sharing no files run side by side');
     for (const task of ready) sim.run(['task', 'start', WU, task]);
-    sim.render(['build-headline', WU, '--file', sim.write(`.leeway/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.1', changes: 'An entry shows.', watch: 'The entry.' }, { task: '1.2', changes: 'A shown entry checks its hash.', watch: 'The hash.' }] })], { expect: 'content' });
+    sim.render(['build-headline', WU, '--file', sim.write(`.ledger/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.1', changes: 'An entry shows.', watch: 'The entry.' }, { task: '1.2', changes: 'A shown entry checks its hash.', watch: 'The hash.' }] })], { expect: 'content' });
     const showingBrief = loop.brief(['builder', WU, '1.1']);
     const showing = loop.isolated('1.1');
     loop.brief(['builder', WU, '1.2']);
@@ -96,7 +96,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     assert.strictEqual(typeof sim.run(['task', 'stopped', WU, '1.1']).stopped, 'string');
     const stopped = stateOf();
     const written = sim.run(['task', 'show', WU, '1.1']).text;
-    sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, 'An entry is shown by its id.\n'), '--by', 'orchestrator']);
+    sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.ledger/.cache/${WU}/build/addition.md`, 'An entry is shown by its id.\n'), '--by', 'orchestrator']);
     assert.ok(briefOf(sim, loop.brief(['builder', WU, '1.1'])).includes('## Added by the orchestrator\n\nAn entry is shown by its id.'), 'the builder goes back in with the addition on its task');
     assert.deepStrictEqual([stopped, stateOf()], ['failed', 'building'], 'failed from the stop until its builder is sent back in');
     const shown = sim.run(['task', 'show', WU, '1.1']);
@@ -106,7 +106,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     // found, never sent as a message, its task parked (12.S44, 12.S30); its
     // pair reads it meanwhile and passes it.
     const [decision] = JSON.parse(sim.read(['ledger', 'record', WU, WU])).decisions;
-    sim.refuses(['topic', 'send', WU, WU, '--from', `${WU}.${WU}`, '--content', sim.write(`.leeway/.cache/${WU}/build/message-hash.md`, '# The hash\n\nShould a show check it?\n'), '--slug', 'the-hash'], /has its spec/);
+    sim.refuses(['topic', 'send', WU, WU, '--from', `${WU}.${WU}`, '--content', sim.write(`.ledger/.cache/${WU}/build/message-hash.md`, '# The hash\n\nShould a show check it?\n'), '--slug', 'the-hash'], /has its spec/);
     const proposal = { ...leaningCall('A shown entry checks its hash.', 'A shown entry trusts the ledger.'), question: 'Should showing an entry check its hash?' };
     const parked = await sim.runAsync(['raise', `${WU}.implementation`, '--replaces', decision.id, '--reason', 'was-wrong', '--parks', '1.2'], null, JSON.stringify(proposal));
     assert.deepStrictEqual([parked.decision, parked.parked, parked.task], ['ask', 'Q1', '1.2']);
@@ -118,7 +118,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     // note banked; its chain names nothing, 1.2 still to end.
     loop.committed(showing, '1.1', { ...VERIFY_FILES, 'src/show.js': 'export const show = 1;\n' });
     loop.setUp(showing, showingBrief, '1.S1');
-    sim.run(['task', 'note', WU, '--file', sim.write(`.leeway/.cache/${WU}/build/note.md`, 'Showing an entry reads the whole ledger.\n')]);
+    sim.run(['task', 'note', WU, '--file', sim.write(`.ledger/.cache/${WU}/build/note.md`, 'Showing an entry reads the whole ledger.\n')]);
     loop.pairRound('1.1');
     loop.accounted('1.1', ['Passed.']);
     assert.match(sim.render(['task-landed', WU, '1.1'], { expect: 'content' }), /Q1 Should showing an entry check its hash\?/, 'the question waiting shows beneath the landing');
@@ -136,7 +136,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     const drawn = sim.run(['raise', 'draw', WU, 'Q1']);
     assert.strictEqual(sim.run(['raise', 'answer', drawn.raise, '--pick', '2'], null, JSON.stringify({ why: 'The ledger is trusted already.' })).receipt,
       'Q1 answered · task 1.2 builds again · nothing waiting on you');
-    const replaced = fs.readFileSync(path.join(sim.dir, '.leeway/.ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line)).filter((event) => event.event === 'replaced');
+    const replaced = fs.readFileSync(path.join(sim.dir, '.ledger/.ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line)).filter((event) => event.event === 'replaced');
     assert.deepStrictEqual(replaced.map((event) => [event.phase, event.replaces.startsWith(decision.id)]), [['implementation', true]], 'the replacement lands at the build\'s place');
     assert.deepStrictEqual([sim.manifest(WU).phases.discussion.items[WU].status, manageUnitScreen(sim.dir, sim.manifest(WU)).rows.map(({ key }) => key)], ['completed', ['c']],
       '18.S68: the decision settled in the build, the feature never back to its discussion, and manage offers it cancel alone');
@@ -157,14 +157,14 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     assert.match(passed, /commit the merge through the door, naming each file you resolved — or, where nothing conflicted, any file the merge changed: [^\n]*, which finishes it\.\n\nThen write the task's account, as \*\*Where your account goes\*\* says, and report \*\*accounted\*\*\./, 'the merge first, then the account');
     git(hashing, ['merge', '-q', '--no-ff', '--no-commit', tip]);
     sim.runIn(hashing, ['commit', '--paths', 'src/show.js', '--task', WU, '1.2', '-m', `merge(${WU}): the chain's tip back`]);
-    assert.deepStrictEqual([git(hashing, ['rev-list', '--parents', '-n', '1', 'HEAD']).trim().split(' ').length, git(hashing, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']).trim()], [3, `${WU}-1-2`], 'the merge committed whole, under the task');
+    assert.deepStrictEqual([git(hashing, ['rev-list', '--parents', '-n', '1', 'HEAD']).trim().split(' ').length, git(hashing, ['log', '-1', '--format=%(trailers:key=Ledger-Task,valueonly)']).trim()], [3, `${WU}-1-2`], 'the merge committed whole, under the task');
 
     // Its builder reports it merged: the loop goes on from the top of its
     // landing, the account it takes refused as none is written, so its
     // builder's brief goes again for one.
     sim.refuses(['task', 'account', WU, '1.2'], /has no account/);
     loop.accounted('1.2', ['Passed.', 'Passed, the ledger trusted.']);
-    const figures = JSON.parse(fs.readFileSync(path.join(sim.dir, `.leeway/${WU}/build/tasks/1.2/figures.json`), 'utf8'));
+    const figures = JSON.parse(fs.readFileSync(path.join(sim.dir, `.ledger/${WU}/build/tasks/1.2/figures.json`), 'utf8'));
     assert.deepStrictEqual([figures.files, figures.added, figures.removed], [1, 1, 0], 'the account counts the task\'s own work, never what it merged back');
     sim.render(['task-landed', WU, '1.2'], { expect: 'content' });
     sim.refuses(['render', 'step-gate', WU, '1.2'], /builds in auto, where no gate follows a task/);
@@ -185,7 +185,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     assert.strictEqual(sim.run(['enter', 'review', WU]).entered, true);
     assert.deepStrictEqual(sim.handoffs.slice(handedOff), [], 'no handoff into the review phase');
     assert.deepStrictEqual(Object.fromEntries([...loop.agents].map(([role, named]) => [role, [...named]])), {
-      builder: ['leeway-builder'], reviewer: ['leeway-reviewer'], consolidation: ['leeway-consolidation'], 'phase-review': ['leeway-reviewer'],
+      builder: ['ledger-builder'], reviewer: ['ledger-reviewer'], consolidation: ['ledger-consolidation'], 'phase-review': ['ledger-reviewer'],
     }, 'the agents run as defined');
   });
 

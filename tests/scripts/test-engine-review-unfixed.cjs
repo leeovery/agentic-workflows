@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A bugfix's review phase and its runs on the unfixed code (leeway-engine/
+// A bugfix's review phase and its runs on the unfixed code (ledger-engine/
 // scripts/domain/review-entry.cjs and review-round.cjs, their rule
 // bug-proven.cjs): the entry's DATA names the build's series — its
 // scenario, its command, its failures and the commits it ran at, then each
@@ -27,7 +27,7 @@ const {
   statePath, writeState, readManifest, createManifest, git, assert,
 } = require('./review-world.cjs');
 
-const { runsRel } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/runs.cjs'));
+const { runsRel } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/runs.cjs'));
 
 /** @type {string} */
 let dir;

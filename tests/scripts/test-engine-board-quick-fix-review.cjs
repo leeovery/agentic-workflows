@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in a quick-fix's review (leeway-engine/scripts/domain/
+// `engine board` in a quick-fix's review (ledger-engine/scripts/domain/
 // projections/board-standing.cjs, board-review.cjs, board-all.cjs; 20.2.4,
 // 20.15.1, 20.16.1): asked for at its close, the quick-fix stands in review
 // on every view that reads the unit's standing — its tab's review row after
@@ -38,7 +38,7 @@ afterEach(() => {
 });
 
 /** This test's conversation's environment. */
-const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: SESSION, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+const env = () => ({ LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: SESSION, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** This test's conversation, as a call's options. */
 const as = () => ({ env: env() });

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The commit door's task (leeway-engine/scripts/domain/commit-task.cjs,
+// The commit door's task (ledger-engine/scripts/domain/commit-task.cjs,
 // with environment.cjs, and `commit --paths … --task` in engine.cjs): a
 // code commit lands only for a task in flight in the calling conversation —
 // several side by side, each builder's commit from its own worktree under
@@ -42,7 +42,7 @@ const {
 } = require('./engine-harness.cjs');
 const { spawnSync } = require('child_process');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
-const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { taskBranch } = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'pay';
 const OTHER_UNIT = 'refunds';
@@ -51,7 +51,7 @@ const PARALLEL = 'commit-task-parallel';
 const ELSEWHERE = 'commit-task-elsewhere';
 const CLEARED = 'commit-task-cleared';
 const REFUNDING = 'commit-task-refunding';
-const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 const MESSAGE = 'feat(pay): take a card';
 /** Each task of the unit's branch, by its number. @param {number} n */
 const branchOf = (n) => taskBranch({ unit: UNIT, phase: 1, n }, 'feat', 'Take a card');
@@ -133,13 +133,13 @@ describe('commit --task: the task in flight (6.S8)', () => {
     setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }] });
 
     const res = ok(dir, commitArgs(), as(BUILDING));
-    const first = { sha: codeHead(dir), message: git(dir, ['log', '-1', '--format=%B']), trailer: git(dir, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']), marked: marked(dir) };
+    const first = { sha: codeHead(dir), message: git(dir, ['log', '-1', '--format=%B']), trailer: git(dir, ['log', '-1', '--format=%(trailers:key=Ledger-Task,valueonly)']), marked: marked(dir) };
     ok(dir, ['environment', 'confirm', '--from', 'manage'], as(BUILDING));
     createFile(dir, 'src/card.js', 'const card = 3;\n');
     const kept = ok(dir, commitArgs(), as(BUILDING)).checks;
 
     assert.deepStrictEqual([res, first.marked], [{ ok: true, committed: [{ repo: '.', sha: first.sha }], left_dirty: ['src/left.js'], task: 'pay-1-1', checks: [] }, '']);
-    assert.deepStrictEqual([first.message, first.trailer], [`${MESSAGE}\n\nLeeway-Task: pay-1-1\n\n`, 'pay-1-1\n\n']);
+    assert.deepStrictEqual([first.message, first.trailer], [`${MESSAGE}\n\nLedger-Task: pay-1-1\n\n`, 'pay-1-1\n\n']);
     assert.deepStrictEqual(kept, [{ name: 'tests', exit: 0 }, { name: 'eslint', exit: 0 }]);
   });
 
@@ -149,8 +149,8 @@ describe('commit --task: the task in flight (6.S8)', () => {
     ok(dir, ['commit', '--paths', 'src/card.js', '--task', UNIT, '1.1', '-m', message], as(BUILDING));
 
     assert.deepStrictEqual([git(dir, ['log', '-1', '--format=%B']), git(dir, ['log', '-1', '--format=%(trailers)'])], [
-      `${message}\nLeeway-Task: pay-1-1\n\n`,
-      'Co-Authored-By: A Builder <builder@example.com>\nSigned-off-by: A Person <person@example.com>\nLeeway-Task: pay-1-1\n\n',
+      `${message}\nLedger-Task: pay-1-1\n\n`,
+      'Co-Authored-By: A Builder <builder@example.com>\nSigned-off-by: A Person <person@example.com>\nLedger-Task: pay-1-1\n\n',
     ]);
   });
 
@@ -247,12 +247,12 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
     const commits = builders.map(({ task, worktree }) => ok(worktree, commitArgs(task), as(PARALLEL)));
 
     assert.deepStrictEqual(commits.map(({ task, checks }) => ({ task, checks })), ['pay-1-1', 'pay-1-2'].map((id) => ({ task: id, checks: [{ name: 'tests', exit: 0 }, { name: 'eslint', exit: 0 }] })));
-    assert.deepStrictEqual(builders.map(({ worktree }) => git(worktree, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']).trim()), ['pay-1-1', 'pay-1-2']);
+    assert.deepStrictEqual(builders.map(({ worktree }) => git(worktree, ['log', '-1', '--format=%(trailers:key=Ledger-Task,valueonly)']).trim()), ['pay-1-1', 'pay-1-2']);
     assert.strictEqual(marked(dir), builders.map(({ worktree, before }) => `tests ${worktree} ${before}\neslint ${worktree} ${before}\n`).join(''));
   });
 
   it('6.S9: a failing check refuses the commit, nothing committed, naming the check, its exit code — a signal\'s as 128 and its number — and the last 40 lines of its output and errors; no check after it runs, and its output\'s folder goes', () => {
-    const outputs = () => fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('leeway-check-'));
+    const outputs = () => fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('ledger-check-'));
     const before = outputs();
     const failed = (/** @type {string} */ name, /** @type {number} */ exit, /** @type {string} */ output) => `commit --task: the check "${name}" failed with exit ${exit}, so nothing was committed — fix what it reports and commit again; `
       + `the Bash tool stops a call at two minutes unless given a longer timeout, so give the commit's call one where the checks run long. ${output}`;
@@ -274,7 +274,7 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
   });
 
   it('holds no lock while the checks run: a check takes the writer lock and the commit lock, and gives them back', () => {
-    const locks = [statePath(dir, '.lock'), path.join(dir, '.git', 'leeway-commit.lock')];
+    const locks = [statePath(dir, '.lock'), path.join(dir, '.git', 'ledger-commit.lock')];
     confirmEnvironment(dir, { run: { tests: `set -C; ${locks.map((lock) => `: > "${lock}" && rm "${lock}" && `).join('')}echo free > "${markerOf(dir)}"` } });
 
     assert.deepStrictEqual(ok(dir, commitArgs(), as(BUILDING)).checks, [{ name: 'tests', exit: 0 }]);
@@ -291,7 +291,7 @@ const merging = (repo) => fs.existsSync(path.join(repo, git(repo, ['rev-parse', 
 /** The parents of the commit at HEAD in the repository at `repo`, and its task trailer. @param {string} repo */
 const mergeCommit = (repo) => ({
   parents: git(repo, ['rev-list', '--parents', '-n', '1', 'HEAD']).trim().split(' ').length - 1,
-  task: git(repo, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']).trim(),
+  task: git(repo, ['log', '-1', '--format=%(trailers:key=Ledger-Task,valueonly)']).trim(),
 });
 
 describe('commit --task: a merge in progress, the chain merged back (12.14)', () => {
@@ -365,14 +365,14 @@ describe('commit --task: a merge in progress, the chain merged back (12.14)', ()
 });
 
 describe('commit --task: never a code commit on the state branch (4.S20)', () => {
-  it('4.S20: a tree with leeway-state checked out is refused before any check runs, nothing committed on either branch', () => {
+  it('4.S20: a tree with ledger-state checked out is refused before any check runs, nothing committed on either branch', () => {
     confirmEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
     const main = git(dir, ['rev-parse', branchOf(1)]);
-    git(dir, ['symbolic-ref', 'HEAD', 'refs/heads/leeway-state']);
+    git(dir, ['symbolic-ref', 'HEAD', 'refs/heads/ledger-state']);
 
     const { error } = refusedPristine(dir, commitArgs(), as(BUILDING));
 
-    assert.strictEqual(error, 'commit --paths: . has the state branch leeway-state checked out — the state commits through its own door');
+    assert.strictEqual(error, 'commit --paths: . has the state branch ledger-state checked out — the state commits through its own door');
     assert.deepStrictEqual([git(dir, ['rev-parse', branchOf(1)]), marked(dir)], [main, '']);
   });
 });

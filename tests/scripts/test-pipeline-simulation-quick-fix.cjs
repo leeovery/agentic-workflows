@@ -39,16 +39,16 @@ describe('pipeline simulation: quick-fix', () => {
   it('quick-fix: three items picked in triage and worked as one go through discovery into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8), then onto the start menu in a cleared conversation, This session All work with the quick-fix under COMPLETE (20.S24)', async () => {
     const wu = 'typo';
     const place = `${wu}.implementation`;
-    const items = ['flag', 'help', 'docs'].map((what) => sim.write(`.leeway/.inbox/quickfixes/2026-01-01--${what}-says-color.md`, `# The ${what} says --color\n`));
+    const items = ['flag', 'help', 'docs'].map((what) => sim.write(`.ledger/.inbox/quickfixes/2026-01-01--${what}-says-color.md`, `# The ${what} says --color\n`));
     sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
-    const route = workTheSet(sim, items).text.match(/^Invoke `\/leeway-discovery start none "(.*)"`\.$/);
+    const route = workTheSet(sim, items).text.match(/^Invoke `\/ledger-discovery start none "(.*)"`\.$/);
     const seeds = route?.[1].split(',') ?? [];
     assert.deepStrictEqual([...seeds].sort(), items.map((rel) => path.join(sim.dir, rel)).sort(), 'all three go to discovery as one piece of work');
     const started = startThisWork(sim, {
       type: 'quick-fix', name: wu, description: 'The --color flag is spelt --colour', reason: 'Three one-line fixes, each its own.',
       shaped_by: [shapedInTheProduct(sim, wu)], seeds,
     });
-    assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', wu] });
+    assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'ledger-quick-fix-process', args: ['quick-fix', wu] });
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
     const handedOff = sim.handoffs.length;
 
@@ -57,7 +57,7 @@ describe('pipeline simulation: quick-fix', () => {
     assert.strictEqual(sim.run(['enter', 'implementation', wu]).entered, true);
     const here = carryOn(sim);
     assert.deepStrictEqual([here.position, here.skill], [
-      { name: wu, phase: 'implementation', topic: wu }, path.join(sim.dir, '.claude/skills/leeway-quick-fix-process/SKILL.md'),
+      { name: wu, phase: 'implementation', topic: wu }, path.join(sim.dir, '.claude/skills/ledger-quick-fix-process/SKILL.md'),
     ]);
 
     /** Fix `n` written as task 1.`n` and started: the task. @param {number} n @param {string} title */
@@ -87,7 +87,7 @@ describe('pipeline simulation: quick-fix', () => {
     sim.handOver();
     sim.run(['enter', 'implementation', wu]);
     const named = sim.read(['enter', 'implementation', wu]);
-    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+    sim.write(`.ledger/${wu}/build/log.md`, '# The fixes\n');
     sim.refuses(['checklist', 'close', 'finish', wu], /finish has items open: questions-answered/);
     const waiting = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view.waiting;
     const again = await sim.runAsync(['raise', place, '--answers', own], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does the changelog name the rename?' }));
@@ -110,7 +110,7 @@ describe('pipeline simulation: quick-fix', () => {
     assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[['1.1', '1.3', '1.2']], 'completed']);
     assert.ok(!rows.some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`), 'closed, it leaves the start menu');
-    assert.deepStrictEqual([yes.next, allWork.kind, allWork.at_start, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'handoff', skill: 'leeway', args: [] }, 'all', true, [wu]],
+    assert.deepStrictEqual([yes.next, allWork.kind, allWork.at_start, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'handoff', skill: 'ledger', args: [] }, 'all', true, [wu]],
       '20.S24: closed, the cleared conversation at the start menu shows All work, the quick-fix under COMPLETE');
     assert.deepStrictEqual(JSON.parse(sim.read(['environment', 'show'])), { run: {}, prepare: [], concurrency: [], verify: null, linters: [], confirmed: null, ok: true },
       '22.S28: built and closed in a project with no environment setup, the quick-fix recorded none, so the project\'s first ready to build still asks it');

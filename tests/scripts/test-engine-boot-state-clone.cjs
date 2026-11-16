@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A fresh clone's state (leeway-engine/scripts/domain/state-checks.cjs,
+// A fresh clone's state (ledger-engine/scripts/domain/state-checks.cjs,
 // domain/boot.cjs): the remote's state branch made its own and checked out,
 // a remote out of reach; and two boots at once, everything made once.
 //
@@ -32,7 +32,7 @@ useWorld();
 // --- a fresh clone ------------------------------------------------------------
 
 describe('a fresh clone (4.S11, 22.S2)', () => {
-  it('makes the remote\'s leeway-state its own, checked out at .leeway/ and locked — and the next boot has nothing to do', () => {
+  it('makes the remote\'s ledger-state its own, checked out at .ledger/ and locked — and the next boot has nothing to do', () => {
     const { root, bare } = setUp({ remote: true });
     commitOnState(root, { [layout.projectManifest]: '{"kept":true}\n' });
     const fresh = cloneInWorld(bare, 'fresh');
@@ -57,7 +57,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
     assert.strictEqual(tip(fresh, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(statePath(fresh)), IN_PLACE);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: /);
+    assert.match(res.warnings[0], /^ledger-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: /);
     assert.deepStrictEqual(commands.filter((c) => /^(push|fetch|ls-remote) /.test(c)).map((c) => c.split(' ')[0]), ['ls-remote'], 'the remote was asked once, and never pushed to');
   });
 
@@ -67,7 +67,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
     outOfReach(fresh);
     const before = git(fresh, ['for-each-ref']);
 
-    assert.match(bootRefused(fresh), /^origin could not be reached, and this clone holds no leeway-state of its own, so boot wrote nothing — start again once it can be reached: git ls-remote failed: /);
+    assert.match(bootRefused(fresh), /^origin could not be reached, and this clone holds no ledger-state of its own, so boot wrote nothing — start again once it can be reached: git ls-remote failed: /);
 
     assert.strictEqual(git(fresh, ['for-each-ref']), before);
     assert.ok(!fs.existsSync(statePath(fresh)));
@@ -115,8 +115,8 @@ describe('two boots at once (4.S3)', () => {
     assert.deepStrictEqual(answers.map((a) => [a.ok, a.state, a.error]), [[true, 'ready', undefined], [true, 'ready', undefined]]);
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.deepStrictEqual(madeOnce(main), {
-      roots: 1, registrations: ['-leeway'], ignore: '.leeway/\n',
-      code: ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state', 'code'],
+      roots: 1, registrations: ['-ledger'], ignore: '.ledger/\n',
+      code: ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state', 'code'],
     });
     bootsWithNothingToDo(main, null);
   });
@@ -130,7 +130,7 @@ describe('two boots at once (4.S3)', () => {
     assert.deepStrictEqual(answers.map((a) => [a.ok, a.state, a.error]), [[true, 'ready', undefined], [true, 'ready', undefined]]);
     assert.strictEqual(tip(fresh, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(statePath(fresh)), IN_PLACE);
-    assert.deepStrictEqual(fs.readdirSync(path.join(fresh, '.git/worktrees')), ['-leeway']);
+    assert.deepStrictEqual(fs.readdirSync(path.join(fresh, '.git/worktrees')), ['-ledger']);
     bootsWithNothingToDo(fresh, bare);
   });
 });

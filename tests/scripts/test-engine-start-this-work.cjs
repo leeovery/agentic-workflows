@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Start this work (leeway-engine/scripts/domain/start-this-work.cjs): the
+// Start this work (ledger-engine/scripts/domain/start-this-work.cjs): the
 // authority gate at the work-type commit — `render start-this-work` staging
 // Claude's payload and drawing the screen the spec draws, creating nothing
 // (8.S16), with no name question (8.S21); `start-this-work yes` creating the
@@ -133,22 +133,22 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.deepStrictEqual([res.brief, readState(dir(), layout.brief('saved-filters', 'saved-filters')), fs.existsSync(given.brief)],
       [statePath(dir(), layout.brief('saved-filters', 'saved-filters')), '# saved-filters\n\nWhat discovery heard.\n', false]);
     assert.deepStrictEqual(readManifest(dir(), 'saved-filters').phases, {}, 'a feature has no discovery session to carry on');
-    assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'leeway-discussion-process', args: ['feature', 'saved-filters'] });
+    assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', 'saved-filters'] });
     const hand = (/** @type {Record<string, string>} */ env) => sectionOf(output(dir(), ['handoff', res.next.skill, ...res.next.args], { env }), 'DATA');
-    assert.match(hand({ ...SESSION, LEEWAY_HANDOFF: '1' }), /^handoff: mod$/m);
+    assert.match(hand({ ...SESSION, LEDGER_HANDOFF: '1' }), /^handoff: mod$/m);
     assert.match(hand(SESSION), /^handoff: inline$/m);
   });
 
   it('hands a bugfix into its investigation, and a quick-fix, which takes no brief, carries on into its fixes in this conversation (24.1.2, 24.1.3)', () => {
-    assert.deepStrictEqual(started(oneTopic('bugfix', 'login-loop')).next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', 'login-loop'] });
+    assert.deepStrictEqual(started(oneTopic('bugfix', 'login-loop')).next, { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', 'login-loop'] });
     const { brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
     const res = started({ ...quick, seeds: [statePath(dir(), BUG)] });
     assert.deepStrictEqual([res.next, res.brief, fs.existsSync(statePath(dir(), layout.topic('typo-fix', 'typo-fix')))],
-      [{ kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', 'typo-fix'] }, undefined, false]);
+      [{ kind: 'invoke', skill: 'ledger-quick-fix-process', args: ['quick-fix', 'typo-fix'] }, undefined, false]);
   });
 
   it('lands an inbox item and a roadmap item\'s note as seeds, the manifest recording each source; a cancel puts the item back on its horizon as merged since (4.S35)', () => {
-    ok(dir(), ['roadmap', 'add-batch', '--file', payload([{ name: 'retry-on-drop', horizon: 'next', summary: 'Retry when the line drops', note: `.leeway/${IDEA}` }])]);
+    ok(dir(), ['roadmap', 'add-batch', '--file', payload([{ name: 'retry-on-drop', horizon: 'next', summary: 'Retry when the line drops', note: `.ledger/${IDEA}` }])]);
     const stood = readManifest(dir(), '.').roadmap.items['retry-on-drop'];
     const res = started({ ...oneTopic('feature', 'checkout-retry'), seeds: [statePath(dir(), BUG)], roadmap: ['retry-on-drop'] });
     assert.deepStrictEqual(res.seeds, [
@@ -169,8 +169,8 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
 
   it('takes two items waiting on "later" off the roadmap as the work\'s seeds, and the work\'s cancel shows both on "later" again (18.S66)', () => {
     ok(dir(), ['roadmap', 'add-batch', '--file', payload([
-      { name: 'smart-retry', horizon: 'later', summary: 'Retry when the line drops', note: `.leeway/${IDEA}` },
-      { name: 'login-loop', horizon: 'later', summary: 'Sign-in loops', note: `.leeway/${BUG}` },
+      { name: 'smart-retry', horizon: 'later', summary: 'Retry when the line drops', note: `.ledger/${IDEA}` },
+      { name: 'login-loop', horizon: 'later', summary: 'Sign-in loops', note: `.ledger/${BUG}` },
     ])]);
     const waitingOnLater = () => ok(dir(), ['roadmap', 'state']).items.filter((i) => i.horizon === 'later' && i.state === 'waiting').map((i) => i.name);
     assert.deepStrictEqual(waitingOnLater(), ['lifetime-tier', 'smart-retry', 'login-loop']);

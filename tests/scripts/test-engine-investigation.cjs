@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A bugfix's investigation's hunt: its entry, `engine enter investigation
-// <bugfix>` (leeway-engine/scripts/domain/enter.cjs) — its one topic the
+// <bugfix>` (ledger-engine/scripts/domain/enter.cjs) — its one topic the
 // unit, started as a discussion's is and reading the brief, discovery's log
 // and the seeds in full before it opens (8.S54, 8.7.7); a resume reading the
 // topic's record and map and the agents a process now gone left; mail
@@ -38,8 +38,8 @@ const {
 } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
-const { huntIn } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
-const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
+const { huntIn } = require('../../skills/ledger-engine/scripts/domain/investigation-log.cjs');
+const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
 const { showingAnswers } = require('./trust-world.cjs');
 const { BUG, HUNT, FEATURE, ENGINE, TODAY, GONE, data, useInvestigationWorld, AT, CLAUDE, made } = require('./investigation-world.cjs');
 
@@ -77,7 +77,7 @@ describe('enter investigation — the bugfix\'s one topic (6.1.21, 8.7.7)', () =
     try {
       for (const kind of ['root-cause-validation', 'fix-validation']) {
         ok(dir, ['agent', 'dispatch', HUNT, 'investigation', HUNT, '--kind', kind, '--label', kind === 'fix-validation' ? 'lost' : 'landed'], {
-          env: { LEEWAY_CONFIG_DIR: earlier, CLAUDE_CODE_SESSION_ID: 'earlier', CLAUDE_PID: GONE, TMUX: undefined },
+          env: { LEDGER_CONFIG_DIR: earlier, CLAUDE_CODE_SESSION_ID: 'earlier', CLAUDE_PID: GONE, TMUX: undefined },
         });
       }
     } finally {

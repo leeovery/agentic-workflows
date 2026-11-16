@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The notes a fix task's builder banks (leeway-engine/scripts/domain/
+// The notes a fix task's builder banks (ledger-engine/scripts/domain/
 // review-phase.cjs, review-round.cjs, review-entry.cjs; `task note`,
 // notes.cjs): a fix phase has no consolidation, so the review phase answers
 // each, as it answers a reader's note — out of scope, filed or dropped by

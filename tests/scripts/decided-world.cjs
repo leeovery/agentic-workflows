@@ -30,7 +30,7 @@ const SOLO_LOG = `${SOLO}/topics/${SOLO}/log.md`;
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const NO_PAYLOAD = Object.freeze({ lines: [], candidates: [] });
 /** The config folder the hermetic env pinned, put back after each test. */
-const PINNED = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const PINNED = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 
 /** Claude's items of the decided checklist, but the closing pass. */
 const MARKED = ['decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
@@ -108,10 +108,10 @@ function useDecidedWorld() {
   let dir;
   beforeEach(() => {
     dir = world();
-    process.env.LEEWAY_CONFIG_DIR = config();
+    process.env.LEDGER_CONFIG_DIR = config();
   });
   afterEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = PINNED;
+    process.env.LEDGER_CONFIG_DIR = PINNED;
     cleanupFixture(dir);
   });
   return () => dir;

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Lost state (leeway-engine/scripts/domain/state-checks.cjs,
+// Lost state (ledger-engine/scripts/domain/state-checks.cjs,
 // domain/boot.cjs, domain/code-trace.cjs): the workflows' trace in the code
 // read across the repository, the stop with nothing written — the trust
 // log's waiting events landed all the same — its screen, and the fresh
@@ -42,7 +42,7 @@ const world = useWorld();
  * here or on its remote, the code dated in the past.
  * @param {{remote?: string|null, trace?: Record<string, string>}} [opts]
  */
-function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.claude/settings.json': OWN_SETTINGS } } = {}) {
+function lostProject({ remote = null, trace = { '.gitignore': '.ledger/\n', '.claude/settings.json': OWN_SETTINGS } } = {}) {
   const main = initRepo(path.join(world(), 'portal'));
   datedAt('2025-03-01T12:00:00Z', () => {
     createFile(main, 'src/app.js', 'export default 1;\n');
@@ -74,12 +74,12 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const main = lostProject({ remote: bare, trace: { '.claude/settings.json': OWN_SETTINGS } });
     const before = untouched(main, bare);
-    const conversation = { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: path.join(world(), 'config') };
+    const conversation = { CLAUDE_CODE_SESSION_ID: 'lost-state', LEDGER_CONFIG_DIR: path.join(world(), 'config') };
 
     assert.deepStrictEqual(boot(main, conversation), LOST);
     assert.deepStrictEqual(untouched(main, bare), before);
     assert.ok(!fs.existsSync(statePath(main)));
-    assert.ok(!fs.existsSync(path.join(conversation.LEEWAY_CONFIG_DIR, 'conversations', 'lost-state', 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
+    assert.ok(!fs.existsSync(path.join(conversation.LEDGER_CONFIG_DIR, 'conversations', 'lost-state', 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
 
     assert.deepStrictEqual(boot(main), LOST);
     assert.deepStrictEqual(untouched(main, bare), before);
@@ -101,14 +101,14 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null, blocks_build: null }))}\n`;
     createFile(path.join(config, 'conversations', session), 'trust-pending.jsonl', waiting);
 
-    assert.deepStrictEqual(boot(main, { LEEWAY_CONFIG_DIR: config }), LOST);
+    assert.deepStrictEqual(boot(main, { LEDGER_CONFIG_DIR: config }), LOST);
 
     assert.strictEqual(fs.readFileSync(path.join(config, 'trust.jsonl'), 'utf8'), waiting);
     assert.ok(!fs.existsSync(path.join(config, 'conversations', session, 'trust-pending.jsonl')));
   });
 
   it('a line naming the state in the .gitignore is the trace too', () => {
-    const main = lostProject({ trace: { '.gitignore': 'node_modules\n.leeway/\n' } });
+    const main = lostProject({ trace: { '.gitignore': 'node_modules\n.ledger/\n' } });
 
     assert.strictEqual(boot(main).state, 'lost');
     assert.ok(!fs.existsSync(statePath(main)));
@@ -241,7 +241,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
   });
 
   it('a .worktreeinclude naming the state is no trace — no version of the workflows wrote such a line — so the project is being set up', () => {
-    const main = lostProject({ trace: { '.worktreeinclude': 'node_modules\n.leeway/.knowledge/store.bin\n' } });
+    const main = lostProject({ trace: { '.worktreeinclude': 'node_modules\n.ledger/.knowledge/store.bin\n' } });
 
     assert.strictEqual(boot(main).state, 'ready');
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
@@ -264,12 +264,12 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
     assert.strictEqual(out, [
       '=== DISPLAY: state lost stop (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ Boot stopped: Leeway\'s state branch is gone',
+      '⚑ Boot stopped: Ledger\'s state branch is gone',
       '',
       '=== DISPLAY: state lost account (emit verbatim as markdown (not a code block)) ===',
-      '> Portal keeps its Leeway state on a branch of its own, `leeway-state`. Boot found it neither in this clone nor on the remote.',
+      '> Portal keeps its Ledger state on a branch of its own, `ledger-state`. Boot found it neither in this clone nor on the remote.',
       '>',
-      '> If another clone of Portal still has it, on this machine or another, run Leeway there: boot pushes it back to the remote, and this clone restores it when it next starts.',
+      '> If another clone of Portal still has it, on this machine or another, run Ledger there: boot pushes it back to the remote, and this clone restores it when it next starts.',
       '>',
       '> Otherwise the state is lost: the decisions, the logs and the ledger. Portal\'s code and its history are untouched.',
       '',
@@ -287,7 +287,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const gate = announced(() => auditGate(engine.output(main, ['render', 'state-lost-gate']), 'state lost gate'));
     assert.strictEqual(gate.question, 'Start again with a fresh state?');
     assert.deepStrictEqual(gate.options.map((o) => o.key), ['y', 'n']);
-    const conversation = { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: fs.mkdtempSync(path.join(world(), 'config-')) };
+    const conversation = { CLAUDE_CODE_SESSION_ID: 'lost-state', LEDGER_CONFIG_DIR: fs.mkdtempSync(path.join(world(), 'config-')) };
     const next = (/** @type {string} */ key) => {
       engine.output(main, ['render', 'state-lost-gate'], { env: conversation });
       return engine.ok(main, ['gate', 'state lost gate', '--pick', key], { env: conversation }).next;
@@ -301,7 +301,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const code = tip(main, 'main');
     const config = path.join(world(), 'config');
 
-    const res = engine.ok(main, ['boot', '--start-again'], { env: { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: config }, stdin: 'Change the help output\n' });
+    const res = engine.ok(main, ['boot', '--start-again'], { env: { CLAUDE_CODE_SESSION_ID: 'lost-state', LEDGER_CONFIG_DIR: config }, stdin: 'Change the help output\n' });
 
     assert.strictEqual(res.state, 'restarted');
     assert.deepStrictEqual([res.go, res.gates.includes('brownfield')], ['route', true]);
@@ -332,9 +332,9 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     git(bare, ['branch', '-D', STATE_BRANCH]);
 
     assert.strictEqual(bootRefused(main), [
-      `the state folder ${root} is still there, but leeway-state is gone — from this clone, and from origin — so boot wrote nothing: `,
-      'it makes no state branch under a folder holding state it cannot account for. Where another clone still holds leeway-state, ',
-      'run Leeway there to push it back, and this clone restores it at its next boot; ',
+      `the state folder ${root} is still there, but ledger-state is gone — from this clone, and from origin — so boot wrote nothing: `,
+      'it makes no state branch under a folder holding state it cannot account for. Where another clone still holds ledger-state, ',
+      'run Ledger there to push it back, and this clone restores it at its next boot; ',
       `otherwise move ${root} aside, keeping what it holds, and boot again`,
     ].join(''));
     assert.strictEqual(git(main, ['for-each-ref', `refs/heads/${STATE_BRANCH}`]), '');

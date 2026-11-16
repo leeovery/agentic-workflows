@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Where the start goes once boot has run (leeway-engine/scripts/domain/
+// Where the start goes once boot has run (ledger-engine/scripts/domain/
 // boot-route.cjs with domain/boot.cjs and `render work-pick`): one entry, the
 // person's bare command and Claude's invocation alike, boot given the
 // person's words on stdin. No words go to the start menu; words naming
@@ -31,7 +31,7 @@ const { spawnSync } = require('child_process');
 const { fixtureFrom, commitAll, WORKFLOW_HOOKS, hooked } = require('./engine-harness.cjs');
 const { createFile, createManifest } = require('./discovery-test-utils.cjs');
 const { stubbed, readyKnowledge } = require('./boot-world.cjs');
-const { entryOf } = require('../../skills/leeway-engine/scripts/domain/boot-route.cjs');
+const { entryOf } = require('../../skills/ledger-engine/scripts/domain/boot-route.cjs');
 
 /** A map row of an epic's. @param {number} order @param {Record<string, unknown>} [marks] */
 const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
@@ -54,16 +54,16 @@ const routeWorld = fixtureFrom('engine-boot-route-', (project) => {
 });
 
 /** Start's type call, as the start menu's s makes it. */
-const TO_START = { kind: 'invoke', skill: 'leeway-discovery', args: ['start', 'none'] };
+const TO_START = { kind: 'invoke', skill: 'ledger-discovery', args: ['start', 'none'] };
 /** The moves into each piece of work, as `handoff unit` and `handoff topic` compose them. */
 const INTO = {
-  payments: { kind: 'invoke', skill: 'leeway-discussion-process', args: ['feature', 'payments'] },
-  crash: { kind: 'invoke', skill: 'leeway-investigation-process', args: ['bugfix', 'crash'] },
-  billing: { kind: 'invoke', skill: 'leeway-continue-epic', args: ['billing'] },
-  ledger: { kind: 'invoke', skill: 'leeway-continue-epic', args: ['ledger'] },
-  invoices: { kind: 'invoke', skill: 'leeway-discussion-process', args: ['epic', 'billing', 'invoices'] },
-  'refund-rules': { kind: 'invoke', skill: 'leeway-discussion-process', args: ['epic', 'billing', 'refund-rules'] },
-  'ledger/crash': { kind: 'invoke', skill: 'leeway-discussion-process', args: ['epic', 'ledger', 'crash'] },
+  payments: { kind: 'invoke', skill: 'ledger-discussion-process', args: ['feature', 'payments'] },
+  crash: { kind: 'invoke', skill: 'ledger-investigation-process', args: ['bugfix', 'crash'] },
+  billing: { kind: 'invoke', skill: 'ledger-continue-epic', args: ['billing'] },
+  ledger: { kind: 'invoke', skill: 'ledger-continue-epic', args: ['ledger'] },
+  invoices: { kind: 'invoke', skill: 'ledger-discussion-process', args: ['epic', 'billing', 'invoices'] },
+  'refund-rules': { kind: 'invoke', skill: 'ledger-discussion-process', args: ['epic', 'billing', 'refund-rules'] },
+  'ledger/crash': { kind: 'invoke', skill: 'ledger-discussion-process', args: ['epic', 'ledger', 'crash'] },
 };
 /** Into a unit, as the route gives it. @param {keyof typeof INTO} unit */
 const into = (unit) => ({ go: 'route', route: { kind: 'unit', unit, next: INTO[unit] } });
@@ -183,7 +183,7 @@ describe('engine boot: the route and the pick, through boot', () => {
   });
 
   it('22.S4: Claude\'s entry goes where the words name, after the migration review, the floor\'s stop and the knowledge gate — none of the offers, and no reading of the repository for a judgment it does not make', () => {
-    createFile(project, '.claude/skills/leeway-gates/.claude-plugin/plugin.json', '{"name":"leeway-gates"}\n');
+    createFile(project, '.claude/skills/ledger-gates/.claude-plugin/plugin.json', '{"name":"ledger-gates"}\n');
     commitAll(project, 'install the mod');
 
     const res = boot('carry on with payments', {

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (ledger-engine/scripts/drivers/landing/github/)
 // and a task's pull request whose head moved on GitHub's site while it was
 // open — a review's suggestion committed there, or its "Update branch"
 // merging main in — the branch here never gaining that commit. Squashed or

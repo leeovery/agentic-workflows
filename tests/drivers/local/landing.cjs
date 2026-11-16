@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('../../scripts/engine-harness.cjs');
 const { UNIT, setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
-const names = require('../../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const names = require('../../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 /** A phase's branch squashed onto main, committed under git's own squash message, else `message`. @param {string} dir @param {number} phase @param {string} [message] */
 const phaseSquashed = (dir, phase, message) => onMain(dir, [['merge', '-q', '--squash', names.phaseBranch(UNIT, phase)], ['commit', '-q', ...(message === undefined ? ['--no-edit'] : ['-m', message])]]);
@@ -75,7 +75,7 @@ module.exports = {
     return [...new Set(phases.flatMap((branch) => landedOn(dir, branch).map(({ task }) => task)))].sort();
   },
   /** Whether the quick-fix `unit` is open in the repository at `dir`: its opening's ref there. @param {string} dir @param {string} unit */
-  quickFixOpen: (dir, unit) => git(dir, ['for-each-ref', '--format=%(refname)', `refs/leeway/quick-fix/${unit}/open`]).trim() !== '',
+  quickFixOpen: (dir, unit) => git(dir, ['for-each-ref', '--format=%(refname)', `refs/ledger/quick-fix/${unit}/open`]).trim() !== '',
   /** The unit's own pull request open in a repository: none, there being no host to open one on. */
   unitPullOpen: () => null,
   /** The unit's tasks a pull request is open for in a repository, by id: none, there being no host to open one on. @returns {string[]} */

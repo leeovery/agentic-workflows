@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine commit --workflows` (leeway-engine/scripts/domain/commit.cjs):
+// `engine commit --workflows` (ledger-engine/scripts/domain/commit.cjs):
 // the whole state staged and committed on the state branch, a clean tree
 // committing nothing, and mixed scopes refused.
 //
@@ -18,7 +18,7 @@ const { ok, refuses, git, stateGit, commitAll, fixtureFrom, cleanupFixture } = r
 const { createFile } = require('./discovery-test-utils.cjs');
 
 const projectWorld = fixtureFrom('engine-commit-workflows-', (project) => {
-  createFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
+  createFile(project, '.ledger/payments/manifest.json', '{"name":"payments"}\n');
   createFile(project, 'README.md', '# project\n');
   commitAll(project, 'init');
 });
@@ -29,9 +29,9 @@ describe('engine commit --workflows', () => {
   afterEach(() => cleanupFixture(project));
 
   it('stages the whole state — many work units plus .state — and commits it on the state branch', () => {
-    createFile(project, '.leeway/payments/manifest.json', '{"name":"payments","v":2}\n');
-    createFile(project, '.leeway/auth-flow/manifest.json', '{"name":"auth-flow"}\n');
-    createFile(project, '.leeway/.state/migrations', '045\n');
+    createFile(project, '.ledger/payments/manifest.json', '{"name":"payments","v":2}\n');
+    createFile(project, '.ledger/auth-flow/manifest.json', '{"name":"auth-flow"}\n');
+    createFile(project, '.ledger/.state/migrations', '045\n');
     createFile(project, 'unrelated.txt', 'outside the scope\n');
 
     const res = ok(project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);

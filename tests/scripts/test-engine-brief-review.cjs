@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The review phase's briefs (leeway-engine/scripts/domain/brief.cjs, its
+// The review phase's briefs (ledger-engine/scripts/domain/brief.cjs, its
 // records domain/brief-records.cjs, the change domain/review-change.cjs,
 // content/briefs/review-area.md and test-surface.md): an area review's, the
 // reviewer's third template, `brief review-area <unit> --area N --base
@@ -41,7 +41,7 @@ const {
   refusedPristine, statePath, writeState, reportText, git, initRepo, readManifest, createManifest, assert,
 } = require('./review-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { runsRel } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
 
 /** @type {string} */
@@ -99,8 +99,8 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     const run = (/** @type {string} */ scenario, /** @type {string} */ verdict, /** @type {number} */ hour) => `  - ${verdict}, recorded 2026-11-01T1${hour}:00:00.000Z: ${pathDrawn(`${runsRel(UNIT, scenario)}/run-001.json`)}`;
 
     assert.deepStrictEqual([res, whose], [
-      { ok: true, id: res.id, role: 'review-area', agent: 'leeway-reviewer', pointer: `brief:${res.id}` },
-      { role: 'review-area', agent: 'leeway-reviewer', unit: UNIT, task: null, topic: null, area: '1', round: 1 },
+      { ok: true, id: res.id, role: 'review-area', agent: 'ledger-reviewer', pointer: `brief:${res.id}` },
+      { role: 'review-area', agent: 'ledger-reviewer', unit: UNIT, task: null, topic: null, area: '1', round: 1 },
     ]);
     assert.strictEqual(brief, `Brief ${res.id} — the area review's, for ${UNIT}\n\n${filledTemplate('review-area', {
       engine: ENGINE_DRAWN,
@@ -246,7 +246,7 @@ describe('the test surface\'s brief (14.2.4)', () => {
   it('every scenario of the spec with its area, the change\'s range, the layout, the linters and its one report — dispatched as the test reader', () => {
     const { res, brief, whose } = issued(['test-surface', UNIT, '--base', 'main']);
 
-    assert.deepStrictEqual(whose, { role: 'test-surface', agent: 'leeway-test-surface', unit: UNIT, task: null, topic: null, round: 1 });
+    assert.deepStrictEqual(whose, { role: 'test-surface', agent: 'ledger-test-surface', unit: UNIT, task: null, topic: null, round: 1 });
     assert.strictEqual(brief, `Brief ${res.id} — the test surface's, for ${UNIT}\n\n${filledTemplate('test-surface', {
       'spec-scenarios': [
         '- 1.S1, of §1 Cards: Given a card form, when the number is typed, then it is checked. (1.1.1)',

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The layout on disk (leeway-engine/scripts/domain/layout.cjs, 4.11): the
+// The layout on disk (ledger-engine/scripts/domain/layout.cjs, 4.11): the
 // table of places and its reader, `layoutPlace`. Unit layer, no world.
 // Every place 4.11.17's tree draws holds a sample path, with its kind — the
 // logs 4.11's four, a topic's brief the engine's alone (8.7.6) — and a sample
@@ -22,11 +22,11 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace, assetHome } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
-const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
-const { WRITE_VERBS } = require('../../skills/leeway-engine/scripts/domain/ledger-write.cjs');
-const { LEDGER } = require('../../skills/leeway-engine/scripts/domain/ledger-events.cjs');
+const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace, assetHome } = require('../../skills/ledger-engine/scripts/domain/layout.cjs');
+const { REVIEWER_LETTERS } = require('../../skills/ledger-engine/scripts/kernel/reviewers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
+const { WRITE_VERBS } = require('../../skills/ledger-engine/scripts/domain/ledger-write.cjs');
+const { LEDGER } = require('../../skills/ledger-engine/scripts/domain/ledger-events.cjs');
 const { layout } = require('./discovery-test-utils.cjs');
 
 /** A path in each place 4.11.17 draws, and the place's kind and path. */
@@ -118,7 +118,7 @@ const OUTSIDE = Object.freeze([
   'pay/investigation/crash.md', 'pay/specification/auth/specification.md', 'pay/planning/auth/tasks/pay-1-2.md', 'pay/imports/deck.pdf',
 ]);
 
-/** @param {import('../../skills/leeway-engine/scripts/domain/layout.cjs').Place|null} at */
+/** @param {import('../../skills/ledger-engine/scripts/domain/layout.cjs').Place|null} at */
 const named = (at) => (at === null ? null : `${at.kind} ${at.path}`);
 
 describe('4.11\'s places (4.11.17)', () => {

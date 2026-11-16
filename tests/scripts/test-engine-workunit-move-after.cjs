@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A unit's move to another type, beyond the quick-fix's stage and yes
-// (leeway-engine/scripts/domain/workunit-move.cjs; 19.4.22, 19.5.9,
+// (ledger-engine/scripts/domain/workunit-move.cjs; 19.4.22, 19.5.9,
 // 19.5.16, P7): the new type's build meeting nothing of the fixes — a
 // feature's phase 1 written and task 1.1's branch laid, a bugfix's
 // reproducing task 1.1 created, on the local landing driver, the fix's kept
@@ -37,7 +37,7 @@ const {
 } = require('./workunit-move-world.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { taskBranch, isUnitBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 let dir = ''; // the project
@@ -86,7 +86,7 @@ describe('the yes: a bugfix moved to a feature (19.S30, 19.4.22)', () => {
     const investigated = readState(dir, INVESTIGATION_LOG);
     const res = moved(BUG, 'feature');
 
-    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, res.next], [[], [], null, { kind: 'handoff', skill: 'leeway-discussion-process', args: ['feature', BUG] }]);
+    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, res.next], [[], [], null, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', BUG] }]);
     const manifest = readManifest(dir, BUG);
     assert.deepStrictEqual([manifest.work_type, manifest.phases], ['feature', { discussion: { items: { [BUG]: { status: 'unstarted' } } } }]);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[BUG], { work_type: 'feature' });

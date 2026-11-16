@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The spec's review settled (leeway-engine/scripts/domain/spec-passes.cjs;
+// The spec's review settled (ledger-engine/scripts/domain/spec-passes.cjs;
 // ready to build's `review-settled`, domain/checklist.cjs): the review
 // settles (a) once the latest reported pass reviewed the spec as it stands —
 // blank lines between sections, or a section moved, changing nothing (E4) —

@@ -21,7 +21,7 @@ const assert = require('node:assert');
 
 const { ok, git, createFile, readManifest } = require('./engine-harness.cjs');
 const { UNIT, BRANCH, SET, checklistClosed, quickFixConformance, fixChanged, fixDone } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const [FLAG] = SET;
 

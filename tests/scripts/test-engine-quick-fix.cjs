@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A quick-fix's work in the build (leeway-engine/scripts/domain/
+// A quick-fix's work in the build (ledger-engine/scripts/domain/
 // build-entry.cjs, its quick-fix arm, chosen where derivations.cjs's
 // `quickFixBuild` says; fix-branch.cjs): `engine enter implementation
 // <quick-fix>` — another session holding the checkout's code stopped at the
@@ -62,7 +62,7 @@ const { raiseHelpers } = require('./raise-world.cjs');
 const { UNIT, PLACE, DESCRIPTION, quickFix, createFix, fixDone, asGone, entered: enteredBy } = require('./quick-fix-world.cjs');
 const { TRACKER } = require('./landing-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { isFixPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { fixPhase } = require(path.join(SCRIPTS, 'domain/review-phase.cjs'));
@@ -70,7 +70,7 @@ const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
-const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 /** The default task driver's side of the suites, what a person might do in its tool. */
 const SIDE = require(path.join(__dirname, '..', 'drivers', TRACKER.name, 'task.cjs'));
 const TITLE = 'Spell the flag --colour';
@@ -122,7 +122,7 @@ afterEach(() => {
 });
 
 /** The engine as this test's conversation runs it. */
-const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+const env = () => ({ LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** An entry that must succeed: its response and its sections. @param {string[]} [flags] */
 const enter = (flags = []) => okSections(dir, ['enter', 'implementation', UNIT, ...flags], { env: env() });
@@ -174,7 +174,7 @@ const quickFixData = (tasks, summary = false, standing = []) => data([
 /** The brief `args` issue in this test's conversation, as stored. @param {string[]} args */
 function briefText(args) {
   const { id } = ok(dir, ['brief', ...args], { env: env() });
-  return withEnv({ LEEWAY_CONFIG_DIR: config() }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
+  return withEnv({ LEDGER_CONFIG_DIR: config() }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
 }
 
 /** The fixes as the tracker lists them. */
@@ -230,7 +230,7 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     assert.strictEqual(sections, quickFixData(`1.1 "${TITLE}" in progress`, true, [IN_FLIGHT, askedOpenLine()]));
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '1.1', builder: null, reviewers: [] }] });
     for (const line of [
-      path.join(dir, '.claude/skills/leeway-quick-fix-process/SKILL.md'), `\`${ENGINE} ledger record ${UNIT}\``, statePath(dir, `${UNIT}/build/log.md`), ...fixesLines(`1.1 "${TITLE}" in progress`, true), IN_FLIGHT, askedOpenLine(),
+      path.join(dir, '.claude/skills/ledger-quick-fix-process/SKILL.md'), `\`${ENGINE} ledger record ${UNIT}\``, statePath(dir, `${UNIT}/build/log.md`), ...fixesLines(`1.1 "${TITLE}" in progress`, true), IN_FLIGHT, askedOpenLine(),
     ]) {
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
     }
@@ -298,7 +298,7 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
     createFile(dir, 'src/flag.js', 'const flag = \'colour!\';\n');
     const { error } = refusedPristine(dir, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', MESSAGE], { env: env() });
 
-    assert.deepStrictEqual([res.task, res.checks.map(({ name }) => name).sort(), git(dir, ['log', '-1', '--format=%B', BRANCH]).trim()], [`${UNIT}-1-1`, ['eslint', 'tests'], `${MESSAGE}\n\nLeeway-Task: ${UNIT}-1-1`]);
+    assert.deepStrictEqual([res.task, res.checks.map(({ name }) => name).sort(), git(dir, ['log', '-1', '--format=%B', BRANCH]).trim()], [`${UNIT}-1-1`, ['eslint', 'tests'], `${MESSAGE}\n\nLedger-Task: ${UNIT}-1-1`]);
     assert.strictEqual(error, `commit --task: this checkout has main out, not ${UNIT}'s branch, so its commit would land on another branch — a quick-fix's task is built in the project's own checkout, on ${BRANCH} — \`engine task start ${UNIT} 1.1\` puts the checkout on it`);
   });
 

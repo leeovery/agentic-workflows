@@ -38,7 +38,7 @@ function closeHelpers(at) {
   const config = useTempFolder('quick-fix-close-config-');
 
   /** This test's conversation, as a call's options. */
-  const as = () => ({ env: { LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+  const as = () => ({ env: { LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
   /** A call that must succeed, in this test's conversation. @param {string[]} args */
   const run = (args) => ok(at(), args, as());

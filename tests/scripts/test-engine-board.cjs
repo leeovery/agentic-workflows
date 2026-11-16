@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` (leeway-engine/scripts/domain/board.cjs, its model
+// `engine board` (ledger-engine/scripts/domain/board.cjs, its model
 // domain/board-model.cjs): the board's frame — following the session, the
 // tabs, the banner, the version and the fixture the mod reads, that it
 // writes nothing. The build on it is test-engine-board-build.cjs, a task's
@@ -36,7 +36,7 @@ const { UNIT, SESSION_ID, QUESTIONS, CALL, taskText, buildScreensWorld, buildScr
 const { fixture, misfits, shapeOf, place } = require('./board-world.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
 
 let dir = ''; // the project
@@ -115,7 +115,7 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
 
   it('home is never refused: a session whose unit has left the project reads All work, the banner the project\'s', () => {
     enterBuild();
-    fs.rmSync(path.join(dir, '.leeway', UNIT), { recursive: true, force: true });
+    fs.rmSync(path.join(dir, '.ledger', UNIT), { recursive: true, force: true });
     const { place, banner, view } = board();
 
     assert.deepStrictEqual([place.unit, banner.name, view.kind], [null, project(), 'all']);
@@ -214,7 +214,7 @@ describe('the contract with the mod (14.16)', () => {
     enterBuild();
     await parkOn(['1.2']);
     issued('builder', '1.1', '2026-10-21T10:00:00.000Z');
-    fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
+    fs.rmSync(path.join(dir, '.ledger', UNIT, 'build/tasks/1.1/figures.json'));
     const held = await fixture('board-build.mjs');
     const answer = board();
     const forShape = (/** @type {any} */ board) => ({ ...board, view: { ...board.view, phases: board.view.phases.filter((/** @type {any} */ phase) => phase.tasks.length > 0) } });

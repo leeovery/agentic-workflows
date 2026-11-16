@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A quick-fix's close's yes (leeway-engine/scripts/domain/finish.cjs):
+// A quick-fix's close's yes (ledger-engine/scripts/domain/finish.cjs):
 // `engine finish yes <qf>` — refused while a question Claude raised in its
 // conversation stands open in its ledger, after a /clear as before it
 // (19.5.25), and while the checkout holds changes not committed, landing
@@ -70,17 +70,17 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     const main = git(dir, ['rev-parse', 'main']).trim();
     const dirty = [refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1']), git(dir, ['rev-parse', 'main']).trim()];
     fs.rmSync(path.join(dir, 'src', 'stray.js'));
-    const kept = () => git(dir, ['for-each-ref', '--format=%(refname)', 'refs/leeway/']).trim();
+    const kept = () => git(dir, ['for-each-ref', '--format=%(refname)', 'refs/ledger/']).trim();
     const opened = kept();
     const checked = reading(t, ['checklist', 'show', 'finish', UNIT]);
     const { result: done, ledger, notes } = reading(t, ['finish', 'yes', UNIT]);
 
     const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`;
-    assert.deepStrictEqual([dirty, opened, kept()], [[`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main], `refs/leeway/quick-fix/${UNIT}/open`, '']);
+    assert.deepStrictEqual([dirty, opened, kept()], [[`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main], `refs/ledger/quick-fix/${UNIT}/open`, '']);
     assert.deepStrictEqual([checked.notes > 0, notes, ledger - checked.ledger], [true, checked.notes, 1]);
     assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
       ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
-      committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },
+      committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'ledger', args: [] },
     });
     assert.deepStrictEqual([branchOut(), git(dir, ['log', '--format=%s', `${main}..main`]).trim(), fs.readFileSync(path.join(dir, 'src', 'help.js'), 'utf8')], [
       'main', `fix(${UNIT}): ${DESCRIPTION}`, 'const help = \'--colour\';\n',
@@ -112,10 +112,10 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     dir = world();
     closeable();
     const earlier = datedAt('2020-01-01T00:00:00Z', () => git(dir, ['commit-tree', 'main^{tree}', '-m', 'An earlier typo fixed']).trim());
-    for (const name of ['open', `merged/${earlier}`]) git(dir, ['update-ref', `refs/leeway/quick-fix/${UNIT}/${name}`, earlier]);
+    for (const name of ['open', `merged/${earlier}`]) git(dir, ['update-ref', `refs/ledger/quick-fix/${UNIT}/${name}`, earlier]);
     const done = run(['finish', 'yes', UNIT]);
 
-    assert.deepStrictEqual([done.landed.map((/** @type {any} */ { repo, merged }) => [repo, merged]), git(dir, ['for-each-ref', '--format=%(refname)', 'refs/leeway/']).trim()], [[['.', ['1.1', '1.2']]], '']);
+    assert.deepStrictEqual([done.landed.map((/** @type {any} */ { repo, merged }) => [repo, merged]), git(dir, ['for-each-ref', '--format=%(refname)', 'refs/ledger/']).trim()], [[['.', ['1.1', '1.2']]], '']);
   });
 
   it('19.5.17: squashes the fixes in the order they were done, as their records were written, never by their numbers', () => {

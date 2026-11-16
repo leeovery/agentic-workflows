@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The question on the map an experiment measures (9.1.11,
-// leeway-engine/scripts/domain/experiment-question.cjs): the spawn recording
+// ledger-engine/scripts/domain/experiment-question.cjs): the spawn recording
 // it and the map showing it waiting, the questions a spawn refuses, and the
 // report that reaches as a message the topic that question stands on once it
 // has left the spawning topic's open questions, its relative links rebased;

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A review round that ends the phase on the board (leeway-engine/scripts/
+// A review round that ends the phase on the board (ledger-engine/scripts/
 // domain/projections/board-review.cjs, 20.10.1, 20.10.4, 14.S15): one that
 // passed with its nits to fix, finish not yet waiting; one that passed, what
 // it found and could not prove, finish waiting and the unit's close once
@@ -24,7 +24,7 @@ const {
 const { place } = require('./board-world.cjs');
 const { area, tests, FINISH, facts, placed, reviewBoard } = require('./review-board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
 /** @type {string} */

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Finish's checklist (leeway-engine/scripts/domain/finish.cjs, its engine
+// Finish's checklist (ledger-engine/scripts/domain/finish.cjs, its engine
 // items domain/finish-checks.cjs, 6.4.10): the review phase over, read from
 // its rounds' records, only where the unit has a review phase, no question
 // waiting on the person, and the unit's records indexed, only where the

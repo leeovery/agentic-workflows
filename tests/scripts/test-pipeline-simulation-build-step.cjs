@@ -33,7 +33,7 @@ const {
   Sim, worldFrom, startUnit, discussed, specToBuild, buildEntry, startPhase, writeTasks, briefOf, landed, placeIn, answerGate, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
-const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
+const { taskBranch } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/landing-names.cjs'));
 
 const WU = 'ledger';
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
@@ -82,7 +82,7 @@ describe('pipeline simulation: the build in step', () => {
     assert.deepStrictEqual(sim.run(['task', 'ready', WU]).tasks.map((/** @type {{task: string}} */ t) => t.task), ['1.1', '1.2']);
     sim.run(['task', 'start', WU, '1.1']);
     sim.refuses(['task', 'start', WU, '1.2'], /builds in step, one task at a time/);
-    sim.render(['build-headline', WU, '--file', sim.write(`.leeway/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.1', changes: 'The ledger is written.', watch: 'An entry read back.' }] })], { expect: 'content' });
+    sim.render(['build-headline', WU, '--file', sim.write(`.ledger/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.1', changes: 'The ledger is written.', watch: 'An entry read back.' }] })], { expect: 'content' });
 
     const builder = loop.brief(['builder', WU, '1.1']);
     const writing = loop.isolated('1.1');
@@ -95,7 +95,7 @@ describe('pipeline simulation: the build in step', () => {
     // The person comments: their change goes onto the task as theirs, the
     // task stands in progress, and its account waits for its pair.
     answerGate(sim, 'step gate', '--typed', 'comment');
-    sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, 'Entries keep the order they were written in.\n'), '--by', 'person']);
+    sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.ledger/.cache/${WU}/build/addition.md`, 'Entries keep the order they were written in.\n'), '--by', 'person']);
     assert.strictEqual(shown('1.1'), '◐', 'a change put onto the task after its account takes it off its gate, in progress');
     const back = briefOf(sim, loop.brief(['builder', WU, '1.1']));
     assert.ok(back.includes('## Added by the person\n\nEntries keep the order they were written in.'), 'the builder goes back in with the person\'s change on its task');
@@ -111,7 +111,7 @@ describe('pipeline simulation: the build in step', () => {
     // out on 1.1's work chained below it, so it opens on the chain.
     assert.deepStrictEqual(sim.run(['task', 'ready', WU]).tasks.map((/** @type {{task: string}} */ t) => t.task), ['1.2']);
     sim.run(['task', 'start', WU, '1.2']);
-    sim.render(['build-headline', WU, '--file', sim.write(`.leeway/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.2', changes: 'The ledger is read.', watch: 'An entry read back.' }] })], { expect: 'content' });
+    sim.render(['build-headline', WU, '--file', sim.write(`.ledger/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.2', changes: 'The ledger is read.', watch: 'An entry read back.' }] })], { expect: 'content' });
     loop.brief(['builder', WU, '1.2']);
     const reading = loop.isolated('1.2');
     assert.strictEqual(git(reading, ['rev-parse', 'HEAD']).trim(), git(sim.dir, ['rev-parse', taskBranch({ unit: WU, phase: 1, n: 1 }, 'feat', 'Write the ledger')]).trim(), 'the task is laid out on the chain\'s tip');

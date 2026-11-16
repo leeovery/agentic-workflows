@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A quick-fix's close (leeway-engine/scripts/domain/finish.cjs, its screen
+// A quick-fix's close (ledger-engine/scripts/domain/finish.cjs, its screen
 // projections/finish.cjs, its engine items finish-checks.cjs): finish's
 // checklist holding the review passed only once the person asked for one
 // (6.4.10, 6.S14), its notes for later answered where none was, a question
@@ -46,7 +46,7 @@ const {
 } = require('./quick-fix-world.cjs');
 const { RAISED, world, closeHelpers } = require('./quick-fix-close-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { closeScreen } = require(path.join(SCRIPTS, 'domain/projections/finish.cjs'));
 const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
@@ -71,7 +71,7 @@ const provenWorld = fixtureFrom('quick-fix-close-proven-', (dir) => {
     ok(dir, ['task', 'start', UNIT, '1.1'], as);
     createFile(dir, 'src/flag.js', 'const flag = \'colour\';\n');
     createFile(dir, 'verify/features.md', '# Features\n');
-    createFile(dir, 'verify/drive.sh', '#!/bin/sh\nprintf "pass\\n" > "$LEEWAY_RUN/verdict"\n');
+    createFile(dir, 'verify/drive.sh', '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n');
     fs.chmodSync(path.join(dir, 'verify', 'drive.sh'), 0o755);
     ok(dir, ['commit', '--paths', 'src/flag.js', 'verify/features.md', 'verify/drive.sh', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${FLAG}`], as);
     const setup = writeState(dir, layout.cache('verify-setup.json'), JSON.stringify({

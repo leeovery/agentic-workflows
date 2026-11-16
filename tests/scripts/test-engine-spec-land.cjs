@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The spec's land (leeway-engine/scripts/domain/spec-land.cjs): `engine spec
+// The spec's land (ledger-engine/scripts/domain/spec-land.cjs): `engine spec
 // land <unit>`, and the trace and the unit's entries it reads
 // (spec-trace.cjs, unit-entries.cjs). A spec whose statements and screens
 // trace — each cite a current decision or finding of the unit, on a decided
@@ -52,7 +52,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { unitEntries } = require(path.join(SCRIPTS, 'domain/unit-entries.cjs'));
 const { specEntryRefusal } = require(path.join(SCRIPTS, 'domain/spec-entry.cjs'));
 const { discoverArtifacts, readManifests } = require(path.join(SCRIPTS, 'domain/knowledge/artifacts.cjs'));

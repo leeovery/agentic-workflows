@@ -25,7 +25,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { contend, withEnv } = require('./engine-harness.cjs');
-const { tryClaimFile } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
+const { tryClaimFile } = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
 const { worldOfTheRun, worldKey } = require('./run-worlds.cjs');
 
 const RUN_WORLDS = path.join(__dirname, 'run-worlds.cjs');
@@ -83,7 +83,7 @@ describe('worlds built once per run', () => {
   });
 
   it('a run naming no folder: the world built in this process, in a folder of its own, once however often it is asked for', () => {
-    withEnv({ LEEWAY_TEST_WORLDS: undefined }, () => {
+    withEnv({ LEDGER_TEST_WORLDS: undefined }, () => {
       const world = worldOfTheRun(named('alone'), build);
       assert.strictEqual(world.how, 'alone');
       assert.strictEqual(fs.readFileSync(path.join(world.dir, 'built-by'), 'utf8'), String(process.pid));
@@ -127,7 +127,7 @@ describe('worlds built once per run', () => {
       '  fs.writeFileSync(path.join(into, "built-by"), String(process.pid));',
       '}, { pollMs: 10 });',
       'report({ how, dir, builtBy: fs.readFileSync(path.join(dir, "built-by"), "utf8") });',
-    ].join('\n'), [marks, world], { ...process.env, LEEWAY_TEST_WORLDS: folder });
+    ].join('\n'), [marks, world], { ...process.env, LEDGER_TEST_WORLDS: folder });
 
     assert.deepStrictEqual(reports.map((report) => report.how).sort(), ['built', 'waited'], 'one built it while the other waited');
     const builder = fs.readFileSync(path.join(marks, 'builds'), 'utf8');
@@ -140,7 +140,7 @@ describe('worlds built once per run', () => {
 
   it('a build that fails leaves its error in place of the world, nothing half built and no claim: the next to ask fails with it at once, building nothing', () => {
     const name = named('failing');
-    withEnv({ LEEWAY_TEST_WORLDS: folder }, () => {
+    withEnv({ LEDGER_TEST_WORLDS: folder }, () => {
       assert.throws(() => worldOfTheRun(name, (dir) => {
         fs.writeFileSync(path.join(dir, 'half'), '');
         throw new Error('the build failed');
@@ -159,7 +159,7 @@ describe('worlds built once per run', () => {
       if (to === `${dir}.claim`) fs.mkdirSync(dir);
       return link(from, to);
     });
-    const world = withEnv({ LEEWAY_TEST_WORLDS: folder }, () => worldOfTheRun(name, build));
+    const world = withEnv({ LEDGER_TEST_WORLDS: folder }, () => worldOfTheRun(name, build));
     assert.deepStrictEqual(world, { dir, how: 'found' });
     assert.deepStrictEqual(builds, []);
     assert.deepStrictEqual(fs.readdirSync(folder), [path.basename(dir)], 'the claim let go');
@@ -168,7 +168,7 @@ describe('worlds built once per run', () => {
   it('a builder that died under its claim: the next to ask takes the claim over and builds the world for the run', () => {
     const name = named('dead');
     fs.writeFileSync(path.join(folder, `${worldKey(name)}.claim`), DEAD);
-    const world = withEnv({ LEEWAY_TEST_WORLDS: folder }, () => worldOfTheRun(name, build, AT_ONCE));
+    const world = withEnv({ LEDGER_TEST_WORLDS: folder }, () => worldOfTheRun(name, build, AT_ONCE));
     assert.deepStrictEqual(world, { dir: path.join(folder, worldKey(name)), how: 'built' });
     assert.strictEqual(fs.readFileSync(path.join(world.dir, 'built-by'), 'utf8'), String(process.pid));
     assert.deepStrictEqual(fs.readdirSync(folder), [worldKey(name)], 'the dead claim gone, the world in its place');
@@ -190,7 +190,7 @@ describe('worlds built once per run', () => {
         'const started = Date.now();',
         'const { dir, how } = worldOfTheRun("stand-in", (into) => fs.writeFileSync(path.join(into, "built-by"), ""), { limitMs: Number(limitMs), pollMs: Number(pollMs) });',
         'report({ how, apart: !dir.startsWith(path.dirname(world)), waitedMs: Date.now() - started, looks });',
-      ].join('\n'), [world, String(LIMIT_MS), String(POLL_MS)], { ...process.env, LEEWAY_TEST_WORLDS: folder });
+      ].join('\n'), [world, String(LIMIT_MS), String(POLL_MS)], { ...process.env, LEDGER_TEST_WORLDS: folder });
 
       assert.deepStrictEqual({ how: waiter.how, apart: waiter.apart }, { how: 'own', apart: true }, 'built its own, in a folder of its own');
       assert.ok(waiter.waitedMs >= LIMIT_MS, `built its own after ${waiter.waitedMs} ms, inside the ${LIMIT_MS} ms limit`);

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The close ready to build stands on (leeway-engine/scripts/domain/checklist.cjs,
+// The close ready to build stands on (ledger-engine/scripts/domain/checklist.cjs,
 // `readyClose`; ready-to-build.cjs): the landed spec alone, the close, the
 // screen and the yes refused while spec.md holds changes that have not
 // landed (11.8.1); ready to build's checklist closed, voided by a land or a

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The stop's screen and the pick
-// (leeway-engine/scripts/domain/projections/state-merge.cjs, the merge's
+// (ledger-engine/scripts/domain/projections/state-merge.cjs, the merge's
 // pick): the shown choice, its account and its gate; and the pick and the
 // screen through the engine's argv, the screen answering while a peer holds
 // the writer lock, the pick waiting for it and reading the waiting merge
@@ -21,9 +21,9 @@ const fs = require('fs');
 const path = require('path');
 const { holdLock, lockAttempts, ok, output, refuses, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { openGate, gateShown } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { openGate, gateShown } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { catchUpState, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
 const { choiceId, conflictLabel } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
@@ -109,7 +109,7 @@ describe('the stop\'s screen (4.7.6)', () => {
         '>   - "Export \\*it\\*"',
         '>   - "Mail it"',
         '>',
-        '> This machine\'s whole copy of the tracker\'s store is kept beside the merged one, as `.leeway/.store/tasks.0123abcd.jsonl`.',
+        '> This machine\'s whole copy of the tracker\'s store is kept beside the merged one, as `.ledger/.store/tasks.0123abcd.jsonl`.',
         '',
         '=== MENU: state merge gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
         '· · · · · · · · · · · ·',
@@ -177,7 +177,7 @@ describe('the stop\'s screen (4.7.6)', () => {
         '=== DISPLAY: state merge account (emit verbatim as markdown (not a code block)) ===',
         '> This machine\'s notes for later follow the remote\'s in the merge: note 3 is now note 4, note 4 is now note 5. This machine\'s copy of the consolidation report of phase 2 of pay does not read as one, so the notes it takes cannot be renamed with them.',
         '>',
-        '> The remote\'s report stays at `.leeway/pay/build/phases/phase-2/consolidation.md`, and this machine\'s copy is kept beside it as `.leeway/pay/build/phases/phase-2/consolidation.0123abcd.md`. The notes it took wait for a consolidation again; the tasks it made stand.',
+        '> The remote\'s report stays at `.ledger/pay/build/phases/phase-2/consolidation.md`, and this machine\'s copy is kept beside it as `.ledger/pay/build/phases/phase-2/consolidation.0123abcd.md`. The notes it took wait for a consolidation again; the tasks it made stand.',
         '',
         '=== MENU: state merge gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
         '· · · · · · · · · · · ·',
@@ -191,11 +191,11 @@ describe('the stop\'s screen (4.7.6)', () => {
 
     it('names the merged report or none at the path, and this machine\'s uncommitted copy', () => {
       const later = stateMergeGate({ conflicts: [setAsideOf({ uncommitted: true })] });
-      assert.match(later, /^> The merged report stays at `\.leeway\/pay\/build\/phases\/phase-2\/consolidation\.md`, and this machine's uncommitted copy is kept beside it as /m);
+      assert.match(later, /^> The merged report stays at `\.ledger\/pay\/build\/phases\/phase-2\/consolidation\.md`, and this machine's uncommitted copy is kept beside it as /m);
       assert.match(later, /^\*\*`1`\*\* → Carry on — \*this machine's uncommitted copy is kept beside\*$/m);
 
       const none = stateMergeGate({ conflicts: [setAsideOf({ setAside: { phase: 2, stays: false, renumbered: [{ from: 3, to: 4 }] } })] });
-      assert.match(none, /^> No report stays at `\.leeway\/pay\/build\/phases\/phase-2\/consolidation\.md`, and this machine's copy is kept beside it as /m);
+      assert.match(none, /^> No report stays at `\.ledger\/pay\/build\/phases\/phase-2\/consolidation\.md`, and this machine's copy is kept beside it as /m);
     });
 
     it('announces the reports set aside on each field screen before them, beside the names made twice', () => {
@@ -345,7 +345,7 @@ describe('the pick\'s command', () => {
     const choice = shownChoice(here);
     const lock = holdLock(path.join(here.root, layout.lock));
     const gitDir = path.dirname(keptStopFile(here.root));
-    const peers = [path.join(gitDir, 'leeway-merge-files', 'blobs'), path.join(gitDir, 'leeway-merge.index')];
+    const peers = [path.join(gitDir, 'ledger-merge-files', 'blobs'), path.join(gitDir, 'ledger-merge.index')];
     fs.mkdirSync(path.dirname(peers[0]));
     for (const file of peers) fs.writeFileSync(file, 'the peer\'s merge');
     /** @type {string[]} */

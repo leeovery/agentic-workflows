@@ -24,9 +24,9 @@ const {
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const { recordFile } = require('./quick-fix-world.cjs');
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 const QF = 'typo';
@@ -34,7 +34,7 @@ const SHIPPED = 'shipped';
 const BEGUN = 'begun';
 const BUG = 'hunt';
 const EPIC = 'payments';
-const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 const NOTE = layout.inbox('quickfixes', '2026-06-03--colour-flag.md');
 const TITLE = 'Spell the flag --colour';
 const BRANCH = quickFixBranch(QF);
@@ -66,10 +66,10 @@ const made = { discovered: '', asked: '', settled: '', call: '', found: '' };
  */
 function startedFix(dir, unit, title, file, then = () => {}) {
   const gone = fs.mkdtempSync(path.join(os.tmpdir(), 'workunit-move-world-'));
-  const as = { env: { LEEWAY_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone', TMUX: undefined, TMUX_PANE: undefined } };
+  const as = { env: { LEDGER_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone', TMUX: undefined, TMUX_PANE: undefined } };
   try {
     const log = writeState(dir, layout.cache(unit, 'session-001.md'), '# Discovery Session 001\n');
-    ok(dir, ['workunit', 'create', unit, 'quick-fix', '--description', `The ${unit} change`, '--session-log-file', log, ...(unit === QF ? ['--seed', `.leeway/${NOTE}`] : [])]);
+    ok(dir, ['workunit', 'create', unit, 'quick-fix', '--description', `The ${unit} change`, '--session-log-file', log, ...(unit === QF ? ['--seed', `.ledger/${NOTE}`] : [])]);
     okSections(dir, ['enter', 'implementation', unit], as);
     ok(dir, ['presence', 'clear', unit, 'implementation', unit], as);
     ok(dir, ['task', 'create', unit, '1', '--file', writeState(dir, layout.cache(`${unit}-fix.md`), fixFile(1, title))]);
@@ -87,7 +87,7 @@ function startedFix(dir, unit, title, file, then = () => {}) {
 const world = fixtureFrom('workunit-move-', (dir) => {
   keywordOnlyKnowledge(dir);
   createFile(dir, 'src/flag.js', 'const flag = \'color\';\n');
-  for (const phase of ['implementation', 'discussion', 'investigation']) createFile(dir, `.claude/skills/leeway-${phase}-process/SKILL.md`, `# ${phase}\n`);
+  for (const phase of ['implementation', 'discussion', 'investigation']) createFile(dir, `.claude/skills/ledger-${phase}-process/SKILL.md`, `# ${phase}\n`);
   writeState(dir, NOTE, '# The colour flag\n');
   createManifest(dir, BUG, { work_type: 'bugfix' });
   writeState(dir, layout.brief(BUG, BUG), '# Hunt\n\nThe bug as discovery heard it.\n');
@@ -139,7 +139,7 @@ function moveHelpers(at) {
   const config = useTempFolder('workunit-move-config-');
 
   /** The engine as this test's conversation runs it. */
-  const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+  const env = () => ({ LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
   /** Claude's payload for a move, its brief drafted in the cache: the payload's path. @param {string} unit @param {string} to */
   function payload(unit, to) {

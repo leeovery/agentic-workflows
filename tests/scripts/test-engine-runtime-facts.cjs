@@ -25,7 +25,7 @@ const { builtinModules } = require('module');
 
 const REPO = path.join(__dirname, '..', '..');
 const SKILLS = path.join(REPO, 'skills');
-const { newId } = require(path.join(SKILLS, 'leeway-engine/scripts/domain/ledger-ids.cjs'));
+const { newId } = require(path.join(SKILLS, 'ledger-engine/scripts/domain/ledger-ids.cjs'));
 
 /** Every module the workflows ship, by its path. */
 const modules = () => fs.readdirSync(SKILLS, { recursive: true, encoding: 'utf8' })

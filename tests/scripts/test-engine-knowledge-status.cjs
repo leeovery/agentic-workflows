@@ -38,7 +38,7 @@ describe('engine knowledge check', () => {
     configureKnowledge(root, KEYWORD_ONLY);
     knowledgeUnit(root, 'auth', 'feature');
     createFile(statePath(root), layout.record('auth', 'auth'), '# Auth\n\nSettled.\n');
-    assert.strictEqual((await engineKnowledge(root, ['index', `.leeway/${layout.record('auth', 'auth')}`])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index', `.ledger/${layout.record('auth', 'auth')}`])).code, 0);
   }
 
   /** @type {Array<[string, Record<string, string>, () => void|Promise<void>, string, RegExp|null]>} the state, the system config's files, the build, the readiness, what stderr says */
@@ -76,7 +76,7 @@ describe('engine knowledge check', () => {
   for (const [state, system, build, readiness, said] of STATES) {
     it(`reads ${readiness} for ${state}, exiting 0`, async (t) => {
       await build();
-      const answer = await engineKnowledge(root, ['check'], { LEEWAY_CONFIG_DIR: systemConfigDir(t, system) });
+      const answer = await engineKnowledge(root, ['check'], { LEDGER_CONFIG_DIR: systemConfigDir(t, system) });
       assert.strictEqual(answer.code, 0);
       assert.strictEqual(answer.stdout, `${readiness}\n`);
       if (said) assert.match(answer.stderr, said);
@@ -125,7 +125,7 @@ describe('engine knowledge status', () => {
     knowledgeUnit(root, 'dropped', 'feature');
     manifestSet(root, 'dropped', 'status', 'cancelled');
     createFile(statePath(root), layout.record('dropped', 'dropped'), '# Dropped\n\nDropped.\n');
-    for (const rel of [layout.record('auth', 'auth'), layout.record('dropped', 'dropped')]) await knowledge('index', `.leeway/${rel}`);
+    for (const rel of [layout.record('auth', 'auth'), layout.record('dropped', 'dropped')]) await knowledge('index', `.ledger/${rel}`);
     fs.rmSync(at(layout.record('auth', 'auth')));
     assert.match((await knowledge('status')).stdout, new RegExp([
       '^Retired since indexing: 2',

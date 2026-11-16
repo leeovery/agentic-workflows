@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (ledger-engine/scripts/drivers/landing/github/)
 // and a feature's task changed after its pull request was squashed by hand
 // on GitHub's site, its branch kept there (7.2.23): not landed — its stack
 // open, the merge gate standing — until `land phase` lands its change
@@ -84,7 +84,7 @@ describe('a feature\'s task changed after its pull request merged on GitHub (7.2
   it('changed on top here, its change conflicting with a later change of its line on main on GitHub: refused before anything is pushed or opened, naming the way on — its commits since its landing rebased onto main and pushed; that followed, the conflict settled its way, its change lands', () => {
     const dir = project();
     const tip = squashedByHand(dir);
-    const later = cutTask(dir, '5.1', 'fix', 'Keep the tip', 'main', { 'tip.txt': 'tip, kept\n' }, { message: 'fix(pay): keep the tip\n\nLeeway-Task: pay-5-1' });
+    const later = cutTask(dir, '5.1', 'fix', 'Keep the tip', 'main', { 'tip.txt': 'tip, kept\n' }, { message: 'fix(pay): keep the tip\n\nLedger-Task: pay-5-1' });
     ok(dir, openArgs(later));
     phaseReviewed(dir, 5, 'auto');
     ok(dir, ['land', 'phase', 'pay', '5']);

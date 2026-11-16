@@ -34,12 +34,12 @@ const {
   call, ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readManifest, ledgerEntries, touched, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
-const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { taskBranch } = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'pay';
 const BUILDING = 'doors-building';
 const AS_BUILDER = Object.freeze({ env: { CLAUDE_CODE_SESSION_ID: BUILDING } });
-const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 const CARD = 'src/card.js';
 const MESSAGE = 'feat(pay): take a card';
 const TASK = [
@@ -165,7 +165,7 @@ const DOORS = [
   {
     contract: 'a code commit during a build: a raw `git commit`, by the hook before Bash; `commit --task` lands',
     refused: (dir) => assertBlocked(hook(dir, 'shell', 'Bash', { command: `git commit -m "${MESSAGE}" ${CARD}` }), /engine commit --paths <file>… --task pay 1\.1/),
-    lands: (dir) => assert.match(committedForTask(dir), /\nLeeway-Task: pay-1-1\n/),
+    lands: (dir) => assert.match(committedForTask(dir), /\nLedger-Task: pay-1-1\n/),
   },
   {
     contract: 'a code commit\'s task: one naming no task, by the commit door; `commit --task` lands',
@@ -173,7 +173,7 @@ const DOORS = [
       assert.match(refusedPristine(dir, ['commit', '--paths', CARD, '-m', MESSAGE], AS_BUILDER).error, /^Usage: engine commit /);
       assert.strictEqual(git(dir, ['status', '--porcelain', '--', CARD]), ` M ${CARD}\n`, 'the card stays uncommitted');
     },
-    lands: (dir) => assert.match(committedForTask(dir), /\nLeeway-Task: pay-1-1\n/),
+    lands: (dir) => assert.match(committedForTask(dir), /\nLedger-Task: pay-1-1\n/),
   },
 ];
 

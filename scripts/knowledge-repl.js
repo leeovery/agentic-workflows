@@ -14,8 +14,8 @@ const os = require('os');
 const path = require('path');
 const repl = require('repl');
 
-const store = require('../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
+const store = require('../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const DIMS = 128;
 
@@ -27,7 +27,7 @@ const FIXTURE_DOCS = [
     content: 'Token refresh intervals should mirror the upstream rate limiting window.',
     work_unit: 'auth-flow', work_type: 'feature', phase: 'record', topic: 'auth-flow',
     confidence: 'high',
-    source_file: '.leeway/.knowledge/records/auth-flow/auth-flow.md',
+    source_file: '.ledger/.knowledge/records/auth-flow/auth-flow.md',
     timestamp: 1700000000000,
   },
   {
@@ -35,7 +35,7 @@ const FIXTURE_DOCS = [
     content: 'User identity uses UUID v7.',
     work_unit: 'auth-flow', work_type: 'feature', phase: 'specification', topic: 'auth-flow',
     confidence: 'high',
-    source_file: '.leeway/auth-flow/specification/auth-flow/specification.md',
+    source_file: '.ledger/auth-flow/specification/auth-flow/specification.md',
     timestamp: 1700000010000,
   },
   {
@@ -43,7 +43,7 @@ const FIXTURE_DOCS = [
     content: 'Postgres partitioning strategies reviewed: range, list, hash.',
     work_unit: 'data-model', work_type: 'epic', phase: 'record', topic: 'partitioning',
     confidence: 'high',
-    source_file: '.leeway/.knowledge/records/data-model/partitioning.md',
+    source_file: '.ledger/.knowledge/records/data-model/partitioning.md',
     timestamp: 1700000030000,
   },
   {
@@ -51,7 +51,7 @@ const FIXTURE_DOCS = [
     content: 'Rate limiting decision deferred to the edge gateway layer.',
     work_unit: 'data-model', work_type: 'epic', phase: 'record', topic: 'data-model',
     confidence: 'high',
-    source_file: '.leeway/.knowledge/records/data-model/data-model.md',
+    source_file: '.ledger/.knowledge/records/data-model/data-model.md',
     timestamp: 1700000040000,
   },
   {
@@ -59,7 +59,7 @@ const FIXTURE_DOCS = [
     content: 'Persist rate limiting counters in Redis with per-tenant prefixes.',
     work_unit: 'data-model', work_type: 'epic', phase: 'specification', topic: 'data-model',
     confidence: 'high',
-    source_file: '.leeway/data-model/specification/data-model/specification.md',
+    source_file: '.ledger/data-model/specification/data-model/specification.md',
     timestamp: 1700000050000,
   },
 ];

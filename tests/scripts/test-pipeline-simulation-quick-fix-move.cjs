@@ -41,8 +41,8 @@ function opened(sim, wu) {
  * @param {Sim} sim @param {string} wu @param {string} to
  */
 function movedTo(sim, wu, to) {
-  const brief = sim.write(`.leeway/.cache/${wu}/build/brief.md`, `# ${wu}\n\nWhat the fixes showed.\n`);
-  const file = sim.write(`.leeway/.cache/${wu}/build/move.json`, { description: `The ${wu} work, as ${to} work.`, reason: 'It needs a decision beyond a quick call.', brief });
+  const brief = sim.write(`.ledger/.cache/${wu}/build/brief.md`, `# ${wu}\n\nWhat the fixes showed.\n`);
+  const file = sim.write(`.ledger/.cache/${wu}/build/move.json`, { description: `The ${wu} work, as ${to} work.`, reason: 'It needs a decision beyond a quick call.', brief });
   sim.run(['workunit', 'move', wu, '--to', to, '--file', file]);
   const { next } = answerGate(sim, 'start this work', '--pick', 'y');
   return sim.run(next.argv);
@@ -58,7 +58,7 @@ describe('pipeline simulation: quick-fix moves', () => {
     opened(sim, wu);
 
     // Its fix 1.1 begun, and a call of Claude's made for it.
-    sim.run(['task', 'create', wu, '1', '--file', sim.write(`.leeway/.cache/${wu}-fix.md`, [
+    sim.run(['task', 'create', wu, '1', '--file', sim.write(`.ledger/.cache/${wu}-fix.md`, [
       '# Spell the flag', '', '## Type', 'fix', '', '## Problem', 'p', '', '## Solution', 's', '', '## Outcome', 'o', '',
       '## Acceptance scenarios', '- 1.S1 Given the help, when read, then spelt right.', '', '## Spec reference', 'none',
     ].join('\n'))]);
@@ -75,8 +75,8 @@ describe('pipeline simulation: quick-fix moves', () => {
     // The move hands straight to the new type's first phase — a feature's
     // discussion, which it runs normally to its yes: moved mid-fix, it asks,
     // decides and closes at its topic as a unit before its spec.
-    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/leeway-discussion-process feature ${wu}\`.`);
-    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/ledger-discussion-process feature ${wu}\`.`);
+    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', wu] });
     assert.deepStrictEqual(sim.run(['ledger', 'record', wu, wu]).decisions.map((d) => [d.text, d.phase]), [['QUICK-FIX CALL: the help says colour.', 'discussion'], ['This.', 'discussion']]);
 
     // Its spec to ready to build, which shows the call the fix made among
@@ -106,7 +106,7 @@ describe('pipeline simulation: quick-fix moves', () => {
     const [fix] = writeTasks(sim, wu, 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
     sim.run(['task', 'start', wu, fix]);
     fixBuilt(sim, wu, fix, ['src/flag.js'], { record: 'The flag.' });
-    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+    sim.write(`.ledger/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     sim.run(answerGate(sim, 'finish', '--pick', 'r').next.argv);
@@ -114,13 +114,13 @@ describe('pipeline simulation: quick-fix moves', () => {
     reviewNext(sim, wu);
 
     const { next } = movedTo(sim, wu, 'feature');
-    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/leeway-discussion-process feature ${wu}\`.`);
+    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/ledger-discussion-process feature ${wu}\`.`);
   });
 
   it('quick-fix moved to a bugfix hands straight to its investigation', () => {
     const wu = 'deeper';
     opened(sim, wu);
     const { next } = movedTo(sim, wu, 'bugfix');
-    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/leeway-investigation-process bugfix ${wu}\`.`);
+    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/ledger-investigation-process bugfix ${wu}\`.`);
   });
 });

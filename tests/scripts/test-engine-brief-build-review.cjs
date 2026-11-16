@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The phase review's brief (leeway-engine/scripts/domain/brief.cjs, its
+// The phase review's brief (ledger-engine/scripts/domain/brief.cjs, its
 // records domain/brief-records.cjs, content/briefs/), the reviewer's second
 // template — the phase, its sections, its tasks' criteria, what it relies
 // on, the decided calls, its range — from where its chain leaves the
@@ -85,8 +85,8 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
   it('the phase, its sections, each of its tasks\' criteria but a closed one\'s, what it relies on, the decided calls, its range, its scenarios\' runs at its tips, what survived the mutation tool and the linters — dispatched as the reviewer', () => {
     const { res, brief, whose } = reviewedAtTips(2);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'phase-review', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
-    assert.deepStrictEqual(whose, { role: 'phase-review', agent: 'leeway-reviewer', unit: UNIT, task: null, topic: null });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'phase-review', agent: 'ledger-reviewer', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(whose, { role: 'phase-review', agent: 'ledger-reviewer', unit: UNIT, task: null, topic: null });
     assert.strictEqual(brief, `Brief ${res.id} — the phase review's, for pay phase 2\n\n${filledTemplate('phase-review', {
       'cut-phase': 'Phase 2 of pay: Refunds\n\nA customer is refunded.\n\nIt relies on phase 1, the work unit ledger.',
       'phase-sections': [`\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\``, '- §2, first built in this phase\n- §2.1, first built in this phase', AREA_2].join('\n\n'),

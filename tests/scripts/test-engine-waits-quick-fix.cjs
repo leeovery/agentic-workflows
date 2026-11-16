@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the menus read of a quick-fix: what waits on the person there
-// (leeway-engine/scripts/domain/waits.cjs; 18.2.3) — its questions asked in
+// (ledger-engine/scripts/domain/waits.cjs; 18.2.3) — its questions asked in
 // its conversation and its fixes' parked, each once, read from the ledger in
 // any conversation; each raise sealed at its fixes, counted in the
 // conversation that drew it alone (N1); and its close, never listed while a
@@ -31,8 +31,8 @@ describe('a quick-fix\'s questions and its close (18.2.3, N1)', () => {
   afterEach(() => cleanupFixture(dir));
   const { env, parkedOn } = quickFixBoard(() => dir);
   /** What waits in the quick-fix, read in the conversation `session`, or in none, its seals beside this one's. @param {string} [session] */
-  const waiting = (session) => waitsIn(dir, [TYPO], { config: env().LEEWAY_CONFIG_DIR, session });
-  const intoFixes = door('leeway-quick-fix-process', 'quick-fix', TYPO);
+  const waiting = (session) => waitsIn(dir, [TYPO], { config: env().LEDGER_CONFIG_DIR, session });
+  const intoFixes = door('ledger-quick-fix-process', 'quick-fix', TYPO);
   const PROPOSAL = { ...leaningCall('Entering marks the row.', 'Entering marks nothing.'), question: 'What should the README say entering does?' };
   /** The replacement of Claude's call `call` on the README, waiting as its raise `raise`. @param {string} call @param {string} raise */
   const replacingWait = (call, raise) => sealed(wait('raised', call, PROPOSAL.question, intoFixes), raise);

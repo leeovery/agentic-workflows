@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A task's worktree, its prepared links and nested clones held out
-// (leeway-engine/scripts/domain/worktree-prep.cjs; the commit door's
+// (ledger-engine/scripts/domain/worktree-prep.cjs; the commit door's
 // staging, engine.cjs's checkedGroups): a link the worktree's preparation
 // made at a folder a committed `.gitignore` names, in the root or a child,
 // is no change of the task's — the door, `code status` and a take-over pass

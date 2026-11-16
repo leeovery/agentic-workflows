@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger at discovery's places (leeway-engine/scripts/domain/
+// The ledger at discovery's places (ledger-engine/scripts/domain/
 // ledger-write.cjs, the fold in domain/ledger-fold.cjs and the read in
 // domain/ledger-read.cjs): the product's place, `product.discovery`, where
 // what is found of the product as a whole lands with no work unit for it

@@ -25,8 +25,8 @@ const assert = require('node:assert');
 const { git } = require('./engine-harness.cjs');
 const { UNIT, BRANCH, SET, quickFixNestedConformance } = require('./quick-fix-world.cjs');
 const { NESTED } = require('./landing-world.cjs');
-const { STATE_BRANCH } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { STATE_BRANCH } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const ID = (/** @type {number} */ n) => `${UNIT}-1-${n}`;
 

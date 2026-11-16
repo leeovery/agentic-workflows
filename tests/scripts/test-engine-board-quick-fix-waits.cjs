@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in a quick-fix (leeway-engine/scripts/domain/projections/
+// `engine board` in a quick-fix (ledger-engine/scripts/domain/projections/
 // board-quick-fix.cjs, 20.14), what waits on the person and the close: a
 // question Claude raised in the quick-fix's conversation, at its fixes or
 // its review, until answered, drawn after a /clear as before it, open in

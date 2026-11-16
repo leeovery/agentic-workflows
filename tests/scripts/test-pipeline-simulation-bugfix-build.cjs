@@ -45,7 +45,7 @@ async function bugfixToBuild(sim) {
   specEntry(sim, WU, [WU]);
   sim.run(['brief', 'spec-writer', WU]);
   const [decision] = JSON.parse(sim.read(['ledger', 'record', WU, WU])).decisions;
-  sim.write(`.leeway/${WU}/spec.md`, [
+  sim.write(`.ledger/${WU}/spec.md`, [
     `# ${WU}`, '', '## 1. The work', '', '### 1.1 As decided', '', `1.1.1 ${WU} holds as decided. [${decision.id}]`, '',
     '## 1-S. Scenarios for §1', '', '1.S1 Given an empty basket, when the checkout runs, then it holds. (1.1.1)', '',
   ].join('\n'));
@@ -93,7 +93,7 @@ describe('pipeline simulation: a bugfix\'s build', () => {
     areaRead(sim, WU, SECOND_BASKET);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, /** @type {number} */ (fixPhase), 'The review\'s fixes', [{ title: 'Hold a second basket', type: 'fix', scenarios: ['a second basket'] }]);
-    const round = sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+    const round = sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['The work holds.'],
       findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The crash returns on a second basket.', from: ['1-the-work-a#1'], fix: `${fixPhase}.1` }],
     });

@@ -24,7 +24,7 @@ const assert = require('node:assert');
 const { ok, git } = require('./engine-harness.cjs');
 const { UNIT, DESCRIPTION, BRANCH, createFix, fixDone, ownCommit, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const MINE = 'My own change';
 

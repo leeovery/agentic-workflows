@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The close a topic's decided gate stands on (leeway-engine/scripts/
+// The close a topic's decided gate stands on (ledger-engine/scripts/
 // domain/checklist.cjs, domain/decided.cjs): a topic a message set back in
 // progress closed afresh before its gate shows again, counting the verdicts
 // its close asks, a decision the record widens already taking no second

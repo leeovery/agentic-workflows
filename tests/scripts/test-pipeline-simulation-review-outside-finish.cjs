@@ -48,7 +48,7 @@ describe('pipeline simulation: finish held over a task beyond the review\'s find
     areaRead(sim, WU, UNSALTED);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Salt the hash', type: 'fix', scenarios: ['an entry hashed'], reference: '§1' }]);
-    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+    sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Keep a ledger.'],
       findings: [{ area: '1-the-work', scope: 'in', call: 'nit', text: 'The hash is never salted.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
     })]);
@@ -58,7 +58,7 @@ describe('pipeline simulation: finish held over a task beyond the review\'s find
     sim.handOver();
 
     assert.strictEqual(reviewNext(sim, WU).move, 'fixes', 'after the /clear the review still waits on it');
-    sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review passed in round 1 on a nit.\n');
+    sim.write(`.ledger/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review passed in round 1 on a nit.\n');
     sim.run(['checklist', 'done', 'finish', WU, 'build-log-closed']);
     sim.refuses(['checklist', 'close', 'finish', WU], null);
 

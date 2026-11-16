@@ -52,10 +52,10 @@ const TASK = [
 // file holds.
 const PART = `#!/bin/sh
 steer="$(git rev-parse --path-format=absolute --git-common-dir)/verify"
-echo "$1 \${LEEWAY_SCENARIO:-} $(pwd -P)" >> "$steer/parts.log"
+echo "$1 \${LEDGER_SCENARIO:-} $(pwd -P)" >> "$steer/parts.log"
 case "$1" in
-  drive) cp -PR "$steer/verdict" "$LEEWAY_RUN/verdict" 2>/dev/null ;;
-  evidence) for kept in evidence recordings; do [ -d "$steer/$kept" ] && cp -PR "$steer/$kept" "$LEEWAY_RUN/$kept"; done ;;
+  drive) cp -PR "$steer/verdict" "$LEDGER_RUN/verdict" 2>/dev/null ;;
+  evidence) for kept in evidence recordings; do [ -d "$steer/$kept" ] && cp -PR "$steer/$kept" "$LEDGER_RUN/$kept"; done ;;
 esac
 if [ -f "$steer/leave-$1" ]; then left="$(cat "$steer/leave-$1")"; mkdir -p "$(dirname "$left")"; echo left > "$left"; fi
 if [ -f "$steer/fail-$1" ]; then echo "$1 broke"; exit "$(cat "$steer/fail-$1")"; fi
@@ -68,14 +68,14 @@ exit 0
 // to `looked` how each stands where it runs — a link and the folder it
 // reaches, a file and its text, or none.
 const MUTATE = `steer="$(git rev-parse --path-format=absolute --git-common-dir)/verify"
-cp "$LEEWAY_CHANGED" "$steer/changed.json"
+cp "$LEDGER_CHANGED" "$steer/changed.json"
 pwd -P > "$steer/ran-in"
 if [ -f "$steer/look" ]; then
   while IFS= read -r at; do
     if [ -L "$at" ]; then echo "$at linked to $(cd "$at" && pwd -P)"; elif [ -f "$at" ]; then echo "$at holds $(cat "$at")"; else echo "$at is not there"; fi
   done < "$steer/look" > "$steer/looked"
 fi
-[ -f "$steer/survivors.json" ] && cp "$steer/survivors.json" "$LEEWAY_RUN/survivors.json"
+[ -f "$steer/survivors.json" ] && cp "$steer/survivors.json" "$LEDGER_RUN/survivors.json"
 if [ -f "$steer/fail-mutate" ]; then echo "mutants survived"; exit "$(cat "$steer/fail-mutate")"; fi
 exit 0
 `;

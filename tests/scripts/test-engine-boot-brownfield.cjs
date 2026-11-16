@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What boot reads of the project for the start menu
-// (leeway-engine/scripts/domain/boot.cjs): the brownfield offer's answer —
+// (ledger-engine/scripts/domain/boot.cjs): the brownfield offer's answer —
 // the one the reshape's move (078) carried from a project's baseline among
 // them — the walkthrough's recorded answer, and the brownfield signal — the
 // code history from before the workflows arrived; and no worktree include
@@ -27,7 +27,7 @@ const { git, statePath, layout, WORKFLOW_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
 const { datedAt, createFile, withEnv } = require('./discovery-test-utils.cjs');
-const MOVE = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
+const MOVE = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
 
 const { stubbed, bootProject, runEngine } = require('./boot-world.cjs');
 
@@ -42,7 +42,7 @@ function movedWithBaselines(root, statuses) {
   const old = harness.initRepo(path.join(root, 'moved'));
   createFile(old, '.workflows/manifest.json', '{}\n');
   harness.commitAll(old, 'today\'s layout');
-  return withEnv({ WORKFLOWS_CONFIG_DIR: path.join(root, 'workflows'), LEEWAY_CONFIG_DIR: path.join(root, 'leeway') }, () => statuses.map((status) => {
+  return withEnv({ WORKFLOWS_CONFIG_DIR: path.join(root, 'workflows'), LEDGER_CONFIG_DIR: path.join(root, 'ledger') }, () => statuses.map((status) => {
     fs.writeFileSync(path.join(old, '.workflows/manifest.json'), JSON.stringify({ work_units: {}, baseline: { status } }));
     MOVE.run({ projectDir: old, reportUpdate: () => {}, reportSkip: () => {} });
     return fs.readFileSync(statePath(old, layout.projectManifest), 'utf8');
@@ -110,7 +110,7 @@ describe('engine boot', () => {
   function scratchRepo(name) {
     const project = harness.initRepo(path.join(fix.root, name));
     fs.appendFileSync(path.join(project, '.git/info/exclude'), '.gitignore\n');
-    createFile(project, '.gitignore', '.leeway/\n');
+    createFile(project, '.gitignore', '.ledger/\n');
     createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
     const at = (date) => (date.includes('T') ? date : `${date}T12:00:00Z`);
     const commit = (msg, date) => {
@@ -121,7 +121,7 @@ describe('engine boot', () => {
     return { project, commit, arrive };
   }
 
-  it('brownfield_signal: a codebase committed before `.leeway/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
+  it('brownfield_signal: a codebase committed before `.ledger/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
     // A brownfield repo: two commits of code (the skills install beside it,
     // which never counts as project code), then the workflows land.
     const { project, commit, arrive } = scratchRepo('brownfield');

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The names a landing takes (leeway-engine/scripts/domain/landing-names.cjs,
+// The names a landing takes (ledger-engine/scripts/domain/landing-names.cjs,
 // 7.2.18): a task's branch and a phase's, the message a task lands under
 // and a quick-fix's, titled by its tasks' types, a unit's own branch and
 // what it lands under (7.2.38), the title that may not forge its trailer,
@@ -14,7 +14,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const names = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 const TASK = { unit: 'pay', phase: 2, n: 7 };
 

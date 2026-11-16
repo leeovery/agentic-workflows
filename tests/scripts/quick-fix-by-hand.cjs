@@ -77,7 +77,7 @@ function mergedMidSet(conf, merge) {
   const opened = ok(at, ['land', 'open', UNIT, '1.2'], as());
   const host = side.defaultTip(at);
   const reached = git(at, ['merge-base', first, host]).trim() === first;
-  const past = git(at, ['log', '--format=%(trailers:key=Leeway-Task,valueonly)', `${host}..${BRANCH}`]).split('\n').filter(Boolean);
+  const past = git(at, ['log', '--format=%(trailers:key=Ledger-Task,valueonly)', `${host}..${BRANCH}`]).split('\n').filter(Boolean);
   fixDone(at, '1.2', as());
   const close = closed(at);
 

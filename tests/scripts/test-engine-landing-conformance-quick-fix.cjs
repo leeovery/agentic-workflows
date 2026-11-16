@@ -29,7 +29,7 @@ const assert = require('node:assert');
 
 const { ok, git, tip, readManifest } = require('./engine-harness.cjs');
 const { UNIT, DESCRIPTION, BRANCH, SET, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
   const { side, as, project, record, built, landed } = quickFixConformance(name, `engine-landing-quick-fix-${name}-`);
@@ -40,7 +40,7 @@ for (const { name } of listDrivers('landing')) {
       const base = tip(at, 'main');
       const opened = SET.map((_, n) => built(at, n + 1));
       const cut = git(at, ['merge-base', BRANCH, 'main']).trim();
-      const own = SET.map((_, n) => git(at, ['log', '--format=%(trailers:key=Leeway-Task,valueonly)', '-1', `${BRANCH}~${SET.length - 1 - n}`]).trim());
+      const own = SET.map((_, n) => git(at, ['log', '--format=%(trailers:key=Ledger-Task,valueonly)', '-1', `${BRANCH}~${SET.length - 1 - n}`]).trim());
       SET.forEach((_, n) => record(at, n + 1));
       checklistClosed(at, as());
       const closed = ok(at, ['finish', 'yes', UNIT], as());

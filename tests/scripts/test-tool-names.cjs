@@ -35,7 +35,7 @@ describe('the tool-name scan (7.1.10, 7.2.13)', () => {
     const reads = (/** @type {string} */ rel) => files.includes(rel) || files.some((file) => file.startsWith(`${rel}${path.sep}`));
 
     assert.deepStrictEqual(
-      ['agents/leeway-builder.md', 'skills/leeway-engine/scripts/engine.cjs', 'skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs', 'skills/leeway-migrate/scripts/migrations/reshape'].filter((rel) => !reads(rel)),
+      ['agents/ledger-builder.md', 'skills/ledger-engine/scripts/engine.cjs', 'skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs', 'skills/ledger-migrate/scripts/migrations/reshape'].filter((rel) => !reads(rel)),
       [], 'the scan reads the agents, the engine, the migrations and the reshape\'s move');
     assert.deepStrictEqual(found, []);
   });
@@ -56,9 +56,9 @@ describe('help names no tool (23.1.3)', () => {
     const files = helpFiles();
     const found = files.flatMap((rel) => helpNamesIn(fs.readFileSync(path.join(REPO, rel), 'utf8')).map(({ line, text }) => `${rel}:${line}: ${text}`));
     const reads = (/** @type {string} */ rel) => files.some((file) => file === rel || file.startsWith(`${rel}${path.sep}`));
-    const places = ['screens', 'topics', 'fixtures', 'offer.md'].map((rel) => path.join('skills/leeway-engine/content/walkthrough', rel));
+    const places = ['screens', 'topics', 'fixtures', 'offer.md'].map((rel) => path.join('skills/ledger-engine/content/walkthrough', rel));
 
-    assert.deepStrictEqual([...places, 'skills/leeway-engine/scripts/domain/projections/start-menu.help.md', 'skills/leeway-shared/references/glossary.md'].filter((rel) => !reads(rel)),
+    assert.deepStrictEqual([...places, 'skills/ledger-engine/scripts/domain/projections/start-menu.help.md', 'skills/ledger-shared/references/glossary.md'].filter((rel) => !reads(rel)),
       [], 'the scan reads the walkthrough, its fixtures, the help files and the glossary');
     assert.deepStrictEqual(files.filter((rel) => rel.endsWith('.cjs')), [...HELP_CODE].sort(), 'the scan reads the code drawing help, and no other');
     assert.deepStrictEqual(HELP_CODE.filter((rel) => !fs.existsSync(path.join(REPO, rel))), [], 'the code drawing help stands where the scan reads it');

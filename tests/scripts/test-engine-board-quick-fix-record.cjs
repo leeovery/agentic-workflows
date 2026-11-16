@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in a quick-fix (leeway-engine/scripts/domain/projections/
+// `engine board` in a quick-fix (ledger-engine/scripts/domain/projections/
 // board-quick-fix.cjs, 20.14), its record and where it came from: the
 // record held back until every fix has ended, a fix closed without being
 // done counted in neither its done nor its total; each fix's record by its
@@ -23,7 +23,7 @@ const { UNIT, FLAG, HELP, RECORDS } = require('./quick-fix-world.cjs');
 const { place } = require('./board-world.cjs');
 const { recorded, unwritten, quickFixBoard } = require('./quick-fix-board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { ROADMAP_SEED } = require(path.join(SCRIPTS, 'domain/inbox.cjs'));
 
 let dir = ''; // the project

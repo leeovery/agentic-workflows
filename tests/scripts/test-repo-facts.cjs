@@ -32,7 +32,7 @@ const path = require('path');
 const { git, traced, codeProject, initRepo, commitCode, createFile } = require('./engine-harness.cjs');
 const { useTempFolder, bareRepo } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { repoFacts, isolatedGit, withVerbReads, mainCheckout, workTree } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 const { git: engineGit, OPERATION_MARKERS, operationInProgress, onBranch, commitStaged } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 const { placeOf, projectRepos } = require(path.join(SCRIPTS, 'kernel/repos.cjs'));
@@ -50,7 +50,7 @@ const asksFacts = (command) => command.startsWith('rev-parse --path-format=absol
 
 /** The words a rev-parse asks one of the facts in: each of them but HEAD's, which `symbolic-ref` asked. */
 const FACT_WORDS = new RegExp(`^rev-parse\\b.*(--git-common-dir|--absolute-git-dir|--show-toplevel|--show-prefix|--symbolic-full-name|--git-path (${
-  [...OPERATION_MARKERS.map(([marker]) => marker), 'leeway-commit.lock'].join('|')})( |$))`);
+  [...OPERATION_MARKERS.map(([marker]) => marker), 'ledger-commit.lock'].join('|')})( |$))`);
 
 /** Whether a traced command asks one of the facts, in any words. @param {string} command */
 const asksAFact = (command) => /^symbolic-ref (-q|--quiet)\b/.test(command) || FACT_WORDS.test(command);
@@ -70,7 +70,7 @@ function askedApart(cwd) {
     commonDir: fs.realpathSync(resolved(['rev-parse', '--git-common-dir'])),
     gitDir: /** @type {string} */ (ask(['rev-parse', '--absolute-git-dir'])).trim(),
     markers: Object.fromEntries(OPERATION_MARKERS.map(([marker]) => [marker, resolved(['rev-parse', '--git-path', marker])])),
-    commitLock: resolved(['rev-parse', '--git-path', 'leeway-commit.lock']),
+    commitLock: resolved(['rev-parse', '--git-path', 'ledger-commit.lock']),
     head: ask(['symbolic-ref', '-q', 'HEAD'])?.trim() ?? null,
     branch: ask(['symbolic-ref', '-q', '--short', 'HEAD'])?.trim() ?? null,
   };

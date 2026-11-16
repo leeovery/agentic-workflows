@@ -1,14 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The review phase's entry (leeway-engine/scripts/domain/review-entry.cjs,
+// The review phase's entry (ledger-engine/scripts/domain/review-entry.cjs,
 // its records review-phase.cjs): `engine enter review <unit>`. What it
 // refuses, naming the way on and writing nothing — what the build's entry
 // refuses, and a build whose cut has a phase not closed, each such phase
 // named (14.6.1), or in step a stack of it waiting at its merge gate, the
 // gate named (7.2.4); another session holding the checkout's code stopped at the
 // build's code gate, nothing written, `--take` entering (12.7.8, 12.S50);
-// the snapshot of the working tree outside `.leeway/` taken for round 1 at
+// the snapshot of the working tree outside `.ledger/` taken for round 1 at
 // its entry where none is held, never by entering again (14.1.5); and each
 // question waiting on the person, by the ledger alone, the build's standing
 // read only while something is in flight, so an idle entry's cost stays
@@ -89,7 +89,7 @@ describe('another session holding the checkout\'s code (12.7.8)', () => {
   });
 });
 
-describe('the snapshot of the working tree outside .leeway/ (14.1.5)', () => {
+describe('the snapshot of the working tree outside .ledger/ (14.1.5)', () => {
   it('holds its round, each repository\'s HEAD, each path its status lists, with the fingerprint of what it holds, and its ignored entries, taken for round 1 at its entry and never again by entering', () => {
     fs.writeFileSync(path.join(dir, 'src/card.js'), 'export const card = 2;\n');
     fs.mkdirSync(path.join(dir, '.git/info'), { recursive: true });

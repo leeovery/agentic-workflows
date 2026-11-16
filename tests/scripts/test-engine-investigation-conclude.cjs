@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A bugfix's investigation's close: its validations' briefs, `brief
-// root-cause-validation|fix-validation` (leeway-engine/scripts/domain/
+// root-cause-validation|fix-validation` (ledger-engine/scripts/domain/
 // brief-records.cjs), both always run (19.4.7) — each from the hunt's log,
 // the record, what the hunt rests on and the code, the fix's carrying the
 // root cause and the fix it rests on, the root cause's no fix (19.S10) —
@@ -39,8 +39,8 @@ const {
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { auditGate } = require('./gate-audit.cjs');
-const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
-const { TRUST_LOG } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
+const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
+const { TRUST_LOG } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
 const { history, lines, DAY, shownIn, showingAnswers } = require('./trust-world.cjs');
 const {
   HUNT, RIPE, AT, CLAUDE, made, ripe, useInvestigationWorld, BUG, FEATURE, RIPE_AT, ENGINE, PERSON, GONE, validated, data,
@@ -74,7 +74,7 @@ describe('the validations\' briefs — both always run (19.4.7)', () => {
 
     const issued = run(['brief', 'fix-validation', RIPE, '--agent', agent]);
 
-    assert.deepStrictEqual([issued.role, issued.agent], ['fix-validation', 'leeway-investigation-fix-validation']);
+    assert.deepStrictEqual([issued.role, issued.agent], ['fix-validation', 'ledger-investigation-fix-validation']);
     const shown = JSON.parse(output(dir, ['ledger', 'record', RIPE, RIPE], { env: env() }));
     delete shown.ok;
     const record = JSON.stringify(shown, null, 2);
@@ -109,13 +109,13 @@ describe('the validations\' briefs — both always run (19.4.7)', () => {
       `\`${at(layout.cache(RIPE, 'investigation', RIPE, `${agent}.md`))}\``,
       '',
     ].join('\n'));
-    assert.deepStrictEqual(whose, { role: 'fix-validation', agent: 'leeway-investigation-fix-validation', unit: RIPE, task: null, topic: null });
+    assert.deepStrictEqual(whose, { role: 'fix-validation', agent: 'ledger-investigation-fix-validation', unit: RIPE, task: null, topic: null });
   });
 
   it('the root cause\'s brief carries no fix: the root cause is validated before the fix is set out', () => {
     const issued = run(['brief', 'root-cause-validation', RIPE, '--agent', dispatched('root-cause-validation')]);
 
-    assert.strictEqual(issued.agent, 'leeway-investigation-root-cause-validation');
+    assert.strictEqual(issued.agent, 'ledger-investigation-root-cause-validation');
     assert.deepStrictEqual(stored(issued.id).text.split('\n').filter((line) => line.startsWith('# ')), ['# The investigation\'s log', '# The investigation\'s record', '# The root cause', '# The code', '# Your report']);
   });
 
@@ -207,7 +207,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     const res = withFrozenClock(() => run(['investigation', 'conclude', RIPE]));
 
     assert.deepStrictEqual(res, {
-      ok: true, unit: RIPE, concluded_at: FROZEN_AT, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway-specification-process', args: ['bugfix', RIPE] },
+      ok: true, unit: RIPE, concluded_at: FROZEN_AT, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'ledger-specification-process', args: ['bugfix', RIPE] },
     });
     assert.deepStrictEqual(readManifest(dir, RIPE).phases.investigation.items[RIPE], { status: 'completed', concluded_at: FROZEN_AT });
     assert.strictEqual(lastMessage(dir), `investigation(${RIPE}): conclude`);

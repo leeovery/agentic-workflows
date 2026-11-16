@@ -40,43 +40,43 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
-const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
-const derivations = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
-const { roadmapState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/roadmap.cjs'));
+const engine = require(path.join(ROOT, 'skills/ledger-engine/scripts/engine.cjs'));
+const schema = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
+const derivations = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/derivations.cjs'));
+const { roadmapState } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/roadmap.cjs'));
 const {
   RECORDS_DIR, PRODUCT_FILE, knowledgeFiles,
-} = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const knowledgeStore = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/store.cjs'));
-const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs'));
-const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
-const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
-const { isId, idFrom } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
-const { openGate, gateShown, menuSection, MENU_INSTRUCTION } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
-const { MENUS, menuBody } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/menus.cjs'));
-const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
-const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
-const { epicMenuSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic-menu.cjs'));
-const { manageSurface, manageUnitSurface, closedSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/manage.cjs'));
-const { triageSurface, archivedSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/triage.cjs'));
-const { roadmapSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/roadmap.cjs'));
-const { unitHandoff } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/unit-handoff.cjs'));
-const { entryOf, pickRows } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/boot-route.cjs'));
-const { workPick } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/boot.cjs'));
+} = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
+const knowledgeStore = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/store.cjs'));
+const chunker = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs'));
+const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/ledger-engine/content/knowledge/chunking/record.json'), 'utf8'));
+const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-events.cjs'));
+const { isId, idFrom } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-ids.cjs'));
+const { openGate, gateShown, menuSection, MENU_INSTRUCTION } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/surfaces.cjs'));
+const { MENUS, menuBody } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/menus.cjs'));
+const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/start-menu.cjs'));
+const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
+const { epicMenuSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/epic-menu.cjs'));
+const { manageSurface, manageUnitSurface, closedSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/manage.cjs'));
+const { triageSurface, archivedSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/triage.cjs'));
+const { roadmapSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/roadmap.cjs'));
+const { unitHandoff } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/unit-handoff.cjs'));
+const { entryOf, pickRows } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/boot-route.cjs'));
+const { workPick } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/boot.cjs'));
 const {
   resolveHandoff, HANDOFF_TARGETS, topicHandoff,
-} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
+} = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
 const { ledgerEntries, stateGit, git } = require('./engine-harness.cjs');
-const { stepOfId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/task-id.cjs'));
-const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
-const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
-const { kindOf, hardToUndo } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/labeller.cjs'));
-const { LEARNED } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/learned-gates.cjs'));
-const { PERSON } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/user-files.cjs'));
-const { EXPERIMENT_TERMINAL_STATUSES } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
-const { environmentFaults } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/environment.cjs'));
+const { stepOfId } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/task-id.cjs'));
+const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
+const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/gate.cjs'));
+const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
+const { kindOf, hardToUndo } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/labeller.cjs'));
+const { LEARNED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/learned-gates.cjs'));
+const { PERSON } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
+const { EXPERIMENT_TERMINAL_STATUSES } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
+const { environmentFaults } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/environment.cjs'));
 
 // The words a shell makes of a route written into a command: split at spaces,
 // a double-quoted span one word without its quotes.
@@ -90,7 +90,7 @@ function shellWords(route) {
 // ---------------------------------------------------------------------------
 
 function listWorkUnits(dir) {
-  const wf = path.join(dir, '.leeway');
+  const wf = path.join(dir, '.ledger');
   if (!fs.existsSync(wf)) return [];
   return fs.readdirSync(wf, { withFileTypes: true })
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
@@ -177,9 +177,9 @@ function auditState(dir, label) {
   // trust log knows the project by (16.13.5), the one it was minted with: a
   // writer that rewrote it whole would drop it, and one that set it would
   // change it. A state started again mints its own.
-  const projPath = path.join(dir, '.leeway', 'manifest.json');
+  const projPath = path.join(dir, '.ledger', 'manifest.json');
   const project = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : null;
-  if (fs.existsSync(path.join(dir, '.leeway'))) {
+  if (fs.existsSync(path.join(dir, '.ledger'))) {
     assert.ok(isId(project?.project_id), ctx(`the project manifest's project_id is ${JSON.stringify(project?.project_id)}`));
     if (!mintedIds.has(dir)) mintedIds.set(dir, project.project_id);
     assert.strictEqual(project.project_id, mintedIds.get(dir), ctx('the project manifest\'s project_id is not the one it was minted with'));
@@ -200,7 +200,7 @@ function auditState(dir, label) {
     // A source is recorded only once it is on disk, and whatever moves the
     // file carries the pointer with it — an archive moves none.
     for (const source of row.sources) {
-      assert.ok(fs.existsSync(path.join(dir, '.leeway', source)),
+      assert.ok(fs.existsSync(path.join(dir, '.ledger', source)),
         ctx(`roadmap item ${row.name}: source ${source} is not on disk`));
     }
   }
@@ -226,8 +226,8 @@ function auditState(dir, label) {
   // unit of the project or by none, at a time (18.6.4, P4): whatever brings
   // an item back or deletes it takes its record with it.
   for (const [key, closure] of Object.entries(project?.inbox_closed ?? {})) {
-    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.inbox', '.archived', key)), ctx(`inbox closure ${key} names no archived item`));
-    assert.ok(closure.unit === null || fs.existsSync(path.join(dir, '.leeway', closure.unit, 'manifest.json')), ctx(`inbox closure ${key} names ${closure.unit}, no unit of the project`));
+    assert.ok(fs.existsSync(path.join(dir, '.ledger', '.inbox', '.archived', key)), ctx(`inbox closure ${key} names no archived item`));
+    assert.ok(closure.unit === null || fs.existsSync(path.join(dir, '.ledger', closure.unit, 'manifest.json')), ctx(`inbox closure ${key} names ${closure.unit}, no unit of the project`));
     assert.match(closure.at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, ctx(`inbox closure ${key} was closed at ${closure.at}`));
   }
 
@@ -240,7 +240,7 @@ function auditState(dir, label) {
   }
 
   for (const wu of listWorkUnits(dir)) {
-    const raw = fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8');
+    const raw = fs.readFileSync(path.join(dir, '.ledger', wu, 'manifest.json'), 'utf8');
     let manifest;
     try {
       manifest = JSON.parse(raw);
@@ -327,7 +327,7 @@ function auditState(dir, label) {
     derivations.computeNextPhase(manifest);
 
     // Every agent-state store (one per topic, colocated) is schema-valid.
-    const cacheRoot = path.join(dir, '.leeway', '.cache', wu);
+    const cacheRoot = path.join(dir, '.ledger', '.cache', wu);
     if (fs.existsSync(cacheRoot)) {
       for (const ph of fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory())) {
         const phDir = path.join(cacheRoot, ph.name);
@@ -1201,7 +1201,7 @@ function auditStartMenu(dir, label) {
   const at = `${label} — the start menu`;
   const m = MENUS['start-menu'];
   auditGate(announcedRender(() => menuSection(m.gate, MENU_INSTRUCTION, menuBody(m, {}, startMenuScreen(startMenuRead(dir, { waits: false }))))), at);
-  for (const { key, next } of /** @type {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
+  for (const { key, next } of /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
     if (next?.kind === 'handoff') auditRoutes(dir, [{ route: [`/${next.skill}`, ...next.args].join(' ') }], `${at} — ${key}`);
     if (next?.kind === 'engine' && next.argv[0] === 'handoff') auditContinue(dir, next.argv, `${at} — ${key}`);
   }
@@ -1225,7 +1225,7 @@ function composes(compose) {
 // an epic in progress whose move composes.
 /** @param {string} dir @param {string} label */
 function auditStartRoute(dir, label) {
-  const manifests = listWorkUnits(dir).map((wu) => JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8')));
+  const manifests = listWorkUnits(dir).map((wu) => JSON.parse(fs.readFileSync(path.join(dir, '.ledger', wu, 'manifest.json'), 'utf8')));
   /** @type {string[]} */
   const pieces = [];
   for (const manifest of manifests) {
@@ -1272,7 +1272,7 @@ function announcedRender(render) {
 /** @param {string} dir @param {() => string} draw @param {string} label */
 function auditMenuDrawn(dir, draw, label) {
   auditGate(announcedRender(draw), label);
-  for (const { key, next } of /** @type {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
+  for (const { key, next } of /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
     if (next?.kind !== 'handoff') continue;
     assert.doesNotThrow(() => resolveHandoff(dir, next.skill, next.args), `[${label}] the handoff refuses row ${key}'s /${next.skill} ${next.args.join(' ')}`);
   }
@@ -1284,7 +1284,7 @@ function auditMenuDrawn(dir, draw, label) {
 // directly above the markdown, and that data has to be the whole menu.
 /** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @param {string} [cwd] @returns {void} */
 function auditGatePayload(sim, args, identity, cwd = sim.dir) {
-  const env = { ...sim.envOf(identity), LEEWAY_GATE_SURFACE: '1' };
+  const env = { ...sim.envOf(identity), LEDGER_GATE_SURFACE: '1' };
   const stated = auditGate(engine.run(['render', ...args], { cwd, env }).stdout, `render ${args.join(' ')} — gate payload`);
   auditGateShown(sim, stated, identity, `render ${args.join(' ')}`);
 }

@@ -15,7 +15,7 @@ const {
   UNIT, env, ok, refusedPristine, statePath, git, assert,
 } = require('./review-world.cjs');
 
-const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
+const DOMAIN = path.join(__dirname, '../../skills/ledger-engine/scripts/domain');
 const { treeDrift } = require(path.join(DOMAIN, 'review-phase.cjs'));
 const { driftPrint } = require(path.join(DOMAIN, 'review-tree.cjs'));
 const { projectRepos } = require(path.join(DOMAIN, '../kernel/repos.cjs'));

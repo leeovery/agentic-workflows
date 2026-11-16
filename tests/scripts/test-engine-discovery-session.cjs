@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Discovery's sessions (leeway-engine/scripts/domain/discovery-session.cjs),
+// Discovery's sessions (ledger-engine/scripts/domain/discovery-session.cjs),
 // `engine discovery-session close <work-unit|product>`, at either of its
 // places (8.1.4): an epic's logs in `{unit}/discovery/session-NNN.md`, its
 // marker on the unit's manifest; the product's conversation's in

@@ -13,10 +13,10 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk } = require('../../skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs');
-const { outline } = require('../../skills/leeway-engine/scripts/kernel/knowledge/outline.cjs');
+const { chunk } = require('../../skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs');
+const { outline } = require('../../skills/ledger-engine/scripts/kernel/knowledge/outline.cjs');
 
-const CHUNKING = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'knowledge', 'chunking');
+const CHUNKING = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'knowledge', 'chunking');
 
 /** @param {string[]} lines */
 const fileOf = (lines) => lines.join('\n') + '\n';

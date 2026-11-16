@@ -47,16 +47,16 @@ describe('pipeline simulation: a question asked in a review round', () => {
     sim.run(['review', 'reads', WU, '1-the-work']);
     areaRead(sim, WU);
     await raisedAtReview(sim, WU, 'Should the export check hashes in this work?', leaningCall('The export checks them.', 'The export is left as it is.'));
-    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
+    sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
 
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
-    sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2.\n');
+    sim.write(`.ledger/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2.\n');
     sim.run(['checklist', 'done', 'finish', WU, 'build-log-closed']);
     sim.refuses(['checklist', 'close', 'finish', WU], null);
 
     answeredAtStop(sim, WU);
-    assert.deepStrictEqual(finished(sim, WU).next, { kind: 'handoff', skill: 'leeway', args: [] });
-    handoff(sim, '/leeway');
+    assert.deepStrictEqual(finished(sim, WU).next, { kind: 'handoff', skill: 'ledger', args: [] });
+    handoff(sim, '/ledger');
     assert.strictEqual(sim.manifest(WU).status, 'completed', 'the unit finishes once nothing waits on the person');
     assert.deepStrictEqual(gatesAnswered(sim), ['finish'], '19.S6: past the build, the person is stopped at finish, and at the question the ask rule sent');
   });

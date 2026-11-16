@@ -17,7 +17,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { syncSessionHooks } = require('../../skills/leeway-engine/scripts/domain/session-label.cjs');
+const { syncSessionHooks } = require('../../skills/ledger-engine/scripts/domain/session-label.cjs');
 const harness = require('./engine-harness.cjs');
 const { world, LAYOUT_GROUP, GUARD_GROUPS, SESSION_HOOK, RESUME_HOOK, PRESENCE_HOOK, END_HOOK, LABELS_ON, LABELS_OFF, git, stateGit, setup, teardown, engine, resume, projectManifest, settingsPath, settings, writeSettings, head, CHOICE } = require('./session-label-world.cjs');
 
@@ -27,7 +27,7 @@ describe('engine session label-config', () => {
 
   it('records the opt-in on the project manifest, installs the session hooks, and commits each where it lives, confined', () => {
     fs.writeFileSync(path.join(world.dir, 'peer-dirt.txt'), 'a peer session\'s file\n');
-    fs.writeFileSync(path.join(world.dir, '.leeway', 'pay', 'spec.md'), 'a peer session\'s state\n');
+    fs.writeFileSync(path.join(world.dir, '.ledger', 'pay', 'spec.md'), 'a peer session\'s state\n');
     const before = projectManifest();
     const res = engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
@@ -39,14 +39,14 @@ describe('engine session label-config', () => {
   });
 
   it('preserves every other manifest key and every other default', () => {
-    fs.writeFileSync(path.join(world.dir, '.leeway', 'manifest.json'),
+    fs.writeFileSync(path.join(world.dir, '.ledger', 'manifest.json'),
       JSON.stringify({ work_units: { pay: { work_type: 'feature' } }, defaults: { plan_format: 'tick' } }, null, 2) + '\n');
     engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(projectManifest(), {
       work_units: { pay: { work_type: 'feature' } },
       defaults: { plan_format: 'tick', tmux_labels: true },
     });
-    assert.strictEqual(fs.readFileSync(path.join(world.dir, '.leeway', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
+    assert.strictEqual(fs.readFileSync(path.join(world.dir, '.ledger', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
   });
 
   it('opting out records false, takes `session cleanup` out, leaves the workflows\' own hooks standing, and commits both', () => {
@@ -74,7 +74,7 @@ describe('engine session label-config', () => {
   });
 
   it('refuses to replace a project manifest that no longer parses', () => {
-    const p = path.join(world.dir, '.leeway', 'manifest.json');
+    const p = path.join(world.dir, '.ledger', 'manifest.json');
     fs.writeFileSync(p, '{not json', 'utf8');
     const err = engine(['session', 'label-config', 'true'], { expectFail: true });
     assert.match(err.error, /not valid JSON/);
@@ -119,8 +119,8 @@ describe('engine session label-config', () => {
     assert.deepStrictEqual(head(stateGit), CHOICE.state);
   });
 
-  it('LEEWAY_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
-    const res = engine(['session', 'label-config', 'true'], { extraEnv: { LEEWAY_HOLD_PROJECT_SETTINGS: '1' } });
+  it('LEDGER_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
+    const res = engine(['session', 'label-config', 'true'], { extraEnv: { LEDGER_HOLD_PROJECT_SETTINGS: '1' } });
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
@@ -258,7 +258,7 @@ describe('syncSessionHooks', () => {
   });
 
   it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
-    writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs' presence cleanup" }] }] } });
+    writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs' presence cleanup" }] }] } });
     assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: true });
     assert.strictEqual(settings().hooks.SessionEnd.length, 2, 'the re-quoted copy reads as foreign and ours lands beside it');
   });

@@ -35,11 +35,11 @@ describe('pipeline simulation: assets', () => {
 
     const spike = sim.run(['asset', 'spike', wu, 'frame']);
     const frame = `${spike.path}/Frame.swift`;
-    sim.write(`.leeway/${frame}`, 'struct Frame {}\n');
+    sim.write(`.ledger/${frame}`, 'struct Frame {}\n');
     const look = sim.run(['ledger', 'ask', note], null, JSON.stringify({ ...made, text: 'What does a note look like?' })).id;
     const call = sim.run(['ledger', 'decide', note, '--answers', look], null, JSON.stringify({ ...made, text: 'A frameless panel.', why: 'Lighter on the desk.' })).id;
     sim.run(['asset', 'add', wu, frame, '--entry', call]);
-    sim.write(`.leeway/${mock}`, 'a mock the person shared\n');
+    sim.write(`.ledger/${mock}`, 'a mock the person shared\n');
     sim.run(['asset', 'add', wu, mock, '--entry', call, '--status', 'reference']);
     sim.run(['asset', 'status', wu, mock, 'canonical']);
     sim.write(lifted, 'struct Frame {}\n');
@@ -59,8 +59,8 @@ describe('pipeline simulation: assets', () => {
     sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
     sim.handOver();
     const productNotes = '.product/assets/legacy/notes.md';
-    for (const file of ['plan.md', 'research/sketch.png', 'scratch.md']) sim.write(`.leeway/${legacy}/${file}`, `${file}\n`);
-    sim.write(`.leeway/${productNotes}`, 'notes\n');
+    for (const file of ['plan.md', 'research/sketch.png', 'scratch.md']) sim.write(`.ledger/${legacy}/${file}`, `${file}\n`);
+    sim.write(`.ledger/${productNotes}`, 'notes\n');
     sim.run(['commit', '--workflows', '-m', 'the migration']);
 
     const row = startMenu(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'asset legacy');
@@ -79,7 +79,7 @@ describe('pipeline simulation: assets', () => {
     const finding = 'The old plan ships notes before spaces.';
     sim.run(['ledger', 'find', findingsAt], null, JSON.stringify({ text: finding, how: 'read in the old plan', known: 'documented', cites: [{ path: to, section: 'plan.md' }], by: 'claude', who_moved_whom: 'none' }));
     const [{ topic }] = discussing;
-    const message = sim.write(`.leeway/.cache/${wu}/discovery/${wu}/message-old-plan.md`, 'The old plan\n\nIt leaves open whether a note opens in its own window.\n');
+    const message = sim.write(`.ledger/.cache/${wu}/discovery/${wu}/message-old-plan.md`, 'The old plan\n\nIt leaves open whether a note opens in its own window.\n');
     const sent = sim.run(['topic', 'send', wu, topic, '--from', `${wu}.discovery`, '--content', message, '--slug', 'old-plan']);
     assert.match(sim.render(['send-report', `${wu}.${topic}`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Note Window, on Fumi$/m);
     const { files } = sim.run(['asset', 'legacy', wu]);

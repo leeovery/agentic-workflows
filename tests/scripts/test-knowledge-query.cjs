@@ -17,10 +17,10 @@ const assert = require('node:assert');
 const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, refuseLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { resolveProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/config.cjs');
-const { QuotaError, AuthError, RateLimitError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { resolveProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
+const { QuotaError, AuthError, RateLimitError } = require('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 const {
   boostProblem,
   QUERY_TIMEOUT_MS,
@@ -29,7 +29,7 @@ const {
   querySettings,
   queryStore,
   renderQuery,
-} = require('../../skills/leeway-engine/scripts/domain/knowledge/query.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/knowledge/query.cjs');
 
 const DIMS = 128;
 const KEYWORD_ONLY = { provider: null, model: null, dimensions: null };
@@ -378,7 +378,7 @@ describe('knowledge query — `engine knowledge query`', () => {
 
   /** @param {string} name @param {string} completedAt */
   function completedFeature(name, completedAt) {
-    const unit = path.join(root, '.leeway', name);
+    const unit = path.join(root, '.ledger', name);
     fs.mkdirSync(unit, { recursive: true });
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name, work_type: 'feature', status: 'completed', created: '2026-01-01', completed_at: completedAt, phases: {},
@@ -395,14 +395,14 @@ describe('knowledge query — `engine knowledge query`', () => {
 
   before(async () => {
     root = setupFixture('kb-query-');
-    fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.leeway', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
-    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'),
+    fs.mkdirSync(path.join(root, '.ledger', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.ledger', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'),
       JSON.stringify({ work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } }));
     completedFeature('alpha', '2026-01-01');
     completedFeature('beta', '2026-06-01');
-    await knowledge('index', `.leeway/${layout.record('alpha', 'alpha')}`);
-    await knowledge('index', `.leeway/${layout.record('beta', 'beta')}`);
+    await knowledge('index', `.ledger/${layout.record('alpha', 'alpha')}`);
+    await knowledge('index', `.ledger/${layout.record('beta', 'beta')}`);
   });
 
   after(() => cleanupFixture(root));
@@ -417,7 +417,7 @@ describe('knowledge query — `engine knowledge query`', () => {
     assert.deepStrictEqual(beta.split('\n').slice(1), [
       'Investigation',
       'Token refresh follows the rate window.',
-      `Source: ${path.join(root, `.leeway/${layout.record('beta', 'beta')}`)}:L1-3`,
+      `Source: ${path.join(root, `.ledger/${layout.record('beta', 'beta')}`)}:L1-3`,
     ]);
   });
 
@@ -429,7 +429,7 @@ describe('knowledge query — `engine knowledge query`', () => {
       const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
       assert.deepStrictEqual(beta.split('\n').slice(1), [
         'Token refresh follows the rate window.',
-        `Source: ${path.join(root, `.leeway/${layout.record('beta', 'beta')}`)}`,
+        `Source: ${path.join(root, `.ledger/${layout.record('beta', 'beta')}`)}`,
       ]);
     } finally {
       fs.writeFileSync(file, written);
@@ -462,12 +462,12 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
 
   /** @param {Record<string, any>} knowledge */
   function configure(knowledge) {
-    fs.writeFileSync(path.join(root, '.leeway', '.knowledge', 'config.json'), JSON.stringify({ knowledge }));
+    fs.writeFileSync(path.join(root, '.ledger', '.knowledge', 'config.json'), JSON.stringify({ knowledge }));
   }
 
   /** @param {Record<string, any>} fields */
   function rewriteMetadata(fields) {
-    const file = path.join(root, '.leeway', '.knowledge', 'metadata.json');
+    const file = path.join(root, '.ledger', '.knowledge', 'metadata.json');
     fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), ...fields }));
   }
 
@@ -479,9 +479,9 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
 
   beforeEach(async () => {
     root = setupFixture('kb-query-cli-');
-    const unit = path.join(root, '.leeway', 'alpha');
+    const unit = path.join(root, '.ledger', 'alpha');
     fs.mkdirSync(unit, { recursive: true });
-    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
     }));
@@ -530,7 +530,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs knowledge setup --key-only\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs knowledge setup --key-only\]\n/);
     assert.match(stdout, RESULT);
   });
 
@@ -538,7 +538,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ ...endpoint.config, model: 'another' });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs knowledge rebuild\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs knowledge rebuild\]\n/);
     assert.match(stdout, RESULT);
     assert.deepStrictEqual(endpoint.requests, [], 'nothing embedded for a store it cannot compare');
   });
@@ -566,7 +566,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   });
 
   it('status names a knowledge config it cannot load, where a query fails', async () => {
-    fs.writeFileSync(path.join(root, '.leeway', '.knowledge', 'config.json'), '{ not json');
+    fs.writeFileSync(path.join(root, '.ledger', '.knowledge', 'config.json'), '{ not json');
     const status = await engineKnowledge(root, ['status']);
     assert.strictEqual(status.code, 0);
     assert.match(status.stdout, /^Mode: none — a query fails until the knowledge config loads$/m);
@@ -575,7 +575,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   });
 
   it('exits non-zero when the store cannot be read, or its metadata is missing', async () => {
-    const knowledgeDir = path.join(root, '.leeway', '.knowledge');
+    const knowledgeDir = path.join(root, '.ledger', '.knowledge');
     fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
     const missing = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(missing.code, 1);
@@ -600,14 +600,14 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
 
   beforeEach(async () => {
     root = setupFixture('kb-query-config-');
-    const unit = path.join(root, '.leeway', 'alpha');
+    const unit = path.join(root, '.ledger', 'alpha');
     fs.mkdirSync(unit, { recursive: true });
-    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
     }));
     createFile(statePath(root), layout.record('alpha', 'alpha'), '# Investigation\n\nToken refresh follows the rate window.\n');
-    configFile = path.join(root, '.leeway', '.knowledge', 'config.json');
+    configFile = path.join(root, '.ledger', '.knowledge', 'config.json');
     configure({ provider: null });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
   });
@@ -657,7 +657,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
     const units = { alpha: { work_type: 'feature' } };
     for (const [name, completedAt] of completions) {
-      const unit = path.join(root, '.leeway', name);
+      const unit = path.join(root, '.ledger', name);
       fs.mkdirSync(unit, { recursive: true });
       fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
         name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt, phases: {},
@@ -665,7 +665,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
       createFile(statePath(root), layout.record(name, name), `# Investigation\n\n${name} settled its tokens.\n`);
       units[name] = { work_type: 'feature' };
     }
-    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: units }));
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'), JSON.stringify({ work_units: units }));
     configure({ provider: null, decay_prune_below: false, decay_base_stability: 0.05 });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
 
@@ -681,7 +681,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
 });
 
 describe('renderQuery', () => {
-  const STATE = '/work/project/.leeway';
+  const STATE = '/work/project/.ledger';
   const result = {
     ...doc('auth', 1, '## Refresh\n\nTokens refresh hourly.\nSessions end at logout.'),
     excerpt: 'Tokens refresh hourly.',
@@ -699,13 +699,13 @@ describe('renderQuery', () => {
       '[record | auth/auth | high | 2026-01-02]',
       'Investigation: Auth › Refresh',
       'Tokens refresh hourly.',
-      'Source: /work/project/.leeway/.knowledge/records/auth/auth.md:L3-6',
+      'Source: /work/project/.ledger/.knowledge/records/auth/auth.md:L3-6',
     ].join('\n') + '\n');
   });
 
   it('names a one-line chunk by its line, and leaves out the headings and an excerpt where there are none', () => {
     const lines = (placed) => renderQuery({ results: [{ ...result, ...placed }], notes: [] }, { root: STATE }).split('\n').slice(3, -1);
-    const source = 'Source: /work/project/.leeway/.knowledge/records/auth/auth.md';
+    const source = 'Source: /work/project/.ledger/.knowledge/records/auth/auth.md';
     assert.deepStrictEqual(lines({ lines: { first: 9, last: 9 } }), [
       'Investigation: Auth › Refresh', 'Tokens refresh hourly.', `${source}:L9`,
     ]);

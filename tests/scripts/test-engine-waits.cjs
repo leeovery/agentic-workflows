@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the menus read of an epic and a feature before the build: what waits
-// on the person there (leeway-engine/scripts/domain/waits.cjs; 18.2.3,
+// on the person there (ledger-engine/scripts/domain/waits.cjs; 18.2.3,
 // 18.4.2) — approve the map staged, an epic's topic's decided once its
 // screen draws, the decided topics an answer replaced since holds (10.2.6),
 // and, asked for, the verdicts waiting on the unit's departures — each with
@@ -53,7 +53,7 @@ describe('an epic\'s gates, the topics a changed answer holds, and the verdicts 
 
     assert.deepStrictEqual([before, waitsIn(dir(), [FUMI])], [
       { [FUMI]: [] },
-      { [FUMI]: [wait('map', 'approve-the-map', 'Approve the map', { kind: 'handoff', skill: 'leeway-discovery', args: ['none', FUMI] })] },
+      { [FUMI]: [wait('map', 'approve-the-map', 'Approve the map', { kind: 'handoff', skill: 'ledger-discovery', args: ['none', FUMI] })] },
     ]);
   });
 
@@ -118,7 +118,7 @@ describe('an epic\'s gates, the topics a changed answer holds, and the verdicts 
 
     assert.deepStrictEqual([before, waitsIn(dir(), [SOLO])], [
       { [SOLO]: [] },
-      { [SOLO]: [wait('affected', SOLO, 'Solo: a decision it relies on changed', door('leeway-implementation-process', 'feature', SOLO), SOLO)] },
+      { [SOLO]: [wait('affected', SOLO, 'Solo: a decision it relies on changed', door('ledger-implementation-process', 'feature', SOLO), SOLO)] },
     ]);
   });
 
@@ -143,7 +143,7 @@ describe('an epic\'s gates, the topics a changed answer holds, and the verdicts 
 
 describe('the waits, read apart from the board', () => {
   it('reading what waits loads nothing of the board: where a unit has come to is read from the unit alone (unit-phases.cjs)', () => {
-    const waits = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/waits.cjs');
+    const waits = path.join(__dirname, '../../skills/ledger-engine/scripts/domain/waits.cjs');
     const loaded = execFileSync(process.execPath, ['-e', `require(${JSON.stringify(waits)}); console.log(JSON.stringify(Object.keys(require.cache).filter((file) => /board/.test(require('path').basename(file)))))`], { encoding: 'utf8' });
 
     assert.deepStrictEqual(JSON.parse(loaded), []);

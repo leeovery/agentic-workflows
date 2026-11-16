@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The layout hook (leeway-engine/scripts/domain/layout-hook.cjs): `engine
+// The layout hook (ledger-engine/scripts/domain/layout-hook.cjs): `engine
 // layout guard`, Claude Code's hook before Write, Edit and NotebookEdit, fed
 // its JSON on stdin as Claude Code sends it. In the state it refuses, with
 // exit 2 and the reason on stderr, a path the layout has no place for (6.S4)
@@ -50,7 +50,7 @@ const harness = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const { STATE_DIR_NAME, statePath, layout } = harness;
-const { ignoresCase } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { ignoresCase } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
 
 // Whether the filesystem every folder of these tests is on ignores case.
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
@@ -153,7 +153,7 @@ function assertRefusedInAnotherCase(res, what, reason) {
 
 describe('the layout, held (6.2.1, 6.2.3)', () => {
   /** The session without the mod and with it: the hook is the project's, so the two answer alike (6.2.2). */
-  const SURFACES = Object.freeze({ 'the mod off': {}, 'the mod on': { LEEWAY_GATE_SURFACE: '1' } });
+  const SURFACES = Object.freeze({ 'the mod off': {}, 'the mod on': { LEDGER_GATE_SURFACE: '1' } });
 
   it('6.S4: a Write to a folder of its own in a unit is refused, naming the path and where scratch goes, and a Write to a topic\'s log goes through — with the mod off and on', () => {
     const [scratchNotes, topicLog] = [layout.unit('pay', 'scratch', 'notes.md'), layout.unit('pay', 'topics', 'auth', 'log.md')];
@@ -213,7 +213,7 @@ describe('the layout, held (6.2.1, 6.2.3)', () => {
 });
 
 describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
-  it('Write, Edit and NotebookEdit on .leeway/.ledger.jsonl are refused with exit 2 — the code Claude Code blocks on — the reason on stderr, the ledger untouched', () => {
+  it('Write, Edit and NotebookEdit on .ledger/.ledger.jsonl are refused with exit 2 — the code Claude Code blocks on — the reason on stderr, the ledger untouched', () => {
     fs.writeFileSync(ledger, '{"id":"e1"}\n');
     for (const tool of ['Write', 'Edit', 'NotebookEdit']) assertRefused(guard(dir, ledger, { tool }), tool);
     assert.strictEqual(fs.readFileSync(ledger, 'utf8'), '{"id":"e1"}\n');
@@ -267,7 +267,7 @@ describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
       for (const name of ['.LEDGER.jsonl', '.ledger.JSONL']) {
         assertRefused(guard(dir, path.join(root, name)), `${name} ${what}`, IGNORES_CASE ? ledgerReason(written ? layout.ledger : name) : outsideReason(name));
       }
-      assertRefusedInAnotherCase(guard(dir, path.join(dir, '.Leeway', layout.ledger)), `.Leeway/${layout.ledger} ${what}`);
+      assertRefusedInAnotherCase(guard(dir, path.join(dir, '.Ledger', layout.ledger)), `.Ledger/${layout.ledger} ${what}`);
     };
     check('before the ledger is written', false);
     fs.writeFileSync(ledger, '{"id":"e1"}\n');
@@ -320,7 +320,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
   beforeEach(() => {
     config = path.join(outside('config'), '2026');
     fs.mkdirSync(config);
-    inConfig = { env: { LEEWAY_CONFIG_DIR: config } };
+    inConfig = { env: { LEDGER_CONFIG_DIR: config } };
   });
 
   it('Write, Edit and NotebookEdit on each in the system config directory — every file whose bytes reach the trust log, the gate\'s record a gate event is built from, and the raises sealed before the person answers, among them — are refused with its reason, there or not yet written, from a project or from a folder in none', () => {
@@ -340,10 +340,10 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     const pending = /** @type {const} */ ('conversations/0001-0002/trust-pending.jsonl');
     assertRefusedInAnotherCase(guard(dir, path.join(config, pending.toUpperCase()), inConfig), `${pending} before its folders are made`, reasonFor(pending));
     fs.symlinkSync(path.join(elsewhere, 'later'), path.join(elsewhere, 'dangling'));
-    const dangling = { env: { LEEWAY_CONFIG_DIR: path.join(elsewhere, 'dangling') } };
+    const dangling = { env: { LEDGER_CONFIG_DIR: path.join(elsewhere, 'dangling') } };
     assertRefused(guard(dir, path.join(elsewhere, 'later', 'trust.jsonl'), dangling), 'trust.jsonl where the system config directory, a link to a folder not made yet, leads', reasonFor('trust.jsonl'));
     fs.mkdirSync(path.join(config, 'conversations', '0001-0002'), { recursive: true });
-    const throughLink = { env: { LEEWAY_CONFIG_DIR: path.join(elsewhere, 'config') } };
+    const throughLink = { env: { LEDGER_CONFIG_DIR: path.join(elsewhere, 'config') } };
     for (const rel of /** @type {(keyof typeof USER_FILES)[]} */ (Object.keys(USER_FILES))) {
       const [file, reason, link] = [path.join(config, rel), reasonFor(rel), path.join(elsewhere, `link-${path.basename(rel)}`)];
       fs.symlinkSync(file, link);
@@ -374,12 +374,12 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     fs.mkdirSync(path.join(out, 'real', 'cfg'));
     fs.mkdirSync(path.join(out, 'cfg'));
     fs.symlinkSync(path.join(out, 'real', 'inner'), path.join(out, 'lnk'));
-    const climbing = { env: { LEEWAY_CONFIG_DIR: `${path.join(out, 'lnk')}/../cfg` } };
+    const climbing = { env: { LEDGER_CONFIG_DIR: `${path.join(out, 'lnk')}/../cfg` } };
     assertRefused(guard(dir, path.join(out, 'cfg', 'trust.jsonl'), climbing), 'trust.jsonl where the engine writes it, the `..` read from the text', reasonFor('trust.jsonl'));
-    const unmade = { env: { LEEWAY_CONFIG_DIR: path.join(out, 'a', 'workflows') } };
+    const unmade = { env: { LEDGER_CONFIG_DIR: path.join(out, 'a', 'workflows') } };
     assertRefused(guard(dir, path.join(out, 'a', 'workflows', 'config.json'), unmade), 'config.json two folders below the nearest made', reasonFor('config.json'));
     assertAllowed(guard(dir, path.join(out, 'b', 'workflows', 'config.json'), unmade), 'another folder of that name, not made either');
-    const linked = { env: { LEEWAY_CONFIG_DIR: path.join(out, 'lnk', 'fresh') } };
+    const linked = { env: { LEDGER_CONFIG_DIR: path.join(out, 'lnk', 'fresh') } };
     assertRefused(guard(dir, path.join(out, 'real', 'inner', 'fresh', 'trust.jsonl'), linked), 'trust.jsonl where the link in its path leads', reasonFor('trust.jsonl'));
   });
 
@@ -393,7 +393,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     const listed = () => (same ? fs.readdirSync('/Users') : []);
     const before = listed();
     for (const root of ['/Users', `/Users/never-made-${Math.random().toString(36).slice(2)}`]) {
-      const res = guard(dir, firm(path.join(root, 'trust.jsonl')), { env: { LEEWAY_CONFIG_DIR: root } });
+      const res = guard(dir, firm(path.join(root, 'trust.jsonl')), { env: { LEDGER_CONFIG_DIR: root } });
       if (same) assertRefused(res, `${root}/trust.jsonl through the firmlink`, reasonFor('trust.jsonl'));
       else assertAllowed(res, `${root}/trust.jsonl under a path that names no folder, on a system with no firmlink`);
     }
@@ -511,7 +511,7 @@ describe('everything else, allowed', () => {
     assertAllowed(guard(dir, path.join(outside('elsewhere'), layout.ledger)), 'outside');
   });
 
-  it('a project with no state passes every write, its .leeway/.ledger.jsonl among them — and so does a folder in no repository', () => {
+  it('a project with no state passes every write, its .ledger/.ledger.jsonl among them — and so does a folder in no repository', () => {
     const fresh = harness.initRepo(outside('fresh'));
     assertAllowed(guard(fresh, statePath(fresh, layout.ledger)), 'no state');
     const bare = outside('no-repo');
@@ -526,8 +526,8 @@ describe('everything else, allowed', () => {
 
   it('writes nothing — the project, the state and the conversation\'s folder as they were', () => {
     const config = outside('config');
-    guard(dir, ledger, { env: { CLAUDE_CODE_SESSION_ID: 'sess-1', LEEWAY_CONFIG_DIR: config } });
-    guard(dir, path.join(root, layout.projectManifest), { env: { CLAUDE_CODE_SESSION_ID: 'sess-1', LEEWAY_CONFIG_DIR: config } });
+    guard(dir, ledger, { env: { CLAUDE_CODE_SESSION_ID: 'sess-1', LEDGER_CONFIG_DIR: config } });
+    guard(dir, path.join(root, layout.projectManifest), { env: { CLAUDE_CODE_SESSION_ID: 'sess-1', LEDGER_CONFIG_DIR: config } });
     assert.strictEqual(harness.git(dir, ['status', '--porcelain', '--untracked-files=all']), '');
     assert.strictEqual(harness.stateGit(dir, ['status', '--porcelain', '--untracked-files=all', '--ignored']), '');
     assert.deepStrictEqual(fs.readdirSync(config), [], 'a hook target never marks the conversation');

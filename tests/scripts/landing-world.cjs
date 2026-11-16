@@ -51,14 +51,14 @@ const {
   ok, git, withEnv, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, accountFiles, readManifest, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, datedAt } = require('./discovery-test-utils.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
-const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
-const { roundReportPath } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
-const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
-const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
-const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
-const { unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
-const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
+const { parseShownTask } = require('../../skills/ledger-engine/scripts/domain/task-id.cjs');
+const { roundReportPath } = require('../../skills/ledger-engine/scripts/domain/round-report.cjs');
+const { REVIEWER_LETTERS } = require('../../skills/ledger-engine/scripts/kernel/reviewers.cjs');
+const names = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
+const { workMessage } = require('../../skills/ledger-engine/scripts/domain/commit-task.cjs');
+const { unitLanded } = require('../../skills/ledger-engine/scripts/domain/task-landed.cjs');
+const { projectRepos } = require('../../skills/ledger-engine/scripts/kernel/repos.cjs');
 
 const UNIT = 'pay';
 const BASE = 'landing-base';
@@ -67,7 +67,7 @@ const IDENTITY = 'Test <test@example.com>';
 // The phases the world writes into the tracker, before any task of them.
 const PHASES = 5;
 // The tracker a project has unless it names another: the default task driver, its real tool.
-const TRACKER = /** @type {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').TaskDriver} */ (
+const TRACKER = /** @type {import('../../skills/ledger-engine/scripts/domain/drivers.cjs').TaskDriver} */ (
   listDrivers('task').filter((driver) => driver.isDefault)[0]
 );
 
@@ -77,7 +77,7 @@ const TRACKER = /** @type {import('../../skills/leeway-engine/scripts/domain/dri
 /**
  * The tasks the world holds branches of, each cut from `main` but 3.1. 1.1
  * and 1.2 run side by side; 2.1 runs beside phase 1, and 3.1 is cut from
- * it; 1.3 carries a file under `.leeway/`, and 1.9 one under `.LEEWAY/`.
+ * it; 1.3 carries a file under `.ledger/`, and 1.9 one under `.LEDGER/`.
  * @type {Readonly<Record<string, Task>>}
  */
 const TASKS = Object.freeze({
@@ -85,11 +85,11 @@ const TASKS = Object.freeze({
   total: { shown: '1.2', type: 'feat', title: 'Show total', branch: 'feat/pay-1.2-show-total', from: 'main', files: { 'total.txt': 'total\n' } },
   notes: {
     shown: '1.3', type: 'feat', title: 'Keep notes', branch: 'feat/pay-1.3-keep-notes', from: 'main',
-    files: { 'notes.txt': 'notes\n', '.leeway/notes.md': 'state\n' },
+    files: { 'notes.txt': 'notes\n', '.ledger/notes.md': 'state\n' },
   },
   loudNotes: {
     shown: '1.9', type: 'feat', title: 'Keep loud notes', branch: 'feat/pay-1.9-keep-loud-notes', from: 'main',
-    files: { 'loud.txt': 'loud\n', '.LEEWAY/notes.md': 'state\n' },
+    files: { 'loud.txt': 'loud\n', '.LEDGER/notes.md': 'state\n' },
   },
   rounding: { shown: '2.1', type: 'fix', title: 'Round totals', branch: 'fix/pay-2.1-round-totals', from: 'main', files: { 'round.txt': 'round\n' } },
   currency: {
@@ -134,7 +134,7 @@ const PASSING = '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n';
 /**
  * A task's pair passed it, as `land chain` asks: a passing report from each
  * reviewer of the count, its first round's.
- * @param {string} dir @param {import('../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef} ref
+ * @param {string} dir @param {import('../../skills/ledger-engine/scripts/domain/task-id.cjs').TaskRef} ref
  */
 function passPair(dir, ref) {
   for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath(ref, 1, letter), PASSING);
@@ -579,7 +579,7 @@ function copiesOf(prefix, world) {
  * @param {string} dir
  */
 const repositoryAt = (dir) => ({
-  branches: git(dir, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads/', 'refs/leeway/']).split('\n').filter((line) => !line.startsWith('refs/heads/leeway-state ')),
+  branches: git(dir, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads/', 'refs/ledger/']).split('\n').filter((line) => !line.startsWith('refs/heads/ledger-state ')),
   head: git(dir, ['rev-parse', 'HEAD']),
   status: git(dir, ['status', '--porcelain', '--untracked-files=all']),
 });
@@ -710,8 +710,8 @@ function followedOn(dir, branch, refusal, env = {}) {
  */
 function pathsElsewhere(dir, tree) {
   const here = new Set(pathsOn(tree, 'HEAD'));
-  const ever = git(dir, ['log', '--exclude=leeway-state', '--branches', '--format=', '--name-only']).split('\n');
-  return [...new Set(ever)].filter((file) => file !== '' && !here.has(file) && !file.toLowerCase().startsWith('.leeway'));
+  const ever = git(dir, ['log', '--exclude=ledger-state', '--branches', '--format=', '--name-only']).split('\n');
+  return [...new Set(ever)].filter((file) => file !== '' && !here.has(file) && !file.toLowerCase().startsWith('.ledger'));
 }
 
 /**
@@ -758,7 +758,7 @@ function signatures(dir, commits) {
 }
 
 /** How each commit a code branch gained past `before` is signed (`signatures`). @param {string} dir @param {Set<string>} before */
-const signaturesPast = (dir, before) => signatures(dir, git(dir, ['rev-list', '--exclude=leeway-state', '--branches']).split('\n').filter((sha) => sha !== '' && !before.has(sha)));
+const signaturesPast = (dir, before) => signatures(dir, git(dir, ['rev-list', '--exclude=ledger-state', '--branches']).split('\n').filter((sha) => sha !== '' && !before.has(sha)));
 
 /**
  * The person's config in the hostile state (landing-git.cjs, `PINNED`): each
@@ -877,7 +877,7 @@ function checkoutAt(tree) {
 
 /** Every worktree of the repository at `dir` as the person has it, by its path, the state's aside. @param {string} dir */
 function checkoutsAt(dir) {
-  const trees = git(dir, ['worktree', 'list', '--porcelain']).split('\n\n').filter((block) => block !== '' && !block.includes('\nbranch refs/heads/leeway-state'));
+  const trees = git(dir, ['worktree', 'list', '--porcelain']).split('\n\n').filter((block) => block !== '' && !block.includes('\nbranch refs/heads/ledger-state'));
   return Object.fromEntries(trees.map((block) => {
     const tree = block.split('\n')[0].slice('worktree '.length);
     return [tree, checkoutAt(tree)];
@@ -958,7 +958,7 @@ const short = (sha) => sha.slice(0, 7);
 const shellWord = (word) => (/^[\w@%+=:,./^-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`);
 
 /** The worktree a remedy makes to rebase a branch. @param {string} dir @param {string} branch */
-const scratchOf = (dir, branch) => path.join(dir, '.git', 'leeway', branch.replace(/\//g, '-'));
+const scratchOf = (dir, branch) => path.join(dir, '.git', 'ledger', branch.replace(/\//g, '-'));
 
 /**
  * A remedy's way on for a branch it moves or rewrites, as it reads where

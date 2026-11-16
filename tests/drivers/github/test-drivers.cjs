@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's driver in the drivers' verbs and at ready to build
-// (leeway-engine/scripts/domain/drivers-verbs.cjs, ready-to-build.cjs;
+// (ledger-engine/scripts/domain/drivers-verbs.cjs, ready-to-build.cjs;
 // 22.4): set only where the project's remote is on GitHub, the drivers
 // menu offering it there and saying why not elsewhere; its tools — GitHub's
 // CLI and its stack extension — read by the check at their floors, missing

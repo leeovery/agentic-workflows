@@ -1,7 +1,7 @@
 'use strict';
 
 // The world every engine suite starts from: a git repository whose state
-// worktree is in place at `.leeway/`, made by the machinery, and whose
+// worktree is in place at `.ledger/`, made by the machinery, and whose
 // default branch holds one commit, the code tree's `.gitignore` naming it.
 // Both first commits carry one fixed date, so a suite's own commits always
 // come after them. One template is made per process and copied for each
@@ -23,11 +23,11 @@ const os = require('os');
 const { execFileSync } = require('child_process');
 const { beforeEach, afterEach } = require('node:test');
 
-const { createState, repairStateWorktree } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
-const stateRoot = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
-const { WRITER_LOCK } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
-const { LEDGER } = require('../../skills/leeway-engine/scripts/domain/ledger-events.cjs');
-const { KNOWLEDGE_DIR, RECORDS_DIR } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { createState, repairStateWorktree } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const stateRoot = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
+const { WRITER_LOCK } = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
+const { LEDGER } = require('../../skills/ledger-engine/scripts/domain/ledger-events.cjs');
+const { KNOWLEDGE_DIR, RECORDS_DIR } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
 
 const { STATE_DIR_NAME } = stateRoot;
 
@@ -128,7 +128,7 @@ let template = null;
 /** The process's template world, made at its first fixture. @returns {string} */
 function fixtureTemplate() {
   if (template !== null) return template;
-  const dir = templateFolder('leeway-template-');
+  const dir = templateFolder('ledger-template-');
   git(dir, ['init', '-q', '--template=', '-b', 'main']);
   testIdentity(dir);
   fs.writeFileSync(path.join(dir, '.gitignore'), `${STATE_DIR_NAME}/\n`);

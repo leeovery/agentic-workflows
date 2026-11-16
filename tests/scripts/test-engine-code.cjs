@@ -21,7 +21,7 @@ const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 
 const { git, commitAll, initRepo, setupGitFixture, cleanupFixture, createFile, writeState, statePath, layout } = harness;
-const { diffPatch } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
+const { diffPatch } = require('../../skills/ledger-engine/scripts/kernel/git.cjs');
 const { building, FOR_TASK, TASK_BRANCH, startBuilding } = require('./commit-door-world.cjs');
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
@@ -44,7 +44,7 @@ describe('engine code log and diff --subject: the commits a subject prefix selec
   let sdk;
   beforeEach(() => {
     dir = setupGitFixture('engine-code-log-');
-    createFile(dir, '.gitignore', '.leeway/\napi/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\n');
     createFile(dir, 'src/app.js', '1\n');
     createFile(dir, 'src/other.js', '1\n');
     commitAll(dir, 'chore: init');
@@ -132,7 +132,7 @@ describe('engine code log and diff with a selection: what a commit carries', () 
 
   it('a move names both its paths, and its diff reads as a deletion and an addition', () => {
     const api = initRepo(path.join(dir, 'api'));
-    createFile(dir, '.gitignore', '.leeway/\napi/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\n');
     commitAll(dir, 'chore: ignore the clone');
     createFile(api, 'src/old.ts', 'export const x = 1;\n');
     commitAll(api, 'chore: init');
@@ -170,7 +170,7 @@ describe('engine code diff and status: the change not yet committed', () => {
   let fresh;
   beforeEach(() => {
     dir = setupGitFixture('engine-code-dirt-');
-    createFile(dir, '.gitignore', '.leeway/\napi/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\n');
     createFile(dir, 'src/app.js', '1\n');
     writeState(dir, layout.manifest('pay'), '{}\n');
     commitAll(dir, 'init');
@@ -184,7 +184,7 @@ describe('engine code diff and status: the change not yet committed', () => {
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('diff: one patch per repo in repo order, its tracked change and its untracked files as additions together — named from the project, .leeway/ and the parents\' view of a nested repo held out', () => {
+  it('diff: one patch per repo in repo order, its tracked change and its untracked files as additions together — named from the project, .ledger/ and the parents\' view of a nested repo held out', () => {
     createFile(dir, 'src/app.js', '2\n');
     createFile(dir, 'src/staged.js', 'staged\n');
     git(dir, ['add', 'src/staged.js']);
@@ -224,7 +224,7 @@ describe('engine code diff and status: the change not yet committed', () => {
     assert.match(harness.output(dir, ['code', 'diff']), /\+\+\+ b\/src\/new\.js/);
 
     assert.deepStrictEqual([dir, api].map((repo) => [git(repo, ['diff', '--cached']), git(repo, ['ls-files', '--stage']), git(repo, ['status', '--porcelain'])]), before);
-    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.git')).filter((name) => /^leeway-diff-\d+\.index$/.test(name)), [], 'the scratch index is removed');
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.git')).filter((name) => /^ledger-diff-\d+\.index$/.test(name)), [], 'the scratch index is removed');
   });
 
   it('diff: an edit made in the index\'s own second still reads as a change — the scratch index keeps the real one\'s time', () => {
@@ -296,17 +296,17 @@ describe('engine code diff and status: the change not yet committed', () => {
     harness.stateGit(dir, ['add', layout.manifest('payments')]);
     harness.stateGit(dir, ['commit', '-q', '-m', 'chore: the work unit']);
     git(dir, ['checkout', '-q', '-b', TASK_BRANCH]);
-    for (const tree of ['leeway-scratch-payments-1.1-a', 'leeway-mutants-payments-1', 'agent-1']) git(dir, ['worktree', 'add', '-q', '--detach', path.join(dir, '.claude/worktrees', tree)]);
+    for (const tree of ['ledger-scratch-payments-1.1-a', 'ledger-mutants-payments-1', 'agent-1']) git(dir, ['worktree', 'add', '-q', '--detach', path.join(dir, '.claude/worktrees', tree)]);
     createFile(dir, '.claude/worktrees/notes.txt', 'the person\'s\n');
-    git(api, ['worktree', 'add', '-q', '--detach', path.join(api, '.claude/worktrees/leeway-scratch-payments-1.1-a')]);
+    git(api, ['worktree', 'add', '-q', '--detach', path.join(api, '.claude/worktrees/ledger-scratch-payments-1.1-a')]);
     createFile(dir, 'src/charge.js', 'the task\'s\n');
-    const named = ['.claude/worktrees/agent-1/', '.claude/worktrees/notes.txt', 'api/.claude/worktrees/leeway-scratch-payments-1.1-a/'];
+    const named = ['.claude/worktrees/agent-1/', '.claude/worktrees/notes.txt', 'api/.claude/worktrees/ledger-scratch-payments-1.1-a/'];
 
     assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files.map(({ path: at }) => at), [...named.slice(0, 2), 'src/charge.js', named[2]]);
     assert.deepStrictEqual(harness.ok(dir, ['commit', '--paths', 'src/charge.js', '-m', 'feat(payments): the charge', ...FOR_TASK], building).left_dirty, named);
   });
 
-  it('a repo inside the project\'s .leeway/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
+  it('a repo inside the project\'s .ledger/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
     const imported = initRepo(statePath(dir, layout.assets('pay', 'checkout')));
     createFile(imported, 'lib.js', '1\n');
     commitAll(imported, `${PREFIX}1 — an imported checkout`);
@@ -354,10 +354,10 @@ describe('engine code: the state held out of the code\'s dirt where nothing igno
     cleanupFixture(dir);
   });
 
-  it('code status and a code commit\'s left_dirty never name .leeway/ — from the main checkout, a code worktree, and inside the state', () => {
+  it('code status and a code commit\'s left_dirty never name .ledger/ — from the main checkout, a code worktree, and inside the state', () => {
     const state = statePath(dir);
     createFile(state, layout.unit('pay', 'notes.md'), 'a doc session\'s own\n');
-    assert.match(git(dir, ['status', '--porcelain']), /^\?\? \.leeway\/$/m, 'git sees the state: the hold-out alone keeps it out');
+    assert.match(git(dir, ['status', '--porcelain']), /^\?\? \.ledger\/$/m, 'git sees the state: the hold-out alone keeps it out');
 
     /** @param {string} where @param {string} checkout the code checkout `where` commits in */
     const commitFrom = (where, checkout) => {

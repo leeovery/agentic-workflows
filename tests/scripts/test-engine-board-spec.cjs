@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in a specification (leeway-engine/scripts/domain/
+// `engine board` in a specification (ledger-engine/scripts/domain/
 // projections/board-spec.cjs, 20.9): the spec's sections, each with the
 // passes that changed it and whether a pass running reads it; the review's
 // passes newest first, each with its calls and the person's as its findings
@@ -30,7 +30,7 @@ const {
 } = require('./spec-review-world.cjs');
 const { fact, gap, RADIUS, specBoard } = require('./spec-board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { passesInFlight } = require(path.join(SCRIPTS, 'domain/agent-state.cjs'));
 const { titlecase } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
 
@@ -201,7 +201,7 @@ describe('the views the mod draws, shaped as the engine answers them (N8)', () =
     reportIn(second, LANED);
     acked(second, ['F1', 'F2']);
     askedAs(second, 'Is a refund ever split?');
-    const cut = path.join(dir(), '.leeway', '.cache', 'cut.json');
+    const cut = path.join(dir(), '.ledger', '.cache', 'cut.json');
     fs.mkdirSync(path.dirname(cut), { recursive: true });
     fs.writeFileSync(cut, JSON.stringify({ phases: [{ name: 'Cards', goal: 'A card is charged.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }] }));
     ok(dir(), ['cut', UNIT, '--file', cut]);

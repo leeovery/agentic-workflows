@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The reader (leeway-engine/scripts/domain/answer-reader.cjs): the row the
+// The reader (ledger-engine/scripts/domain/answer-reader.cjs): the row the
 // person's own words pick among those they were shown, read by the separate
 // Claude call (16.19.1). The call, the stated `claude -p` on Opus, never
 // --bare (16.S70): at a gate at effort low, given up after 15 s; on a raise
@@ -27,7 +27,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const claudeCall = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
 const { TIMEOUT_MS } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
 const { PROMPT, AT_A_GATE, ON_A_RAISE, readAtGate, readOnRaise } = require(path.join(SCRIPTS, 'domain/answer-reader.cjs'));
@@ -85,7 +85,7 @@ const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n
  * @param {() => string|null} read @param {string} row
  */
 function asked(read, row) {
-  /** @type {import('../../skills/leeway-engine/scripts/kernel/claude-call.cjs').Ask[]} */
+  /** @type {import('../../skills/ledger-engine/scripts/kernel/claude-call.cjs').Ask[]} */
   const asks = [];
   claudeCall.askClaude = (ask) => {
     asks.push(ask);

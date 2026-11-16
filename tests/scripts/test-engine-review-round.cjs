@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A review round recorded (leeway-engine/scripts/domain/review-round.cjs,
+// A review round recorded (ledger-engine/scripts/domain/review-round.cjs,
 // its records review-phase.cjs, the change review-change.cjs): `engine
 // review round <unit> --file <round.json>`, and `engine inbox file <unit>
 // --file <item.json>` (inbox.cjs). The round's record — the reports it
@@ -35,8 +35,8 @@ const {
 
 const { ledgerHelpers } = require('./ledger-world.cjs');
 
-const { runsRel } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/runs.cjs'));
-const { appendEntry } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/ledger.cjs'));
+const { runsRel } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/runs.cjs'));
+const { appendEntry } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/ledger.cjs'));
 
 /** @type {string} */
 let dir;

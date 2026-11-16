@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Spikes and assets (leeway-engine/scripts/domain/asset.cjs): `engine asset
+// Spikes and assets (ledger-engine/scripts/domain/asset.cjs): `engine asset
 // spike`, a spike's numbered folder and its twin under the cache, a unit's
 // or the product's; `engine asset import`, the files the person shares
 // landed in its assets/ by the filename rules; and
@@ -20,7 +20,7 @@
 // through the ledger's verbs, a file the person shared in the epic's
 // assets/ and a spike begun — built once and copied for each test; and for
 // a link while the migration runs, the migration's project, its
-// `leeway-state` with no commit yet (migration-world.cjs).
+// `ledger-state` with no commit yet (migration-world.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,7 +33,7 @@ const path = require('path');
 const { ok, refuses, refusedPristine, head, holdLock, lockAttempts, stateGit, statePath, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { commitUncommitted } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { withStateLock } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { midMigration, stateUnborn, UNIT: MIGRATING } = require('./migration-world.cjs');

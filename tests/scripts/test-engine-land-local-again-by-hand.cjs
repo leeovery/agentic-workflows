@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver (leeway-engine/scripts/drivers/landing/local/
+// The local landing driver (ledger-engine/scripts/drivers/landing/local/
 // driver.cjs) and a task changed after its phase landed by hand (7.2.23):
 // squashed under the person's own message, or its task's branch merged by a
 // merge commit, then the task changed, `land phase` lands that change

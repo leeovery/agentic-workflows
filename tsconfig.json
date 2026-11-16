@@ -11,5 +11,5 @@
     "lib": ["es2022"],
     "types": ["node"]
   },
-  "include": ["skills/leeway-engine/scripts/**/*.cjs"]
+  "include": ["skills/ledger-engine/scripts/**/*.cjs"]
 }

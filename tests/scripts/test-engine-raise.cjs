@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A raise drawn (leeway-engine/scripts/domain/raise.cjs, its screen
+// A raise drawn (ledger-engine/scripts/domain/raise.cjs, its screen
 // domain/projections/raise.cjs, the decision point domain/decision-point.cjs):
 // `engine raise <place> --answers <question>`, Claude's call on stdin, put
 // through the decision point, every row judged by the one-decision check at
@@ -38,7 +38,7 @@ const { SESSION, raiseHelpers } = require('./raise-world.cjs');
 const { auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { isId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
@@ -180,7 +180,7 @@ describe('the draw (16.S30, 16.9.2)', () => {
     const probe = 'Should `sync --force` retry 2*3 times, or *never*?';
     const call = { ...CALL, question: probe, rows: [CURSOR, { ...MAIN, text: 'Retry *never*', notice: 'a `--force` sync fails at once' }] };
 
-    const { sections } = await draw(call, { env: { LEEWAY_GATE_SURFACE: '1' } });
+    const { sections } = await draw(call, { env: { LEDGER_GATE_SURFACE: '1' } });
 
     const menu = sections.split('\n');
     assert.ok(menu.includes('Should \\`sync --force\\` retry 2\\*3 times, or \\*never\\*?'), sections);
@@ -208,14 +208,14 @@ describe('the draw (16.S30, 16.9.2)', () => {
     assert.strictEqual(sections, drawn);
     assert.deepStrictEqual(seals()[res.raise].call.stepped_back, steppedBack);
     assert.strictEqual(show([res.raise]).sections, drawn);
-    auditGate(show([res.raise], { env: { LEEWAY_GATE_SURFACE: '1' } }).sections, 'raise show, stepped back');
+    auditGate(show([res.raise], { env: { LEDGER_GATE_SURFACE: '1' } }).sections, 'raise show, stepped back');
   });
 
   it('the mechanism keeps its lines as written, each from its first word, escaped as the rest', async () => {
     const mechanism = 'The screen under the pointer:\n  NSEvent.mouseLocation, read *once*\n\nthen the screen holding it.';
     const { res } = await draw({ ...CALL, mechanism });
 
-    const { sections } = show([res.raise, '--technical'], { env: { LEEWAY_GATE_SURFACE: '1' } });
+    const { sections } = show([res.raise, '--technical'], { env: { LEDGER_GATE_SURFACE: '1' } });
     const at = sections.indexOf('THE MECHANISM\n\n') + 'THE MECHANISM\n\n'.length;
     assert.strictEqual(sections.slice(at, sections.indexOf('\n\n**`◆', at)), 'The screen under the pointer:\nNSEvent.mouseLocation, read \\*once\\*\n\nthen the screen holding it.');
     auditGate(sections, 'raise show --technical');
@@ -244,8 +244,8 @@ describe('the draw (16.S30, 16.9.2)', () => {
 
   it('the gate audit holds the screen to its payload with the mod announced, the notice and the why in its statement; unannounced, the screen is the same less the payload', async () => {
     const plain = await draw();
-    const announced = await draw(CALL, { env: { LEEWAY_GATE_SURFACE: '1' } });
-    const technical = show([plain.res.raise, '--technical'], { env: { LEEWAY_GATE_SURFACE: '1' } });
+    const announced = await draw(CALL, { env: { LEDGER_GATE_SURFACE: '1' } });
+    const technical = show([plain.res.raise, '--technical'], { env: { LEDGER_GATE_SURFACE: '1' } });
 
     auditMarkers(plain.sections, 'raise');
     const gate = auditGate(announced.sections, 'raise');

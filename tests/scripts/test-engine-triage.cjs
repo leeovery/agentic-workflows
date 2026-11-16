@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Triage and the archived items (leeway-engine/scripts/domain/projections/
+// Triage and the archived items (ledger-engine/scripts/domain/projections/
 // triage.cjs, read through inbox-set.cjs; 18.7): `render triage`, the inbox
 // by kind, each item numbered with its age, asking which items before a
 // pick (18.7.3, 18.7.12) and, over Claude's pick, what is picked and what
@@ -34,7 +34,7 @@ const { ok, output, refuses, screenOf, sectionOf, commitAll, stateGit, cleanupFi
 const { createManifest, writeState, readState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { withFrozenClock } = require('./frozen-clock.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
@@ -62,9 +62,9 @@ const BUILD_LOG = layout.unit(UNIT, 'build', 'log.md');
 const LOG_TEXT = [
   '# The build',
   '',
-  'Resolved: .leeway/.inbox/ideas/2025-09-02--enter-should-attach.md',
-  'Resolved: .leeway/.inbox/quickfixes/2025-09-03--prefs-reset.md',
-  'Resolved: .leeway/.inbox/ideas/2025-09-06--tab-completion.md',
+  'Resolved: .ledger/.inbox/ideas/2025-09-02--enter-should-attach.md',
+  'Resolved: .ledger/.inbox/quickfixes/2025-09-03--prefs-reset.md',
+  'Resolved: .ledger/.inbox/ideas/2025-09-06--tab-completion.md',
   'Enter in the preview attaches.',
   '',
 ].join('\n');
@@ -80,7 +80,7 @@ function committedOn(dir, day) {
   git(['commit', '-q', '-m', `archive on ${day}`]);
 }
 
-const world = fixtureFrom('leeway-triage-', (dir) => {
+const world = fixtureFrom('ledger-triage-', (dir) => {
   writeState(dir, IDEA_NEW, '# Session Previews Show The Last Command\n');
   writeState(dir, IDEA_OLDER, '# Group Sessions By Project In The Picker\n');
   writeState(dir, IDEA_OLDEST, '# Rename A Session From The Picker\n');
@@ -120,7 +120,7 @@ const at = (dir, rel) => statePath(dir, rel);
  */
 function drawn(dir, args, gate) {
   const out = withFrozenClock(() => output(dir, ['render', ...args], { env: ENV }));
-  const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
+  const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
   return {
     out,
     screen: screenOf(out, `MENU: ${gate}`),
@@ -220,7 +220,7 @@ describe('triage (18.7)', () => {
       'r/roadmap → Put them on the roadmap, on a horizon you name',
       'a/archive → Archive them',
     ]);
-    assert.deepStrictEqual(rows.w, { kind: 'handoff', skill: 'leeway-discovery', args: ['start', 'none', `${at(dir, IDEA_OLDER)},${at(dir, BUG_OLDER)}`] });
+    assert.deepStrictEqual(rows.w, { kind: 'handoff', skill: 'ledger-discovery', args: ['start', 'none', `${at(dir, IDEA_OLDER)},${at(dir, BUG_OLDER)}`] });
     assert.match(output(dir, ['handoff', `/${rows.w.skill}`, ...rows.w.args]), new RegExp(`^args: start none "${at(dir, IDEA_OLDER)},`, 'm'), 'the handoff takes the seeds as the row gives them');
     assert.match(sectionOf(triagePicked(dir, [BUG_OLDER, IDEA_OLDER], [QUICK_FIX]).out, 'DISPLAY: triage'), /^FITS WITH THEM, BY MY READ \(1\)$/m);
   });
@@ -369,7 +369,7 @@ describe('the archived items (18.7.11)', () => {
       [{ path: live, unit: UNIT }],
       ['quickfixes/2025-09-03--prefs-reset.md', 'bugs/2025-09-04--resize-jitter.md'],
     ]);
-    assert.strictEqual(readState(dir, BUILD_LOG), LOG_TEXT.replace('Resolved: .leeway/.inbox/ideas/2025-09-02--enter-should-attach.md\n', ''), 'its claim alone comes out');
+    assert.strictEqual(readState(dir, BUILD_LOG), LOG_TEXT.replace('Resolved: .ledger/.inbox/ideas/2025-09-02--enter-should-attach.md\n', ''), 'its claim alone comes out');
     assert.ok(stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).split('\n').includes(BUILD_LOG), 'the restore commits the log with the move');
     assert.strictEqual(sectionOf(output(dir, ['render', 'inbox-restore-receipt', '--path', live, '--unclaimed', UNIT]), 'DISPLAY: confirmation'),
       'Restored "Enter In The Preview Should Attach" to the inbox, its Resolved: line taken out of Enter Attaches From Preview\'s build log.\n');

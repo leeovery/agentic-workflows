@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in a discussion and an experiment (leeway-engine/scripts/
+// `engine board` in a discussion and an experiment (ledger-engine/scripts/
 // domain/projections/board-discussion.cjs, board-experiment.cjs; 20.7,
 // 20.13): a topic's progress, what is open, its messages, Claude's calls
 // since the person last looked — read without looking (5.8.14) — its
@@ -98,7 +98,7 @@ describe('a discussion on the board (20.7)', () => {
     at([UNIT, 'discussion', 'note-window']);
     sent('note-window', 'space-homing', 'The tour opens first');
     sent('space-homing', 'note-window', 'Notes open on their Space');
-    const [delivered] = fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'space-homing', 'mail'));
+    const [delivered] = fs.readdirSync(path.join(dir(), '.ledger', UNIT, 'topics', 'space-homing', 'mail'));
     const raised = writeIn(dir(), 'ask', SPACE, [], { ...MADE, text: 'Does the tour open first?' });
     ok(dir(), ['topic', 'answered', UNIT, 'space-homing', delivered.replace(/\.md$/, ''), '--entry', raised], { env: SESSION });
     const { view } = board();
@@ -207,7 +207,7 @@ describe('an experiment on the board (20.13)', () => {
 
   it('20.13.1: its design by its sections once written, the report opening in full once written; 20.13.2: concluded, the topic\'s row says its report waits', () => {
     spawned();
-    const record = path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'experiments', 'E1-note-open');
+    const record = path.join(dir(), '.ledger', UNIT, 'topics', 'note-window', 'experiments', 'E1-note-open');
     fs.writeFileSync(path.join(record, 'design.md'), '# E1: Note open\n\n## Question\n\nHow fast does a note open?\n\n## Decision rule\n\nUnder 100 ms wins.\n\n## Notes\n');
     for (const step of ['advance', 'approve', 'advance']) ok(dir(), ['experiment', step, UNIT, 'note-window', 'E1'], { env: SESSION });
     fs.writeFileSync(path.join(record, 'report.md'), '# Report\n\nIt opens in 80 ms.\n');
@@ -229,7 +229,7 @@ describe('an experiment on the board (20.13)', () => {
     ok(dir(), ['experiment', 'advance', UNIT, 'note-window', 'E1'], { env: SESSION });
     withFrozenClock(() => ok(dir(), ['experiment', 'approve', UNIT, 'note-window', 'E1'], { env: SESSION }));
     ok(dir(), ['experiment', 'advance', UNIT, 'note-window', 'E1'], { env: SESSION });
-    const tally = '.leeway/.cache/fumi/experiment/note-window/runs.json';
+    const tally = '.ledger/.cache/fumi/experiment/note-window/runs.json';
     fs.mkdirSync(path.join(dir(), path.dirname(tally)), { recursive: true });
     fs.writeFileSync(path.join(dir(), tally), JSON.stringify([
       { condition: '16 bare windows', of: 2, values: [0.24, 0.26], unit: 's' },

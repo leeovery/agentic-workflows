@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state worktree (leeway-engine/scripts/domain/state-checks.cjs,
+// The state worktree (ledger-engine/scripts/domain/state-checks.cjs,
 // domain/state-worktree.cjs): added again where removed or its folder
 // deleted, locked again where unlocked, refused on a detached HEAD or
 // another branch; and a project folder moved or copied, its state worktree
@@ -73,10 +73,10 @@ describe('the state worktree (4.S29, 22.S3)', () => {
     git(root, ['checkout', '-q', '--detach']);
     const before = tip(main, STATE_BRANCH);
 
-    assert.match(bootRefused(main), /has a detached HEAD checked out, not leeway-state, so boot wrote nothing — check leeway-state out there again$/);
+    assert.match(bootRefused(main), /has a detached HEAD checked out, not ledger-state, so boot wrote nothing — check ledger-state out there again$/);
 
     git(root, ['checkout', '-q', '-b', 'elsewhere']);
-    assert.match(bootRefused(main), /has elsewhere checked out, not leeway-state/);
+    assert.match(bootRefused(main), /has elsewhere checked out, not ledger-state/);
     assert.strictEqual(tip(main, STATE_BRANCH), before);
   });
 });

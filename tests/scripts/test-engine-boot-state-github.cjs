@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What boot offers to set on GitHub (leeway-engine/scripts/domain/
+// What boot offers to set on GitHub (ledger-engine/scripts/domain/
 // github-setup.cjs): the GitHub rule, on a GitHub remote whatever the
 // landing setting, and the squash default where the project lands through
 // GitHub, naming each repository nested in it on GitHub; each drawn as its
@@ -126,7 +126,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     assert.strictEqual(out, [
       '=== MENU: github rule gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      'Portal\'s remote is on GitHub. A rule there can refuse deleting or force-pushing `leeway-state` for anything run outside Claude Code; inside it, Leeway already refuses both.',
+      'Portal\'s remote is on GitHub. A rule there can refuse deleting or force-pushing `ledger-state` for anything run outside Claude Code; inside it, Ledger already refuses both.',
       '',
       '**`◆ Set that rule on GitHub?`**',
       '',
@@ -148,7 +148,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     assert.strictEqual(out, [
       '=== MENU: github squash gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      'Portal lands each task on GitHub as a pull request squashed into one commit. Made from the pull request\'s title and description, that commit carries the task\'s subject and id; until the repository squashes so, Leeway won\'t merge a phase\'s stack. The yes also allows merge commits, which a unit of several phases lands on the default branch by.',
+      'Portal lands each task on GitHub as a pull request squashed into one commit. Made from the pull request\'s title and description, that commit carries the task\'s subject and id; until the repository squashes so, Ledger won\'t merge a phase\'s stack. The yes also allows merge commits, which a unit of several phases lands on the default branch by.',
       '',
       '**`◆ Squash from the pull request\'s title and description?`**',
       '',
@@ -165,7 +165,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     }
     const nested = engine.output(main, ['render', 'github-squash-gate']).split('\n');
     assert.deepStrictEqual([nested[2], nested[6]], [
-      'Portal lands each task on GitHub as a pull request squashed into one commit, in its own repository and in each one nested in it: ext, lib. Made from the pull request\'s title and description, that commit carries the task\'s subject and id; until a repository squashes so, Leeway won\'t merge a phase\'s stack in it. The yes also allows merge commits, which a unit of several phases lands on the default branch by.',
+      'Portal lands each task on GitHub as a pull request squashed into one commit, in its own repository and in each one nested in it: ext, lib. Made from the pull request\'s title and description, that commit carries the task\'s subject and id; until a repository squashes so, Ledger won\'t merge a phase\'s stack in it. The yes also allows merge commits, which a unit of several phases lands on the default branch by.',
       '**`y/yes`** → Set it on each of Portal\'s 3 repositories',
     ]);
   });

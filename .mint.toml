@@ -28,7 +28,7 @@ diff_exclude = [
 # file, which holds the version alone; mint mirrors the new version there at
 # release time. The banner pads it into place, so the file needs no padding and
 # the short pattern is unambiguous.
-version_file = "skills/leeway-engine/content/version.txt"
+version_file = "skills/ledger-engine/content/version.txt"
 version_pattern = "v{version}"
 
 # Release-notes AI needs longer than the 60s default on big releases — the

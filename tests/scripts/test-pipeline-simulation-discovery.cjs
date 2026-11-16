@@ -26,8 +26,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
-const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
+const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/start-menu.cjs'));
+const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
   Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
@@ -40,7 +40,7 @@ const EPIC = 'fumi';
 const logOf = (home, n) => `${home === PRODUCT ? '.product/sessions' : `${home}/discovery`}/session-00${n}.md`;
 
 /** @param {Sim} sim @param {string} home @param {number} n */
-const logPath = (sim, home, n) => path.join(sim.dir, '.leeway', logOf(home, n));
+const logPath = (sim, home, n) => path.join(sim.dir, '.ledger', logOf(home, n));
 
 /** Every value the entry's DATA names under `key`. @param {Sim} sim @param {string} key @returns {string[]} */
 function named(sim, key) {
@@ -65,7 +65,7 @@ function inTheProduct(sim) {
   assert.match(sim.sections, /^=== DATA /, 'no question before the reads (8.S1)');
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name: PRODUCT });
-  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/leeway-discovery/SKILL.md'));
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/ledger-discovery/SKILL.md'));
   return res;
 }
 
@@ -125,7 +125,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
   it('work brought in conversation comes through the one entry: boot given the words sends new work to Start in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does; the bare command draws the menu (8.S79, 18.S72, 25.S10)', () => {
     const conversation = sim.conversations;
     const brought = startWith(sim, 'Change what the help command prints when it has no topic');
-    assert.deepStrictEqual([brought.go, brought.route], ['route', { kind: 'start', words: 'Change what the help command prints when it has no topic', next: { kind: 'invoke', skill: 'leeway-discovery', args: ['start', 'none'] } }]);
+    assert.deepStrictEqual([brought.go, brought.route], ['route', { kind: 'start', words: 'Change what the help command prints when it has no topic', next: { kind: 'invoke', skill: 'ledger-discovery', args: ['start', 'none'] } }]);
     const opened = sim.run(['enter', 'discovery', PRODUCT]);
     assert.strictEqual(opened.entered, true);
     assert.strictEqual(sim.conversations, conversation, 'the route opens in place, nothing cleared: what the person said stays with the work');
@@ -151,7 +151,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     sim.refuses(['asset', 'import', PRODUCT, shared, 'notes/gone.png'], /notes\/gone\.png/);
     // The person asks first in their own words, which sets the prompt
     // aside; shown again, they skip.
-    const reprompt = () => sim.render(['import-reprompt', '--file', sim.write('.leeway/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
+    const reprompt = () => sim.render(['import-reprompt', '--file', sim.write('.ledger/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
     reprompt();
     typeAtGate(sim, 'import reprompt', 'is the png one I need?');
     reprompt();
@@ -160,7 +160,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
 
     // The session's end proposes what it named as roadmap items on one
     // screen, and the person's yes lands them (18.S63).
-    const items = sim.write('.leeway/.cache/product/discovery/product/roadmap-items.json',
+    const items = sim.write('.ledger/.cache/product/discovery/product/roadmap-items.json',
       [{ name: 'licensing', horizon: 'later', summary: 'Teams buy seats', sources: [logOf(PRODUCT, 1)] }]);
     sim.render(['roadmap-harvest', '--file', items], { expect: 'content' });
     sim.run(answerGate(sim, 'roadmap harvest gate', '--pick', 'y').next.argv);
@@ -182,13 +182,13 @@ describe('pipeline simulation: discovery\'s entry', () => {
     inTheProduct(sim);
     const transcript = transcriptOf(sim, sim.env.CLAUDE_CODE_SESSION_ID);
     const atProduct = carryOn(sim).text;
-    for (const part of ['leeway-discovery/SKILL.md and its framework', `Catch the log, ${logPath(sim, PRODUCT, 2)}, up from this conversation's transcript, ${transcript}`]) {
+    for (const part of ['ledger-discovery/SKILL.md and its framework', `Catch the log, ${logPath(sim, PRODUCT, 2)}, up from this conversation's transcript, ${transcript}`]) {
       assert.ok(atProduct.includes(part), `the product's note names ${part}:\n${atProduct}`);
     }
 
     sim.run(['enter', 'discovery', EPIC, '--move']);
     const atEpic = carryOn(sim).text;
-    for (const part of ['leeway-discovery/SKILL.md and its framework', `render discovery-map ${EPIC}\``, `Catch the log, ${logPath(sim, EPIC, 2)}, up from this conversation's transcript, ${transcript}`]) {
+    for (const part of ['ledger-discovery/SKILL.md and its framework', `render discovery-map ${EPIC}\``, `Catch the log, ${logPath(sim, EPIC, 2)}, up from this conversation's transcript, ${transcript}`]) {
       assert.ok(atEpic.includes(part), `the epic's note names ${part}:\n${atEpic}`);
     }
   });
@@ -221,10 +221,10 @@ describe('pipeline simulation: discovery\'s entry', () => {
   it('the epic menu\'s d hands into its discovery, where the map changes at the person\'s word: a new topic, a cancel confirmed and reactivated, a park pulled forward, a finding, a spike, the log\'s fixed lists, and a message to a started topic (18.4.9, 8.8.6, 8.7.6, 20.11.1)', () => {
     mappedEpic(sim, EPIC, ['licensing', 'pricing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
-    assert.strictEqual(epicPick(sim, EPIC, 'd').text, `Invoke \`/leeway-discovery none ${EPIC}\`.`);
+    assert.strictEqual(epicPick(sim, EPIC, 'd').text, `Invoke \`/ledger-discovery none ${EPIC}\`.`);
     sim.handOver();
     sim.run(['enter', 'discovery', EPIC]);
-    const log = path.relative(path.join(sim.dir, '.leeway'), named(sim, 'log')[0]);
+    const log = path.relative(path.join(sim.dir, '.ledger'), named(sim, 'log')[0]);
     sim.render(['discovery-map', EPIC], { expect: 'content' });
 
     sim.run(['topic', 'add', EPIC, 'seats', '--summary', 'How seats are counted', '--brief', briefDraft(sim, EPIC, 'seats')]);
@@ -252,7 +252,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.deepStrictEqual(entries.map(({ log: written, heading }) => [written, heading]), [[log, 'Spikes'], [log, 'Not taken'], [log, 'Views of the product']]);
 
     const sent = sim.run(['topic', 'send', EPIC, 'licensing', '--from', `${EPIC}.discovery`, '--slug', 'seat-counting',
-      '--content', sim.write(`.leeway/.cache/${EPIC}/discovery/${EPIC}/message-seat-counting.md`, 'Seat counting\n\nSeats are per workspace today; decide whether licences follow.\n')]);
+      '--content', sim.write(`.ledger/.cache/${EPIC}/discovery/${EPIC}/message-seat-counting.md`, 'Seat counting\n\nSeats are per workspace today; decide whether licences follow.\n')]);
     assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^From Discovery · /m);
     assert.match(sim.render(['send-report', `${EPIC}.licensing`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Licensing, on Fumi$/m);
     assert.deepStrictEqual(Object.keys(sim.manifest(EPIC).phases.discovery.items), ['licensing', 'pricing', 'seats', 'offline-notes']);
@@ -264,7 +264,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     mappedEpic(sim, EPIC, ['licensing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
     const conversation = sim.conversations;
-    sim.write(`.leeway/${EPIC}/topics/licensing/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the whole epic.\n`);
+    sim.write(`.ledger/${EPIC}/topics/licensing/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the whole epic.\n`);
     waitAgents(sim, EPIC, 'licensing');
 
     const up = sim.run(['enter', 'discovery', EPIC, '--move']);
@@ -279,7 +279,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(sim.run(['boot']).brownfield_offer, 'none', 'the judgment is made');
     sim.render(['brownfield-offer-gate'], { expect: 'content' });
     sim.run(['brownfield', 'record', 'accepted']);
-    handoff(sim, '/leeway-discovery none none');
+    handoff(sim, '/ledger-discovery none none');
     inTheProduct(sim);
     assert.deepStrictEqual(named(sim, 'research owed'), ['yes']);
 
@@ -308,7 +308,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     startUnit(sim, 'feature', wu, 'Saved filters');
     enterEntry(sim, wu, 'discussion', wu);
     const conversation = sim.conversations;
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the product.\n`);
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the product.\n`);
     waitAgents(sim, wu, wu);
 
     sim.refuses(['enter', 'discovery', wu, '--move'], /its discovery ended at start this work/);

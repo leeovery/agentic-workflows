@@ -44,7 +44,7 @@ const { spawnSync } = require('child_process');
 const { ok, git, initRepo, createFile, statePath, layout, cleanupFixture, STATE_DIR_NAME } = require('./engine-harness.cjs');
 const { SESSION, SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, GUARDED, themeOf, stagedPlan, splitMigration, stateUnborn, recorded } = require('./migration-world.cjs');
 
-const MIGRATE_SCRIPTS = path.join(__dirname, '../../skills/leeway-migrate/scripts');
+const MIGRATE_SCRIPTS = path.join(__dirname, '../../skills/ledger-migrate/scripts');
 const DIRECTIVE = path.join(MIGRATE_SCRIPTS, 'migrations/076-legacy-split.md');
 const SKILLS = path.join(__dirname, '../../skills');
 const DETECTION = require(path.join(MIGRATE_SCRIPTS, 'migrations/075-split-detect.cjs'));
@@ -298,6 +298,6 @@ describe('the split\'s place (21.4.2)', () => {
   });
 
   it('spells no path from the session\'s folder: every path into the state is the check\'s', () => {
-    assert.ok(!fs.readFileSync(DIRECTIVE, 'utf8').includes('.leeway/'));
+    assert.ok(!fs.readFileSync(DIRECTIVE, 'utf8').includes('.ledger/'));
   });
 });

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and when a quick-fix's pull request is read
-// (leeway-engine/scripts/domain/finish.cjs, workunit-move.cjs, landing.cjs,
+// (ledger-engine/scripts/domain/finish.cjs, workunit-move.cjs, landing.cjs,
 // over drivers/landing/github/): the board, drawn at the close's window,
 // reaching neither GitHub nor the remote — no gh call and no fetch — the
 // landing read only once its screen is drawn and at its yes, once in each
@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 /** This test's conversation, as a call's options, under the stand-in gh. */
-const as = () => ({ env: { ...GH_ENV, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+const as = () => ({ env: { ...GH_ENV, LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
 /** The remote's branches as this repository last fetched them. */
 const remoteRefs = () => git(dir, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/remotes/']);

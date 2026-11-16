@@ -6,10 +6,10 @@
 // turn — a task's pull request, a stack in the order its tasks were merged
 // back, a phase merged, finish, a task whose branch moved on since it
 // opened refused at its phase's merge with the way back, its commits kept
-// on a branch, and nothing under `.leeway/` landed (4.S2). Once a phase
+// on a branch, and nothing under `.ledger/` landed (4.S2). Once a phase
 // lands, the default branch here holds the landing, wherever the driver
 // lands it. After every test, the default branch holds nothing under
-// `.leeway/`. The local driver runs fully here (7.3.6, 7.S11), and the
+// `.ledger/`. The local driver runs fully here (7.3.6, 7.S11), and the
 // host's driver against its stand-in tool (7.3.7). A driver's own side
 // (tests/drivers/{name}/landing.cjs) readies the world for it, names the
 // environment every call runs under, and reads what the default branch it
@@ -30,12 +30,12 @@ const harness = require('./engine-harness.cjs');
 
 const { git, tip, fixtureFrom, cleanupFixture } = harness;
 const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, buildLanding, followRemedy, finishReady } = require('./landing-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const { card, total, notes, loudNotes, rounding, currency } = TASKS;
 
 /** Whether a path is the state's, in any case of its letters. @param {string} file */
-const isState = (file) => /^\.leeway(\/|$)/i.test(file);
+const isState = (file) => /^\.ledger(\/|$)/i.test(file);
 
 for (const { name } of listDrivers('landing')) {
   /**
@@ -150,10 +150,10 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual(side.landed(at), [{ subject: 'feat(pay): Add card', task: 'pay-1-1', paths: ['card.txt'] }]);
     });
 
-    it('nothing under .leeway/ lands: a task whose change carries the state is refused, and nothing of it lands (4.S2)', () => {
+    it('nothing under .ledger/ lands: a task whose change carries the state is refused, and nothing of it lands (4.S2)', () => {
       const at = project();
-      assert.strictEqual(refuses(at, openArgs(notes)).error, 'land: task 1.3\'s change carries .leeway/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
-      assert.strictEqual(refuses(at, openArgs(loudNotes)).error, 'land: task 1.9\'s change carries .LEEWAY/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
+      assert.strictEqual(refuses(at, openArgs(notes)).error, 'land: task 1.3\'s change carries .ledger/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
+      assert.strictEqual(refuses(at, openArgs(loudNotes)).error, 'land: task 1.9\'s change carries .LEDGER/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
       finishReady(at);
       assert.deepStrictEqual(ok(at, ['land', 'finish', 'pay']).repos, []);
       assert.deepStrictEqual(side.landed(at), []);

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ask rule (leeway-engine/scripts/domain/ask-rule.cjs), its settings
+// The ask rule (ledger-engine/scripts/domain/ask-rule.cjs), its settings
 // (domain/trust-settings.cjs), and the decision point's `ruled`
 // (domain/decision-point.cjs), what it decides once switched on: the order
 // it decides in — what always asks with no label to tell it, no label,
@@ -32,7 +32,7 @@ const { FROZEN_MS, statePath } = require('./engine-harness.cjs');
 const { idOf, PROJECT_ID, DRAWN, NARROW, UNDRAWN, MODEL, lines, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { rule } = require(path.join(SCRIPTS, 'domain/ask-rule.cjs'));
 const { DEFAULTS, trustSettings } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));
 const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
@@ -40,7 +40,7 @@ const { MODEL_LINES, countsFrom } = require(path.join(SCRIPTS, 'domain/trust-cou
 const { kindOf } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/ask-rule.cjs').Context} Context */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/ask-rule.cjs').Context} Context */
 /** @typedef {ReturnType<typeof history>} History */
 
 const ELSEWHERE = idOf('Aircon');

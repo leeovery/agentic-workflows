@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A lost local state branch (leeway-engine/scripts/domain/state-checks.cjs,
+// A lost local state branch (ledger-engine/scripts/domain/state-checks.cjs,
 // domain/boot.cjs): restored from the remote, or from where its folder
 // stands, what the folder holds kept and the remote's moves undone by
 // nothing; refused where the folder holds code history or boot cannot tell
@@ -129,8 +129,8 @@ describe('a lost local branch (4.S8)', () => {
 
     assert.strictEqual(bootRefused(main), [
       `the commit the state folder ${root} stands at holds code history — it shares commits with main, where the state branch is a line of its own — `,
-      `so boot makes no leeway-state there, and wrote nothing. To carry on, move ${root} aside, keeping what it holds, and boot again: `,
-      'leeway-state is restored from origin',
+      `so boot makes no ledger-state there, and wrote nothing. To carry on, move ${root} aside, keeping what it holds, and boot again: `,
+      'ledger-state is restored from origin',
     ].join(''));
 
     assert.deepStrictEqual(untouched(main, bare), before);
@@ -144,8 +144,8 @@ describe('a lost local branch (4.S8)', () => {
     const before = git(main, ['for-each-ref']);
 
     assert.match(bootRefused(main), new RegExp(
-      `^the state folder ${root} is still there, but leeway-state is gone from this clone, and its log no longer says which commit ` +
-      'the folder\'s files stand at, so boot wrote nothing — move .* aside, keeping what it holds, and boot again: leeway-state is restored from origin$',
+      `^the state folder ${root} is still there, but ledger-state is gone from this clone, and its log no longer says which commit ` +
+      'the folder\'s files stand at, so boot wrote nothing — move .* aside, keeping what it holds, and boot again: ledger-state is restored from origin$',
     ));
 
     assert.strictEqual(git(main, ['for-each-ref']), before);

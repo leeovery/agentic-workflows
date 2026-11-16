@@ -19,9 +19,9 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { RENDER_FORMS: FORMS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
-const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
-const { STOPS } = require('../../skills/leeway-engine/scripts/domain/boot.cjs');
+const { RENDER_FORMS: FORMS } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/ledger-engine/scripts/domain/handoff.cjs');
+const { STOPS } = require('../../skills/ledger-engine/scripts/domain/boot.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -433,16 +433,16 @@ function checkLoadLines(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 8 — H1 category rule (scoped to the leeway and leeway-* SKILL.md backbones).
-// Processing backbones (leeway-*-process, plus discovery — a phase that
+// Check 8 — H1 category rule (scoped to the ledger and ledger-* SKILL.md backbones).
+// Processing backbones (ledger-*-process, plus discovery — a phase that
 // talks — the engine and the project-level skills — roadmap, help) open with
-// a title H1; every other workflow backbone — leeway and the epic's menu —
+// a title H1; every other workflow backbone — ledger and the epic's menu —
 // carries none.
 // ---------------------------------------------------------------------------
 
-/** Whether a skill is one of the workflows' own — `leeway` or `leeway-*`. @param {string} name */
+/** Whether a skill is one of the workflows' own — `ledger` or `ledger-*`. @param {string} name */
 function isOurs(name) {
-  return name === 'leeway' || name.startsWith('leeway-');
+  return name === 'ledger' || name.startsWith('ledger-');
 }
 
 function skillNameOf(file) {
@@ -455,11 +455,11 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['leeway-discovery', 'leeway-engine']);
+  const H1_KNOWN = new Set(['ledger-discovery', 'ledger-engine']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !isOurs(name)) continue; // only workflow backbones
-    const mustHaveH1 = /^leeway-.+-process$/.test(name) || H1_KNOWN.has(name);
+    const mustHaveH1 = /^ledger-.+-process$/.test(name) || H1_KNOWN.has(name);
     const lines = readLines(file);
     const first = lines[firstContentIndex(lines)] || '';
     const isH1 = /^# /.test(first);
@@ -665,7 +665,7 @@ function checkInertLoadChrome(files) {
 // or an @if/@foreach directive) is refused: what has a shape of its own or
 // reads state renders from the engine, and a plain line naming values the
 // conversation holds is Claude's own, said inline, never fenced. The capture
-// skills (`leeway-log-*`) are exempt: they are not workflow skills, and
+// skills (`ledger-log-*`) are exempt: they are not workflow skills, and
 // deliberately structureless.
 // ---------------------------------------------------------------------------
 
@@ -673,7 +673,7 @@ function checkInertLoadChrome(files) {
 // `skills/`.
 function isCaptureSkill(file, root) {
   const [top, skill = ''] = path.relative(root, file).split(path.sep);
-  return top === 'skills' && skill.startsWith('leeway-log-');
+  return top === 'skills' && skill.startsWith('ledger-log-');
 }
 
 /** @param {string[]} content */
@@ -720,8 +720,8 @@ function checkNoTemplatedRenders(files, root = REPO) {
 // the skill names the engine at all.
 // ---------------------------------------------------------------------------
 
-const ENGINE_WORDS = /engine\.cjs|leeway-engine|\.leeway\b/;
-const CAPTURE_LINE = /^node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs inbox capture (idea|bug|quick-fix)(?: |$)/;
+const ENGINE_WORDS = /engine\.cjs|ledger-engine|\.ledger\b/;
+const CAPTURE_LINE = /^node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs inbox capture (idea|bug|quick-fix)(?: |$)/;
 
 /** The line after a file's frontmatter, 0 where it has none. @param {string[]} lines */
 function pastFrontmatter(lines) {
@@ -741,9 +741,9 @@ function captureFaults(file) {
   const kind = named.length === 1 ? CAPTURE_LINE.exec(named[0].text)?.[1] : undefined;
   if (kind === undefined) {
     const at = named.find(({ text }) => !CAPTURE_LINE.test(text))?.at ?? named[1]?.at ?? from;
-    return [{ file, line: at + 1, message: 'a capture skill names the engine on one line alone, its capture line: node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture <kind> …' }];
+    return [{ file, line: at + 1, message: 'a capture skill names the engine on one line alone, its capture line: node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture <kind> …' }];
   }
-  const grant = `allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture ${kind} *)`;
+  const grant = `allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture ${kind} *)`;
   const grants = lines.slice(0, from).map((text, at) => ({ text, at })).filter(({ text }) => text.startsWith('allowed-tools:'));
   if (grants.length === 1 && grants[0].text === grant) return [];
   return [{ file, line: (grants[0]?.at ?? 0) + 1, message: `a capture skill's allowed-tools grants its capture line alone — ${grant}` }];
@@ -756,7 +756,7 @@ function checkCaptureSkills(files, root = REPO) {
 // ---------------------------------------------------------------------------
 // Check 14 — No buried invocation imperatives. A skill invocation is an
 // imperative outside any fence (Loading, Invoking, and Handing Off); a line
-// inside a fence invoking `/leeway` or `/leeway-*` is payload text the model
+// inside a fence invoking `/ledger` or `/ledger-*` is payload text the model
 // prints instead of executing — the Portal stall class.
 // ---------------------------------------------------------------------------
 
@@ -767,7 +767,7 @@ function checkBuriedInvoke(files) {
     const { blocks } = parseFences(lines);
     for (const b of blocks) {
       for (const { n, text } of b.lines) {
-        if (/^\s*Invoke `\/leeway(?![a-z])/.test(text)) {
+        if (/^\s*Invoke `\/ledger(?![a-z])/.test(text)) {
           out.push({ file, line: n + 1, message: 'invocation imperative inside a fence — payload is never instruction; put the imperative outside the fence' });
         }
       }
@@ -901,7 +901,7 @@ const QUESTION_ROUTE = /^\s*[-*] \*\*Ask\*\* —/;
 const BRANCH_END = /^(?:#{1,4}\s|\*\*(?:If |Otherwise)|---\s*$)/;
 const ROUTE_END = /^\s*(?:[-*] |$)/;
 const SETS_ASIDE = /sets the gate aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
-const DELEGATES_ANSWER = /\((?:\.\.\/)+leeway-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
+const DELEGATES_ANSWER = /\((?:\.\.\/)+ledger-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
 const INTERRUPTED_RETURN = /^→ On return, resume the interrupted flow\b/;
 const RETURN_ASKS = /\bset aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
 
@@ -984,7 +984,7 @@ function checkRenderForms(files) {
 // Check 25 — a dispatch names its mode, and a waited-on background dispatch
 // names its turn's closing sentence (CONVENTIONS' Dispatch Lines). Claude
 // Code runs an agent in the background unless told otherwise, so every
-// dispatch — of a leeway-* agent, or of ad-hoc sub-agents through the
+// dispatch — of a ledger-* agent, or of ad-hoc sub-agents through the
 // Agent tool — states `run_in_background: true` or `false`. A foreground
 // dispatch carries no sentence, and nor does a
 // background dispatch the conversation carries on past (the agents below);
@@ -999,12 +999,12 @@ function checkRenderForms(files) {
 // ---------------------------------------------------------------------------
 
 const CARRIED_PAST_AGENTS = new Set([
-  'leeway-discussion-perspective',
-  'leeway-discussion-synthesis',
+  'ledger-discussion-perspective',
+  'ledger-discussion-synthesis',
 ]);
 const DISPATCH_NAMES = [
-  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `(?:\.claude\/|[./]*)agents\/(leeway-[a-z-]+)\.md`/,
-  /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(leeway-[a-z-]+)`/,
+  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `(?:\.claude\/|[./]*)agents\/(ledger-[a-z-]+)\.md`/,
+  /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(ledger-[a-z-]+)`/,
   /\b((?:ad-hoc )?sub-agents?) \(Agent tool\)/,
 ];
 const CLOSING_SENTENCE = /\bends? the turn on exactly `([^`]+)`/g;
@@ -1117,14 +1117,14 @@ function checkInstalledDispatchPaths(files) {
 // ---------------------------------------------------------------------------
 // Check 27 — the framework loads once per conversation, at the head of the
 // skill the conversation opens on (CONVENTIONS' The Framework Load): each of
-// the engine's HANDOFF_TARGETS — every skill a handoff lands on, leeway,
+// the engine's HANDOFF_TARGETS — every skill a handoff lands on, ledger,
 // the user's way in, among them — opens its `## Instructions` section on the
 // framework load. Every other workflow backbone carries neither the section
 // nor the load: a skill only ever opened in place runs in a conversation that
 // already holds the framework, and the capture skills are exempt.
 // ---------------------------------------------------------------------------
 
-const FRAMEWORK_LOAD = 'Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written';
+const FRAMEWORK_LOAD = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written';
 const INSTRUCTIONS = /^##\s+Instructions\s*$/;
 const HEAD_LOAD = /^(?:→\s+)?Load \*\*\[framework\.md\]\(/;
 
@@ -1208,7 +1208,7 @@ function checkBashGrantsCarryWildcard(files) {
 // conversation through the framework's load alone.
 // ---------------------------------------------------------------------------
 
-const FRAMEWORK_FILE = /\/skills\/leeway-shared\/references\/framework\.md$/;
+const FRAMEWORK_FILE = /\/skills\/ledger-shared\/references\/framework\.md$/;
 const LOAD_TARGET = /[Ll]oad \*\*\[[^\]]+\]\(([^)]+)\)\*\*/g;
 
 // Each file a Load directive outside a fence names, resolved, with its line.
@@ -1261,7 +1261,7 @@ function checkNoDesignTools(files) {
 
 // ---------------------------------------------------------------------------
 // Check 31 — a message's scratch is under the state's cache. `topic send`
-// takes its `--content` from `.leeway/.cache/` alone, refusing any other
+// takes its `--content` from `.ledger/.cache/` alone, refusing any other
 // path, so a send whose prose writes the message elsewhere fails every time.
 // ---------------------------------------------------------------------------
 
@@ -1273,8 +1273,8 @@ function checkSendScratch(files) {
   for (const file of files) {
     readLines(file).forEach((line, i) => {
       const hit = line.match(SEND_CONTENT);
-      if (hit && !hit[1].startsWith('.leeway/.cache/')) {
-        out.push({ file, line: i + 1, message: `topic send takes its --content from .leeway/.cache/ alone, got ${hit[1]}` });
+      if (hit && !hit[1].startsWith('.ledger/.cache/')) {
+        out.push({ file, line: i + 1, message: `topic send takes its --content from .ledger/.cache/ alone, got ${hit[1]}` });
       }
     });
   }
@@ -1282,7 +1282,7 @@ function checkSendScratch(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 32 — a Bash grant names the state under `.leeway/`. The workflows keep
+// Check 32 — a Bash grant names the state under `.ledger/`. The workflows keep
 // their state there, so a grant on a `.workflows/` path matches no call the
 // skill's prose makes, and the call stops for permission.
 // ---------------------------------------------------------------------------
@@ -1294,7 +1294,7 @@ function checkGrantsNameTheStateRoot(files) {
   for (const file of files) {
     for (const { line, grant } of bashGrants(file)) {
       if (RETIRED_ROOT.test(grant)) {
-        out.push({ file, line, message: `Bash(${grant}) names .workflows/ — the state lives under .leeway/` });
+        out.push({ file, line, message: `Bash(${grant}) names .workflows/ — the state lives under .ledger/` });
       }
     }
   }
@@ -1360,10 +1360,10 @@ function checkNoClaudeMdWrites(files, code = []) {
 // The agents' templates are test-engine-brief-build.cjs's.
 // ---------------------------------------------------------------------------
 
-const BUILD_SKILL = 'leeway-implementation-process';
-const BUILD_AGENTS = ['leeway-builder', 'leeway-reviewer', 'leeway-task-writer', 'leeway-consolidation'];
+const BUILD_SKILL = 'ledger-implementation-process';
+const BUILD_AGENTS = ['ledger-builder', 'ledger-reviewer', 'ledger-task-writer', 'ledger-consolidation'];
 const BUILD_PROSE_RULES = [
-  [/~\/\.claude\b|\.claude\/skills\/(?!leeway)|Invoke `\/(?!leeway)/, 'names a personal skill — the build carries its shape in its own prose (12.1.7)'],
+  [/~\/\.claude\b|\.claude\/skills\/(?!ledger)|Invoke `\/(?!ledger)/, 'names a personal skill — the build carries its shape in its own prose (12.1.7)'],
   [/red[- ]green|\bTDD\b|\btests? first\b/i, 'prescribes a red-green loop — tests are written from the criteria in any order (12.8.1)'],
   [/break (?:it|the task|this task|tasks?) down|to-?do list|(?:check|verify) (?:your|its) (?:own )?work|\bstubs?\b/i, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
 ];
@@ -1407,7 +1407,7 @@ function checkBuildProse(files) {
 // without a word of prose.
 // ---------------------------------------------------------------------------
 
-const START_SKILL = 'leeway';
+const START_SKILL = 'ledger';
 const STOP_SCREEN = /engine\.cjs render \{surface\} \{args\}/;
 const STOP_MARKER = /\*\*`▪ \{marker\}`\*\*/;
 const BOOT_WARNINGS = /Surface the answer's `warnings` first/;
@@ -1454,11 +1454,11 @@ function checkBootStops(files, stops = STOPS) {
 // Check 37 — a skill's description is all Claude sees of it until it is
 // invoked (18.2.16, 18.2.17). The start skill's opens with its trigger;
 // every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached
-// only through a Leeway handoff, never invoked directly.
+// only through a Ledger handoff, never invoked directly.
 // ---------------------------------------------------------------------------
 
 const TRIGGER = /^Use (?:for|when)\b/;
-const HANDOFF_ONLY = /Reached only through a Leeway handoff, never invoked directly\b/;
+const HANDOFF_ONLY = /Reached only through a Ledger handoff, never invoked directly\b/;
 
 /** The frontmatter's `description`, and its line; null where it has none. @param {string[]} lines */
 function descriptionOf(lines) {
@@ -1478,7 +1478,7 @@ function checkDescriptions(files, targets = HANDOFF_TARGETS) {
     if (skillNameOf(file) === START_SKILL) {
       if (!TRIGGER.test(description?.text ?? '')) out.push({ file, line, message: 'the start skill\'s description opens with its trigger — "Use for …"' });
     } else if (!HANDOFF_ONLY.test(description?.text ?? '')) {
-      out.push({ file, line, message: 'a skill a handoff lands on says in its description it is reached only through a Leeway handoff, never invoked directly' });
+      out.push({ file, line, message: 'a skill a handoff lands on says in its description it is reached only through a Ledger handoff, never invoked directly' });
     }
   }
   return out;
@@ -1512,7 +1512,7 @@ function checkNoResumeSections(files) {
 // ---------------------------------------------------------------------------
 
 const BACK_TO_START_MENUS = ['epic-menu', 'roadmap', 'manage', 'closed'];
-const START_MENU_LOAD = /Load \*\*\[start-menu\.md\]\((?:\.\.\/)+leeway\/references\/start-menu\.md\)\*\*/;
+const START_MENU_LOAD = /Load \*\*\[start-menu\.md\]\((?:\.\.\/)+ledger\/references\/start-menu\.md\)\*\*/;
 
 /** The skill a file under `skills/` belongs to, by its folder. @param {string} file */
 function skillFolderOf(file) {
@@ -1576,7 +1576,7 @@ const CHECKS = [
   ['29: the framework\'s references load once, from framework.md alone', checkFrameworkLoadsOnce],
   ['30: no design tool is named', checkNoDesignTools],
   ['31: a message\'s scratch is under the state\'s cache', checkSendScratch],
-  ['32: a Bash grant names the state under .leeway/', checkGrantsNameTheStateRoot],
+  ['32: a Bash grant names the state under .ledger/', checkGrantsNameTheStateRoot],
   ['33: nothing writes the project\'s CLAUDE.md', (files) => checkNoClaudeMdWrites(files, codeFiles())],
   ['34: the build\'s prose prescribes nothing the builder does unprompted', checkBuildProse],
   ['35: the start skill follows boot\'s stops as data', checkBootStops],
@@ -1604,7 +1604,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['leeway', 'leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process', 'leeway-quick-fix-process', 'leeway-continue-epic', 'leeway-roadmap']);
+const NEW_SHAPE_SKILLS = new Set(['ledger', 'ledger-discussion-process', 'ledger-discovery', 'ledger-specification-process', 'ledger-implementation-process', 'ledger-review-process', 'ledger-investigation-process', 'ledger-quick-fix-process', 'ledger-continue-epic', 'ledger-roadmap']);
 
 function checkFooterlessLoads(files) {
   const out = [];
@@ -1717,7 +1717,7 @@ test('check 1 (borders) — bans drawn borders, the start skill\'s included, pin
     // the banner is the engine's: art in the start skill's prose is no exception
     const banner = write(
       dir,
-      'skills/leeway/SKILL.md',
+      'skills/ledger/SKILL.md',
       '```\n●' + '─'.repeat(65) + '●\n    ___   ____________\n   /   | / ____/ ___/\n●' + '─'.repeat(65) + '●\n```\n'
     );
     assert.strictEqual(checkBorders([banner]).length, 2, 'a border beside ASCII art is caught all the same');
@@ -1907,22 +1907,22 @@ test('check 7b (load lines) — catches a load carried mid-sentence, permits one
 
 test('check 8 (H1 category) — enforces the processing/backbone split', () => {
   withTemp((dir) => {
-    const procNoH1 = write(dir, 'skills/leeway-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const procNoH1 = write(dir, 'skills/ledger-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     assert.strictEqual(checkH1Category([procNoH1]).length, 1, 'processing backbone without H1 must be caught');
 
-    const startWithH1 = write(dir, 'skills/leeway/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
+    const startWithH1 = write(dir, 'skills/ledger/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([startWithH1]).length, 1, 'start backbone with H1 must be caught');
 
-    const navWithH1 = write(dir, 'skills/leeway-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
+    const navWithH1 = write(dir, 'skills/ledger-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([navWithH1]).length, 1, 'navigation backbone with H1 must be caught');
 
-    const procGood = write(dir, 'skills/leeway-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
-    const menuGood = write(dir, 'skills/leeway-continue-epic/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
-    const engineGood = write(dir, 'skills/leeway-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
-    const discoveryGood = write(dir, 'skills/leeway-discovery/SKILL.md', '---\nname: leeway-discovery\n---\n\n# Discovery\n\nOne-liner.\n');
+    const procGood = write(dir, 'skills/ledger-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
+    const menuGood = write(dir, 'skills/ledger-continue-epic/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const engineGood = write(dir, 'skills/ledger-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
+    const discoveryGood = write(dir, 'skills/ledger-discovery/SKILL.md', '---\nname: ledger-discovery\n---\n\n# Discovery\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([procGood, menuGood, engineGood, discoveryGood]).length, 0, 'correctly-categorised backbones must pass');
 
-    const discoveryNoH1 = write(dir, 'skills/leeway-discovery/SKILL.md', 'One-liner purpose.\n\n## Entering\n');
+    const discoveryNoH1 = write(dir, 'skills/ledger-discovery/SKILL.md', 'One-liner purpose.\n\n## Entering\n');
     assert.strictEqual(checkH1Category([discoveryNoH1]).length, 1, 'discovery is a phase that talks: without an H1 it must be caught');
   });
 });
@@ -1977,7 +1977,7 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
     const instr = write(
       dir,
       'skills/w/SKILL.md',
-      '## Instructions\n\nLoad **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.\n\n---\n\n## Step 0: A\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n#### If x is `1`\n\n→ Proceed to **Step 1**.\n\n#### Otherwise\n\nLoad **[b.md](references/b.md)** with x = `2`.\n\n## Step 1: B\n\nDone.\n'
+      '## Instructions\n\nLoad **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.\n\n---\n\n## Step 0: A\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n#### If x is `1`\n\n→ Proceed to **Step 1**.\n\n#### Otherwise\n\nLoad **[b.md](references/b.md)** with x = `2`.\n\n## Step 1: B\n\nDone.\n'
     );
     assert.strictEqual(checkFooterlessLoads([instr]).length, 1, 'the Instructions load and an H4-branched load pass; the Otherwise branch that ends in a load before the next step is caught');
 
@@ -1985,10 +1985,10 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
     assert.strictEqual(checkFooterlessLoads([ref]).length, 0, 'references are out of scope');
 
     const sections = '## Research\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n## Closing\n\nDone.\n';
-    const field = write(dir, 'skills/leeway-discussion-process/SKILL.md', sections);
-    const discovery = write(dir, 'skills/leeway-discovery/SKILL.md', sections);
+    const field = write(dir, 'skills/ledger-discussion-process/SKILL.md', sections);
+    const discovery = write(dir, 'skills/ledger-discovery/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([field, discovery]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
-    const stepped = write(dir, 'skills/leeway-experiment-process/SKILL.md', sections);
+    const stepped = write(dir, 'skills/ledger-experiment-process/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([stepped]).length, 1, 'a skill still on the step model is held');
   });
 });
@@ -2101,10 +2101,10 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
     const outer = write(dir, 'skills/x/i.md', `${instr}\`\`\`\`markdown\n\`\`\`text\nStatic.\n\`\`\`\nTask {id} authored.\n\`\`\`\`\n`);
     assert.deepStrictEqual(sites(outer), [1], 'a four-backtick fence runs past the inner fence it holds');
 
-    assert.deepStrictEqual(sites(write(dir, 'skills/leeway-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/leeway-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
-    assert.deepStrictEqual(sites(write(dir, 'skills/x/references/skills/leeway-log-idea/SKILL.md', capture)), [1], 'a capture-named folder nested inside another skill is not exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/leeway-login/SKILL.md', capture)), [1], 'the exemption is the capture skills alone');
+    assert.deepStrictEqual(sites(write(dir, 'skills/ledger-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
+    assert.deepStrictEqual(sites(write(dir, 'skills/ledger-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
+    assert.deepStrictEqual(sites(write(dir, 'skills/x/references/skills/ledger-log-idea/SKILL.md', capture)), [1], 'a capture-named folder nested inside another skill is not exempt');
+    assert.deepStrictEqual(sites(write(dir, 'skills/ledger-login/SKILL.md', capture)), [1], 'the exemption is the capture skills alone');
 
     const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
     assert.deepStrictEqual(sites(statik), [], 'static menu is always fine');
@@ -2134,53 +2134,53 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
 test('check 13b (capture skills) — 18.S22: catches a second engine line, the state named in prose, a grant wider than the line or for another kind, and a reference naming the engine; permits the one capture line and a skill that is no capture skill', () => {
   withTemp((dir) => {
     const faults = (/** @type {string} */ rel, /** @type {string} */ text) => checkCaptureSkills([write(dir, rel, text)], dir).map(({ line, message }) => `${line} ${message.split(' — ')[0].split(':')[0]}`);
-    const line = 'node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture bug [--project {folder}] <<\'ITEM\'';
-    const grant = (kind = 'bug') => `allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture ${kind} *)`;
-    const skill = (/** @type {string} */ head, /** @type {string} */ body) => `---\nname: leeway-log-bug\n${head}\n---\n\nCaptures a bug.\n\n\`\`\`bash\n${line}\n{text}\nITEM\n\`\`\`\n${body}`;
-    const at = 'skills/leeway-log-bug/SKILL.md';
+    const line = 'node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture bug [--project {folder}] <<\'ITEM\'';
+    const grant = (kind = 'bug') => `allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture ${kind} *)`;
+    const skill = (/** @type {string} */ head, /** @type {string} */ body) => `---\nname: ledger-log-bug\n${head}\n---\n\nCaptures a bug.\n\n\`\`\`bash\n${line}\n{text}\nITEM\n\`\`\`\n${body}`;
+    const at = 'skills/ledger-log-bug/SKILL.md';
 
     assert.deepStrictEqual(faults(at, skill(grant(), '')), [], 'the one capture line and its grant');
-    assert.deepStrictEqual(faults(at, skill(grant(), '\nThen run `node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'a second engine line');
-    assert.deepStrictEqual(faults(at, skill(grant(), '\nIt lands in `.leeway/.inbox/bugs/`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'the state named in prose');
-    assert.deepStrictEqual(faults(at, skill('allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)', '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'a grant of the whole engine');
+    assert.deepStrictEqual(faults(at, skill(grant(), '\nThen run `node .claude/skills/ledger-engine/scripts/engine.cjs commit --inbox`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'a second engine line');
+    assert.deepStrictEqual(faults(at, skill(grant(), '\nIt lands in `.ledger/.inbox/bugs/`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'the state named in prose');
+    assert.deepStrictEqual(faults(at, skill('allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)', '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'a grant of the whole engine');
     assert.deepStrictEqual(faults(at, skill(`${grant()}, Read`, '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'another tool granted beside it');
     assert.deepStrictEqual(faults(at, skill(grant('idea'), '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'a grant for another kind');
     assert.deepStrictEqual(faults(at, skill('', '')), ["1 a capture skill's allowed-tools grants its capture line alone"], 'no grant');
-    assert.deepStrictEqual(faults('skills/leeway-log-bug/references/r.md', '# R\n\nRun engine.cjs.\n'), ["3 a capture skill names the engine in its SKILL.md's one capture line alone"], 'a reference naming the engine');
-    assert.deepStrictEqual(faults('skills/leeway-login/SKILL.md', '---\nname: x\n---\n\nRun engine.cjs twice: engine.cjs.\nengine.cjs\n'), [], 'a skill that is no capture skill');
+    assert.deepStrictEqual(faults('skills/ledger-log-bug/references/r.md', '# R\n\nRun engine.cjs.\n'), ["3 a capture skill names the engine in its SKILL.md's one capture line alone"], 'a reference naming the engine');
+    assert.deepStrictEqual(faults('skills/ledger-login/SKILL.md', '---\nname: x\n---\n\nRun engine.cjs twice: engine.cjs.\nengine.cjs\n'), [], 'a skill that is no capture skill');
   });
 });
 
 test('check 14 (buried invoke) — catches an in-fence imperative, permits one outside a fence', () => {
   withTemp((dir) => {
-    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/leeway-continue-epic pay`.\n```\n');
+    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/ledger-continue-epic pay`.\n```\n');
     const v = checkBuriedInvoke([bad]);
     assert.strictEqual(v.length, 1, 'in-fence imperative must be caught');
-    const start = write(dir, 'skills/x/c.md', '```\nInvoke `/leeway`.\n```\n');
-    assert.strictEqual(checkBuriedInvoke([start]).length, 1, 'the way in, `/leeway`, is caught as a skill invocation too');
-    const good = write(dir, 'skills/x/b.md', 'Invoke `/leeway-continue-epic pay`.\n');
+    const start = write(dir, 'skills/x/c.md', '```\nInvoke `/ledger`.\n```\n');
+    assert.strictEqual(checkBuriedInvoke([start]).length, 1, 'the way in, `/ledger`, is caught as a skill invocation too');
+    const good = write(dir, 'skills/x/b.md', 'Invoke `/ledger-continue-epic pay`.\n');
     assert.strictEqual(checkBuriedInvoke([good]).length, 0, 'the imperative outside a fence is the invocation form');
   });
 });
 
 test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declaration, permits other events', () => {
   withTemp((dir) => {
-    const cleanup = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs" session cleanup';
+    const cleanup = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs" session cleanup';
     const hookBlock = (event) => `hooks:\n  ${event}:\n    - hooks:\n        - type: command\n          command: '${cleanup}'\n`;
 
-    const plain = write(dir, 'skills/leeway-a-process/SKILL.md',
-      '---\nname: leeway-a-process\nuser-invocable: false\n---\n\nBody.\n');
+    const plain = write(dir, 'skills/ledger-a-process/SKILL.md',
+      '---\nname: ledger-a-process\nuser-invocable: false\n---\n\nBody.\n');
     // Other events do fire from skill frontmatter and stay allowed.
-    const preToolUse = write(dir, 'skills/leeway-b-process/SKILL.md',
-      `---\nname: leeway-b-process\n${hookBlock('PreToolUse')}---\n`);
+    const preToolUse = write(dir, 'skills/ledger-b-process/SKILL.md',
+      `---\nname: ledger-b-process\n${hookBlock('PreToolUse')}---\n`);
     // The event name in the body is prose, not a declaration.
-    const bodyMention = write(dir, 'skills/leeway-c-process/SKILL.md',
-      '---\nname: leeway-c-process\n---\n\n```\nSessionEnd:\n```\n');
+    const bodyMention = write(dir, 'skills/ledger-c-process/SKILL.md',
+      '---\nname: ledger-c-process\n---\n\n```\nSessionEnd:\n```\n');
     assert.strictEqual(checkNoFrontmatterSessionEndHooks([plain, preToolUse, bodyMention]).length, 0, 'no SessionEnd declared — clean');
 
     // A SessionEnd hook declared in frontmatter never fires.
-    const sessionEnd = write(dir, 'skills/leeway-d-process/SKILL.md',
-      `---\nname: leeway-d-process\n${hookBlock('SessionEnd')}---\n`);
+    const sessionEnd = write(dir, 'skills/ledger-d-process/SKILL.md',
+      `---\nname: ledger-d-process\n${hookBlock('SessionEnd')}---\n`);
     const v = checkNoFrontmatterSessionEndHooks([plain, preToolUse, sessionEnd]);
     assert.strictEqual(v.length, 1, `expected the SessionEnd declaration to be caught, got ${report(v)}`);
     assert.strictEqual(v[0].file, sessionEnd);
@@ -2340,13 +2340,13 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
       '',
       '#### If the user asks a question',
       '',
-      'Answer it per **[answering-how-it-works.md](../../leeway-shared/references/answering-how-it-works.md)** — the menu it puts back is the home\'s.',
+      'Answer it per **[answering-how-it-works.md](../../ledger-shared/references/answering-how-it-works.md)** — the menu it puts back is the home\'s.',
       '',
       '→ Return to **B. Handle Selection**.',
       '',
       '**If ask:**',
       '',
-      'Answer it per **[answering-how-it-works.md](../leeway-shared/references/answering-how-it-works.md)** — the menu it puts back is the offer\'s alone.',
+      'Answer it per **[answering-how-it-works.md](../ledger-shared/references/answering-how-it-works.md)** — the menu it puts back is the offer\'s alone.',
       '',
       '**STOP.** Wait for user response.',
       '',
@@ -2431,7 +2431,7 @@ test('check 23 (a return into the interrupted flow asks) — catches a return th
     const asking = write(dir, 'skills/x/asking.md', [
       '## Backlogging',
       '',
-      'Load **[backlogging.md](../leeway-shared/references/backlogging.md)** from any point in the phase.',
+      'Load **[backlogging.md](../ledger-shared/references/backlogging.md)** from any point in the phase.',
       '',
       '→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.',
       '',
@@ -2553,7 +2553,7 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## A. Dispatch the Worker',
       '',
-      '- **Agent path**: `.claude/agents/leeway-x-worker.md`',
+      '- **Agent path**: `.claude/agents/ledger-x-worker.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
       '',
@@ -2561,28 +2561,28 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '### Agent 1',
       '',
-      '- **Agent path**: `.claude/agents/leeway-x-left.md`',
+      '- **Agent path**: `.claude/agents/ledger-x-left.md`',
       '',
       '### Agent 2',
       '',
-      '- **Agent path**: `.claude/agents/leeway-x-right.md`',
+      '- **Agent path**: `.claude/agents/ledger-x-right.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The left and right agents have been dispatched for review cycle {N}.`',
       '',
       '## C. Check in the Foreground',
       '',
-      '**Agent path**: `.claude/agents/leeway-x-checker.md`',
+      '**Agent path**: `.claude/agents/ledger-x-checker.md`',
       '',
       'Dispatch **one agent** via the Task tool (**synchronous** — pass `run_in_background: false`).',
       '',
       '## D. Dive',
       '',
-      '**Agent path**: `.claude/agents/leeway-discussion-synthesis.md`',
+      '**Agent path**: `.claude/agents/ledger-discussion-synthesis.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true`.',
       '',
       '```',
-      'Invoke `leeway-x-fenced` — fenced content is never a dispatch.',
+      'Invoke `ledger-x-fenced` — fenced content is never a dispatch.',
       '```',
       '',
       '## E. Measure',
@@ -2593,13 +2593,13 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
     const single = write(dir, 'skills/x/single.md', [
       '# Single',
       '',
-      'Invoke `leeway-x-designer` with these file paths:',
+      'Invoke `ledger-x-designer` with these file paths:',
       '',
       '## Wait for Completion',
       '',
       'This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The designer agent has been dispatched for the plan\'s phases.`',
       '',
-      'Re-invoke `leeway-x-designer` with the feedback.',
+      'Re-invoke `ledger-x-designer` with the feedback.',
       '',
     ].join('\n'));
     assert.strictEqual(checkDispatchLines([clean, single]).length, 0, `each mode in its own shape is clean, got ${report(checkDispatchLines([clean, single]))}`);
@@ -2609,46 +2609,46 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## A. No Mode',
       '',
-      'Dispatch the `leeway-x-a` agent via the Task tool.',
+      'Dispatch the `ledger-x-a` agent via the Task tool.',
       '',
       '## B. No Sentence',
       '',
-      'Dispatch the `leeway-x-b` agent via the Task tool with `run_in_background: true`.',
+      'Dispatch the `ledger-x-b` agent via the Task tool with `run_in_background: true`.',
       '',
       '## C. Two Sentences',
       '',
-      'Invoke `leeway-x-c` with:',
+      'Invoke `ledger-x-c` with:',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The c agent has been dispatched for phase {N}.`',
       'The dispatch ends the turn on exactly `The c agent has been dispatched for phase {N} again.`',
       '',
       '## D. Off Shape',
       '',
-      '- **Agent path**: `.claude/agents/leeway-x-d.md`',
+      '- **Agent path**: `.claude/agents/ledger-x-d.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `Dispatched the d agent.`',
       '',
       '## E. Names the Topic',
       '',
-      '- **Agent path**: `.claude/agents/leeway-x-e.md`',
+      '- **Agent path**: `.claude/agents/ledger-x-e.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The e agent has been dispatched for {topic}.`',
       '',
       '## F. Names the Internal Id',
       '',
-      '- **Agent path**: `.claude/agents/leeway-x-f.md`',
+      '- **Agent path**: `.claude/agents/ledger-x-f.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The f agents have been dispatched for {internal_id}.`',
       '',
       '## G. Foreground With a Sentence',
       '',
-      '**Agent path**: `.claude/agents/leeway-x-g.md`',
+      '**Agent path**: `.claude/agents/ledger-x-g.md`',
       '',
       'Dispatch **one agent** (pass `run_in_background: false`) — the dispatch ends the turn on exactly `The g agent has been dispatched for the record.`',
       '',
       '## H. Carried Past With a Sentence',
       '',
-      '**Agent path**: `.claude/agents/leeway-discussion-perspective.md`',
+      '**Agent path**: `.claude/agents/ledger-discussion-perspective.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true` — the dispatch ends the turn on exactly `The review agent has been dispatched for the discussion.`',
       '',
@@ -2677,15 +2677,15 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
     const clean = write(dir, 'skills/x/references/clean.md', [
       '# Clean',
       '',
-      'This step invokes the `leeway-x-worker` agent (`.claude/agents/leeway-x-worker.md`).',
+      'This step invokes the `ledger-x-worker` agent (`.claude/agents/ledger-x-worker.md`).',
       '',
       '## A. Dispatch the Worker',
       '',
-      '- **Agent path**: `.claude/agents/leeway-x-worker.md`',
+      '- **Agent path**: `.claude/agents/ledger-x-worker.md`',
       '',
-      '1. **Review criteria path**: `.claude/skills/leeway-x/references/criteria.md`',
-      '2. **read-specification.md**: `.claude/skills/leeway-x/references/read-specification.md`',
-      '3. **Format reading.md path**: `.claude/skills/leeway-x/references/output-formats/{format}/reading.md` — `format` is in session context',
+      '1. **Review criteria path**: `.claude/skills/ledger-x/references/criteria.md`',
+      '2. **read-specification.md**: `.claude/skills/ledger-x/references/read-specification.md`',
+      '3. **Format reading.md path**: `.claude/skills/ledger-x/references/output-formats/{format}/reading.md` — `format` is in session context',
       '4. **Output path** — `.workflows/{work_unit}/x/{topic}/out.md`',
       '5. **Output file path** — the `file` from the dispatch response',
       '6. **Resolved path**: `{resolved_path}`',
@@ -2694,13 +2694,13 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
       'Load **[criteria.md](criteria.md)** and follow its instructions as written.',
       '',
       '```',
-      '- **Agent path**: `../../../agents/leeway-x-fenced.md`',
+      '- **Agent path**: `../../../agents/ledger-x-fenced.md`',
       '```',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
       '',
     ].join('\n'));
-    const agentDefinition = write(dir, 'agents/leeway-x-worker.md', [
+    const agentDefinition = write(dir, 'agents/ledger-x-worker.md', [
       '# Worker',
       '',
       '## Your Input',
@@ -2714,70 +2714,70 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
     const broken = write(dir, 'skills/x/references/broken.md', [
       '# Broken',
       '',
-      'This step invokes the `leeway-x-worker` agent (`../../../agents/leeway-x-worker.md`).',
+      'This step invokes the `ledger-x-worker` agent (`../../../agents/ledger-x-worker.md`).',
       '',
       '## A. Dispatch the Worker',
       '',
-      '- **Agent path**: `../../../agents/leeway-x-worker.md`',
-      '- **Agent file**: `agents/leeway-x-worker.md`',
+      '- **Agent path**: `../../../agents/ledger-x-worker.md`',
+      '- **Agent file**: `agents/ledger-x-worker.md`',
       '',
       '1. **Review tracking format path**: `review-tracking-format.md` (in this references directory)',
       '2. **task-design.md**: `task-design.md`',
       '3. **Format reading.md path**: **[output-formats/{format}/reading.md](output-formats/{format}/reading.md)** — `format` is in session context',
-      '4. **Plan format reading adapter path** — `../../leeway-y/references/output-formats/{format}/reading.md`',
+      '4. **Plan format reading adapter path** — `../../ledger-y/references/output-formats/{format}/reading.md`',
       '5. **Findings path** — `findings.txt`',
-      '6. **Criteria path**: `skills/leeway-x/references/criteria.md`',
+      '6. **Criteria path**: `skills/ledger-x/references/criteria.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
       '',
     ].join('\n'));
     const v = checkInstalledDispatchPaths([broken]);
     assert.deepStrictEqual(v.map((x) => x.line), [3, 7, 8, 10, 11, 12, 13, 14, 15], `each relative path is caught once, at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^agent file `\.\.\/\.\.\/\.\.\/agents\/leeway-x-worker\.md` — write it as installed, `\.claude\/agents\/…`$/);
-    assert.match(v[1].message, /^\*\*Agent path\*\* names `\.\.\/\.\.\/\.\.\/agents\/leeway-x-worker\.md` — write it as installed, from the project root/);
-    assert.match(v[2].message, /^\*\*Agent file\*\* names `agents\/leeway-x-worker\.md`/);
+    assert.match(v[0].message, /^agent file `\.\.\/\.\.\/\.\.\/agents\/ledger-x-worker\.md` — write it as installed, `\.claude\/agents\/…`$/);
+    assert.match(v[1].message, /^\*\*Agent path\*\* names `\.\.\/\.\.\/\.\.\/agents\/ledger-x-worker\.md` — write it as installed, from the project root/);
+    assert.match(v[2].message, /^\*\*Agent file\*\* names `agents\/ledger-x-worker\.md`/);
     assert.match(v[5].message, /names `output-formats\/\{format\}\/reading\.md`/);
-    assert.match(v[8].message, /names `skills\/leeway-x\/references\/criteria\.md`/);
+    assert.match(v[8].message, /names `skills\/ledger-x\/references\/criteria\.md`/);
   });
 });
 
 test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, a capture skill, and a skill outside the workflows', () => {
   withTemp((dir) => {
-    const LOAD = 'Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.';
-    const start = write(dir, 'skills/leeway/SKILL.md', [
-      '---', 'name: leeway', '---', '', 'Entry.', '', '## Instructions', '',
-      'Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written — after the banner.',
+    const LOAD = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.';
+    const start = write(dir, 'skills/ledger/SKILL.md', [
+      '---', 'name: ledger', '---', '', 'Entry.', '', '## Instructions', '',
+      'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written — after the banner.',
       '', '---', '', '## Step 0: Boot', '', 'Boot.', '',
     ].join('\n'));
-    const RELOAD = '1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).**';
-    const phase = write(dir, 'skills/leeway-review-process/SKILL.md', [
+    const RELOAD = '1. **Re-read this skill file completely, then re-load [framework.md](../ledger-shared/references/framework.md).**';
+    const phase = write(dir, 'skills/ledger-review-process/SKILL.md', [
       '# Review', '', '## Instructions', '', LOAD, '', '---', '', '## Resuming After Context Refresh', '', RELOAD, '',
     ].join('\n'));
-    const recovering = write(dir, 'skills/leeway-in-place/SKILL.md', ['Work in the conversation already open.', '', '## Step 1: Work', '', RELOAD, ''].join('\n'));
-    const capture = write(dir, 'skills/leeway-log-idea/SKILL.md', 'Capture an idea.\n');
-    const fenced = write(dir, 'skills/leeway-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
+    const recovering = write(dir, 'skills/ledger-in-place/SKILL.md', ['Work in the conversation already open.', '', '## Step 1: Work', '', RELOAD, ''].join('\n'));
+    const capture = write(dir, 'skills/ledger-log-idea/SKILL.md', 'Capture an idea.\n');
+    const fenced = write(dir, 'skills/ledger-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
     const tooling = write(dir, '.claude/skills/review-work/SKILL.md', `## Instructions\n\n${LOAD}\n`);
     const ok = checkFrameworkLoad([start, phase, recovering, capture, fenced, tooling]);
     assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
 
-    const missing = write(dir, 'skills/leeway-discovery/SKILL.md', ['---', 'name: leeway-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
-    const late = write(dir, 'skills/leeway-roadmap/SKILL.md', ['The roadmap.', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
-    const inPlace = write(dir, 'skills/leeway-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
+    const missing = write(dir, 'skills/ledger-discovery/SKILL.md', ['---', 'name: ledger-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
+    const late = write(dir, 'skills/ledger-roadmap/SKILL.md', ['The roadmap.', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
+    const inPlace = write(dir, 'skills/ledger-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
     const v = checkFrameworkLoad([missing, late, inPlace]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
-      ['leeway-discovery', 5],
-      ['leeway-roadmap', 3],
-      ['leeway-continue-linear', 3],
-      ['leeway-continue-linear', 5],
-      ['leeway-continue-linear', 11],
+      ['ledger-discovery', 5],
+      ['ledger-roadmap', 3],
+      ['ledger-continue-linear', 3],
+      ['ledger-continue-linear', 5],
+      ['ledger-continue-linear', 11],
     ], `each miss is caught once, at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^leeway-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
-    assert.match(v[2].message, /^leeway-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
+    assert.match(v[0].message, /^ledger-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
+    assert.match(v[2].message, /^ledger-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
   });
 });
 
 test('2.S17 — the framework load holds voice and altitude, once each', () => {
-  const framework = path.join(REPO, 'skills', 'leeway-shared', 'references', 'framework.md');
+  const framework = path.join(REPO, 'skills', 'ledger-shared', 'references', 'framework.md');
   const loaded = loadsOf(framework).map(({ target }) => path.relative(path.dirname(framework), target));
   for (const name of ['voice.md', 'altitude.md']) {
     assert.strictEqual(loaded.filter((n) => n === name).length, 1, `framework.md loads ${name} once, got ${JSON.stringify(loaded)}`);
@@ -2788,7 +2788,7 @@ test('check 30 (no design tool) — 9.S53: catches each listed tool named in a s
   withTemp((dir) => {
     const named = DESIGN_TOOLS.map((name, i) => write(dir, `skills/x/references/r${i}.md`, `# R\n\nThe board is in ${name}, exported.\n`));
     assert.deepStrictEqual(checkNoDesignTools(named).map((v) => v.message.split('"')[1]), DESIGN_TOOLS);
-    const fenced = write(dir, 'agents/leeway-x.md', '```text\nopen it in Figma\n```\n');
+    const fenced = write(dir, 'agents/ledger-x.md', '```text\nopen it in Figma\n```\n');
     assert.strictEqual(checkNoDesignTools([fenced]).length, 1, 'a fenced name is still named');
     const lower = write(dir, 'skills/x/references/lower.md', '# L\n\nthe figma file, the miro board\n');
     assert.deepStrictEqual(checkNoDesignTools([lower]).map((v) => v.message.split('"')[1]), ['figma'], 'a name in lower case is still named, the first on the line');
@@ -2810,7 +2810,7 @@ test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a ses
       '',
     ].join('\n'));
     assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8]);
-    const reads = write(dir, 'agents/leeway-y.md', [
+    const reads = write(dir, 'agents/ledger-y.md', [
       'Read `CLAUDE.md` and the project skills before running anything.',
       '4. **Project conventions**: the `CLAUDE.md` path, the project skill paths.',
       'Do NOT modify commands based on other project documentation (CLAUDE.md, etc.).',
@@ -2822,7 +2822,7 @@ test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a ses
       'The project\'s `CLAUDE.md` when one exists at the project root, and its address.',
     ].join('\n'));
     assert.strictEqual(checkNoClaudeMdWrites([reads]).length, 0, `reading it and naming it are clean, got ${report(checkNoClaudeMdWrites([reads]))}`);
-    const code = write(dir, 'skills/leeway-engine/scripts/domain/z.cjs', [
+    const code = write(dir, 'skills/ledger-engine/scripts/domain/z.cjs', [
       '// The record\'s file is for a CLAUDE.md line to point at.',
       ' * CLAUDE.md reaches the agent without the brief.',
       'const target = path.join(root, \'CLAUDE.md\');',
@@ -2833,30 +2833,30 @@ test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a ses
   });
 });
 
-test('check 31 (send scratch) — catches a topic send whose --content sits outside .leeway/.cache/; permits one inside it, a usage line\'s placeholder, and a line naming the verb with no --content', () => {
+test('check 31 (send scratch) — catches a topic send whose --content sits outside .ledger/.cache/; permits one inside it, a usage line\'s placeholder, and a line naming the verb with no --content', () => {
   withTemp((dir) => {
-    const send = (where) => `node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {target} --from {topic} --content ${where}/{work_unit}/discussion/{topic}/message-{slug}.md --slug {slug}`;
+    const send = (where) => `node .claude/skills/ledger-engine/scripts/engine.cjs topic send {work_unit} {target} --from {topic} --content ${where}/{work_unit}/discussion/{topic}/message-{slug}.md --slug {slug}`;
     const outside = write(dir, 'skills/x/references/out.md', `# Out\n\n\`\`\`bash\n${send('.workflows/.cache')}\n\`\`\`\n`);
     assert.deepStrictEqual(checkSendScratch([outside]).map((v) => v.line), [4]);
-    const inside = write(dir, 'skills/x/references/in.md', `# In\n\n\`\`\`bash\n${send('.leeway/.cache')}\n\`\`\`\n\nA message out goes through \`topic send\`.\n\n    engine topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>\n`);
+    const inside = write(dir, 'skills/x/references/in.md', `# In\n\n\`\`\`bash\n${send('.ledger/.cache')}\n\`\`\`\n\nA message out goes through \`topic send\`.\n\n    engine topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>\n`);
     assert.strictEqual(checkSendScratch([inside]).length, 0);
   });
 });
 
-test('check 32 (grants name the state root) — catches a grant on a .workflows/ path, inline or listed; permits one under .leeway/ and a .workflows/ path in the body', () => {
+test('check 32 (grants name the state root) — catches a grant on a .workflows/ path, inline or listed; permits one under .ledger/ and a .workflows/ path in the body', () => {
   withTemp((dir) => {
     const grants = (root) => [
-      '---', 'name: leeway-a-process',
+      '---', 'name: ledger-a-process',
       `allowed-tools: Bash(mkdir -p ${root}/*/.state), Bash(rm ${root}/*/.state/analysis.md)`,
       'tools:', `  - Bash(ls ${root}/*)`, '---', '', `Write \`.workflows/{work_unit}/notes.md\`.`, '',
     ].join('\n');
-    const retired = write(dir, 'skills/leeway-a-process/SKILL.md', grants('.workflows'));
-    const current = write(dir, 'skills/leeway-b-process/SKILL.md', grants('.leeway'));
+    const retired = write(dir, 'skills/ledger-a-process/SKILL.md', grants('.workflows'));
+    const current = write(dir, 'skills/ledger-b-process/SKILL.md', grants('.ledger'));
     assert.strictEqual(checkGrantsNameTheStateRoot([current]).length, 0);
     const v = checkGrantsNameTheStateRoot([retired]);
     assert.deepStrictEqual(v.map((x) => x.line), [3, 3], `each retired grant is caught at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^Bash\(mkdir -p \.workflows\/\*\/\.state\) names \.workflows\/ — the state lives under \.leeway\/$/);
-    const listed = write(dir, 'skills/leeway-c-process/SKILL.md', ['---', 'allowed-tools:', '  - Bash(rm .workflows/*/x.md)', '---', ''].join('\n'));
+    assert.match(v[0].message, /^Bash\(mkdir -p \.workflows\/\*\/\.state\) names \.workflows\/ — the state lives under \.ledger\/$/);
+    const listed = write(dir, 'skills/ledger-c-process/SKILL.md', ['---', 'allowed-tools:', '  - Bash(rm .workflows/*/x.md)', '---', ''].join('\n'));
     assert.deepStrictEqual(checkGrantsNameTheStateRoot([listed]).map((x) => x.line), [3]);
   });
 });
@@ -2866,19 +2866,19 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
     const skill = write(dir, `skills/${BUILD_SKILL}/SKILL.md`, '# The Build\n\nLoad **[loop.md](references/loop.md)** and follow its instructions as written.\n\nInvoke `/my-review` first.\n');
     const loop = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nSee **[deeper.md](deeper.md)**.\n\nWrite the tests first, red-green.\n');
     const deeper = write(dir, `skills/${BUILD_SKILL}/references/deeper.md`, '# Deeper\n\nTell the builder to keep a to-do list.\n');
-    const builder = write(dir, 'agents/leeway-builder.md', '# Builder\n\nCheck your own work, and leave no stubs.\nRead ~/.claude/skills/house/SKILL.md.\n');
+    const builder = write(dir, 'agents/ledger-builder.md', '# Builder\n\nCheck your own work, and leave no stubs.\nRead ~/.claude/skills/house/SKILL.md.\n');
     const unloaded = write(dir, `skills/${BUILD_SKILL}/references/tdd.md`, '# TDD\n\nRed-green, tests first.\n');
-    const other = write(dir, 'skills/leeway-experiment-process/SKILL.md', '# Experiment\n\nBreak the task down; TDD.\n');
-    const agent = write(dir, 'agents/leeway-plain-search.md', '# Search\n\nKeep a to-do list.\n');
+    const other = write(dir, 'skills/ledger-experiment-process/SKILL.md', '# Experiment\n\nBreak the task down; TDD.\n');
+    const agent = write(dir, 'agents/ledger-plain-search.md', '# Search\n\nKeep a to-do list.\n');
     const v = checkBuildProse([skill, loop, deeper, builder, unloaded, other, agent]);
     assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message.split(' — ')[0]]), [
       [`skills/${BUILD_SKILL}/SKILL.md`, 5, 'names a personal skill'],
       [`skills/${BUILD_SKILL}/references/loop.md`, 5, 'prescribes a red-green loop'],
       [`skills/${BUILD_SKILL}/references/deeper.md`, 3, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
-      ['agents/leeway-builder.md', 3, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
-      ['agents/leeway-builder.md', 4, 'names a personal skill'],
+      ['agents/ledger-builder.md', 3, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
+      ['agents/ledger-builder.md', 4, 'names a personal skill'],
     ], `each line is caught once, at its line, got ${report(v)}`);
-    const clean = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nThe checklist holds it; Invoke `/leeway-review-process epic x`; run `.claude/skills/leeway-engine/scripts/engine.cjs`.\n');
+    const clean = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nThe checklist holds it; Invoke `/ledger-review-process epic x`; run `.claude/skills/ledger-engine/scripts/engine.cjs`.\n');
     assert.strictEqual(checkBuildProse([skill, clean]).filter((x) => x.file === clean).length, 0, 'the workflows\' own skills and checklists are no personal skill and no instruction');
   });
 });
@@ -2889,24 +2889,24 @@ test('check 35 (boot\'s stops as data) — catches a start skill that fetches no
       git: { next: null }, lost: { next: { kind: 'gate' } },
       checks: { marker: 'Migration', next: { kind: 'load', reference: 'migration-checks' } }, finish: { next: { kind: 'load', reference: 'migration-review' } },
     };
-    const FETCH = ['```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render {surface} {args}', '```'];
-    const clean = write(dir, 'skills/leeway/SKILL.md', [
+    const FETCH = ['```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}', '```'];
+    const clean = write(dir, 'skills/ledger/SKILL.md', [
       '## Boot', '', 'Every boot the start runs again is this one, words and all.', '', 'Surface the answer\'s `warnings` first, whatever else it says.', '', '## Boot\'s Stops', '',
       'Boot names the stop it made in `stop`. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**.', '', ...FETCH, '',
       '- **None** — the start ends there.', '- **`gate`** — the screen asks the person.', '- **`load`** — load the reference it names:',
       '  - `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written.',
       '  - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
     ].join('\n'));
-    const reference = write(dir, 'skills/leeway/references/migration-review.md', '#### If `finish` answers\n');
-    const other = write(dir, 'skills/leeway-roadmap/SKILL.md', '#### If `state` is `lost`\n');
+    const reference = write(dir, 'skills/ledger/references/migration-review.md', '#### If `finish` answers\n');
+    const other = write(dir, 'skills/ledger-roadmap/SKILL.md', '#### If `state` is `lost`\n');
     assert.deepStrictEqual(checkBootStops([clean, reference, other], stops), [], `the rule, its bullets and loads, and headings outside the start skill are clean, got ${report(checkBootStops([clean, reference, other], stops))}`);
-    const late = write(dir, 'skills/leeway/SKILL.md', fs.readFileSync(clean, 'utf8').replace('Surface the answer\'s `warnings` first, whatever else it says.\n', '') + '\nSurface the answer\'s `warnings` first.\n');
+    const late = write(dir, 'skills/ledger/SKILL.md', fs.readFileSync(clean, 'utf8').replace('Surface the answer\'s `warnings` first, whatever else it says.\n', '') + '\nSurface the answer\'s `warnings` first.\n');
     assert.deepStrictEqual(checkBootStops([late], stops).map((x) => x.message), ['the start skill surfaces boot\'s `warnings` before it follows any stop'], 'warnings surfaced only after the stops are followed');
-    const gateOnly = write(dir, 'skills/leeway/SKILL.md', ['## Boot', '', 'Every boot the start runs again is this one, words and all.', 'Surface the answer\'s `warnings` first.', '', ...FETCH, '', '- **`gate`** — the screen asks the person.', ''].join('\n'));
+    const gateOnly = write(dir, 'skills/ledger/SKILL.md', ['## Boot', '', 'Every boot the start runs again is this one, words and all.', 'Surface the answer\'s `warnings` first.', '', ...FETCH, '', '- **`gate`** — the screen asks the person.', ''].join('\n'));
     assert.deepStrictEqual(checkBootStops([gateOnly], { lost: stops.lost }), [], 'the kinds of next come from the stops: with no marker, no load and no ending among them, neither the marker\'s line nor their bullets is asked for');
 
-    const branched = write(dir, 'skills/leeway/SKILL.md', [
-      '## Boot', '', '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate', '```', '',
+    const branched = write(dir, 'skills/ledger/SKILL.md', [
+      '## Boot', '', '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render state-lost-gate', '```', '',
       '### At `finish`', '', 'Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
       '```markdown', '#### If `state` is `checks`', '- **None** — the start ends there.', '**`▪ {marker}`**', '```', '', '**`gate`** — the screen asks the person.', '',
     ].join('\n'));
@@ -2928,67 +2928,67 @@ test('check 35 (boot\'s stops as data) — catches a start skill that fetches no
 test('check 37 (descriptions) — 18.S73: catches a start skill whose description opens on anything but its trigger or that has none, and a skill a handoff lands on whose description does not say it is reached only through one; passes every other skill by', () => {
   withTemp((dir) => {
     const skill = (name, description) => write(dir, `skills/${name}/SKILL.md`, ['---', `name: ${name}`, ...(description === null ? [] : [`description: ${description}`]), 'user-invocable: false', '---', '', 'Body.', ''].join('\n'));
-    const HANDED = 'Leeway\'s review phase. Reached only through a Leeway handoff, never invoked directly; work comes into Leeway through the leeway skill.';
-    const targets = ['leeway', 'leeway-review-process', 'leeway-roadmap'];
-    const clean = [skill('leeway', 'Use for any change to what this project\'s code does.'), skill('leeway-review-process', HANDED), skill('leeway-roadmap', HANDED), skill('leeway-log-idea', 'Capture an idea in the inbox.')];
+    const HANDED = 'Ledger\'s review phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through the ledger skill.';
+    const targets = ['ledger', 'ledger-review-process', 'ledger-roadmap'];
+    const clean = [skill('ledger', 'Use for any change to what this project\'s code does.'), skill('ledger-review-process', HANDED), skill('ledger-roadmap', HANDED), skill('ledger-log-idea', 'Capture an idea in the inbox.')];
     assert.deepStrictEqual(checkDescriptions(clean, targets), [], `got ${report(checkDescriptions(clean, targets))}`);
 
-    const broken = [skill('leeway', 'Leeway\'s entry. Use for any change.'), skill('leeway-review-process', 'Leeway\'s review phase.'), skill('leeway-roadmap', null)];
+    const broken = [skill('ledger', 'Ledger\'s entry. Use for any change.'), skill('ledger-review-process', 'Ledger\'s review phase.'), skill('ledger-roadmap', null)];
     assert.deepStrictEqual(checkDescriptions(broken, targets).map((x) => [skillNameOf(x.file), x.line]), [
-      ['leeway', 3],
-      ['leeway-review-process', 3],
-      ['leeway-roadmap', 1],
+      ['ledger', 3],
+      ['ledger-review-process', 3],
+      ['ledger-roadmap', 1],
     ], `got ${report(checkDescriptions(broken, targets))}`);
   });
 });
 
 test('check 38 (no resume section) — 24.S14: catches a heading on resuming after a refresh or a compaction in a skill or a reference, at any level; passes a fenced example, a heading on resuming something else and prose that names resuming', () => {
   withTemp((dir) => {
-    const skill = write(dir, 'skills/leeway-x/SKILL.md', ['# X', '', '## Resuming After Context Refresh', '', 'Re-read.', '', '### After a Compaction', '', '```markdown', '## Resuming after a refresh', '```', '', '## Resuming an Experiment', '', 'A topic resumes where it was.', ''].join('\n'));
-    const reference = write(dir, 'skills/leeway-x/references/work.md', '#### If the session refreshed\n');
+    const skill = write(dir, 'skills/ledger-x/SKILL.md', ['# X', '', '## Resuming After Context Refresh', '', 'Re-read.', '', '### After a Compaction', '', '```markdown', '## Resuming after a refresh', '```', '', '## Resuming an Experiment', '', 'A topic resumes where it was.', ''].join('\n'));
+    const reference = write(dir, 'skills/ledger-x/references/work.md', '#### If the session refreshed\n');
     assert.deepStrictEqual(checkNoResumeSections([skill, reference]).map((x) => [posix(path.relative(dir, x.file)), x.line]), [
-      ['skills/leeway-x/SKILL.md', 3],
-      ['skills/leeway-x/SKILL.md', 7],
-      ['skills/leeway-x/references/work.md', 1],
+      ['skills/ledger-x/SKILL.md', 3],
+      ['skills/ledger-x/SKILL.md', 7],
+      ['skills/ledger-x/references/work.md', 1],
     ], `got ${report(checkNoResumeSections([skill, reference]))}`);
   });
 });
 
 test('check 36 (the start menu\'s load) — catches a skill drawing a menu whose back is the start menu with no load of start-menu.md in any of its files; passes a skill that loads it from a reference, the start skill, and a menu whose back is another', () => {
   withTemp((dir) => {
-    const fetch = (menu) => `\`\`\`bash\nnode .claude/skills/leeway-engine/scripts/engine.cjs render ${menu} {work_unit}\n\`\`\`\n`;
-    const bare = write(dir, 'skills/leeway-continue-epic/SKILL.md', `## The Menu\n\n${fetch('epic-menu')}`);
+    const fetch = (menu) => `\`\`\`bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs render ${menu} {work_unit}\n\`\`\`\n`;
+    const bare = write(dir, 'skills/ledger-continue-epic/SKILL.md', `## The Menu\n\n${fetch('epic-menu')}`);
     const v = checkBackToStartLoads([bare]);
     assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message]), [
-      ['skills/leeway-continue-epic/SKILL.md', 4, 'leeway-continue-epic draws the epic-menu, whose back draws the start menu, and loads no start-menu.md'],
+      ['skills/ledger-continue-epic/SKILL.md', 4, 'ledger-continue-epic draws the epic-menu, whose back draws the start menu, and loads no start-menu.md'],
     ], `got ${report(v)}`);
-    const loaded = write(dir, 'skills/leeway-continue-epic/references/back.md', 'Load **[start-menu.md](../../leeway/references/start-menu.md)** and follow its instructions as written.\n');
-    const own = write(dir, 'skills/leeway/references/manage-work-unit.md', fetch('manage'));
-    const other = write(dir, 'skills/leeway-x/SKILL.md', fetch('manage-unit'));
+    const loaded = write(dir, 'skills/ledger-continue-epic/references/back.md', 'Load **[start-menu.md](../../ledger/references/start-menu.md)** and follow its instructions as written.\n');
+    const own = write(dir, 'skills/ledger/references/manage-work-unit.md', fetch('manage'));
+    const other = write(dir, 'skills/ledger-x/SKILL.md', fetch('manage-unit'));
     assert.deepStrictEqual(checkBackToStartLoads([bare, loaded, own, other]), [], 'a reference\'s load serves its skill, and the start skill owns the reference');
   });
 });
 
 test('check 29 (the framework loads once) — catches a file the framework loads twice and a framework file loaded from anywhere else; permits the framework load itself, another shared reference, fenced content, and a corpus without the framework', () => {
   withTemp((dir) => {
-    const shared = 'skills/leeway-shared/references';
+    const shared = 'skills/ledger-shared/references';
     const framework = write(dir, `${shared}/framework.md`, [
       '# Framework', '', 'Load **[voice.md](voice.md)** and follow its instructions as written.', '',
       'Load **[altitude.md](altitude.md)** and follow its instructions as written.', '',
     ].join('\n'));
-    const opening = write(dir, 'skills/leeway-x/SKILL.md', '## Instructions\n\nLoad **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.\n');
-    const other = write(dir, 'skills/leeway-x/references/a.md', 'Load **[devils-advocate.md](../../leeway-shared/references/devils-advocate.md)** and follow its instructions as written.\n');
-    const fenced = write(dir, 'skills/leeway-y/SKILL.md', '```markdown\nLoad **[voice.md](../leeway-shared/references/voice.md)** and follow its instructions as written.\n```\n');
+    const opening = write(dir, 'skills/ledger-x/SKILL.md', '## Instructions\n\nLoad **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.\n');
+    const other = write(dir, 'skills/ledger-x/references/a.md', 'Load **[devils-advocate.md](../../ledger-shared/references/devils-advocate.md)** and follow its instructions as written.\n');
+    const fenced = write(dir, 'skills/ledger-y/SKILL.md', '```markdown\nLoad **[voice.md](../ledger-shared/references/voice.md)** and follow its instructions as written.\n```\n');
     const ok = checkFrameworkLoadsOnce([framework, opening, other, fenced]);
     assert.strictEqual(ok.length, 0, `the framework's own loads, another reference and fenced content are clean, got ${report(ok)}`);
     assert.strictEqual(checkFrameworkLoadsOnce([opening, other]).length, 0, 'a corpus without the framework has nothing to hold');
 
     fs.appendFileSync(framework, 'Load **[voice.md](voice.md)** and follow its instructions as written.\n');
-    const phase = write(dir, 'skills/leeway-z/SKILL.md', '# Z\n\nThen load **[altitude.md](../leeway-shared/references/altitude.md)** and follow its instructions as written.\n');
+    const phase = write(dir, 'skills/ledger-z/SKILL.md', '# Z\n\nThen load **[altitude.md](../ledger-shared/references/altitude.md)** and follow its instructions as written.\n');
     const v = checkFrameworkLoadsOnce([framework, opening, phase]);
     assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line]), [
       [`${shared}/framework.md`, 6],
-      ['skills/leeway-z/SKILL.md', 3],
+      ['skills/ledger-z/SKILL.md', 3],
     ], `each miss is caught once, at its line, got ${report(v)}`);
     assert.match(v[0].message, /^voice\.md is loaded twice — the framework loads each file it composes once$/);
     assert.match(v[1].message, /^altitude\.md is the framework's — it loads once per conversation, from framework\.md alone$/);
@@ -2997,36 +2997,36 @@ test('check 29 (the framework loads once) — catches a file the framework loads
 
 test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or listed and a script grant whose `*` is not a trailing ` *`, permits a script grant ending in ` *`, a wildcard mid-path on another command, other tools, and a grant outside the frontmatter', () => {
   withTemp((dir) => {
-    const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
-    const starred = write(dir, 'skills/leeway-a-process/SKILL.md', [
-      '---', 'name: leeway-a-process',
-      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .leeway/*/.state), Read`,
+    const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
+    const starred = write(dir, 'skills/ledger-a-process/SKILL.md', [
+      '---', 'name: ledger-a-process',
+      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .ledger/*/.state), Read`,
       '---', '', `Run \`Bash(${ENGINE})\` from the body.`, '',
     ].join('\n'));
-    const agent = write(dir, 'agents/leeway-b.md', '---\nname: leeway-b\ntools: Read, Bash\n---\n\nBody.\n');
+    const agent = write(dir, 'agents/ledger-b.md', '---\nname: ledger-b\ntools: Read, Bash\n---\n\nBody.\n');
     const ok = checkBashGrantsCarryWildcard([starred, agent]);
     assert.strictEqual(ok.length, 0, `wildcarded grants, other tools and body text are clean, got ${report(ok)}`);
 
-    const inline = write(dir, 'skills/leeway-c-process/SKILL.md', [
-      '---', 'name: leeway-c-process', `allowed-tools: Bash(${ENGINE}), Bash(${ENGINE} *), Bash(git log)`, '---', '',
+    const inline = write(dir, 'skills/ledger-c-process/SKILL.md', [
+      '---', 'name: ledger-c-process', `allowed-tools: Bash(${ENGINE}), Bash(${ENGINE} *), Bash(git log)`, '---', '',
     ].join('\n'));
-    const listed = write(dir, 'skills/leeway-d-process/SKILL.md', [
-      '---', 'name: leeway-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
+    const listed = write(dir, 'skills/ledger-d-process/SKILL.md', [
+      '---', 'name: ledger-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
     ].join('\n'));
-    const misplaced = write(dir, 'skills/leeway-e-process/SKILL.md', [
-      '---', 'name: leeway-e-process',
+    const misplaced = write(dir, 'skills/ledger-e-process/SKILL.md', [
+      '---', 'name: ledger-e-process',
       `allowed-tools: Bash(node .claude/skills/*/scripts/engine.cjs), Bash(${ENGINE}*), Bash(node --no-warnings tools/run.mjs*)`, '---', '',
     ].join('\n'));
     const v = checkBashGrantsCarryWildcard([inline, listed, misplaced]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
-      ['leeway-c-process', 3],
-      ['leeway-c-process', 3],
-      ['leeway-d-process', 4],
-      ['leeway-e-process', 3],
-      ['leeway-e-process', 3],
-      ['leeway-e-process', 3],
+      ['ledger-c-process', 3],
+      ['ledger-c-process', 3],
+      ['ledger-d-process', 4],
+      ['ledger-e-process', 3],
+      ['ledger-e-process', 3],
+      ['ledger-e-process', 3],
     ], `each bare grant, and each script grant whose \`*\` is not a trailing \` *\` or \`:*\`, is caught at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
+    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
     assert.match(v[1].message, /^Bash\(git log\) has no `\*`/);
     assert.match(v[3].message, /^Bash\(node \.claude\/skills\/\*\/scripts\/engine\.cjs\) is a script grant/);
     assert.match(v[4].message, /engine\.cjs\*\) is a script grant/);

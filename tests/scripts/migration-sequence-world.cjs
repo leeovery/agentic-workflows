@@ -45,7 +45,7 @@ const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 const PROJECT = 'fumi';
 const LISTING = 'old-state.json';
 const STATES = 'boots.json';
-const CONFIG = 'leeway-config';
+const CONFIG = 'ledger-config';
 const RECORDS = '079-records';
 const CUT_AND_MERGES = '080-cut-and-merges';
 const DONE = Object.freeze({ status: 'completed' });
@@ -228,9 +228,9 @@ function workDirective(dir, env, directive) {
 function reviewAndCommit(dir, env) {
   const opts = { env };
   const { state, reshape } = harness.ok(dir, ['migrate', 'review'], opts);
-  assert.ok(reshape, 'the review answers the migration into Leeway');
+  assert.ok(reshape, 'the review answers the migration into Ledger');
   const summary = path.join(state, '.cache', 'migrations-applied.json');
-  fs.writeFileSync(summary, JSON.stringify({ summary: 'Moved the project into Leeway.' }));
+  fs.writeFileSync(summary, JSON.stringify({ summary: 'Moved the project into Ledger.' }));
   harness.output(dir, ['render', 'migrations-applied', '--file', summary], opts);
   harness.output(dir, ['render', 'migration-gate'], opts);
   harness.ok(dir, ['commit', '--migrations', '-m', 'chore: apply workflow migrations'], opts);
@@ -260,7 +260,7 @@ function buildMigrated(folder) {
   const dir = oldProject(folder);
   fs.writeFileSync(path.join(folder, LISTING), JSON.stringify(listOld(dir)));
   fs.mkdirSync(path.join(folder, CONFIG));
-  fs.writeFileSync(path.join(folder, STATES), JSON.stringify(migrateWhole(dir, { LEEWAY_CONFIG_DIR: path.join(folder, CONFIG) })));
+  fs.writeFileSync(path.join(folder, STATES), JSON.stringify(migrateWhole(dir, { LEDGER_CONFIG_DIR: path.join(folder, CONFIG) })));
 }
 
 /**

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The state's catch-up where one side moved
-// (leeway-engine/scripts/domain/state-merge.cjs, `catchUpState`):
+// (ledger-engine/scripts/domain/state-merge.cjs, `catchUpState`):
 // fast-forward where only the remote moved, push what a failed push left
 // behind where only this clone did, nothing where neither did or there is no
 // remote to ask, and a warning where the remote is out of reach; and another
@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, bareRepo, tip, remoteTip, layout, commitOnState, traced, codeProject } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const {
   STATE_BRANCH, withStateLock, commitState, askStateRemote,
@@ -111,7 +111,7 @@ describe('catching up when one side moved (4.S36)', () => {
 
     const { result: out, commands } = traced(() => catchUpState(here.root, { listing }));
 
-    assert.deepStrictEqual([out.action, out.commit, out.warnings], ['unreachable', before, ['leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: no route']]);
+    assert.deepStrictEqual([out.action, out.commit, out.warnings], ['unreachable', before, ['ledger-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: no route']]);
     assert.ok(!commands.some((c) => /^(ls-remote|fetch|push) /.test(c)), `the network was reached: ${commands}`);
   });
 
@@ -149,7 +149,7 @@ describe('catching up when one side moved (4.S36)', () => {
 
     assert.deepStrictEqual([out.action, out.commit, out.pushed], ['unreachable', before, false]);
     assert.strictEqual(out.warnings.length, 1);
-    assert.match(out.warnings[0], /^leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: /);
+    assert.match(out.warnings[0], /^ledger-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: /);
     assert.strictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).length, 1, 'the remote was asked again after it failed');
     assert.strictEqual(readFile(here.root, layout.ledger), ledger('base'));
     assert.strictEqual(status(here.root), '');
@@ -176,7 +176,7 @@ describe('catching up when one side moved (4.S36)', () => {
     commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') });
     git(here.root, ['checkout', '-q', '-b', 'elsewhere']);
 
-    assert.throws(() => catchUpState(here.root), /is not checked out on leeway-state/);
+    assert.throws(() => catchUpState(here.root), /is not checked out on ledger-state/);
     assert.strictEqual(readFile(here.root, layout.ledger), ledger('base'));
   });
 });
@@ -218,7 +218,7 @@ describe('another session writing while the catch-up runs', () => {
 
     assert.strictEqual(out.action, 'fast-forwarded');
     assert.strictEqual(readFile(here.root, 'unit/assets/gone.md'), 'gone\nwritten meanwhile\n');
-    assert.deepStrictEqual(out.warnings, ['.leeway/unit/assets/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
+    assert.deepStrictEqual(out.warnings, ['.ledger/unit/assets/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
   });
 
   it('leaves a file that moves again as it stands, and names it', () => {
@@ -233,8 +233,8 @@ describe('another session writing while the catch-up runs', () => {
     assert.strictEqual(readFile(here.root, LOG), '# a\n\n## first\n\n## here\n## another session\n## and again\n');
     assert.strictEqual(readFile(here.root, beside), mergedCopy);
     assert.ok(out.warnings.includes(
-      `.leeway/${LOG} changed while the state caught up and was left as it stands, with the merged copy beside it as .leeway/${beside}: `
-      + `committing .leeway/${LOG} as it stands leaves the remote's change only in .leeway/${beside}`,
+      `.ledger/${LOG} changed while the state caught up and was left as it stands, with the merged copy beside it as .ledger/${beside}: `
+      + `committing .ledger/${LOG} as it stands leaves the remote's change only in .ledger/${beside}`,
     ), out.warnings.join('\n'));
     assert.strictEqual(status(here.root), ` M ${LOG}\n?? ${beside}\n`);
   });

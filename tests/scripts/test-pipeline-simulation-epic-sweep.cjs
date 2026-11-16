@@ -44,7 +44,7 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
     const sweep = JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', WU])).items.find((/** @type {{key: string}} */ item) => item.key === 'sweep-run');
     assert.strictEqual(sweep.state, 'open', 'two live topics owe the sweep, so it goes first');
     sim.run(['brief', 'sweep', WU]);
-    sim.write(`.leeway/.cache/${WU}/specification/sweep.json`, {
+    sim.write(`.ledger/.cache/${WU}/specification/sweep.json`, {
       candidates: [
         { name: 'gamma', reason: 'Alpha and beta each lean on an export neither owns.', brief: '# Gamma\n\nThe export both lean on.\n' },
         { name: 'delta', reason: 'Nothing decides who cleans up.', brief: '# Delta\n\nThe clean-up.\n' },
@@ -66,15 +66,15 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
     assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting.map((/** @type {{text: string}} */ { text }) => text), ['Approve the map: 1 candidate the sweep found, to take or strike'],
       'a candidate struck leaves the count of those still standing');
     const yes = sim.run(answerGate(sim, 'approve the map', '--pick', 'y').next.argv);
-    assert.deepStrictEqual(yes.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [WU] });
-    handoff(sim, `/leeway-continue-epic ${WU}`);
+    assert.deepStrictEqual(yes.next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [WU] });
+    handoff(sim, `/ledger-continue-epic ${WU}`);
     epicMenuAt(sim, WU);
   });
 
   it('S1, N4: the sweep\'s candidates alone, no topic reopened, hold the specification on the epic\'s DEFINITION by the map waiting, as the banner and All work have it (8.10.9)', () => {
     specEntry(sim, WU, ['alpha', 'beta']);
     sim.run(['brief', 'sweep', WU]);
-    sim.write(`.leeway/.cache/${WU}/specification/sweep.json`, {
+    sim.write(`.ledger/.cache/${WU}/specification/sweep.json`, {
       candidates: [{ name: 'gamma', reason: 'Alpha and beta each lean on an export neither owns.', brief: '# Gamma\n\nThe export both lean on.\n' }],
       messages: [],
       builder_calls: [],
@@ -92,12 +92,12 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
   it('epic: the empty sweep taken, the spec carries on and lands (8.10.3, 11.S3)', () => {
     specEntry(sim, WU, ['alpha', 'beta']);
     sim.run(['brief', 'sweep', WU]);
-    sim.write(`.leeway/.cache/${WU}/specification/sweep.json`, { candidates: [], messages: [], builder_calls: [] });
+    sim.write(`.ledger/.cache/${WU}/specification/sweep.json`, { candidates: [], messages: [], builder_calls: [] });
     assert.deepStrictEqual(sim.run(['sweep', 'take', WU]).next, { kind: 'continue' });
     sim.run(['brief', 'spec-writer', WU]);
     const [alpha] = JSON.parse(sim.read(['ledger', 'record', WU, 'alpha'])).decisions;
     const [beta] = JSON.parse(sim.read(['ledger', 'record', WU, 'beta'])).decisions;
-    sim.write(`.leeway/${WU}/spec.md`, [
+    sim.write(`.ledger/${WU}/spec.md`, [
       '# Tessera', '', '## 1. Settling', '',
       '### 1.1 What was decided', '', `1.1.1 It settles as alpha decided. [${alpha.id}]`, '', `1.1.2 It holds as beta decided. [${beta.id}]`, '',
       '## 1-S. Scenarios for §1', '', '1.S1 Given the epic, when it settles, then it holds as decided. (1.1.1, 1.1.2)', '',

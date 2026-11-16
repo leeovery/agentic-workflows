@@ -18,9 +18,9 @@ const fs = require('fs');
 const path = require('path');
 const { call, ok, output, refuses, commitAll, fixtureFrom, cleanupFixture, startItem } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { WORK_TYPE_PIPELINES, VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
-const { TOPIC_PHASES } = require('../../skills/leeway-engine/scripts/domain/ledger-units.cjs');
-const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { WORK_TYPE_PIPELINES, VALID_PHASE_STATUSES } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
+const { TOPIC_PHASES } = require('../../skills/ledger-engine/scripts/domain/ledger-units.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/ledger-engine/scripts/domain/handoff.cjs');
 
 const ROOT = path.join(__dirname, '../..');
 const EPIC = 'orbit';
@@ -47,10 +47,10 @@ after(() => { cleanupFixture(dir); });
 
 describe('research is no skill and no phase', () => {
   it('ships no research skill, and no handoff lands on one', () => {
-    assert.strictEqual(fs.existsSync(path.join(ROOT, 'skills/leeway-research-process')), false);
+    assert.strictEqual(fs.existsSync(path.join(ROOT, 'skills/ledger-research-process')), false);
     assert.ok(!HANDOFF_TARGETS.some((skill) => skill.includes('research')));
-    assert.match(refuses(dir, ['handoff', '/leeway-research-process', 'epic', EPIC, 'alpha']).error,
-      /^"leeway-research-process" is not a handoff target/);
+    assert.match(refuses(dir, ['handoff', '/ledger-research-process', 'epic', EPIC, 'alpha']).error,
+      /^"ledger-research-process" is not a handoff target/);
   });
 
   it('is in no pipeline and no topic\'s phases, and no item of it can be written or started', () => {

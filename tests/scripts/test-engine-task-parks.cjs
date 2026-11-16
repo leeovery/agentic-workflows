@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A parked task and the tracker agreeing (13.4.6;
-// leeway-engine/scripts/domain/task-parks.cjs, the questions
+// ledger-engine/scripts/domain/task-parks.cjs, the questions
 // domain/questions.cjs): a raise parks only a task the tracker holds, not
 // yet ended; a task a question waiting parks is never ready, nor done; and
 // `task close` takes the task off the questions parking it — an `unparked`
@@ -45,7 +45,7 @@ const { UNIT, MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
 const { labelling } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { recordReviewer, roundReportPath, settlementPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { freedAt } = require(path.join(SCRIPTS, 'domain/task-parks.cjs'));
@@ -244,7 +244,7 @@ describe('a blind question whose call went ahead holds its task open at its done
   async function wentAhead(target, configDir, more = []) {
     const blind = mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
     try {
-      const env = { CLAUDE_CODE_SESSION_ID: SESSION, LEEWAY_CONFIG_DIR: configDir, ...labelling(CALL.question, 'behaviour', { hardToUndo: false }) };
+      const env = { CLAUDE_CODE_SESSION_ID: SESSION, LEDGER_CONFIG_DIR: configDir, ...labelling(CALL.question, 'behaviour', { hardToUndo: false }) };
       const { res } = await okSectionsAsync(target, ['raise', BUILD, '--answers', made.where, ...more, '--parks', '2.3'], { env, stdin: JSON.stringify(CALL) });
       assert.deepStrictEqual([res.decision, res.task], ['blind', null], 'the call goes ahead, its question parking no task');
     } finally {

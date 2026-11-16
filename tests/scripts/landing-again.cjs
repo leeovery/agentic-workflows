@@ -42,11 +42,11 @@ const assert = require('node:assert');
 
 const harness = require('./engine-harness.cjs');
 const { UNIT, openArgs, own, cutTask, commitFiles, useLandingWorld, phaseReviewed, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped } = require('./landing-world.cjs');
-const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
-const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
-const { changeOf } = require('../../skills/leeway-engine/scripts/domain/review-change.cjs');
-const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const names = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
+const { parseShownTask } = require('../../skills/ledger-engine/scripts/domain/task-id.cjs');
+const { changeOf } = require('../../skills/ledger-engine/scripts/domain/review-change.cjs');
+const { projectRepos } = require('../../skills/ledger-engine/scripts/kernel/repos.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const { git, tip, readManifest } = harness;
 
@@ -274,7 +274,7 @@ function againConformance(name, way) {
 }
 
 /** Every ref of a repository but the state branch's and the remotes' copies, as one text. @param {string} repo */
-const refsIn = (repo) => git(repo, ['for-each-ref', '--format=%(refname) %(objectname)']).split('\n').filter((line) => !/^refs\/(heads\/leeway-state|remotes\/\S+) /.test(line)).join('\n');
+const refsIn = (repo) => git(repo, ['for-each-ref', '--format=%(refname) %(objectname)']).split('\n').filter((line) => !/^refs\/(heads\/ledger-state|remotes\/\S+) /.test(line)).join('\n');
 
 /** The refs here and on the repository the driver lands in. @param {Conformance} conf @param {string} dir */
 const refsOf = (conf, dir) => `${refsIn(dir)}\n${refsIn(conf.side.on(dir))}`;

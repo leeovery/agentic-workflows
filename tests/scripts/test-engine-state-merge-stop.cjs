@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The merge's kept stop (leeway-engine/scripts/domain/state-merge.cjs):
+// The merge's kept stop (ledger-engine/scripts/domain/state-merge.cjs):
 // kept in the state worktree's git dir for the person's picks, answerable
 // from a new session, asked afresh as either side moves, a pick for a choice
 // no longer asked refused, and finished by the next catch-up once every field
@@ -21,7 +21,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, tip, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);
@@ -48,9 +48,9 @@ describe('a kept stop', () => {
     assert.ok(fs.existsSync(file));
     assert.ok(file.startsWith(path.join(here.main, '.git') + path.sep), file);
     assert.strictEqual(status(here.root), '');
-    assert.ok(!git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH]).includes('leeway-merge'));
+    assert.ok(!git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH]).includes('ledger-merge'));
     const gitDir = path.dirname(file);
-    assert.deepStrictEqual(fs.readdirSync(gitDir).filter((name) => name.startsWith('leeway-')), ['leeway-merge.json']);
+    assert.deepStrictEqual(fs.readdirSync(gitDir).filter((name) => name.startsWith('ledger-')), ['ledger-merge.json']);
   });
 
   it('is still answerable from a new session', () => {

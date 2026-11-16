@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Finish's inbox item (leeway-engine/scripts/domain/finish-checks.cjs,
+// Finish's inbox item (ledger-engine/scripts/domain/finish-checks.cjs,
 // domain/inbox.cjs's `liveResolved` and `closedBy`; 6.4.10, 18.6.4, 18.6.7):
 // no item a Resolved: line of the build's log claims left live (18.S24),
 // each claim read only on a line of its own, and the screen listing the
@@ -55,7 +55,7 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
     );
     const [resolved, mentioned, elsewhere] = [rest.slice(0, 2), rest[2], rest.slice(3)];
     reviewPassed();
-    const [receipts, prose] = ['Resolved: .leeway/.inbox/ideas/2026-06-03--receipts-by-mail.md', `Paying by phone, ${mentioned}, was captured for later.`];
+    const [receipts, prose] = ['Resolved: .ledger/.inbox/ideas/2026-06-03--receipts-by-mail.md', `Paying by phone, ${mentioned}, was captured for later.`];
     logged(`Resolved: ${resolved[0]}`, receipts, `Resolved: ${declined}`, '', prose);
     ok(dir, ['inbox', 'archive', declined], { env: env() });
     const open = inboxItem();
@@ -98,9 +98,9 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
     );
     logged(
       `Resolved: ${paths[0]}`,
-      'Resolved: .leeway/.inbox/ideas/2026-06-02--b.md',
+      'Resolved: .ledger/.inbox/ideas/2026-06-02--b.md',
       'Resolved: `.inbox/bugs/2026-06-03--c.md`',
-      'Resolved: [D](.leeway/.inbox/quickfixes/2026-06-04--d.md)',
+      'Resolved: [D](.ledger/.inbox/quickfixes/2026-06-04--d.md)',
       'Resolved: .inbox/ideas/2026-06-05--e.md.',
       `Resolved: ${paths[0]}`,
       `Phase 1 left ${paths[5]} for the next.`,

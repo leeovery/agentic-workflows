@@ -37,9 +37,9 @@ const harness = require('./engine-harness.cjs');
 
 const { git, tip, withEnv, fixtureFrom, cleanupFixture, readManifest } = harness;
 const { UNIT, BASE, TASKS, openArgs, own, commitFiles, buildLanding } = require('./landing-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
-const { changeOf } = require('../../skills/leeway-engine/scripts/domain/review-change.cjs');
-const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
+const { changeOf } = require('../../skills/ledger-engine/scripts/domain/review-change.cjs');
+const { projectRepos } = require('../../skills/ledger-engine/scripts/kernel/repos.cjs');
 
 const { card, rounding } = TASKS;
 

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The spec's entry (leeway-engine/scripts/domain/spec-entry.cjs, its
+// The spec's entry (ledger-engine/scripts/domain/spec-entry.cjs, its
 // standing spec-standing.cjs): `engine enter specification <unit>`, at the
 // work unit. What it refuses, each refusal naming its way on and writing
 // nothing — an epic while any topic is neither decided, cancelled nor
@@ -46,9 +46,9 @@ const os = require('os');
 const path = require('path');
 const { ok, okSections, refusedPristine, statePath, layout, writeState, readState, readManifest, stateGit, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { specStanding, specEntryRefusal } = require('../../skills/leeway-engine/scripts/domain/spec-entry.cjs');
+const { specStanding, specEntryRefusal } = require('../../skills/ledger-engine/scripts/domain/spec-entry.cjs');
 
-const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'spec-entry-world' });
 const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
@@ -124,7 +124,7 @@ let config; // the system config: the conversations' folders
 
 /** The engine as the conversation runs it. */
 function env() {
-  return { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined };
+  return { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined };
 }
 
 /** An entry that must succeed: its response and its sections. @param {string} unit */
@@ -246,7 +246,7 @@ describe('what the spec reads at its entry', () => {
   it('once the spec is written, the spec and, once cut, the cut; and the agents the spec was left with, landed or lost with a process gone (9.7.8)', () => {
     writeState(dir, layout.unit('ready', 'spec.md'), '# Ready\n');
     createManifest(dir, 'ready', { ...readManifest(dir, 'ready'), cut: { phases: [] } });
-    const gone = { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier', CLAUDE_PID: GONE };
+    const gone = { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier', CLAUDE_PID: GONE };
     const [landed, lost] = ['landed', 'lost'].map((label) => ok(dir, ['agent', 'dispatch', 'ready', 'specification', 'ready', '--kind', 'review', '--label', label], { env: gone }));
     fs.writeFileSync(landed.file, '# Findings\n');
 

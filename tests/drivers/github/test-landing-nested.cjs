@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver across nested repositories (leeway-engine/
+// GitHub's landing driver across nested repositories (ledger-engine/
 // scripts/drivers/landing/github/), past what every driver gives (the
 // nested conformance suite's): a repository a task touches whose remote
 // GitHub's driver does not serve — none chosen, or one not on GitHub —

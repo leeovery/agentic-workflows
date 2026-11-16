@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A quick-fix's move to another type (leeway-engine/scripts/domain/
+// A quick-fix's move to another type (ledger-engine/scripts/domain/
 // workunit-move.cjs; 19.5.9, 19.5.16, P7): `workunit move` staging Claude's
 // payload where start this work stages a start and drawing its screen, the
 // name a quick-fix's branch is kept under in one line, nothing moved; the
@@ -50,7 +50,7 @@ const {
 } = require('./workunit-move-world.cjs');
 const { recordFile, parkedOn } = require('./quick-fix-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { callsOf } = require(path.join(SCRIPTS, 'domain/build-screens.cjs'));
 const { quickFixLanding } = require(path.join(SCRIPTS, 'domain/landing.cjs'));
@@ -118,7 +118,7 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
       pull_request_closed: false,
       checkout: 'main',
       committed: head(dir).slice(0, res.committed.length),
-      next: { kind: 'handoff', skill: 'leeway-discussion-process', args: ['feature', QF] },
+      next: { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', QF] },
     });
     const manifest = readManifest(dir, QF);
     assert.deepStrictEqual([manifest.work_type, manifest.description, manifest.fixes, manifest.phases, manifest.seeds.length],
@@ -163,7 +163,7 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     const again = okSections(dir, ['enter', 'investigation', QF], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections;
     const buildCalls = RECORDS['build-calls'].draw({ cwd: dir, role: 'task-writer', ref: null, task: null, place: null, unit: QF, given: {}, session: 'sess-1' }, []);
 
-    assert.deepStrictEqual([res.work_type, res.next], ['bugfix', { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', QF] }]);
+    assert.deepStrictEqual([res.work_type, res.next], ['bugfix', { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', QF] }]);
     assert.deepStrictEqual([ledgerLines().at(-1).event, ledgerLines().at(-1).phase], ['rehomed', 'investigation']);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[QF], { work_type: 'bugfix' });
     assert.deepStrictEqual(ok(dir, ['ledger', 'record', QF, QF]).questions.map((q) => q.phase), ['investigation', 'investigation']);

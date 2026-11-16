@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine review reads <unit> <area|tests> …` (leeway-engine/scripts/domain/
+// `engine review reads <unit> <area|tests> …` (ledger-engine/scripts/domain/
 // review-verbs.cjs, its records review-phase.cjs): a later round's reads
 // named once the round before's fix tasks are done — in step, once their
 // phase has merged too (14.6.2) — every read whose findings made fix tasks

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A task at its step gate as the build's standing gives it (leeway-engine/
+// A task at its step gate as the build's standing gives it (ledger-engine/
 // scripts/domain/build-entry.cjs): in step, in progress, parked by no
 // question, its pair passed and its account taken (domain/task-account.cjs)
 // with nothing added to it since — an addition after its account, the
@@ -25,8 +25,8 @@ const path = require('path');
 const { ok, statePath, writeState, layout, cleanupFixture, withEnv } = require('./engine-harness.cjs');
 const { UNIT, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
-const { buildStanding } = require('../../skills/leeway-engine/scripts/domain/build-entry.cjs');
-const { recordReviewer } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
+const { buildStanding } = require('../../skills/ledger-engine/scripts/domain/build-entry.cjs');
+const { recordReviewer } = require('../../skills/ledger-engine/scripts/domain/round-report.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -44,7 +44,7 @@ afterEach(() => {
 const { env, position, parkOn, takenOver } = buildScreenHelpers(() => dir, () => config);
 
 /** Task 1.1 as the build's standing gives it. */
-const standing11 = () => withEnv({ LEEWAY_CONFIG_DIR: config }, () => buildStanding(dir, UNIT, []).phases[0].tasks[0]);
+const standing11 = () => withEnv({ LEDGER_CONFIG_DIR: config }, () => buildStanding(dir, UNIT, []).phases[0].tasks[0]);
 
 /** An addition onto task 1.1, as `by` makes it: the person's Comment at its gate is put onto the task before its builder goes again (13.11.3). @param {string} by */
 function added(by) {

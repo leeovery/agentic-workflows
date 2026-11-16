@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver across nested repositories (leeway-engine/
+// The local landing driver across nested repositories (ledger-engine/
 // scripts/drivers/landing/local/driver.cjs), past what every driver gives
 // (the nested conformance suite's): the project's default branch moved where
 // its checkout has it out, each clone's checkout moved by its own landing

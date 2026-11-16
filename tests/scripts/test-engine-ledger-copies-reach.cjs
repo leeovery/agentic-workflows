@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the knowledge base reaches of the ledger's copies
-// (leeway-engine/scripts/domain/ledger-copies.cjs; 5.8.13, 22.6.1, 22.6.12):
+// (ledger-engine/scripts/domain/ledger-copies.cjs; 5.8.13, 22.6.1, 22.6.12):
 // the product record's file rewritten whenever a product-wide entry changes,
 // and never indexed; a topic's record indexed and never its log; answers from
 // the records alone — never a seed, an asset, an inbox item or the product

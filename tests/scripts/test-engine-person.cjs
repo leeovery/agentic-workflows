@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The record of the person (leeway-engine/scripts/domain/person.cjs, its
+// The record of the person (ledger-engine/scripts/domain/person.cjs, its
 // verbs domain/person-verbs.cjs, its screens domain/projections/person.cjs
 // and domain/projections/care.cjs): `person.md` in the system config
 // directory, laid out as P5 says under its version line, the person's own
@@ -39,7 +39,7 @@ const { filesUnder } = require('./discovery-test-utils.cjs');
 const { idOf, PROJECT_ID, SESSION, DAY, MODEL, UNDRAWN, lines, waitingPath, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { recordToRead, careEntries, dropCue, personPath } = require(path.join(SCRIPTS, 'domain/person.cjs'));
 const { droppedLine } = require(path.join(SCRIPTS, 'domain/projections/care.cjs'));
 const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
@@ -49,7 +49,7 @@ const { folder, logPath, project } = useTrustWorld('engine-person-');
 const ENV = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION });
 const OTHER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'deadbeef-1234-4abc-8def-0123456789ab' });
 const AIRCON = idOf('Aircon');
-const VERSION_LINE = '<!-- leeway: the record of you, version 1 -->';
+const VERSION_LINE = '<!-- ledger: the record of you, version 1 -->';
 const UTC = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 
 // When a care entry written for a test was added: before any history's
@@ -336,10 +336,10 @@ describe('the record\'s file (P5, 16.18.8, 4.S27)', () => {
     assert.strictEqual(recordText(), `${VERSION_LINE}\n\n# The record of you\n\n${SHOW_FIRST_SECTION}\n\n${broken[broken.length - 1][0].slice(head.length - '## Care entries\n\n'.length)}`);
   });
 
-  it('a record a newer release wrote is never written: its care entries read where their lines parse as this version\'s, the rest skipped, and a change refuses, telling the person to update Leeway', () => {
+  it('a record a newer release wrote is never written: its care entries read where their lines parse as this version\'s, the rest skipped, and a change refuses, telling the person to update Ledger', () => {
     const fumi = project('fumi');
     const newer = [
-      '<!-- leeway: the record of you, version 2 -->',
+      '<!-- ledger: the record of you, version 2 -->',
       '',
       '# The record of you',
       '',
@@ -359,7 +359,7 @@ describe('the record\'s file (P5, 16.18.8, 4.S27)', () => {
       '',
     ].join('\n');
     recordHolding(newer);
-    const refusal = `the record of the person, ${recordFile()}, was written by a newer Leeway, in its layout version 2 — this one writes version 1, so it changes nothing there: update Leeway in this project to change the record; its care entries still count meanwhile`;
+    const refusal = `the record of the person, ${recordFile()}, was written by a newer Ledger, in its layout version 2 — this one writes version 1, so it changes nothing there: update Ledger in this project to change the record; its care entries still count meanwhile`;
 
     assert.deepStrictEqual(careEntries(), [{ project: PROJECT_ID, name: 'Fumi', kind: 'look', added: BEFORE }]);
     assert.deepStrictEqual(screen(render(fumi, ['care']), ['DISPLAY: care']).slice(-2), ['YOURS IN FUMI (1)', '  └─ Fumi: look']);

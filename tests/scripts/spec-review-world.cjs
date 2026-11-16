@@ -22,10 +22,10 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
-const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
+const TEMPLATES = path.join(__dirname, '../../skills/ledger-engine/content/briefs');
 
 const UNIT = 'payments';
 const SPEC = layout.unit(UNIT, 'spec.md');

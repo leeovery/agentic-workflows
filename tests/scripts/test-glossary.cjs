@@ -22,9 +22,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { PHASE_STAGES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const { PHASE_STAGES } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
 
-const REFERENCES = path.join(__dirname, '..', '..', 'skills', 'leeway-shared', 'references');
+const REFERENCES = path.join(__dirname, '..', '..', 'skills', 'ledger-shared', 'references');
 const GLOSSARY = path.join(REFERENCES, 'glossary.md');
 const RULE = path.join(REFERENCES, 'answering-how-it-works.md');
 
@@ -50,8 +50,8 @@ const holds = (term, retired) => ` ${wordsOf(term).join(' ')} `.includes(` ${wor
 
 /** What a definition says in an engine verb, a path or a skill name. @param {string} definition @returns {string[]} */
 const spokenIn = (definition) => [
-  ...[...definition.matchAll(/`([^`]+)`/g)].map((m) => m[1]).filter((code) => !/^(?:[a-z#]\/[a-z]+|\/leeway)$/.test(code)),
-  ...(definition.match(/\bleeway-[a-z]|\bworkflow-[a-z]|\bengine [a-z]|\.leeway\/|\.claude\/|~\/|\brefs\/|\bengine\.cjs\b|[\w-]+\.(?:md|json|jsonl|cjs)\b/g) ?? []),
+  ...[...definition.matchAll(/`([^`]+)`/g)].map((m) => m[1]).filter((code) => !/^(?:[a-z#]\/[a-z]+|\/ledger)$/.test(code)),
+  ...(definition.match(/\bledger-[a-z]|\bworkflow-[a-z]|\bengine [a-z]|\.ledger\/|\.claude\/|~\/|\brefs\/|\bengine\.cjs\b|[\w-]+\.(?:md|json|jsonl|cjs)\b/g) ?? []),
 ];
 
 const text = fs.readFileSync(GLOSSARY, 'utf8');
@@ -130,16 +130,16 @@ describe('the glossary (23.3)', () => {
 
   it('the legacy files are named by the row both menus draw for them', () => {
     const row = /\*([^*]+)\*/.exec(entry('legacy files').definition)?.[1];
-    const projections = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts', 'domain', 'projections');
+    const projections = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts', 'domain', 'projections');
     for (const menu of ['start-menu.cjs', 'epic-menu.cjs']) assert.ok(fs.readFileSync(path.join(projections, menu), 'utf8').includes(`head: '${row}'`), `${menu} draws the row as ${row}`);
   });
 
   it('23.S16: finds an engine verb, a path or a skill name, quoted or not, and passes the keys and the command', () => {
-    assert.deepStrictEqual(spokenIn('written by `ledger decide`, by engine ledger decide, through the workflow-start skill or leeway-discussion-process'),
-      ['ledger decide', 'engine l', 'workflow-s', 'leeway-d']);
-    assert.deepStrictEqual(spokenIn('kept in .leeway/ and ~/.config, under .claude/skills and refs/leeway, by engine.cjs in spec.md'),
-      ['.leeway/', '~/', '.claude/', 'refs/', 'engine.cjs', 'spec.md']);
-    assert.deepStrictEqual(spokenIn('the `/leeway` command, `n/next`, `h/help`, `#/pick` and the menu waits'), []);
+    assert.deepStrictEqual(spokenIn('written by `ledger decide`, by engine ledger decide, through the workflow-start skill or ledger-discussion-process'),
+      ['ledger decide', 'engine l', 'workflow-s', 'ledger-d']);
+    assert.deepStrictEqual(spokenIn('kept in .ledger/ and ~/.config, under .claude/skills and refs/ledger, by engine.cjs in spec.md'),
+      ['.ledger/', '~/', '.claude/', 'refs/', 'engine.cjs', 'spec.md']);
+    assert.deepStrictEqual(spokenIn('the `/ledger` command, `n/next`, `h/help`, `#/pick` and the menu waits'), []);
   });
 
   it('23.S16: no entry speaks in an engine verb, a path or a skill name', () => {

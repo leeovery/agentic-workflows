@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The way on from a task's round (leeway-engine/scripts/domain/
+// The way on from a task's round (ledger-engine/scripts/domain/
 // round-report.cjs, brief-records.cjs, task-account.cjs; 12.1.4, 12.14,
 // 24.2.4): a round not reported whole names each reviewer's way on, the
 // builder's brief waiting on it; a failed round's fix brief refused with no
@@ -44,7 +44,7 @@ const {
   reviewerRefused,
 } = require('./brief-build-world.cjs');
 
-const { appendEntry } = require('../../skills/leeway-engine/scripts/domain/ledger.cjs');
+const { appendEntry } = require('../../skills/ledger-engine/scripts/domain/ledger.cjs');
 
 /** @type {string} */
 let dir;

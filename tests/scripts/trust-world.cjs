@@ -32,7 +32,7 @@ const { STATE_DIR_NAME, FROZEN_MS, layout, statePath } = require('./engine-harne
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { labelled } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { pinStateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { conversationDir, markConversation } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -40,7 +40,7 @@ const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { MODEL_LINES } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/event-fields.cjs').Kind} Kind */
 
 /** An id of the ledger's shape, spelled from `word`. @param {string} word */
 const idOf = (word) => word.padEnd(21, '0');
@@ -92,11 +92,11 @@ function useTrustWorld(prefix) {
   /** @type {string|undefined} */
   let pinned;
   beforeEach(() => {
-    pinned = process.env.LEEWAY_CONFIG_DIR;
-    process.env.LEEWAY_CONFIG_DIR = path.join(folder(), 'config');
+    pinned = process.env.LEDGER_CONFIG_DIR;
+    process.env.LEDGER_CONFIG_DIR = path.join(folder(), 'config');
   });
   afterEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = pinned;
+    process.env.LEDGER_CONFIG_DIR = pinned;
   });
 
   /** This test's trust log. */

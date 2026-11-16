@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The review phase's screens (leeway-engine/scripts/domain/review-round.cjs,
+// The review phase's screens (ledger-engine/scripts/domain/review-round.cjs,
 // projections/review-phase.cjs): `engine render review-report <unit>
 // [--round N]` — a round's report, product first: what the person can now
 // do, what running it proved and what it did not, in the standing's words,
@@ -36,7 +36,7 @@ const {
   UNIT, SESSION_ID, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, firstRoundFailed, raisedAtReview, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, stateText, decided, statePath, assert,
 } = require('./review-world.cjs');
 
-const { appendEntry } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/ledger.cjs'));
+const { appendEntry } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/ledger.cjs'));
 
 /** @type {string} */
 let dir;

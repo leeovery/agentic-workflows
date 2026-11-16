@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A reviewer's scratch worktree (leeway-engine/scripts/domain/scratch.cjs):
+// A reviewer's scratch worktree (ledger-engine/scripts/domain/scratch.cjs):
 // `scratch lay` lays the project out afresh beside the builders' isolation
 // worktrees, every repository detached at the commit given and nested as
 // the project lays them out, prepared as Claude Code prepares an isolation
@@ -38,7 +38,7 @@ const NAME = 'pay-1.1-a';
 const at = (repo) => git(repo, ['rev-parse', 'HEAD']).trim();
 
 /** Where the scratch worktree `name` sits: beside the builders' isolation worktrees. @param {string} [name] */
-const scratchAt = (name = NAME) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `leeway-scratch-${name}`);
+const scratchAt = (name = NAME) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-scratch-${name}`);
 
 /** How many worktrees `repo` has registered. @param {string} repo */
 const registered = (repo) => git(repo, ['worktree', 'list', '--porcelain']).split('\n').filter((line) => line.startsWith('worktree ')).length;
@@ -96,7 +96,7 @@ describe('scratch lay and remove (13.2.2, 14.2.2)', () => {
     ok(dir, ['scratch', 'lay', NAME, own[1], `lib=${libs[1]}`]);
     const top = scratchAt();
     const ran = [fs.readFileSync(path.join(top, 'prepared.txt'), 'utf8'), fs.existsSync(path.join(top, 'first.txt'))];
-    const marked = fs.existsSync(path.join(path.resolve(top, git(top, ['rev-parse', '--git-dir']).trim()), 'leeway-prepared'));
+    const marked = fs.existsSync(path.join(path.resolve(top, git(top, ['rev-parse', '--git-dir']).trim()), 'ledger-prepared'));
     confirmEnvironment(dir, { prepare: [{ name: 'Env', when: 'both', command: 'echo "no env here"; exit 4' }] });
 
     assert.deepStrictEqual([ran, marked], [['KEY=1\n', false], true]);

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (ledger-engine/scripts/drivers/landing/github/)
 // and a feature's stack merged by hand on GitHub's site, each pull request
 // into its own base as its button merges it (R12 (c), (e)), past what every
 // driver does (the landing conformance suite's): merged to its top, it

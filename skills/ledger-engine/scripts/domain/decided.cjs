@@ -1,0 +1,939 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: a topic's close (9.7) — the decided screen, `render decided`,
+// and the answers its gates lead to, `decided yes|strike`; a feature's close
+// into its spec, `decided stage`; and the wait for the topic's agents still
+// running, `render wait-agents` (9.7.8). Its screens are drawn by
+// projections/decided.cjs.
+//
+// - A feature's topic closes into its spec with no gate (11.2.1): once its
+//   checklist is closed, `decided stage` stages Claude's payload as the
+//   screen's `--file` does, and answers the handoff into the spec — or,
+//   staged again once the spec is written, carries on there. Its decided
+//   shows on ready to build's screen, whose yes takes the close as the
+//   decided gate's yes does (ready-to-build.cjs, 9.7.6), so the decided
+//   screen and its yes refuse a feature, naming the way on; its strike is
+//   the decided strike, drawing ready to build again.
+// - The screen shows once the topic's `decided` checklist is closed, every
+//   engine item holding still and the close not taken by an earlier yes
+//   (checklist.cjs): a topic a message set back in progress (10.2.7) is
+//   worked afresh and closed again before its gate shows again. It refuses
+//   a unit not in progress and a topic whose discussion is not in progress.
+//   Its gate waits on the person while its screen stands, Claude's payload
+//   staged against the close (`decidedDraws`).
+// - Claude's payload — the proposed product-record lines, the record's lines it
+//   withdraws, and the new-topic candidates — is staged in the topic's cache
+//   with `--file`, against the close it was drawn for, and nothing reaches the
+//   ledger or the map before the person's yes (8.9.7). A line widens a decision
+//   on the topic's map into a rule for the product: an entry of its own at the
+//   unit's level, off the topic's map — a question in the wording of the one
+//   the decision answers, relying on it, and the line answering that question,
+//   relying on the decision too — so neither the map nor the screen changes as
+//   it lands. Each line takes its ids as staged, so a yes run again after a
+//   kill lands no line twice; and a decision the product record widens already
+//   takes no second line, so a restage after that kill, or after a reopen,
+//   lands none twice either; nor does a payload widen one decision twice. A
+//   line widening a decision that replaced one a line of the record widens
+//   lands as the person's replacement of that line, at the same yes (8.9.2),
+//   the screen showing the text it replaces; and the yes refuses while a line
+//   of the record widens a decision of the topic replaced since and nothing
+//   staged replaces or withdraws it, so the record never holds two rules for
+//   one call. A withdrawal takes a line of the record widening a decision of
+//   the topic out of the record, the screen showing the text it withdraws: it
+//   lands as the person's replacement of that line by the decision the widened
+//   one now stands as, at the unit's level and not for the product (8.9.2), so
+//   the line leaves the product record and its trail stays. Each line and
+//   withdrawal, the person's decision, is labelled from its question's
+//   wording alone, every label put at once as the yes lands them
+//   (labeller.cjs), so a spec line restating one reads by its label. A
+//   restage keeps the strike of every candidate it still names. An epic's
+//   candidate is a topic for its map with its brief's draft (8.10.10), and
+//   any waiting roadmap item it takes in, checked by every check `topic
+//   add-batch` makes (discovery-map.cjs); a unit with one topic has no map,
+//   so its candidate parks on the roadmap, on the horizon the person named
+//   (8.10.2, 18.8.2), checked as the roadmap's add-batch checks it. A name
+//   the person struck before is refused either way (8.10.11). The screen
+//   draws from the staged payload again without `--file`, the calls listed
+//   with `--calls`.
+// - What the person decided is shown apart from the rows carried over,
+//   which never pass as theirs (21.6.5), and from Claude's calls, counted by
+//   the kind each decision carries; a call the labeller gave no label is
+//   counted as unlabelled (16.11).
+// - Each departure the person made on the topic that this machine logged —
+//   an answer that stood over Claude's lean, or a keep (16.10.1) — is asked
+//   its verdict there, one at a time, in the ledger's order, until each has
+//   one, a skip among them (16.10.2, 16.10.6); none asked where none was
+//   made (16.10.5). The count is of the departures this close asks: one
+//   given its verdict before it is not among them. The verdict is
+//   `verdict give … --at decided`.
+// - The decided gate never learns: it stops in every position (3.2.3), and
+//   its name is `decided` for good (16.11.9). Its yes, `decided yes`, stands
+//   on the screen as drawn: the close the payload was staged against, and
+//   no verdict still to ask. Every line and every candidate not struck is
+//   checked against the ledger and the map as they stand, by the checks
+//   their landing makes, before anything is written, so a refused yes
+//   writes nothing. Then it lands each line — its question, then the
+//   person's product-wide decision answering it (by the person, their own,
+//   moving no one: their yes over Claude's line) — each through the
+//   ledger's lock with its commit, a line or withdrawal its first run
+//   landed passing its check and landing nothing again; then, under the
+//   writer lock, in one manifest save and its commit, lands the candidates
+//   not struck — on the epic's map, each its source the topic and its brief
+//   installed, or parked on the roadmap, each its origin the topic and its
+//   source the topic's log — records the struck ones' names as the person's
+//   answer, marks the topic decided, and records that the yes took the
+//   close. Each withdrawal lands as the lines do, after them. The staged
+//   payload goes. It
+//   answers what comes next, over the manifest as the yes saved it, so a
+//   topic it added counts and one set aside meanwhile does not: an epic
+//   whose every live topic is now decided goes into its spec, at the unit,
+//   any other epic to its menu, where the person picks the next topic
+//   (24.1.2, 8.8.13). Only an epic's topic reaches it: a feature's closes
+//   into its spec (`decided stage`), its yes ready to build's.
+// - `decided strike <n>` strikes the n-th candidate, numbered as the screen
+//   shows them, in the staged payload alone, and answers the screen again
+//   as what comes next (P8) — a feature's ready to build, `--page` carried
+//   to it; `decided unstrike <n>` undoes it, for a person who keeps the
+//   candidate after all.
+// - The wait for agents shows only while one of the topic's agents is
+//   running, and is empty otherwise; a report that lands after the session
+//   left is taken in at the next entry (enter.cjs).
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { messageOf } = require('../kernel/call.cjs');
+const { carrying } = require('./ledger.cjs');
+const { newId, resolveId } = require('./ledger-ids.cjs');
+const { factsOf, productOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
+const { readShown, answerMap } = require('./ledger-read.cjs');
+const { verdictAsked } = require('./ledger-verdicts.cjs');
+const { landRaised, checkRaised } = require('./ledger-write.cjs');
+const { labelsAtOnce } = require('./labeller.cjs');
+const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
+const { unitInProgress } = require('./topic-standing.cjs');
+const { phaseSkill } = require('./handoff.cjs');
+const { topicsSettled, specStanding } = require('./spec-standing.cjs');
+const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
+const { checkTopics, placeTopics, installBriefs, landedPaths, dismiss } = require('./discovery-map.cjs');
+const { planRoadmapBatch, parkItems } = require('./roadmap.cjs');
+const { topicLog } = require('./topic-log.cjs');
+const { runningAgents } = require('./agent-state.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
+const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
+const decisionPoint = require('./decision-point.cjs');
+const { endShowing } = require('./showing-hold.cjs');
+const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, refusing, stands } = require('./staged-payload.cjs');
+const { ontoEpic } = require('./topic-leave.cjs');
+
+/** @typedef {import('./ledger-read.cjs').Shower} Shower */
+/** @typedef {import('./topic-map.cjs').Row} Row */
+/** @typedef {import('./projections/decided.cjs').DecidedView} DecidedView */
+/** @typedef {import('./labeller.cjs').Label} Label */
+
+/**
+ * A product-record line as staged: the ids its question and it land as, its
+ * text and why, the decision it widens by full id, its question's wording,
+ * and the product-record line it replaces — the one widening a decision
+ * this one replaced — by full id and text, null where it replaces none.
+ * @typedef {{id: string, question: string, asks: string, text: string, why: string, widens: string, replaces: {id: string, text: string}|null}} StagedLine
+ */
+
+/**
+ * A product-record line withdrawn, as staged: the id its withdrawal lands
+ * as, the line by full id and text, the wording of the question the line
+ * answers, why, and the decision the one it widens now stands as, by full id
+ * and text.
+ * @typedef {{id: string, line: string, text: string, asks: string, why: string, now: {id: string, text: string}}} StagedWithdrawal
+ */
+
+/**
+ * A new-topic candidate as staged, struck or standing: an epic's with its
+ * brief's draft and any waiting roadmap item it takes in, a one-topic
+ * unit's with the horizon it parks on.
+ * @typedef {{name: string, reason: string, struck: boolean, brief?: string, from_roadmap?: string, horizon?: string}} StagedCandidate
+ */
+
+/**
+ * Claude's payload as staged in the topic's cache, against the close it was
+ * drawn for.
+ * @typedef {{closed: string, lines: StagedLine[], withdrawals: StagedWithdrawal[], candidates: StagedCandidate[]}} Staged
+ */
+
+const PHASE = 'discussion';
+// The learned gate over the topic's agents still running as it closes.
+const WAIT = 'wait for agents';
+const DECIDED_USAGE = [
+  'decided yes <work-unit> <topic>',
+  'decided strike <work-unit> <topic> <n> [--page]',
+  'decided unstrike <work-unit> <topic> <n> [--page]',
+  'decided stage <work-unit> <topic> --file <payload.json>',
+].join('\n');
+
+/** Where the topic's staged payload sits in its cache. @param {string} cwd @param {string} unit @param {string} topic */
+function stagedFile(cwd, unit, topic) {
+  return statePath(cwd, '.cache', unit, PHASE, topic, 'decided.json');
+}
+
+/**
+ * The unit's manifest, its topic's discussion in progress: refused for a
+ * unit not in progress, a topic with no discussion, and one decided already
+ * or not under way.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ * @returns {Record<string, any>}
+ */
+function openTopic(cwd, unit, topic) {
+  const manifest = unitInProgress(cwd, unit);
+  const status = itemOf(manifest, PHASE, topic)?.status;
+  if (status === undefined) throw new Error(`${unit} has no discussion of "${topic}"`);
+  if (status === 'completed') throw new Error(`${topic} is decided already — a message to it sets it back in progress`);
+  if (status !== 'in-progress') throw new Error(`${topic}'s discussion is ${status}, not in progress`);
+  return manifest;
+}
+
+/** Whether the unit is a feature, whose topic closes into its spec with no gate, its decided shown on ready to build's screen (11.2.1, 9.7.6). @param {Record<string, any>} manifest */
+const closesIntoSpec = (manifest) => manifest.work_type === 'feature';
+
+/**
+ * The topic open as the decided gate stands on it: refused, past
+ * `openTopic`'s refusals, for a feature, naming the way on.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function gateTopic(cwd, unit, topic) {
+  const manifest = openTopic(cwd, unit, topic);
+  if (closesIntoSpec(manifest)) {
+    throw new Error(`${unit} is a feature, whose topic closes into its spec with no gate, its decided shown with ready to build — once decided's checklist is closed, decided stage ${unit} ${topic} --file <payload.json> stages Claude's lines and candidates and hands off into the spec`);
+  }
+  return manifest;
+}
+
+/**
+ * The wording of the map's question a line's decision answers there, by the
+ * decision's short id: refused where the decision is on no row of the map,
+ * or stands alone, its question set aside.
+ * @param {Shower} shower @param {Row[]} rows @param {string} decision a full id
+ */
+function questionOn(shower, rows, decision) {
+  const short = shower.short(decision);
+  const row = rows.find((r) => answersOn(r).some((a) => a.id === short));
+  if (row === undefined) throw new Error(`${short} is no decision on the topic's map`);
+  if (row.stands === 'question-set-aside') throw new Error(`${short}'s question is set aside, so there is no question for its line to answer`);
+  return row.text;
+}
+
+/**
+ * The product-record line standing that widens one of `decisions`: a
+ * product-wide decision, current, relying on it. Undefined where none does.
+ * @param {Shower} shower @param {string[]} decisions full ids
+ */
+function lineWidening(shower, decisions) {
+  return productOf(shower.folded).decisions.find((id) => factsOf(shower.folded, id).relies_on.some((d) => decisions.includes(d)));
+}
+
+/** The decisions `decision` replaced, along its chain, nearest first. @param {Shower} shower @param {string} decision a full id */
+function replacedBy(shower, decision) {
+  const earlier = [];
+  for (let at = factsOf(shower.folded, decision).replaces; at !== null; at = factsOf(shower.folded, at).replaces) earlier.push(at);
+  return earlier;
+}
+
+/**
+ * Refused where a product-record line standing widens `decision` already:
+ * a line widened it before — at an earlier yes, or one killed after the
+ * line landed. Else the line standing that widens a decision `decision`
+ * replaced, which a line widening it replaces (8.9.2), or null.
+ * @param {Shower} shower @param {string} decision a full id
+ * @returns {StagedLine['replaces']}
+ */
+function lineReplaced(shower, decision) {
+  const widened = lineWidening(shower, [decision]);
+  if (widened !== undefined) throw new Error(`${shower.short(widened)} widens it for the product already — "${shower.show(widened).text}"`);
+  const earlier = lineWidening(shower, replacedBy(shower, decision));
+  return earlier === undefined ? null : { id: earlier, text: /** @type {string} */ (shower.show(earlier).text) };
+}
+
+/**
+ * A line as Claude's payload gives it, staged, its ids minted, replacing
+ * the line that widens a decision `widens` replaced: refused where it is
+ * not `{text, why, widens}`, `widens` names no decision on the map, or the
+ * product record widens that decision already.
+ * @param {Shower} shower @param {Row[]} rows @param {unknown} given @param {number} at
+ * @returns {StagedLine}
+ */
+function stagedLine(shower, rows, given, at) {
+  const what = `line ${at + 1}`;
+  const { text, why, widens } = shaped(given, what, ['text', 'why', 'widens']);
+  if (!filled(text) || !filled(why) || !filled(widens)) throw new Error(`${what}'s text, why and widens are each a non-empty string`);
+  let decision;
+  let asks;
+  let replaces;
+  try {
+    decision = resolveId(widens, shower.folded.facts.keys());
+    if (factsOf(shower.folded, decision).kind !== 'decision') throw new Error(`${widens} is no decision`);
+    asks = questionOn(shower, rows, decision);
+    replaces = lineReplaced(shower, decision);
+  } catch (err) {
+    throw new Error(`${what} widens ${widens}: ${messageOf(err)}`);
+  }
+  return { id: newId(), question: newId(), asks, text, why, widens: decision, replaces };
+}
+
+/**
+ * A withdrawal as Claude's payload gives it, staged, its id minted: refused
+ * where it is not `{line, why}`, or `line` names no line of the product
+ * record widening a decision of the topic.
+ * @param {Shower} shower @param {string} unit @param {string} topic @param {unknown} given @param {number} at
+ * @returns {StagedWithdrawal}
+ */
+function stagedWithdrawal(shower, unit, topic, given, at) {
+  const what = `withdrawal ${at + 1}`;
+  const { line, why } = shaped(given, what, ['line', 'why']);
+  if (!filled(line) || !filled(why)) throw new Error(`${what}'s line and why are each a non-empty string`);
+  const { folded } = shower;
+  let id;
+  try {
+    id = resolveId(line, folded.facts.keys());
+  } catch (err) {
+    throw new Error(`${what} withdraws ${line}: ${messageOf(err)}`);
+  }
+  if (!productOf(folded).decisions.includes(id)) throw new Error(`${what} withdraws ${line}: ${line} is no line of the product record`);
+  const widened = factsOf(folded, id).relies_on.find((d) => factsOf(folded, d).unit === unit && factsOf(folded, d).topic === topic);
+  const [now] = widened === undefined ? [] : currentsOf(folded, widened);
+  if (now === undefined) throw new Error(`${what} withdraws ${line}: it widens no decision of ${topic} standing`);
+  const asked = /** @type {string} */ (factsOf(folded, id).answers);
+  const asks = /** @type {string} */ (shower.show(wordingOf(folded, asked) ?? asked).text);
+  return { id: newId(), line: id, text: /** @type {string} */ (shower.show(id).text), asks, why, now: { id: now, text: /** @type {string} */ (shower.show(now).text) } };
+}
+
+/**
+ * Refused where one record line is withdrawn twice, or withdrawn and
+ * replaced by a line at once.
+ * @param {Shower} shower @param {StagedLine[]} lines @param {StagedWithdrawal[]} withdrawals
+ */
+function checkWithdrawn(shower, lines, withdrawals) {
+  withdrawals.forEach(({ line }, i) => {
+    const first = withdrawals.findIndex((w) => w.line === line);
+    if (first < i) throw new Error(`withdrawal ${i + 1} withdraws ${shower.short(line)}, as withdrawal ${first + 1} does`);
+    const replacing = lines.findIndex(({ replaces }) => replaces?.id === line);
+    if (replacing >= 0) throw new Error(`withdrawal ${i + 1} withdraws ${shower.short(line)}, which line ${replacing + 1} replaces — a record line is replaced or withdrawn`);
+  });
+}
+
+/** How the candidates' refusals open. */
+const CANDIDATES = 'the candidates';
+
+/** How a candidate dismissed from the map is re-added: by the person, on the map. */
+const RE_ADD = 'the person re-adds it on the map';
+
+/** What a candidate needs beside its name and reason, where its unit has a map, and where it parks on the roadmap. */
+const NEEDS = Object.freeze({
+  brief: 'a candidate lands as a topic with its brief, "brief" naming its draft under .ledger/.cache/',
+  horizon: 'the horizon is the person\'s — where they named none, render horizon-pick --park <name> asks them',
+});
+
+/**
+ * Whether the unit's candidates park on the roadmap: a unit with one topic,
+ * which has no map to add one to (8.10.2).
+ * @param {Record<string, any>} manifest
+ */
+function parksCandidates(manifest) {
+  return manifest.work_type !== 'epic';
+}
+
+/**
+ * How the candidates land on an epic's map: as `topic add-batch` lands
+ * topics, each its source the topic it came from.
+ * @param {string} topic @returns {import('./discovery-map.cjs').LandOpts}
+ */
+function landOpts(topic) {
+  return { said: CANDIDATES, source: `topic:${topic}`, reAddHint: RE_ADD };
+}
+
+/**
+ * The candidates as the map adds them: each a topic from this one, its
+ * reason its summary, with its brief and any roadmap item it takes in.
+ * @param {StagedCandidate[]} candidates
+ * @returns {import('./discovery-map.cjs').BatchEntry[]}
+ */
+function mapEntries(candidates) {
+  return candidates.map(({ name, reason, brief, from_roadmap: fromRoadmap }) => ({
+    name, summary: reason, brief, ...(fromRoadmap === undefined ? {} : { from_roadmap: fromRoadmap }),
+  }));
+}
+
+/**
+ * The candidates as the roadmap parks them: each an item on its horizon,
+ * its reason its summary, from this topic and pointing into its log.
+ * @param {string} unit @param {string} topic @param {StagedCandidate[]} candidates
+ */
+function parkEntries(unit, topic, candidates) {
+  return candidates.map(({ name, reason, horizon }) => ({ name, horizon, summary: reason, origin: `topic:${unit}/${topic}`, sources: [topicLog(unit, topic)] }));
+}
+
+/**
+ * Refused, as their landing would refuse them, where the candidates could
+ * not land as the unit and the roadmap stand — an epic's by every check
+ * `topic add-batch` makes, a one-topic unit's by the roadmap's, and a name
+ * the person struck before — writing nothing. Answers the drafts of an
+ * epic's briefs as read.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {StagedCandidate[]} candidates
+ * @returns {import('./discovery-map.cjs').Draft[]}
+ */
+function checkCandidates(cwd, manifest, topic, candidates) {
+  if (candidates.length === 0) return [];
+  const unit = manifest.name;
+  if (!parksCandidates(manifest)) return checkTopics(cwd, unit, manifest, mapEntries(candidates), landOpts(topic));
+  const struck = candidates.find(({ name }) => dismissedNames(manifest).includes(name));
+  if (struck !== undefined) throw new Error(`${CANDIDATES}: "${struck.name}" was struck before — nothing was added; the person can roadmap it themselves`);
+  try {
+    planRoadmapBatch(cwd, parkEntries(unit, topic, candidates));
+  } catch (err) {
+    throw new Error(`${CANDIDATES}: ${messageOf(err)}`);
+  }
+  return [];
+}
+
+/**
+ * A candidate as Claude's payload gives it: `{name, reason, brief,
+ * from_roadmap?}` where the unit has a map, `{name, reason, horizon}` where
+ * it parks on the roadmap, each a non-empty string.
+ * @param {unknown} given @param {number} at @param {boolean} parks
+ * @returns {Omit<StagedCandidate, 'struck'>}
+ */
+function candidateOf(given, at, parks) {
+  const what = `candidate ${at + 1}`;
+  const needs = parks ? 'horizon' : 'brief';
+  if (isObject(given) && !(needs in given)) throw new Error(`${what} has no ${needs} — ${NEEDS[needs]}`);
+  const candidate = shaped(given, what, ['name', 'reason', needs], parks ? [] : ['from_roadmap']);
+  const empty = Object.keys(candidate).find((key) => !filled(candidate[key]));
+  if (empty !== undefined) throw new Error(`${what}'s ${empty} is a non-empty string`);
+  return /** @type {Omit<StagedCandidate, 'struck'>} */ (candidate);
+}
+
+/**
+ * The candidates as Claude's payload gives them, staged, each checked as
+ * its landing checks it, struck where the candidate of that name staged
+ * before was.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {unknown[]} given @param {StagedCandidate[]} before
+ * @returns {StagedCandidate[]}
+ */
+function stagedCandidates(cwd, manifest, topic, given, before) {
+  const struck = new Set(before.filter((candidate) => candidate.struck).map(({ name }) => name));
+  const candidates = given.map((candidate, at) => {
+    const taken = candidateOf(candidate, at, parksCandidates(manifest));
+    return { ...taken, struck: struck.has(taken.name) };
+  });
+  checkCandidates(cwd, manifest, topic, candidates);
+  return candidates;
+}
+
+/**
+ * Claude's payload read from `file`, checked against the map and the unit,
+ * and staged in the topic's cache against `closed`.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} file
+ * @param {{shower: Shower, rows: Row[], manifest: Record<string, any>, closed: string}} at
+ * @returns {Staged}
+ */
+function stage(cwd, unit, topic, file, { shower, rows, manifest, closed }) {
+  const { lines, candidates, withdraws = [] } = shaped(readPayload(cwd, file), 'the payload', ['lines', 'candidates'], ['withdraws']);
+  if (!Array.isArray(lines) || !Array.isArray(candidates) || !Array.isArray(withdraws)) throw new Error('the payload\'s lines, withdraws and candidates are each a list');
+  const widened = lines.map((line, i) => stagedLine(shower, rows, line, i));
+  widened.forEach(({ widens }, i) => {
+    const first = widened.findIndex((line) => line.widens === widens);
+    if (first < i) throw new Error(`line ${i + 1} widens ${shower.short(widens)}, as line ${first + 1} does — a decision takes one line`);
+  });
+  const withdrawals = withdraws.map((given, i) => stagedWithdrawal(shower, unit, topic, given, i));
+  checkWithdrawn(shower, widened, withdrawals);
+  /** @type {Staged} */
+  const staged = {
+    closed,
+    lines: widened,
+    withdrawals,
+    candidates: stagedCandidates(cwd, manifest, topic, candidates, stagedBefore(cwd, unit, topic)),
+  };
+  return writeStaged(stagedFile(cwd, unit, topic), staged);
+}
+
+/**
+ * The candidates staged for the topic, whatever close they were drawn for:
+ * none where nothing is.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ * @returns {StagedCandidate[]}
+ */
+function stagedBefore(cwd, unit, topic) {
+  const file = stagedFile(cwd, unit, topic);
+  return fs.existsSync(file) ? /** @type {Staged} */ (JSON.parse(fs.readFileSync(file, 'utf8'))).candidates : [];
+}
+
+/**
+ * The call that stages the topic's close: a feature's into its spec, an
+ * epic's topic's on its decided screen.
+ * @param {Record<string, any>} manifest @param {string} topic
+ */
+const stagingCall = (manifest, topic) => `${closesIntoSpec(manifest) ? `decided stage ${manifest.name} ${topic}` : `render decided ${manifest.name}.${topic}`} --file <payload.json>`;
+
+/**
+ * The verb a staged line's refusal names: a feature's, staged into its
+ * spec, `decided stage`; an epic's topic's, landed at its gate, `decided yes`.
+ * @param {Record<string, any>} manifest
+ */
+const linesSaid = (manifest) => (closesIntoSpec(manifest) ? 'decided stage' : 'decided yes');
+
+/**
+ * The payload staged for the topic's close: refused where none is, or it
+ * was staged against an earlier close, each refusal naming the call that
+ * stages it.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} closed
+ * @returns {Staged}
+ */
+function stagedFor(cwd, manifest, topic, closed) {
+  const unit = manifest.name;
+  const stages = stagingCall(manifest, topic);
+  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit, topic), `nothing is staged for ${topic} — ${stages} stages Claude's lines and candidates`));
+  if (staged.closed !== closed) throw new Error(`what is staged for ${topic} was drawn for an earlier close — ${stages} stages it again`);
+  return staged;
+}
+
+/**
+ * What the decided screen stands on past the record it draws, refused where
+ * it cannot show: the topic open as the gate stands on it, its close, and
+ * Claude's payload staged against that close.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function decidedStanding(cwd, unit, topic) {
+  const manifest = gateTopic(cwd, unit, topic);
+  return stagedFor(cwd, manifest, topic, decidedClose(cwd, unit, topic).closed);
+}
+
+/** Whether the decided screen draws, as `render decided` stands on it: what waits on the person in the unit (waits.cjs). @param {string} cwd @param {string} unit @param {string} topic */
+const decidedDraws = (cwd, unit, topic) => stands(() => decidedStanding(cwd, unit, topic));
+
+/**
+ * The record's side of the decided screen, read in one pass of the ledger:
+ * the topic's map rows, what the person decided and what was carried over,
+ * how many rows went on, Claude's calls with the kind each carries, and the
+ * verdict asked.
+ * @param {Shower} shower @param {string} root @param {string} unit @param {string} topic @param {string} closed when the checklist closed
+ */
+function recordSide(shower, root, unit, topic, closed) {
+  const rows = /** @type {Row[]} */ (answerMap(shower, { unit, topic }, root).questions);
+  const textsOf = (/** @type {string} */ standing) => rows.filter((row) => rowStanding(row) === standing).map((row) => row.text);
+  const calls = claudesCalls(rows).map(({ answer, question }) => ({
+    question,
+    answer: answer.text,
+    kind: /** @type {string|null} */ (shower.show(resolveId(answer.id, shower.folded.facts.keys())).kind),
+    handed: handedTag(answer),
+  }));
+  return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls, verdict: verdictAsked(shower, root, (facts) => (facts.unit === unit && facts.topic === topic ? closed : null)) };
+}
+
+/**
+ * What the decided screen needs, refused where it cannot show: the topic
+ * open — as the gate stands on it, or as `open` opens it — its checklist
+ * closed and the close not taken, and the record read; and `then`, given
+ * what it read, the payload staged or read back.
+ * @template T
+ * @param {string} cwd @param {string} unit @param {string} topic
+ * @param {(read: {shower: Shower, root: string, manifest: Record<string, any>, closed: string, skips: import('./checklist.cjs').Skip[], side: ReturnType<typeof recordSide>}) => T} then
+ * @param {typeof openTopic} [open]
+ * @returns {T}
+ */
+function onClosedTopic(cwd, unit, topic, then, open = gateTopic) {
+  /** @type {string[]} */
+  const warnings = [];
+  try {
+    const manifest = open(cwd, unit, topic);
+    const { closed, skips } = decidedClose(cwd, unit, topic);
+    const root = stateRoot(cwd);
+    return readShown(root, warnings, (shower) => then({ shower, root, manifest, closed, skips, side: recordSide(shower, root, unit, topic, closed) }));
+  } catch (err) {
+    throw carrying(err, warnings);
+  }
+}
+
+/**
+ * The topic's close as a screen draws it (closing.cjs), from the record's
+ * side and the payload staged.
+ * @param {Record<string, any>} manifest @param {string} topic @param {ReturnType<typeof recordSide>} side @param {Staged} staged
+ * @returns {import('./projections/closing.cjs').TopicClose}
+ */
+function closeShown(manifest, topic, side, staged) {
+  return {
+    unit: manifest.name,
+    topic,
+    decided: side.decided,
+    carried: side.carried,
+    moved: side.moved,
+    called: side.calls.length,
+    lines: staged.lines.map(({ text, replaces }) => ({ text, replaces: replaces?.text ?? null })),
+    withdrawals: staged.withdrawals.map(({ text, why }) => ({ text, why })),
+    parks: parksCandidates(manifest),
+    candidates: staged.candidates.map(({ name, reason, struck, horizon }) => ({ name, reason, struck, horizon: horizon ?? null })),
+  };
+}
+
+/**
+ * `render decided <unit>.<topic> [--file <payload.json>] [--calls]`: the
+ * decided screen, Claude's payload staged from `--file` or read back as
+ * staged, its calls listed with `--calls`.
+ * @param {string} cwd @param {{dotpath?: string, file?: string, calls?: string}} args
+ * @returns {string}
+ */
+function decidedSurface(cwd, { dotpath, file, calls }) {
+  try {
+    const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided');
+    return onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, skips, side }) => {
+      const staged = file === undefined ? stagedFor(cwd, manifest, topic, closed) : stage(cwd, unit, topic, file, { shower, rows: side.rows, manifest, closed });
+      return decidedScreen({
+        ...closeShown(manifest, topic, side, staged),
+        title: topicTitle(manifest, topic),
+        calls: side.calls,
+        listed: calls !== undefined,
+        skips: skips.map(({ text, reason }) => ({ text, reason })),
+        verdict: side.verdict,
+      });
+    });
+  } catch (err) {
+    throw refusedAs('render decided', err);
+  }
+}
+
+/**
+ * The screen the topic's close is drawn on, by its name and what draws it:
+ * the decided screen, or a feature's ready to build, `--page` carried to it.
+ * @param {Record<string, any>} manifest @param {string} topic @param {boolean} page
+ */
+function closeScreen(manifest, topic, page) {
+  const unit = manifest.name;
+  return closesIntoSpec(manifest)
+    ? { to: 'ready to build', argv: ['render', 'ready-to-build', unit, ...(page ? ['--page'] : [])] }
+    : { to: 'the decided screen', argv: ['render', 'decided', `${unit}.${topic}`] };
+}
+
+/**
+ * `render decided-strike <unit>.<topic> [--page]`: the pick of the
+ * candidate to strike, from the staged payload, where more than one stands.
+ * @param {string} cwd @param {{dotpath?: string, page?: string}} args
+ * @returns {string}
+ */
+function decidedStrikeSurface(cwd, { dotpath, page }) {
+  try {
+    const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided-strike');
+    const manifest = openTopic(cwd, unit, topic);
+    const { closed } = decidedClose(cwd, unit, topic);
+    const { candidates } = stagedFor(cwd, manifest, topic, closed);
+    if (candidates.filter(({ struck }) => !struck).length < 2) throw new Error('the pick is for more than one candidate standing — the gate strikes a lone one itself');
+    const flags = page === undefined ? [] : ['--page'];
+    return strikePick({ unit, topic, parks: parksCandidates(manifest), candidates, flags, back: closeScreen(manifest, topic, page !== undefined) });
+  } catch (err) {
+    throw refusedAs('render decided-strike', err);
+  }
+}
+
+/**
+ * `render wait-agents <unit>.<topic>`: the wait for the topic's agents still
+ * running — a learned gate, drawn as the decision point steps it at the
+ * topic's discussion — or, where none is, nothing, the wait no longer due
+ * and its showing's hold ended.
+ * @param {string} cwd @param {{dotpath?: string}} args
+ * @returns {string}
+ */
+function waitAgentsSurface(cwd, { dotpath }) {
+  const root = stateRoot(cwd);
+  const { unit, topic, manifest } = topicAddress(root, dotpath, 'wait-agents');
+  if (itemOf(manifest, PHASE, topic) === undefined) throw new Error(`render wait-agents: ${unit} has no discussion of "${topic}"`);
+  const place = { unit, phase: PHASE, topic };
+  const running = runningAgents(cwd, unit, PHASE, topic);
+  if (running.length === 0) {
+    endShowing(root, WAIT, place);
+    return '';
+  }
+  const step = decisionPoint.gateStep(WAIT, { cwd, place, key: running.map(({ id }) => id) });
+  return waitAgents(unit, topic, topicTitle(manifest, topic), running.map(({ kind }) => kind), step);
+}
+
+/**
+ * What comes after an epic's topic is decided: its spec once its every live
+ * topic is decided, else its menu.
+ * @param {Record<string, any>} manifest as the yes saved it @param {string} unit
+ * @returns {import('./projections/surfaces.cjs').Next}
+ */
+function nextAfter(manifest, unit) {
+  return topicsSettled(manifest)
+    ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['epic', unit] }
+    : ontoEpic(unit);
+}
+
+/**
+ * The raises a staged line lands as, at the unit's level, the person's
+ * product-wide decision relying on the decision it widens, `label` its
+ * question's: its question and the decision answering it; or, where it
+ * replaces a line, the replacement of that line, the person's change of
+ * mind (8.9.2); `said` the verb its refusal names (`linesSaid`).
+ * @param {string} unit @param {StagedLine} line @param {string} said @param {Label|null} label
+ * @returns {import('./ledger-write.cjs').Raised[]}
+ */
+function lineRaises(unit, { id, question, asks, text, why, widens, replaces }, said, label) {
+  const place = { unit, phase: PHASE, topic: null };
+  const common = { said, place, logs: null, checkRead: () => {} };
+  const decision = { by: 'person', who_moved_whom: 'none', given: 'own', text, why, product_wide: true };
+  if (replaces !== null) {
+    return [{ ...common, lands: 'replace', linked: { replaces: replaces.id, reason: 'changed-mind', cause: null, relies_on: [widens] }, content: { ...decision, drops: [replaces.text] }, label, id }];
+  }
+  return [
+    { ...common, lands: 'ask', linked: { relies_on: [widens] }, content: { by: 'claude', who_moved_whom: 'none', text: asks }, id: question },
+    { ...common, lands: 'decide', linked: { answers: question, relies_on: [widens] }, content: decision, label, id },
+  ];
+}
+
+/**
+ * The raise a staged withdrawal lands as, at the unit's level: the
+ * person's replacement of the line by the decision the one it widens now
+ * stands as, not for the product (8.9.2), `label` its question's; `said`
+ * the verb its refusal names (`linesSaid`).
+ * @param {string} unit @param {StagedWithdrawal} withdrawal @param {string} said @param {Label|null} label
+ * @returns {import('./ledger-write.cjs').Raised}
+ */
+function withdrawalRaise(unit, { id, line, text, why, now }, said, label) {
+  return {
+    said,
+    place: { unit, phase: PHASE, topic: null },
+    lands: 'replace',
+    linked: { replaces: line, reason: 'changed-mind', cause: null, relies_on: [now.id] },
+    content: { by: 'person', who_moved_whom: 'none', given: 'own', text: now.text, why, product_wide: false, drops: [text] },
+    label,
+    id,
+    logs: null,
+    checkRead: () => {},
+  };
+}
+
+/**
+ * Why the yes refuses where a product-record line standing relies on a
+ * decision of the topic replaced since and nothing staged replaces or
+ * withdraws it — the rule it states is widened afresh from the replacement
+ * or withdrawn, or the record holds two — or null where none does.
+ * @param {Shower} shower @param {Record<string, any>} manifest @param {string} topic @param {Staged} staged
+ * @returns {string|null}
+ */
+function unreplacedLine(shower, manifest, topic, { lines, withdrawals }) {
+  const unit = manifest.name;
+  const { folded } = shower;
+  const replacedHere = (/** @type {string} */ id) => {
+    const facts = factsOf(folded, id);
+    return facts.unit === unit && facts.topic === topic && 'replaced_by' in (notCurrent(folded, id) ?? {});
+  };
+  const covered = (/** @type {string} */ id) => lines.some((line) => line.replaces?.id === id) || withdrawals.some((w) => w.line === id);
+  const left = productOf(folded).decisions.find((id) => factsOf(folded, id).relies_on.some(replacedHere) && !covered(id));
+  if (left === undefined) return null;
+  return `the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with ${stagingCall(manifest, topic)}`;
+}
+
+/**
+ * Refused where a staged line or withdrawal could not land as the ledger
+ * stands — the decision it widens or the line it replaces no longer
+ * current — by the link check its first landing makes, writing nothing,
+ * naming the call that stages it again; the unit taking writes is the
+ * topic's own check (`openTopic`).
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {Staged} staged @param {string[]} warnings
+ */
+function checkLines(cwd, manifest, topic, { lines, withdrawals }, warnings) {
+  const unit = manifest.name;
+  const said = linesSaid(manifest);
+  const firsts = [
+    ...lines.map((line, at) => ({ what: `line ${at + 1}`, raised: lineRaises(unit, line, said, null)[0] })),
+    ...withdrawals.map((withdrawal, at) => ({ what: `withdrawal ${at + 1}`, raised: withdrawalRaise(unit, withdrawal, said, null) })),
+  ];
+  for (const { what, raised } of firsts) {
+    try {
+      checkRaised(cwd, raised, warnings);
+    } catch (err) {
+      throw new Error(`${what} cannot land — ${messageOf(err).replace(new RegExp(`^${said}: `), '')}; ${stagingCall(manifest, topic)} stages it again`);
+    }
+  }
+}
+
+/**
+ * The candidates taken, landed under the writer lock the yes holds, before
+ * the manifest is saved: an epic's put on its map, as `topic add-batch`
+ * puts them, a one-topic unit's parked on the roadmap. Answers what the map
+ * took — the entries whose briefs go in once the manifest is saved, and the
+ * roadmap items taken in — and what was parked, each on its horizon.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {StagedCandidate[]} added
+ */
+function landCandidates(cwd, manifest, topic, added) {
+  const none = { entries: null, takes: /** @type {unknown[]} */ ([]), parked: /** @type {{name: string, horizon: string}[]} */ ([]) };
+  if (added.length === 0) return none;
+  if (parksCandidates(manifest)) {
+    parkItems(cwd, parkEntries(manifest.name, topic, added), CANDIDATES);
+    return { ...none, parked: added.map(({ name, horizon }) => ({ name, horizon: /** @type {string} */ (horizon) })) };
+  }
+  const entries = mapEntries(added);
+  return { ...none, entries, takes: placeTopics(cwd, manifest.name, manifest, entries, landOpts(topic)).takes };
+}
+
+/** @typedef {ReturnType<typeof landCandidates>} Taken */
+
+/**
+ * The yes over a topic's staged close — the decided gate's, or a feature's
+ * ready to build's (9.7.6) — every candidate and line checked as its
+ * landing checks it before anything is written, so a refused yes writes
+ * nothing. Answers its steps, run in order: `land`, each line and
+ * withdrawal labelled, the labels put at once, then landed through the
+ * ledger's lock with its commit, their ids; `take`,
+ * under the writer lock before the manifest is saved, the candidates
+ * landed, the struck ones' names recorded as the person's answer, the topic
+ * marked decided and the yes recorded as taking its close, what the
+ * candidates took; `paths`, once the manifest is saved, each brief
+ * installed and what the yes's commit carries; and `done`, once committed,
+ * the staged payload gone.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {Staged} staged @param {string[]} warnings
+ */
+function closingYes(cwd, unit, topic, staged, warnings) {
+  if (handedSession() === null) throw new Error('no conversation to write in — Claude Code hands every command it runs a session id, and this one has none');
+  const added = staged.candidates.filter(({ struck }) => !struck);
+  const struck = staged.candidates.filter((candidate) => candidate.struck).map(({ name }) => name);
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  const drafts = checkCandidates(cwd, manifest, topic, added);
+  checkLines(cwd, manifest, topic, staged, warnings);
+  const said = linesSaid(manifest);
+  return {
+    candidates: added.map(({ name }) => name),
+    struck,
+    land: () => {
+      const labels = labelsAtOnce([...staged.lines, ...staged.withdrawals].map(({ asks }) => asks));
+      const { length } = staged.lines;
+      return {
+        lines: staged.lines.map((line, at) => lineRaises(unit, line, said, labels[at]).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1)),
+        withdrawn: staged.withdrawals.map((withdrawal, at) => landRaised(cwd, withdrawalRaise(unit, withdrawal, said, labels[length + at]), warnings).landed.id),
+      };
+    },
+    /** @param {Record<string, any>} manifest @param {string} at @returns {Taken} */
+    take: (manifest, at) => {
+      const taken = landCandidates(cwd, manifest, topic, added);
+      if (struck.length > 0) dismiss(manifest, struck);
+      manifest.phases[PHASE].items[topic].status = 'completed';
+      takeDecidedClose(manifest, topic, at);
+      return taken;
+    },
+    /** @param {Taken} taken */
+    paths: (taken) => {
+      const briefs = taken.entries === null ? [] : installBriefs(cwd, unit, taken.entries, drafts);
+      return [...landedPaths(unit, { briefs, takes: taken.takes }), ...(taken.parked.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
+    },
+    done: () => fs.rmSync(stagedFile(cwd, unit, topic), { force: true }),
+  };
+}
+
+/**
+ * `decided yes <unit> <topic>`: the person's yes at the decided gate,
+ * everything it writes checked before any of it is written.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function decidedYes(cwd, unit, topic) {
+  /** @type {string[]} */
+  const warnings = [];
+  const staged = onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, side }) => {
+    const ready = stagedFor(cwd, manifest, topic, closed);
+    if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
+    const unreplaced = unreplacedLine(shower, manifest, topic, ready);
+    if (unreplaced !== null) throw new Error(unreplaced);
+    return ready;
+  });
+  const yes = closingYes(cwd, unit, topic, staged, warnings);
+  const { lines, withdrawn } = yes.land();
+  const at = new Date().toISOString();
+  const { manifest, paths } = withWorkUnitLock(cwd, unit, () => {
+    const fresh = loadWorkUnitManifest(cwd, unit);
+    const taken = yes.take(fresh, at);
+    saveWorkUnitManifest(cwd, unit, fresh);
+    return { manifest: fresh, paths: yes.paths(taken) };
+  });
+  const outcome = commitStateTail(cwd, paths, `decided(${unit}): ${topic}`, warnings);
+  yes.done();
+  /** @type {Record<string, unknown>} */
+  const result = { unit, topic, decided: at, lines, withdrawn, candidates: yes.candidates, struck: yes.struck, committed: outcome.committed, next: nextAfter(manifest, unit) };
+  if (warnings.length > 0) result.warnings = warnings;
+  noteCommitOutcome(result, outcome, `${unit} --state`);
+  return result;
+}
+
+/**
+ * A feature's topic's close as its one screen, decided and ready to build,
+ * draws it (9.7.6, 11.8.5), read in that screen's pass of the ledger from
+ * the close standing, `closed` (`decidedClose`): refused with nothing
+ * staged for it, or a staged line or withdrawal that could no longer land —
+ * the decision it widens changed at the spec since, say — so the person
+ * never picks against a stale payload; else the close as drawn, Claude's
+ * calls on the topic, the payload staged, and why its yes would refuse,
+ * null where it would not.
+ * @param {Shower} shower @param {string} root @param {string} cwd @param {Record<string, any>} manifest @param {string} closed @param {string[]} warnings
+ */
+function featureClose(shower, root, cwd, manifest, closed, warnings) {
+  const unit = manifest.name;
+  const staged = stagedFor(cwd, manifest, unit, closed);
+  checkLines(cwd, manifest, unit, staged, warnings);
+  const side = recordSide(shower, root, unit, unit, closed);
+  return { close: closeShown(manifest, unit, side, staged), calls: side.calls, staged, unreplaced: unreplacedLine(shower, manifest, unit, staged) };
+}
+
+/**
+ * `decided stage <unit> <topic> --file <payload.json>`: a feature's topic
+ * closed into its spec (11.2.1) — Claude's payload staged against the
+ * close, as the decided screen's `--file` stages it — answering the handoff
+ * into the spec, or, staged again once the spec is written, carrying on
+ * there to ready to build's screen.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} file
+ */
+function decidedStage(cwd, unit, topic, file) {
+  const staged = onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, side }) => {
+    if (!closesIntoSpec(manifest)) throw new Error(`${unit} is ${manifest.work_type === 'epic' ? 'an epic' : `a ${manifest.work_type}`}, whose topic closes at its decided screen — render decided ${unit}.${topic} --file <payload.json> stages Claude's lines and candidates`);
+    return stage(cwd, unit, topic, file, { shower, rows: side.rows, manifest, closed });
+  }, openTopic);
+  /** @type {import('./projections/surfaces.cjs').Next} */
+  const next = specStanding(cwd, unit) === 'none' ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['feature', unit] } : { kind: 'continue' };
+  return { unit, topic, lines: staged.lines.length, withdrawals: staged.withdrawals.length, candidates: staged.candidates.map(({ name }) => name), next };
+}
+
+/**
+ * `decided strike|unstrike <unit> <topic> <n> [--page]`: the n-th candidate
+ * struck, or its strike undone, in the staged payload, answering the screen
+ * as what comes next — a feature's ready to build, `--page` carried to it.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} n @param {boolean} struck @param {boolean} page
+ */
+function decidedStrike(cwd, unit, topic, n, struck, page) {
+  const manifest = openTopic(cwd, unit, topic);
+  const { closed } = decidedClose(cwd, unit, topic);
+  const staged = stagedFor(cwd, manifest, topic, closed);
+  const at = /^[1-9][0-9]*$/.test(n) ? Number(n) : 0;
+  const candidate = staged.candidates[at - 1];
+  if (candidate === undefined) throw new Error(`there is no candidate ${n} — the candidates are 1 to ${staged.candidates.length}`);
+  if (candidate.struck === struck) throw new Error(`"${candidate.name}" is ${struck ? 'struck already' : 'not struck'}`);
+  candidate.struck = struck;
+  writeStaged(stagedFile(cwd, unit, topic), staged);
+  return { unit, topic, [struck ? 'struck' : 'unstruck']: candidate.name, next: { kind: 'engine', argv: closeScreen(manifest, topic, page).argv } };
+}
+
+/**
+ * `decided <yes|strike|unstrike|stage> …`: the verb's answer, every refusal
+ * opening on its command.
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @param {Set<string>} flags
+ * @returns {Record<string, unknown>}
+ */
+function runDecidedVerb(cwd, [verb, ...args], opts, flags) {
+  const usage = () => new Error(`Usage: ${DECIDED_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
+  const given = [...Object.keys(opts), ...flags].join();
+  if (verb === 'yes' && args.length === 2 && given === '') return refusing('decided yes', () => decidedYes(cwd, args[0], args[1]));
+  if ((verb === 'strike' || verb === 'unstrike') && args.length === 3 && ['', 'page'].includes(given)) {
+    return refusing(`decided ${verb}`, () => decidedStrike(cwd, args[0], args[1], args[2], verb === 'strike', flags.has('page')));
+  }
+  if (verb === 'stage' && args.length === 2 && given === 'file') return refusing('decided stage', () => decidedStage(cwd, args[0], args[1], opts.file));
+  throw usage();
+}
+
+module.exports = { DECIDED_USAGE, runDecidedVerb, decidedSurface, decidedStrikeSurface, waitAgentsSurface, closesIntoSpec, featureClose, closingYes, decidedDraws };

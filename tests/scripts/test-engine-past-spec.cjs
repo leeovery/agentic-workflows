@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Past its spec (leeway-engine/scripts/domain/spec-standing.cjs): once a
+// Past its spec (ledger-engine/scripts/domain/spec-standing.cjs): once a
 // unit's spec is written, or concluded, no topic exists (4.11.2) and an
 // epic's map is closed (18.4.19, P3) — one predicate, read at every door.
 // Each door here refuses, writing nothing and naming the way on from what
@@ -34,7 +34,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { ok, refusedPristine, readManifest, readState, statePath, writeState, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { pastItsSpec } = require('../../skills/leeway-engine/scripts/domain/spec-standing.cjs');
+const { pastItsSpec } = require('../../skills/ledger-engine/scripts/domain/spec-standing.cjs');
 
 /** A map row. @param {number} order */
 const row = (order) => ({ order, summary: `Topic ${order}`, source: 'discovery' });

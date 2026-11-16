@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A spec review's report read (leeway-engine/scripts/domain/spec-report.cjs),
+// A spec review's report read (ledger-engine/scripts/domain/spec-report.cjs),
 // the one grammar the agent store takes a pass's report in by: a line inside
 // a fenced block is text, and a backtick run with a backtick after it opens
 // none, as in markdown; a fence never closed does not read, nor one whose
@@ -29,7 +29,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { reportFindings, readReport, findingText } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-report.cjs'));
+const { reportFindings, readReport, findingText } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/spec-report.cjs'));
 
 /** A report: its title, summary, and the Findings section's lines. @param {string[]} findings */
 const report = (findings) => ['# Spec Review — spec-review-001', '', '## Summary', '', 'Read it all.', '', '## Findings', '', ...findings].join('\n');

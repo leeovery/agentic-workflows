@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The replay (leeway-engine/scripts/domain/replay.cjs, its screen
+// The replay (ledger-engine/scripts/domain/replay.cjs, its screen
 // domain/projections/matrix.cjs): `render matrix-replay`, the trust log
 // replayed against a proposed setting over its period, each question decided
 // again as the rule did at its raise, over the counts as they stood then,
@@ -23,7 +23,7 @@ const { screenOf, FROZEN_MS } = require('./engine-harness.cjs');
 const { idOf, DRAWN, NARROW, UNDRAWN, DAY, lines, history } = require('./trust-world.cjs');
 const { OTHER, engine, CARRY_ON, render, run, refused, pick, screen, useMatrixWorld } = require('./matrix-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { replay } = require(path.join(SCRIPTS, 'domain/replay.cjs'));
 const { DEFAULTS } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));

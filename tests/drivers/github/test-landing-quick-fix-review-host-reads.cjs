@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and a quick-fix's review reading its change with
-// the host's landing not here (leeway-engine/scripts/domain/
+// the host's landing not here (ledger-engine/scripts/domain/
 // review-change.cjs, over drivers/landing/github/, 7.2.22, 19.5.14, 20.10):
 // its pull request squashed on GitHub and never pulled, the board reading
 // it off git alone, GitHub never asked nor fetched; and squashed and pulled

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The build's entry and its standing (leeway-engine/scripts/domain/
+// The build's entry and its standing (ledger-engine/scripts/domain/
 // build-entry.cjs): `engine enter implementation <unit>`. What it refuses,
 // naming the way on and writing nothing — a build not begun (11.8.3) and a
 // topic named; another session
@@ -61,7 +61,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { buildStanding } = require(path.join(SCRIPTS, 'domain/build-entry.cjs'));
 const { recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
@@ -70,7 +70,7 @@ const { computeNextPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 const UNIT = 'fumi';
-const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 // A process that runs and is not this suite's.
 const PEER = String(process.ppid);
 
@@ -120,7 +120,7 @@ const world = fixtureFrom('engine-build-entry-', (dir) => {
   createManifest(dir, 'solo', { build: { position: 'step' }, cut: { phases: [CUT.phases[0]] } });
   createManifest(dir, 'other', {});
   createManifest(dir, 'fresh', { cut: { phases: [CUT.phases[0]] } });
-  createFile(dir, '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
+  createFile(dir, '.claude/skills/ledger-implementation-process/SKILL.md', '# The build\n');
   commitAll(dir, 'the world');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
   ok(dir, ['task', 'phase', UNIT, '2', '--title', 'Refunds']);
@@ -129,8 +129,8 @@ const world = fixtureFrom('engine-build-entry-', (dir) => {
   const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-entry-world-'));
   try {
     accountTaken(dir, UNIT, '1.1');
-    ok(dir, ['task', 'done', UNIT, '1.1'], { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
-    ok(dir, ['task', 'start', UNIT, '1.2'], { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
+    ok(dir, ['task', 'done', UNIT, '1.1'], { env: { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
   } finally {
     fs.rmSync(config, { recursive: true, force: true });
   }
@@ -151,7 +151,7 @@ afterEach(() => {
 });
 
 /** The engine as the conversation `sessionId` runs it. @param {string} [sessionId] */
-const env = (sessionId = 'sess-1') => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+const env = (sessionId = 'sess-1') => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** An entry that must succeed: its response and its sections. @param {string[]} args @param {string} [sessionId] */
 const enter = (args, sessionId) => okSections(dir, ['enter', 'implementation', ...args], { env: env(sessionId) });
@@ -167,7 +167,7 @@ const refused = (args) => refusedPristine(dir, ['enter', 'implementation', ...ar
  */
 function dispatchBuilder(task, agentId, sessionId = 'sess-1') {
   const brief = `B${task.replace('.', '')}`;
-  withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief(sessionId, brief, `Brief ${brief}\n`, { role: 'builder', agent: ROLES.builder.agent, unit: UNIT, task, topic: null }));
+  withEnv({ LEDGER_CONFIG_DIR: config }, () => storeBrief(sessionId, brief, `Brief ${brief}\n`, { role: 'builder', agent: ROLES.builder.agent, unit: UNIT, task, topic: null }));
   ok(dir, ['conversation', 'builder', sessionId, agentId, '--brief', brief], { env: env(sessionId) });
 }
 
@@ -180,7 +180,7 @@ function position(sessionId = 'sess-1') {
 const data = (lines) => `=== DATA (reason from this — never display or parse the sections below) ===\n${lines.join('\n')}\n`;
 
 /** The build's standing, as this conversation reads it, with its tasks in flight. */
-const standing = () => withEnv({ LEEWAY_CONFIG_DIR: config }, () => buildStanding(dir, UNIT, position()?.tasks ?? []));
+const standing = () => withEnv({ LEDGER_CONFIG_DIR: config }, () => buildStanding(dir, UNIT, position()?.tasks ?? []));
 
 /** Where each phase of the cut stands. */
 const states = () => standing().phases.map(({ state }) => state);
@@ -237,7 +237,7 @@ describe('another session holding the checkout\'s code (12.7.8)', () => {
     const epic = ok(dir, ['gate', 'code gate', '--pick', 'b'], { env: env() }).next;
     enter(['solo']);
 
-    assert.deepStrictEqual([epic, ok(dir, ['gate', 'code gate', '--pick', 'b'], { env: env() }).next], [{ kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] }, { kind: 'continue' }]);
+    assert.deepStrictEqual([epic, ok(dir, ['gate', 'code gate', '--pick', 'b'], { env: env() }).next], [{ kind: 'handoff', skill: 'ledger-continue-epic', args: [UNIT] }, { kind: 'continue' }]);
   });
 });
 
@@ -417,7 +417,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
     const note = output(dir, ['conversation', 'position'], { env: env() });
 
     for (const line of [
-      path.join(dir, '.claude/skills/leeway-implementation-process/SKILL.md'), `\`${ENGINE} ledger affected ${UNIT}\``, `\`${ENGINE} ledger record ${UNIT}\``,
+      path.join(dir, '.claude/skills/ledger-implementation-process/SKILL.md'), `\`${ENGINE} ledger affected ${UNIT}\``, `\`${ENGINE} ledger record ${UNIT}\``,
       statePath(dir, `${UNIT}/build/log.md`), ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch',
     ]) {
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
@@ -549,7 +549,7 @@ describe('the environment setup at the build\'s entry (22.5.1, 12.7.4)', () => {
 
   it('an entry while another runs the steps in the checkout refuses, writing nothing; a claim whose holder is gone is taken over', () => {
     recording([{ name: 'Test database', when: 'first', command: 'echo first >> prepared.txt' }]);
-    const claim = holdLock(path.join(dir, '.git', 'leeway-preparing'));
+    const claim = holdLock(path.join(dir, '.git', 'ledger-preparing'));
     const error = refused(['solo']);
     fs.writeFileSync(claim, JSON.stringify({ pid: 2 ** 22 + 1, pid_start: 'gone' }));
 

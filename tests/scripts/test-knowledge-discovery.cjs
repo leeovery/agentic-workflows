@@ -18,8 +18,8 @@ const path = require('path');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 
-const { discoverArtifacts, readManifests, deriveIdentity, retirements } = require('../../skills/leeway-engine/scripts/domain/knowledge/artifacts.cjs');
-const { UserError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/retry.cjs');
+const { discoverArtifacts, readManifests, deriveIdentity, retirements } = require('../../skills/ledger-engine/scripts/domain/knowledge/artifacts.cjs');
+const { UserError } = require('../../skills/ledger-engine/scripts/kernel/knowledge/retry.cjs');
 const { setupGitFixture: setupFixture, cleanupFixture, statePath, output } = require('./engine-harness.cjs');
 
 /** Every artifact the project's manifests name. @param {string} root */

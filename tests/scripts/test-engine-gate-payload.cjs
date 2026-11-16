@@ -23,15 +23,15 @@ const { ok, output, refusedPristine, FROZEN_MS } = require('./engine-harness.cjs
 const { DAY, lines, history, shownIn, showingAnswers } = require('./trust-world.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
-const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
-const { showingOf, drawnBlind } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
+const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
+const { showingOf, drawnBlind } = require('../../skills/ledger-engine/scripts/domain/learned-gates.cjs');
 
 const HOUR = 60 * 60 * 1000;
 // Where the import reprompt comes: nowhere.
 const NOWHERE = Object.freeze({ unit: null, phase: null, topic: null });
 
-const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
+const ANNOUNCED = { LEDGER_GATE_SURFACE: '1' };
 
 /** The GATE payload in a response, held whole against its MENU; null when it carries no menu. @param {string} out */
 function gateOf(out) {
@@ -91,7 +91,7 @@ const PHASE_NOTE = ['render', 'phase-note', 'auth.investigation.auth', '--verb',
  * @param {string} dir @param {string} wu @param {string} phase @param {string} topic
  */
 function heldByPeer(dir, wu, phase, topic) {
-  const presence = createFile(dir, `.leeway/.cache/${wu}/${phase}/${topic}/presence`,
+  const presence = createFile(dir, `.ledger/.cache/${wu}/${phase}/${topic}/presence`,
     JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
   const past = new Date(Date.now() - 240 * 1000);
   fs.utimesSync(presence, past, past);
@@ -131,8 +131,8 @@ describe('gate payload — the announce switch', () => {
     seedCancel(dir);
     const plain = output(dir, CANCEL);
     for (const value of ['', '0', 'true', 'yes']) {
-      const out = output(dir, CANCEL, { env: { LEEWAY_GATE_SURFACE: value } });
-      assert.strictEqual(out, plain, `LEEWAY_GATE_SURFACE=${value} announced a gate`);
+      const out = output(dir, CANCEL, { env: { LEDGER_GATE_SURFACE: value } });
+      assert.strictEqual(out, plain, `LEDGER_GATE_SURFACE=${value} announced a gate`);
     }
   });
 });
@@ -164,7 +164,7 @@ describe('gate payload — a render surface', () => {
 
   it('a bare key row states no label — its word is the key the person presses, never a head', () => {
     createManifest(dir, 'auth', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
-    createFile(dir, '.leeway/auth/topics/auth/log.md', '# Discussion — auth\n');
+    createFile(dir, '.ledger/auth/topics/auth/log.md', '# Discussion — auth\n');
     createManifest(dir, 'v1', { work_type: 'epic' });
     const gate = gateOf(output(dir, ['render', 'absorb-confirm-gate', 'auth', '--into', 'v1', '--topic', 'auth', '--summary', 'Signing in'], { env: ANNOUNCED }));
 
@@ -217,14 +217,14 @@ describe('gate payload — a learned gate run as an automatic step', () => {
   });
 
   it('8.S22: the import prompt stepped by the decision point at no place, each showing told by the paths it names, run as a step on skip, states no gate — its report in its menu\'s place — and the prompt shown before it, over other paths, is gone, so an answer to it refuses; the step logged in the trust log as a step, no answer (3.2.7)', (t) => {
-    const env = { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
+    const env = { ...ANNOUNCED, LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
     const log = path.join(config, 'trust.jsonl');
-    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
     const skipped = history({ project, start: Date.now() - DAY });
     for (let i = 0; i < 13; i += 1) skipped.gate('import reprompt', { picked: 's' });
     fs.writeFileSync(log, lines(...skipped.events));
     /** The reprompt over `missing` drawn. @param {string[]} missing */
-    const reprompt = (missing) => output(dir, ['render', 'import-reprompt', '--file', createFile(dir, '.leeway/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing }))], { env });
+    const reprompt = (missing) => output(dir, ['render', 'import-reprompt', '--file', createFile(dir, '.ledger/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing }))], { env });
     const shown = gateOf(reprompt(['/notes/other.png']))?.gate;
     const asked = t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
     const out = reprompt(['/notes/sketch.png']);
@@ -257,10 +257,10 @@ describe('gate payload — the import reprompt\'s showing, held at no place (N1,
 
   it('set aside by free text, it shows on its hold in the next conversation over the same paths, the answer there the same event; a later reprompt over other paths, the first abandoned, is drawn afresh, its answer an event of its own', () => {
     /** The conversation `session`, its trust log in the test's own config folder. @param {string} session */
-    const as = (session) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
+    const as = (session) => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
     /** The reprompt over `missing` drawn in `session`: the showing it was shown on. @param {string[]} missing @param {string} session */
     const reprompt = (missing, session) => {
-      const file = createFile(dir, '.leeway/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing }));
+      const file = createFile(dir, '.ledger/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing }));
       output(dir, ['render', 'import-reprompt', '--file', file], { env: as(session) });
       return shownIn(config, session).showing;
     };
@@ -277,16 +277,16 @@ describe('gate payload — the import reprompt\'s showing, held at no place (N1,
   });
 
   it('3.2.7, 16.21.3: its showing is told by when the place the conversation\'s position names was entered and the paths it names — the reprompt over the same paths in two entries of the product\'s conversation two showings, each run as a step under an id of its own; where the position names no place, the roadmap or none at all, by its paths alone', (t) => {
-    const as = (/** @type {string} */ session) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
+    const as = (/** @type {string} */ session) => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
     const log = path.join(config, 'trust.jsonl');
-    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
     const skipped = history({ project, start: Date.now() - DAY });
     for (let i = 0; i < 13; i += 1) skipped.gate('import reprompt', { picked: 's' });
     fs.writeFileSync(log, lines(...skipped.events));
     t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
     const missing = ['/notes/sketch.png'];
     /** The reprompt over `missing` drawn in `session`. @param {string} session */
-    const reprompt = (session) => output(dir, ['render', 'import-reprompt', '--file', createFile(dir, '.leeway/.cache/product/discovery/product/import-reprompt.json', JSON.stringify({ missing }))], { env: as(session) });
+    const reprompt = (session) => output(dir, ['render', 'import-reprompt', '--file', createFile(dir, '.ledger/.cache/product/discovery/product/import-reprompt.json', JSON.stringify({ missing }))], { env: as(session) });
     /** The product's conversation entered in `session`, the clock at `ms`: when it was entered, as recorded. @param {number} ms @param {string} session */
     const entered = (ms, session) => {
       t.mock.timers.enable({ apis: ['Date'], now: ms });
@@ -295,7 +295,7 @@ describe('gate payload — the import reprompt\'s showing, held at no place (N1,
       } finally {
         t.mock.timers.reset();
       }
-      return JSON.parse(fs.readFileSync(path.join(dir, '.leeway/.cache/product/discovery/product/entered.json'), 'utf8')).at;
+      return JSON.parse(fs.readFileSync(path.join(dir, '.ledger/.cache/product/discovery/product/entered.json'), 'utf8')).at;
     };
 
     const first = entered(FROZEN_MS, 'sess-1');
@@ -398,8 +398,8 @@ describe('gate payload — every row shape', () => {
    * @param {string} dir
    */
   function seedEveryRowShape(dir) {
-    createFile(dir, '.leeway/manifest.json', JSON.stringify({
-      ...JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8')),
+    createFile(dir, '.ledger/manifest.json', JSON.stringify({
+      ...JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8')),
       roadmap: {
         horizons: ['now_ish *core*', 'later [v2]'],
         items: {
@@ -410,7 +410,7 @@ describe('gate payload — every row shape', () => {
         },
       },
     }));
-    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
+    createFile(dir, '.ledger/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
     createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later', summary: 'stored value' }]));
 
     createManifest(dir, 'v1', {
@@ -434,8 +434,8 @@ describe('gate payload — every row shape', () => {
         },
       },
     });
-    createFile(dir, '.leeway/v1/topics/auth/mail/001.md', '# A message\n');
-    createFile(dir, '.leeway/v1/topics/tax/mail/001.md', '# A message\n');
+    createFile(dir, '.ledger/v1/topics/auth/mail/001.md', '# A message\n');
+    createFile(dir, '.ledger/v1/topics/tax/mail/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
   }
 
@@ -548,7 +548,7 @@ describe('gate payload — escaped text', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a title the engine escaped reads as its own characters, and its markup as text', () => {
-    const archived = '.leeway/.inbox/.archived/ideas/2026-05-01--user-id.md';
+    const archived = '.ledger/.inbox/.archived/ideas/2026-05-01--user-id.md';
     createFile(dir, archived, '# Fix user_id in *auth* [draft]\n');
 
     const item = gateOf(output(dir, ['render', 'archived-item', '--path', archived], { env: ANNOUNCED }));

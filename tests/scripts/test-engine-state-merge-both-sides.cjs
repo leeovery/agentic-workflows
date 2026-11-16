@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The merge where both sides moved (leeway-engine/scripts/domain/state-merge.cjs):
+// The merge where both sides moved (ledger-engine/scripts/domain/state-merge.cjs):
 // committed state merged onto the remote's tip in one commit and pushed with
 // a lease, the ledgers unioned past any read budget, histories with no
 // common ancestor, a file only one side changed taken whole; and the remote
@@ -21,7 +21,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { git, tip, remoteTip, layout, commitOnState, traced } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pickStateMerge } = require(MERGE);
@@ -143,7 +143,7 @@ describe('the merge, both sides moved (4.S14)', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/notes.md'), `there\n${notes}`);
     assert.strictEqual(readFile(here.root, notesBeside), `${notes}here\n`);
     assert.strictEqual(readFile(here.root, layout.manifest('unit')), unit('next', { there: 1, here: 1 }));
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['.leeway/unit/assets/notes.md']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['.ledger/unit/assets/notes.md']);
   });
 
   it('carries a line across the chunks the ledger is read in whole, a character split between them included', () => {
@@ -276,7 +276,7 @@ describe('the remote moving under the merge (4.S15)', () => {
     const out = withMovingRemote(there, waiting, () => catchUpState(here.root));
 
     assert.deepStrictEqual([out.action, out.pushed], ['merged', false]);
-    assert.match(out.warnings[out.warnings.length - 1], /^the remote kept moving: leeway-state is not pushed after 3 attempts, and the next catch-up carries on$/);
+    assert.match(out.warnings[out.warnings.length - 1], /^the remote kept moving: ledger-state is not pushed after 3 attempts, and the next catch-up carries on$/);
     assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [waiting[1]]);
     assert.strictEqual(remoteTip(bare), waiting[2]);
 

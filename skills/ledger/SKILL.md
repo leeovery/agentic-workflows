@@ -1,0 +1,86 @@
+---
+name: ledger
+description: Use for any change to what this project's code does, however small, and whenever the person asks to run something through Ledger — invoke it with their words, unless this conversation is already in a Ledger phase, which takes them itself. Comments, docs and formatting that change no behaviour go straight through; in doubt, use it.
+allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
+---
+
+> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
+
+## Arguments
+
+- `$ARGUMENTS` — the person's words, whole: what they asked for in the conversation, or typed after the command. The bare command has none.
+
+## Instructions
+
+Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
+
+## Boot
+
+Boot runs first, given the words, and its answer says where the start goes. A migration may change `.claude/settings.json`, so run it with the sandbox disabled, the words on stdin as they stand:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs boot <<'WORDS'
+$ARGUMENTS
+WORDS
+```
+
+**CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command, and for every boot the start runs again. Every boot the start runs again is this one, words and all.
+
+A failed boot (`ok: false`, or a non-zero exit) is a migration that must never half-run silently: surface its error. **STOP.** Do not proceed — terminal condition.
+
+Surface the answer's `warnings` first, whatever else it says. Then follow it, branching on nothing else.
+
+## Boot's Stops
+
+Boot names the stop it made in `stop`: what to show, and what follows. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**. Where it names a `surface`, fetch it with its `args` after it, in order, and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}
+```
+
+Then its `next`:
+- **None** — the start ends there. **STOP.** Do not proceed — terminal condition.
+- **`gate`** — the screen asks the person, and their answer goes to `gate`. Run the `next` it returns: a boot's answer is followed afresh; anything else runs, then boot runs again; a null `next` ends the start.
+- **`load`** — load the reference it names, with what its `with` gives, then boot again:
+  - `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written, with folder = `{folder}`.
+  - `migration-directive`: Load **[migration-directive.md](references/migration-directive.md)** and follow its instructions as written, with directive = `{directive}` and file = `{file}`.
+  - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
+
+## The Opening
+
+Past every stop, boot answers `go`. Where it is `menu`, the bare command, fetch the banner first and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs render banner
+```
+
+Then work each of boot's `gates` in its order, as **The Setup Gates** says, and go where `go` says, as **Where the Start Goes** says.
+
+## The Setup Gates
+
+- `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
+- `claude-code-floor`, `mod-notice`: Load **[claude-code-setup.md](references/claude-code-setup.md)** and follow its instructions as written, with gate = `{gate}`.
+- `effort`: where boot's `effort` is a level below medium, say ``This session runs at `{effort}` effort; Ledger recommends medium or above.`` once, and carry on. At medium or above, say nothing.
+- `walkthrough`: Load **[walkthrough-offer.md](references/walkthrough-offer.md)** and follow its instructions as written.
+- `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
+- `knowledge`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
+- `brownfield`: Load **[brownfield-offer.md](references/brownfield-offer.md)** and follow its instructions as written.
+- `github-rule`, `github-squash`: fetch the offer and emit its sections verbatim per their markers. The answer goes to `gate`; run the `next` it returns, which records it.
+
+  ```bash
+  node .claude/skills/ledger-engine/scripts/engine.cjs render {gate:[github-rule|github-squash]}-gate
+  ```
+
+## Where the Start Goes
+
+- **`menu`**: Load **[start-menu.md](references/start-menu.md)** and follow its instructions as written.
+- **`route`**: boot routed the words to Start's type call, or into the work they name. Invoke the skill its `route`'s `next` names, with its `args`, here in this conversation: ``Invoke `/{skill} {args}`.``
+
+  This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+- **`pick`**: the words name work among other words, several pieces of it, or a unit that has closed; or they carry on, with several units in progress. Fetch its `surface` with its `args` after it, in order, and emit its sections verbatim per their markers. The answer goes to `gate`. The `next` it returns is a skill to invoke here, as a route's is, or a closed unit's screen in manage: run it, and emit its sections verbatim per their markers.
+
+  ```bash
+  node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}
+  ```
+
+  Once a closed unit is drawn: Load **[start-menu.md](references/start-menu.md)** and follow its instructions as written, from **Managing a Unit**.

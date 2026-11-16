@@ -58,7 +58,7 @@ const reviewWorld = worldFrom('pipeline-review-', (sim) => {
   specEntry(sim, WU, ['entries']);
   sim.run(['brief', 'spec-writer', WU]);
   const [decision] = JSON.parse(sim.read(['ledger', 'record', WU, 'entries'])).decisions;
-  sim.write(`.leeway/${WU}/spec.md`, [
+  sim.write(`.ledger/${WU}/spec.md`, [
     '# Ledgerly', '', '## 1. Entries', '', '### 1.1 Kept', '', `1.1.1 An entry is kept as decided. [${decision.id}]`, '',
     '## 1-S. Scenarios for §1', '', '1.S1 Given a ledger, when an entry is kept, then it reads back. (1.1.1)', '',
     '## 2. Export', '', '### 2.1 Out', '', `2.1.1 The ledger exports as decided. [${decision.id}]`, '',
@@ -100,7 +100,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     epicBuildPick(sim, WU, 'review');
     const { move } = reviewNext(sim, WU);
     const here = carryOn(sim);
-    assert.deepStrictEqual([move, here.position, here.skill], ['round', { name: WU, phase: 'review', topic: WU }, path.join(sim.dir, '.claude/skills/leeway-review-process/SKILL.md')],
+    assert.deepStrictEqual([move, here.position, here.skill], ['round', { name: WU, phase: 'review', topic: WU }, path.join(sim.dir, '.claude/skills/ledger-review-process/SKILL.md')],
       'the review phase\'s entry records its place, its first round to read');
   });
 
@@ -121,7 +121,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     const here = carryOn(sim);
     assert.deepStrictEqual([sim.handoffs.slice(handedOff), here.position], [[], { name: WU, phase: 'review', topic: WU }],
       'the build\'s own conversation carries on into the review phase, with no handoff and no menu between (14.S1, 24.S7)');
-    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/leeway-review-process/SKILL.md'), 'a compaction there carries on in the review phase\'s skill');
+    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/ledger-review-process/SKILL.md'), 'a compaction there carries on in the review phase\'s skill');
     assert.deepStrictEqual([move, data.reads], ['round', ['1-entries, 2-export, the test surface (tests)']], 'round 1 reads every area, none merged, and the test surface');
 
     // Round 1: both pairs and the test reader; area 1 fails, the test
@@ -130,12 +130,12 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     areaRead(sim, WU, undefined, 2);
     testsRead(sim, WU, BESIDE);
     const fileCall = reviewCall(sim, WU, 'Is the dropped import date filed or dropped?', 'Filed: an old ledger\'s import keeps its dates.', 'A real loss, beside the change.');
-    const item = sim.run(['inbox', 'file', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/item.json`, {
+    const item = sim.run(['inbox', 'file', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/item.json`, {
       kind: 'bug', text: '# Old ledgers lose their dates on import\n\nImporting an old ledger drops each entry\'s date.', call: fileCall,
     })]);
     const dropCall = reviewCall(sim, WU, 'Is the import test\'s wording filed or dropped?', 'Dropped.', 'A word in a test beside the change is not worth an item.');
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
-    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+    sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Keep a ledger and export it.'],
       findings: [
         { area: '1-entries', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-entries-a#1'], fix: `${phase}.1` },
@@ -158,7 +158,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.run(['review', 'reads', WU, '1-entries']);
     assert.deepStrictEqual(reviewNext(sim, WU).data.reads, ['1-entries'], 'only the area the fix changed is read again (14.3.3)');
     areaRead(sim, WU, undefined, 1);
-    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
+    sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
     const unclosed = board().view.waiting;
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
     // The inbox checked against what was built (18.6.4): of two items put
@@ -166,7 +166,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     // line of the build's log and closed for the unit, the other mentioned
     // there and left waiting.
     const [resolved, waits] = [['bug', '# A Tampered Entry Reads As Valid\n'], ['idea', '# Export The Ledger\n']].map(([kind, text]) => sim.run(['inbox', 'capture', kind], null, text).captured);
-    sim.write(`.leeway/${WU}/build/log.md`, `# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2. Exporting the ledger, ${waits}, waits for later. Nothing is in flight.\n\nResolved: ${resolved}\n`);
+    sim.write(`.ledger/${WU}/build/log.md`, `# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2. Exporting the ledger, ${waits}, waits for later. Nothing is in flight.\n\nResolved: ${resolved}\n`);
     sim.run(['inbox', 'close', WU, resolved]);
     finishClosed(sim, WU);
     const passed = board();
@@ -193,7 +193,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     for (const file of ['build/log.md', 'build/tasks/1.1.md', 'build/tasks/1.1/round-1-a.md', `build/tasks/${phase}.1.md`, 'review/round-2.md', 'review/round-1/2-export-b.md', 'review/round-1/tests-a.md']) {
       assert.ok(files.includes(file), `the finished unit keeps ${file}`);
     }
-    assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway', '.baseline')), '.leeway/ holds no .baseline/');
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.ledger', '.baseline')), '.ledger/ holds no .baseline/');
     assert.deepStrictEqual([1, phase].map((n) => JSON.parse(sim.read(['task', 'list', WU, String(n)])).tasks.map((/** @type {{status: string}} */ t) => t.status)), [['done'], ['done']],
       'its tasks are found in the tracker');
   });

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A raise decided by the ask rule (leeway-engine/scripts/domain/raise.cjs,
+// A raise decided by the ask rule (ledger-engine/scripts/domain/raise.cjs,
 // over the decision point domain/decision-point.cjs and the rule
 // domain/ask-rule.cjs): what the raise gives the decision point beside the
 // call (E1), every call still asking until the rule is switched on — none
@@ -49,14 +49,14 @@ const { SESSION, raiseHelpers } = require('./raise-world.cjs');
 const { MODEL, UNDRAWN } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { MODEL_LINES, countsFrom, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
 mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/event-fields.cjs').Kind} Kind */
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 // An epic in its build, in auto, beside the epic in discussion.
@@ -162,7 +162,7 @@ function builderOn(claude, model) {
   const agent = path.join(claude, 'projects', '-Users-me-fumi', SESSION, 'subagents', 'agent-b23.jsonl');
   fs.mkdirSync(path.dirname(agent), { recursive: true });
   fs.writeFileSync(agent, `${JSON.stringify({ type: 'assistant', message: { model } })}\n`);
-  fs.writeFileSync(agent.replace(/\.jsonl$/, '.meta.json'), JSON.stringify({ agentType: 'leeway-builder', worktreePath: fs.realpathSync(worktree) }));
+  fs.writeFileSync(agent.replace(/\.jsonl$/, '.meta.json'), JSON.stringify({ agentType: 'ledger-builder', worktreePath: fs.realpathSync(worktree) }));
   return worktree;
 }
 
@@ -187,7 +187,7 @@ describe('what the decision point is given (E1)', () => {
 
     const after = Date.now();
     const given = decide.mock.calls.map((called) => called.arguments);
-    const at = given.map(([, at]) => /** @type {import('../../skills/leeway-engine/scripts/domain/decision-point.cjs').At} */ (at));
+    const at = given.map(([, at]) => /** @type {import('../../skills/ledger-engine/scripts/domain/decision-point.cjs').At} */ (at));
     assert.ok(at.every(({ now }) => now >= before && now <= after), 'the time given is not the raise\'s');
     const common = { checked: false, measured: null, project: { root: statePath(dir), name: projectName(dir) } };
     const look = { labeller: LABELLER, answers: labelled('look').answers };

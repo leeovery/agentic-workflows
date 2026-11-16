@@ -2,8 +2,8 @@
 
 //
 // Tests for the conversation folder, `{config}/conversations/{session-id}/`
-// beside the system config — `LEEWAY_CONFIG_DIR`, else
-// `~/.config/leeway` — and found by the session id alone from wherever a
+// beside the system config — `LEDGER_CONFIG_DIR`, else
+// `~/.config/ledger` — and found by the session id alone from wherever a
 // command runs: the mark every engine call leaves where Claude Code
 // handed it a session id — once, never without an id, never outside a
 // workflows project, never from the commands Claude Code's own hooks run —
@@ -34,7 +34,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { tidyConversations, callerModel, readPosition, tasksInFlight, positionPath } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
+const { tidyConversations, callerModel, readPosition, tasksInFlight, positionPath } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
 
 let dir; // a workflows project
 let config; // this test's system config directory
@@ -43,12 +43,12 @@ let pinned; // the suite's own, put back after
 function setup() {
   dir = harness.setupGitFixture('engine-conversation-');
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-config-'));
-  pinned = process.env.LEEWAY_CONFIG_DIR;
-  process.env.LEEWAY_CONFIG_DIR = config;
+  pinned = process.env.LEDGER_CONFIG_DIR;
+  process.env.LEDGER_CONFIG_DIR = config;
 }
 
 function teardown() {
-  process.env.LEEWAY_CONFIG_DIR = pinned;
+  process.env.LEDGER_CONFIG_DIR = pinned;
   for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
@@ -126,17 +126,17 @@ describe('the mark', () => {
     try {
       harness.ok(worktree, ['session', 'repair'], { env: session('sess-1') });
       assert.ok(fs.existsSync(marker('sess-1')));
-      assert.ok(!fs.existsSync(path.join(worktree, '.leeway')), 'no state folder conjured in the code worktree');
+      assert.ok(!fs.existsSync(path.join(worktree, '.ledger')), 'no state folder conjured in the code worktree');
     } finally {
       fs.rmSync(worktree, { recursive: true, force: true });
     }
   });
 
-  it('with no LEEWAY_CONFIG_DIR — unset or empty — the folder sits in the home directory\'s `.config/leeway`', () => {
+  it('with no LEDGER_CONFIG_DIR — unset or empty — the folder sits in the home directory\'s `.config/ledger`', () => {
     inScratch((home) => {
-      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-1'), HOME: home, LEEWAY_CONFIG_DIR: undefined } });
-      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-2'), HOME: home, LEEWAY_CONFIG_DIR: '' } });
-      assert.deepStrictEqual(fs.readdirSync(path.join(home, '.config', 'leeway', 'conversations')).sort(), ['sess-1', 'sess-2']);
+      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-1'), HOME: home, LEDGER_CONFIG_DIR: undefined } });
+      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-2'), HOME: home, LEDGER_CONFIG_DIR: '' } });
+      assert.deepStrictEqual(fs.readdirSync(path.join(home, '.config', 'ledger', 'conversations')).sort(), ['sess-1', 'sess-2']);
     });
     assert.ok(!fs.existsSync(conversationsRoot()));
   });
@@ -179,7 +179,7 @@ describe('the mark', () => {
     assert.ok(!fs.existsSync(conversationsRoot()));
   });
 
-  it('marks only inside a workflows project — an engine call where no `.leeway/` exists makes none', () => {
+  it('marks only inside a workflows project — an engine call where no `.ledger/` exists makes none', () => {
     inScratch((bare) => {
       harness.call(bare, ['session', 'repair'], { env: session('sess-1') });
       assert.deepStrictEqual(fs.readdirSync(bare), []);
@@ -309,11 +309,11 @@ describe('the position, read in one place (4.11.14, 24.2.4)', () => {
   let pinnedConfig;
   beforeEach(() => {
     config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-config-'));
-    pinnedConfig = process.env.LEEWAY_CONFIG_DIR;
-    process.env.LEEWAY_CONFIG_DIR = config;
+    pinnedConfig = process.env.LEDGER_CONFIG_DIR;
+    process.env.LEDGER_CONFIG_DIR = config;
   });
   afterEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = pinnedConfig;
+    process.env.LEDGER_CONFIG_DIR = pinnedConfig;
     fs.rmSync(config, { recursive: true, force: true });
   });
 

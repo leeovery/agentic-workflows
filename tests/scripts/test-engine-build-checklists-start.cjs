@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A build phase's start, as the engine checks it (leeway-engine/scripts/
+// A build phase's start, as the engine checks it (ledger-engine/scripts/
 // domain/phase-checks.cjs, through checklist.cjs): its tasks written — each
 // phase scenario an acceptance scenario of exactly one task not closed
 // (12.4.3, 12.S14); what it relies on done — an earlier phase closed and its

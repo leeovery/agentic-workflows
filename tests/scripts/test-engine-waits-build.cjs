@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the menus read of a unit from its build on: what waits on the person
-// there (leeway-engine/scripts/domain/waits.cjs; 18.2.3) — the build's
+// there (ledger-engine/scripts/domain/waits.cjs; 18.2.3) — the build's
 // questions and else finish (D18), each with its door; what the read costs,
 // one read of the ledger checked once whatever the units (N3); and how far
 // the unit has come, as a menu's row says it, a phase not yet written saying
@@ -25,7 +25,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const review = require('./review-world.cjs');
 const { waitsIn, progress, door, wait } = require('./waits-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { waitsOf } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 const { readShown } = require(path.join(SCRIPTS, 'domain/ledger-read.cjs'));
 
@@ -38,7 +38,7 @@ describe('the build\'s questions and finish (18.2.3, D18)', () => {
   review.useWorld((copied) => {
     dir = copied;
   });
-  const intoReview = door('leeway-review-process', 'feature', review.UNIT);
+  const intoReview = door('ledger-review-process', 'feature', review.UNIT);
   const QUESTION = 'Is the receipt mailed or printed?';
 
   it('a question a fix task is parked on waits by its number and words, its door the review', async () => {

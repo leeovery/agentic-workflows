@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` on a unit's page (leeway-engine/scripts/domain/projections/
+// `engine board` on a unit's page (ledger-engine/scripts/domain/projections/
 // board-unit.cjs, board-all.cjs; 20.15, 20.16): other units' pages than the
 // epic's, This session that cannot be drawn, how far All work says an epic
 // has come; and the views the mod draws, shaped as the engine answers them.
@@ -147,7 +147,7 @@ describe('the views the mod draws, shaped as the engine answers them (N8)', () =
     sent('space-homing', 'note-window', 'Notes open on their Space');
     sent('note-window', 'space-homing', 'The tour opens first');
     const discussion = board().view;
-    const [delivered] = fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'space-homing', 'mail'));
+    const [delivered] = fs.readdirSync(path.join(dir(), '.ledger', UNIT, 'topics', 'space-homing', 'mail'));
     ok(dir(), ['topic', 'answered', UNIT, 'space-homing', delivered.replace(/\.md$/, ''), '--entry', writeIn(dir(), 'ask', SPACE, [], { ...MADE, text: 'Does the tour open first?' })], { env: SESSION });
     ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'later'], { env: SESSION });
     writeState(dir(), '.inbox/ideas/2026-10-30--fumi-stacks.md', '# Fumi stacks\n\nNotes stacked on a Space.\n');
@@ -166,10 +166,10 @@ describe('the views the mod draws, shaped as the engine answers them (N8)', () =
 
   it('an experiment approved with its design and its runs by condition', async () => {
     spawned();
-    const record = path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'experiments', 'E1-note-open');
+    const record = path.join(dir(), '.ledger', UNIT, 'topics', 'note-window', 'experiments', 'E1-note-open');
     fs.writeFileSync(path.join(record, 'design.md'), '# E1: Note open\n\n## Question\n\nHow fast does a note open?\n\n## Decision rule\n\nUnder 100 ms wins.\n');
     for (const step of ['advance', 'approve', 'advance']) ok(dir(), ['experiment', step, UNIT, 'note-window', 'E1'], { env: SESSION });
-    const tally = '.leeway/.cache/fumi/experiment/note-window/runs.json';
+    const tally = '.ledger/.cache/fumi/experiment/note-window/runs.json';
     fs.mkdirSync(path.join(dir(), path.dirname(tally)), { recursive: true });
     fs.writeFileSync(path.join(dir(), tally), JSON.stringify([{ condition: '16 bare windows', of: 2, values: [0.24, 0.26], unit: 's' }]));
     ok(dir(), ['experiment', 'runs', UNIT, 'note-window', 'E1', '--file', tally], { env: SESSION });

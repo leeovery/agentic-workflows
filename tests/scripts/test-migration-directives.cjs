@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // The migration's directives (21.10): a directive's head, linted over every
 // directive the migrations hold (21.S34; the format is the header of
-// leeway-migrate/scripts/migrate.cjs, the lint directive-lint.cjs); `engine
+// ledger-migrate/scripts/migrate.cjs, the lint directive-lint.cjs); `engine
 // migrate check`, its check run (domain/directives.cjs); `engine migrate
 // checked`, the checks before the reshape's move recorded made; its checklist,
 // whose one item is the check, the engine's, and whose close records the
@@ -45,8 +45,8 @@ const {
   UNIT, SESSION, RECORDED, FIXTURES, directiveEngine, midMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, recorded,
 } = require('./migration-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const MIGRATIONS = path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
+const MIGRATIONS = path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations');
 const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { directiveStop } = require(path.join(SCRIPTS, 'domain/projections/boot.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
@@ -388,14 +388,14 @@ describe('the stop\'s screen (21.10.11)', () => {
       '>',
       '> Another session is carrying the migration on from its records step, last active 3m ago, so this one stops here.',
       '>',
-      '> Run `/leeway` here again once that session has finished the migration, or has ended.',
+      '> Run `/ledger` here again once that session has finished the migration, or has ended.',
     ]);
     assert.deepStrictEqual(taken('checks'), [
-      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Leeway, so they come first. No session works in this project until the migration is done.",
+      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Ledger, so they come first. No session works in this project until the migration is done.",
       '>',
       '> Another session is carrying the migration on from its checks, last active 3m ago, so this one stops here.',
       '>',
-      '> Run `/leeway` here again once that session has finished the migration, or has ended.',
+      '> Run `/ledger` here again once that session has finished the migration, or has ended.',
     ]);
     assert.deepStrictEqual([['--active', '180'], ['--at', RECORDS], ['--at', RECORDS, '--active', '3m']].map((args) => refusedUntouched(dir, ['render', 'migration-taken-stop', ...args])), [
       'render migration-taken-stop: --at <step> names the step another session carries the migration on from, a directive\'s id or checks',
@@ -460,7 +460,7 @@ describe('while the migration runs (21.1.5, 21.9.3)', () => {
   });
 
   it('nothing reaches the trust log — not Claude\'s decision, not a gate\'s answer, nothing kept waiting in the conversation — until the migration\'s commit makes the state branch\'s first', () => {
-    const env = { ...SESSION, LEEWAY_CONFIG_DIR: config() };
+    const env = { ...SESSION, LEDGER_CONFIG_DIR: config() };
     const tell = () => {
       const question = engine.ok(dir, ['ledger', 'ask', `${UNIT}.discussion.licensing`], { env, stdin: JSON.stringify({ text: 'How long is the trial?', by: 'person', who_moved_whom: 'none' }) }).id;
       engine.ok(dir, ['ledger', 'decide', `${UNIT}.discussion.licensing`, '--answers', question], { env, stdin: JSON.stringify({ text: 'Fourteen days.', why: 'Long enough to try a release.', by: 'claude', who_moved_whom: 'none' }) });

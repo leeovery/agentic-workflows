@@ -70,18 +70,18 @@ function epicManifest(overrides = {}) {
  */
 function fillFixture(project, { feature = featureManifest(), epic = epicManifest() } = {}) {
   keywordOnlyKnowledge(project);
-  const setUp = JSON.parse(fs.readFileSync(path.join(project, '.leeway/manifest.json'), 'utf8'));
-  writeFile(project, '.leeway/manifest.json', JSON.stringify({
+  const setUp = JSON.parse(fs.readFileSync(path.join(project, '.ledger/manifest.json'), 'utf8'));
+  writeFile(project, '.ledger/manifest.json', JSON.stringify({
     ...setUp,
     work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(feature, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
-  writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
-  writeFile(project, '.leeway/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
-  writeFile(project, '.leeway/payments/seeds/roadmap.md', '# Roadmap\n');
+  writeFile(project, '.ledger/auth-flow/manifest.json', JSON.stringify(feature, null, 2) + '\n');
+  writeFile(project, '.ledger/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
+  writeFile(project, '.ledger/auth-flow/seeds/seed.md', '# Seed\n');
+  writeFile(project, '.ledger/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
+  writeFile(project, '.ledger/payments/seeds/roadmap.md', '# Roadmap\n');
   // A file-only collision in the epic's seeds — dedupe must dodge it.
-  writeFile(project, '.leeway/payments/seeds/notes.md', '# Epic notes\n');
+  writeFile(project, '.ledger/payments/seeds/notes.md', '# Epic notes\n');
   commitAll(project, 'init');
 }
 
@@ -124,12 +124,12 @@ const engineFails = (fix, args, env = {}) => refuses(fix.project, [...args], { e
 
 /** Where a path in the epic lands, absolute, as the response names it. @param {Fixture} fix @param {string} rel */
 function inEpic(fix, rel) {
-  return path.join(fix.project, '.leeway', 'payments', rel);
+  return path.join(fix.project, '.ledger', 'payments', rel);
 }
 
 /** A unit's manifest as it stands. @param {Fixture} fix @param {string} wu */
 function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(fix.project, '.ledger', wu, 'manifest.json'), 'utf8'));
 }
 
 /** The state branch's head, short. @param {Fixture} fix */
@@ -142,7 +142,7 @@ function headFiles(fix, flags = []) {
   return stateGit(fix.project, ['show', '--name-only', ...flags, '--pretty=format:', 'HEAD']).trim().split('\n');
 }
 
-/** Every file under `.leeway/`, rel path → content, the commits and both trees' status — the pristine check. @param {Fixture} fix */
+/** Every file under `.ledger/`, rel path → content, the commits and both trees' status — the pristine check. @param {Fixture} fix */
 function treeSnapshot(fix) {
   /** @type {Record<string, string>} */
   const files = {};
@@ -153,7 +153,7 @@ function treeSnapshot(fix) {
       else files[path.relative(fix.project, full)] = fs.readFileSync(full, 'utf8');
     }
   };
-  walk(path.join(fix.project, '.leeway'));
+  walk(path.join(fix.project, '.ledger'));
   return {
     files,
     commits: stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim(),

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver across nested repositories (leeway-engine/
+// GitHub's landing driver across nested repositories (ledger-engine/
 // scripts/drivers/landing/github/), each repository asked in turn, past what
 // every driver gives (the nested conformance suite's): the squash default
 // set by one yes on the project's repository and each nested one on GitHub,

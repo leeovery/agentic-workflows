@@ -25,10 +25,10 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
-const SCRIPTS = path.join(ROOT, 'skills', 'leeway-engine', 'scripts');
+const SCRIPTS = path.join(ROOT, 'skills', 'ledger-engine', 'scripts');
 const DIAGRAMS = path.join(SCRIPTS, 'domain', 'projections', 'walkthrough-diagrams.cjs');
 const WALKTHROUGH = path.join(SCRIPTS, 'domain', 'projections', 'walkthrough.cjs');
-const SCREENS_DIR = path.join(ROOT, 'skills', 'leeway-engine', 'content', 'walkthrough', 'screens');
+const SCREENS_DIR = path.join(ROOT, 'skills', 'ledger-engine', 'content', 'walkthrough', 'screens');
 
 const {
   DIAGRAM_KINDS, SAMPLE_SURFACES, FIXTURES_DIR, FIXTURE_STATE,
@@ -336,7 +336,7 @@ describe('walkthrough sample surfaces', () => {
       'r/roadmap → Open the product roadmap',
       'v/view    → View completed & cancelled work units',
       'm/manage  → Manage work units',
-      'h/help    → How Leeway works',
+      'h/help    → How Ledger works',
     ].join('\n'));
     // A sample is an illustration inside a code block: no markdown, no
     // opening dot rule, and no non-breaking spaces a fence has no use for.
@@ -478,7 +478,7 @@ describe('walkthrough sample surfaces', () => {
       /** @type {Record<string, {sample: string, surface: string}>} */
       const drawn = JSON.parse(execFileSync(process.execPath, ['-e', script], {
         encoding: 'utf8',
-        env: { ...process.env, ...HERMETIC, LEEWAY_DISPLAY_WIDTH: String(width) },
+        env: { ...process.env, ...HERMETIC, LEDGER_DISPLAY_WIDTH: String(width) },
       }));
       return Object.entries(drawn).map(([surface, { sample, surface: live }]) => [surface, notDrawn(sample, live)]);
     };
@@ -488,12 +488,12 @@ describe('walkthrough sample surfaces', () => {
     }
   });
 
-  it('no file the skills and agents ship sits in a folder named for Leeway\'s own state, which a project\'s ignore line hides', () => {
+  it('no file the skills and agents ship sits in a folder named for Ledger\'s own state, which a project\'s ignore line hides', () => {
     const shipped = ['skills', 'agents'].flatMap((top) => fs.readdirSync(path.join(ROOT, top), { recursive: true, encoding: 'utf8' })
       .map((rel) => path.join(top, rel)));
     const hidden = shipped.filter((rel) => rel.split(path.sep).slice(0, -1).includes(STATE_DIR_NAME));
 
-    assert.ok(shipped.some((rel) => rel.startsWith(path.join('skills', 'leeway-engine', 'content', 'walkthrough', 'fixtures', 'start-menu', FIXTURE_STATE, ''))), 'the scan reads the fixtures');
+    assert.ok(shipped.some((rel) => rel.startsWith(path.join('skills', 'ledger-engine', 'content', 'walkthrough', 'fixtures', 'start-menu', FIXTURE_STATE, ''))), 'the scan reads the fixtures');
     assert.deepStrictEqual(hidden, []);
   });
 
@@ -549,10 +549,10 @@ describe('walkthrough screens', () => {
   const SCREENS = [
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 1 of 8 · The idea`**",
+      "# **`■ How Ledger works · 1 of 8 · The idea`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Claude Code is a capable engineer with two gaps. It forgets everything between sessions, and it has no process for how a piece of work should unfold, so every session starts cold and improvises from there. Leeway fills both. Every piece of work goes through phases, each building on what the last one recorded, and every question, finding and decision lands on a record that outlives the session, so nothing decided is decided twice.",
+      "Claude Code is a capable engineer with two gaps. It forgets everything between sessions, and it has no process for how a piece of work should unfold, so every session starts cold and improvises from there. Ledger fills both. Every piece of work goes through phases, each building on what the last one recorded, and every question, finding and decision lands on a record that outlives the session, so nothing decided is decided twice.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "   a piece of work, described in your own words",
@@ -572,7 +572,7 @@ describe('walkthrough screens', () => {
       "   piece of work starts from what this one decided",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "You are the engineer throughout. What to build, why, and what it must do are your decisions, made in the early phases where a wrong turn costs a sentence to correct. Leeway's part is to argue back where it should, find the questions nobody has answered yet while you're still talking the product through, keep the record straight, and build from it. Claude answers most of the smaller calls the way you would, learning from your own answers, and brings you the ones you'd want to make yourself.",
+      "You are the engineer throughout. What to build, why, and what it must do are your decisions, made in the early phases where a wrong turn costs a sentence to correct. Ledger's part is to argue back where it should, find the questions nobody has answered yet while you're still talking the product through, keep the record straight, and build from it. Claude answers most of the smaller calls the way you would, learning from your own answers, and brings you the ones you'd want to make yourself.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -585,10 +585,10 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 2 of 8 · Where everything starts`**",
+      "# **`■ How Ledger works · 2 of 8 · Where everything starts`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Everything begins at `/leeway`, and everything resumes there. It opens on the start menu: every piece of work in flight, each with where it has got to and what is waiting on you there, the ones waiting on you first. Leeway keeps track of where each piece of work is, not you, so there is no phase to remember and no separate command to continue anything. Picking a piece of work takes you straight to where it stands.",
+      "Everything begins at `/ledger`, and everything resumes there. It opens on the start menu: every piece of work in flight, each with where it has got to and what is waiting on you there, the ones waiting on you first. Ledger keeps track of where each piece of work is, not you, so there is no phase to remember and no separate command to continue anything. Picking a piece of work takes you straight to where it stands.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "Inbox: 2 ideas · 1 bug · 1 quick-fix",
@@ -606,12 +606,12 @@ describe('walkthrough screens', () => {
       "r/roadmap → Open the product roadmap",
       "v/view    → View completed & cancelled work units",
       "m/manage  → Manage work units",
-      "h/help    → How Leeway works",
+      "h/help    → How Ledger works",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Starting something new is one row: `s` takes a description in your own words, and the kind of work is settled from it as you talk. You don't even need the menu for that. Ask Claude for a change in the middle of a conversation and it takes your words into Leeway itself, going straight to the work they name.",
+      "Starting something new is one row: `s` takes a description in your own words, and the kind of work is settled from it as you talk. You don't even need the menu for that. Ask Claude for a change in the middle of a conversation and it takes your words into Ledger itself, going straight to the work they name.",
       "",
-      "Inside a piece of work the rhythm is the same everywhere. Leeway carries on until it reaches a decision that is genuinely yours, then it stops at a gate, shows a menu, and waits. The menu beneath this screen is one. You can answer with a key, in plain words, or close the terminal — where the Claude Code mod runs, a click on a row picks it and a second click sends it. Everything a session produces is committed to git as it goes, so leaving part-way costs nothing: the next `/leeway` shows the menu again, with that piece of work exactly where you left it.",
+      "Inside a piece of work the rhythm is the same everywhere. Ledger carries on until it reaches a decision that is genuinely yours, then it stops at a gate, shows a menu, and waits. The menu beneath this screen is one. You can answer with a key, in plain words, or close the terminal — where the Claude Code mod runs, a click on a row picks it and a second click sends it. Everything a session produces is committed to git as it goes, so leaving part-way costs nothing: the next `/ledger` shows the menu again, with that piece of work exactly where you left it.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -625,7 +625,7 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 3 of 8 · What the work is`**",
+      "# **`■ How Ledger works · 3 of 8 · What the work is`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
       "Whatever you start with, the first phase is discovery, and its job is to settle what the work is. It never starts solving the problem. The kind of work decides the route through the three stages, and settling the kind is what puts the work on the right one.",
@@ -654,10 +654,10 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 4 of 8 · The product takes shape`**",
+      "# **`■ How Ledger works · 4 of 8 · The product takes shape`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Not everything you describe is a piece of work. Sometimes it is the product: what it is, who it serves, what has to exist before launch and what can wait. Turning that into a piece of work straight away would force a shape onto it too early, so Leeway keeps a conversation about the product as a whole, the start menu's `p` row, and above the pieces of work a roadmap. When you ask for it laid out, Claude proposes the roadmap as items, at the grain you would move around a real roadmap, grouped into horizons you name yourself, in the order you mean them.",
+      "Not everything you describe is a piece of work. Sometimes it is the product: what it is, who it serves, what has to exist before launch and what can wait. Turning that into a piece of work straight away would force a shape onto it too early, so Ledger keeps a conversation about the product as a whole, the start menu's `p` row, and above the pieces of work a roadmap. When you ask for it laid out, Claude proposes the roadmap as items, at the grain you would move around a real roadmap, grouped into horizons you name yourself, in the order you mean them.",
       "",
       "The roadmap is also where a thought goes when it belongs to a later release. In the middle of any session, saying where something belongs (\"that's a v2 thing\") puts it there in one line and you carry on. Work begins when you pick items to start: they go into discovery together, which settles what kind of work they make, while the rest stay on the roadmap, visibly waiting. Each started item records which piece of work took it, so the roadmap stays true as things ship.",
       "",
@@ -695,7 +695,7 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 5 of 8 · An epic and its topics`**",
+      "# **`■ How Ledger works · 5 of 8 · An epic and its topics`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
       "An epic is what a piece of work becomes when it turns out to be several things wearing one name. Confirming one doesn't end discovery. It opens into a conversation across the whole of it, because the parts share decisions: a choice about accounts constrains billing, and a decision made twice is a decision made differently. Only when you say the ground is covered are the topics drawn out as the epic's map, which you approve, and each topic leaves with a brief carrying what concerns it and the questions still open.",
@@ -731,10 +731,10 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 6 of 8 · The journey of one piece of work`**",
+      "# **`■ How Ledger works · 6 of 8 · The journey of one piece of work`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each builds on what the last one recorded. That is why Leeway can pick up cold: nothing downstream depends on remembering a session, only on the record.",
+      "Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each builds on what the last one recorded. That is why Ledger can pick up cold: nothing downstream depends on remembering a session, only on the record.",
       "",
       "A discussion argues the design through, one conversation per topic. Its map lists your questions and the calls Claude made, each with where it stands, and the calls made since you last looked come first, so you can overrule one when it's made rather than at the end. The topic is done when nothing of yours is open. If a decision would rest on a number nobody has measured, an experiment measures it first.",
       "",
@@ -787,7 +787,7 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 7 of 8 · How much of you it needs`**",
+      "# **`■ How Ledger works · 7 of 8 · How much of you it needs`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
       "The amount of you each phase needs falls as the work goes on, and that is by design. At the start nearly every turn is yours: discovery and discussion are conversations, because a wrong turn caught there costs a sentence to put right and the same wrong turn caught in review costs a rebuild. By the specification the decisions are already on record, so your part shifts to approving. The build and the review phase run largely on their own.",
@@ -816,10 +816,10 @@ describe('walkthrough screens', () => {
     ].join('\n'),
     [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works · 8 of 8 · Living with it`**",
+      "# **`■ How Ledger works · 8 of 8 · Living with it`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Once the product exists, the everyday rhythm is the same command and the same habit: `/leeway`, or just ask Claude, describe the feature or the bug or the small change, and the work takes the route its kind calls for. Thoughts that arrive at the wrong moment don't have to derail anything. Say \"log that as an idea\", or as a bug, or as a quick-fix, and it lands in the inbox, waiting for you to triage it from the start menu: work on it now, put it on the roadmap, or archive it.",
+      "Once the product exists, the everyday rhythm is the same command and the same habit: `/ledger`, or just ask Claude, describe the feature or the bug or the small change, and the work takes the route its kind calls for. Thoughts that arrive at the wrong moment don't have to derail anything. Say \"log that as an idea\", or as a bug, or as a quick-fix, and it lands in the inbox, waiting for you to triage it from the start menu: work on it now, put it on the roadmap, or archive it.",
       "",
       "Nor is work locked to the shape it began with, because that shape was a reading made early, before the work had shown its size. A feature that outgrows itself becomes an epic in place, a stray feature can be absorbed into an epic as a topic, topics can be cancelled, postponed and brought back, and finished work stays finished, a later change to it new work. When a decision changes, everything that relied on it is flagged, so nothing stale is trusted by mistake.",
       "",
@@ -834,7 +834,7 @@ describe('walkthrough screens', () => {
       "   something is unclear  h/help on any menu, or just ask",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Whenever something on screen is unclear, `h` on any menu says what that screen is for, and the start menu's help brings you back here. Any session will answer a question about how Leeway works and then put you back where you were.",
+      "Whenever something on screen is unclear, `h` on any menu says what that screen is for, and the start menu's help brings you back here. Any session will answer a question about how Ledger works and then put you back where you were.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -858,10 +858,10 @@ describe('walkthrough screens', () => {
   it('the first-run offer renders whole at the pinned width', () => {
     assert.strictEqual(walkthroughOffer(false), [
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      "# **`■ How Leeway works`**",
+      "# **`■ How Ledger works`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Before your first piece of work, there's a short guide to how Leeway fits together: what happens when you start something, what gets written down, and where you come in. It's worth reading once, because everything you meet afterwards makes more sense with the shape already in your head.",
+      "Before your first piece of work, there's a short guide to how Ledger fits together: what happens when you start something, what gets written down, and where you come in. It's worth reading once, because everything you meet afterwards makes more sense with the shape already in your head.",
       "",
       "Eight screens, about five minutes. Leave whenever you like.",
       "",
@@ -871,7 +871,7 @@ describe('walkthrough screens', () => {
       "",
       "**`y/yes`**  → Let's do it",
       "**`s/skip`** → Skip for now — it's under h/help whenever you want it",
-      "**Ask**    → Ask anything about how Leeway works",
+      "**Ask**    → Ask anything about how Ledger works",
       "",
     ].join('\n'));
   });
@@ -884,7 +884,7 @@ describe('walkthrough screens', () => {
     // samples' own test holds.
     const at = (width) => {
       const script = `const w=require(${JSON.stringify(WALKTHROUGH)}),d=require(${JSON.stringify(DIAGRAMS)});`
-        + 'const n=Number(process.env.LEEWAY_DISPLAY_WIDTH),o=[];'
+        + 'const n=Number(process.env.LEDGER_DISPLAY_WIDTH),o=[];'
         + "for(let i=1;i<=w.loadScreen('1').total;i+=1){const s=w.loadScreen(String(i));"
         + "const tags=s.chunks.filter((c)=>c.kind==='diagram').map((c)=>c.tag);"
         + "const blocks=w.walkthroughScreen(s,'first-run',false).split(/^=== /m).filter((b)=>b.startsWith('DISPLAY: walkthrough diagram')).map((b)=>b.split('\\n').slice(1).join('\\n').trimEnd());"
@@ -894,7 +894,7 @@ describe('walkthrough screens', () => {
         + 'process.stdout.write(JSON.stringify(o));';
       return JSON.parse(execFileSync(process.execPath, ['-e', script], {
         encoding: 'utf8',
-        env: { ...process.env, ...HERMETIC, LEEWAY_DISPLAY_WIDTH: String(width) },
+        env: { ...process.env, ...HERMETIC, LEDGER_DISPLAY_WIDTH: String(width) },
       }));
     };
     assert.deepStrictEqual(at(CAP), []);

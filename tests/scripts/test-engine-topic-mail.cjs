@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The mailboxes between topics (leeway-engine/scripts/domain/mail.cjs, the
+// The mailboxes between topics (ledger-engine/scripts/domain/mail.cjs, the
 // screens projections/mail.cjs): `topic send`, landing a message as the next
 // file of the target topic's one mailbox, its path naming no phase (10.S1),
 // the line under its title naming who sent it and when, as the waiting mail
@@ -56,9 +56,9 @@ const {
   fixtureFrom, cleanupFixture, holdLock, lockAttempts, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { computeTopicLifecycle, buildDiscoveryMap } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
-const { BRANCH_REF } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
-const { liveResolved } = require('../../skills/leeway-engine/scripts/domain/inbox.cjs');
+const { computeTopicLifecycle, buildDiscoveryMap } = require('../../skills/ledger-engine/scripts/domain/derivations.cjs');
+const { BRANCH_REF } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
+const { liveResolved } = require('../../skills/ledger-engine/scripts/domain/inbox.cjs');
 
 const EPIC = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'mail-session' });
@@ -532,7 +532,7 @@ describe('render send-report (10.3.4)', () => {
       '  The licence window carries a "Lost your key?" link',
       '  ↳ Waiting in its mailbox, with my reasoning',
       '',
-      `/leeway ${EPIC} commercialization`,
+      `/ledger ${EPIC} commercialization`,
       '',
     ].join('\n'));
   });

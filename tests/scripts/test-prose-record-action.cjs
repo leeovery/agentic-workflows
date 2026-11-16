@@ -74,18 +74,18 @@ describe('prose recorder — tool events', () => {
       hook_event_name: 'PostToolUse',
       tool_name: 'Bash',
       agent_type: 'prose-walker',
-      tool_input: { command: announced(`cd ${world} && engine.cjs handoff leeway-review-process feature pay`) },
+      tool_input: { command: announced(`cd ${world} && engine.cjs handoff ledger-review-process feature pay`) },
       tool_response: { stdout: 'handoff: mod', stderr: '' },
     });
     const [row] = logLines();
-    assert.match(row, /^PostToolUse\tBash\tcd \. && engine\.cjs handoff leeway-review-process feature pay\tok\t/);
+    assert.match(row, /^PostToolUse\tBash\tcd \. && engine\.cjs handoff ledger-review-process feature pay\tok\t/);
   });
 
   it('keeps a long command whole once the world path collapses — the checks match against it', () => {
     // Measured failure mode: the world prefix ate the truncation budget
     // and the trailing field name fell off, so calls_include reported
     // never-ran on a call the walk performed.
-    const command = `cd ${world} && node .claude/skills/leeway-engine/scripts/engine.cjs `
+    const command = `cd ${world} && node .claude/skills/ledger-engine/scripts/engine.cjs `
       + 'manifest set search-relevance.discovery.relevance-measurement brief_incorporated true';
     fire({
       hook_event_name: 'PreToolUse',

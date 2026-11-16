@@ -1,7 +1,7 @@
 'use strict';
 
 // The oldest Claude Code the workflows run on is one value wherever it is
-// written: the engine's, the gate mod's, and the stop leeway puts
+// written: the engine's, the gate mod's, and the stop ledger puts
 // to an older Claude Code.
 //
 // Layer: unit.
@@ -13,7 +13,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { MIN_VERSION } = require('../../skills/leeway-engine/scripts/domain/gate-surface.cjs');
+const { MIN_VERSION } = require('../../skills/ledger-engine/scripts/domain/gate-surface.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -21,14 +21,14 @@ describe('the Claude Code floor', () => {
   const floor = MIN_VERSION.join('.');
 
   it("is the gate mod's own", () => {
-    const source = fs.readFileSync(path.join(ROOT, 'skills/leeway-gates/hooks/register.ts'), 'utf8');
+    const source = fs.readFileSync(path.join(ROOT, 'skills/ledger-gates/hooks/register.ts'), 'utf8');
     const oldest = /const OLDEST = \[(\d+), (\d+), (\d+)\]/.exec(source);
     assert.ok(oldest, 'the mod names its oldest Claude Code as OLDEST');
     assert.strictEqual(oldest.slice(1).join('.'), floor);
   });
 
-  it("is the version leeway's stop names to an older Claude Code", () => {
-    const setup = fs.readFileSync(path.join(ROOT, 'skills/leeway/references/claude-code-setup.md'), 'utf8');
+  it("is the version ledger's stop names to an older Claude Code", () => {
+    const setup = fs.readFileSync(path.join(ROOT, 'skills/ledger/references/claude-code-setup.md'), 'utf8');
     const branch = setup.split('#### If gate is `claude-code-floor`')[1]?.split('\n####')[0];
     assert.ok(branch, 'the Claude Code setup has its floor branch');
     const named = /Claude Code (\d+\.\d+\.\d+) or newer/.exec(branch);

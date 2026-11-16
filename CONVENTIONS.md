@@ -42,7 +42,7 @@ A phase skill holds five things:
 - **Its goal** — what the phase is for, in a sentence or two.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
 - **Its guidance** — what Claude needs told to do the work well, and nothing it would do anyway.
-- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/leeway-engine/references/commands.md`.
+- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/ledger-engine/references/commands.md`.
 - **Its checklists** — each closing point it works towards, by name, where it has any: discussion's decided, at a topic's close; specification's ready to build; the build's phase start and phase close, for each phase of its cut; and the review phase's finish. Discovery, experiment and investigation have none. Two types move them:
   - **A feature's** discussion closes into its spec with no gate, once nothing of the person's is open and the closing pass has run; specification then works decided and ready to build together, on one screen.
   - **A quick-fix's** finish is the close of its own session, and finish's checklist runs there; it reaches the review phase only when the person asks.
@@ -80,9 +80,9 @@ A gate that was waiting was set aside, and the framework says how it comes back;
 ```markdown
 ---
 name: {skill}
-description: Leeway's {phase} phase. Reached only through a Leeway handoff, never invoked directly; work comes into Leeway through the leeway skill.
+description: Ledger's {phase} phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through the ledger skill.
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ---
 
 # {Phase}
@@ -95,7 +95,7 @@ allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 
 ## Instructions
 
-Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
 ## Done When
 
@@ -129,7 +129,7 @@ A section the phase has nothing for is left out. `## Instructions` is there only
 
 The prose names the verb and stops. It never:
 - **Draws a menu, a gate or a row.** The engine draws every one and prints it as text; the gate mod shows its rows as buttons where it runs. Lint check 3 refuses a menu drawn in prose.
-- **Writes state.** State changes only through verbs. The prose names verbs, never manifest fields, and reads a manifest value only where no verb's response carries it. The layout hook refuses a write under `.leeway/` to a path the layout has no place for, and any write to a manifest, the ledger or `spec-review.json`. Scratch goes in `.leeway/.cache/`.
+- **Writes state.** State changes only through verbs. The prose names verbs, never manifest fields, and reads a manifest value only where no verb's response carries it. The layout hook refuses a write under `.ledger/` to a path the layout has no place for, and any write to a manifest, the ledger or `spec-review.json`. Scratch goes in `.ledger/.cache/`.
 - **Commits.** Every verb commits its own state writes, with any log changed since. A phase whose content no verb commits — the spec, a review report, a task's account, a summary, an asset, a spike — adds the route to the engine in the same phase. A code commit goes through `commit`, naming the task in flight, and the door runs the project's checks first. A raw `git commit` in a code worktree during a build is refused.
 - **Lists a checklist's items.** The engine holds them, works out the ones it can check, and shows the rest with their text. The prose names the checklist.
 - **Writes a brief.** `brief` fills the role's template from the records (Agents and Briefs).
@@ -178,7 +178,7 @@ Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, d
 - every skill reference or engine script it names, written as installed, from the project root (`.claude/skills/…`); a brief template that names one does the same;
 - its model and effort, fixed in its frontmatter: Opus at medium until a measurement says otherwise, and investigation's root-cause validator at extra-high. Never chosen at dispatch, and never raised by a task's size.
 
-**A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/leeway-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
+**A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/ledger-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
 
 **The dispatch.** `brief {role} …` issues the brief and answers with its agent and its pointer. The Agent call's `subagent_type` is that agent, and its prompt the pointer, `brief:{id}`, alone (a fix round's is the SendMessage message). The hook before Agent and SendMessage keys on the agent, and refuses anything else for one of the workflows' agents. A phase whose skill dispatches an agent `brief` has no role for adds the role, its template and its records to the engine in the same phase. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
 
@@ -235,12 +235,12 @@ Every screen the engine draws keeps to the existing design system; a new screen 
 
 ## Files
 
-The capture skills (`leeway-log-*`) write to the inbox and nothing else. They are not workflow skills, and stay structureless: no gates, no references, no framework load, and the display rule's check passes over them.
+The capture skills (`ledger-log-*`) write to the inbox and nothing else. They are not workflow skills, and stay structureless: no gates, no references, no framework load, and the display rule's check passes over them.
 
 ### Frontmatter
 
 - `user-invocable: false` on every skill the person does not type themselves.
-- A `description` is all Claude sees of a skill until it is invoked. The start skill's opens with its trigger, short: what Claude reaches for Leeway on, and what goes straight through. Every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only through a Leeway handoff, never invoked directly (lint check 37). Invocability stays as it is: without the gate mod, a handoff invokes the next skill in the same conversation.
+- A `description` is all Claude sees of a skill until it is invoked. The start skill's opens with its trigger, short: what Claude reaches for Ledger on, and what goes straight through. Every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only through a Ledger handoff, never invoked directly (lint check 37). Invocability stays as it is: without the gate mod, a handoff invokes the next skill in the same conversation.
 - No `effort:` and no `model:`: the conversation runs at the person's own effort. An agent's definition fixes its own.
 - Every `allowed-tools` Bash grant carries a `*`; a grant for the workflows' own script ends in ` *` (lint check 28).
 - No `SessionEnd` hook: Claude Code never fires one declared in a skill. Session-end work is the settings hook the engine installs (lint check 18).
@@ -260,7 +260,7 @@ A skill that only hands the work on carries this blockquote, byte for byte (lint
 The framework holds what is true in every conversation. It loads once per conversation, at the head of the skill the conversation opens on — the person's way in, or a skill a handoff lands on (`HANDOFF_TARGETS` in `domain/handoff.cjs`). Each of those opens its `## Instructions` section with this line and nothing else:
 
 ```markdown
-Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 ```
 
 An opening skill met later in a conversation — without the mod, a handoff invokes the next skill in the same one — carries on from the load already made. A skill only ever opened in place carries neither the section nor the load (lint check 27). `framework.md` only composes the shared references every conversation holds. A rule universal to every conversation joins that list; a rule only some phases use loads from those phases. A skill never restates a framework rule: a second copy is a second source of truth.
@@ -279,6 +279,6 @@ A skill splits a part into a reference when the part is needed only at a moment 
   ---
   ```
 
-  A reference loaded by another reference names that file instead. A shared reference, under `skills/leeway-shared/references/`, says `*Shared reference. Loaded by {callers}.*`.
+  A reference loaded by another reference names that file instead. A shared reference, under `skills/ledger-shared/references/`, says `*Shared reference. Loaded by {callers}.*`.
 - **Loaded** by one line, never mid-sentence, the link bold and resolving (lint checks 7, 7b): `Load **[name.md](references/name.md)** and follow its instructions as written.` What it needs from the caller is named in the load line — ``… with topic = `{topic}`.`` — and is already in context.
 - **Deferring to the owner.** A reference that needs another skill's mechanic invokes that skill or loads its reference, carrying only what the caller knows. It never restates the owner's paths, naming or format. Where two files say the same thing, delete one rather than keep them aligned.

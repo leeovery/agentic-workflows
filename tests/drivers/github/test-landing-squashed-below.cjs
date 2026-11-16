@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver landing a stack built on a phase GitHub squashed
-// (leeway-engine/scripts/drivers/landing/github/, S3), past what every
+// (ledger-engine/scripts/drivers/landing/github/, S3), past what every
 // driver gives (test-engine-landing-conformance-stacked.cjs): a fix phase
 // cut from phase 1's task, deleting its file, whose change conflicts with
 // the default branch on GitHub, which moved on after phase 1 squashed, is

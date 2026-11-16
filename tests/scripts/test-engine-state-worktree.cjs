@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state worktree (leeway-engine/scripts/domain/state-worktree.cjs) and
+// The state worktree (ledger-engine/scripts/domain/state-worktree.cjs) and
 // the isolated git it runs on (kernel/isolated-git.cjs): the orphan
-// `leeway-state` checked out at `.leeway/` in the main checkout and locked,
+// `ledger-state` checked out at `.ledger/` in the main checkout and locked,
 // found from any worktree through the common git directory; every call made
 // with the caller's repository environment cleared, and within a time limit;
 // the config's hooks read afresh by each verb and after a `config` call that
@@ -28,18 +28,18 @@ const path = require('path');
 const { git, initRepo, testIdentity, bareRepo, STATE_DIR_NAME, statePath, layout, createFile, traced, childLimits, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { useWorld, elsewhereRepo, snapshot, ignored } = require('./state-worktree-world.cjs');
 
-const ISOLATED_GIT = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/isolated-git.cjs');
+const ISOLATED_GIT = path.join(__dirname, '../../skills/ledger-engine/scripts/kernel/isolated-git.cjs');
 const { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, withVerbReads, mainCheckout } = require(ISOLATED_GIT);
-const { GitError } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
+const { GitError } = require('../../skills/ledger-engine/scripts/kernel/git.cjs');
 
-const { stateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
-const { isId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
+const { stateRoot } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
+const { isId } = require('../../skills/ledger-engine/scripts/domain/ledger-ids.cjs');
 
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
   inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
   askStateRemote, fetchStateTip, codeBranchSharing, stateRemote, stateRemoteUrl, withStateLock, commitState,
-} = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
 
 const world = useWorld();
 
@@ -60,7 +60,7 @@ function lines(text) {
 
 /**
  * The hooks git reads as disabled at a call through the runner.
- * @param {import('../../skills/leeway-engine/scripts/kernel/isolated-git.cjs').IsolatedGit} runner
+ * @param {import('../../skills/ledger-engine/scripts/kernel/isolated-git.cjs').IsolatedGit} runner
  */
 function disabledHooks(runner) {
   return runner.run(['var', '-l']).split('\n').filter((line) => /^hook\.[^=]+\.enabled=false$/.test(line));
@@ -161,7 +161,7 @@ describe('the isolated runner', () => {
   });
 
   it('runs every git within a time limit: the call\'s own, else CALL_TIMEOUT_MS — the config\'s hooks read at the first call too', (t) => {
-    const limits = childLimits(t, ISOLATED_GIT, (/** @type {typeof import('../../skills/leeway-engine/scripts/kernel/isolated-git.cjs')} */ fresh) => {
+    const limits = childLimits(t, ISOLATED_GIT, (/** @type {typeof import('../../skills/ledger-engine/scripts/kernel/isolated-git.cjs')} */ fresh) => {
       const runner = fresh.isolatedGit(world());
       runner.run(['--version']);
       runner.tryRun(['--version']);
@@ -222,7 +222,7 @@ describe('the isolated runner', () => {
     const { commands } = traced(() => withVerbReads(() => {
       const runner = isolatedGit(main);
       disabledHooks(runner);
-      runner.tryRun(['config', '--get', 'leeway.probe']);
+      runner.tryRun(['config', '--get', 'ledger.probe']);
       stateRemote(runner);
       disabledHooks(runner);
     }));
@@ -264,7 +264,7 @@ describe('the isolated runner', () => {
 });
 
 describe('creating the state', () => {
-  it('makes leeway-state an orphan whose one commit holds the state\'s .gitignore and the project manifest, a new project_id its one field (16.13.5)', () => {
+  it('makes ledger-state an orphan whose one commit holds the state\'s .gitignore and the project manifest, a new project_id its one field (16.13.5)', () => {
     const { main, root } = codeProject(world());
 
     const created = createState(root);
@@ -290,7 +290,7 @@ describe('creating the state', () => {
     for (const rel of [layout.projectManifest, layout.ledger, 'unit/.cache/x', 'unit/.lock']) assert.ok(!ignored(root, rel), rel);
   });
 
-  it('checks the branch out at .leeway/ in the main checkout, locked with the state\'s reason (4.S6)', () => {
+  it('checks the branch out at .ledger/ in the main checkout, locked with the state\'s reason (4.S6)', () => {
     const { main, root } = codeProject(world());
 
     createState(root);
@@ -298,11 +298,11 @@ describe('creating the state', () => {
     assert.strictEqual(git(root, ['symbolic-ref', 'HEAD']).trim(), `refs/heads/${STATE_BRANCH}`);
     const record = worktreeRecord(main, root);
     assert.ok(record, `no worktree listed at ${root}`);
-    assert.match(record, /^locked leeway state, do not remove$/m);
-    assert.strictEqual(STATE_LOCK_REASON, 'leeway state, do not remove');
+    assert.match(record, /^locked ledger state, do not remove$/m);
+    assert.strictEqual(STATE_LOCK_REASON, 'ledger state, do not remove');
   });
 
-  it('puts .leeway/ in the main checkout when made from a code worktree, never in the worktree (4.1.4)', () => {
+  it('puts .ledger/ in the main checkout when made from a code worktree, never in the worktree (4.1.4)', () => {
     const { main, root } = codeProject(world());
     const code = path.join(world(), 'code-worktree');
     git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
@@ -346,7 +346,7 @@ describe('creating the state', () => {
     assert.ok(!commands.some((c) => c.startsWith('push ')), `a push was attempted: ${commands}`);
   });
 
-  it('refuses where .leeway/ already exists, creating no branch', () => {
+  it('refuses where .ledger/ already exists, creating no branch', () => {
     const { main, root } = codeProject(world());
     fs.mkdirSync(root);
 
@@ -354,7 +354,7 @@ describe('creating the state', () => {
     assert.strictEqual(git(main, ['branch', '--list', STATE_BRANCH]), '');
   });
 
-  it('clears a registration a deleted folder left at .leeway/, and checks the new branch out there', () => {
+  it('clears a registration a deleted folder left at .ledger/, and checks the new branch out there', () => {
     const { main, root } = codeProject(world(), { state: true });
     fs.rmSync(root, { recursive: true, force: true });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
@@ -365,11 +365,11 @@ describe('creating the state', () => {
     assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
   });
 
-  it('refuses where leeway-state already exists, adding no worktree', () => {
+  it('refuses where ledger-state already exists, adding no worktree', () => {
     const { main, root } = codeProject(world());
     git(main, ['branch', STATE_BRANCH]);
 
-    assert.throws(() => createState(root), /cannot create leeway-state/);
+    assert.throws(() => createState(root), /cannot create ledger-state/);
     assert.ok(!fs.existsSync(root));
     assert.strictEqual(tip(main, STATE_BRANCH), tip(main, 'main'));
   });
@@ -477,10 +477,10 @@ describe('the repairs, each on its own', () => {
 
   it('refuses to take the branch from a remote that is missing or holds none', () => {
     const none = codeProject(world());
-    assert.throws(() => createStateBranchFromRemote(none.root), /no remote to take leeway-state from/);
+    assert.throws(() => createStateBranchFromRemote(none.root), /no remote to take ledger-state from/);
 
     const empty = codeProject(world(), { remote: true, name: 'empty' });
-    assert.throws(() => createStateBranchFromRemote(empty.root), /origin holds no leeway-state/);
+    assert.throws(() => createStateBranchFromRemote(empty.root), /origin holds no ledger-state/);
   });
 
   it('re-adds a removed worktree, locked (4.S29)', () => {
@@ -506,7 +506,7 @@ describe('the repairs, each on its own', () => {
   it('refuses to add the worktree where there is no local branch', () => {
     const { root } = codeProject(world());
 
-    assert.throws(() => addStateWorktree(root), /there is no local leeway-state/);
+    assert.throws(() => addStateWorktree(root), /there is no local ledger-state/);
     assert.ok(!fs.existsSync(root));
   });
 
@@ -516,7 +516,7 @@ describe('the repairs, each on its own', () => {
 
     lockStateWorktree(root);
 
-    assert.match(worktreeRecord(main, root) || '', /^locked leeway state, do not remove$/m);
+    assert.match(worktreeRecord(main, root) || '', /^locked ledger state, do not remove$/m);
   });
 
   it('relinks the state worktree after the project folder moved, keeping what it holds, and commits again', () => {
@@ -529,8 +529,8 @@ describe('the repairs, each on its own', () => {
     const seen = inspectState(movedRoot);
     assert.deepStrictEqual([seen.branch, pick(seen)], [true, { worktree: null, folder: 'unlinked' }]);
     assert.throws(() => commitState(movedRoot, [layout.projectManifest], 'state: x'),
-      /^Error: git cannot open the state worktree at .*moved\/\.leeway: git rev-parse failed: fatal: .+ — nothing committed$/s);
-    assert.throws(() => addStateWorktree(movedRoot), /a folder is already at .*moved\/\.leeway — repair its worktree rather than add one over it/);
+      /^Error: git cannot open the state worktree at .*moved\/\.ledger: git rev-parse failed: fatal: .+ — nothing committed$/s);
+    assert.throws(() => addStateWorktree(movedRoot), /a folder is already at .*moved\/\.ledger — repair its worktree rather than add one over it/);
 
     assert.deepStrictEqual(repairStateWorktree(movedRoot), { was: 'moved', from: main });
 
@@ -551,7 +551,7 @@ describe('the repairs, each on its own', () => {
 
     assert.strictEqual(inspectState(copyRoot).folder, 'unlinked');
     assert.throws(() => commitState(copyRoot, [layout.projectManifest], 'state: x'),
-      new RegExp(`git cannot open the state worktree at .*copy/\\.leeway: git reads it as part of .*, whose repository is ${main}/\\.git`));
+      new RegExp(`git cannot open the state worktree at .*copy/\\.ledger: git reads it as part of .*, whose repository is ${main}/\\.git`));
     assert.strictEqual(tip(main, STATE_BRANCH), before);
     assert.strictEqual(tip(copy, STATE_BRANCH), before);
   });
@@ -581,7 +581,7 @@ describe('the repairs, each on its own', () => {
 
   it('relinks a registration whose own link went stale, the folder\'s already right', () => {
     const { main, root } = codeProject(world(), { state: true });
-    fs.writeFileSync(path.join(main, '.git/worktrees/-leeway/gitdir'), `${path.join(world(), 'elsewhere/.git')}\n`);
+    fs.writeFileSync(path.join(main, '.git/worktrees/-ledger/gitdir'), `${path.join(world(), 'elsewhere/.git')}\n`);
 
     assert.deepStrictEqual(repairStateWorktree(root), { was: 'own', from: main });
 
@@ -597,7 +597,7 @@ describe('the repairs, each on its own', () => {
     const stranger = path.join(world(), 'other/.git/worktrees/stranger');
     fs.writeFileSync(path.join(root, '.git'), `gitdir: ${stranger}\n`);
     assert.throws(() => repairStateWorktree(root), new RegExp(`^Error: ${root} links to ${stranger}, and this repository keeps no registration by that name — nothing relinked$`));
-    assert.strictEqual(fs.readFileSync(path.join(main, '.git/worktrees/-leeway/gitdir'), 'utf8'), `${path.join(root, '.git')}\n`);
+    assert.strictEqual(fs.readFileSync(path.join(main, '.git/worktrees/-ledger/gitdir'), 'utf8'), `${path.join(root, '.git')}\n`);
   });
 });
 
@@ -623,7 +623,7 @@ describe('the remote, asked', () => {
     assert.ok(!commands.some((c) => c.startsWith('ls-remote ')));
   });
 
-  it('answers the remote\'s tip, or none where it holds no leeway-state', () => {
+  it('answers the remote\'s tip, or none where it holds no ledger-state', () => {
     const { main, root, bare } = codeProject(world(), { remote: true });
 
     assert.deepStrictEqual(askStateRemote(root), { remote: 'origin', remotes: ['origin'], tip: null });
@@ -678,7 +678,7 @@ describe('the remote, asked', () => {
   });
 });
 
-describe('a leeway-state holding code history', () => {
+describe('a ledger-state holding code history', () => {
   it('shares a commit with a code branch, which is named; the orphan shares none, its remote copies not counted as code', () => {
     const code = codeProject(world(), { name: 'code' });
     git(code.main, ['branch', STATE_BRANCH, 'main']);

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger through a catch-up (leeway-engine/scripts/domain/state-merge.cjs
+// The ledger through a catch-up (ledger-engine/scripts/domain/state-merge.cjs
 // with domain/ledger.cjs): a landing a kill cut short finished under the
 // writer lock by a ledger read, an append or a ledger verb, which hands on
 // what the landing said, and by boot's commit of the entries a killed write
@@ -23,7 +23,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { git, ok, refuses, tip, remoteTip, ledgerEntries, layout, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, withStateLock } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { checkLedger, appendEntry, ledgerStopSurface, commitUncommitted } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
@@ -54,7 +54,7 @@ describe('the ledger through a catch-up', () => {
   /** What the landing says of the chart both machines changed. */
   function chartNote() {
     const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
-    return `.leeway/${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at .leeway/${CHART}, and this machine's is kept beside it as .leeway/${beside}`;
+    return `.ledger/${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at .ledger/${CHART}, and this machine's is kept beside it as .ledger/${beside}`;
   }
 
   /**

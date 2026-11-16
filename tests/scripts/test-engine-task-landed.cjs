@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What has landed, read in one repository (leeway-engine/scripts/domain/
+// What has landed, read in one repository (ledger-engine/scripts/domain/
 // task-landed.cjs, `repoLanded`, 7.2.22). Where each task's last commit
 // stands against the branch it lands on: held there, landed; laid on it,
 // its change not there, not landed; laid on it and changing nothing there,
@@ -90,9 +90,9 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { createFile, datedAt } = require('./discovery-test-utils.cjs');
-const { repoLanded, unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
-const lg = require('../../skills/leeway-engine/scripts/domain/landing-git.cjs');
-const { TRAILER } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
+const { repoLanded, unitLanded } = require('../../skills/ledger-engine/scripts/domain/task-landed.cjs');
+const lg = require('../../skills/ledger-engine/scripts/domain/landing-git.cjs');
+const { TRAILER } = require('../../skills/ledger-engine/scripts/domain/commit-task.cjs');
 
 const { initRepo, traced, folderFrom, cleanupFixture } = harness;
 

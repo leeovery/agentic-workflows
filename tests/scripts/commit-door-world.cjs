@@ -17,7 +17,7 @@ const path = require('path');
 
 const { ok, git, stateGit, commitAll, fixtureFrom, cleanupFixture, setupGitFixture, layout, createFile, writeState } = require('./engine-harness.cjs');
 const { templateFolder } = require('./discovery-test-utils.cjs');
-const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { taskBranch } = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 /** The conversation the suites' code commits are made in. */
 const BUILDING = 'commit-door-building';
@@ -62,7 +62,7 @@ function codeStatusLines(dir) {
  * @param {string} dir
  */
 function holdStateRef(dir) {
-  fs.writeFileSync(path.join(dir, '.git/refs/heads/leeway-state.lock'), '');
+  fs.writeFileSync(path.join(dir, '.git/refs/heads/ledger-state.lock'), '');
 }
 
 function epicManifest() {

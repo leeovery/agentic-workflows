@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The environment setup's schema (leeway-engine/scripts/domain/
+// The environment setup's schema (ledger-engine/scripts/domain/
 // environment.cjs; 22.5.1, 22.5.12): `environmentFaults`, what is amiss in
 // a setup as the project manifest holds it, each fault naming its part —
 // how to run the product, its build, tests and run; the steps that prepare
@@ -19,7 +19,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { environmentFaults } = require(path.join(SCRIPTS, 'domain/environment.cjs'));
 
 const AT = '2026-06-03T09:00:00.000Z';

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The `task` verbs (leeway-engine/scripts/domain/task-verbs.cjs, the task
+// The `task` verbs (ledger-engine/scripts/domain/task-verbs.cjs, the task
 // template in domain/task-file.cjs): `engine task phase|create|add|type|
 // link|ready|start|done|close|list|show|stopped`, through the project's task
 // driver.
@@ -42,7 +42,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { readPosition, conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));

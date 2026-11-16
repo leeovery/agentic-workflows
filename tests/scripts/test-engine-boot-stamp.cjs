@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Boot's stamp and the refusal until boot has run (22.1.7, 22.1.8, 18.6.8,
-// 18.S74; leeway-engine/scripts/domain/boot-stamp.cjs, boot.cjs, and
+// 18.S74; ledger-engine/scripts/domain/boot-stamp.cjs, boot.cjs, and
 // `BOOT_EXEMPT` in engine.cjs): boot stamps the calling conversation for the
 // project's main checkout at the highest migration installed, beside every
 // other project's entry; a command called with a session id refuses,
@@ -34,16 +34,16 @@ const {
   failingStateCommits, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked,
 } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
-const { COMMANDS, BOOT_EXEMPT } = require('../../skills/leeway-engine/scripts/engine.cjs');
-const { highestMigration } = require('../../skills/leeway-migrate/scripts/migration-ids.cjs');
+const { COMMANDS, BOOT_EXEMPT } = require('../../skills/ledger-engine/scripts/engine.cjs');
+const { highestMigration } = require('../../skills/ledger-migrate/scripts/migration-ids.cjs');
 
 const SESSION = 'stamp-session';
 
 /** The refusal, for the project whose main checkout is `main`. @param {string} command @param {string} main */
-const refusal = (command, main) => `${command}: this conversation has not booted Leeway for ${main} on this version — invoke the start skill, /leeway, which runs engine boot before anything else`;
+const refusal = (command, main) => `${command}: this conversation has not booted Ledger for ${main} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`;
 
 /** Whether an answer is the refusal until boot has run. @param {{code: number, stderr: string}} res */
-const refusedUnbooted = (res) => res.code === 1 && /has not booted Leeway/.test(res.stderr);
+const refusedUnbooted = (res) => res.code === 1 && /has not booted Ledger/.test(res.stderr);
 
 /** A verb that touches work: the brownfield offer's answer, written to the project manifest and committed. */
 const WORK = Object.freeze(['brownfield', 'record', 'native']);
@@ -66,7 +66,7 @@ const folder = useTempFolder('engine-boot-stamp-');
 beforeEach(() => {
   dir = projectWorld(path.join(folder(), 'project'));
   config = fs.mkdtempSync(path.join(folder(), 'config-'));
-  env = { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: SESSION };
+  env = { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: SESSION };
 });
 
 /** The conversation `session`'s folder under this test's config. @param {string} [session] */
@@ -141,7 +141,7 @@ describe('the refusal until boot has run (18.S74)', () => {
   });
 
   it('a call with no session id is no conversation\'s, and nothing refuses it', () => {
-    ok(dir, WORK, { env: { LEEWAY_CONFIG_DIR: config }, unbooted: true });
+    ok(dir, WORK, { env: { LEDGER_CONFIG_DIR: config }, unbooted: true });
   });
 
   it('a call from a folder in no repository is in no project, with no work to touch and no boot that could stamp it, and nothing refuses it', () => {
@@ -228,7 +228,7 @@ describe('a capture from another project\'s conversation (22.1.8, 18.6.8)', () =
 
     const res = ok(dir, ['inbox', 'capture', 'idea', '--project', other], { env, stdin: '# Retry the sync\n', unbooted: true });
 
-    assert.strictEqual(res.captured, path.join(other, '.leeway', '.inbox/ideas', path.basename(res.captured)));
+    assert.strictEqual(res.captured, path.join(other, '.ledger', '.inbox/ideas', path.basename(res.captured)));
     assert.strictEqual(fs.readFileSync(res.captured, 'utf8'), '# Retry the sync\n');
     assert.ok(res.committed, 'committed in the project it concerns');
     assert.strictEqual(stamps(), null, 'no boot ran');

@@ -27,7 +27,7 @@
 // feature.cjs's and -epic.cjs's.
 //
 // Layer: simulation. World: this file's own — a project in the layout from
-// before Leeway, the old plan in the project's tracker, moved by the real
+// before Ledger, the old plan in the project's tracker, moved by the real
 // move (078) and cut by `cut --migrating`, the migration's commit made
 // (migrated-world.cjs) — built once and copied per scenario, which replays
 // the engine calls the build's prose makes, in order, the oracle
@@ -52,7 +52,7 @@ const {
 
 const WU = 'folio';
 
-/** The old spec, as the workflows from before Leeway wrote it. */
+/** The old spec, as the workflows from before Ledger wrote it. */
 const OLD_SPEC = '# Specification: Folio\n\n## Pages\n\nA page holds a title and its text.\n\n## Search\n\nA page is found by any word it holds.\n';
 
 /** The area the move joins the old spec into. */
@@ -63,7 +63,7 @@ const SCENARIOS = [
   'Given pages, when a word is searched for, then each page holding it is found.',
 ];
 
-/** The project from before Leeway, moved and cut, the migration's commit made: built once. */
+/** The project from before Ledger, moved and cut, the migration's commit made: built once. */
 function buildWorld(/** @type {string} */ dir) {
   const cites = oldSpecPath(WU, WU);
   const { [WU]: { phases: [built, editing, search] } } = movedProject(dir, oldFiles([{ manifest: buildingUnit(WU, 'feature', [WU], 'in-progress'), specs: { [WU]: OLD_SPEC } }]), {

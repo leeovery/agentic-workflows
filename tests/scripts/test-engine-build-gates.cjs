@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The build's gates in step (leeway-engine/scripts/domain/build-screens.cjs,
+// The build's gates in step (ledger-engine/scripts/domain/build-screens.cjs,
 // drawn by domain/projections/build.cjs): the gate after a task and the gate
 // before a phase's stack merges, naming the unit's own branch where it has
 // one; and in step, every process gate of the
@@ -28,8 +28,8 @@ const { ok, git, writeState, readManifest, layout, cleanupFixture, sectionOf, ac
 const { withEnv, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 const { lines, trustLogHelpers, history } = require('./trust-world.cjs');
-const { learned } = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
-const { TRUST_LOG } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
+const { learned } = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
+const { TRUST_LOG } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -179,7 +179,7 @@ describe('the build\'s position at its gates (3.3.3, 3.3.6, 3.3.7)', () => {
     for (let i = 0; i < 13; i += 1) h.gate('plan gate', { picked: 'y' });
     fs.writeFileSync(path.join(config, TRUST_LOG), lines(...h.events));
     const at = { cwd: dir, place: { unit: UNIT, phase: 'implementation', topic: null }, key: ['1.1'] };
-    const learnedHere = () => withEnv({ LEEWAY_CONFIG_DIR: config }, () => withFrozenClock(() => learned('plan gate', at).step));
+    const learnedHere = () => withEnv({ LEDGER_CONFIG_DIR: config }, () => withFrozenClock(() => learned('plan gate', at).step));
     position('auto');
     const inAuto = learnedHere();
     position('step');

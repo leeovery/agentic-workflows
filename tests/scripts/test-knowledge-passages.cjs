@@ -14,11 +14,11 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { chunk } = require('../../skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs');
-const { withPassages } = require('../../skills/leeway-engine/scripts/domain/knowledge/passages.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { chunk } = require('../../skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs');
+const { withPassages } = require('../../skills/ledger-engine/scripts/domain/knowledge/passages.cjs');
 
-const SOURCE = '.leeway/.knowledge/records/auth/auth.md';
+const SOURCE = '.ledger/.knowledge/records/auth/auth.md';
 
 const FILE = [
   '---',

@@ -30,7 +30,7 @@ const path = require('path');
 const { git: unseen, traced, withEnv, codeProject, createFile, STATE_DIR_NAME } = require('./engine-harness.cjs');
 const { useTempFolder, filesUnder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { kindOf, keptRead } = require(path.join(SCRIPTS, 'kernel/git-reads.cjs'));
 const { git, gitRun, OPERATION_MARKERS } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 const { spawnSync, spawn, execFileSync } = require(path.join(SCRIPTS, 'kernel/spawn.cjs'));
@@ -53,7 +53,7 @@ const ISOLATED = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.autocrlf=false']
 
 /** A repository's facts as kernel/isolated-git asks them: its directories and paths, then where the folder sits. */
 const FACT_DIRECTORIES = ['--path-format=absolute', '--git-common-dir', '--absolute-git-dir',
-  ...[...OPERATION_MARKERS.map(([marker]) => marker), 'leeway-commit.lock'].flatMap((name) => ['--git-path', name])];
+  ...[...OPERATION_MARKERS.map(([marker]) => marker), 'ledger-commit.lock'].flatMap((name) => ['--git-path', name])];
 const FACT_PLACE = ['--show-toplevel', '--show-prefix'];
 
 /**
@@ -69,7 +69,7 @@ const FORMS_RUN = {
     ['for-each-ref', '--format=%(refname)', '--contains', 'HEAD', 'refs/heads/', 'refs/remotes/'],
     ['for-each-ref', '--merged=main', '--format=%(refname)', 'refs/heads/'],
     ['cat-file', '--batch-check=%(objectname) %(objecttype) %(objectsize)'],
-    { argv: ['cat-file', '--batch=%(objectname)'], input: 'refs/heads/leeway-state:.ledger.jsonl\n' },
+    { argv: ['cat-file', '--batch=%(objectname)'], input: 'refs/heads/ledger-state:.ledger.jsonl\n' },
     ['cat-file', '-e', 'HEAD'],
     ['cat-file', 'blob', 'HEAD:README.md'],
     ['cherry', 'main', 'fix', 'fix^'],
@@ -101,7 +101,7 @@ const FORMS_RUN = {
     ['rev-parse', '--path-format=absolute', '--git-common-dir'],
     ['rev-parse', '-q', '--verify', 'HEAD'],
     ['rev-parse', '--short', 'HEAD'],
-    ['rev-parse', 'HEAD', 'HEAD^{tree}', '--show-toplevel', '--git-common-dir', '--git-path', 'leeway-commit.index', '--absolute-git-dir'],
+    ['rev-parse', 'HEAD', 'HEAD^{tree}', '--show-toplevel', '--git-common-dir', '--git-path', 'ledger-commit.index', '--absolute-git-dir'],
     ['show', '--no-color', '--relative', '--stat=200', '--stat-graph-width=20', '--format=', 'HEAD', '--'],
     ['show', 'HEAD:manifest.json'],
     ['show-ref', '--verify', '--quiet', 'refs/heads/main'],
@@ -113,14 +113,14 @@ const FORMS_RUN = {
     ['add', '--all', '--dry-run', '--', 'src/app.js'],
     ['check-ignore', '-q', 'src/app.js'],
     ['diff', '--cached', '--raw', '--relative', '--no-renames', '--ignore-submodules=none', '-z', 'HEAD'],
-    ['diff', '--name-only', '-z', '--no-renames', '--no-relative', 'main...fix', '--', '.leeway'],
+    ['diff', '--name-only', '-z', '--no-renames', '--no-relative', 'main...fix', '--', '.ledger'],
     ['diff', '--no-color', '--no-ext-diff', '-U0', '--no-renames', 'a', 'b', '--', 'src'],
     ['diff', '--numstat', '-z', '--find-renames', 'a', '--', 'src'],
     ['hash-object', '--stdin'],
     ['ls-files', '--others', '--exclude-standard', '-z'],
     ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'],
     ['ls-files', '--stage', '--full-name', '-z', '--', 'src/app.js'],
-    ['ls-remote', 'origin', 'refs/heads/leeway-state'],
+    ['ls-remote', 'origin', 'refs/heads/ledger-state'],
     ['status', '--porcelain', '-z', '--untracked-files=all', '--no-renames'],
     ['var', '-l'],
     ['var', 'GIT_COMMITTER_IDENT'],
@@ -218,7 +218,7 @@ describe('a verb\'s reads of git', () => {
         git(other, ['cat-file', '--batch-check'], undefined, 'HEAD\n');
         git(main, ['cat-file', '--batch-check=%(objectname)'], undefined, 'HEAD\n');
         git(main, ['cat-file', '--batch-check'], undefined, 'HEAD:README.md\n');
-        git(main, ['cat-file', '--batch-check'], { GIT_LEEWAY_ASKED: String(time) }, 'HEAD\n');
+        git(main, ['cat-file', '--batch-check'], { GIT_LEDGER_ASKED: String(time) }, 'HEAD\n');
       }
     }));
 
@@ -314,9 +314,9 @@ describe('everything kept dropped at a write', () => {
     const seen = withVerbReads(() => {
       const before = branches(main);
       unseen(main, ['branch', 'unseen']);
-      runner.tryRun(['config', '--get', 'leeway.probe']);
+      runner.tryRun(['config', '--get', 'ledger.probe']);
       const read = branches(main);
-      runner.run(['config', 'leeway.probe', 'set']);
+      runner.run(['config', 'ledger.probe', 'set']);
       return [before, read, branches(main)];
     });
 
@@ -367,7 +367,7 @@ describe('everything kept dropped at every process the engine starts', () => {
     const claude = standIn(path.join(world(), 'claude'), `git -C '${main}' branch asked`);
     const ask = { system: 'Answer.', schema: { type: 'object' }, model: 'sonnet', effort: 'low', input: 'a question', timeoutMs: 20000 };
 
-    const seen = withEnv({ LEEWAY_CLAUDE: claude }, () => readAcross(main, () => askClaude(ask)));
+    const seen = withEnv({ LEDGER_CLAUDE: claude }, () => readAcross(main, () => askClaude(ask)));
 
     assert.deepStrictEqual(seen, [['main'], ['asked', 'main']]);
   });
@@ -429,8 +429,8 @@ describe('everything kept dropped at every lock taken, its last holder\'s writes
     ];
 
     assert.deepStrictEqual(seen, [
-      [['leeway-state', 'main'], ['filed', 'leeway-state', 'main']],
-      [['filed', 'leeway-state', 'main'], ['claimed', 'filed', 'leeway-state', 'main']],
+      [['ledger-state', 'main'], ['filed', 'ledger-state', 'main']],
+      [['filed', 'ledger-state', 'main'], ['claimed', 'filed', 'ledger-state', 'main']],
     ]);
   });
 });

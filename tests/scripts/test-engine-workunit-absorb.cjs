@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { git, stateGit, output, unreadableKnowledge, indexedFiles, hasStore, commitAll, fixtureFrom, layout } = require('./engine-harness.cjs');
-const { holdsWriterLock } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
+const { holdsWriterLock } = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
 const {
   ABSORB, WORDS, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
 } = require('./absorb-world.cjs');
@@ -31,8 +31,8 @@ const {
 /** Each record copy written and indexed, so the store holds chunks a transaction can remove. */
 function indexFiles(fix, files) {
   for (const file of files) {
-    writeFile(fix.project, path.join('.leeway', file), `# ${file}\n\nWhat it settled.\n`);
-    output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
+    writeFile(fix.project, path.join('.ledger', file), `# ${file}\n\nWhat it settled.\n`);
+    output(fix.project, ['knowledge', 'index', path.join(fix.project, '.ledger', file)]);
   }
 }
 
@@ -72,25 +72,25 @@ describe('engine workunit absorb — happy path', () => {
     fix = setupFixture();
     indexFiles(fix, [...FEATURE_FILES, EPIC_FILE]);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
-    writeFile(fix.project, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
-    writeFile(fix.project, '.leeway/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
-    writeFile(fix.project, '.leeway/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md', 'put back\n');
-    const marks = path.join(fix.project, '.leeway/.cache/.marks');
-    writeFile(fix.project, '.leeway/.cache/.marks/auth-flow.json', '{"shown":[]}\n');
-    writeFile(fix.project, '.leeway/.cache/.marks/payments.json', '{"shown":[]}\n');
+    writeFile(fix.project, '.ledger/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    writeFile(fix.project, '.ledger/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
+    writeFile(fix.project, '.ledger/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md', 'put back\n');
+    const marks = path.join(fix.project, '.ledger/.cache/.marks');
+    writeFile(fix.project, '.ledger/.cache/.marks/auth-flow.json', '{"shown":[]}\n');
+    writeFile(fix.project, '.ledger/.cache/.marks/payments.json', '{"shown":[]}\n');
     const rmSync = fs.rmSync;
     /** @type {boolean[][]} */
     const lockedAsRemoved = [];
     t.mock.method(fs, 'rmSync', (/** @type {string} */ target, /** @type {fs.RmOptions} */ opts) => {
-      if (target.endsWith(path.join('.marks', 'auth-flow.json'))) lockedAsRemoved.push([holdsWriterLock(path.join(fix.project, '.leeway')), fs.existsSync(`${target}.lock`)]);
+      if (target.endsWith(path.join('.marks', 'auth-flow.json'))) lockedAsRemoved.push([holdsWriterLock(path.join(fix.project, '.ledger')), fs.existsSync(`${target}.lock`)]);
       return rmSync(target, opts);
     });
     const codeHead = git(fix.project, ['rev-parse', 'HEAD']);
     const stateCommits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']));
     const res = engine(fix, ABSORB);
-    assert.strictEqual(fs.existsSync(path.join(fix.project, '.leeway/.cache/auth-flow')), false,
+    assert.strictEqual(fs.existsSync(path.join(fix.project, '.ledger/.cache/auth-flow')), false,
       "the absorbed feature's scratch cache is purged with it, the old cache's reports the migration copied into its earlier/ among it");
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md'), 'utf8'), 'put back\n',
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.ledger/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md'), 'utf8'), 'put back\n',
       'what its review\'s put back set aside outlives it');
     assert.deepStrictEqual([fs.readdirSync(marks), lockedAsRemoved], [['payments.json'], [[true, true]]],
       "the absorbed feature's last-looked mark goes with it, under the mark's lock taken inside the writer lock, and the epic's stays");
@@ -109,7 +109,7 @@ describe('engine workunit absorb — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.ledger.jsonl')), 'a feature holding no ledger line writes no carry, and needs no conversation');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/.ledger.jsonl')), 'a feature holding no ledger line writes no carry, and needs no conversation');
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
     const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds']);
     assert.match(receipt, new RegExp([
@@ -123,9 +123,9 @@ describe('engine workunit absorb — happy path', () => {
     ].join('\\n')));
 
     // Files landed at their epic identities; the feature directory is gone.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md'), 'utf8'), '# Discussion\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/seeds/seed.md'), 'utf8'), '# Seed\n');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.ledger/payments/topics/auth/log.md'), 'utf8'), '# Discussion\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.ledger/payments/seeds/seed.md'), 'utf8'), '# Seed\n');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/auth-flow')));
 
     // Epic manifest: statuses mirrored, entries carry their ORIGINAL
     // timestamps (and seed provenance), the map item carrying the topic's
@@ -143,7 +143,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery', summary: 'Signing in', description: 'How a person signs in, and stays signed in.' });
 
     // Registration removed; the epic's stays.
-    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
+    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.ledger/manifest.json'), 'utf8'));
     assert.deepStrictEqual(project.work_units, { payments: { work_type: 'epic' } });
 
     // ONE state commit staging all three pathspecs — feature deletion, epic,
@@ -209,12 +209,12 @@ describe('engine workunit absorb — happy path', () => {
       },
     };
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/design.md', '# Design\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/report.md', '# Report\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/data/deliveries.csv', 'evt,count\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md', '# Sub problem\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E2-retry-window/problem.md', '# Problem 2\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/design.md', '# Design\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/report.md', '# Report\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/data/deliveries.csv', 'evt,count\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md', '# Sub problem\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E2-retry-window/problem.md', '# Problem 2\n');
     commitAll(fix.project, 'series');
 
     const res = engine(fix, ABSORB);
@@ -239,9 +239,9 @@ describe('engine workunit absorb — happy path', () => {
       'topics/auth/experiments/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md',
       'topics/auth/experiments/E2-retry-window/problem.md',
     ]) {
-      assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments', rel)), `moved: ${rel}`);
+      assert.ok(fs.existsSync(path.join(fix.project, '.ledger/payments', rel)), `moved: ${rel}`);
     }
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/auth-flow')));
 
     // Nothing it moved is indexed — no experiment file, no seed.
     assert.strictEqual(hasStore(fix.project), false);
@@ -272,8 +272,8 @@ describe('engine workunit absorb — happy path', () => {
       },
     });
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E2-retry-window/problem.md', '# Problem 2\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E2-retry-window/problem.md', '# Problem 2\n');
     commitAll(fix.project, 'series');
 
     // The holder-named discussion item lands at the topic name for the
@@ -299,7 +299,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/auth-flow')));
 
     // The absorb both removes and indexes, so its advisory names neither.
     const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds', '--warn']);
@@ -311,16 +311,16 @@ describe('engine workunit absorb — a renamed seed\'s links follow it', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  const read = (rel) => fs.readFileSync(path.join(fix.project, '.leeway', rel), 'utf8');
+  const read = (rel) => fs.readFileSync(path.join(fix.project, '.ledger', rel), 'utf8');
 
   /** The feature carrying `seeds`, each a file, its log `log`; the epic's own document linking its own same-named file. */
   function setupSeeding(log, seeds = ['seed.md', 'notes.md']) {
     const feature = featureManifest();
     feature.seeds = seeds.map((name) => ({ path: `seeds/${name}`, source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' }));
     fix = setupFixture({ feature });
-    for (const name of seeds) writeFile(fix.project, `.leeway/auth-flow/seeds/${name}`, `# ${name}\n`);
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md', `# Discussion\n\n${log}\n`);
-    writeFile(fix.project, '.leeway/payments/topics/fee-model/brief.md', '# Fees\n\n[epic notes](../../seeds/notes.md)\n');
+    for (const name of seeds) writeFile(fix.project, `.ledger/auth-flow/seeds/${name}`, `# ${name}\n`);
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/log.md', `# Discussion\n\n${log}\n`);
+    writeFile(fix.project, '.ledger/payments/topics/fee-model/brief.md', '# Fees\n\n[epic notes](../../seeds/notes.md)\n');
     commitAll(fix.project, 'seeding feature');
   }
 
@@ -393,7 +393,7 @@ describe('engine workunit absorb — the mailbox follows its topic', () => {
 
   function setupWithMessages() {
     fix = setupFixture();
-    for (const [name, content] of Object.entries(MESSAGES)) writeFile(fix.project, `.leeway/auth-flow/topics/auth-flow/mail/${name}`, content);
+    for (const [name, content] of Object.entries(MESSAGES)) writeFile(fix.project, `.ledger/auth-flow/topics/auth-flow/mail/${name}`, content);
     commitAll(fix.project, 'waiting messages');
   }
 
@@ -403,9 +403,9 @@ describe('engine workunit absorb — the mailbox follows its topic', () => {
 
     assert.deepStrictEqual(res.mail_moved, { path: inEpic(fix, 'topics/auth/mail'), count: 2 });
     for (const [name, content] of Object.entries(MESSAGES)) {
-      assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/mail', name), 'utf8'), content, `moved intact: ${name}`);
+      assert.strictEqual(fs.readFileSync(path.join(fix.project, '.ledger/payments/topics/auth/mail', name), 'utf8'), content, `moved intact: ${name}`);
     }
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')), 'the feature directory is gone');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/auth-flow')), 'the feature directory is gone');
     assert.deepStrictEqual(engine(fix, ['topic', 'mailbox', 'payments', 'auth']).files,
       Object.keys(MESSAGES).map((name) => inEpic(fix, `topics/auth/mail/${name}`)));
   });
@@ -426,7 +426,7 @@ describe('engine workunit absorb — the mailbox follows its topic', () => {
 
   it('an empty mailbox moves no message — no field rides the response', () => {
     fix = setupFixture();
-    fs.mkdirSync(path.join(fix.project, '.leeway/auth-flow/topics/auth-flow/mail'), { recursive: true });
+    fs.mkdirSync(path.join(fix.project, '.ledger/auth-flow/topics/auth-flow/mail'), { recursive: true });
     const res = engine(fix, ABSORB);
 
     assert.strictEqual(res.mail_moved, undefined);
@@ -445,20 +445,20 @@ const materialWorld = fixtureFrom('engine-wu-absorb-material-', (template) => {
   const feature = featureManifest();
   feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'dup-rate', status: 'running' } } } } };
   fillFixture(template, { feature });
-  writeFile(template, '.leeway/auth-flow/topics/auth-flow/log.md',
+  writeFile(template, '.ledger/auth-flow/topics/auth-flow/log.md',
     '# Discussion\n\n![flow](../../assets/flow.png) and ../../assets/diagrams/login.svg\nThe probe: ../../spikes/001-token-probe/notes.md\n');
-  writeFile(template, '.leeway/auth-flow/topics/auth-flow/brief.md', '# Brief\n\nSee ../../assets/flow.png for the flow.\n');
-  writeFile(template, '.leeway/auth-flow/topics/auth-flow/mail/001-rollback.md', 'Rollback\n\nWho owns it?\n');
-  writeFile(template, '.leeway/auth-flow/topics/auth-flow/experiments/E1-dup-rate/report.md', '# Report\n\n![flow](../../../../assets/flow.png)\n');
-  writeFile(template, '.leeway/auth-flow/assets/flow.png', 'feature png\n');
-  writeFile(template, '.leeway/auth-flow/assets/diagrams/login.svg', '<svg/>\n');
-  writeFile(template, '.leeway/auth-flow/assets/.draft.png', 'tooling state\n');
-  writeFile(template, '.leeway/auth-flow/spikes/001-token-probe/notes.md', '# Token probe\n');
-  writeFile(template, '.leeway/auth-flow/spikes/002-retry-bench/bench.md', '# Retry bench\n');
-  writeFile(template, '.leeway/.cache/auth-flow/spikes/001-token-probe/out.log', 'built\n');
-  writeFile(template, '.leeway/payments/assets/flow.png', 'epic png\n');
-  writeFile(template, '.leeway/payments/spikes/001-token-probe/notes.md', '# The epic\'s own probe\n');
-  writeFile(template, '.leeway/payments/topics/fee-model/brief.md', '# Fees\n\n![flow](../../assets/flow.png)\n');
+  writeFile(template, '.ledger/auth-flow/topics/auth-flow/brief.md', '# Brief\n\nSee ../../assets/flow.png for the flow.\n');
+  writeFile(template, '.ledger/auth-flow/topics/auth-flow/mail/001-rollback.md', 'Rollback\n\nWho owns it?\n');
+  writeFile(template, '.ledger/auth-flow/topics/auth-flow/experiments/E1-dup-rate/report.md', '# Report\n\n![flow](../../../../assets/flow.png)\n');
+  writeFile(template, '.ledger/auth-flow/assets/flow.png', 'feature png\n');
+  writeFile(template, '.ledger/auth-flow/assets/diagrams/login.svg', '<svg/>\n');
+  writeFile(template, '.ledger/auth-flow/assets/.draft.png', 'tooling state\n');
+  writeFile(template, '.ledger/auth-flow/spikes/001-token-probe/notes.md', '# Token probe\n');
+  writeFile(template, '.ledger/auth-flow/spikes/002-retry-bench/bench.md', '# Retry bench\n');
+  writeFile(template, '.ledger/.cache/auth-flow/spikes/001-token-probe/out.log', 'built\n');
+  writeFile(template, '.ledger/payments/assets/flow.png', 'epic png\n');
+  writeFile(template, '.ledger/payments/spikes/001-token-probe/notes.md', '# The epic\'s own probe\n');
+  writeFile(template, '.ledger/payments/topics/fee-model/brief.md', '# Fees\n\n![flow](../../assets/flow.png)\n');
   commitAll(template, 'material');
 });
 
@@ -466,7 +466,7 @@ describe('engine workunit absorb — the topic folder, the assets and the spikes
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  const read = (rel) => fs.readFileSync(path.join(fix.project, '.leeway', rel), 'utf8');
+  const read = (rel) => fs.readFileSync(path.join(fix.project, '.ledger', rel), 'utf8');
 
   it('the consent screen names everything the absorb moves — the brief, the waiting mail, the assets but a dot-named one, the spikes', () => {
     fix = copyFixture(materialWorld);
@@ -504,10 +504,10 @@ describe('engine workunit absorb — the topic folder, the assets and the spikes
     ]);
     assert.deepStrictEqual([read('payments/assets/flow-2.png'), read('payments/assets/diagrams/login.svg'), read('payments/assets/flow.png')],
       ['feature png\n', '<svg/>\n', 'epic png\n'], 'the feature\'s assets land beside the epic\'s, which are untouched');
-    assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, '.leeway/payments/assets')).sort(), ['diagrams', 'flow-2.png', 'flow.png']);
+    assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, '.ledger/payments/assets')).sort(), ['diagrams', 'flow-2.png', 'flow.png']);
     assert.strictEqual(read('payments/topics/auth/experiments/E1-dup-rate/report.md'), '# Report\n\n![flow](../../../../assets/flow-2.png)\n');
     assert.strictEqual(read('payments/topics/fee-model/brief.md'), '# Fees\n\n![flow](../../assets/flow.png)\n', 'the epic\'s own document names the epic\'s own asset');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/auth-flow')));
   });
 
   it('moves the spikes under their numbers, a slug the epic\'s spikes hold suffixed and its links rewritten, each twin in the cache with it — and the receipt names them', () => {
@@ -540,8 +540,8 @@ describe('engine workunit absorb — the topic folder, the assets and the spikes
     const res = engine(fix, ABSORB);
 
     assert.deepStrictEqual([res.assets, res.renamed_assets, res.spikes, res.renamed_spikes], [[], [], [], []]);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/assets')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/spikes')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/payments/assets')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/payments/spikes')));
   });
 });
 
@@ -549,16 +549,16 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  const readProject = () => JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
+  const readProject = () => JSON.parse(fs.readFileSync(path.join(fix.project, '.ledger/manifest.json'), 'utf8'));
 
   /** The fixture plus a roadmap holding `items`, and the files their sources name outside the feature. */
   function setupRoadmap(items, { feature } = {}) {
     fix = setupFixture(feature ? { feature } : {});
-    writeFile(fix.project, '.leeway/auth-flow/discovery/session-001.md', '# Discovery\n');
-    writeFile(fix.project, '.leeway/.product/sessions/session-001.md', '# Roadmap session\n');
+    writeFile(fix.project, '.ledger/auth-flow/discovery/session-001.md', '# Discovery\n');
+    writeFile(fix.project, '.ledger/.product/sessions/session-001.md', '# Roadmap session\n');
     const project = readProject();
     project.roadmap = { horizons: ['v1'], items };
-    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify(project, null, 2) + '\n');
+    writeFile(fix.project, '.ledger/manifest.json', JSON.stringify(project, null, 2) + '\n');
     commitAll(fix.project, 'roadmap');
   }
 
@@ -566,7 +566,7 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
   function assertSourcesOnDisk() {
     for (const [name, item] of Object.entries(readProject().roadmap.items)) {
       for (const source of item.sources || []) {
-        assert.ok(fs.existsSync(path.join(fix.project, '.leeway', source)), `${name}: ${source} is on disk`);
+        assert.ok(fs.existsSync(path.join(fix.project, '.ledger', source)), `${name}: ${source} is on disk`);
       }
     }
   }
@@ -624,8 +624,8 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
       'auth-flow/seeds/seed.md',
       'auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md',
     ] } }, { feature });
-    writeFile(fix.project, '.leeway/auth-flow/seeds/notes.md', '# Notes\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.ledger/auth-flow/seeds/notes.md', '# Notes\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md', '# Problem\n');
     commitAll(fix.project, 'series');
     engine(fix, ABSORB);
 
@@ -644,8 +644,8 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
       'auth-flow/assets',
       'auth-flow/assets/diagrams/login.svg',
     ] } });
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/brief.md', '# Brief\n');
-    writeFile(fix.project, '.leeway/auth-flow/assets/diagrams/login.svg', '<svg/>\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/brief.md', '# Brief\n');
+    writeFile(fix.project, '.ledger/auth-flow/assets/diagrams/login.svg', '<svg/>\n');
     commitAll(fix.project, 'brief and assets');
     engine(fix, ABSORB);
 
@@ -719,7 +719,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Assert the refusal leaves every `.leeway/` byte identical, no commit. */
+  /** Assert the refusal leaves every `.ledger/` byte identical, no commit. */
   function refusedPristine(args, pattern) {
     const before = treeSnapshot(fix);
     const err = engineFails(fix, args);
@@ -750,7 +750,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture();
-    fs.rmSync(path.join(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md'));
+    fs.rmSync(path.join(fix.project, '.ledger/auth-flow/topics/auth-flow/log.md'));
     commitAll(fix.project, 'drop file');
     refusedPristine(ABSORB, /discussion log missing on disk/);
   });
@@ -760,7 +760,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     epic.phases.discovery.items['fee-model'].title = 'billing';
     epic.phases.discussion = { items: { 'session-model': { status: 'completed' } } };
     fix = setupFixture({ epic });
-    writeFile(fix.project, '.leeway/payments/topics/on-disk/mail/001-stray.md', 'Stray\n');
+    writeFile(fix.project, '.ledger/payments/topics/on-disk/mail/001-stray.md', 'Stray\n');
     commitAll(fix.project, 'orphan');
 
     // The map's own rule, so the row the absorb lands is never refused
@@ -773,7 +773,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'dead-idea', ...WORDS], /was dismissed from payments's discovery map/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'session-model', ...WORDS], /discussion topic "session-model" already exists/);
     // The topic folder moves whole, so nothing it holds merges into a folder there.
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'on-disk', ...WORDS], /\.leeway\/payments\/topics\/on-disk already exists — pick a different name/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'on-disk', ...WORDS], /\.ledger\/payments\/topics\/on-disk already exists — pick a different name/);
   });
 
   it('refuses an experiment series already at the topic in the epic', () => {
@@ -786,7 +786,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     const epic = epicManifest();
     epic.phases.experiment = { items: { auth: { status: 'completed', experiments: { E1: { slug: 'other', status: 'concluded', verdict: 'stands' } } } } };
     fix = setupFixture({ feature, epic });
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
     commitAll(fix.project, 'series');
     refusedPristine(ABSORB, /experiment topic "auth" already exists in payments/);
   });
@@ -799,12 +799,12 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     feature.phases.discussion.items['auth-flow'] = { status: 'in-progress', awaiting_experiments: ['E1'] };
     feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'webhook-dup-rate', status: 'running' } } } } };
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
     commitAll(fix.project, 'series');
     engine(fix, ABSORB);
     assert.deepStrictEqual(readManifest(fix, 'payments').phases.discussion.items.auth,
       { status: 'in-progress', awaiting_experiments: ['E1'] });
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/topics/auth/experiments/E1-webhook-dup-rate/problem.md')),
+    assert.ok(fs.existsSync(path.join(fix.project, '.ledger/payments/topics/auth/experiments/E1-webhook-dup-rate/problem.md')),
       'the series lands at the topic name on disk too');
     // The join holds end to end: the conclusion at the epic address releases
     // the moved wait.
@@ -816,7 +816,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     const feature = featureManifest();
     feature.phases.experiment = { items: { stray: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } };
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/topics/stray/experiments/E1-x/problem.md', '# P\n');
+    writeFile(fix.project, '.ledger/auth-flow/topics/stray/experiments/E1-x/problem.md', '# P\n');
     commitAll(fix.project, 'foreign series');
     refusedPristine(ABSORB, /experiment item "stray" not named after it — a feature's experiment is single and self-named/);
   });
@@ -825,7 +825,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     const feature = featureManifest();
     feature.phases.discussion.items.tangent = { status: 'completed' };
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/discussion/tangent.md', '# Tangent\n');
+    writeFile(fix.project, '.ledger/auth-flow/discussion/tangent.md', '# Tangent\n');
     commitAll(fix.project, 'foreign discussion item');
     refusedPristine(ABSORB, /discussion item "tangent" not named after it — a feature's discussion is single and self-named/);
   });
@@ -833,14 +833,14 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
   it('closes the crash window: a discussion log missing on disk leaves both units pristine', () => {
     fix = setupFixture();
     indexFiles(fix, FEATURE_FILES);
-    fs.rmSync(path.join(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md'));
+    fs.rmSync(path.join(fix.project, '.ledger/auth-flow/topics/auth-flow/log.md'));
     commitAll(fix.project, 'drop discussion log');
     refusedPristine(ABSORB, /discussion log missing on disk/);
     // Validation refused before ANY move — the seeds are still the
     // feature's, the epic gained nothing, and the store holds the feature's
     // chunks as it did: none removed, none indexed at the epic.
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/auth-flow/seeds/seed.md')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md')));
+    assert.ok(fs.existsSync(path.join(fix.project, '.ledger/auth-flow/seeds/seed.md')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/payments/topics/auth/log.md')));
     assert.deepStrictEqual(indexedFiles(fix.project), FEATURE_FILES);
   });
 
@@ -853,7 +853,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
 
   it('refuses a corrupt project manifest before anything moves', () => {
     fix = setupFixture();
-    writeFile(fix.project, '.leeway/manifest.json', '{ corrupt\n');
+    writeFile(fix.project, '.ledger/manifest.json', '{ corrupt\n');
     commitAll(fix.project, 'corrupt');
     refusedPristine(ABSORB, /not valid JSON/);
   });

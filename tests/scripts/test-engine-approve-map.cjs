@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Approve the map (leeway-engine/scripts/domain/approve-map.cjs): the
+// Approve the map (ledger-engine/scripts/domain/approve-map.cjs): the
 // authority gate at the end of an epic's shaping — `render approve-map`
 // staging Claude's payload and drawing one screen of the topics in order and
 // the parks with their horizons (8.S17), refusing a park with no horizon
@@ -31,8 +31,8 @@ const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePa
 const { joinedTo } = require('./roadmap-world.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
-const { epicMenuScreen } = require('../../skills/leeway-engine/scripts/domain/projections/epic-menu.cjs');
-const { NBSP } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { epicMenuScreen } = require('../../skills/ledger-engine/scripts/domain/projections/epic-menu.cjs');
+const { NBSP } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 
 const dir = useGatesWorld('epic');
 const { scratch, payload, screen, answer, run } = gatesHelpers(dir);
@@ -214,7 +214,7 @@ describe('approve the map, the yes (8.8.3, 8.8.13, 8.14.11)', () => {
       bound: [{ item: 'share-links', topic: 'sharing' }],
       session_closed: '001',
       committed: head(dir()).slice(0, res.committed.length),
-      next: { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC] },
+      next: { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] },
     });
     const { discovery } = readManifest(dir(), EPIC).phases;
     assert.deepStrictEqual(discovery.items, {

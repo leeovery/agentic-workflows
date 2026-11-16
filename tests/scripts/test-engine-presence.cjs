@@ -21,7 +21,7 @@ const harness = require('./engine-harness.cjs');
 
 function setup() {
   const dir = harness.setupGitFixture('engine-presence-');
-  fs.mkdirSync(path.join(dir, '.leeway', 'pay'), { recursive: true });
+  fs.mkdirSync(path.join(dir, '.ledger', 'pay'), { recursive: true });
   return dir;
 }
 function cleanup(dir) {
@@ -40,11 +40,11 @@ const engineWith = (dir, args, { env = {}, input, cwd = dir } = {}) =>
 const EPOCH_START = 'Thu Jan  1 00:00:00 1970';
 /** `topic mailbox` on pay's alpha, the unit an epic. */
 function readMailbox(dir) {
-  fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
+  fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
   return engineWith(dir, ['topic', 'mailbox', 'pay', 'alpha']);
 }
 function presenceFile(dir, phase, topic) {
-  return path.join(dir, '.leeway/.cache/pay', phase, topic, 'presence');
+  return path.join(dir, '.ledger/.cache/pay', phase, topic, 'presence');
 }
 /** A heartbeat as a session working in `dir`'s checkout writes it, unless the record names another. */
 function craftRecord(dir, phase, topic, record) {
@@ -61,7 +61,7 @@ describe('engine presence', () => {
   it('beat creates the heartbeat; scan reports it held, its JSON alone', () => {
     const beat = engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER).res;
     assert.deepStrictEqual(beat, { ok: true, work_unit: 'pay', phase: 'discussion', topic: 'alpha', beat: true });
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/pay/discussion/alpha/presence')));
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.cache/pay/discussion/alpha/presence')));
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.deepStrictEqual(Object.keys(res), ['ok', 'work_unit', 'held', 'sessions'],
@@ -91,7 +91,7 @@ describe('engine presence', () => {
     // A session left idle for hours is still a session. The age is shown so
     // the user can weigh it; no surface turns it into a verdict.
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
-    const p = path.join(dir, '.leeway/.cache/pay/discussion/beta/presence');
+    const p = path.join(dir, '.ledger/.cache/pay/discussion/beta/presence');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
@@ -102,7 +102,7 @@ describe('engine presence', () => {
   });
 
   it('render phase-note beats the addressed topic — announcing the entry is the same act as claiming the slot', () => {
-    fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.ledger/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } } },
     }) + '\n');
@@ -132,7 +132,7 @@ describe('engine presence', () => {
   });
 
   it('the product\'s conversation beats at product, which has no directory of its own', () => {
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway', 'product')));
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger', 'product')));
     assert.strictEqual(engine(dir, ['presence', 'beat', 'product', 'discovery', 'product']).res.beat, true);
     const scan = engine(dir, ['presence', 'scan']).res;
     assert.deepStrictEqual(scan.sessions.map((r) => `${r.work_unit}/${r.phase}/${r.topic}`), ['product/discovery/product']);
@@ -156,7 +156,7 @@ describe('engine presence', () => {
   });
 
   it('the work-unit-less scan walks the whole cache root, naming each row\'s work unit', () => {
-    fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.ledger', 'ship'), { recursive: true });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     engine(dir, ['presence', 'beat', 'ship', 'implementation', 'beta'], PEER);
 
@@ -174,7 +174,7 @@ describe('engine presence', () => {
   });
 
   it('the session-label store at the cache root is no work unit — the project scan reports nothing for it', () => {
-    const store = path.join(dir, '.leeway', '.cache', '.session-labels');
+    const store = path.join(dir, '.ledger', '.cache', '.session-labels');
     fs.mkdirSync(store, { recursive: true });
     fs.writeFileSync(path.join(store, 'abcd1234-7.json'), '{"tmux_id":"$7","original":"proj","applied":"proj · pay · discussion"}\n');
     const res = engine(dir, ['presence', 'scan']).res;
@@ -256,13 +256,13 @@ describe('engine presence', () => {
   });
 
   it('the code-slot read takes held implementation and review rows, never the caller\'s own', () => {
-    const { heldCodeSessions } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
-    fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
+    fs.mkdirSync(path.join(dir, '.ledger', 'ship'), { recursive: true });
     // Every row is held by this (alive) process; ownership is decided by
     // session id alone, with the pid arm switched off below.
     craftRecord(dir, 'implementation', 'alpha', { pid: process.pid, pid_start: null, session_id: 'peer' });
     craftRecord(dir, 'discussion', 'beta', { pid: process.pid, pid_start: null, session_id: 'peer' });
-    const shipRow = path.join(dir, '.leeway/.cache/ship/review/gamma/presence');
+    const shipRow = path.join(dir, '.ledger/.cache/ship/review/gamma/presence');
     fs.mkdirSync(path.dirname(shipRow), { recursive: true });
     fs.writeFileSync(shipRow, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine', checkout: dir }) + '\n');
 
@@ -285,7 +285,7 @@ describe('engine presence', () => {
   });
 
   it('the code-slot read is the caller\'s checkout\'s — a code session in another worktree never holds it', () => {
-    const { heldCodeSessions } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
     const worktree = path.join(dir, '..', `${path.basename(dir)}-code`);
     harness.git(dir, ['worktree', 'add', '-q', '-b', 'feature', worktree]);
     try {
@@ -308,7 +308,7 @@ describe('engine presence', () => {
     // A resumed conversation keeps the process and takes a new session id, so
     // pid ownership is the second arm of the same question — without it the
     // session gates against a hold it is standing in.
-    const { heldCodeSessions } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
     craftRecord(dir, 'implementation', 'alpha', { pid: process.pid, pid_start: null, session_id: 'an-earlier-conversation' });
 
     const beforeSession = process.env.CLAUDE_CODE_SESSION_ID;
@@ -328,7 +328,7 @@ describe('engine presence', () => {
   });
 
   it('cleanup sweeps only the named session, argv or stdin, across work units', () => {
-    fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.ledger', 'ship'), { recursive: true });
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
     craftRecord(dir, 'discussion', 'beta', { pid: null, pid_start: null, session_id: 'sess-a' });
     craftRecord(dir, 'discussion', 'gamma', { pid: null, pid_start: null, session_id: 'sess-b' });
@@ -415,7 +415,7 @@ describe('engine presence', () => {
   });
 
   it('an agent-store scan stamps nothing where no heartbeat exists', () => {
-    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress', phases: {},
     }, null, 2));
     engineWith(dir, ['agent', 'scan', 'pay', 'discussion', 'alpha']);
@@ -425,7 +425,7 @@ describe('engine presence', () => {
 });
 
 describe('fmtAge', () => {
-  const { fmtAge } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
+  const { fmtAge } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
 
   it('rounds to the unit a reader weighs a hold in — seconds, minutes, hours, days', () => {
     assert.deepStrictEqual(

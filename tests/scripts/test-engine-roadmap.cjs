@@ -1,7 +1,7 @@
 'use strict';
 
 // The roadmap domain — project-level horizons + items, lifecycle by join
-// (skills/leeway-engine/scripts/domain/roadmap.cjs) — driven through the
+// (skills/ledger-engine/scripts/domain/roadmap.cjs) — driven through the
 // engine CLI: JIT birth, self-commits scoped to the project manifest, the
 // joined-item guards, horizon restructuring, and the derived state read. The
 // inbox's notes onto the roadmap and back are test-engine-roadmap-inbox.cjs's;
@@ -100,8 +100,8 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--origin', 'park:']).error, /unknown origin/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '/abs/path.md']).error, /never absolute/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '../escape.md']).error, /never absolute or traversing/);
-    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '.leeway/.product/sessions/session-001.md']).error,
-      /relative to the state, so drop the leading "\.leeway\/" \("\.product\/sessions\/session-001\.md"\)/);
+    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '.ledger/.product/sessions/session-001.md']).error,
+      /relative to the state, so drop the leading "\.ledger\/" \("\.product\/sessions\/session-001\.md"\)/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'bad.h', '--summary', 's']).error, /not a legal horizon name/);
 
     assert.strictEqual(projectManifestText(dir), before);
@@ -113,13 +113,13 @@ describe('engine CLI: roadmap add / add-batch', () => {
     const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
 
     assert.strictEqual(runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.product/sessions/session-002.md']).error,
-      `source ".product/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
+      `source ".product/sessions/session-002.md" does not exist under ${dir}/.ledger/ — a source must exist before an item records it; `
       + 'enter the conversation that writes it first (engine enter discovery product)');
 
     writeSource(dir, '.product/sessions/session-001.md');
     const several = runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's',
       '--source', 'mvp/discussion/ordering.md', '--source', '.product/sessions/session-001.md', '--source', '.product/sessions/session-002.md']).error;
-    assert.ok(several.startsWith(`sources "mvp/discussion/ordering.md", ".product/sessions/session-002.md" do not exist under ${dir}/.leeway/ — `), several);
+    assert.ok(several.startsWith(`sources "mvp/discussion/ordering.md", ".product/sessions/session-002.md" do not exist under ${dir}/.ledger/ — `), several);
     assert.ok(!several.includes('session-001'), 'a source on disk is never named');
 
     assert.strictEqual(projectManifestText(dir), before);
@@ -194,9 +194,9 @@ describe('engine CLI: roadmap add / add-batch', () => {
 
     fs.writeFileSync(path.join(dir, 'prefixed.json'), JSON.stringify([
       { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.product/sessions/session-001.md'] },
-      { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.leeway/.product/sessions/session-001.md'] },
+      { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.ledger/.product/sessions/session-001.md'] },
     ]));
-    assert.match(runFail(dir, ['add-batch', '--file', 'prefixed.json']).error, /entry 2 .*drop the leading "\.leeway\/"/);
+    assert.match(runFail(dir, ['add-batch', '--file', 'prefixed.json']).error, /entry 2 .*drop the leading "\.ledger\/"/);
 
     // One entry's source not yet on disk refuses the whole batch, the path named once.
     writeSource(dir, '.product/sessions/session-001.md');
@@ -206,7 +206,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
       { name: 'later', horizon: 'v1', summary: 's', sources: ['.product/sessions/session-002.md'] },
     ]));
     assert.strictEqual(runFail(dir, ['add-batch', '--file', 'unopened.json']).error,
-      `add-batch: source ".product/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
+      `add-batch: source ".product/sessions/session-002.md" does not exist under ${dir}/.ledger/ — a source must exist before an item records it; `
       + 'enter the conversation that writes it first (engine enter discovery product)');
 
     assert.strictEqual(projectManifestText(dir), before);
@@ -353,10 +353,10 @@ describe('engine CLI: an archived item\'s name stays taken (18.8.21)', () => {
   it('pull-forward refuses an archived item, naming the way back — the epic\'s map never moves', () => {
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
     commitAll(dir, 'epic');
-    const epicBefore = fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
+    const epicBefore = fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8');
     assert.strictEqual(runFail(dir, ['pull-forward', 'preferences-ui', '--into', 'mvp']).error,
       '"preferences-ui" is archived — pull-forward takes a waiting item; bring it back onto a horizon (engine roadmap move preferences-ui --horizon <h>) first');
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
   });
 
   it('split refuses an archived item as one outside the source horizon', () => {
@@ -475,7 +475,7 @@ describe('engine CLI: roadmap pull-forward', () => {
     assert.strictEqual(res.topic, 'loyalty');
     assert.strictEqual(res.state, 'in-flight');
     // The epic's map item, source roadmap, summary carried from the item.
-    const epicItem = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'))
+    const epicItem = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8'))
       .phases.discovery.items.loyalty;
     assert.deepStrictEqual(epicItem, { source: 'roadmap', summary: 'rewards' });
     assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.pulled_to, { work_unit: 'mvp', topic: 'loyalty' });
@@ -493,27 +493,27 @@ describe('engine CLI: roadmap pull-forward', () => {
     assert.match(runFail(dir, ['pull-forward', 'ordering', '--into', 'mvp']).error, /already joined/);
     runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp']);
     runOk(dir, ['move', 'kds', '--horizon', 'v1']);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8'));
     manifest.phases.discovery.items.kds = { source: 'discovery', summary: 'already here' };
-    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
     assert.match(runFail(dir, ['pull-forward', 'kds', '--into', 'mvp']).error, /already on the map/);
   });
 
   it('pull-forward refuses a bug or a quick-fix, naming the pull as the way to start it — the epic\'s map never moves', () => {
     runOk(dir, ['add', 'login-crash', '--horizon', 'mvp', '--summary', 'sign-in crashes', '--kind', 'bug']);
     runOk(dir, ['add', 'typo', '--horizon', 'mvp', '--summary', 'the footer typo', '--kind', 'quick-fix']);
-    const epicBefore = fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
+    const epicBefore = fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8');
     assert.strictEqual(runFail(dir, ['pull-forward', 'login-crash', '--into', 'mvp']).error,
       '"login-crash" is a bug — an epic grows by topics, and pull-forward takes ideas only; pull it from the roadmap\'s menu, which hands it into discovery as work of its own');
     assert.match(runFail(dir, ['pull-forward', 'typo', '--into', 'mvp']).error, /^"typo" is a quick-fix — /);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
     assert.strictEqual('pulled_to' in readProject(dir).roadmap.items['login-crash'], false);
   });
 
   it('pull-forward honours the dismissed list, force passing the confirmed re-add through', () => {
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8'));
     manifest.phases.discovery.dismissed = ['loyalty'];
-    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
     assert.strictEqual(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp']).error,
       '"loyalty" was previously dismissed from this map — nothing was added; add it back only at the person\'s ask — re-run with --force-dismissed');
     const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--force-dismissed']);
@@ -571,7 +571,7 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
   });
 
   it('reads corrupt shapes honestly: scalar node, array items, non-object item, stray horizon, malformed join; an item waiting on no horizon as null (18.8.20)', () => {
-    const write = (m) => fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(m, null, 2));
+    const write = (m) => fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(m, null, 2));
 
     write({ roadmap: 'scalar' });
     assert.strictEqual(runOk(dir, ['state']).exists, false, 'a scalar node reads as never-born');
@@ -596,21 +596,21 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
   });
 
   it('refuses a mutation loudly over a malformed horizons node', () => {
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ roadmap: { horizons: { not: 'a list' }, items: {} } }, null, 2));
+    fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({ roadmap: { horizons: { not: 'a list' }, items: {} } }, null, 2));
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's']).error, /horizons is malformed/);
   });
 
   it('reads the product\'s conversation\'s session logs from .product/sessions — a log alone giving a roadmap that exists, holding nothing', () => {
-    const logs = ['session-001.md', 'session-003.md'].map((name) => path.join(dir, '.leeway', '.product', 'sessions', name));
-    for (const log of logs) writeSource(dir, path.relative(path.join(dir, '.leeway'), log));
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({}, null, 2));
+    const logs = ['session-001.md', 'session-003.md'].map((name) => path.join(dir, '.ledger', '.product', 'sessions', name));
+    for (const log of logs) writeSource(dir, path.relative(path.join(dir, '.ledger'), log));
+    fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({}, null, 2));
     const sessions = ({ horizons, totals, items, archived, ...rest }) => ({ ...rest, items: items.map((i) => i.name) });
     const expected = { ok: true, exists: true, session_logs: [{ number: 1, path: logs[0] }, { number: 3, path: logs[1] }] };
     assert.deepStrictEqual(sessions(runOk(dir, ['state'])), { ...expected, items: [] });
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
     assert.deepStrictEqual(sessions(runOk(dir, ['state'])), { ...expected, items: ['loyalty'] });
     for (const log of logs) fs.rmSync(log);
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({}, null, 2));
+    fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({}, null, 2));
     assert.strictEqual(runOk(dir, ['state']).exists, false, 'no log and no node is no roadmap');
   });
 });
@@ -662,8 +662,8 @@ describe('engine CLI: the re-aim — absorb moves a join, never orphans it', () 
       status: 'in-progress',
       phases: { discussion: { items: { 'loyalty-feat': { status: 'completed' } } } },
     });
-    fs.mkdirSync(path.join(dir, '.leeway', 'loyalty-feat', 'topics', 'loyalty-feat'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', 'loyalty-feat', 'topics', 'loyalty-feat', 'log.md'), '# Discussion\n');
+    fs.mkdirSync(path.join(dir, '.ledger', 'loyalty-feat', 'topics', 'loyalty-feat'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger', 'loyalty-feat', 'topics', 'loyalty-feat', 'log.md'), '# Discussion\n');
     commitAll(dir, 'feature fixture');
     joinedTo(dir, 'loyalty-feat', 'loyalty');
 

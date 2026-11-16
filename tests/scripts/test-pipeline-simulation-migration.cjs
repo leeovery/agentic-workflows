@@ -32,7 +32,7 @@ const { Sim, readyForSim, startMenu } = require('./pipeline-world.cjs');
 const { auditState, auditTrust } = require('./pipeline-oracle.cjs');
 const { audit } = require('./migration-audit.cjs');
 const { git } = require('./engine-harness.cjs');
-const { TRUST_LOG } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
+const { TRUST_LOG } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
 
 /** @type {ReturnType<typeof migratedProject>} */
 let made;

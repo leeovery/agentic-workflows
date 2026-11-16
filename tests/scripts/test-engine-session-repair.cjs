@@ -15,7 +15,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
+const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
 const harness = require('./engine-harness.cjs');
 const { world, RESUME_STDIN, projectWith, setup, teardown, engine, resume, tmuxName, renameCount, setTmuxName, setTmuxId, stashFile, stashRecords, writeStash, conversation, position, writePosition, peerIdentity, optIn, head } = require('./session-label-world.cjs');
 
@@ -254,7 +254,7 @@ describe('engine session resume', () => {
 
   it('never throws on a work unit the project no longer has — it labels nothing and keeps the position, which goes with its folder', () => {
     ended();
-    fs.rmSync(path.join(world.dir, '.leeway', 'pay'), { recursive: true });
+    fs.rmSync(path.join(world.dir, '.ledger', 'pay'), { recursive: true });
     assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: false });
     assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
     assert.strictEqual(tmuxName(), 'proj-abc');
@@ -271,7 +271,7 @@ describe('engine session resume', () => {
   /** A second workflows project, opted in, with the work units named — another checkout. */
   function otherProject(/** @type {string[]} */ units) {
     const other = projectWith('engine-label-other-', units);
-    fs.writeFileSync(path.join(other, '.leeway', 'manifest.json'), JSON.stringify({ defaults: { tmux_labels: true } }) + '\n');
+    fs.writeFileSync(path.join(other, '.ledger', 'manifest.json'), JSON.stringify({ defaults: { tmux_labels: true } }) + '\n');
     return other;
   }
 

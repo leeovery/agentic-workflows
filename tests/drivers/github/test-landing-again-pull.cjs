@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (ledger-engine/scripts/drivers/landing/github/)
 // and a feature's task changed after its pull request was squashed by hand
 // on GitHub's site, GitHub's copy of its branch then holding work the
 // branch here lacks (7.2.23): a commit made there on the site, ahead of the

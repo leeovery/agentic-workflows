@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Discussion's briefs (leeway-engine/scripts/domain/brief.cjs, the records
+// Discussion's briefs (ledger-engine/scripts/domain/brief.cjs, the records
 // domain/brief-records.cjs, the templates content/briefs/): `engine brief
 // <role> <unit> <topic> [--question <id>] [--kind <kind> [--path <file>]]
 // [--agent <id>]` for the deep dive, the perspective, the synthesis, the
@@ -41,13 +41,13 @@ const path = require('path');
 const { ok, callAsync, refusedPristine, statePath, layout, writeState, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, MADE, NOTE, SPACE, MENU, row, writtenWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { DIVE_KINDS } = require(path.join(SCRIPTS, 'domain/brief-records.cjs'));
 const { POLARITY_PAIRS } = require(path.join(SCRIPTS, 'domain/lenses.cjs'));
 const { keepQuery } = require(path.join(SCRIPTS, 'domain/knowledge/last-query.cjs'));
-const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
+const TEMPLATES = path.join(__dirname, '../../skills/ledger-engine/content/briefs');
 const AGENTS = path.join(__dirname, '../../agents');
 
 const SESSION_ID = 'brief-discussion-session';
@@ -156,7 +156,7 @@ describe('9.S40: the deep dive\'s brief (9.1.5)', () => {
 
     const { res, brief } = issued(diveArgs(dive.id, '--kind', 'survey'));
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'deep-dive', agent: 'leeway-deep-dive', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'deep-dive', agent: 'ledger-deep-dive', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the deep dive's, for ${UNIT} topic ${TOPIC}\n\n${filledTemplate('deep-dive', {
       question: `${WORLD.made.open}: ${OPEN_TEXT}`,
       'dive-kind': 'survey',
@@ -165,7 +165,7 @@ describe('9.S40: the deep dive\'s brief (9.1.5)', () => {
       'report-to': `\`${dive.file}\``,
     })}`);
     assert.ok(section(brief, 'This topic\'s record').includes('"text": "A window."'), 'the replaced answer is folded beneath the answer that replaced it (9.2.5)');
-    assert.deepStrictEqual(issuedRecord(res.id), { role: 'deep-dive', agent: 'leeway-deep-dive', unit: UNIT, task: null, topic: TOPIC });
+    assert.deepStrictEqual(issuedRecord(res.id), { role: 'deep-dive', agent: 'ledger-deep-dive', unit: UNIT, task: null, topic: TOPIC });
   });
 
   it('a question named by an earlier wording is drawn in its current one', () => {
@@ -288,7 +288,7 @@ describe('the discussion reviewer\'s brief (9.8.13)', () => {
   });
 
   it('9.S46: the reviewer\'s template carries no "it is `ask`" tie-break, and neither does its agent\'s definition, whose lanes leave the call to the matrix', () => {
-    const definition = fs.readFileSync(path.join(AGENTS, 'leeway-discussion-reviewer.md'), 'utf8');
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-discussion-reviewer.md'), 'utf8');
 
     for (const text of [template('discussion-reviewer'), definition]) assert.doesNotMatch(text, /either way|it is `ask`|is `ask`/);
     assert.match(definition, /whether it reaches the person is the matrix's to decide, never yours/);
@@ -296,7 +296,7 @@ describe('the discussion reviewer\'s brief (9.8.13)', () => {
 
   it('9.S28: no template of the reviews sets a cap on findings, and each review\'s definition says there is none', () => {
     for (const role of ['discussion-reviewer', 'closing-pass-reader']) assert.doesNotMatch(template(role), /\bat most\b|\bno more than\b|\bup to \d|\bcap\b|\blimit\b/i, role);
-    for (const agent of ['leeway-discussion-reviewer', 'leeway-closing-pass-reader']) {
+    for (const agent of ['ledger-discussion-reviewer', 'ledger-closing-pass-reader']) {
       assert.match(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'), /there is no cap on how many/i, agent);
     }
   });
@@ -362,9 +362,9 @@ describe('22.S23: the plain search\'s brief (22.6.10, 22.6.17)', () => {
 
     const { res, brief } = issued(['plain-search']);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'plain-search', agent: 'leeway-plain-search', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'plain-search', agent: 'ledger-plain-search', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the plain search's\n\n# The knowledge query you follow\n\nTerms: \`note\` \`window\`\nFilters: \`--phase discussion\`, \`--boost:topic ${TOPIC}\`\n\nIt returned:\n\n\`\`\`\n${ran.stdout.replace(/\n+$/, '')}\n\`\`\`\n`);
-    assert.deepStrictEqual(issuedRecord(res.id), { role: 'plain-search', agent: 'leeway-plain-search', unit: null, task: null, topic: null });
+    assert.deepStrictEqual(issuedRecord(res.id), { role: 'plain-search', agent: 'ledger-plain-search', unit: null, task: null, topic: null });
   });
 
   it('a query that failed is drawn with why, one that never finished as such; a conversation that has run none refuses the brief', async () => {
@@ -377,7 +377,7 @@ describe('22.S23: the plain search\'s brief (22.6.10, 22.6.17)', () => {
     const unfinished = section(issued(['plain-search']).brief, 'The knowledge query you follow');
 
     assert.deepStrictEqual([failed, unfinished], [
-      'Terms: `  `\nFilters: none\n\nIt failed: Empty search term. `engine knowledge query` requires at least one non-empty positional term. If you intended to list everything indexed, use `node .claude/skills/leeway-engine/scripts/engine.cjs knowledge status` instead.',
+      'Terms: `  `\nFilters: none\n\nIt failed: Empty search term. `engine knowledge query` requires at least one non-empty positional term. If you intended to list everything indexed, use `node .claude/skills/ledger-engine/scripts/engine.cjs knowledge status` instead.',
       'Terms: `note`\nFilters: none\n\nIt never finished.',
     ]);
   });
@@ -430,7 +430,7 @@ describe('discussion\'s agents and templates (26.1, 26.5)', () => {
   });
 
   it('the perspective\'s definition names the polarity pairs the engine holds, each lens beside its counter-lens', () => {
-    const definition = fs.readFileSync(path.join(AGENTS, 'leeway-discussion-perspective.md'), 'utf8');
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-discussion-perspective.md'), 'utf8');
 
     const named = [...definition.matchAll(/^\| [^|]+ \(`([a-z-]+)`\) \| [^|]+ \(`([a-z-]+)`\) \|/gm)].map(([, lens, counter]) => [lens, counter]);
 
@@ -438,13 +438,13 @@ describe('discussion\'s agents and templates (26.1, 26.5)', () => {
   });
 
   it('the deep dive\'s definition names each kind of dive the brief takes', () => {
-    const definition = fs.readFileSync(path.join(AGENTS, 'leeway-deep-dive.md'), 'utf8');
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-deep-dive.md'), 'utf8');
 
     assert.deepStrictEqual([...definition.matchAll(/^- \*\*([a-z]+)\*\* — /gm)].map(([, kind]) => kind), [...DIVE_KINDS]);
   });
 
   it('26.S15: the closing-pass reader\'s definition names every part of its brief — the gap review and what the person struck among them — and looks for work no topic owns', () => {
-    const definition = fs.readFileSync(path.join(AGENTS, 'leeway-closing-pass-reader.md'), 'utf8');
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-closing-pass-reader.md'), 'utf8');
     const parts = [...template('closing-pass-reader').matchAll(/^# (.+)$/gm)].map(([, part]) => part);
 
     assert.deepStrictEqual(parts.filter((part) => !definition.includes(`- **${part}** — `)), []);
@@ -452,7 +452,7 @@ describe('discussion\'s agents and templates (26.1, 26.5)', () => {
   });
 
   it('the closing-pass reader marks a line for the product record as a lane of its own', () => {
-    const definition = fs.readFileSync(path.join(AGENTS, 'leeway-closing-pass-reader.md'), 'utf8');
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-closing-pass-reader.md'), 'utf8');
 
     assert.deepStrictEqual([...definition.matchAll(/^- \*\*`([a-z]+)`\*\* — /gm)].map(([, lane]) => lane), ['apply', 'call', 'route', 'product']);
   });

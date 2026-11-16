@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Where the review phase stands, on every view that reads it (leeway-engine/
+// Where the review phase stands, on every view that reads it (ledger-engine/
 // scripts/domain/projections/board-standing.cjs, board-review.cjs,
 // board-all.cjs; 20.5.3, 20.10, D36, D37): a question parking a fix task,
 // one the review raises parking none and a replacement it proposes, the

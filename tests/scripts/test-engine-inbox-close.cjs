@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The inbox's close (leeway-engine/scripts/domain/inbox.cjs, engine `inbox
+// The inbox's close (ledger-engine/scripts/domain/inbox.cjs, engine `inbox
 // close <work-unit|none> <path> …`, 6.1.15, 18.6.4–18.6.6, 18.6.10): live
 // items archived under their names, the project manifest recording who
 // closed each, `inbox_closed: {"{folder}/{file}": {unit, at}}` — the unit

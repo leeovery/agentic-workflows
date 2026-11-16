@@ -43,7 +43,7 @@ describe('pipeline simulation: the build with a held task changed again while it
   });
 
   /** Something added to 1.1 by the orchestrator. @param {string} text */
-  const added = (text) => sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, `${text}\n`), '--by', 'orchestrator']);
+  const added = (text) => sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.ledger/.cache/${WU}/build/addition.md`, `${text}\n`), '--by', 'orchestrator']);
 
   /**
    * 1.1's builder's call going ahead while Q1 waits, its pair passing it,

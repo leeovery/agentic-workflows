@@ -43,25 +43,25 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(sim.run(['session', 'label', wu, 'discovery', wu]).labelled, false);
     const shaping = carryOn(sim);
     assert.deepStrictEqual(shaping.position, { name: wu, phase: 'discovery', topic: wu });
-    assert.strictEqual(shaping.skill, path.join(sim.dir, '.claude/skills/leeway-discovery/SKILL.md'));
-    assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.leeway/${wu}/discovery/session-001.md`)]);
+    assert.strictEqual(shaping.skill, path.join(sim.dir, '.claude/skills/ledger-discovery/SKILL.md'));
+    assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.ledger/${wu}/discovery/session-001.md`)]);
     assert.match(shaping.text, /^The conversation was just compacted\. This conversation is working in the discovery of the epic "overhaul"\. /);
 
     // Harvest: three topics in one batch, each landing with its brief from
     // Claude's draft.
     /** @param {string} topic */
-    const draft = (topic) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}/brief-draft.md`, `# Brief — ${topic}\n\nLeans toward a nightly run.\n`);
-    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, ['alpha', 'beta', 'gamma'].map((name) => ({ name, summary: `${name} summary`, brief: draft(name) })));
+    const draft = (topic) => sim.write(`.ledger/.cache/${wu}/discovery/${topic}/brief-draft.md`, `# Brief — ${topic}\n\nLeans toward a nightly run.\n`);
+    const topics = sim.write(`.ledger/.cache/${wu}/discovery/topics.json`, ['alpha', 'beta', 'gamma'].map((name) => ({ name, summary: `${name} summary`, brief: draft(name) })));
     const batch = sim.run(['topic', 'add-batch', wu, '--file', topics]);
     assert.strictEqual(batch.map_total, 3);
     assert.match(sim.sections, /^Added 3 topics to the map: "Alpha", "Beta", "Gamma"\.$/m);
-    assert.strictEqual(fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/beta/brief.md`), 'utf8'), '# Brief — beta\n\nLeans toward a nightly run.\n');
+    assert.strictEqual(fs.readFileSync(path.join(sim.dir, `.ledger/${wu}/topics/beta/brief.md`), 'utf8'), '# Brief — beta\n\nLeans toward a nightly run.\n');
     sim.run(['topic', 'order', wu, 'alpha=1', 'beta=2', 'gamma=3']);
 
     // The map as discovery reads it: each topic in its order, an unstarted
     // one with its brief.
     const map = sim.render(['discovery-map', wu], { expect: 'content' });
-    const row = (/** @type {number} */ order, /** @type {string} */ topic) => `  ${order} ${topic} [fresh] brief=${path.join(sim.dir, '.leeway', wu, 'topics', topic, 'brief.md')} — ${topic} summary`;
+    const row = (/** @type {number} */ order, /** @type {string} */ topic) => `  ${order} ${topic} [fresh] brief=${path.join(sim.dir, '.ledger', wu, 'topics', topic, 'brief.md')} — ${topic} summary`;
     assert.ok(map.includes(['topics (3):', row(1, 'alpha'), row(2, 'beta'), row(3, 'gamma'), ''].join('\n')), map);
 
     // The map's verbs, each at the person's word with its one-line report: an
@@ -71,7 +71,7 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['topic', 'brief', wu, 'beta', '--brief', draft('beta')]);
     sim.run(['topic', 'rename', wu, 'gamma', 'gamma-prime']);
     assert.match(sim.sections, /^Renamed "Gamma" to "Gamma Prime"\.$/m);
-    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/gamma-prime/brief.md`)), 'the brief moved with its topic');
+    assert.ok(fs.existsSync(path.join(sim.dir, `.ledger/${wu}/topics/gamma-prime/brief.md`)), 'the brief moved with its topic');
     // The discovery session's cadence commit.
     sim.run(['commit', wu, '--discovery', '-m', `discovery(${wu}): shape the map`]);
     // A session interrupted here resumes from the epic menu, whose discovery
@@ -80,7 +80,7 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
     // The session's end hands off to the epic menu, which leaves the
     // conversation at the work unit alone.
-    handoff(sim, `/leeway-continue-epic ${wu}`);
+    handoff(sim, `/ledger-continue-epic ${wu}`);
     epicMenuAt(sim, wu);
 
     // Alpha: its menu row hands off to its discussion, decided at the
@@ -143,14 +143,14 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', pass.id, '--clean']);
     decide('beta', f1, 'Nothing more to settle.');
-    sim.write(`.leeway/${wu}/topics/beta/log.md`, '# Discussion — Beta\n');
+    sim.write(`.ledger/${wu}/topics/beta/log.md`, '# Discussion — Beta\n');
     decideTopic(sim, wu, 'beta');
 
     // A message reopens the concluded discussion: its mail waits on its rows
     // and holds the review shut; the question it raised answers it, and that
     // question is a move on the back-off like any other.
-    sim.write('.leeway/.cache/scratch/message-scratch.md', 'Escalation path\n\nWho gets paged?\n');
-    const sent = sim.run(['topic', 'send', wu, 'beta', '--from', 'alpha', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'escalation-path']);
+    sim.write('.ledger/.cache/scratch/message-scratch.md', 'Escalation path\n\nWho gets paged?\n');
+    const sent = sim.run(['topic', 'send', wu, 'beta', '--from', 'alpha', '--content', '.ledger/.cache/scratch/message-scratch.md', '--slug', 'escalation-path']);
     assert.strictEqual(sent.reopened, true, 'a delivery to a concluded discussion reopens it');
     // The cue follows the mailbox, not the status: the reopened item is
     // in-progress with no stub to read, yet its rows say what waits — and
@@ -191,32 +191,32 @@ describe('pipeline simulation: epic map', () => {
     // self-committing transaction (engine-numbered message file, scratch
     // consumed, commit confined to message + manifest).
     sim.run(['topic', 'add', wu, 'delta', '--source', 'message:alpha', '--summary', 'Delta summary', '--brief', draft('delta'), '--re-add']);
-    sim.write('.leeway/.cache/scratch/message-scratch.md', 'Parked message\n\nDetails.\n');
-    const parked = sim.run(['topic', 'send', wu, 'delta', '--from', 'alpha', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'parked-message']);
-    assert.strictEqual(parked.message_path, path.join(sim.dir, `.leeway/${wu}/topics/delta/mail/001-parked-message.md`));
+    sim.write('.ledger/.cache/scratch/message-scratch.md', 'Parked message\n\nDetails.\n');
+    const parked = sim.run(['topic', 'send', wu, 'delta', '--from', 'alpha', '--content', '.ledger/.cache/scratch/message-scratch.md', '--slug', 'parked-message']);
+    assert.strictEqual(parked.message_path, path.join(sim.dir, `.ledger/${wu}/topics/delta/mail/001-parked-message.md`));
     assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.delta, { status: 'unstarted' });
     assert.ok(parked.committed, 'the send self-commits');
-    assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway/.cache/scratch/message-scratch.md')), 'scratch consumed');
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.ledger/.cache/scratch/message-scratch.md')), 'scratch consumed');
     const mailbox = sim.run(['topic', 'mailbox', wu, 'delta']);
     assert.strictEqual(mailbox.count, 1);
     assert.deepStrictEqual(mailbox.files, [parked.message_path], 'the read verb lists the delivered message');
     // The mailbox read is reachable for any topic — a session checking a
     // foreign mailbox must not manufacture a hold there. No verb has yet
     // acted on delta from this session, so the read stamps nothing.
-    assert.ok(!fs.existsSync(path.join(sim.dir, `.leeway/.cache/${wu}/discussion/delta/presence`)),
+    assert.ok(!fs.existsSync(path.join(sim.dir, `.ledger/.cache/${wu}/discussion/delta/presence`)),
       'a mailbox read never creates a heartbeat');
     // topic answered — the send's mirror: send a second message, answer it
     // by the question it raised, and the self-committing response answers
     // what remains.
-    sim.write('.leeway/.cache/scratch/message-scratch.md', 'Second parked\n\nMore.\n');
-    sim.run(['topic', 'send', wu, 'delta', '--from', 'alpha', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'second-parked']);
+    sim.write('.ledger/.cache/scratch/message-scratch.md', 'Second parked\n\nMore.\n');
+    sim.run(['topic', 'send', wu, 'delta', '--from', 'alpha', '--content', '.ledger/.cache/scratch/message-scratch.md', '--slug', 'second-parked']);
     const more = sim.run(['ledger', 'ask', `${wu}.discussion.delta`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'More?' }));
     const cleared = sim.run(['topic', 'answered', wu, 'delta', '002-second-parked', '--entry', more.id]);
     assert.strictEqual(cleared.answered, '002-second-parked.md');
     assert.strictEqual(cleared.remaining, 1, 'the answer answers the post-removal count');
     assert.ok(cleared.committed, 'answered self-commits');
-    assert.ok(!fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/delta/mail/002-second-parked.md`)), 'message file removed');
-    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/.cache/${wu}/discussion/delta/presence`)),
+    assert.ok(!fs.existsSync(path.join(sim.dir, `.ledger/${wu}/topics/delta/mail/002-second-parked.md`)), 'message file removed');
+    assert.ok(fs.existsSync(path.join(sim.dir, `.ledger/.cache/${wu}/discussion/delta/presence`)),
       'the write-shaped verb is what claims the slot');
     // Presence: heartbeats are mechanical, so the verbs already run on this
     // work unit's topics have stamped them — no prose ever beats.
@@ -239,9 +239,9 @@ describe('pipeline simulation: epic map', () => {
     assert.ok(project.sessions.every((r) => typeof r.work_unit === 'string'), 'every row names its work unit');
     // The SessionEnd cleanup sweeps by owning session id — a peer session's
     // heartbeat survives.
-    sim.write(`.leeway/.cache/${wu}/discussion/beta/presence`,
+    sim.write(`.ledger/.cache/${wu}/discussion/beta/presence`,
       JSON.stringify({ pid: null, pid_start: null, session_id: 'sim-sess' }) + '\n');
-    sim.write(`.leeway/.cache/${wu}/discussion/gamma/presence`,
+    sim.write(`.ledger/.cache/${wu}/discussion/gamma/presence`,
       JSON.stringify({ pid: null, pid_start: null, session_id: 'peer-sess' }) + '\n');
     const swept = sim.run(['presence', 'cleanup', 'sim-sess']);
     assert.deepStrictEqual(swept.cleared, [{ work_unit: wu, phase: 'discussion', topic: 'beta' }]);
@@ -317,7 +317,7 @@ describe('pipeline simulation: epic map', () => {
       PreToolUse: guardVerbs,
     }, 'opting out leaves the workflows\' own in place');
     const beforeWrite = (/** @type {string} */ rel) => sim.engine(['layout', 'guard'], null, JSON.stringify({
-      hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Write', tool_input: { file_path: path.join(sim.dir, '.leeway', rel), content: '' },
+      hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Write', tool_input: { file_path: path.join(sim.dir, '.ledger', rel), content: '' },
     }));
     assert.strictEqual(beforeWrite('.ledger.jsonl').code, 2, 'the ledger is the engine\'s alone');
     assert.strictEqual(beforeWrite('manifest.json').code, 2, 'and so is the project manifest');
@@ -325,10 +325,10 @@ describe('pipeline simulation: epic map', () => {
     const beforeBash = (/** @type {string} */ command) => sim.engine(['shell', 'guard'], null, JSON.stringify({
       hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Bash', tool_input: { command },
     }));
-    assert.strictEqual(beforeBash('cd .leeway && git commit -am x').code, 2, 'every state commit is the engine\'s');
-    assert.deepStrictEqual(beforeBash(`node .claude/skills/leeway-engine/scripts/engine.cjs commit ${wu} -m x`), { stdout: '', stderr: '', code: 0 });
+    assert.strictEqual(beforeBash('cd .ledger && git commit -am x').code, 2, 'every state commit is the engine\'s');
+    assert.deepStrictEqual(beforeBash(`node .claude/skills/ledger-engine/scripts/engine.cjs commit ${wu} -m x`), { stdout: '', stderr: '', code: 0 });
     const reparked = send(sim, wu, 'delta', 'alpha', 'third-parked');
-    assert.strictEqual(reparked.message_path, path.join(sim.dir, `.leeway/${wu}/topics/delta/mail/002-third-parked.md`));
+    assert.strictEqual(reparked.message_path, path.join(sim.dir, `.ledger/${wu}/topics/delta/mail/002-third-parked.md`));
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
     // Beta renamed once decided goes by the new name, its key kept: a message
     // the person aims at that name finds beta's row on the map's reader by
@@ -364,8 +364,8 @@ describe('pipeline simulation: epic map', () => {
     send(sim, wu, 'epsilon', 'alpha', 'stray-thought');
     const removed = sim.run(['topic', 'remove', wu, 'epsilon']);
     assert.match(sim.sections, /^Removed "Epsilon" from the map\. Its 1 waiting message went to the inbox as an idea\.$/m);
-    assert.deepStrictEqual(removed.inbox.map((file) => path.relative(sim.dir, file).replace(/\d{4}-\d{2}-\d{2}/, 'DATE')), ['.leeway/.inbox/ideas/DATE--stray-thought.md']);
-    assert.deepStrictEqual([fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/epsilon`)), sim.manifest(wu).phases.discovery.dismissed], [false, ['epsilon']]);
+    assert.deepStrictEqual(removed.inbox.map((file) => path.relative(sim.dir, file).replace(/\d{4}-\d{2}-\d{2}/, 'DATE')), ['.ledger/.inbox/ideas/DATE--stray-thought.md']);
+    assert.deepStrictEqual([fs.existsSync(path.join(sim.dir, `.ledger/${wu}/topics/epsilon`)), sim.manifest(wu).phases.discovery.dismissed], [false, ['epsilon']]);
     assert.ok(send(sim, wu, 'epsilon', 'alpha', 'late-thought').inbox_path, 'a send to a removed topic goes to the inbox');
 
     // Zeta: a topic a message names that waits on the roadmap as an idea of

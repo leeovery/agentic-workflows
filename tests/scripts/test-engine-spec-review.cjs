@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The spec's writer and its reviewer (leeway-engine/scripts/domain/
+// The spec's writer and its reviewer (ledger-engine/scripts/domain/
 // brief-records.cjs, their records; domain/spec-passes.cjs, what changed; the
 // templates content/briefs/spec-writer.md and spec-reviewer.md): `engine
 // brief spec-writer <unit>`, the land's record and `engine brief
@@ -51,7 +51,7 @@ const {
   UNIT, SPEC, SESSION_ID, PERSON, MADE, AT_SPEC, CARDS, STORE, TEMPLATES, made, payments, useSpecReviewWorld, specReviewHelpers, RECORDS, filledTemplate, section, spaced,
 } = require('./spec-review-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { specStatements } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { specEntryRefusal } = require(path.join(SCRIPTS, 'domain/spec-entry.cjs'));
@@ -72,8 +72,8 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
   it('11.S2: one brief for the unit, from its records alone — where the spec goes, each live topic\'s entries under its title, a "don\'t care" decision marked so, those made here standing on another unit under where they stand, each topic\'s log and the canonical assets — and nothing recorded to rewrite from or answer', () => {
     const { res, brief } = issued(['spec-writer', UNIT]);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'spec-writer', agent: 'leeway-spec-writer', pointer: `brief:${res.id}` });
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'spec-writer', agent: 'leeway-spec-writer', unit: UNIT, task: null, topic: null });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'spec-writer', agent: 'ledger-spec-writer', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'spec-writer', agent: 'ledger-spec-writer', unit: UNIT, task: null, topic: null });
     assert.strictEqual(brief, `Brief ${res.id} — the spec writer's, for ${UNIT}\n\n${filledTemplate('spec-writer', {
       'spec-to': `\`${statePath(dir(), SPEC)}\``,
       'unit-records': RECORDS(),
@@ -255,7 +255,7 @@ describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
     const { res, brief } = issued(['spec-reviewer', UNIT, '--agent', pass.id]);
     const landed = JSON.parse(readState(dir(), LANDED));
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'spec-reviewer', agent: 'leeway-spec-reviewer', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'spec-reviewer', agent: 'ledger-spec-reviewer', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the spec reviewer's, for ${UNIT}\n\n${filledTemplate('spec-reviewer', {
       'changed-sections': [
         `The spec: \`${statePath(dir(), SPEC)}\``,

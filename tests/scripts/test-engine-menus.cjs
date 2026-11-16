@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The menus' frame (leeway-engine/scripts/domain/menus.cjs, E1): every menu
+// The menus' frame (ledger-engine/scripts/domain/menus.cjs, E1): every menu
 // named once in the registry, each gate's name one the trust log keys; a
 // menu drawn as its TITLE where it has one, what it shows and its MENU — a
 // statement under the rule where it makes one — every row carrying its next
@@ -33,7 +33,7 @@ const path = require('path');
 const { ok, refuses, cleanupFixture, sectionOf, screenOf } = require('./engine-harness.cjs');
 const { setupFixture, createManifest, useTempFolder, withEnv } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { MENUS, HELP_GATE, drawMenu } = require(path.join(SCRIPTS, 'domain/menus.cjs'));
 const { renderSurface } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const { parseHelp, menuDrift, helpScreen, menusDrift } = require(path.join(SCRIPTS, 'domain/projections/help.cjs'));
@@ -44,9 +44,9 @@ const { SCHEMA } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const EPIC = 'fumi';
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/menus.cjs').Menu} Menu */
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/menus.cjs').MenuScreen} MenuScreen */
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/menus.cjs').Drawn} Drawn */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/menus.cjs').Menu} Menu */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/menus.cjs').MenuScreen} MenuScreen */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/menus.cjs').Drawn} Drawn */
 
 /** A menu of the registry as its screen draws it, its row keys given. @param {string} id @param {string[]} keys @returns {Menu} */
 const drawn = (id, keys) => ({ ...MENUS[id], keys });
@@ -55,9 +55,9 @@ const TRIAGE = drawn('triage', ['#', 'w', 'b']);
 const EPIC_MENU = drawn('epic-menu', ['#', 'd', 'b']);
 const ROADMAP = drawn('roadmap', ['w']);
 
-const HANDED = Object.freeze({ kind: 'handoff', skill: 'leeway-discovery', args: ['start', 'none'] });
+const HANDED = Object.freeze({ kind: 'handoff', skill: 'ledger-discovery', args: ['start', 'none'] });
 const START_MENU = Object.freeze({ kind: 'engine', argv: ['render', 'start-menu'] });
-/** @type {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').Next} */
+/** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').Next} */
 const ON = Object.freeze({ kind: 'continue' });
 
 /** @type {MenuScreen} */
@@ -95,7 +95,7 @@ beforeEach(() => {
 afterEach(() => cleanupFixture(dir));
 
 /** The calling conversation's environment. */
-const conversation = () => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEEWAY_CONFIG_DIR: config(), TMUX: undefined, TMUX_PANE: undefined });
+const conversation = () => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEDGER_CONFIG_DIR: config(), TMUX: undefined, TMUX_PANE: undefined });
 
 /** Run `fn` as a command the conversation runs in this process, its gate open. @template T @param {() => T} fn @returns {T} */
 const inConversation = (fn) => withEnv(conversation(), () => {
@@ -193,7 +193,7 @@ describe('the frame (E1, 18.9.1, 18.9.4, 23.2.1)', () => {
 });
 
 describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', () => {
-  it('18.2.12: the start menu — no title, the inbox shown above the rule, its rows, and its help row saying how Leeway works', () => {
+  it('18.2.12: the start menu — no title, the inbox shown above the rule, its rows, and its help row saying how Ledger works', () => {
     const out = inConversation(() => drawMenu(dir, START, {}, {
       shows: ['Inbox: 3 ideas · 2 bugs · 1 quick-fix'],
       rows: [
@@ -230,7 +230,7 @@ describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', (
       'v/view     → View completed & cancelled work units',
       'm/manage   → Manage work units, the project\'s setup and drivers,',
       '             and the matrix',
-      'h/help     → How Leeway works',
+      'h/help     → How Ledger works',
     ]]);
   });
 
@@ -349,11 +349,11 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
   const START_HELPED = Object.freeze({
     ...drawn('start-menu', ['#', 's', 't', 'r', 'e', 'v', 'm']),
     help: {
-      label: 'How Leeway works',
+      label: 'How Ledger works',
       heading: 'Help',
       closing: 'Ask about anything else, or walk through the whole thing.',
       rows: [
-        { key: 'w', word: 'walk', label: 'Walk through how Leeway works', next: WALK },
+        { key: 'w', word: 'walk', label: 'Walk through how Ledger works', next: WALK },
         { key: 't', word: 'topics', label: 'Read about one area in more depth', next: TOPICS },
       ],
     },
@@ -369,7 +369,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     'v → View lists completed and cancelled work.',
     'm → Manage pivots, absorbs, cancels or brings back a piece of work, and changes the project\'s setup, its drivers and the matrix.',
     '',
-    'Ask → Ask anything about how Leeway works',
+    'Ask → Ask anything about how Ledger works',
   ].join('\n');
 
   it('"■ Help · {Menu}", what the menu is for and a bullet a row, the invitation to ask, and its gate: back to the menu as drawn, and Ask leading into the conversation', () => {
@@ -424,16 +424,16 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
       '· · · · · · · · · · · ·',
       '◆ What would you like to do?',
       '',
-      'w/walk   → Walk through how Leeway works',
+      'w/walk   → Walk through how Ledger works',
       't/topics → Read about one area in more depth',
       'b/back   → Back to the start menu',
-      'Ask      → Ask anything about how Leeway works',
+      'Ask      → Ask anything about how Ledger works',
     ]]);
     assert.deepStrictEqual(withEnv(conversation(), gateShown).options.map(({ key, next }) => [key, next]), [['w', WALK], ['t', TOPICS], ['b', START_MENU]]);
   });
 
   it('its back carries every argument the menu was drawn with — the unit it is for, and a flag — through `render help` and back', (t) => {
-    const PATH = '.leeway/.inbox/.archived/ideas/enter-attaches.md';
+    const PATH = '.ledger/.inbox/.archived/ideas/enter-attaches.md';
     const ITEM = drawn('archived-item', ['u', 'd', 'b']);
     show(ITEM, { flags: { path: PATH } }, { shows: [], rows: [{ key: 'u', word: 'unarchive', label: 'Restore it to the inbox', next: ON }] });
     const { argv } = ok(dir, ['gate', 'archived item', '--pick', 'h'], { env: conversation() }).next;
@@ -495,7 +495,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
   it('23.2.4: a row of the help\'s own, told in its file, is the help\'s — never a row the menu must register', () => {
     const told = parseHelp(START_HELP.replace('Ask →', 'w → Walk takes you through the whole of it.\n\nAsk →'), 'start-menu.help.md');
 
-    assert.deepStrictEqual([menuDrift(START_HELPED, told), menuDrift({ ...START_HELPED, help: { label: 'How Leeway works' } }, told)], [[], ['start-menu: its help tells of a row w the menu does not register']]);
+    assert.deepStrictEqual([menuDrift(START_HELPED, told), menuDrift({ ...START_HELPED, help: { label: 'How Ledger works' } }, told)], [[], ['start-menu: its help tells of a row w the menu does not register']]);
   });
 });
 

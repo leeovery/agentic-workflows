@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and a quick-fix's review laid out at the host's
-// landing (leeway-engine/scripts/domain/review-change.cjs, over
+// landing (ledger-engine/scripts/domain/review-change.cjs, over
 // drivers/landing/github/, 7.2.22, 19.5.14): its pull request merged on
 // GitHub and never pulled, by a merge commit or a squash — the reviewer's
 // scratch worktree laid out at the host's landing, the code its fixes made,
@@ -23,7 +23,7 @@ const path = require('path');
 
 const { ok, git } = require('../../scripts/engine-harness.cjs');
 const { UNIT } = require('../../scripts/quick-fix-world.cjs');
-const { briefPath } = require('../../../skills/leeway-engine/scripts/domain/brief-names.cjs');
+const { briefPath } = require('../../../skills/ledger-engine/scripts/domain/brief-names.cjs');
 const { reviewHost } = require('./quick-fix-review-host.cjs');
 
 const { side, as, mergedOnHost, reviewing } = reviewHost('github-landing-quick-fix-review-host-');
@@ -31,7 +31,7 @@ const { side, as, mergedOnHost, reviewing } = reviewHost('github-landing-quick-f
 /** Where the area reader's brief lays the project out: the line naming it and the commit its call lays. @param {string} at */
 function laidOut(at) {
   const { id } = ok(at, ['brief', 'review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a'], as());
-  const brief = fs.readFileSync(path.join(as().env.LEEWAY_CONFIG_DIR ?? '', 'conversations', 'sess-1', 'briefs', path.basename(briefPath('sess-1', id))), 'utf8');
+  const brief = fs.readFileSync(path.join(as().env.LEDGER_CONFIG_DIR ?? '', 'conversations', 'sess-1', 'briefs', path.basename(briefPath('sess-1', id))), 'utf8');
   return { line: brief.split('\n').find((line) => line.startsWith('- the project\'s repository: ')), commit: /scratch lay \S+ ([0-9a-f]{40})/.exec(brief)?.[1] };
 }
 

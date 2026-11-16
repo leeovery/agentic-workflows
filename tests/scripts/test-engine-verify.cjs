@@ -1,12 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The proof by running the product (leeway-engine/scripts/domain/verify.cjs,
+// The proof by running the product (ledger-engine/scripts/domain/verify.cjs,
 // with runs.cjs and environment.cjs's verify setup, and `verify` in
 // engine.cjs): `verify setup` records the setup on the project manifest only
 // once all five parts have run end to end for a scenario of the cut, leaving
 // the checkout as clean as they found it, its drive an executable script under
-// its place run with plain arguments, never one placed under `.leeway/`
+// its place run with plain arguments, never one placed under `.ledger/`
 // (15.S1, 15.S2, 15.S17); `verify run` runs a scenario of the cut — a
 // quick-fix's, which has no cut, one its fix owns, n.Sk of fix 1.n (F2) —
 // through the setup's parts in the calling checkout, clean, and records the
@@ -44,7 +44,7 @@ const {
 const { UNIT, SETUP, steer, steering, partsRan, fiveParts, setupFile, setupArgs, unrecorded, world } = require('./verify-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { runsOf } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
 const { ignoresCase } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
@@ -53,7 +53,7 @@ const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { countsOf, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const { THRESHOLD } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));
 
-const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 const BUILDING = 'verify-building';
 const PARALLEL = 'verify-parallel';
 const LAID_OUT = 'verify-laid-out';
@@ -123,7 +123,7 @@ describe('verify setup: recorded once it runs end to end (15.2.5, 15.2.7, 15.2.1
   });
 
   it('15.2.7: a drive that writes no verdict, or evidence a run cannot hold, keeps the setup from counting — refused, nothing recorded', () => {
-    assert.strictEqual(refusedPristine(dir, setupArgs(dir, SETUP)).error, 'verify setup: the run cannot be recorded — the drive wrote no verdict to $LEEWAY_RUN/verdict — it exited 0. Nothing was recorded.');
+    assert.strictEqual(refusedPristine(dir, setupArgs(dir, SETUP)).error, 'verify setup: the run cannot be recorded — the drive wrote no verdict to $LEDGER_RUN/verdict — it exited 0. Nothing was recorded.');
     steering(dir, 'verdict', 'pass\n');
     steering(dir, 'evidence/frame.png', Buffer.from([0xff, 0xfe]));
     assert.strictEqual(refusedPristine(dir, setupArgs(dir, SETUP)).error,
@@ -147,11 +147,11 @@ describe('verify setup: recorded once it runs end to end (15.2.5, 15.2.7, 15.2.1
       'verify setup: the setup\'s cleanup failed with exit 1. The last of its output, 40 lines at most:\ncleanup broke\nNothing was recorded — fix the setup where it breaks (15.2.8) and run it again.');
   });
 
-  it('15.S2: a setup placed under .leeway/, or its feature map there — reached through `..`, or in another case where the filesystem ignores it — is refused before any part runs (15.2.12)', () => {
-    const places = [['place', '.leeway/verify'], ['feature_map', 'verify/../.leeway/features.md'], ...(IGNORES_CASE ? [['place', '.Leeway/verify']] : [])];
+  it('15.S2: a setup placed under .ledger/, or its feature map there — reached through `..`, or in another case where the filesystem ignores it — is refused before any part runs (15.2.12)', () => {
+    const places = [['place', '.ledger/verify'], ['feature_map', 'verify/../.ledger/features.md'], ...(IGNORES_CASE ? [['place', '.Ledger/verify']] : [])];
     for (const [key, place] of places) {
       assert.strictEqual(refusedPristine(dir, setupArgs(dir, { ...SETUP, [key]: place })).error,
-        `verify setup: the ${key} ${place} is under .leeway/, the workflows' state — the verify setup lives in the product's code, riding the phase's pull requests (15.2.12)`);
+        `verify setup: the ${key} ${place} is under .ledger/, the workflows' state — the verify setup lives in the product's code, riding the phase's pull requests (15.2.12)`);
     }
     assert.deepStrictEqual(partsRan(dir), []);
   });
@@ -169,7 +169,7 @@ describe('verify setup: recorded once it runs end to end (15.2.5, 15.2.7, 15.2.1
     fs.symlinkSync('/bin/sh', path.join(dir, 'verify', 'sh'));
     const drives = [
       'npm run drive', 'make drive', 'make -C verify drive', 'pnpm exec playwright test verify/e2e', '--config=verify/x',
-      'sh -c \'printf pass > "$LEEWAY_RUN/verdict"\' verify/part.sh', 'true verify/features.md; printf pass > "$LEEWAY_RUN/verdict"',
+      'sh -c \'printf pass > "$LEDGER_RUN/verdict"\' verify/part.sh', 'true verify/features.md; printf pass > "$LEDGER_RUN/verdict"',
       'verify/features.md', 'src/run.sh', 'verify/sh verify/part.sh drive', 'verify/missing.sh',
       ...[';', '&', '|', '<', '>', '$', '`', '(', ')', '\n'].map((syntax) => `verify/part.sh drive ${syntax} x`),
     ];
@@ -186,7 +186,7 @@ describe('verify setup: recorded once it runs end to end (15.2.5, 15.2.7, 15.2.1
   it('a setup whose parts leave a file the checkout does not ignore is refused at its trial, naming it and the way on — and the refusal before the next run says the same; once ignored, it records', () => {
     steering(dir, 'verdict', 'pass\n');
     steering(dir, 'leave-launch', 'test-results/report.json');
-    const wayOn = 'Ignore a file a run leaves behind, have the setup\'s cleanup remove it, or write it under $LEEWAY_RUN; commit one through the door (engine commit --paths … --task) only where it belongs to the product.';
+    const wayOn = 'Ignore a file a run leaves behind, have the setup\'s cleanup remove it, or write it under $LEDGER_RUN; commit one through the door (engine commit --paths … --task) only where it belongs to the product.';
 
     const refused = [refusedPristine(dir, setupArgs(dir, SETUP)).error, refusedPristine(dir, setupArgs(dir, SETUP)).error];
 
@@ -251,7 +251,7 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     createFile(dir, 'src/new.js', 'new\n');
     assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error,
       `verify run: the checkout at ${dir} holds changes not committed — src/card.js, src/new.js — a run proves committed code. Ignore a file a run leaves behind, have the setup's cleanup remove it, `
-      + 'or write it under $LEEWAY_RUN; commit one through the door (engine commit --paths … --task) only where it belongs to the product.');
+      + 'or write it under $LEDGER_RUN; commit one through the door (engine commit --paths … --task) only where it belongs to the product.');
     assert.deepStrictEqual(partsRan(dir), []);
     commitCode(dir, 'feat(pay): the card');
     const lib = initRepo(path.join(dir, 'lib'));
@@ -265,11 +265,11 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
 
   it('15.4.2, 15.S19: a drive that exits failing having written its verdict is recorded as it wrote it, leaving the ask rule\'s counts as they were — nothing written to the trust log, the counts\' one source (15.12.1, 15.12.2); one that wrote none — or a folder in its place — records nothing, the refusal carrying its exit code and output, and so does a word of its own', (t) => {
     steering(dir, 'verdict/pass', 'pass\n');
-    assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error, 'verify run: the run cannot be recorded — the drive wrote no verdict to $LEEWAY_RUN/verdict — it exited 0. Nothing was recorded.');
+    assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error, 'verify run: the run cannot be recorded — the drive wrote no verdict to $LEDGER_RUN/verdict — it exited 0. Nothing was recorded.');
     fs.rmSync(path.join(steer(dir), 'verdict'), { recursive: true });
     steering(dir, 'fail-drive', '1');
     assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error,
-      'verify run: the run cannot be recorded — the drive wrote no verdict to $LEEWAY_RUN/verdict — it exited 1. The last of its output, 40 lines at most:\ndrive broke. Nothing was recorded.');
+      'verify run: the run cannot be recorded — the drive wrote no verdict to $LEDGER_RUN/verdict — it exited 1. The last of its output, 40 lines at most:\ndrive broke. Nothing was recorded.');
     steering(dir, 'verdict', 'proven\n');
     assert.strictEqual(refusedPristine(dir, ['verify', 'run', UNIT, '1.S1']).error, 'verify run: the run cannot be recorded — the drive\'s verdict "proven" is none of pass, fail, skipped. Nothing was recorded.');
     steering(dir, 'verdict', 'fail\n');

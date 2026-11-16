@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Finish's yes (leeway-engine/scripts/domain/finish.cjs): `engine finish yes
+// Finish's yes (ledger-engine/scripts/domain/finish.cjs): `engine finish yes
 // <unit>`, landing what stands, completing the unit and naming where the
 // work goes (24.1.2), a refusal of the landing leaving the unit in progress;
 // what the unit stands on read once, the yes reading the tracker as often
@@ -52,9 +52,9 @@ describe('finish yes (14.5.1, 24.1.2)', () => {
       `finish yes: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,
     ]);
     assert.deepStrictEqual(done, {
-      ok: true, unit: UNIT, landed: [], completed_at: readManifest(dir, UNIT).completed_at, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },
+      ok: true, unit: UNIT, landed: [], completed_at: readManifest(dir, UNIT).completed_at, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'ledger', args: [] },
     });
-    assert.match(output(dir, ['handoff', done.next.skill, ...done.next.args], { env: env() }), /^skill: leeway\nargs: $/m);
+    assert.match(output(dir, ['handoff', done.next.skill, ...done.next.args], { env: env() }), /^skill: ledger\nargs: $/m);
     assert.deepStrictEqual([readManifest(dir, UNIT).status, stateGit(dir, ['log', '-1', '--format=%s']).trim()], ['completed', `finish(${UNIT}): completed`]);
     assert.strictEqual(refused(['render', 'finish', UNIT]), `render finish: ${UNIT} is completed — new work starts from the start menu`);
   });
@@ -68,8 +68,8 @@ describe('finish yes (14.5.1, 24.1.2)', () => {
 
     const menu = output(dir, ['render', 'epic-menu', UNIT], { env: env() });
 
-    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
-    assert.match(output(dir, ['handoff', next.skill, ...next.args], { env: env() }), /^skill: leeway-continue-epic\nargs: pay$/m);
+    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [UNIT] });
+    assert.match(output(dir, ['handoff', next.skill, ...next.args], { env: env() }), /^skill: ledger-continue-epic\nargs: pay$/m);
     assert.deepStrictEqual([sectionOf(menu, 'TITLE'), screenOf(menu, 'MENU: epic menu').slice(3)], [
       '# **`■ Complete — Pay`**\n',
       ['h/help → What this menu is for, row by row', 'b/back → Back to the start menu'],

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The rules each state file merges by
-// (leeway-engine/scripts/domain/state-merge-rules.cjs): which rule a path
+// (ledger-engine/scripts/domain/state-merge-rules.cjs): which rule a path
 // takes, the tracker's store its driver's among them, the ledger's lines
 // added by id, the migrations record's ids, a manifest merged field by field
 // against its ancestor, a build's run read by its number, and how a choice
@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { layout } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const {
   linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf, storeDriverOf, runNumber, runRenumbered,
 } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
@@ -72,7 +72,7 @@ describe('the rules each file merges by', () => {
   });
 
   it('refuses a ledger line that is not an entry with a string id, counting the lines that are not blank', () => {
-    assert.throws(() => added('{"id":"r"}\n', '{"id":"a"}\n\nnot json\n', entryId), /^Error: cannot merge \.leeway\/\S+: line 2 of this machine's is not an entry with an id: not json$/);
+    assert.throws(() => added('{"id":"r"}\n', '{"id":"a"}\n\nnot json\n', entryId), /^Error: cannot merge \.ledger\/\S+: line 2 of this machine's is not an entry with an id: not json$/);
     assert.throws(() => added('{"id":7}\n', '{"id":"a"}\n', entryId), /line 1 of the remote's is not an entry with an id/);
   });
 

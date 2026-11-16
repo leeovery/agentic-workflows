@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The review phase's entry's answer (leeway-engine/scripts/domain/
+// The review phase's entry's answer (ledger-engine/scripts/domain/
 // review-entry.cjs, its records review-phase.cjs): `engine enter review
 // <unit>` — the round under review, the spec's areas, never merged, five as
 // one (14.2.1, 14.2.3), the reads the round takes — every area and the test
@@ -154,14 +154,14 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
 describe('the recovery note (24.2.2)', () => {
   it('mid-review, asked for by its session id with none of the caller\'s own, re-reads the review\'s skill, the record\'s call, each round\'s report, the spec, the build\'s log and where the review stands', () => {
     firstRoundFailed();
-    fs.mkdirSync(path.join(dir, '.claude/skills/leeway-review-process'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.claude/skills/leeway-review-process/SKILL.md'), '# The review\n');
+    fs.mkdirSync(path.join(dir, '.claude/skills/ledger-review-process'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude/skills/ledger-review-process/SKILL.md'), '# The review\n');
     writeState(dir, `${UNIT}/build/log.md`, '# The build\n\nPhase 3: 3.1 not started.\n');
     enter();
     const note = output(dir, ['conversation', 'position', SESSION_ID], { env: { ...env(), CLAUDE_CODE_SESSION_ID: '' } });
 
     for (const line of [
-      `- ${path.join(dir, '.claude/skills/leeway-review-process/SKILL.md')} and its framework`, `- \`${ENGINE} ledger record ${UNIT}\``,
+      `- ${path.join(dir, '.claude/skills/ledger-review-process/SKILL.md')} and its framework`, `- \`${ENGINE} ledger record ${UNIT}\``,
       ...[`${UNIT}/review/round-1.md`, `${UNIT}/spec.md`, `${UNIT}/build/log.md`].map((rel) => `- ${statePath(dir, rel)}\n`),
       `\nround: round 2\n${AREA_LINES.join('\n')}\n${UNNAMED}\n${fixPhaseLine(3, 1, 'built')}\nfix task waiting: 3.1 not started\n`,
     ]) {

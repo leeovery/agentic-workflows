@@ -1,11 +1,11 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The separate Claude call (leeway-engine/scripts/kernel/claude-call.cjs):
+// The separate Claude call (ledger-engine/scripts/kernel/claude-call.cjs):
 // one question the engine puts to `claude -p` itself, raw (16.19.3–16.19.5).
 // Its command line flag by flag, never `--bare`; a fresh empty folder, gone
 // after; an environment cleared of the calling session, the project and
-// Leeway's own variables, the login's kept; the question
+// Ledger's own variables, the login's kept; the question
 // on stdin; the answer where it fits the schema, with the model that
 // answered, and each way it cannot run
 // — no login, a rate limit, a timeout, an answer that does not fit, a
@@ -33,7 +33,7 @@ const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 
-const KERNEL = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/claude-call.cjs');
+const KERNEL = path.join(__dirname, '../../skills/ledger-engine/scripts/kernel/claude-call.cjs');
 const { askClaude, askClaudeAsync, startClaude } = require(KERNEL);
 
 const STUB = path.join(__dirname, 'claude-stub.cjs');
@@ -141,16 +141,16 @@ describe('the call\'s command line (16.19.4, 16.19.5)', () => {
     assert.ok(!fs.existsSync(first.cwd) && !fs.existsSync(second.cwd), 'a call left its folder behind');
   });
 
-  it('clears the environment of the calling session, the project, the session\'s plugins and harness settings and Leeway\'s own variables, keeps the login and the person\'s setup, and turns auto-memory off', () => {
+  it('clears the environment of the calling session, the project, the session\'s plugins and harness settings and Ledger\'s own variables, keeps the login and the person\'s setup, and turns auto-memory off', () => {
     const session = {
       CLAUDE_CODE_SESSION_ID: 'c6b74014', CLAUDE_PROJECT_DIR: '/work/portal', CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1',
       CLAUDE_CODE_SESSION_ATTENDED: '1', CLAUDE_PID: '8618', AI_AGENT: 'claude-code_2-1-311_agent', CLAUDE_EFFORT: 'xhigh',
-      TRACEPARENT: '00-abc-def-01', CLAUDE_CODE_EXECPATH: '/opt/claude/2.1.311', CLAUDE_CODE_INVOKED_SKILLS: 'leeway',
+      TRACEPARENT: '00-abc-def-01', CLAUDE_CODE_EXECPATH: '/opt/claude/2.1.311', CLAUDE_CODE_INVOKED_SKILLS: 'ledger',
       CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_CODE_MESSAGING_SOCKET: '/tmp/cc-socks/8618.sock', CLAUDE_CODE_MESSAGING_TOKEN: 'secret',
       CLAUDE_CODE_SSE_PORT: '51234', CLAUDE_CODE_PLUGIN_DIRS: '/work/portal/.claude/skills', CLAUDE_CODE_PEWTER_OWL_TOOL: 'true',
       CLAUDE_CODE_THINKING_DISPLAY_UPDATES: 'false', CLAUDE_CODE_SILENT_TURN_REMINDER: 'false',
     };
-    const own = { LEEWAY_GATE_SURFACE: '1', LEEWAY_HANDOFF: '1', LEEWAY_STATE: 'x' };
+    const own = { LEDGER_GATE_SURFACE: '1', LEDGER_HANDOFF: '1', LEDGER_STATE: 'x' };
     const login = { ANTHROPIC_API_KEY: 'sk-test', CLAUDE_CODE_OAUTH_TOKEN: 'oauth-test', ANTHROPIC_BASE_URL: 'http://127.0.0.1:4747', CLAUDE_CODE_USE_BEDROCK: '1', HTTPS_PROXY: 'http://proxy:3128' };
     setEnv({ ...session, ...own, ...login });
     arm({ '': ANSWER });
@@ -159,7 +159,7 @@ describe('the call\'s command line (16.19.4, 16.19.5)', () => {
     askClaude(ASK);
 
     const { env } = calls()[0];
-    assert.deepStrictEqual(Object.keys(env).filter((key) => Object.hasOwn(session, key) || /^LEEWAY_/.test(key)), []);
+    assert.deepStrictEqual(Object.keys(env).filter((key) => Object.hasOwn(session, key) || /^LEDGER_/.test(key)), []);
     for (const [key, value] of Object.entries(login)) assert.strictEqual(env[key], value, `${key} did not reach the call`);
     assert.strictEqual(env.HOME, process.env.HOME);
     assert.strictEqual(env.PATH, process.env.PATH);
@@ -167,12 +167,12 @@ describe('the call\'s command line (16.19.4, 16.19.5)', () => {
     assert.strictEqual(env.CLAUDE_CODE_DISABLE_AUTO_MEMORY, '1');
   });
 
-  it('runs the binary LEEWAY_CLAUDE names, and claude on PATH where it names none', () => {
+  it('runs the binary LEDGER_CLAUDE names, and claude on PATH where it names none', () => {
     const bin = path.join(scratch, 'bin');
     fs.mkdirSync(bin);
     fs.copyFileSync(STUB, path.join(bin, 'claude'));
     fs.chmodSync(path.join(bin, 'claude'), 0o755);
-    setEnv({ LEEWAY_CLAUDE: undefined, PATH: `${bin}${path.delimiter}${process.env.PATH}` });
+    setEnv({ LEDGER_CLAUDE: undefined, PATH: `${bin}${path.delimiter}${process.env.PATH}` });
     arm({ '': ANSWER });
 
     assert.deepStrictEqual(askClaude(ASK), { answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' });
@@ -293,7 +293,7 @@ describe('the call\'s answer', () => {
   });
 
   it('cannot run where the binary will not start, saying so', () => {
-    setEnv({ LEEWAY_CLAUDE: path.join(scratch, 'no-such-claude') });
+    setEnv({ LEDGER_CLAUDE: path.join(scratch, 'no-such-claude') });
 
     const answer = askClaude(ASK);
 
@@ -330,7 +330,7 @@ describe('the call answering later', () => {
     assert.deepStrictEqual(await askClaudeAsync({ ...ASK, timeoutMs: 400 }), { cannot: 'timeout', detail: 'no answer within 0.4 s' });
     assert.ok(Date.now() - started < 5000, 'the call outlived its time');
 
-    setEnv({ LEEWAY_CLAUDE: path.join(scratch, 'no-such-claude') });
+    setEnv({ LEDGER_CLAUDE: path.join(scratch, 'no-such-claude') });
     const answer = await askClaudeAsync(ASK);
     assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
     assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*no-such-claude/);
@@ -442,7 +442,7 @@ describe('the call started, waited on later', () => {
   });
 
   it('cannot run where the binary will not start, saying so — never a throw', () => {
-    setEnv({ LEEWAY_CLAUDE: path.join(scratch, 'no-such-claude') });
+    setEnv({ LEDGER_CLAUDE: path.join(scratch, 'no-such-claude') });
 
     const answer = startClaude(ASK).wait();
 

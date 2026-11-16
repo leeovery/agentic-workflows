@@ -26,7 +26,7 @@ const assert = require('node:assert');
 
 const { NESTED, NESTED_TASKS, openArgs, track, commitFiles, nestedConformance } = require('./landing-world.cjs');
 const { git, readManifest } = require('./engine-harness.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const { rates, show } = NESTED_TASKS;
 

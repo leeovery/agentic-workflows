@@ -1,7 +1,7 @@
 'use strict';
 
 // The lint over the migration's directives (21.S34; the format is the
-// header of skills/leeway-migrate/scripts/migrate.cjs): each directive,
+// header of skills/ledger-migrate/scripts/migrate.cjs): each directive,
 // `NNN-{slug}.md`, opens on its title, then its head — `## Touches`, the
 // files it may touch, and `## Asks`, what it asks the person, each a list
 // of one item or more and nothing else, an item wrapped onto lines indented
@@ -12,7 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { isCheck } = require('../../skills/leeway-engine/scripts/domain/directives.cjs');
+const { isCheck } = require('../../skills/ledger-engine/scripts/domain/directives.cjs');
 
 const HEAD = ['Touches', 'Asks'];
 

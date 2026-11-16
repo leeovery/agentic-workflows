@@ -70,13 +70,13 @@ describe('pipeline simulation: finish in step', () => {
     sim.run(['review', 'reads', WU, '1-the-work']);
     assert.deepStrictEqual(reviewNext(sim, WU).data.reads, ['1-the-work'], 'once its fix phase has merged, the next round reads the area it changed');
     areaRead(sim, WU);
-    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]).ends, true);
+    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]).ends, true);
     sim.render(['review-report', WU], { expect: 'content' });
 
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
     const { landed, next } = finished(sim, WU);
     assert.deepStrictEqual(landed, [], 'every phase merged at its gate, the fix phase among them, so finish lands nothing');
-    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway', args: [] }, 'a feature finished is handed to the start menu');
-    handoff(sim, '/leeway');
+    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'ledger', args: [] }, 'a feature finished is handed to the start menu');
+    handoff(sim, '/ledger');
   });
 });

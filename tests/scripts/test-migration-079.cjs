@@ -55,10 +55,10 @@ const { ok, okSections, okSectionsAsync, git, statePath, layout, writeState, rea
 const { SESSION, recordsMigration, refusedKeeping, refusedUntouched } = require('./migration-world.cjs');
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { composedPath, carriedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
-const DIRECTIVE = path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations/079-records.md');
-const MOVE = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
+const DIRECTIVE = path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations/079-records.md');
+const MOVE = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
 
 const RECORDS = '079-records';
 const TOPICS = { one: 'topic', many: 'topics' };
@@ -478,6 +478,6 @@ describe('the directive\'s example record, frozen with 079', () => {
   it('spells no path from the session\'s folder: every state path is the brief\'s or the engine\'s, the carry naming the topic alone', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
-    assert.deepStrictEqual([text.includes('.leeway/'), /ledger carry \{unit\}\.\{phase\}\.\{topic\}\n/.test(text)], [false, true]);
+    assert.deepStrictEqual([text.includes('.ledger/'), /ledger carry \{unit\}\.\{phase\}\.\{topic\}\n/.test(text)], [false, true]);
   });
 });

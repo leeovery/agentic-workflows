@@ -10,7 +10,7 @@
 // delete the store's file,
 // take away its folder's write, write a line into it that is not JSON or
 // link a task after one it does not hold; a plan the workflows wrote into
-// Tick before Leeway, a task of it started, done or cancelled there, as
+// Tick before Ledger, a task of it started, done or cancelled there, as
 // the old plan's process left it, or given as many refs as Tick keeps on
 // one, and the store's records as they stand
 // apart from the engine's names for a unit; what Tick itself answers as a
@@ -22,9 +22,9 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { taskId, stepOfId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { taskId, stepOfId } = require('../../../skills/ledger-engine/scripts/domain/task-id.cjs');
 
-/** @typedef {import('../../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('../../../skills/ledger-engine/scripts/domain/task-id.cjs').TaskRef} TaskRef */
 
 /**
  * Refs a person might give a task in Tick: a link, and some in the shape of
@@ -169,7 +169,7 @@ function linkAfterGone(root, title) {
 }
 
 /**
- * A plan as the workflows wrote it into Tick before Leeway: its root, each
+ * A plan as the workflows wrote it into Tick before Ledger: its root, each
  * phase a child of it titled with its number, each task a child of its
  * phase, every one carrying the old plan's id in its refs — `{topic}`,
  * `{topic}-{N}`, `{topic}-{N}-{n}` — and each task the old type and its

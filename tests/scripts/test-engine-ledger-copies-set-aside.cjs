@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The ledger's rendered copies following what is live
-// (leeway-engine/scripts/domain/ledger-copies.cjs, 5.8.17): after a
+// (ledger-engine/scripts/domain/ledger-copies.cjs, 5.8.17): after a
 // lifecycle change that sets a topic or unit aside or brings it back, however
 // it is made, the copies are rendered again and indexed — a cancelled or
 // postponed place losing its copy and its chunks until it is back, another

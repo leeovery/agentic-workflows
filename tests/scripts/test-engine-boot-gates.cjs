@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The setup gates due at a start (leeway-engine/scripts/domain/boot-route.cjs,
+// The setup gates due at a start (ledger-engine/scripts/domain/boot-route.cjs,
 // `gatesDue`), in the order start works them: the migration review, the stop
 // at an older Claude Code and the knowledge gate on every entry; the mod's
 // notice, the effort notice and the one-time offers on the bare command
@@ -15,7 +15,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { gatesDue } = require('../../skills/leeway-engine/scripts/domain/boot-route.cjs');
+const { gatesDue } = require('../../skills/ledger-engine/scripts/domain/boot-route.cjs');
 
 /** Boot's facts where no gate is due. */
 const SETTLED = Object.freeze({

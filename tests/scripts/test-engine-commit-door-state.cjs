@@ -24,7 +24,7 @@ const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, statePath, layout, createFile, writeState, readState, traced } = harness;
 const { headFiles, statusLines, codeHeadFiles, codeStatusLines, epicManifest, twoTopics, setupTwoTopicFixture } = require('./commit-door-world.cjs');
-const { commitStaged } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
+const { commitStaged } = require('../../skills/ledger-engine/scripts/kernel/git.cjs');
 
 // The most git commands a topic's commit runs: the hooks' names read once,
 // the remote read from the config, and the commit's sha never asked again.
@@ -251,7 +251,7 @@ describe('engine commit --state: the files only the engine writes, the unit\'s a
     assert.deepStrictEqual(changed(dir), Object.keys(PEERS).map((file) => `?? ${file}`).sort(), 'every peer keeps every byte it had not committed');
   });
 
-  it('the global form takes the project\'s own files only the engine writes and .leeway/.state, and nothing of a unit\'s', () => {
+  it('the global form takes the project\'s own files only the engine writes and .ledger/.state, and nothing of a unit\'s', () => {
     writeState(dir, layout.migrations, '062\n');
     projectChanged(dir);
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
@@ -291,8 +291,8 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   const setup = fixtureFrom('engine-commit-', (at) => {
     writeState(at, layout.manifest('payments'), '{"name":"payments"}\n');
     createFile(at, '.claude/settings.json', '{}\n');
-    createFile(at, '.worktreeinclude', '.leeway/.knowledge/store.bin\n');
-    createFile(at, '.gitignore', '.leeway/\nnode_modules\n');
+    createFile(at, '.worktreeinclude', '.ledger/.knowledge/store.bin\n');
+    createFile(at, '.gitignore', '.ledger/\nnode_modules\n');
     createFile(at, 'src/app.js', 'const x = 1;\n');
     commitAll(at, 'init');
   });
@@ -320,7 +320,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     git(dir, ['config', 'core.abbrev', '12']);
     createFile(dir, '.claude/settings.json', '{"permissions":{}}\n');
     fs.unlinkSync(path.join(dir, '.worktreeinclude'));
-    createFile(dir, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
+    createFile(dir, '.gitignore', '.ledger/\nnode_modules\n.DS_Store\n');
     writeState(dir, layout.manifest('payments'), '{"name":"payments","v":2}\n');
     writeState(dir, layout.migrations, '062\n');
     writeState(dir, layout.knowledge('store.bin'), 'local store\n');
@@ -353,7 +353,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   });
 
   it('records a removal a migration staged in the code tree, the file left on disk', () => {
-    createFile(dir, '.gitignore', '.leeway/\nnode_modules\n.worktreeinclude\n');
+    createFile(dir, '.gitignore', '.ledger/\nnode_modules\n.worktreeinclude\n');
     git(dir, ['add', '--', '.gitignore']);
     git(dir, ['commit', '-q', '-m', 'the include is local now']);
     git(dir, ['rm', '-q', '--cached', '--', '.worktreeinclude']);
@@ -378,7 +378,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   });
 
   it('leaves an owned path the project ignores to git — never forced in', () => {
-    createFile(dir, '.gitignore', '.leeway/\nnode_modules\n.claude/\n');
+    createFile(dir, '.gitignore', '.ledger/\nnode_modules\n.claude/\n');
     git(dir, ['rm', '-q', '--cached', '--', '.claude/settings.json']);
     commitAll(dir, 'the project ignores its Claude Code settings');
     createFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
@@ -392,10 +392,10 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   });
 
   it('leaves a tracked file whose directory the project ignores as it is — the rest still commit', () => {
-    createFile(dir, '.gitignore', '.leeway/\nnode_modules\n.claude/\n');
+    createFile(dir, '.gitignore', '.ledger/\nnode_modules\n.claude/\n');
     commitAll(dir, 'the project ignores .claude/ and still tracks its settings');
     createFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
-    createFile(dir, '.worktreeinclude', '.leeway/.knowledge/metadata.json\n');
+    createFile(dir, '.worktreeinclude', '.ledger/.knowledge/metadata.json\n');
 
     migrate();
 
@@ -409,7 +409,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     fs.symlinkSync('config/claude', path.join(dir, '.claude'));
     commitAll(dir, '.claude links to the shared config');
     createFile(dir, 'config/claude/settings.json', '{"hooks":{}}\n');
-    createFile(dir, '.worktreeinclude', '.leeway/.knowledge/metadata.json\n');
+    createFile(dir, '.worktreeinclude', '.ledger/.knowledge/metadata.json\n');
 
     migrate();
 
@@ -422,7 +422,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
     const before = codeHead();
 
-    const res = refuses(dir, ['commit', '--migrations', '-m', 'x'], { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = refuses(dir, ['commit', '--migrations', '-m', 'x'], { env: { LEDGER_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.match(res.error, /index\.lock/);
     assert.strictEqual(codeHead(), before);

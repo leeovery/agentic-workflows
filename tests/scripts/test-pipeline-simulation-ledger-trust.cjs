@@ -34,7 +34,7 @@ const { leaningCall } = require('./ledger-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 const { DAY, UNDRAWN, lines, history } = require('./trust-world.cjs');
 
-const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
+const DOMAIN = path.join(__dirname, '../../skills/ledger-engine/scripts/domain');
 const decisionPoint = require(path.join(DOMAIN, 'decision-point.cjs'));
 const { offerDue } = require(path.join(DOMAIN, 'convergence.cjs'));
 const { TRUST_LOG } = require(path.join(DOMAIN, 'trust-log.cjs'));

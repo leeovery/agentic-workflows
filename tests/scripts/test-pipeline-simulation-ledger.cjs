@@ -19,10 +19,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const { LEDGER } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
-const { launcher } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/call.cjs'));
+const { LEDGER } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-events.cjs'));
+const { launcher } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/call.cjs'));
 const { stateGit, startItem } = require('./engine-harness.cjs');
-const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, mappedEpic } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: ledger', () => {

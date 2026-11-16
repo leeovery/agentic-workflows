@@ -44,7 +44,7 @@ const { spawnSync } = require('child_process');
 
 const REAL_MIGRATE = path.join(
   __dirname,
-  '../../skills/leeway-migrate/scripts/migrate.cjs'
+  '../../skills/ledger-migrate/scripts/migrate.cjs'
 );
 const { LAST_CODE_TREE_MIGRATION, LAST_CODE_TREE_DIRECTIVE } = require(REAL_MIGRATE);
 
@@ -58,8 +58,8 @@ function tmp(prefix) {
 
 // Where boot keeps the migrations record, the state's own, and the runner's
 // journals, in the state's cache.
-const RECORD = '.leeway/.state/migrations';
-const JOURNALS = '.leeway/.cache/migrate';
+const RECORD = '.ledger/.state/migrations';
+const JOURNALS = '.ledger/.cache/migrate';
 
 /** Run a migrate.cjs at `migrate` with cwd `project`, recording into the state's migrations record. */
 function run(migrate, project, env = {}, args = ['--record', path.join(project, RECORD), '--journals', path.join(project, JOURNALS)]) {
@@ -208,7 +208,7 @@ function owingProject(old) {
 describe('migrate.cjs — real fleet', () => {
   it('runs the fleet under stock /bin/bash 3.2 as far as its first directive, writing each migration before it to the migrations record', () => {
     const project = freshProject();
-    const res = run(REAL_MIGRATE, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.ok(!/mapfile|command not found/i.test(res.stdout + res.stderr), 'no bash-3.2 failure');
@@ -219,11 +219,11 @@ describe('migrate.cjs — real fleet', () => {
 
   it('leaves a project with no state in its code tree untouched, recording the code-tree fleet unrun', () => {
     const project = tmp('mig-orch-none-');
-    const res = run(REAL_MIGRATE, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
-    assert.deepStrictEqual(fs.readdirSync(project), ['.leeway'], 'nothing written but the record');
-    assert.deepStrictEqual(fs.readdirSync(path.join(project, '.leeway/.state')), ['migrations']);
+    assert.deepStrictEqual(fs.readdirSync(project), ['.ledger'], 'nothing written but the record');
+    assert.deepStrictEqual(fs.readdirSync(path.join(project, '.ledger/.state')), ['migrations']);
     // The code-tree fleet and the reshape's directives are recorded unrun, each directive with its unrun line; the code migrations past it run and find nothing to do.
     const directives = new Set(REAL_DIRECTIVES.map(idOf));
     assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), [...REAL_IDS, ...[...directives].map((id) => `${id} unrun`)].sort(), 'every migration recorded');
@@ -232,9 +232,9 @@ describe('migrate.cjs — real fleet', () => {
 
   it('is idempotent — a second run runs nothing again, stopping at the same directive, the record as the first left it', () => {
     const project = freshProject();
-    run(REAL_MIGRATE, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     const recorded = trackingLog(project);
-    const second = run(REAL_MIGRATE, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.deepStrictEqual([second.status, second.stdout, trackingLog(project)], [0, `---DIRECTIVE: ${FIRST_DIRECTIVE}---\n`, recorded]);
   });
@@ -255,7 +255,7 @@ describe('migrate.cjs — real fleet', () => {
       '{"name":"wu2","work_type":"feature","status":"active","phases":{}}\n'
     );
 
-    run(REAL_MIGRATE, proj, { PROJECT_DIR: decoy, LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    run(REAL_MIGRATE, proj, { PROJECT_DIR: decoy, LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     const status = (p) => JSON.parse(fs.readFileSync(p, 'utf8')).status;
     assert.strictEqual(
@@ -281,7 +281,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(
@@ -306,12 +306,12 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
     assert.deepStrictEqual(runReport(first.stdout), { ran: 2 });
 
     // Fully recorded: nothing ran, and the report says so.
-    const second = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(second.stdout.includes('[SKIP] No changes needed'), second.stdout);
     assert.deepStrictEqual(runReport(second.stdout), { ran: 0 });
@@ -322,7 +322,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const project = freshProject();
     const record = path.join(tmp('mig-orch-record-'), 'deep/record');
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }, ['--record', record, '--journals', path.join(project, JOURNALS)]);
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }, ['--record', record, '--journals', path.join(project, JOURNALS)]);
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(fs.readFileSync(record, 'utf8'), '001\n');
@@ -334,7 +334,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const project = freshProject();
 
     for (const args of [[], ['--record', path.join(project, RECORD)], ['--journals', path.join(project, JOURNALS)]]) {
-      const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }, args);
+      const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }, args);
 
       assert.notStrictEqual(res.status, 0);
       assert.match(res.stderr, /usage: migrate\.cjs --record <path> --journals <dir>/);
@@ -350,7 +350,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = tmp('mig-orch-none-');
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '073\n', 'only 073 ran');
@@ -366,7 +366,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.notStrictEqual(res.status, 0);
     assert.strictEqual(runReport(res.stdout), null);
@@ -384,7 +384,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
     const lines = first.stdout.split('\n');
     const mi = lines.findIndex((l) => l.trim() === '---VERIFY_ADDENDA---');
@@ -397,7 +397,7 @@ describe('migrate.cjs — synthetic fleet', () => {
       verify: 'Check the things code cannot see.',
     }], 'the skip-path migration still hands over its checks');
 
-    const second = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(!second.stdout.includes('---VERIFY_ADDENDA---'), 'recorded migrations never re-emit');
   });
@@ -413,7 +413,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.notStrictEqual(first.status, 0, 'the fleet aborts on 002');
     assert.ok(!first.stdout.includes('---VERIFY_ADDENDA---'), 'an aborted run emits nothing');
     assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001'], '001 recorded, 002 not');
@@ -421,7 +421,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     // Fix 002 and re-run: 001 never re-runs, but its journaled addendum rides.
     fs.writeFileSync(path.join(root, 'scripts/migrations/002-b.cjs'),
       `'use strict';\nmodule.exports = { id: '002', description: 'fixed', run({ reportSkip }) { reportSkip(); } };\n`);
-    const second = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     const lines = second.stdout.split('\n');
     const mi = lines.findIndex((l) => l.trim() === '---VERIFY_ADDENDA---');
@@ -431,7 +431,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.ok(second.stdout.includes('---STOP_GATE: FILES_UPDATED---'), "001's update is still owed its review");
     assert.ok(!fs.existsSync(path.join(project, JOURNALS, 'pending-verify.json')), 'journal cleared after emission');
 
-    const third = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const third = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.ok(!third.stdout.includes('---VERIFY_ADDENDA---'), 'emitted once, never again');
   });
 
@@ -442,8 +442,8 @@ describe('migrate.cjs — synthetic fleet', () => {
     const kill = path.join(root, 'kill-journal.cjs');
     fs.writeFileSync(kill, "const fs = require('fs');\nconst path = require('path');\nconst real = fs.writeFileSync;\nlet writes = 0;\nfs.writeFileSync = (file, data, ...rest) => { if (path.basename(String(file)).startsWith('pending-verify.json') && ++writes === 2) { real(file, String(data).slice(0, 10)); process.exit(9); } return real(file, data, ...rest); };\n");
 
-    assert.strictEqual(run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` }).status, 9);
-    const again = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` }).status, 9);
+    const again = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.deepStrictEqual([
       markerPayload(again.stdout, '---VERIFY_ADDENDA---'),
@@ -460,7 +460,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002') });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(!res.stdout.includes('---VERIFY_ADDENDA---'));
@@ -480,7 +480,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
     assert.deepStrictEqual(markerPayload(first.stdout, '---MIGRATION_NOTICES---'), [{
       id: '002',
@@ -491,7 +491,7 @@ describe('migrate.cjs — synthetic fleet', () => {
       ['Check the things code cannot see.'], 'the checks travel on their own');
     assert.ok(!fs.existsSync(path.join(project, JOURNALS, 'pending-notices.json')), 'journal cleared after emission');
 
-    const second = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(!second.stdout.includes('---MIGRATION_NOTICES---'), 'recorded migrations never re-emit');
   });
@@ -505,13 +505,13 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.notStrictEqual(first.status, 0, 'the fleet aborts on 002');
     assert.ok(!first.stdout.includes('---MIGRATION_NOTICES---'), 'an aborted run emits nothing');
 
     fs.writeFileSync(path.join(root, 'scripts/migrations/002-b.cjs'),
       `'use strict';\nmodule.exports = { id: '002', description: 'fixed', run({ reportSkip }) { reportSkip(); } };\n`);
-    const second = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.deepStrictEqual(markerPayload(second.stdout, '---MIGRATION_NOTICES---').map((n) => n.notice),
       ['Something was removed.'], "001's notice survived the abort");
@@ -528,7 +528,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     fs.mkdirSync(path.dirname(path.join(project, RECORD)), { recursive: true });
     fs.writeFileSync(path.join(project, RECORD), '001\n003\n');
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(
@@ -552,7 +552,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.notStrictEqual(res.status, 0, 'non-zero exit');
     assert.match(res.stderr, /002-boom\.sh failed/);
@@ -572,7 +572,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.notStrictEqual(res.status, 0, 'non-zero exit');
     assert.match(res.stderr, /kaboom-002/);
@@ -589,17 +589,17 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n002\n');
 
     // Second run: nothing to do.
-    const noop = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const noop = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.ok(noop.stdout.includes('[SKIP] No changes needed'));
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n002\n');
 
     // Delete the log — every migration re-runs.
     fs.rmSync(path.join(project, RECORD));
-    run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(
       fs.readFileSync(path.join(project, 'order.log'), 'utf8'),
       '001\n002\n001\n002\n',
@@ -618,7 +618,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const stopped = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const stopped = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(stopped.status, 0, stopped.stderr);
     assert.strictEqual(stopped.stdout, '---DIRECTIVE: 002-records---\n');
@@ -626,7 +626,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001']);
 
     fs.appendFileSync(path.join(project, RECORD), '002\n');
-    const carried = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const carried = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(carried.status, 0, carried.stderr);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '003\n');
@@ -642,7 +642,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const { migrate } = synthFleet({ [`${later}-later.md`]: directive('Later') });
     const project = tmp('mig-orch-none-');
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.deepStrictEqual([res.stdout, trackingLog(project)], [`---DIRECTIVE: ${later}-later---\n`, '']);
   });
@@ -660,7 +660,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const counted = path.join(root, 'counted.json');
 
     const res = run(migrate, project, {
-      LEEWAY_MIGRATE_BASH: SYSTEM_BASH,
+      LEDGER_MIGRATE_BASH: SYSTEM_BASH,
       NODE_OPTIONS: `--require ${FS_COUNTER}`,
       COUNT_UNDER: path.join(root, 'scripts/migrations'),
       COUNT_TO: counted,
@@ -674,7 +674,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const { migrate } = synthFleet({ '001-a.sh': shMig('001') });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n');
@@ -687,7 +687,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.cjs': refusing('002', { cause: 'busy' }), '003-c.cjs': cjsMig('003') });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.deepStrictEqual([res.status, res.stdout], [1, '']);
     assert.match(res.stderr, /^migration run failed: Error: refused/);
@@ -702,7 +702,7 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     const owing = owingProject();
     const settled = freshProject();
 
-    for (const project of [owing, settled]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+    for (const project of [owing, settled]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
 
     assert.deepStrictEqual([fs.readFileSync(path.join(owing, 'order.log'), 'utf8'), trackingLog(owing)], ['074\n001\n002\n', '074\n001\n002\n']);
     assert.deepStrictEqual([fs.readFileSync(path.join(settled, 'order.log'), 'utf8'), trackingLog(settled)], ['001\n002\n074\n', '001\n002\n074\n']);
@@ -712,10 +712,10 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '074-guard.cjs': refusing('074', { cause: 'dirty', unit: null, phase: null, topic: null, active: null }) });
     const project = owingProject('001\n');
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.deepStrictEqual([res.status, res.stdout], [0, '---REFUSED: 074---\n{"cause":"dirty","unit":null,"phase":null,"topic":null,"active":null}\n']);
-    assert.ok(!fs.existsSync(path.join(project, '.leeway')), 'nothing written for the state');
+    assert.ok(!fs.existsSync(path.join(project, '.ledger')), 'nothing written for the state');
     assert.ok(!fs.existsSync(path.join(project, 'order.log')));
   });
 
@@ -730,7 +730,7 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     fs.mkdirSync(path.join(held, RECORD, '..'), { recursive: true });
     fs.writeFileSync(path.join(held, RECORD), '001\n');
 
-    for (const project of [seeded, held]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+    for (const project of [seeded, held]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
 
     assert.deepStrictEqual([fs.readFileSync(path.join(seeded, 'order.log'), 'utf8'), trackingLog(seeded)], ['003\n', '001\n002\n003\n']);
     assert.deepStrictEqual([fs.readFileSync(path.join(held, 'order.log'), 'utf8'), trackingLog(held)], ['002\n003\n', '001\n002\n003\n']);
@@ -747,7 +747,7 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
       ['1 migration(s) applied, 1 file(s) updated.'],
     ];
 
-    const runs = [owing, owing, settled, settled].map((project) => run(synthFleet({ '001-a.cjs': telling }).migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).stdout);
+    const runs = [owing, owing, settled, settled].map((project) => run(synthFleet({ '001-a.cjs': telling }).migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).stdout);
 
     assert.deepStrictEqual(runs.map(handedBack), [told, told, told, [undefined, undefined, []]]);
   });
@@ -758,13 +758,13 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     const told = toldBy('050');
     const stop = ['---VERIFY_ADDENDA---', JSON.stringify([told.verify]), '---CHECKS---', ''].join('\n');
 
-    const stopped = [1, 2].map(() => run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }));
+    const stopped = [1, 2].map(() => run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }));
 
     assert.deepStrictEqual(stopped.map(({ status, stdout }) => ({ status, stdout })), [{ status: 0, stdout: stop }, { status: 0, stdout: stop }]);
     assert.deepStrictEqual([trackingLog(project), fs.existsSync(path.join(project, 'order.log'))], ['050\n', false]);
 
     fs.appendFileSync(path.join(project, RECORD), `${CHECKS_DONE}\n`);
-    const carried = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const carried = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(carried.status, 0, carried.stderr);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '075\n');
@@ -780,27 +780,27 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     const owesNone = freshProject();
     const after = owingProject();
 
-    const told = run(synthFleet({ '050-a.cjs': noticeMig('050'), '075-b.cjs': cjsMig('075') }).migrate, noticed, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const told = run(synthFleet({ '050-a.cjs': noticeMig('050'), '075-b.cjs': cjsMig('075') }).migrate, noticed, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     const runs = [
       told,
-      run(synthFleet({ '050-a.cjs': cjsMig('050'), '075-b.cjs': cjsMig('075') }).migrate, quiet, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
-      run(synthFleet({ '073-a.cjs': tellingMig('073'), '075-b.cjs': cjsMig('075') }).migrate, stateless, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
-      run(synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075') }).migrate, owesNone, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }),
+      run(synthFleet({ '050-a.cjs': cjsMig('050'), '075-b.cjs': cjsMig('075') }).migrate, quiet, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }),
+      run(synthFleet({ '073-a.cjs': tellingMig('073'), '075-b.cjs': cjsMig('075') }).migrate, stateless, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }),
+      run(synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075') }).migrate, owesNone, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }),
     ];
     const split = synthFleet({ '076-a.cjs': tellingMig('076'), '077-records.md': directive('Records'), '077-records.check.cjs': CHECK, '078-c.cjs': cjsMig('078') });
-    assert.strictEqual(run(split.migrate, after, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).stdout, '---DIRECTIVE: 077-records---\n');
+    assert.strictEqual(run(split.migrate, after, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).stdout, '---DIRECTIVE: 077-records---\n');
     fs.appendFileSync(path.join(after, RECORD), '077\n');
-    runs.push(run(split.migrate, after, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }));
+    runs.push(run(split.migrate, after, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }));
 
     assert.deepStrictEqual(runs.map(({ status, stdout }) => [status, stdout.includes('---CHECKS---'), runReport(stdout)]), [1, 2, 3, 4, 5].map(() => [0, false, { ran: 2 }]));
     assert.deepStrictEqual([noticed, quiet, stateless, owesNone, after].map((project) => fs.readFileSync(path.join(project, 'order.log'), 'utf8')), ['075\n', '050\n075\n', '075\n', '075\n', '078\n']);
     assert.deepStrictEqual(markerPayload(told.stdout, '---MIGRATION_NOTICES---'), [toldBy('050').notice]);
   });
 
-  it('no migration loads the engine: every require on the paths from each migration is a literal, and none reaches skills/leeway-engine/', () => {
+  it('no migration loads the engine: every require on the paths from each migration is a literal, and none reaches skills/ledger-engine/', () => {
     const scripts = path.dirname(REAL_MIGRATE);
     const skills = path.resolve(scripts, '..', '..');
-    const engine = path.join(skills, 'leeway-engine') + path.sep;
+    const engine = path.join(skills, 'ledger-engine') + path.sep;
     const migrations = path.join(scripts, 'migrations');
     /** @type {string[]} */
     const found = [];
@@ -841,7 +841,7 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
 
     assert.deepStrictEqual(crossing, []);
     assert.ok(loads(path.join(migrations, '074-reshape-guard.cjs')).includes(path.join(frozen, 'shared.cjs')), 'the scan reads a frozen step\'s loads');
-    assert.ok(loads(path.join(skills, 'leeway-engine/scripts/domain/state-checks.cjs')).includes(runtime), 'the scan reads the runtime\'s loads');
+    assert.ok(loads(path.join(skills, 'ledger-engine/scripts/domain/state-checks.cjs')).includes(runtime), 'the scan reads the runtime\'s loads');
   });
 
   it('a run killed as the seed is renamed into place leaves no record, and the next seeds it whole', () => {
@@ -852,11 +852,11 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     const kill = path.join(root, 'kill-rename.cjs');
     fs.writeFileSync(kill, `const fs = require('fs');\nconst real = fs.renameSync;\nfs.renameSync = (from, to) => { if (String(to).endsWith(${JSON.stringify(RECORD)})) process.exit(9); return real(from, to); };\n`);
 
-    const killed = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` });
+    const killed = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` });
     assert.strictEqual(killed.status, 9);
     assert.strictEqual(trackingLog(project), '');
 
-    assert.strictEqual(run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+    assert.strictEqual(run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
     assert.deepStrictEqual([fs.readFileSync(path.join(project, 'order.log'), 'utf8'), trackingLog(project)], ['002\n', '001\n002\n']);
   });
 });

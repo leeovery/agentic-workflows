@@ -2,9 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // What `engine review round <unit> --file <round.json>` refuses, writing
-// nothing (leeway-engine/scripts/domain/review-round.cjs, its records
+// nothing (ledger-engine/scripts/domain/review-round.cjs, its records
 // review-phase.cjs): a call of another shape, as `inbox file`'s is
-// (inbox.cjs); a working tree changed outside `.leeway/` since the snapshot
+// (inbox.cjs); a working tree changed outside `.ledger/` since the snapshot
 // — a path's status, what it holds, a HEAD moved — naming every path,
 // reverting none, and naming the person's way on (12.7.8, 14.S13); no
 // snapshot; a unit its entry refuses; a review over; fix tasks of the round
@@ -33,7 +33,7 @@ let dir;
 useWorld((at) => { dir = at; });
 
 /** The tree refusal, naming what changed. @param {string} changed */
-const treeMoved = (changed) => `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: ${changed} — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`;
+const treeMoved = (changed) => `review round: the working tree outside .ledger/ changed since the snapshot the round is held to: ${changed} — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`;
 
 describe('review round: what it refuses, writing nothing', () => {
   it('a call of another shape, as inbox file\'s is: a verb it lacks, no unit, no payload or reads, an extra word, a flag it takes none of', () => {
@@ -52,7 +52,7 @@ describe('review round: what it refuses, writing nothing', () => {
     }
   });
 
-  it('14.S13: a working tree changed outside .leeway/ since the snapshot, naming every path and the person\'s way on, the change left as it stands', () => {
+  it('14.S13: a working tree changed outside .ledger/ since the snapshot, naming every path and the person\'s way on, the change left as it stands', () => {
     firstRoundReady();
     fs.writeFileSync(path.join(dir, 'src/card.js'), 'export const card = 2;\n');
     fs.writeFileSync(path.join(dir, 'src/stray.js'), 'export const stray = 1;\n');

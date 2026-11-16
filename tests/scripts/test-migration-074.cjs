@@ -5,7 +5,7 @@
 //
 // The reshape's guard (21.3) driven in process against a git project whose
 // `.workflows/` is today's shape, committed: where the reshape is not owed —
-// no `.workflows/` on the main checkout's code branch, a `leeway-state` with
+// no `.workflows/` on the main checkout's code branch, a `ledger-state` with
 // a commit, no repository — it skips, writing nothing; where it is, it
 // refuses, writing nothing, while another session holds one of the old
 // skills' presence rows — its process still running, by pid and start time,
@@ -14,8 +14,8 @@
 // and how long ago, or while `.workflows/` has uncommitted changes (21.S5,
 // 21.S6); a stale row, the calling session's own, a row naming no process,
 // and changes the old state ignores or outside it, refuse nothing. On a pass
-// it puts the state worktree in place on an unborn `leeway-state`, locked,
-// its `.gitignore` alone in it — a plain `.leeway/` set aside and put back
+// it puts the state worktree in place on an unborn `ledger-state`, locked,
+// its `.gitignore` alone in it — a plain `.ledger/` set aside and put back
 // inside — and a run killed at each of the placement's writes, its
 // `.gitignore` part written among them, is finished by the next.
 //
@@ -39,13 +39,13 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const { git, initRepo, commitCode, createFile, folderFrom, withEnv, cleanupFixture } = require('./engine-harness.cjs');
-const GUARD = require.resolve('../../skills/leeway-migrate/scripts/migrations/074-reshape-guard.cjs');
+const GUARD = require.resolve('../../skills/ledger-migrate/scripts/migrations/074-reshape-guard.cjs');
 const MIGRATION = require(GUARD);
-const { migrationRuns } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const { migrationRuns } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
 
-const STATE = '.leeway';
-const SET_ASIDE = '.leeway-set-aside';
-const LOCK_REASON = 'leeway state, do not remove';
+const STATE = '.ledger';
+const SET_ASIDE = '.ledger-set-aside';
+const LOCK_REASON = 'ledger state, do not remove';
 const STATE_GITIGNORE = '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n';
 const NOW = Date.parse('2026-11-13T12:00:00Z');
 
@@ -132,7 +132,7 @@ function placed(top, root) {
 
 /** The state worktree as the guard puts it in place at `root`, holding `others` beside its own files. @param {string} root @param {string[]} [others] */
 const IN_PLACE = (root, others = []) => ({
-  registered: [`worktree ${root}`, 'branch refs/heads/leeway-state', `locked ${LOCK_REASON}`],
+  registered: [`worktree ${root}`, 'branch refs/heads/ledger-state', `locked ${LOCK_REASON}`],
   unborn: true,
   holds: ['.git', '.gitignore', ...others].sort(),
   gitignore: STATE_GITIGNORE,
@@ -151,8 +151,8 @@ describe('migration 074: the reshape\'s guard', () => {
       assert.deepStrictEqual(untouched(bare), before);
     });
 
-    it('skips a project whose leeway-state has a commit, and a folder in no repository, writing nothing', () => {
-      git(main, ['update-ref', 'refs/heads/leeway-state', git(main, ['commit-tree', '-m', 'state', 'HEAD^{tree}']).trim()]);
+    it('skips a project whose ledger-state has a commit, and a folder in no repository, writing nothing', () => {
+      git(main, ['update-ref', 'refs/heads/ledger-state', git(main, ['commit-tree', '-m', 'state', 'HEAD^{tree}']).trim()]);
       const before = untouched(main);
       const loose = fs.mkdtempSync(path.join(world, 'loose-'));
 
@@ -241,7 +241,7 @@ describe('migration 074: the reshape\'s guard', () => {
   });
 
   describe('a pass: the state in place (21.2.1, E1)', () => {
-    it('puts the state worktree at .leeway/ on an unborn leeway-state, locked, its .gitignore alone in it — the code branch and .workflows/ as they were — and finds it there when run again', () => {
+    it('puts the state worktree at .ledger/ on an unborn ledger-state, locked, its .gitignore alone in it — the code branch and .workflows/ as they were — and finds it there when run again', () => {
       const before = { refs: git(main, ['for-each-ref']), head: git(main, ['rev-parse', 'HEAD']), workflows: git(main, ['status', '--porcelain', '--', '.workflows']) };
       const root = path.join(main, STATE);
 
@@ -253,7 +253,7 @@ describe('migration 074: the reshape\'s guard', () => {
       assert.deepStrictEqual(placed(main, root), IN_PLACE(root));
     });
 
-    it('sets a plain .leeway/ aside while the worktree is added, and puts what it held back inside', () => {
+    it('sets a plain .ledger/ aside while the worktree is added, and puts what it held back inside', () => {
       createFile(main, `${STATE}/.knowledge/config.json`, '{}\n');
       const root = path.join(main, STATE);
 
@@ -326,7 +326,7 @@ describe('migration 074: the reshape\'s guard', () => {
       { method: 'renameSync', file: `${STATE}/a.md` },
       { method: 'rmdirSync', file: SET_ASIDE },
     ])) {
-      it(`over a plain .leeway/, killed ${named(at)}`, () => {
+      it(`over a plain .ledger/, killed ${named(at)}`, () => {
         const root = path.join(main, STATE);
         createFile(main, `${STATE}/a.md`, 'a\n');
         createFile(main, `${STATE}/b.md`, 'b\n');

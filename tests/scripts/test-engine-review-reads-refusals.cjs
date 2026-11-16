@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What `engine review reads <unit> <area|tests> …` refuses, writing nothing
-// (leeway-engine/scripts/domain/review-verbs.cjs, its records
+// (ledger-engine/scripts/domain/review-verbs.cjs, its records
 // review-phase.cjs): round 1, which reads every area and the test surface;
 // a unit its entry refuses; a name no area's; a read whose findings made fix
 // tasks left out, and one named before dropped (14.3.3); the round before's

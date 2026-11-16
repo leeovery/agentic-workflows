@@ -33,7 +33,7 @@ const {
   Sim, worlds, SPEC_TO_BUILD_UNIT, briefOf, answerGate, buildLoop, VERIFY_FILES, wentAheadBlind, pickedRow,
 } = require('./pipeline-world.cjs');
 
-const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
+const { taskBranch } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/landing-names.cjs'));
 
 const WU = SPEC_TO_BUILD_UNIT;
 const CALL = Object.freeze({ question: 'Should a show print the entry\'s id?', lean: 'A show prints the id.', other: 'A show hides the id.' });
@@ -144,7 +144,7 @@ describe('pipeline simulation: the build with a task held open on its blind ques
   it('16.17.6: in step, something added to the held task lifts its hold, freeing it behind the one started while it was held — that task\'s briefs going on, the held task coming back once it is done, to build what changed; the person\'s answer after the lift leaving it there', async (t) => {
     await heldInStep(t);
 
-    sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, 'An entry is shown by its id.\n'), '--by', 'orchestrator']);
+    sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.ledger/.cache/${WU}/build/addition.md`, 'An entry is shown by its id.\n'), '--by', 'orchestrator']);
     sim.refuses(['brief', 'builder', WU, '1.1'], BEHIND);
     const receipt = answeredAsClaude();
 

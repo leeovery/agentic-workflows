@@ -15,11 +15,11 @@ const path = require('path');
 const { readManifest } = require('./engine-harness.cjs');
 const { withEnv } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { waitsOf } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 const { progressOf, progressWords } = require(path.join(SCRIPTS, 'domain/progress.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/waits.cjs').Wait} Wait */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/waits.cjs').Wait} Wait */
 
 /** A wait listed (the header's). @typedef {Omit<Wait, 'seal'> & {seal?: string}} Listed */
 
@@ -31,7 +31,7 @@ const { progressOf, progressWords } = require(path.join(SCRIPTS, 'domain/progres
  */
 function waitsIn(dir, units, { verdicts = false, config, session } = {}) {
   const read = () => waitsOf(dir, units.map((unit) => readManifest(dir, unit)), { verdicts, session: session ?? null });
-  const { waits, warnings } = config === undefined ? read() : withEnv({ LEEWAY_CONFIG_DIR: config }, read);
+  const { waits, warnings } = config === undefined ? read() : withEnv({ LEDGER_CONFIG_DIR: config }, read);
   assert.deepStrictEqual(warnings, []);
   return Object.fromEntries([...waits].map(([unit, listed]) => [unit, listed.map(({ seal, ...wait }) => (seal === undefined ? wait : { ...wait, seal: seal.id }))]));
 }

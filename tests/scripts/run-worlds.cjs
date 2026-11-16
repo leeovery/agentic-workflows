@@ -4,7 +4,7 @@
 // Worlds built once per run (tests/README.md §3): a world several suites
 // start from, named for what builds it, built by the first process of an
 // `npm test` run that asks for it and copied by every other. The run names
-// the folder its worlds are kept in, LEEWAY_TEST_WORLDS, made at its start
+// the folder its worlds are kept in, LEDGER_TEST_WORLDS, made at its start
 // and removed at its end (package.json), so no world outlives its run; a
 // process run outside one builds its own, once, as a suite's own world is.
 //
@@ -26,8 +26,8 @@ require('./hermetic-env.cjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { tryClaimFile } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
-const { sleepSync } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
+const { tryClaimFile } = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
+const { sleepSync } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
 const { templateFolder } = require('./discovery-test-utils.cjs');
 
 const REPO = path.join(__dirname, '../..');
@@ -152,7 +152,7 @@ const fetched = new Map();
  * @returns {RunWorld}
  */
 function worldOfTheRun(name, build, { limitMs = WAIT_LIMIT_MS, pollMs = POLL_MS } = {}) {
-  const folder = process.env.LEEWAY_TEST_WORLDS || '';
+  const folder = process.env.LEDGER_TEST_WORLDS || '';
   const at = `${folder}\0${name}`;
   let world = fetched.get(at);
   if (world === undefined) {

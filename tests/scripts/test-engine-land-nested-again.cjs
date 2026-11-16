@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The local landing driver across nested repositories where a landing comes
-// late (leeway-engine/scripts/drivers/landing/local/driver.cjs): a phase
+// late (ledger-engine/scripts/drivers/landing/local/driver.cjs): a phase
 // whose merge in the project stopped after its clone's merged, a later
 // phase landing past it there, lands the rest once run again, its clone's
 // merge never made twice, and finish moves nothing. A task changed after

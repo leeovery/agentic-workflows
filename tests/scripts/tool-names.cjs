@@ -86,7 +86,7 @@ function toolNamesIn(text, driverForms = DRIVER_FORMS) {
 }
 
 /** The drivers, the one place under `skills/` 7.1.10 lets name a tool, from the repository's root. */
-const DRIVERS = path.join('skills', 'leeway-engine', 'scripts', 'drivers');
+const DRIVERS = path.join('skills', 'ledger-engine', 'scripts', 'drivers');
 
 /** Whether a path from the repository's root is a test fixture: a file under a skill's own tests. @param {string} rel */
 const fixture = (rel) => rel.split(path.sep).includes('tests');
@@ -107,13 +107,13 @@ function shippedFiles(repo = REPO) {
 /** Each line of a help file's `text` naming a tool, its name as a word among the forms (`toolNamesIn`). @param {string} text */
 const helpNamesIn = (text) => toolNamesIn(text, HELP_FORMS);
 
-const WALKTHROUGH = path.join('skills', 'leeway-engine', 'content', 'walkthrough');
-const PROJECTIONS = path.join('skills', 'leeway-engine', 'scripts', 'domain', 'projections');
-const GLOSSARY = path.join('skills', 'leeway-shared', 'references', 'glossary.md');
+const WALKTHROUGH = path.join('skills', 'ledger-engine', 'content', 'walkthrough');
+const PROJECTIONS = path.join('skills', 'ledger-engine', 'scripts', 'domain', 'projections');
+const GLOSSARY = path.join('skills', 'ledger-shared', 'references', 'glossary.md');
 
 /** The code that draws help's own screens: the help home's rows, each menu's help, the reference cards, and the walk's and the cards' menus. */
 const HELP_CODE = [
-  path.join('skills', 'leeway-engine', 'scripts', 'domain', 'menus.cjs'),
+  path.join('skills', 'ledger-engine', 'scripts', 'domain', 'menus.cjs'),
   path.join(PROJECTIONS, 'help.cjs'),
   path.join(PROJECTIONS, 'help-topics.cjs'),
   path.join(PROJECTIONS, 'walkthrough.cjs'),

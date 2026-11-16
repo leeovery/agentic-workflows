@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What waits on the person on the epic's menu
-// (leeway-engine/scripts/domain/projections/epic-menu.cjs; 18.4.2, 18.4.17,
+// (ledger-engine/scripts/domain/projections/epic-menu.cjs; 18.4.2, 18.4.17,
 // 18.4.18): what the waits read lists (domain/waits.cjs) drawn first, each
 // a numbered row with its door, the first recommended; a topic a wait is
 // about drawn as that wait alone, off DECIDED; the verdicts waiting as one
@@ -37,13 +37,13 @@ const { UNIT: FUMI, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs')
 const { SOLO, SOLO_AT, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers, decidedBoardHelpers } = require('./decided-world.cjs');
 const { topicDoor, door, wait } = require('./waits-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { epicMenuScreen } = require(path.join(SCRIPTS, 'domain/projections/epic-menu.cjs'));
 const { drawLabel } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { phaseWaiting, holds } = require(path.join(SCRIPTS, 'domain/projections/board-standing.cjs'));
 const { WAIT_KINDS } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/waits.cjs').Wait} Wait */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/waits.cjs').Wait} Wait */
 
 const VERDICTS = Object.freeze({ kind: 'engine', argv: ['render', 'verdicts', '--unit', FUMI] });
 const PEER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'peer-session', CLAUDE_PID: String(process.ppid) });
@@ -98,7 +98,7 @@ describe('what waits, drawn first (18.4.2)', () => {
       '              pull forward, reactivate, or reopen a decided topic',
       'h/help      → What this menu is for, row by row',
       'b/back      → Back to the start menu',
-    ], { kind: 'handoff', skill: 'leeway-discovery', args: ['none', FUMI] }, VERDICTS]);
+    ], { kind: 'handoff', skill: 'ledger-discovery', args: ['none', FUMI] }, VERDICTS]);
   });
 
   it('the epic\'s legacy files from the migration are one row after the other waits, never recommended, leading to their read, and gone once the folder is empty', () => {
@@ -268,7 +268,7 @@ describe('what waits, drawn first (18.4.2)', () => {
   }
 
   it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises and its conclude, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics, its affected ones and its verdicts no phase\'s, whichever phase their door hands into', () => {
-    const intoSpec = door('leeway-specification-process', 'epic', FUMI);
+    const intoSpec = door('ledger-specification-process', 'epic', FUMI);
     const every = WAIT_KINDS.map((kind) => wait(kind, kind, kind, ['decided', 'affected'].includes(kind) ? intoSpec : VERDICTS));
 
     assert.deepStrictEqual(takenIn('epic', every), {
@@ -283,7 +283,7 @@ describe('what waits, drawn first (18.4.2)', () => {
   });
 
   it('12.15.4, 20.2.4: in a unit not an epic, a decided topic a changed answer holds counts in the phase its door hands into — the phase the unit is in — and in no other', () => {
-    const affectedInto = (/** @type {string} */ phase) => wait('affected', phase, 'Solo: a decision it relies on changed', door(`leeway-${phase}-process`, 'feature', SOLO), SOLO);
+    const affectedInto = (/** @type {string} */ phase) => wait('affected', phase, 'Solo: a decision it relies on changed', door(`ledger-${phase}-process`, 'feature', SOLO), SOLO);
 
     assert.deepStrictEqual(takenIn('feature', ['specification', 'implementation', 'review'].map(affectedInto)), {
       discovery: [],
@@ -305,7 +305,7 @@ describe('what waits, drawn first (18.4.2)', () => {
     assert.deepStrictEqual([sectionOf(out, 'TITLE'), rows.filter((row) => /^(1|s\/spec) /.test(row)), answer('epic menu', '1')], [
       '# **`■ Specification — Fumi`**\n',
       ['1           → "Note Window": a decision it relies on changed —', 's/spec      → Start the specification — every topic is decided'],
-      door('leeway-specification-process', 'epic', FUMI),
+      door('ledger-specification-process', 'epic', FUMI),
     ]);
   });
 
@@ -313,7 +313,7 @@ describe('what waits, drawn first (18.4.2)', () => {
     spawned();
 
     assert.deepStrictEqual(composed([]).slice(0, 2), [
-      ['1', 'Continue "Note Window" in the laboratory — *1 experiment waiting* (recommended)', { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', FUMI, 'note-window'] }],
+      ['1', 'Continue "Note Window" in the laboratory — *1 experiment waiting* (recommended)', { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', FUMI, 'note-window'] }],
       ['2', 'Continue "Space Homing" — *in progress*', topicDoor(FUMI, 'space-homing')],
     ]);
   });
@@ -332,7 +332,7 @@ describe('what waits, drawn first (18.4.2)', () => {
 
   it('18.4.21: the spec\'s row never takes the recommendation from a wait still standing, and recommended it is drawn first', () => {
     settled();
-    const ready = wait('ready', 'ready-to-build', 'Ready to build', door('leeway-specification-process', 'epic', FUMI));
+    const ready = wait('ready', 'ready-to-build', 'Ready to build', door('ledger-specification-process', 'epic', FUMI));
 
     assert.deepStrictEqual([composed([ready]).map(([key, label]) => [key, label]), composed([verdict('0a1b')]).map(([key]) => key)], [[
       ['1', 'Ready to build — *the spec waits on your yes* (recommended)'],
@@ -343,7 +343,7 @@ describe('what waits, drawn first (18.4.2)', () => {
 
   it('18.4.21: in the build its row never takes the recommendation from a question waiting, and leads the verdicts once nothing else waits', () => {
     building();
-    const question = wait('question', 'Q1', 'Is the receipt mailed or printed?', door('leeway-implementation-process', 'epic', FUMI));
+    const question = wait('question', 'Q1', 'Is the receipt mailed or printed?', door('ledger-implementation-process', 'epic', FUMI));
 
     assert.deepStrictEqual([composed([question]).map(([key, label]) => [key, label]), composed([verdict('0a1b')]).map(([key, label]) => [key, label])], [[
       ['1', 'Is the receipt mailed or printed? — *a question waiting for you* (recommended)'],
@@ -355,8 +355,8 @@ describe('what waits, drawn first (18.4.2)', () => {
   });
 
   it('a question waiting and ready to build each read as their own row; several verdicts are counted on the one row', () => {
-    const question = wait('question', 'Q1', 'Is the receipt mailed or printed?', door('leeway-implementation-process', 'epic', FUMI));
-    const ready = wait('ready', 'ready-to-build', 'Ready to build', door('leeway-specification-process', 'epic', FUMI));
+    const question = wait('question', 'Q1', 'Is the receipt mailed or printed?', door('ledger-implementation-process', 'epic', FUMI));
+    const ready = wait('ready', 'ready-to-build', 'Ready to build', door('ledger-specification-process', 'epic', FUMI));
     assert.deepStrictEqual(composed([question, ready, verdict('0a1b'), verdict('0c2d')]).filter(([key]) => ['1', '2', 'e'].includes(key)), [
       ['1', 'Is the receipt mailed or printed? — *a question waiting for you* (recommended)', question.next],
       ['2', 'Ready to build — *the spec waits on your yes*', ready.next],
@@ -368,10 +368,10 @@ describe('what waits, drawn first (18.4.2)', () => {
     building();
     const manifest = readManifest(dir(), FUMI);
     createManifest(dir(), FUMI, { ...manifest, checklists: { ...manifest.checklists, 'phase-1-close': { items: {}, closed: '2026-11-01T00:00:00.000Z' } } });
-    const finish = wait('finish', 'finish', 'Finish', door('leeway-review-process', 'epic', FUMI));
+    const finish = wait('finish', 'finish', 'Finish', door('ledger-review-process', 'epic', FUMI));
 
     assert.deepStrictEqual([composed([]), composed([finish])], [
-      [['1', 'Continue the review (recommended)', door('leeway-review-process', 'epic', FUMI)]],
+      [['1', 'Continue the review (recommended)', door('ledger-review-process', 'epic', FUMI)]],
       [['1', 'Finish — *the review passed, and finish waits on your yes* (recommended)', finish.next]],
     ]);
   });

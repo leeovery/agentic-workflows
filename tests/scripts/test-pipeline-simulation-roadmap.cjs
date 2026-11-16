@@ -48,10 +48,10 @@ describe('pipeline simulation: roadmap', () => {
 
   it('inbox onto the roadmap: triage\'s r puts what is picked on the horizon the person names, with no confirm (18.S29, 18.S79); the notes travel with their items, a bug pulled alone pre-seeds a bugfix, an idea and a bug start with no hint and become a feature, an archived item keeps its note and its name and comes back with both', () => {
     const inbox = {
-      idea: sim.write('.leeway/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
-      timeout: sim.write('.leeway/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
-      chart: sim.write('.leeway/.inbox/bugs/2026-02-03--blank-chart.md', '# Blank Chart\n'),
-      typo: sim.write('.leeway/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n'),
+      idea: sim.write('.ledger/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
+      timeout: sim.write('.ledger/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
+      chart: sim.write('.ledger/.inbox/bugs/2026-02-03--blank-chart.md', '# Blank Chart\n'),
+      typo: sim.write('.ledger/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n'),
     };
     sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
 
@@ -70,7 +70,7 @@ describe('pipeline simulation: roadmap', () => {
       { name: 'blank-chart', horizon: 'next', summary: 'the chart renders blank on an empty range', note: inbox.chart },
       { name: 'footer-typo', horizon: 'next', summary: 'the footer misspells the product', note: inbox.typo },
     ];
-    const batch = sim.write('.leeway/.cache/triage-roadmap.json', entries);
+    const batch = sim.write('.ledger/.cache/triage-roadmap.json', entries);
     const added = sim.run(['roadmap', 'add-batch', '--file', batch]);
     assert.deepStrictEqual(added.added.map((a) => a.kind), ['idea', 'bug', 'bug', 'quick-fix']);
     for (const note of notes) {
@@ -90,18 +90,18 @@ describe('pipeline simulation: roadmap', () => {
 
     // A bug worked alone goes to discovery with no type, which finds it a
     // bugfix (18.8.3) — its note stays on the roadmap, read as a source.
-    assert.strictEqual(pullFromRoadmap(sim, ['export-timeout']).text, 'Invoke `/leeway-discovery start none "roadmap:export-timeout"`.');
+    assert.strictEqual(pullFromRoadmap(sim, ['export-timeout']).text, 'Invoke `/ledger-discovery start none "roadmap:export-timeout"`.');
     const bugfix = startThisWork(sim, {
       type: 'bugfix', name: 'export-timeout', description: 'Large exports time out', reason: 'Exports worked and now fail.',
       shaped_by: [shapedInTheProduct(sim, 'export-timeout')], roadmap: ['export-timeout'], brief: briefDraft(sim, 'product', 'export-timeout'),
     });
-    assert.deepStrictEqual(bugfix.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', 'export-timeout'] });
+    assert.deepStrictEqual(bugfix.next, { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', 'export-timeout'] });
     assert.strictEqual(sim.manifest('export-timeout').work_type, 'bugfix');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.product/notes/2026-02-02--export-timeout.md')));
+    assert.ok(fs.existsSync(path.join(sim.dir, '.ledger/.product/notes/2026-02-02--export-timeout.md')));
 
     // An idea and a bug become a feature, the bug riding along.
     assert.strictEqual(pullFromRoadmap(sim, ['saved-views', 'blank-chart']).text,
-      'Invoke `/leeway-discovery start none "roadmap:saved-views,roadmap:blank-chart"`.');
+      'Invoke `/ledger-discovery start none "roadmap:saved-views,roadmap:blank-chart"`.');
     startThisWork(sim, {
       type: 'feature', name: 'saved-views', description: 'Saved views, and the blank chart they expose', reason: 'One capability; the bug rides along.',
       shaped_by: [shapedInTheProduct(sim, 'saved-views')], roadmap: ['saved-views', 'blank-chart'], brief: briefDraft(sim, 'product', 'saved-views'),
@@ -114,7 +114,7 @@ describe('pipeline simulation: roadmap', () => {
     // Archiving a waiting item takes it off its horizon and the roadmap's
     // home, its note kept and its name taken; asked for back, it returns
     // with both (18.S67, 18.S82).
-    const note = '.leeway/.product/notes/2026-02-04--footer-typo.md';
+    const note = '.ledger/.product/notes/2026-02-04--footer-typo.md';
     assert.strictEqual(sim.run(['roadmap', 'archive', 'footer-typo']).state, 'archived');
     assert.ok(fs.existsSync(path.join(sim.dir, note)), 'the note stays in the product\'s notes');
     assert.doesNotMatch(sim.render(['roadmap'], { expect: 'content' }), /Footer Typo/);
@@ -122,7 +122,7 @@ describe('pipeline simulation: roadmap', () => {
     sim.refuses(['roadmap', 'add', 'footer-typo', '--horizon', 'next', '--summary', 'again'], /"footer-typo" is archived on the roadmap, and its name stays taken/);
     assert.deepStrictEqual(sim.run(['roadmap', 'move', 'footer-typo', '--horizon', 'next']).from_archive.horizon, 'next');
     assert.match(sim.render(['roadmap'], { expect: 'content' }), /Footer Typo +quick-fix · inbox$/m);
-    assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'footer-typo').sources, [note.slice('.leeway/'.length)]);
+    assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'footer-typo').sources, [note.slice('.ledger/'.length)]);
   });
 
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
@@ -141,7 +141,7 @@ describe('pipeline simulation: roadmap', () => {
       '--source', '.product/sessions/session-001.md']);
 
     // The harvest's batch form: one transaction, horizons JIT in entry order.
-    const items = sim.write('.leeway/.cache/roadmap-items.json', [
+    const items = sim.write('.ledger/.cache/roadmap-items.json', [
       { name: 'ordering', horizon: 'mvp', summary: 'customers order from a menu' },
       { name: 'menu-management', horizon: 'mvp', summary: 'operators maintain the menu' },
       { name: 'white-label', horizon: 'someday', summary: 'resell the platform' },
@@ -170,7 +170,7 @@ describe('pipeline simulation: roadmap', () => {
     // commit covering the session's dirt.
     const closed = sim.run(['discovery-session', 'close', 'product', '-m', 'discovery(product): end the session']);
     assert.strictEqual(closed.session, '001');
-    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway', 'manifest.json'), 'utf8')).product_session, undefined);
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(sim.dir, '.ledger', 'manifest.json'), 'utf8')).product_session, undefined);
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).session_logs.map((/** @type {{number: number}} */ log) => log.number), [1]);
 
     // The pull is the commitment point: start this work joins the item, and
@@ -206,7 +206,7 @@ describe('pipeline simulation: roadmap', () => {
     // epic's discovery (18.S34, 18.8.4): the roadmap hands the item into it,
     // the entry names it to take in, and the map takes it in there.
     roadmapMenu(sim);
-    handoff(sim, '/leeway-discovery none mvp "roadmap:menu-management"');
+    handoff(sim, '/ledger-discovery none mvp "roadmap:menu-management"');
     sim.run(['enter', 'discovery', 'mvp', '--seeds', 'roadmap:menu-management']);
     const taken = /** @type {string} */ (sim.sections.match(/^take in: (.+)$/m)?.[1]);
     sim.run(['topic', 'add', 'mvp', taken, '--summary', 'operators maintain the menu', '--brief', briefDraft(sim, 'mvp', taken), '--from-roadmap', taken]);
@@ -273,7 +273,7 @@ describe('pipeline simulation: roadmap', () => {
 
     // The reserved identities hold: no work unit may take the layer's name,
     // or the product's.
-    const draft = sim.write('.leeway/.cache/roadmap-probe/discovery/session-001.md', '# Discovery Session 001\n');
+    const draft = sim.write('.ledger/.cache/roadmap-probe/discovery/session-001.md', '# Discovery Session 001\n');
     sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--session-log-file', draft], /is reserved/);
     sim.refuses(['workunit', 'create', 'product', 'epic', '--description', 'x', '--session-log-file', draft], /is reserved/);
   });
@@ -287,8 +287,8 @@ describe('pipeline simulation: roadmap', () => {
     sim.refuses(['render', 'horizon-pick', '--park', 'gift-cards'], /the roadmap holds no horizons/);
     const add = ['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards', '--origin', 'park:product'];
     sim.refuses([...add, '--source', '.product/sessions/session-002.md'],
-      new RegExp(`source "\\.product\\/sessions\\/session-002\\.md" does not exist under ${literal(path.join(sim.dir, '.leeway'))}\\/ — a source must exist before an item records it`));
-    sim.refuses([...add, '--source', `.leeway/${source}`], /drop the leading "\.leeway\/"/);
+      new RegExp(`source "\\.product\\/sessions\\/session-002\\.md" does not exist under ${literal(path.join(sim.dir, '.ledger'))}\\/ — a source must exist before an item records it`));
+    sim.refuses([...add, '--source', `.ledger/${source}`], /drop the leading "\.ledger\/"/);
     sim.run([...add, '--source', source]);
     const item = sim.run(['roadmap', 'state']).items.find((i) => i.name === 'gift-cards');
     assert.deepStrictEqual([item.origin, item.sources], ['park:product', [source]]);
@@ -301,13 +301,13 @@ describe('pipeline simulation: roadmap', () => {
     discussed(sim, wu, wu);
     specEntry(sim, wu, [wu]);
     // The park's source is the record the session is writing, relative to
-    // `.leeway/` — backlogging's table — and on disk, as the writer left it.
+    // `.ledger/` — backlogging's table — and on disk, as the writer left it.
     const spec = `${wu}/spec.md`;
-    sim.write(`.leeway/${spec}`, '# Orders\n');
+    sim.write(`.ledger/${spec}`, '# Orders\n');
 
     // The words left the home open, so the door stops at the gate rather
     // than deciding for the person.
-    const payload = sim.write(`.leeway/.cache/${wu}/specification/${wu}/backlog.json`,
+    const payload = sim.write(`.ledger/.cache/${wu}/specification/${wu}/backlog.json`,
       { title: "a CSV export of the day's orders" });
     sim.render(['backlog-gate', `${wu}.specification.${wu}`, '--file', payload], { expect: 'content' });
     answerGate(sim, 'backlog gate', '--pick', 'r');
@@ -355,7 +355,7 @@ describe('pipeline simulation: roadmap', () => {
       brief: briefDraft(sim, 'product', 'loyalty-feat'),
     });
     enterEntry(sim, 'loyalty-feat', 'discussion', 'loyalty-feat');
-    sim.write('.leeway/loyalty-feat/topics/loyalty-feat/log.md', '# Loyalty discussion\n');
+    sim.write('.ledger/loyalty-feat/topics/loyalty-feat/log.md', '# Loyalty discussion\n');
     // The feature discussion parks a tangent for later, its source the
     // topic's log.
     sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'v2', '--summary', 'shoppers gift store credit',
@@ -409,7 +409,7 @@ describe('pipeline simulation: roadmap', () => {
     const unbound = sim.run(['roadmap', 'state']).items.filter((i) => i.work_unit === 'launch' && i.topic === undefined);
     assert.deepStrictEqual(unbound.map((i) => [i.name, i.kind]), [['guest-checkout', 'idea'], ['cart-drops-items', 'bug']]);
     const topics = [{ name: 'guest-checkout', summary: 'Guests buy without an account', brief: briefDraft(sim, 'launch', 'guest-checkout') }];
-    sim.refuses(['render', 'approve-map', 'launch', '--file', sim.write('.leeway/.cache/scratch/approve-bug.json',
+    sim.refuses(['render', 'approve-map', 'launch', '--file', sim.write('.ledger/.cache/scratch/approve-bug.json',
       { topics, binds: [{ item: 'cart-drops-items', topic: 'guest-checkout' }] })], /"cart-drops-items" is a bug — it rides with/);
     approveTheMap(sim, 'launch', { topics, binds: [{ item: 'guest-checkout', topic: 'guest-checkout' }] });
 
@@ -429,15 +429,15 @@ describe('pipeline simulation: roadmap', () => {
   });
 
   it('8.S39, 19.S19: Start, triage\'s w over one item or a set, and the roadmap\'s w each go through discovery\'s opener with no type, what is picked its seeds and no unit before start this work; a quick-fix from the roadmap carries on into its skill in the same conversation (24.1.3)', () => {
-    const typo = sim.write('.leeway/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n');
-    const set = [['flag', '06'], ['help', '05']].map(([what, day]) => sim.write(`.leeway/.inbox/quickfixes/2026-02-${day}--${what}-says-color.md`, `# The ${what} says --color\n`));
+    const typo = sim.write('.ledger/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n');
+    const set = [['flag', '06'], ['help', '05']].map(([what, day]) => sim.write(`.ledger/.inbox/quickfixes/2026-02-${day}--${what}-says-color.md`, `# The ${what} says --color\n`));
     sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
     sim.run(['roadmap', 'add', 'stale-copyright', '--horizon', 'polish', '--summary', 'the copyright year is stale', '--kind', 'quick-fix']);
     sim.run(['roadmap', 'add', 'dark-mode', '--horizon', 'polish', '--summary', 'a dark theme']);
 
     /** Discovery's opener, at the product, as the handoff left it, entered with its seeds. @param {{text: string}} handedOff @param {string} [seeds] */
     const opened = (handedOff, seeds) => {
-      assert.strictEqual(handedOff.text, `Invoke \`/leeway-discovery start none${seeds === undefined ? '' : ` "${seeds}"`}\`.`);
+      assert.strictEqual(handedOff.text, `Invoke \`/ledger-discovery start none${seeds === undefined ? '' : ` "${seeds}"`}\`.`);
       assert.strictEqual(sim.run(['enter', 'discovery', 'product', ...(seeds === undefined ? [] : ['--seeds', seeds])]).entered, true);
       startMenu(sim);
     };
@@ -451,7 +451,7 @@ describe('pipeline simulation: roadmap', () => {
       type: 'quick-fix', name: 'footer-fixes', description: 'The copyright year is stale', reason: 'One known, mechanical change.',
       shaped_by: [shapedInTheProduct(sim, 'footer-fixes')], roadmap: ['stale-copyright'],
     });
-    assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', 'footer-fixes'] });
+    assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'ledger-quick-fix-process', args: ['quick-fix', 'footer-fixes'] });
     assert.strictEqual(sim.run(['enter', 'implementation', 'footer-fixes']).entered, true);
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'dark-mode').state, 'waiting', 'the idea stays waiting');
   });

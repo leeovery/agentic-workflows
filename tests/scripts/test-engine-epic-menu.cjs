@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The epic's menu (leeway-engine/scripts/domain/projections/epic-menu.cjs,
+// The epic's menu (ledger-engine/scripts/domain/projections/epic-menu.cjs,
 // 18.4.17): `render epic-menu <epic>` — its heading the phase the epic is
 // in, the tally beneath it, DECIDED and SET ASIDE listed with no key, the
 // topics by what they need, the way on past them, discovery's row while the
@@ -62,8 +62,8 @@ const DISCUSSING = Object.freeze({
 
 const world = fixtureFrom('epic-menu-', (dir) => {
   createManifest(dir, EPIC, DISCUSSING);
-  const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8'));
-  fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
+  const project = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'manifest.json'), 'utf8'));
+  fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({
     ...project,
     roadmap: { horizons: ['next', 'later'], items: { website: { horizon: 'next', summary: 'The website', origin: `postpone:${EPIC}`, postponed_from: { work_unit: EPIC, topic: 'website' } } } },
   }, null, 2));
@@ -78,7 +78,7 @@ beforeEach(() => { dir = world(); });
 afterEach(() => cleanupFixture(dir));
 
 /** The calling conversation's environment. */
-const conversation = () => ({ CLAUDE_CODE_SESSION_ID: SESSION, CLAUDE_PID: String(process.pid), LEEWAY_CONFIG_DIR: config(), TMUX: undefined, TMUX_PANE: undefined });
+const conversation = () => ({ CLAUDE_CODE_SESSION_ID: SESSION, CLAUDE_PID: String(process.pid), LEDGER_CONFIG_DIR: config(), TMUX: undefined, TMUX_PANE: undefined });
 
 /** The epic's menu as this conversation draws it. @param {string} [unit] */
 const menuOf = (unit = EPIC) => output(dir, ['render', 'epic-menu', unit], { env: conversation() });
@@ -101,7 +101,7 @@ const picked = (key) => ok(dir, ['gate', 'epic menu', '--pick', key], { env: con
 function beat(phase, topic, session, pid) {
   const own = fs.mkdtempSync(path.join(os.tmpdir(), 'epic-menu-peer-'));
   try {
-    ok(dir, ['presence', 'beat', EPIC, phase, topic], { env: { LEEWAY_CONFIG_DIR: own, CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: pid, TMUX: undefined } });
+    ok(dir, ['presence', 'beat', EPIC, phase, topic], { env: { LEDGER_CONFIG_DIR: own, CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: pid, TMUX: undefined } });
   } finally {
     fs.rmSync(own, { recursive: true, force: true });
   }
@@ -112,7 +112,7 @@ const rowsOf = (out) => screenOf(out, 'MENU: epic menu').slice(3);
 
 describe('the screen (18.4.17)', () => {
   it('the epic menu the gate mod\'s band tests draw (18.S42, 18.S65) is the engine\'s answer under the gate surface', async () => {
-    const out = output(dir, ['render', 'epic-menu', EPIC], { env: { ...conversation(), LEEWAY_GATE_SURFACE: '1' } });
+    const out = output(dir, ['render', 'epic-menu', EPIC], { env: { ...conversation(), LEDGER_GATE_SURFACE: '1' } });
 
     assert.strictEqual(out, await fixture('menu-epic.mjs'));
   });
@@ -311,7 +311,7 @@ describe('where each row leads (18.4.17)', () => {
     assert.deepStrictEqual(nexts, [
       { kind: 'engine', argv: ['handoff', 'topic', EPIC, 'management-window'] },
       { kind: 'engine', argv: ['handoff', 'topic', EPIC, 'build-and-release'] },
-      { kind: 'handoff', skill: 'leeway-discovery', args: ['none', EPIC] },
+      { kind: 'handoff', skill: 'ledger-discovery', args: ['none', EPIC] },
       { kind: 'engine', argv: ['render', 'help', 'epic-menu', EPIC] },
       START_MENU,
     ]);
@@ -329,9 +329,9 @@ describe('where each row leads (18.4.17)', () => {
     menuOf();
 
     assert.deepStrictEqual([spec, build, picked('1')], [
-      { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', EPIC] },
-      { kind: 'handoff', skill: 'leeway-implementation-process', args: ['epic', EPIC] },
-      { kind: 'handoff', skill: 'leeway-review-process', args: ['epic', EPIC] },
+      { kind: 'handoff', skill: 'ledger-specification-process', args: ['epic', EPIC] },
+      { kind: 'handoff', skill: 'ledger-implementation-process', args: ['epic', EPIC] },
+      { kind: 'handoff', skill: 'ledger-review-process', args: ['epic', EPIC] },
     ]);
   });
 

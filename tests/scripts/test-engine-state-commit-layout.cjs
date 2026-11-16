@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state commit held to the layout (leeway-engine/scripts/domain/
+// The state commit held to the layout (ledger-engine/scripts/domain/
 // state-worktree.cjs, `commitHere`): a commit reads the state worktree's
 // changes in one `status`. A file on disk the layout has no place for
 // refuses it, naming the file and the way on, with nothing committed — a
@@ -33,9 +33,9 @@ const {
   ok, refusedPristine, git, createFile, layout, touched, traced, codeProject, twoMachines, commitOnState, tip, remoteTip,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { STATE_BRANCH, withStateLock, commitState } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
-const { catchUpState } = require('../../skills/leeway-engine/scripts/domain/state-merge.cjs');
-const { ignoresCase } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { STATE_BRANCH, withStateLock, commitState } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const { catchUpState } = require('../../skills/ledger-engine/scripts/domain/state-merge.cjs');
+const { ignoresCase } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
 
 const folder = useTempFolder('state-commit-layout-');
 
@@ -202,7 +202,7 @@ describe('an agent\'s staging of a file place, waiting on its rename', () => {
 });
 
 describe('the logs a state commit takes along (6.3.2)', () => {
-  it('6.S7: a topic\'s log edited since the last commit rides in the verb\'s one commit, and the remote\'s leeway-state moves to it', () => {
+  it('6.S7: a topic\'s log edited since the last commit rides in the verb\'s one commit, and the remote\'s ledger-state moves to it', () => {
     const { main, root, bare } = codeProject(folder(), { remote: true, state: true });
     commitOnState(root, { [IDEA]: '# Dark mode\n', [LOG]: '# login\n' });
     createFile(root, LOG, '# login\n\n## 2026-10-30\n\nDecided the session length.\n');

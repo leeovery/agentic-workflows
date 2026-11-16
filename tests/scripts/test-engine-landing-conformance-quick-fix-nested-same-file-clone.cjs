@@ -20,7 +20,7 @@ const { describe, it } = require('node:test');
 
 const { quickFixNestedConformance } = require('./quick-fix-world.cjs');
 const { SAME_FILE, nextInSameFile } = require('./quick-fix-nested-same-file.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
   const conf = quickFixNestedConformance(name, `engine-landing-quick-fix-nested-same-file-clone-${name}-`);

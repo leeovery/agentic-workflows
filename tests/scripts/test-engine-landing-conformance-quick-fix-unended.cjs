@@ -28,7 +28,7 @@ const assert = require('node:assert');
 
 const { ok, refuses, git, output, sectionOf, readManifest } = require('./engine-harness.cjs');
 const { UNIT, BRANCH, SET, createFix, fixDone, guardedGit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const BACK = 'Put the flag back';
 

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The migration's commit while the reshape finishes
-// (leeway-engine/scripts/domain/migration-commit.cjs, with boot's `finish`
+// (ledger-engine/scripts/domain/migration-commit.cjs, with boot's `finish`
 // stop in domain/boot.cjs, `migrate review` in domain/directives.cjs and
 // the state branch's first commit in domain/state-worktree.cjs): boot
 // answering `finish` with nothing committed and no conversation stamped,
@@ -124,14 +124,14 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
     assert.match(engine.output(dir, ['render', 'migration-gate'], unstamped), /^=== MENU: migration gate/m);
     assert.deepStrictEqual(engine.ok(dir, ['environment', 'show'], unstamped).linters, []);
     engine.ok(dir, record, { ...unstamped, stdin: JSON.stringify(linters) });
-    assert.match(engine.refuses(dir, ['manifest', 'push', 'project.environment.linters', '{"name": "tsc", "command": "npx tsc"}'], unstamped).error, /has not booted Leeway/);
-    assert.match(engine.refuses(dir, ['manifest', 'get', UNIT, 'status'], unstamped).error, /has not booted Leeway/);
+    assert.match(engine.refuses(dir, ['manifest', 'push', 'project.environment.linters', '{"name": "tsc", "command": "npx tsc"}'], unstamped).error, /has not booted Ledger/);
+    assert.match(engine.refuses(dir, ['manifest', 'get', UNIT, 'status'], unstamped).error, /has not booted Ledger/);
 
     engine.ok(dir, COMMIT, unstamped);
 
     assert.deepStrictEqual([stateCommits().length, onDisk('.workflows')], [1, false]);
     assert.deepStrictEqual(JSON.parse(stateGit(dir, ['show', `${STATE_BRANCH}:${layout.projectManifest}`])).environment.linters, linters);
-    for (const argv of [['environment', 'show'], record]) assert.match(engine.refuses(dir, argv, { ...unstamped, stdin: '[]' }).error, /has not booted Leeway/);
+    for (const argv of [['environment', 'show'], record]) assert.match(engine.refuses(dir, argv, { ...unstamped, stdin: '[]' }).error, /has not booted Ledger/);
   });
 
   it('21.S24: boot renders the ledger\'s copies before it answers — the product record holds the entries the records marked product-wide, its file in .knowledge/', () => {
@@ -199,7 +199,7 @@ describe('the review\'s read (21.9.4)', () => {
 });
 
 describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
-  it('21.S18: the yes makes the state branch\'s first commit, the layout whole with the decision the ledger held, then the code branch\'s, dropping .workflows/ and the tracker\'s store and ignoring .leeway/ — and once both land, the drops go from disk with what git ignores in them, and the journals with them', () => {
+  it('21.S18: the yes makes the state branch\'s first commit, the layout whole with the decision the ledger held, then the code branch\'s, dropping .workflows/ and the tracker\'s store and ignoring .ledger/ — and once both land, the drops go from disk with what git ignores in them, and the journals with them', () => {
     const code = codeHead(dir);
 
     const committed = ok(COMMIT);
@@ -243,14 +243,14 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     const committed = ok(COMMIT);
 
     assert.deepStrictEqual([committed.warnings.length, typeof committed.code_committed], [1, 'string']);
-    assert.match(committed.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: /);
+    assert.match(committed.warnings[0], /^ledger-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: /);
     assert.strictEqual(stateCommits().length, 1);
   });
 
   it('killed before either commit: nothing committed — boot answers finish again, and the yes makes both', () => {
     const code = codeHead(dir);
 
-    killedAt({ method: 'rmSync', file: 'leeway-commit.index', when: 'after' }, dir, COMMIT, { env: SESSION });
+    killedAt({ method: 'rmSync', file: 'ledger-commit.index', when: 'after' }, dir, COMMIT, { env: SESSION });
 
     assert.deepStrictEqual([stateUnborn(dir), codeHead(dir), onDisk('.workflows')], [true, code, true]);
     assert.deepStrictEqual(ok(['boot']), FINISH);
@@ -261,7 +261,7 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
   it('killed between the two: the state branch born, the code branch untouched — boot answers finish again, running nothing, its gate saying only the code commit remains, and the yes makes the code commit alone', () => {
     const code = codeHead(dir);
 
-    killedAt({ method: 'openSync', file: 'leeway-commit.lock', when: 'before' }, dir, COMMIT, { env: SESSION });
+    killedAt({ method: 'openSync', file: 'ledger-commit.lock', when: 'before' }, dir, COMMIT, { env: SESSION });
     const first = stateGit(dir, ['rev-parse', STATE_BRANCH]).trim();
 
     assert.deepStrictEqual([stateCommits().length, codeHead(dir), onDisk('.workflows')], [1, code, true]);
@@ -299,7 +299,7 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
 
   it('killed as the code commit lands, the person\'s index still holding the drops: boot takes them out of it as it takes them off disk, answering ready, and git reads nothing of them', () => {
     const drops = ['.workflows', OLD_STORE];
-    killedAt({ method: 'rmSync', file: path.join('.git', 'leeway-commit.index'), when: 'before' }, dir, COMMIT, { env: SESSION });
+    killedAt({ method: 'rmSync', file: path.join('.git', 'ledger-commit.index'), when: 'before' }, dir, COMMIT, { env: SESSION });
 
     assert.deepStrictEqual([git(dir, ['ls-tree', '--name-only', 'HEAD', '--', ...drops]), git(dir, ['diff', '--cached', '--name-only', '--', ...drops]) !== ''], ['', true]);
 
@@ -312,7 +312,7 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     ok(COMMIT);
     const tip = stateGit(dir, ['rev-parse', STATE_BRANCH]).trim();
 
-    assert.throws(() => commitFirst(statePath(dir), MESSAGE), /is not on a leeway-state with no commit yet, so it takes no first commit — nothing committed$/);
+    assert.throws(() => commitFirst(statePath(dir), MESSAGE), /is not on a ledger-state with no commit yet, so it takes no first commit — nothing committed$/);
     assert.strictEqual(stateGit(dir, ['rev-parse', STATE_BRANCH]).trim(), tip);
   });
 });
@@ -382,13 +382,13 @@ describe('the project folder moved while the migration waits on its commit', () 
     assert.deepStrictEqual([stateCommits().length, codeCommit(dir).parent, onDisk('.workflows'), git(dir, ['status', '--porcelain'])], [1, code, false, '']);
   });
 
-  it('where boot\'s relink fails, the review still reads the first commit owed, and the yes refuses, committing nothing and taking nothing from disk, naming /leeway as the way on; the next boot relinks it, sweeping the temp file the killed write left, and the yes makes both commits', () => {
+  it('where boot\'s relink fails, the review still reads the first commit owed, and the yes refuses, committing nothing and taking nothing from disk, naming /ledger as the way on; the next boot relinks it, sweeping the temp file the killed write left, and the yes makes both commits', () => {
     rename();
-    killedAt({ method: 'renameSync', file: path.join('.leeway', '.git'), when: 'before' }, dir, ['boot'], { env: SESSION });
+    killedAt({ method: 'renameSync', file: path.join('.ledger', '.git'), when: 'before' }, dir, ['boot'], { env: SESSION });
     const code = codeHead(dir);
 
     assert.deepStrictEqual(ok(['migrate', 'review']).reshape.commits, ['state', 'code']);
-    assert.match(refusedUntouched(dir, COMMIT), /^git cannot open the state worktree at .+ — nothing committed\. Start \/leeway again: its boot relinks the state worktree where the project folder moved, and the migration gate is drawn again$/);
+    assert.match(refusedUntouched(dir, COMMIT), /^git cannot open the state worktree at .+ — nothing committed\. Start \/ledger again: its boot relinks the state worktree where the project folder moved, and the migration gate is drawn again$/);
     assert.deepStrictEqual([codeHead(dir), onDisk('.workflows'), onDisk(OLD_STORE), fs.existsSync(statePath(dir, JOURNALS, 'finish.json'))], [code, true, true, true]);
 
     assert.strictEqual(ok(['boot']).state, 'finish');
@@ -399,7 +399,7 @@ describe('the project folder moved while the migration waits on its commit', () 
 
   it('a boot killed between the relink\'s two writes, the folder\'s link rewritten and the registration\'s not: the next boot relinks the rest, the yes makes both commits, and the boot after is ready', () => {
     rename();
-    killedAt({ method: 'renameSync', file: path.join('.leeway', '.git'), when: 'after' }, dir, ['boot'], { env: SESSION });
+    killedAt({ method: 'renameSync', file: path.join('.ledger', '.git'), when: 'after' }, dir, ['boot'], { env: SESSION });
 
     assert.strictEqual(ok(['boot']).state, 'finish');
     ok(COMMIT);
@@ -497,9 +497,9 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     const atChecks = { marker: 'Migration', surface: 'migration-checks-stop', next: { kind: 'load', reference: 'migration-checks', with: { folder: project } } };
     assert.deepStrictEqual(stopped.map(({ state, folder: at, verify, stop }) => ({ state, at, checks: verify.map((entry) => entry.id), stop })), [1, 2].map(() => ({ state: 'checks', at: project, checks: ['071'], stop: atChecks })));
     assert.match(real.output(project, ['render', atChecks.surface], unstamped), /^⚑ The migration stopped before its move, for checks earlier migrations handed back$/m);
-    assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Leeway/);
-    assert.match(real.refuses(project, ['environment', 'set', 'linters'], { ...unstamped, stdin: '[{"name": "eslint", "command": "npm run lint"}]' }).error, /has not booted Leeway/);
-    assert.ok(!fs.existsSync(path.join(project, '.leeway/payments')), 'nothing moved yet');
+    assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Ledger/);
+    assert.match(real.refuses(project, ['environment', 'set', 'linters'], { ...unstamped, stdin: '[{"name": "eslint", "command": "npm run lint"}]' }).error, /has not booted Ledger/);
+    assert.ok(!fs.existsSync(path.join(project, '.ledger/payments')), 'nothing moved yet');
     assert.deepStrictEqual([fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), git(project, ['status', '--porcelain', '--', '.claude']).trim()], [hooked(WORKFLOW_HOOKS), 'M .claude/settings.json']);
     assert.deepStrictEqual(sessionEndAsInstalled(project, 'ending'), [0, 0]);
 
@@ -539,7 +539,7 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
 
     assert.deepStrictEqual([booted.state, booted.migrations.changed, stateUnborn(project), codeHead(project)], ['finish', true, true, code]);
     assert.deepStrictEqual(real.ok(project, ['migrate', 'review'], unstamped).reshape.directives, [], 'the records directive found no unit, so no session carried it out');
-    const check = /`node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs (environment show)`.*`node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs (environment set linters)`, its JSON on stdin/.exec(booted.migrations.verify.map((entry) => entry.verify).join(' '));
+    const check = /`node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs (environment show)`.*`node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs (environment set linters)`, its JSON on stdin/.exec(booted.migrations.verify.map((entry) => entry.verify).join(' '));
     assert.ok(check !== null, 'the check names the calls that make it');
     const { linters } = real.ok(project, check[1].split(' '), unstamped);
     real.ok(project, check[2].split(' '), { ...unstamped, stdin: JSON.stringify([...linters, { name: 'tsc', command: 'npx tsc' }]) });
@@ -555,7 +555,7 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     assert.deepStrictEqual([fs.existsSync(path.join(project, '.workflows')), fs.existsSync(path.join(project, OLD_STORE)), real.ok(project, ['boot'], { env }).state], [false, false, 'ready']);
 
     assert.strictEqual(real.ok(worktree, ['boot'], { env }).state, 'ready');
-    assert.deepStrictEqual([git(worktree, ['log', '-1', '--format=%s']).trim(), git(worktree, ['show', 'HEAD:.claude/settings.json'])], ['chore: install Leeway session hooks', LABELS_ON]);
+    assert.deepStrictEqual([git(worktree, ['log', '-1', '--format=%s']).trim(), git(worktree, ['show', 'HEAD:.claude/settings.json'])], ['chore: install Ledger session hooks', LABELS_ON]);
     assert.deepStrictEqual(sessionEndAsInstalled(worktree, 'ending'), [0, 0, 0]);
   });
 });

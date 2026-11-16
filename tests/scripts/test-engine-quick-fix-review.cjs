@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A quick-fix's review, asked for at its close (19.5.7, 19.5.13, 19.5.14):
-// `engine review ask <qf>` (leeway-engine/scripts/domain/review-verbs.cjs),
+// `engine review ask <qf>` (ledger-engine/scripts/domain/review-verbs.cjs),
 // the close's `r/review` row — the request recorded and committed, the
 // review phase's skill invoked in place its `next`, asked again `already` —
 // refused for a unit that is no quick-fix and while the close does not
@@ -48,7 +48,7 @@ describe('review ask <quick-fix>: a review asked for at its close (19.5.13)', ()
     const asked = run(['review', 'ask', UNIT]);
     const [state, message] = [head(dir), lastMessage(dir)];
     const again = run(['review', 'ask', UNIT]);
-    const next = { kind: 'invoke', skill: 'leeway-review-process', args: ['quick-fix', UNIT] };
+    const next = { kind: 'invoke', skill: 'ledger-review-process', args: ['quick-fix', UNIT] };
 
     assert.deepStrictEqual(row, { kind: 'engine', argv: ['review', 'ask', UNIT] });
     assert.deepStrictEqual(asked, { ok: true, unit: UNIT, review_asked: readManifest(dir, UNIT).fixes.review_asked, next, committed: asked.committed });
@@ -79,7 +79,7 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
       'fix phase: phase 2, where round 1\'s fix tasks are written',
       'base: main — the default branch, which the change is read against, the --base of each reader\'s brief',
       `summary: ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`,
-      `record: \`node .claude/skills/leeway-engine/scripts/engine.cjs ledger record ${UNIT}\``,
+      `record: \`node .claude/skills/ledger-engine/scripts/engine.cjs ledger record ${UNIT}\``,
     ]);
   });
 

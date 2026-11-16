@@ -56,7 +56,7 @@ describe('engine session label', () => {
     assert.strictEqual(res.name, 'proj-abc · pay · discussion · alpha');
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
     const file = stashFile();
-    assert.ok(file, 'stash written under .leeway/.cache/.session-labels');
+    assert.ok(file, 'stash written under .ledger/.cache/.session-labels');
     assert.strictEqual(stateGit(['status', '--porcelain', '--', 'manifest.json']) + git(['status', '--porcelain', '--', '.claude']), '',
       'the label writes the cache alone — the opt-in and its hook were committed at the choice');
     const stash = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -85,7 +85,7 @@ describe('engine session label', () => {
 
   it('labels a renamed topic by the name it goes by, in its topic\'s phases alone (8.S77)', () => {
     optIn();
-    fs.writeFileSync(path.join(world.dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(world.dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { alpha: { source: 'discovery', summary: 'Alpha', order: 1, title: 'login' } } }, discussion: { items: { alpha: { status: 'completed' } } } },
     }));
@@ -115,7 +115,7 @@ describe('engine session label', () => {
   it('labels the roadmap and the product\'s conversation by identity — project-level places with no directory', () => {
     optIn();
     for (const place of ['roadmap', 'product']) {
-      assert.ok(!fs.existsSync(path.join(world.dir, '.leeway', place)), `${place} has no work-unit directory`);
+      assert.ok(!fs.existsSync(path.join(world.dir, '.ledger', place)), `${place} has no work-unit directory`);
       const res = engine(['session', 'label', place]);
       assert.strictEqual(res.name, `proj-abc · ${place}`);
       assert.strictEqual(tmuxName(), `proj-abc · ${place}`);
@@ -156,7 +156,7 @@ describe('engine session label', () => {
       assert.deepStrictEqual(repair, { ok: true, repaired: false });
       assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
       assert.strictEqual(fs.readFileSync(file, 'utf8'), dead, 'this checkout\'s record is intact');
-      assert.ok(!fs.existsSync(path.join(dirB, '.leeway', '.cache', '.session-labels')), 'the peer gains no records');
+      assert.ok(!fs.existsSync(path.join(dirB, '.ledger', '.cache', '.session-labels')), 'the peer gains no records');
       const home = engine(['session', 'cleanup', 'sess-other']);
       assert.strictEqual(home.restored, true, 'the record still does its job at home');
       assert.strictEqual(tmuxName(), 'proj-abc');
@@ -213,7 +213,7 @@ describe('engine session label', () => {
 
   it('reports stash-error and leaves the name alone when the stash cannot be written', () => {
     optIn();
-    fs.writeFileSync(path.join(world.dir, '.leeway', '.cache'), ''); // a file where the cache world.dir must go
+    fs.writeFileSync(path.join(world.dir, '.ledger', '.cache'), ''); // a file where the cache world.dir must go
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'stash-error' });
     assert.strictEqual(tmuxName(), 'proj-abc');
@@ -295,7 +295,7 @@ describe('engine session label — the position record', () => {
 
   it('a failed stash records the position all the same', () => {
     optIn();
-    fs.writeFileSync(path.join(world.dir, '.leeway', '.cache'), '');
+    fs.writeFileSync(path.join(world.dir, '.ledger', '.cache'), '');
     assert.deepStrictEqual(engine(['session', 'label', 'pay', 'discussion', 'alpha']), { ok: true, labelled: false, reason: 'stash-error' });
     assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
   });
@@ -330,7 +330,7 @@ describe('engine session label — the manifest stamp', () => {
   afterEach(teardown);
 
   function writeProjectManifest(defaults) {
-    fs.writeFileSync(path.join(world.dir, '.leeway', 'manifest.json'), JSON.stringify({ defaults }, null, 2) + '\n');
+    fs.writeFileSync(path.join(world.dir, '.ledger', 'manifest.json'), JSON.stringify({ defaults }, null, 2) + '\n');
   }
 
   it('a manifest stamped false — the prose-test world — is disabled, whatever was recorded before', () => {
@@ -355,7 +355,7 @@ describe('engine session label — the manifest stamp', () => {
 
   it('a manifest that does not parse, or whose root or defaults is no object, reads as never asked — never a throw', () => {
     for (const content of ['{not json', '[]', 'null', JSON.stringify({ defaults: [true] })]) {
-      fs.writeFileSync(path.join(world.dir, '.leeway', 'manifest.json'), content);
+      fs.writeFileSync(path.join(world.dir, '.ledger', 'manifest.json'), content);
       const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
       assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' }, content);
     }
@@ -365,7 +365,7 @@ describe('engine session label — the manifest stamp', () => {
     const ownConfig = path.join(world.dir, '.wf-config');
     fs.mkdirSync(ownConfig, { recursive: true });
     fs.writeFileSync(path.join(ownConfig, 'config.json'), JSON.stringify({ session: { tmux_labels: true } }) + '\n');
-    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { LEEWAY_CONFIG_DIR: ownConfig } });
+    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { LEDGER_CONFIG_DIR: ownConfig } });
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
   });
 });

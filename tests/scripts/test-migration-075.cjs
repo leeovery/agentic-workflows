@@ -12,7 +12,7 @@
 // progress, qualify for nothing. It writes the sources to the split's
 // staging in the state, whole, and nothing else (21.S8's detection), and
 // nothing at all where none qualifies (21.S7's); a project with no
-// `.workflows/`, one whose `leeway-state` has a commit, and a folder in no
+// `.workflows/`, one whose `ledger-state` has a commit, and a folder in no
 // repository have nothing to detect; a project nested in its repository is
 // read in its own folder and staged in the repository's state; a manifest
 // that does not read stops the run, naming it. Run again it writes the
@@ -34,9 +34,9 @@ const { git, initRepo, createFile, cleanupFixture } = require('./engine-harness.
 const { withFrozenClock } = require('./frozen-clock.cjs');
 const { SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, splitProject, projectTree } = require('./migration-world.cjs');
 
-const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/075-split-detect.cjs');
+const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/075-split-detect.cjs');
 
-const SOURCES = '.leeway/.cache/migrate/split/sources.json';
+const SOURCES = '.ledger/.cache/migrate/split/sources.json';
 // The frozen instant, as the detection names it.
 const AT = '2026-01-01T00-00-00';
 
@@ -85,9 +85,9 @@ describe('075 detects the legacy split\'s sources', () => {
     assert.deepStrictEqual(projectTree(main), before);
   });
 
-  it('has nothing to detect in a project with no .workflows/, one whose leeway-state has a commit, or a folder in no repository', () => {
+  it('has nothing to detect in a project with no .workflows/, one whose ledger-state has a commit, or a folder in no repository', () => {
     const born = main;
-    git(born, ['branch', 'leeway-state']);
+    git(born, ['branch', 'ledger-state']);
     const fresh = initRepo(path.join(world, 'fresh'));
     createFile(fresh, 'README.md', '# Fresh\n');
     const loose = path.join(world, 'loose');
@@ -106,7 +106,7 @@ describe('075 detects the legacy split\'s sources', () => {
     assert.deepStrictEqual(detect(path.join(top, 'app')), { updates: 1, skips: 0 });
 
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(top, SOURCES), 'utf8')).epics, { [SPLIT_EPIC]: SPLIT_SOURCES });
-    assert.ok(!fs.existsSync(path.join(top, 'app', '.leeway')), 'no state in the project\'s own folder');
+    assert.ok(!fs.existsSync(path.join(top, 'app', '.ledger')), 'no state in the project\'s own folder');
   });
 
   it('stops the run at a manifest that does not read, naming it, and writes nothing', () => {
@@ -130,7 +130,7 @@ describe('075 detects the legacy split\'s sources', () => {
       unrenamed: { renameSync: () => { throw new Error('killed before the rename'); } },
     };
     for (const [kill, patch] of Object.entries(kills)) {
-      fs.rmSync(path.join(main, '.leeway'), { recursive: true });
+      fs.rmSync(path.join(main, '.ledger'), { recursive: true });
       Object.assign(fs, patch);
       try {
         assert.throws(() => detect(main), /^Error: killed/, kill);

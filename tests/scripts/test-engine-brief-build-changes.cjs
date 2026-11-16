@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A change to a task under review (leeway-engine/scripts/domain/
+// A change to a task under review (ledger-engine/scripts/domain/
 // round-report.cjs, brief-records.cjs; 12.1.4, 13.11.3, 6.5.10): something
 // added to the task, or a call of it decided against its lean, marks the
 // round its pair was briefed for, never covered by it — a passed round read

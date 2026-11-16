@@ -14,7 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { GIT_FLOOR, gitShortfall, gitFloorStopSurface } = require('../../skills/leeway-engine/scripts/domain/git-floor.cjs');
+const { GIT_FLOOR, gitShortfall, gitFloorStopSurface } = require('../../skills/ledger-engine/scripts/domain/git-floor.cjs');
 const { withEnv } = require('./discovery-test-utils.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -32,7 +32,7 @@ describe('the git floor', () => {
         assert.deepStrictEqual(gitShortfall(), { found: floor });
         const [raised, old] = [GIT_FLOOR.join('\\.'), floor.replace(/\./g, '\\.')];
         const shown = gitFloorStopSurface();
-        assert.match(shown, new RegExp(`Leeway runs on git ${raised} or newer, and the git on this machine is ${old}\\.`));
+        assert.match(shown, new RegExp(`Ledger runs on git ${raised} or newer, and the git on this machine is ${old}\\.`));
         assert.match(shown, new RegExp(`Install git ${raised} or newer, then`));
       });
     } finally {

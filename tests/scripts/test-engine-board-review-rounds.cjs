@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A review round recorded on the board (leeway-engine/scripts/domain/
+// A review round recorded on the board (ledger-engine/scripts/domain/
 // projections/board-review.cjs, 20.10.1–20.10.4, 14.S15): the checks each
 // area ran, its findings, its checks not proven, what went to the inbox,
 // its verdict and its fix tasks as the build's next phase; a later round's

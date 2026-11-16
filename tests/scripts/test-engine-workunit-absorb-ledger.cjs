@@ -52,11 +52,11 @@ const linesWorld = fixtureFrom('engine-wu-absorb-lines-', (template) => {
   const epic = epicManifest();
   epic.phases.discussion = { items: { 'fee-model': { status: 'in-progress' } } };
   fillFixture(template, { feature, epic });
-  writeFile(template, `.leeway/${LOG}`, '# Discussion\n\n## Session 1\n');
-  writeFile(template, `.leeway/${DISCOVERY_LOG}`, '# Discovery\n\n## Session 1\n');
-  writeFile(template, '.leeway/auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md', '# Problem\n');
-  writeFile(template, `.leeway/${SHOT}`, 'feature shot\n');
-  writeFile(template, '.leeway/payments/assets/shot.png', 'epic shot\n');
+  writeFile(template, `.ledger/${LOG}`, '# Discussion\n\n## Session 1\n');
+  writeFile(template, `.ledger/${DISCOVERY_LOG}`, '# Discovery\n\n## Session 1\n');
+  writeFile(template, '.ledger/auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md', '# Problem\n');
+  writeFile(template, `.ledger/${SHOT}`, 'feature shot\n');
+  writeFile(template, '.ledger/payments/assets/shot.png', 'epic shot\n');
   commitAll(template, 'series');
   const { write } = ledgerHelpers(() => template);
   const { ask, decide } = copiesHelpers(() => template);
@@ -133,8 +133,8 @@ describe('engine workunit absorb — the ledger follows the topic (5.8.18)', () 
   it('a later ledger commit takes a carried link\'s file where the absorb moved it, never the path it left — a file there since stays untracked', () => {
     setupWithLines();
     engine(fix, ABSORB, SESSION);
-    writeFile(fix.project, '.leeway/payments/assets/shot-2.png', 'feature shot, edited\n');
-    writeFile(fix.project, `.leeway/${SHOT}`, 'a shot imported under the name made again\n');
+    writeFile(fix.project, '.ledger/payments/assets/shot-2.png', 'feature shot, edited\n');
+    writeFile(fix.project, `.ledger/${SHOT}`, 'a shot imported under the name made again\n');
 
     ask('payments.discussion.auth', 'What does the shot show?');
     assert.deepStrictEqual(headFiles(fix), [layout.ledger, 'payments/assets/shot-2.png']);
@@ -148,7 +148,7 @@ describe('engine workunit absorb — the ledger follows the topic (5.8.18)', () 
     engine(fix, ABSORB, SESSION);
 
     assert.deepStrictEqual([calls('since', 'payments', 'auth'), calls('since', 'payments', 'fee-model')], [[], []]);
-    const marks = path.join(fix.project, '.leeway/.cache/.marks');
+    const marks = path.join(fix.project, '.ledger/.cache/.marks');
     assert.deepStrictEqual([fs.readdirSync(marks), JSON.parse(fs.readFileSync(path.join(marks, 'payments.json'), 'utf8'))],
       [['payments.json'], { shown: [full(made.ownCall), full(made.decided)] }]);
   });

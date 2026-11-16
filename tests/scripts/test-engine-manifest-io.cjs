@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel manifest IO (leeway-engine/scripts/kernel/manifest-io.cjs) and the
+// Kernel manifest IO (ledger-engine/scripts/kernel/manifest-io.cjs) and the
 // engine's lock discipline over it: one read/parse, one atomic-write
 // serialisation, one lock protocol for every manifest writer.
 //
@@ -29,10 +29,10 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const io = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
-const PROCESS_PATH = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/process.cjs');
+const io = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
+const PROCESS_PATH = path.join(__dirname, '../../skills/ledger-engine/scripts/kernel/process.cjs');
 const { PS_TIMEOUT_MS, processStartTime } = require(PROCESS_PATH);
-const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/leeway-engine/scripts/engine.cjs');
+const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/ledger-engine/scripts/engine.cjs');
 
 const {
   ok, childLimits, stateGit, commitAll, cleanupFixture, lockAttempts, contend, withEnv, setupGitFixture, statePath, layout, createFile, writeState, readManifest, STATE_DIR_NAME, startItem,
@@ -72,7 +72,7 @@ function whilePsFails(ps, fn) {
   return withEnv({ PATH: ps.path }, fn);
 }
 
-const IO_PATH = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
+const IO_PATH = path.join(__dirname, '../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
 
 /** The kernel, loaded in a contender. */
 const IO = `const io = require(${JSON.stringify(IO_PATH)});`;
@@ -199,7 +199,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
 
   it('withWriterLock refuses a missing state root and conjures no folder for the lock', () => {
     const missing = path.join(dir, STATE_DIR_NAME);
-    assert.throws(() => io.withWriterLock(missing, () => 'never'), /no state worktree at .*\.leeway — nothing written/);
+    assert.throws(() => io.withWriterLock(missing, () => 'never'), /no state worktree at .*\.ledger — nothing written/);
     assert.ok(!fs.existsSync(missing));
   });
 
@@ -379,7 +379,7 @@ describe('the claim — one holder at a time, never waited on', () => {
   });
 
   it('gives `ps` PS_TIMEOUT_MS to answer an owner\'s start time, never longer', (t) => {
-    const limits = childLimits(t, PROCESS_PATH, (/** @type {typeof import('../../skills/leeway-engine/scripts/kernel/process.cjs')} */ fresh) => {
+    const limits = childLimits(t, PROCESS_PATH, (/** @type {typeof import('../../skills/ledger-engine/scripts/kernel/process.cjs')} */ fresh) => {
       fresh.ownerAlive({ pid: process.pid, pid_start: 'a process before this one' });
     });
 
@@ -585,7 +585,7 @@ const EXEMPT_CALLS = [
   ['enter', 'discussion', 'payments', 'auth-flow'],
   ['code', 'status'],
   ['render', 'signpost', 'Hello'],
-  ['handoff', 'leeway-continue-epic', 'payments'],
+  ['handoff', 'ledger-continue-epic', 'payments'],
   ['topic', 'mailbox', 'payments', 'auth-flow'],
   ['roadmap', 'state'],
   ['scratch', 'remove', 'payments-1.1-a'],
@@ -690,13 +690,13 @@ describe('engine writes take the writer lock', () => {
     const { raise } = (await harness.okSectionsAsync(dir, ['raise', 'payments.discussion.auth-flow', '--answers', asked], { env, stdin: JSON.stringify(call) })).res;
     harness.output(dir, ['raise', 'show', raise], { env });
     harness.okSections(dir, ['person', 'propose'], { env, stdin: JSON.stringify({ preference: 'Show the product first', why: 'People see it before it asks.', examples: ['The tour comes first.'] }) });
-    t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'person.md'), { force: true }));
+    t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'person.md'), { force: true }));
     harness.ok(dir, ['gate', 'record proposal', '--pick', 'y'], { env });
     harness.ok(dir, ['person', 'keep'], { env });
     harness.output(dir, ['render', 'convergence', 'payments.auth-flow', '--asked'], { env });
     harness.ok(dir, ['gate', 'convergence offer', '--pick', 'n'], { env });
     harness.ok(dir, ['convergence', 'decline', 'payments', 'auth-flow'], { env });
-    t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'config.json'), { force: true }));
+    t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'config.json'), { force: true }));
     for (const [flag, verb, rate] of [['--threshold', 'threshold', '25'], ['--build', 'build-threshold', '30']]) {
       harness.output(dir, ['render', 'matrix-replay', flag, rate], { env });
       harness.ok(dir, ['gate', 'matrix replay', '--pick', 'y'], { env });
@@ -775,7 +775,7 @@ describe('engine project-manifest writes take the writer lock', () => {
 
 describe('field surface and transactions stay one implementation', () => {
   it('the field surface requires the kernel manifest-io module — no local lock or write copies', () => {
-    const src = fs.readFileSync(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/fields.cjs'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/fields.cjs'), 'utf8');
     assert.ok(src.includes("require('../kernel/manifest-io.cjs')"),
       'fields must consume the kernel manifest IO');
     assert.ok(!src.includes('openSync'), 'no local lock implementation in the field surface');
@@ -784,7 +784,7 @@ describe('field surface and transactions stay one implementation', () => {
   });
 
   it('the engine kernel façade requires the sibling manifest-io module — no local IO copy', () => {
-    const src = fs.readFileSync(path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/manifest.cjs'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, '../../skills/ledger-engine/scripts/kernel/manifest.cjs'), 'utf8');
     assert.ok(src.includes("require('./manifest-io.cjs')"),
       'engine kernel must consume the sibling manifest IO');
     assert.ok(!src.includes('readFileSync'), 'no local read implementation in the kernel');

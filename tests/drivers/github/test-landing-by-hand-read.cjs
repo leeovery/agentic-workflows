@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (ledger-engine/scripts/drivers/landing/github/)
 // and a feature's task merged by hand on GitHub's site, read as the one
 // read of what has landed reads it (task-landed.cjs), past what every
 // driver does (the landing conformance suite's). One merged with no landing
@@ -40,9 +40,9 @@ const { openArgs, own, cutTask, commitFiles, useLandingWorld, phaseReviewed, fol
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, mergeByHand, onGithub, ok, refused, squashFromPullRequests, pulls } = require('./world.cjs');
 const { git, withEnv, datedAt } = require('../../scripts/engine-harness.cjs');
-const { changeOf } = require('../../../skills/leeway-engine/scripts/domain/review-change.cjs');
-const { unitLanded } = require('../../../skills/leeway-engine/scripts/domain/task-landed.cjs');
-const { projectRepos } = require('../../../skills/leeway-engine/scripts/kernel/repos.cjs');
+const { changeOf } = require('../../../skills/ledger-engine/scripts/domain/review-change.cjs');
+const { unitLanded } = require('../../../skills/ledger-engine/scripts/domain/task-landed.cjs');
+const { projectRepos } = require('../../../skills/ledger-engine/scripts/kernel/repos.cjs');
 
 const project = useLandingWorld('github-landing-by-hand-read-', side.prepare);
 
@@ -69,7 +69,7 @@ describe('a feature\'s task merged by hand on GitHub\'s site, no landing naming 
   for (const [how, method, ownMessage] of UNNAMED) {
     it(`by ${how}: read as landed — land phase answers it merged, its close reads its stack merged in auto, and in step no merge gate stands for it`, () => {
       const dir = project();
-      const tip = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLeeway-Task: pay-4-1' });
+      const tip = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLedger-Task: pay-4-1' });
       ok(dir, openArgs(tip));
       if (ownMessage) onGithub(dir, (state) => { state.squash = { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'BLANK' }; });
       mergeByHand(dir, 1, undefined, method);
@@ -113,9 +113,9 @@ describe('a feature\'s task that has landed, read again (7.2.22, R25)', () => {
 describe('a feature\'s task read by its content alone, the door\'s stamp never naming its landing (R28)', () => {
   it('a task of two commits, its first cherry-picked onto main by hand after the second, its copy carrying the stamp: not landed — its close reads its stack open, until land phase merges its pull request, main on GitHub gaining the rest of its work', () => {
     const dir = project();
-    const task = cutTask(dir, '4.1', 'feat', 'Add ab', 'main', { 'a.txt': 'a\n' }, { message: 'feat(pay): add a\n\nLeeway-Task: pay-4-1' });
+    const task = cutTask(dir, '4.1', 'feat', 'Add ab', 'main', { 'a.txt': 'a\n' }, { message: 'feat(pay): add a\n\nLedger-Task: pay-4-1' });
     const first = git(dir, ['rev-parse', task.branch]).trim();
-    commitFiles(dir, task.branch, task.branch, { 'b.txt': 'b\n' }, { message: 'feat(pay): add b\n\nLeeway-Task: pay-4-1' });
+    commitFiles(dir, task.branch, task.branch, { 'b.txt': 'b\n' }, { message: 'feat(pay): add b\n\nLedger-Task: pay-4-1' });
     ok(dir, openArgs(task));
     const back = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
     git(dir, ['switch', '-q', 'main']);
@@ -131,8 +131,8 @@ describe('a feature\'s task read by its content alone, the door\'s stamp never n
 
   it('a task of one commit cherry-picked onto main by hand, its pull request open beneath a later task\'s: landed, never changed after its landing — land phase closes its pull request as landed and merges the later task\'s, bringing neither up to main (N3)', () => {
     const dir = project();
-    const first = cutTask(dir, '4.1', 'feat', 'Add a', 'main', { 'a.txt': 'a\n' }, { message: 'feat(pay): add a\n\nLeeway-Task: pay-4-1' });
-    const second = cutTask(dir, '4.2', 'feat', 'Add b', first.branch, { 'b.txt': 'b\n' }, { message: 'feat(pay): add b\n\nLeeway-Task: pay-4-2' });
+    const first = cutTask(dir, '4.1', 'feat', 'Add a', 'main', { 'a.txt': 'a\n' }, { message: 'feat(pay): add a\n\nLedger-Task: pay-4-1' });
+    const second = cutTask(dir, '4.2', 'feat', 'Add b', first.branch, { 'b.txt': 'b\n' }, { message: 'feat(pay): add b\n\nLedger-Task: pay-4-2' });
     for (const task of [first, second]) ok(dir, openArgs(task));
     side.picked(dir, git(dir, ['rev-parse', first.branch]).trim());
     const heads = [first, second].map(({ branch }) => git(bareOf(dir), ['rev-parse', branch]).trim());
@@ -148,7 +148,7 @@ describe('a feature\'s task read by its content alone, the door\'s stamp never n
 describe('a feature\'s task read by its branch as it stands (7.2.22)', () => {
   /** Task 4.1 cut, its commit stamped as the door stamps it, and opened. @param {string} dir */
   const opened = (dir) => {
-    const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLeeway-Task: pay-4-1' });
+    const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLedger-Task: pay-4-1' });
     ok(dir, openArgs(task));
     return task;
   };
@@ -159,7 +159,7 @@ describe('a feature\'s task read by its branch as it stands (7.2.22)', () => {
     it(`moved since it opened, kept aside and put back as the refusal says, then merged by GitHub's default button, ${how}: landed — land phase answers it merged, its close reads its stack merged — the commit kept aside a task of its own`, () => {
       const dir = project();
       const task = opened(dir);
-      commitFiles(dir, task.branch, `${task.branch}^`, { 'tip.txt': 'tip, made again\n' }, { message: 'feat(pay): add the tip, made again\n\nLeeway-Task: pay-4-1' });
+      commitFiles(dir, task.branch, `${task.branch}^`, { 'tip.txt': 'tip, made again\n' }, { message: 'feat(pay): add the tip, made again\n\nLedger-Task: pay-4-1' });
       phaseReviewed(dir, 4, 'auto');
       const refusal = refused(dir, ['land', 'phase', 'pay', '4']);
       followRemedy(dir, refusal);
@@ -172,8 +172,8 @@ describe('a feature\'s task read by its branch as it stands (7.2.22)', () => {
 
   it('its last commit dropped from its branch before it opened, then merged by a merge commit, pulled: landed, never read by the commit the reflog keeps — land phase answers it merged, its close reads its stack merged', () => {
     const dir = project();
-    const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLeeway-Task: pay-4-1' });
-    commitFiles(dir, task.branch, task.branch, { 'tip.txt': 'tip, a wrong turn\n' }, { message: 'feat(pay): a wrong turn\n\nLeeway-Task: pay-4-1' });
+    const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLedger-Task: pay-4-1' });
+    commitFiles(dir, task.branch, task.branch, { 'tip.txt': 'tip, a wrong turn\n' }, { message: 'feat(pay): a wrong turn\n\nLedger-Task: pay-4-1' });
     git(dir, ['branch', '-f', task.branch, `${task.branch}~1`]);
     ok(dir, openArgs(task));
     side.mergedOnGithub(dir, task.branch, 'merge', true);

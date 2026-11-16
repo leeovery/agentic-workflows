@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state commit (leeway-engine/scripts/domain/state-worktree.cjs):
-// exactly the paths given committed on `leeway-state`, the working tree taken
+// The state commit (ledger-engine/scripts/domain/state-worktree.cjs):
+// exactly the paths given committed on `ledger-state`, the working tree taken
 // as it stands over whatever its index was left in; a file given a change
 // committed as it makes it of the branch's own, refused where git cannot
 // read that; the ignore file's added patterns; and its push, a failed push a
@@ -27,9 +27,9 @@ const { execFileSync, spawnSync } = require('child_process');
 const { git, bareRepo, layout, createFile, touched, traced, configHooksFire, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { CHILD_TIMEOUT_MS, useWorld, elsewhereRepo, snapshot, childStderr } = require('./state-worktree-world.cjs');
 
-const STATE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const STATE = path.join(__dirname, '../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
 const state = require(STATE);
-const { stateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { stateRoot } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
 
 const {
   STATE_BRANCH, STATE_GITIGNORE, createState, addStateWorktree, createStateBranchFromRemote, withStateLock, commitState, pushState,
@@ -43,7 +43,7 @@ function asset(name) {
 }
 
 describe('committing state', () => {
-  it('commits exactly the paths given, on leeway-state, whatever else is changed or staged', () => {
+  it('commits exactly the paths given, on ledger-state, whatever else is changed or staged', () => {
     const { root } = codeProject(world(), { state: true });
     createFile(root, layout.manifest('pay'), '{}\n');
     createFile(root, layout.unit('unit', 'spec.md'), '# spec\n');
@@ -267,7 +267,7 @@ describe('committing state', () => {
 
   it('commits past a private index and its lock a kill left mid-step', () => {
     const { root } = codeProject(world(), { state: true });
-    const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-commit.index']).trim());
+    const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'ledger-commit.index']).trim());
     fs.writeFileSync(index, 'left by a killed verb');
     fs.writeFileSync(`${index}.lock`, '');
     createFile(root, layout.manifest('pay'), '{}\n');
@@ -288,7 +288,7 @@ describe('committing state', () => {
 
     assert.deepStrictEqual(touched(root, out.commit || ''), [`A\t${layout.manifest('pay')}`]);
     assert.strictEqual(out.warnings.length, 1);
-    assert.match(out.warnings[0], /^the state worktree's index was not brought into line with leeway-state: .*index\.lock/s);
+    assert.match(out.warnings[0], /^the state worktree's index was not brought into line with ledger-state: .*index\.lock/s);
 
     fs.rmSync(indexLock);
     assert.deepStrictEqual(withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: again')), { commit: null, pushed: false, warnings: [] });
@@ -316,7 +316,7 @@ describe('committing state', () => {
     createFile(root, layout.projectManifest, '{}\n');
 
     git(root, ['checkout', '-q', '-b', 'other']);
-    assert.throws(() => commitState(root, [layout.projectManifest], 'state: x'), /has other checked out, not leeway-state — nothing committed/);
+    assert.throws(() => commitState(root, [layout.projectManifest], 'state: x'), /has other checked out, not ledger-state — nothing committed/);
 
     git(root, ['checkout', '-q', '--detach', STATE_BRANCH]);
     assert.throws(() => commitState(root, [layout.projectManifest], 'state: x'), /has a detached HEAD checked out/);
@@ -348,7 +348,7 @@ describe('committing state', () => {
     assert.strictEqual(tip(main, 'main'), before.sha);
   });
 
-  it('pushes leeway-state to the remote after the commit', () => {
+  it('pushes ledger-state to the remote after the commit', () => {
     const { root, bare } = codeProject(world(), { remote: true, state: true });
     createFile(root, layout.projectManifest, '{}\n');
 
@@ -382,7 +382,7 @@ describe('committing state', () => {
     assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), '{}\n');
     assert.strictEqual(out.pushed, false);
     assert.strictEqual(out.warnings.length, 1);
-    assert.match(out.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
+    assert.match(out.warnings[0], /^ledger-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
     assert.strictEqual(remoteTip(bare), created.commit);
   });
 
@@ -401,7 +401,7 @@ describe('committing state', () => {
     assert.strictEqual(remoteTip(bare), theirs);
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
     assert.deepStrictEqual([out.pushed, out.warnings.length], [false, 1]);
-    assert.match(out.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*rejected/s);
+    assert.match(out.warnings[0], /^ledger-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*rejected/s);
     assert.doesNotMatch(out.warnings[0], /hint:|git pull/);
   });
 
@@ -430,7 +430,7 @@ describe('committing state', () => {
       git(main, ['remote', 'add', name, bare]);
       return bare;
     });
-    const unchosen = /^leeway-state is committed here but was not pushed: the project has several remotes \(fork, upstream\), and none is named origin or tracked by the main checkout's branch$/;
+    const unchosen = /^ledger-state is committed here but was not pushed: the project has several remotes \(fork, upstream\), and none is named origin or tracked by the main checkout's branch$/;
 
     const created = createState(root);
     createFile(root, layout.projectManifest, '{}\n');
@@ -444,7 +444,7 @@ describe('committing state', () => {
     }
     assert.strictEqual(tip(root, STATE_BRANCH), committed.commit);
     assert.deepStrictEqual([remoteTip(fork), remoteTip(upstream)], ['', '']);
-    assert.throws(() => createStateBranchFromRemote(root), /cannot take leeway-state from a remote: the project has several remotes \(fork, upstream\)/);
+    assert.throws(() => createStateBranchFromRemote(root), /cannot take ledger-state from a remote: the project has several remotes \(fork, upstream\)/);
 
     git(main, ['config', 'branch.main.remote', 'upstream']);
     createFile(root, layout.projectManifest, '{"a":1}\n');
@@ -480,7 +480,7 @@ describe('a state commit interrupted between its steps', () => {
   /**
    * A `git` that runs the real one, then, once the step named in KILL_AFTER
    * has run, kills the process that called it, and once the step named in
-   * MOVE_AFTER has run, moves `leeway-state` to MOVE_TO — a writer the lock
+   * MOVE_AFTER has run, moves `ledger-state` to MOVE_TO — a writer the lock
    * did not hold back.
    */
   function interruptingGit() {
@@ -547,7 +547,7 @@ describe('a state commit interrupted between its steps', () => {
       assert.deepStrictEqual(touched(root, STATE_BRANCH), [`A\t${asset('c/d.md')}`, `D\t${asset('b.md')}`, `M\t${asset('a.md')}`]);
       assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:${asset('a.md')}`]), 'a2\n');
       assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  other/spec.md\n');
-      const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-commit.index']).trim());
+      const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'ledger-commit.index']).trim());
       assert.ok(!fs.existsSync(index) && !fs.existsSync(`${index}.lock`), 'the private index was left behind');
     });
   }
@@ -556,7 +556,7 @@ describe('a state commit interrupted between its steps', () => {
 describe('a state commit beside the person\'s repository (4.S18)', () => {
   const HOOKS = ['pre-commit', 'prepare-commit-msg', 'commit-msg', 'post-commit', 'reference-transaction', 'post-checkout', 'pre-push', 'post-index-change'];
 
-  it('runs none of the repository\'s hooks and lands on leeway-state whatever GIT_DIR names', (t) => {
+  it('runs none of the repository\'s hooks and lands on ledger-state whatever GIT_DIR names', (t) => {
     const { main, root, bare } = codeProject(world(), { remote: true });
     const elsewhere = elsewhereRepo();
     const elsewhereBefore = snapshot(elsewhere);

@@ -45,7 +45,7 @@ const { SESSION, cutMigration, stateUnborn } = require('./migration-world.cjs');
 const { Sim, readyForSim, enterEntry, decideTopic, handoff, specEntry, specBuilt } = require('./pipeline-world.cjs');
 const { auditState } = require('./pipeline-oracle.cjs');
 
-const FINISH = require('../../skills/leeway-migrate/scripts/migrations/081-reshape-finish.cjs');
+const FINISH = require('../../skills/ledger-migrate/scripts/migrations/081-reshape-finish.cjs');
 
 /**
  * The cut and the merges' world taken through the verbs, the finish and the
@@ -126,17 +126,17 @@ describe('pipeline simulation: from the migration\'s cut and merges', () => {
     const [open] = JSON.parse(sim.read(['ledger', 'record', wu, 'errors'])).questions;
     sim.run(['ledger', 'decide', `${wu}.discussion.errors`, '--answers', open.id], null, JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'A code and a message.', why: 'The person said so.' }));
     const { next } = decideTopic(sim, wu, 'errors');
-    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
+    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['epic', wu] });
     handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
 
     const topics = ['auth', 'limits', 'errors'];
     specEntry(sim, wu, topics);
     sim.run(['brief', 'sweep', wu]);
-    sim.write(`.leeway/.cache/${wu}/specification/sweep.json`, { candidates: [], messages: [], builder_calls: [] });
+    sim.write(`.ledger/.cache/${wu}/specification/sweep.json`, { candidates: [], messages: [], builder_calls: [] });
     assert.deepStrictEqual(sim.run(['sweep', 'take', wu]).next, { kind: 'continue' });
     sim.run(['brief', 'spec-writer', wu]);
     const statements = topics.map((topic, at) => `1.1.${at + 1} ${topic} holds as decided. [${JSON.parse(sim.read(['ledger', 'record', wu, topic])).decisions[0].id}]`);
-    sim.write(`.leeway/${wu}/spec.md`, [
+    sim.write(`.ledger/${wu}/spec.md`, [
       '# The public API', '', '## 1. The API', '', '### 1.1 As decided', '', ...statements.flatMap((statement) => [statement, '']),
       '## 1-S. Scenarios for §1', '', '1.S1 Given a call, when it is made, then the API holds as decided. (1.1.1, 1.1.2, 1.1.3)', '',
     ].join('\n'));

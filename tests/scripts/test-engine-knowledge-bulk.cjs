@@ -18,7 +18,7 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
 const { setupFixture, cleanupFixture, statePath, createFile, layout } = require('./discovery-test-utils.cjs');
 const {
   KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, manifestSet, completeUnit, setRegistry,
@@ -175,7 +175,7 @@ describe('engine knowledge index — the bulk index', () => {
     assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at(layout.record('buried', 'buried'))}$`, 'm'));
     assert.doesNotMatch(status, /Unindexed/);
 
-    await knowledge('index', `.leeway/${layout.record('buried', 'buried')}`);
+    await knowledge('index', `.ledger/${layout.record('buried', 'buried')}`);
     fs.appendFileSync(at(layout.record('buried', 'buried')), 'A late edit.\n');
     assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 0 unchanged.\n', 'the pruned chunks are compact\'s, never refreshed or dropped');
     assert.strictEqual(storedChunks(root).length, 1);
@@ -242,7 +242,7 @@ describe('engine knowledge fill', () => {
   it('gives a keyword-only store the provider configured over it, every chunk its vector, and says nothing', async () => {
     knowledgeUnit(root, 'auth', 'bugfix');
     createFile(statePath(root), layout.record('auth', 'auth'), '# Auth\n\nToken refresh settled.\n');
-    await engineKnowledge(root, ['index', `.leeway/${layout.record('auth', 'auth')}`]);
+    await engineKnowledge(root, ['index', `.ledger/${layout.record('auth', 'auth')}`]);
     assert.strictEqual(knowledgeMetadata(root).provider, null);
 
     configureKnowledge(root, STUB);

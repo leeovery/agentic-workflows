@@ -28,8 +28,8 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { createFile, datedAt } = require('./discovery-test-utils.cjs');
-const { repoLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
-const { TRAILER } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
+const { repoLanded } = require('../../skills/ledger-engine/scripts/domain/task-landed.cjs');
+const { TRAILER } = require('../../skills/ledger-engine/scripts/domain/commit-task.cjs');
 
 const { initRepo, folderFrom, cleanupFixture } = harness;
 

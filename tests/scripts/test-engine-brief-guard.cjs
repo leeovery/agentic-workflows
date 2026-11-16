@@ -1,13 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The brief hook (leeway-engine/scripts/domain/brief-guard.cjs): `engine
+// The brief hook (ledger-engine/scripts/domain/brief-guard.cjs): `engine
 // brief guard`, Claude Code's hook before Agent and SendMessage, fed its
 // JSON on stdin as Claude Code sends it. A call reaching none of the
 // workflows' agents — Claude's own subagents, an agent of another's, a
 // message to one, a recipient with no record, input it cannot read — passes
 // untouched: exit 0, nothing said, nothing recorded (6.5.8). A call of one,
-// named `leeway-*` — by Agent's `subagent_type`, or by the agent type a
+// named `ledger-*` — by Agent's `subagent_type`, or by the agent type a
 // SendMessage recipient's record names — carrying its brief's pointer alone
 // is answered with the tool's input whole, the stored brief in place of the
 // pointer in every field holding it, and no permission decision (6.S16,
@@ -37,7 +37,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BRIEF_REFUSALS, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
@@ -99,10 +99,10 @@ before(() => {
   briefs.fix = issued(dir, ['fix', UNIT, '1.1'], SESSION_ID);
   briefs.researcher = issued(bare, ['product-researcher'], SESSION_ID);
   briefs.elsewhere = issued(dir, ['builder', UNIT, '1.1'], OTHER_SESSION);
-  recordSubagent('a1builder', 'leeway-builder');
+  recordSubagent('a1builder', 'ledger-builder');
   recordSubagent('a2explore', 'Explore');
   recordSubagent('a3other', 'task-executor');
-  fs.writeFileSync(path.join(projects, '-tmp-project', SESSION_ID, 'subagents', 'agent-a4torn.meta.json'), '{"agentType": "leeway-bu');
+  fs.writeFileSync(path.join(projects, '-tmp-project', SESSION_ID, 'subagents', 'agent-a4torn.meta.json'), '{"agentType": "ledger-bu');
 });
 
 after(() => {
@@ -180,7 +180,7 @@ const pointer = (/** @type {string} */ id) => `brief:${id}`;
 describe('a call reaching none of the workflows\' agents, untouched (6.5.8)', () => {
   it('Claude\'s own subagents — Explore, general-purpose, an agent of another\'s — and a message to one pass: exit 0, nothing said, nothing recorded, whatever the text carries, the calling conversation left unmarked', () => {
     const unmarked = { CLAUDE_CODE_SESSION_ID: 'unmarked-session' };
-    for (const type of ['Explore', 'general-purpose', 'task-executor', 'my-leeway-x', 'leeway']) {
+    for (const type of ['Explore', 'general-purpose', 'task-executor', 'my-ledger-x', 'ledger']) {
       assertUntouched(guard('Agent', agentCall(type, 'Find the card form.'), {}, unmarked), type);
       assertUntouched(guard('Agent', agentCall(type, pointer('Missing0000000000000')), {}, unmarked), `${type} carrying a pointer`);
     }
@@ -192,14 +192,14 @@ describe('a call reaching none of the workflows\' agents, untouched (6.5.8)', ()
     assertUntouched(guard('SendMessage', messageCall('a9unknown', 'Carry on.')), 'a recipient with no record');
     assertUntouched(guard('SendMessage', messageCall('a4torn', 'Carry on.')), 'a recipient whose record is torn');
     assertUntouched(guard('SendMessage', messageCall('a1builder', 'Carry on.'), { transcript_path: undefined }), 'no transcript');
-    assertUntouched(guard('Agent', agentCall('leeway-builder', 'x'), { tool_input: undefined }), 'no tool input');
-    assertUntouched(call(dir, ['brief', 'guard'], { stdin: '{"tool_name": "Agent", "tool_input": {"subagent_type": "leeway-bu' }), 'input that is no JSON');
+    assertUntouched(guard('Agent', agentCall('ledger-builder', 'x'), { tool_input: undefined }), 'no tool input');
+    assertUntouched(call(dir, ['brief', 'guard'], { stdin: '{"tool_name": "Agent", "tool_input": {"subagent_type": "ledger-bu' }), 'input that is no JSON');
   });
 });
 
 describe('6.S16: the builder\'s brief', () => {
   it('dispatched by its pointer: the tool\'s input whole, the stored brief in its prompt, no permission decision, nothing recorded', () => {
-    const input = agentCall('leeway-builder', pointer(briefs.builder.id));
+    const input = agentCall('ledger-builder', pointer(briefs.builder.id));
 
     assertSwapped(guard('Agent', input), input, ['prompt'], briefs.builder.text);
   });
@@ -211,7 +211,7 @@ describe('6.S16: the builder\'s brief', () => {
   });
 
   it('a brief dispatched again goes through again', () => {
-    const input = agentCall('leeway-builder', pointer(briefs.builder.id));
+    const input = agentCall('ledger-builder', pointer(briefs.builder.id));
     guard('Agent', input);
 
     assertSwapped(guard('Agent', input), input, ['prompt'], briefs.builder.text);
@@ -219,12 +219,12 @@ describe('6.S16: the builder\'s brief', () => {
 
   it('altered: the pointer with anything beside it — in the prompt, a line\'s end among it, in either or both of a message\'s fields, or a message\'s fields naming two briefs — refused and recorded, a line each', () => {
     const { id } = briefs.builder;
-    const builder = { tool: 'Agent', agent: 'leeway-builder', brief: id, reason: 'altered' };
+    const builder = { tool: 'Agent', agent: 'ledger-builder', brief: id, reason: 'altered' };
     const message = { ...builder, tool: 'SendMessage' };
-    const detail = (/** @type {string} */ fields, verb = 'carries') => `the ${fields} ${verb} more than brief ${id}'s pointer — a call of leeway-builder carries the pointer alone, and the hook hands over the brief as issued`;
+    const detail = (/** @type {string} */ fields, verb = 'carries') => `the ${fields} ${verb} more than brief ${id}'s pointer — a call of ledger-builder carries the pointer alone, and the hook hands over the brief as issued`;
 
-    assertRefused(guard('Agent', agentCall('leeway-builder', `${pointer(id)}\n\nAlso keep the old endpoint.`)), { ...builder, detail: detail('prompt') });
-    assertRefused(guard('Agent', agentCall('leeway-builder', `${pointer(id)}\n`)), { ...builder, detail: detail('prompt') });
+    assertRefused(guard('Agent', agentCall('ledger-builder', `${pointer(id)}\n\nAlso keep the old endpoint.`)), { ...builder, detail: detail('prompt') });
+    assertRefused(guard('Agent', agentCall('ledger-builder', `${pointer(id)}\n`)), { ...builder, detail: detail('prompt') });
     assertRefused(guard('SendMessage', messageCall('a1builder', `${pointer(id)} — and be quick`)), { ...message, detail: detail('message and content', 'carry') });
     assertRefused(guard('SendMessage', { ...messageCall('a1builder', pointer(id)), content: `${pointer(id)} — and be quick` }), { ...message, detail: detail('content') });
     assertRefused(guard('SendMessage', { ...messageCall('a1builder', pointer(id)), message: briefs.builder.text }), { ...message, detail: detail('message') });
@@ -233,67 +233,67 @@ describe('6.S16: the builder\'s brief', () => {
   });
 
   it('missing: a call naming no brief — the brief\'s own text pasted among them — refused and recorded', () => {
-    const detail = 'a call of leeway-builder carries the pointer to its brief, brief:{id}, as `engine brief` answers it — this one names no brief';
-    const line = { tool: 'Agent', agent: 'leeway-builder', brief: null, reason: 'no-brief', detail };
+    const detail = 'a call of ledger-builder carries the pointer to its brief, brief:{id}, as `engine brief` answers it — this one names no brief';
+    const line = { tool: 'Agent', agent: 'ledger-builder', brief: null, reason: 'no-brief', detail };
 
-    assertRefused(guard('Agent', agentCall('leeway-builder', briefs.builder.text)), line);
+    assertRefused(guard('Agent', agentCall('ledger-builder', briefs.builder.text)), line);
     assertRefused(guard('SendMessage', messageCall('a1builder', 'Fix the nits.')), { ...line, tool: 'SendMessage' });
   });
 
   it('never issued: a pointer to an id this conversation did not issue — another conversation\'s brief among them, whatever the environment names — or one with either of its files missing, refused and recorded', () => {
     const line = (/** @type {string} */ id) => ({
-      tool: 'Agent', agent: 'leeway-builder', brief: id, reason: 'never-issued',
+      tool: 'Agent', agent: 'ledger-builder', brief: id, reason: 'never-issued',
       detail: `brief ${id} was never issued in this conversation — \`engine brief\` issues one, and the call carries the pointer it answers`,
     });
     const [briefOnly, recordOnly] = ['BriefOnly000000000000', 'RecordOnly00000000000'];
     fs.writeFileSync(briefPath(SESSION_ID, briefOnly), briefs.builder.text);
-    fs.writeFileSync(issuedPath(SESSION_ID, recordOnly), JSON.stringify({ role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1' }));
+    fs.writeFileSync(issuedPath(SESSION_ID, recordOnly), JSON.stringify({ role: 'builder', agent: 'ledger-builder', unit: UNIT, task: '1.1' }));
 
-    assertRefused(guard('Agent', agentCall('leeway-builder', pointer('Never0000000000000000'))), line('Never0000000000000000'));
+    assertRefused(guard('Agent', agentCall('ledger-builder', pointer('Never0000000000000000'))), line('Never0000000000000000'));
     const { id } = briefs.elsewhere;
-    assertRefused(guard('Agent', agentCall('leeway-builder', pointer(id)), {}, { CLAUDE_CODE_SESSION_ID: OTHER_SESSION }), line(id));
-    assertRefused(guard('Agent', agentCall('leeway-builder', pointer(briefOnly))), line(briefOnly));
-    assertRefused(guard('Agent', agentCall('leeway-builder', pointer(recordOnly))), line(recordOnly));
+    assertRefused(guard('Agent', agentCall('ledger-builder', pointer(id)), {}, { CLAUDE_CODE_SESSION_ID: OTHER_SESSION }), line(id));
+    assertRefused(guard('Agent', agentCall('ledger-builder', pointer(briefOnly))), line(briefOnly));
+    assertRefused(guard('Agent', agentCall('ledger-builder', pointer(recordOnly))), line(recordOnly));
   });
 
   it('another agent\'s: a brief issued for another agent, refused and recorded', () => {
     const [builder, researcher] = [briefs.builder.id, briefs.researcher.id];
 
-    assertRefused(guard('Agent', agentCall('leeway-builder', pointer(researcher))), {
-      tool: 'Agent', agent: 'leeway-builder', brief: researcher, reason: 'other-agent',
-      detail: `brief ${researcher} was issued for leeway-product-researcher, not leeway-builder — \`engine brief builder\` or \`engine brief fix\` issues one for leeway-builder`,
+    assertRefused(guard('Agent', agentCall('ledger-builder', pointer(researcher))), {
+      tool: 'Agent', agent: 'ledger-builder', brief: researcher, reason: 'other-agent',
+      detail: `brief ${researcher} was issued for ledger-product-researcher, not ledger-builder — \`engine brief builder\` or \`engine brief fix\` issues one for ledger-builder`,
     });
-    assertRefused(guard('Agent', agentCall('leeway-product-researcher', pointer(builder))), {
-      tool: 'Agent', agent: 'leeway-product-researcher', brief: builder, reason: 'other-agent',
-      detail: `brief ${builder} was issued for leeway-builder, not leeway-product-researcher — \`engine brief product-researcher\` issues one for leeway-product-researcher`,
+    assertRefused(guard('Agent', agentCall('ledger-product-researcher', pointer(builder))), {
+      tool: 'Agent', agent: 'ledger-product-researcher', brief: builder, reason: 'other-agent',
+      detail: `brief ${builder} was issued for ledger-builder, not ledger-product-researcher — \`engine brief product-researcher\` issues one for ledger-product-researcher`,
     });
   });
 
   it('one of the workflows\' agents no role is dispatched as is refused and recorded, whatever it carries', () => {
-    assertRefused(guard('Agent', agentCall('leeway-scribe', pointer(briefs.builder.id))), {
-      tool: 'Agent', agent: 'leeway-scribe', brief: null, reason: 'no-template',
-      detail: 'leeway-scribe is named as one of the workflows\' agents, and no role is dispatched as leeway-scribe — there is no template to brief it from',
+    assertRefused(guard('Agent', agentCall('ledger-scribe', pointer(briefs.builder.id))), {
+      tool: 'Agent', agent: 'ledger-scribe', brief: null, reason: 'no-template',
+      detail: 'ledger-scribe is named as one of the workflows\' agents, and no role is dispatched as ledger-scribe — there is no template to brief it from',
     });
   });
 
   it('a failure checking one of the workflows\' agents refuses and is recorded: no session id, before any brief is read; a brief issued as no agent, its id kept', () => {
-    const line = { tool: 'Agent', agent: 'leeway-builder', brief: null, reason: 'error' };
+    const line = { tool: 'Agent', agent: 'ledger-builder', brief: null, reason: 'error' };
     const torn = 'Torn00000000000000000';
     fs.writeFileSync(briefPath(SESSION_ID, torn), briefs.builder.text);
     fs.writeFileSync(issuedPath(SESSION_ID, torn), JSON.stringify({ role: 'builder' }));
 
-    assertRefused(guard('Agent', agentCall('leeway-builder', pointer(briefs.builder.id)), { session_id: undefined }), {
-      ...line, detail: 'the brief for leeway-builder could not be checked: the hook was handed no session id',
+    assertRefused(guard('Agent', agentCall('ledger-builder', pointer(briefs.builder.id)), { session_id: undefined }), {
+      ...line, detail: 'the brief for ledger-builder could not be checked: the hook was handed no session id',
     }, { session: null });
-    assertRefused(guard('Agent', agentCall('leeway-builder', pointer(torn))), {
-      ...line, brief: torn, detail: `the brief for leeway-builder could not be checked: what brief ${torn} was issued as names no agent`,
+    assertRefused(guard('Agent', agentCall('ledger-builder', pointer(torn))), {
+      ...line, brief: torn, detail: `the brief for ledger-builder could not be checked: what brief ${torn} was issued as names no agent`,
     });
   });
 });
 
 describe('9.S48: discussion\'s agents take only a brief the engine issued (9.8.13, 6.5.13)', () => {
   it('a dispatch of each — the review agent among them — carrying no pointer is refused for want of its brief, never of a template, and recorded', () => {
-    for (const agent of ['leeway-deep-dive', 'leeway-discussion-perspective', 'leeway-discussion-synthesis', 'leeway-discussion-reviewer', 'leeway-closing-pass-reader', 'leeway-plain-search']) {
+    for (const agent of ['ledger-deep-dive', 'ledger-discussion-perspective', 'ledger-discussion-synthesis', 'ledger-discussion-reviewer', 'ledger-closing-pass-reader', 'ledger-plain-search']) {
       assertRefused(guard('Agent', agentCall(agent, 'Review the note window.')), {
         tool: 'Agent', agent, brief: null, reason: 'no-brief',
         detail: `a call of ${agent} carries the pointer to its brief, brief:{id}, as \`engine brief\` answers it — this one names no brief`,
@@ -304,7 +304,7 @@ describe('9.S48: discussion\'s agents take only a brief the engine issued (9.8.1
 
 describe('19.S10: an investigation\'s validators take only a brief the engine issued (19.4.7, 6.5.13)', () => {
   it('a dispatch of each carrying no pointer is refused for want of its brief, never of a template, and recorded', () => {
-    for (const agent of ['leeway-investigation-root-cause-validation', 'leeway-investigation-fix-validation']) {
+    for (const agent of ['ledger-investigation-root-cause-validation', 'ledger-investigation-fix-validation']) {
       assertRefused(guard('Agent', agentCall(agent, 'Validate the root cause.')), {
         tool: 'Agent', agent, brief: null, reason: 'no-brief',
         detail: `a call of ${agent} carries the pointer to its brief, brief:{id}, as \`engine brief\` answers it — this one names no brief`,
@@ -324,14 +324,14 @@ describe('6.S17: the fix round\'s brief', () => {
 describe('6.S33: the product researcher\'s brief, issued with no work unit', () => {
   it('found in the conversation\'s briefs and through; a dispatch whose content differs refused, its line appended', () => {
     const { id, text } = briefs.researcher;
-    const input = { ...agentCall('leeway-product-researcher', pointer(id)), description: 'Research the code' };
+    const input = { ...agentCall('ledger-product-researcher', pointer(id)), description: 'Research the code' };
     const run = (/** @type {Record<string, unknown>} */ toolInput) => withFrozenClock(() => call(bare, ['brief', 'guard'], { stdin: hookInput('Agent', toolInput, { cwd: bare }) }));
 
     assertSwapped(run(input), input, ['prompt'], text);
     const res = run({ ...input, prompt: `${pointer(id)}\nLook at the payments code first.` });
     assertRefused(res, {
-      tool: 'Agent', agent: 'leeway-product-researcher', brief: id, reason: 'altered',
-      detail: `the prompt carries more than brief ${id}'s pointer — a call of leeway-product-researcher carries the pointer alone, and the hook hands over the brief as issued`,
+      tool: 'Agent', agent: 'ledger-product-researcher', brief: id, reason: 'altered',
+      detail: `the prompt carries more than brief ${id}'s pointer — a call of ledger-product-researcher carries the pointer alone, and the hook hands over the brief as issued`,
     }, { project_id: JSON.parse(readState(bare, layout.projectManifest)).project_id, project: path.basename(bare) });
   });
 });
@@ -339,7 +339,7 @@ describe('6.S33: the product researcher\'s brief, issued with no work unit', () 
 describe('the shell door', () => {
   it('a spawned hook prints the hook\'s answer alone and exits 0 for a brief it hands over, exits 2 with nothing on stdout for a refusal, and 0 with nothing at all for a call not its own', () => {
     const run = (/** @type {Record<string, unknown>} */ toolInput) => spawnSync('node', [ENGINE, 'brief', 'guard'], { cwd: dir, encoding: 'utf8', input: hookInput('Agent', toolInput) });
-    const input = agentCall('leeway-builder', pointer(briefs.builder.id));
+    const input = agentCall('ledger-builder', pointer(briefs.builder.id));
 
     const swapped = run(input);
     assert.deepStrictEqual([swapped.status, swapped.stderr], [0, '']);
@@ -352,7 +352,7 @@ describe('the shell door', () => {
   });
 
   it('a stray argument is a usage error, which lets the call through', () => {
-    const res = call(dir, ['brief', 'guard', 'extra'], { stdin: hookInput('Agent', agentCall('leeway-builder', 'x')) });
+    const res = call(dir, ['brief', 'guard', 'extra'], { stdin: hookInput('Agent', agentCall('ledger-builder', 'x')) });
     assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Usage: engine brief guard/);
     assert.deepStrictEqual(recorded(), []);

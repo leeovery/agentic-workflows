@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The builder's and the reviewer's briefs beside the rounds (leeway-engine/
+// The builder's and the reviewer's briefs beside the rounds (ledger-engine/
 // scripts/domain/brief-records.cjs): the reviewer's scratch worktree laid
 // out as the builder's worktree held each repository, and the calls laying
 // it out at those commits (13.2.2); where the verify setup goes (15.2.11);

@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A leeway-state holding code history
-// (leeway-engine/scripts/domain/state-checks.cjs): refused here and on the
+// A ledger-state holding code history
+// (ledger-engine/scripts/domain/state-checks.cjs): refused here and on the
 // remote, never pushed, refused by the catch-up, and told from a state
 // started again elsewhere.
 //
@@ -33,12 +33,12 @@ const NOTES = layout.assets('unit', 'notes.md');
 
 // --- code history ---------------------------------------------------------------
 
-describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
+describe('a ledger-state holding code history (4.9.2, 4.S19)', () => {
   it('here, is refused: no worktree is added onto it, and it is never pushed', () => {
     const { main, bare } = remoteProject();
     git(main, ['branch', STATE_BRANCH]);
 
-    assert.match(bootRefused(main), /^leeway-state holds code history — it shares commits with main, where the state branch is a line of its own — so boot neither checks it out nor pushes it, and wrote nothing\. Rename that branch, and boot sets the state up afresh$/);
+    assert.match(bootRefused(main), /^ledger-state holds code history — it shares commits with main, where the state branch is a line of its own — so boot neither checks it out nor pushes it, and wrote nothing\. Rename that branch, and boot sets the state up afresh$/);
 
     assert.ok(!fs.existsSync(statePath(main)));
     assert.strictEqual(remoteTip(bare), '');
@@ -49,18 +49,18 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
     git(main, ['push', '-q', 'origin', `main:${STATE_BRANCH}`]);
     const fresh = cloneInWorld(bare, 'fresh');
 
-    assert.match(bootRefused(fresh), /^origin's leeway-state holds code history — it shares commits with (origin\/)?(main|HEAD)/);
+    assert.match(bootRefused(fresh), /^origin's ledger-state holds code history — it shares commits with (origin\/)?(main|HEAD)/);
 
     assert.strictEqual(git(fresh, ['for-each-ref', `refs/heads/${STATE_BRANCH}`]), '');
     assert.ok(!fs.existsSync(statePath(fresh)));
   });
 
-  it('checked out at .leeway/ by hand, is never pushed to a remote that lacks it', () => {
+  it('checked out at .ledger/ by hand, is never pushed to a remote that lacks it', () => {
     const { main, bare } = remoteProject();
     git(main, ['worktree', 'add', '-q', '-b', STATE_BRANCH, statePath(main)]);
     git(main, ['worktree', 'lock', '--reason', STATE_LOCK_REASON, statePath(main)]);
 
-    assert.match(bootRefused(main), /^leeway-state holds code history/);
+    assert.match(bootRefused(main), /^ledger-state holds code history/);
     assert.strictEqual(remoteTip(bare), '');
   });
 
@@ -78,9 +78,9 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
       const before = stateAsIs(main, bare);
 
       assert.strictEqual(bootRefused(main), [
-        "origin's leeway-state holds code history — it shares commits with main, where the state branch is a line of its own — ",
+        "origin's ledger-state holds code history — it shares commits with main, where the state branch is a line of its own — ",
         "so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, put the state's own line back on origin — ",
-        "this clone's leeway-state holds it",
+        "this clone's ledger-state holds it",
       ].join(''));
 
       assert.deepStrictEqual(stateAsIs(main, bare), before);
@@ -94,9 +94,9 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
     const before = stateAsIs(main, bare);
 
     assert.strictEqual(bootRefused(main), [
-      "this clone's leeway-state holds code history — it shares commits with main, where the state branch is a line of its own — ",
-      'so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, point leeway-state back at the state\'s own line — ',
-      "origin's leeway-state holds it",
+      "this clone's ledger-state holds code history — it shares commits with main, where the state branch is a line of its own — ",
+      'so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, point ledger-state back at the state\'s own line — ',
+      "origin's ledger-state holds it",
     ].join(''));
 
     assert.deepStrictEqual(stateAsIs(main, bare), before);

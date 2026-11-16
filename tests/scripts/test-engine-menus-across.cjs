@@ -33,9 +33,9 @@ const { ok, output, cleanupFixture, sectionOf, git } = require('./engine-harness
 const { setupFixture, createManifest, createFile, writeState, readState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
-const PROJECTIONS = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/projections');
-const TOPICS = path.join(__dirname, '../../skills/leeway-engine/content/walkthrough/topics');
-const { MENUS } = require('../../skills/leeway-engine/scripts/domain/menus.cjs');
+const PROJECTIONS = path.join(__dirname, '../../skills/ledger-engine/scripts/domain/projections');
+const TOPICS = path.join(__dirname, '../../skills/ledger-engine/content/walkthrough/topics');
+const { MENUS } = require('../../skills/ledger-engine/scripts/domain/menus.cjs');
 const { parseHelp, menusDrift } = require(path.join(PROJECTIONS, 'help.cjs'));
 
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
@@ -61,7 +61,7 @@ let config;
 let menus;
 
 /** The conversation every menu is drawn in. */
-const conversation = () => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEEWAY_CONFIG_DIR: config, TMUX: undefined, TMUX_PANE: undefined });
+const conversation = () => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEDGER_CONFIG_DIR: config, TMUX: undefined, TMUX_PANE: undefined });
 
 /**
  * A render in the conversation: its output, and each row of the gate it
@@ -100,8 +100,8 @@ before(() => {
   const call = ledger('decide', ['--answers', ledger('ask', [], { ...MADE, text: 'Is sync on?' })], { ...MADE, text: 'On.', why: 'Because.' });
   ledger('replace', ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text: 'Off.', why: 'The person wants it so.' });
   cared();
-  createFile(dir, `.leeway/${IDEA}`, '# An idea\n');
-  createFile(dir, `.leeway/${ARCHIVED}`, '# Old idea\n');
+  createFile(dir, `.ledger/${IDEA}`, '# An idea\n');
+  createFile(dir, `.ledger/${ARCHIVED}`, '# Old idea\n');
   writeState(dir, 'manifest.json', JSON.stringify({
     ...JSON.parse(readState(dir, 'manifest.json')),
     roadmap: { horizons: ['now'], items: { 'dark-mode': { horizon: 'now', summary: 'a dark theme', origin: 'harvest' } } },
