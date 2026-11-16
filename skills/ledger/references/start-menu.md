@@ -12,7 +12,7 @@ Fetch the start menu and emit its sections verbatim per their markers:
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-menu
 ```
 
-The answer goes to `gate`; follow its `next`. Any other screen it draws — help and its reference cards, the verdicts, triage, manage, the matrix or the closed units — is emitted the same way, verbatim per its markers, and its answer goes to `gate` in turn. A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
+The answer goes to `gate`; follow its `next`. Any other screen it draws is emitted the same way, verbatim per its markers, and its answer goes to `gate` in turn. A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
 
 Load **[handing-off.md](../../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}` for a handoff, or `unit {work_unit}` for a Continue.
 
@@ -52,7 +52,7 @@ Load **[environment-setup.md](../../ledger-shared/references/environment-setup.m
 
 ## The Matrix
 
-Asked for in the person's own words, the matrix is drawn as manage's `m/matrix` draws it, `render matrix`. Its `t/threshold` and `u/build` carry on here: the person names a number, and its replay comes first, `render matrix-replay --{setting:[threshold|build]} {n}`.
+Asked for in the person's own words, the matrix is drawn as manage's `m/matrix` draws it, `render matrix`. Its `t/threshold` and `u/build`, and the replay's Comment, carry on here: the person names a number, and its replay comes first, `render matrix-replay --{setting:[threshold|build]} {n}`.
 
 ## Managing a Unit
 

@@ -122,11 +122,18 @@ describe('pipeline simulation: the trust log', () => {
     const matrix = answerGate(sim, 'manage', '--pick', 'm').next;
     assert.deepStrictEqual(matrix, { kind: 'engine', argv: ['render', 'matrix'] }, '16.S49: manage\'s m opens the matrix');
     sim.render(matrix.argv.slice(1), { expect: 'content' });
-    for (const setting of [['--threshold', '25'], ['--build', '30']]) {
+    /** The matrix's row `key` picked, carrying on for the person to name a number, whose replay comes first. @param {string} key @param {string[]} setting */
+    const replayed = (key, setting) => {
+      assert.deepStrictEqual(answerGate(sim, 'matrix', '--pick', key).next, { kind: 'continue' }, `the matrix's ${key} carries on for a number`);
       sim.render(['matrix-replay', ...setting], { expect: 'content' });
-      sim.run(answerGate(sim, 'matrix replay', '--pick', 'y').next.argv);
+    };
+    for (const [key, setting] of /** @type {[string, string[]][]} */ ([['t', ['--threshold', '25']], ['u', ['--build', '30']]])) {
+      replayed(key, setting);
+      const { next } = sim.run(answerGate(sim, 'matrix replay', '--pick', 'y').next.argv);
+      assert.deepStrictEqual(next, matrix, 'the setting set, the matrix is drawn again');
+      sim.render(next.argv.slice(1), { expect: 'content' });
     }
-    sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' });
+    replayed('t', ['--threshold', '15']);
     assert.deepStrictEqual(answerGate(sim, 'matrix replay', '--pick', 'n').next, { kind: 'engine', argv: ['render', 'matrix'] });
     sim.run(['trust', 'correct', call, '--kind', 'behaviour']);
     sim.run(['trust', 'correct', reversal, '--verdict', 'fix']);

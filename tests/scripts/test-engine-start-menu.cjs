@@ -270,7 +270,7 @@ describe('the start menu (18.2.12)', () => {
       's/start → Start something new — describe it, and we\'ll find what kind of work it is',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
-      'm/manage → Manage work units',
+      'm/manage → Manage work units, the project\'s setup and drivers, and the matrix',
       'h/help → How Ledger works',
     ]);
     assert.match(lettered(full.menu)[0], /^p\/product → Talk about the product — 1 session, last on \d{1,2} [A-Z][a-z]{2} · research owed$/);
@@ -279,7 +279,7 @@ describe('the start menu (18.2.12)', () => {
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
       'v/view → View completed & cancelled work units',
-      'm/manage → Manage work units',
+      'm/manage → Manage work units, the project\'s setup and drivers, and the matrix',
       'h/help → How Ledger works',
     ]);
     assert.deepStrictEqual(rowsShown(), {
@@ -337,7 +337,7 @@ describe('the start menu (18.2.12)', () => {
       'r/roadmap → Open the product roadmap',
       'e/verdicts → Give the verdict waiting on a call you changed',
       'v/view → View completed & cancelled work units',
-      'm/manage → Manage work units',
+      'm/manage → Manage work units, the project\'s setup and drivers, and the matrix',
       'h/help → How Ledger works',
     ]);
   });

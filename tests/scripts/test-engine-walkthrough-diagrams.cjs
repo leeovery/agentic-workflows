@@ -335,7 +335,8 @@ describe('walkthrough sample surfaces', () => {
       't/triage  → Triage the inbox',
       'r/roadmap → Open the product roadmap',
       'v/view    → View completed & cancelled work units',
-      'm/manage  → Manage work units',
+      'm/manage  → Manage work units, the project\'s setup and drivers,',
+      '            and the matrix',
       'h/help    → How Ledger works',
     ].join('\n'));
     // A sample is an illustration inside a code block: no markdown, no
@@ -605,7 +606,8 @@ describe('walkthrough screens', () => {
       "t/triage  → Triage the inbox",
       "r/roadmap → Open the product roadmap",
       "v/view    → View completed & cancelled work units",
-      "m/manage  → Manage work units",
+      "m/manage  → Manage work units, the project's setup and drivers,",
+      "            and the matrix",
       "h/help    → How Ledger works",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
