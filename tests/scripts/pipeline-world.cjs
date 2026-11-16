@@ -964,9 +964,10 @@ function startMenu(sim) {
 
 // A row of the start menu picked, as start-menu.md takes it: the menu drawn,
 // the answer through `gate`, and its next followed — a handoff, a unit's
-// Continue, `handoff unit`, or another of the project's menus drawn — or
-// carrying on in the conversation. Answers the move's payload, null for a
-// row that draws a menu or carries on.
+// Continue, `handoff unit`, a place's legacy files read for the pass that
+// sorts them, `asset legacy`, or another of the project's menus drawn — or
+// carrying on in the conversation. Answers the move's payload, or the read,
+// null for a row that draws a menu or carries on.
 /** @param {Sim} sim @param {string} key */
 function startPick(sim, key) {
   assert.ok(startMenu(sim).some((row) => row.key === key), `the start menu offers ${key}`);
@@ -977,6 +978,7 @@ function startPick(sim, key) {
     sim.render(next.argv.slice(1), { expect: 'content' });
     return null;
   }
+  if (next.argv[0] === 'asset') return sim.run(next.argv);
   assert.deepStrictEqual(next.argv.slice(0, 2), ['handoff', 'unit'], 'the start menu\'s one move into work is a unit\'s Continue');
   return handoffBy(sim, next.argv).payload;
 }
@@ -1817,7 +1819,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, worlds, readyForSim, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

@@ -398,18 +398,27 @@ function heldFacts(root) {
 
 /**
  * Whether a move carried lines to `topic` of `unit` (ledger-rehomed.cjs): a
- * carry there of a line the unit made itself. An absorb's or a split's
- * brings another unit's lines, which become the topic's own record, never
- * an earlier one.
+ * carry there of a line the unit made itself at another topic or phase. An
+ * absorb's or a split's brings another unit's lines, which become the
+ * topic's own record, never an earlier one; and a carry to the place a line
+ * was made at, which a moved file's makes, carries it nowhere.
  * @param {string} root @param {string} unit @param {string} topic
  * @param {string[]} notes what a landing the read's check finished said, pushed to
  * @returns {boolean}
  */
 function carriedTo(root, unit, topic, notes) {
   return withLedger(root, notes, (ledger) => {
-    const carried = new Set([...ledger.named('rehomed')].filter(({ event }) => event.unit === unit && event.topic === topic).flatMap(({ event }) => /** @type {string[]} */ (event.lines)));
-    if (carried.size === 0) return false;
-    for (const { event } of ledger.entries()) if (carried.has(/** @type {string} */ (event.id)) && event.unit === unit) return true;
+    /** @type {Map<string, Set<string>>} */
+    const phases = new Map();
+    for (const { event } of ledger.named('rehomed')) {
+      if (event.unit !== unit || event.topic !== topic) continue;
+      for (const id of /** @type {string[]} */ (event.lines)) phases.set(id, (phases.get(id) ?? new Set()).add(/** @type {string} */ (event.phase)));
+    }
+    if (phases.size === 0) return false;
+    for (const { event } of ledger.entries()) {
+      const to = phases.get(/** @type {string} */ (event.id));
+      if (to !== undefined && event.unit === unit && (event.topic !== topic || [...to].some((phase) => phase !== event.phase))) return true;
+    }
     return false;
   });
 }

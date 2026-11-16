@@ -270,6 +270,9 @@ An inbox or roadmap item a piece of work was started from, kept with the work as
 A file shared with or made for a piece of work — notes, a design document, a screenshot, an error report, what a spike showed — kept with the work and linked from the entry it informs.
 _Avoid_: import, attachment
 
+**legacy files**:
+The files a piece of work had from before Leeway that the migration found no place for — old plans, agent reports, research — set aside with the work, or with the product, until each is sorted. The start menu shows them on one row, *Sort the legacy files from the migration*, and an epic's menu shows its own. Each file or folder is kept among the work's assets, everything that names it following it, or discarded; a file brought in becomes findings on the record, citing it where it was kept.
+
 **mail**:
 The messages waiting for a discussion or investigation: from another topic of the same epic, or from a later phase that met a question only that conversation can settle. Its next session raises each one, and it cannot close while one waits; the menus show it as *mail waiting*.
 _Avoid_: triage waiting, triage queue, queue

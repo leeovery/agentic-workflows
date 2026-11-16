@@ -11,10 +11,11 @@
 // its file, and no unit's record or copy showing any, so the knowledge store
 // holds none, read at once; its cache purged; each epic's topic promoted to
 // it gone from that epic's map and items (P4); a roadmap source under its
-// folder following its file; the commit held for the migration's. Retired
-// again it finds everything done; a session killed after each step, retired
-// again, leaves what a run never killed leaves, the store among it. Every
-// refusal writes nothing.
+// folder following its file; its legacy files among the product's, a log's
+// links to one and to their folder following them, once; the commit held
+// for the migration's. Retired again it finds everything done; a session
+// killed after each step, retired again, leaves what a run never killed
+// leaves, the store among it. Every refusal writes nothing.
 // The records directive's rule that a cross-cutting unit's entries are
 // product-wide is test-migration-079.cjs's.
 //
@@ -114,6 +115,20 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
 
     assert.deepStrictEqual(indexedFiles(dir), others);
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('caching'))), 'its cache purged');
+  });
+
+  it('its legacy files go among the product\'s, to be sorted there, its log\'s links to one and to their folder following them, and a redo rebasing neither again', () => {
+    const log = layout.topic('caching', 'invalidation', 'log.md');
+    writeState(dir, layout.assets('caching', 'legacy', 'notes.md'), '# Notes\n');
+    writeState(dir, log, `${fs.readFileSync(statePath(dir, log), 'utf8')}\nSee [the notes](../../assets/legacy/notes.md), in [the legacy](../../assets/legacy/).\n`);
+
+    run(RETIRE);
+    run(RETIRE);
+
+    const notes = layout.productAssets('legacy', 'caching', 'notes.md');
+    assert.deepStrictEqual(run(['asset', 'legacy', 'product']).files, [{ path: notes, named: 1, dead: 1 }]);
+    assert.ok(!fs.existsSync(statePath(dir, layout.productAssets('caching', 'assets', 'legacy'))), 'nothing of them left in the kept folder');
+    assert.match(fs.readFileSync(statePath(dir, layout.productAssets(log)), 'utf8'), /See \[the notes\]\(\.\.\/\.\.\/\.\.\/legacy\/caching\/notes\.md\), in \[the legacy\]\(\.\.\/\.\.\/\.\.\/legacy\/caching\/\)\.\n$/);
   });
 
   it('its name freed: a unit made later under it meets none of the retired unit\'s entries, which stay the product\'s', () => {

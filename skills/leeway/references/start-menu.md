@@ -16,6 +16,14 @@ The answer goes to `gate`; follow its `next`. Any other screen it draws — help
 
 Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/{skill} {args}` for a handoff, or `unit {work_unit}` for a Continue.
 
+## Legacy Files
+
+The row of legacy files leads to `asset legacy`. Run it, then sort them:
+
+Load **[legacy-files.md](../../leeway-shared/references/legacy-files.md)** and follow its instructions as written.
+
+On return, run **The Menu** again.
+
 ## The Walk
 
 **w/walk**, on the start menu's help, carries on here: Load **[walk.md](walk.md)** with origin = `help`. On return, draw the start menu's help again, emit its sections verbatim per their markers, and carry on there:

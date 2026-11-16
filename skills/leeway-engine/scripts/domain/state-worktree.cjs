@@ -1086,6 +1086,7 @@ function pushState(root, { timeoutMs = PUSH_TIMEOUT_MS } = {}) {
 
 module.exports = {
   STATE_BRANCH,
+  SIDECAR_NAME,
   STATE_LOCK_REASON,
   STATE_GITIGNORE,
   BRANCH_REF,

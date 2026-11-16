@@ -14,6 +14,10 @@
 //   type — features, bugfixes, quick-fixes, epics — a migrated unit of a
 //   type the reshape retires with the features. Its next is Continue,
 //   `handoff unit` (19.1.3).
+// - Then one row while any place holds legacy files from the migration,
+//   "Sort the legacy files from the migration — 41 in 12 places", the one
+//   place named where only one holds any; its next reads them,
+//   `asset legacy`, for the pass that sorts them (legacy-files.cjs).
 // - Then p/product, always, with its sessions' count and last date once it
 //   has sessions, and the brownfield research while it is owed (18.2.13,
 //   8.12.13); s/start, into discovery, which finds the type (18.2.7);
@@ -23,6 +27,7 @@
 //   each a menu of its own (projections/manage.cjs). The frame adds h/help.
 // ---------------------------------------------------------------------------
 
+const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { dayMonth } = require('../dates.cjs');
 const { counted } = require('./map.cjs');
@@ -33,6 +38,7 @@ const { startMenuRead } = require('../start-menu.cjs');
 /** @typedef {import('../start-menu.cjs').StartMenuRead} StartMenuRead */
 /** @typedef {import('../start-menu.cjs').UnitRow} UnitRow */
 /** @typedef {import('../start-menu.cjs').Waiting} Waiting */
+/** @typedef {import('../legacy-files.cjs').LegacyPlace} LegacyPlace */
 /** @typedef {import('../menus.cjs').MenuRow} MenuRow */
 /** @typedef {import('../menus.cjs').MenuScreen} MenuScreen */
 /** @typedef {import('./surfaces.cjs').Next} Next */
@@ -93,6 +99,23 @@ const listed = (units) => units
     || typeRank(a.unit.type) - typeRank(b.unit.type) || a.at - b.at)
   .map(({ unit }) => unit);
 
+/** Where legacy files wait, as the row names it: the one place, or how many. @param {LegacyPlace[]} places */
+const legacyWhere = (places) => {
+  if (places.length > 1) return `${places.length} places`;
+  return places[0].place === PRODUCT ? 'the product' : titlecase(places[0].place);
+};
+
+/** The legacy files' row, while any place holds them, numbered after the units' (the header's). @param {LegacyPlace[]} places @param {number} after @returns {MenuRow[]} */
+function legacyRows(places, after) {
+  if (places.length === 0) return [];
+  const count = places.reduce((sum, { count: held }) => sum + held, 0);
+  return [{
+    key: after + 1,
+    label: { head: 'Sort the legacy files from the migration', tail: `${count} in ${legacyWhere(places)}` },
+    next: { kind: 'engine', argv: ['asset', 'legacy'] },
+  }];
+}
+
 /** A unit's row: Continue, type first. @param {UnitRow} unit @param {number} at @returns {MenuRow} */
 const unitRow = ({ name, type, progress, waiting, mail }, at) => ({
   key: at + 1,
@@ -128,6 +151,7 @@ function startMenuScreen(read) {
     shows: [inboxLine(read.inbox)],
     rows: [
       ...listed(read.units).map(unitRow),
+      ...legacyRows(read.legacy, read.units.length),
       productRow(read),
       { key: 's', word: 'start', label: 'Start something new — describe it, and we\'ll find what kind of work it is', next: handoff('leeway-discovery', 'start', 'none') },
       { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },

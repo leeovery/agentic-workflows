@@ -7,10 +7,11 @@
 // quick-fix's or bugfix's (workunit-move.cjs), and the migration's: the
 // topics a split takes from a building unit to a new epic
 // (workunit-split.cjs), a retired cross-cutting unit's, to the product's
-// place (workunit-retire.cjs) — and each file they name that the move took
-// elsewhere. Every read takes a line a carry lists as made in the unit and on
-// the topic the carry is made at, and each file it names — a citation's, an
-// asset link's — at the path it moved to. Its phase is the carry's where the
+// place (workunit-retire.cjs); and a legacy file's move, the lines naming
+// it at the place each is read at (follow-moves.cjs) — and each file they
+// name that the move took elsewhere. Every read takes a line a carry lists
+// as made in the unit and on the topic the carry is made at, and each file
+// it names — a citation's, an asset link's — at the path it moved to. Its phase is the carry's where the
 // carry is made in the unit the line stands in — a move, which re-types the
 // unit, so the phases the line was made in are the old type's — and its own
 // where the carry takes it into another unit or to the product's place — an
