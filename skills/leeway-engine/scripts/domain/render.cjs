@@ -25,10 +25,8 @@ const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { cancelKept } = require('./fix-branch.cjs');
-const { quickFixBranch, isUnitBranch } = require('./landing-names.cjs');
-const { branches } = require('./landing-git.cjs');
-const { projectRepos } = require('../kernel/repos.cjs');
-const { codeRoot } = require('../kernel/code-root.cjs');
+const { quickFixBranch } = require('./landing-names.cjs');
+const { mayHoldOpen } = require('./landing.cjs');
 const { lastClosed } = require('./cancel-closed.cjs');
 const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
@@ -455,19 +453,21 @@ function epicUnitCancel(cwd, dotpath) {
 
 /**
  * What a unit's cancel does to its code, as its gate says it before the yes
- * (18.3.9): a quick-fix's, once its fixes have begun, its pull requests
- * closed, its branch kept and each checkout taken off it, its work not
- * committed set aside; any other unit's holding a branch of its own, its
- * pull requests closed and its branches kept; null where it touches none.
+ * (18.3.9): a quick-fix's, once its fixes have begun, its branch kept and
+ * each checkout taken off it, its work not committed set aside; any other
+ * unit's, its branches kept — each saying its pull requests closed only
+ * where one may stand open (landing.cjs, `mayHoldOpen`); null where it
+ * says nothing.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
  * @returns {string|null}
  */
 function cancelCodeLine(cwd, unit, manifest) {
   if (quickFixBuild(manifest)) {
-    return fixesBegun(manifest) ? `It closes its open pull requests and keeps ${quickFixBranch(unit)}, taking each checkout off it, any work not committed set aside and kept.` : null;
+    if (!fixesBegun(manifest)) return null;
+    const keeps = `keeps ${quickFixBranch(unit)}, taking each checkout off it, any work not committed set aside and kept.`;
+    return mayHoldOpen(cwd, unit) ? `It closes its open pull requests and ${keeps}` : `It ${keeps}`;
   }
-  const holds = projectRepos(codeRoot(cwd)).some((repo) => [...branches(repo.path).keys()].some((branch) => isUnitBranch(unit, branch)));
-  return holds ? 'It closes its open pull requests, keeping each branch for a reactivate to carry on from.' : null;
+  return mayHoldOpen(cwd, unit) ? 'It closes its open pull requests, keeping each branch for a reactivate to carry on from.' : null;
 }
 
 /**

@@ -15,7 +15,10 @@
 // cancel that set it aside, and the fix's start puts each checkout back on
 // the branch before it puts the work back there — in the nested clone onto
 // the fix's own change, not onto the branch it lands on — and its next
-// opening opens the pull request anew in each repository. The
+// opening opens the pull request anew in each repository; its confirm says
+// the close only where the driver lands through a host. A change the
+// person makes in a checkout while the cancel has it off the branch is
+// theirs: the restart refuses it, naming each, before anything moves. The
 // cancel of a feature, and of a unit with its own branch:
 // test-engine-landing-conformance-cancel.cjs. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies each repository and reads
@@ -82,7 +85,7 @@ for (const { name } of listDrivers('landing')) {
 
       const hosted = side.on(at.dir) !== at.dir;
       assert.deepStrictEqual([before, cancelled.pull_requests_closed, cancelled.checkout], [[true, true], true, 'main']);
-      assert.match(gate, new RegExp(` It closes its open pull requests and keeps ${BRANCH}, taking each checkout off it, any work not committed set aside and kept\\.`));
+      assert.match(gate, new RegExp(` It ${hosted ? 'closes its open pull requests and keeps' : 'keeps'} ${BRANCH}, taking each checkout off it, any work not committed set aside and kept\\.`));
       assert.deepStrictEqual(left, { open: [false, false], tips, out: ['main', NESTED.lib.into], status: '' });
       assert.deepStrictEqual(receipt.replace(/\n {2}/g, ' ').split('\n'), [
         '"Typo" marked as cancelled.',
@@ -95,6 +98,21 @@ for (const { name } of listDrivers('landing')) {
       assert.match(waits, /task 1\.1 of typo's work, set aside as the quick-fix was cancelled, is not back in the checkout/);
       assert.deepStrictEqual([[...started.put_back].sort(), back], [Object.keys(UNCOMMITTED).sort(), { out: [BRANCH, BRANCH], files: Object.values(UNCOMMITTED) }]);
       assert.deepStrictEqual([side.quickFixOpen(at.dir, UNIT), side.quickFixOpen(at.lib, UNIT)], [true, true]);
+    });
+
+    it('19.5.28: reactivated, the fix\'s start refuses the person\'s own changes in each checkout it would put back on the branch — a new file and an edit of a file the fix changed, in the project and in the nested clone — naming each, nothing moved', () => {
+      const at = project();
+      opened(at, 1, FIX);
+      ok(at.dir, ['workunit', 'cancel', UNIT], as());
+      ok(at.dir, ['workunit', 'reactivate', UNIT], as());
+      entered(at.dir, as());
+      const mine = { 'notes/mine.md': 'my own note\n', 'src/flag.js': 'const flag = \'mine\';\n', 'lib/mine.txt': 'mine\n', 'lib/lib.txt': 'lib --mine\n' };
+      for (const [file, text] of Object.entries(mine)) createFile(at.dir, file, text);
+
+      const refusal = refuses(at.dir, ['task', 'start', UNIT, '1.1'], as()).error;
+
+      const named = /^task start: task 1\.1 of typo is built in the project's own checkout, which holds changes not committed — (.+) — so it was not put on typo's branch: commit them or set them aside, then start the task again$/.exec(refusal);
+      assert.deepStrictEqual([named?.[1].split(', ').sort(), out(at.dir), out(at.lib)], [Object.keys(mine).sort(), 'main', NESTED.lib.into]);
     });
   });
 }

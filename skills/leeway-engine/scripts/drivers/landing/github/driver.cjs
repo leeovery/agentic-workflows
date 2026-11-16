@@ -190,7 +190,10 @@
 //   the pull requests passes over each while it stays closed, a task's,
 //   the quick-fix's and the unit's alike, so a landing after a reactivate
 //   opens what it needs anew rather than refusing one closed by hand, and
-//   one the person reopens is read as open.
+//   one the person reopens is read as open. A task whose pull request the
+//   cancel closed onto the head of the one below it, merged by hand since,
+//   opens onto the default branch, its change laid from that head
+//   (`overShut`), as the stack's finish would have read it.
 // - Nested repositories: each repository a task touches lands on its own
 //   repository on GitHub, named by its own remote, with a stack of its own
 //   per phase; one whose remote is not on GitHub is refused before anything
@@ -290,11 +293,9 @@ const cancelledShut = (ctx, pr) => pr.state === 'CLOSED' && ctx.cancelClosed.has
  * @returns {Pull[]}
  */
 function pullsOf(ctx, host) {
-  /** @type {{number: number, state: Pull['state'], headRefName: string, baseRefName: string, headRefOid: string, title: string, body: string}[]} */
-  const listed = JSON.parse(ghAt(ctx, host, ['pr', 'list', '--state', 'all', '--limit', PULL_LIMIT, '--json', PULL_FIELDS], `read ${host.repo}'s pull requests`));
   /** @type {Map<string, Pull>} */
   const byTask = new Map();
-  for (const pr of listed) {
+  for (const pr of listedRead(ctx, host)) {
     const ref = names.taskOfBranch(ctx.unit, pr.headRefName);
     if (ref === null || cancelledShut(ctx, pr)) continue;
     const pull = { number: pr.number, state: pr.state, head: pr.headRefName, base: pr.baseRefName, oid: pr.headRefOid, title: pr.title, body: pr.body, ref };
@@ -303,6 +304,16 @@ function pullsOf(ctx, host) {
   }
   return [...byTask.values()];
 }
+
+/** A pull request as gh lists it. @typedef {{number: number, state: Pull['state'], headRefName: string, baseRefName: string, headRefOid: string, title: string, body: string}} Listed */
+
+/**
+ * Every pull request of the repository's, as gh lists it, read once on a
+ * context that keeps its reads (landing-git.cjs, `readOnce`).
+ * @param {LandingContext} ctx @param {Host} host
+ * @returns {Listed[]}
+ */
+const listedRead = (ctx, host) => lg.readOnce(ctx, 'pulls listed', () => JSON.parse(ghAt(ctx, host, ['pr', 'list', '--state', 'all', '--limit', PULL_LIMIT, '--json', PULL_FIELDS], `read ${host.repo}'s pull requests`)));
 
 /**
  * The unit's pull requests (`pullsOf`), read once on a context that keeps
@@ -460,9 +471,34 @@ function chainTip(ctx, task) {
   refuseUnpushed(ctx, host, shownTask(task.ref));
   const top = openTop(own) ?? openTop(builtOn(ctx, stacks, phase, task.branch));
   const refs = lg.branches(ctx.root);
-  if (top === undefined) return { name: ctx.into, commit: /** @type {string} */ (refs.get(ctx.into)), host };
+  if (top === undefined) {
+    const commit = /** @type {string} */ (refs.get(ctx.into));
+    return { name: ctx.into, commit, host, ...overShut(ctx, host, own, task, commit) };
+  }
   const moved = movedOn(ctx, refs, top);
   return { name: top.head, commit: moved === 'changed' ? /** @type {string} */ (refs.get(top.head)) : top.oid, host };
+}
+
+/**
+ * Where a task's change is laid onto the default branch, at `commit`, from
+ * (the header's): where the unit's cancel closed its latest pull request,
+ * based on the head of the one below it in its stack that has merged into
+ * the default branch by hand since, that head, which its branch holds — as
+ * the stack's finish would read it over that one's head (`finishStack`),
+ * had the cancel not closed it. Nothing where its branch descends from
+ * `commit`, or the cancel closed none of it so.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack|undefined} own its phase's stack @param {LandingTask} task @param {string} commit
+ * @returns {{over?: string}}
+ */
+function overShut(ctx, host, own, task, commit) {
+  if (ctx.cancelClosed.size === 0 || lg.isAncestor(ctx.root, commit, task.branch)) return {};
+  const ofTask = (/** @type {Listed} */ pr) => {
+    const ref = names.taskOfBranch(ctx.unit, pr.headRefName);
+    return ref !== null && sameTask(ref, task.ref);
+  };
+  const base = listedRead(ctx, host).filter((pr) => cancelledShut(ctx, pr) && ofTask(pr)).sort((a, b) => b.number - a.number)[0]?.baseRefName;
+  const under = own?.pulls.find((pull) => pull.state === 'MERGED' && pull.head === base && pull.base === ctx.into);
+  return under === undefined || !lg.isAncestor(ctx.root, under.oid, task.branch) ? {} : { over: under.oid };
 }
 
 /**

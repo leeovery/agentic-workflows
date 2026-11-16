@@ -15,7 +15,9 @@
 //   (`checkOutBranch`) — a start making the fix the checkout's holder
 //   refused first, before the tracker moves, while the checkout holds
 //   changes not committed outside the state, the person's, naming each
-//   (`codeStatus`, code.cjs; R27, task-verbs.cjs) — once the branches are
+//   (`codeStatus`, code.cjs; R27, task-verbs.cjs), and any start while a
+//   checkout it puts there with another out holds any, the person's
+//   (`refuseDirtyOff`), as one a cancel took back holds — once the branches are
 //   readied (`readied`), and every nested checkout holding the branch — one
 //   whose branch the readying made, as a branch gone here or a second clone
 //   leaves it, or one a cancel took off it — on it too, before any work
@@ -104,22 +106,47 @@ const landing = () => require('./landing.cjs');
 /** The build's entry, read when asked, for the calling conversation's tasks in flight: it reads the task verbs too. */
 const buildEntry = () => require('./build-entry.cjs');
 
-/** The changes the project's checkout holds not committed outside the state. @param {string} cwd */
-const dirtOf = (cwd) => codeStatus(cwd).files.map(({ path }) => path);
+/** The changes the project's checkout holds not committed outside the state, in `repos` of its, every one where none are named. @param {string} cwd @param {Repo[]} [repos] */
+const dirtOf = (cwd, repos) => codeStatus(cwd, repos).files.map(({ path }) => path);
 
 /**
  * Refuse a move of the project's checkout while it holds changes not
- * committed outside the state, the refusal naming them.
- * @param {string} cwd @param {(dirty: string) => string} refusal
+ * committed outside the state — in `repos` of its, where they are named —
+ * the refusal naming them.
+ * @param {string} cwd @param {(dirty: string) => string} refusal @param {Repo[]} [repos]
  */
-function refuseDirt(cwd, refusal) {
-  const dirty = dirtOf(cwd);
+function refuseDirt(cwd, refusal, repos) {
+  const dirty = dirtOf(cwd, repos);
   if (dirty.length > 0) throw new Error(refusal(dirty.join(', ')));
 }
 
-/** Refuse to start a quick-fix's task while the project's checkout holds changes not committed. @param {string} cwd @param {TaskRef} ref */
-function refuseDirty(cwd, ref) {
-  refuseDirt(cwd, (dirty) => `task start: ${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on ${ref.unit}'s branch: commit them or set them aside, then start the task again`);
+/**
+ * Refuse to start a quick-fix's task while the project's checkout holds
+ * changes not committed — in `repos` of its, where they are named.
+ * @param {string} cwd @param {TaskRef} ref @param {Repo[]} [repos]
+ */
+function refuseDirty(cwd, ref, repos) {
+  refuseDirt(cwd, (dirty) => `task start: ${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on ${ref.unit}'s branch: commit them or set them aside, then start the task again`, repos);
+}
+
+/**
+ * The holder's start refused while a checkout it puts on the quick-fix's
+ * branch holds changes not committed (`offBranch`): the person's, the
+ * holder's own only ever on the branch — as a cancel, taking each checkout
+ * off it, leaves them after its reactivate.
+ * @param {string} cwd @param {TaskRef} ref
+ */
+const refuseDirtyOff = (cwd, ref) => refuseDirty(cwd, ref, offBranch(cwd, ref.unit));
+
+/**
+ * The project's repositories a start puts on the quick-fix's branch with
+ * another out: the project's own, and each nested one holding the branch.
+ * @param {string} cwd @param {string} unit
+ * @returns {Repo[]}
+ */
+function offBranch(cwd, unit) {
+  const branch = quickFixBranch(unit);
+  return childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => (repo.dir === '' || lg.branches(repo.path).has(branch)) && lg.branchOut(repo.path) !== branch);
 }
 
 /** The way on from each end of a fix that left the checkout holding changes: done commits the fix's own, a close gives them up. */
@@ -558,4 +585,4 @@ function checkOutLanding(cwd, unit) {
   return own;
 }
 
-module.exports = { refuseDirty, refuseDirtyEnd, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, keptUnder, setBranchAside, keptBranches, cancelKept };
+module.exports = { refuseDirty, refuseDirtyOff, refuseDirtyEnd, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, keptUnder, setBranchAside, keptBranches, cancelKept };

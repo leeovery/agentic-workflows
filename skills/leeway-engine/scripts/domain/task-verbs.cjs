@@ -70,9 +70,11 @@
 // flight whose turn it is, never one a
 // question parks. Start refuses a parked fix, as done does, and any fix
 // but the holder while one holds it; the holder's start takes what the
-// checkout holds as its own, and a start that makes a fix the holder, or
-// one of a fix an answer freed since its last start (`freedSinceStart`),
-// refuses what it holds, the person's. The holder leaves the checkout
+// checkout holds as its own — but what a checkout it puts on the branch
+// with another out holds, as a cancel taking each off it leaves them, the
+// person's (fix-branch.cjs, `refuseDirtyOff`) — and a start that makes a
+// fix the holder, or one of a fix an answer freed since its last start
+// (`freedSinceStart`), refuses what it holds, the person's. The holder leaves the checkout
 // clean as it stops holding it — a park sets its work aside, and done and
 // close refuse while the checkout holds changes not committed — so any
 // change there is the holder's. Done and close take a task off the
@@ -1100,7 +1102,7 @@ function recordStarted(cwd, ref) {
   writeJsonAtomic(file, { freed: parks().freedAt(cwd, ref.unit).get(shownTask(ref)) ?? 0 });
 }
 
-/** `task start`: refused before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its checkout; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what the checkout holds taken as the holder's own or, for a fix it makes the holder or one an answer freed since its last start, refused as the person's, then what its park set aside put back. */
+/** `task start`: refused before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its checkout; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what the checkout holds taken as the holder's own — but in a checkout it puts on the branch with another out, as a cancel leaves it — or, for a fix it makes the holder or one an answer freed since its last start, refused as the person's, then what its park set aside put back. */
 const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
@@ -1111,6 +1113,7 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
     const hold = checkoutHold(cwd, ref, manifest);
     refuseNotHolding(ref, hold, 'task start');
     if (!hold.holds || freedSinceStart(cwd, ref)) fixBranch().refuseDirty(cwd, ref);
+    else fixBranch().refuseDirtyOff(cwd, ref);
   } else {
     refuseSecondInStep(cwd, ref, manifest);
   }

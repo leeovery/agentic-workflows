@@ -17,7 +17,8 @@
 //   person's own (fix-branch.cjs, `checkOutLanding`). Run again, it finds
 //   the work set aside already and the checkout back. Where the branch
 //   goes after is each way's own: a move files it under `moved/`, a cancel
-//   keeps it under its name (fix-branch.cjs, `KEPT_UNDER`).
+//   keeps it under its name, which its receipt names (fix-branch.cjs,
+//   `cancelKept`).
 // ---------------------------------------------------------------------------
 
 const { stateRoot } = require('../kernel/state-root.cjs');

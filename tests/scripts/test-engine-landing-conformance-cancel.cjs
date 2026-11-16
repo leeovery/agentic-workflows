@@ -10,7 +10,10 @@
 // own name; reactivated, its branches are
 // there, its pull requests stay closed, and its next landing — `land
 // phase`, or finish's — opens each task done again, the one below in its
-// stack first, and merges them all. A unit's cancel with a branch of its
+// stack first, and merges them all; a task built on one the cancel closed,
+// in progress at the cancel or started after the reactivate, opens onto it
+// once done, its `land open` opening that one again first. The confirm
+// says the close only where the driver lands through a host. A unit's cancel with a branch of its
 // own closes the unit's own pull request, the branch kept here and on the
 // host; cancelled mid-build, before its pull request opens, it closes
 // nothing of its own. A quick-fix's cancel: test-engine-landing-
@@ -48,6 +51,13 @@ function done(dir, tasks) {
   }
   git(statePath(dir), ['add', '-A']);
   git(statePath(dir), ['commit', '-q', '-m', 'the tasks done']);
+}
+
+/** Task 1.1 started in the tracker, as its build starts it, the state committed. @param {string} dir */
+function started(dir) {
+  TRACKER.start(statePath(dir), parseShownTask(UNIT, card.shown));
+  git(statePath(dir), ['add', '-A']);
+  git(statePath(dir), ['commit', '-q', '-m', 'task 1.1 started']);
 }
 
 /** Every branch of the repository at `dir` past the state's, at its tip. @param {string} dir */
@@ -102,11 +112,33 @@ for (const { name } of listDrivers('landing')) {
       const merged = own(ok(at, ['land', 'phase', UNIT, '1'])).merged;
 
       assert.deepStrictEqual([open, cancelled.pull_requests_closed, cancelled.checkout], [hosted(at) ? ['pay-1-1', 'pay-1-2'] : [], hosted(at), undefined]);
-      assert.match(gate, / It closes its open pull requests, keeping each branch for a reactivate to carry on from\./);
+      assert.strictEqual(/ It closes its open pull requests, keeping each branch for a reactivate to carry on from\./.test(gate), hosted(at));
       assert.deepStrictEqual(afterCancel, { open: [], branches });
       assert.deepStrictEqual(afterReactivate, { open: [], branches });
       assert.deepStrictEqual([merged, side.landed(at).map(({ task }) => task)], [['1.2', '1.1'], ['pay-1-2', 'pay-1-1']]);
     });
+
+    for (const [when, before] of [['in progress at the cancel', true], ['started after the reactivate', false]]) {
+      it(`18.S75: a task ${when}, built on one done whose pull request the cancel closed, opens onto it once done, its \`land open\` opening that one again first, and \`land phase\` lands both`, () => {
+        const at = project(world);
+        ok(at, openArgs(total));
+        done(at, [total]);
+        if (before) started(at);
+        ok(at, ['workunit', 'cancel', UNIT]);
+        ok(at, ['workunit', 'reactivate', UNIT]);
+        if (!before) started(at);
+        mergeBack(at, card.branch, total.branch);
+        TRACKER.done(statePath(at), parseShownTask(UNIT, card.shown));
+        git(statePath(at), ['add', '-A']);
+        git(statePath(at), ['commit', '-q', '-m', 'task 1.1 done']);
+
+        ok(at, openArgs(card));
+        const open = side.tasksOpen(at);
+        const merged = own(ok(at, ['land', 'phase', UNIT, '1'])).merged;
+
+        assert.deepStrictEqual([open, merged], [hosted(at) ? ['pay-1-1', 'pay-1-2'] : [], ['1.2', '1.1']]);
+      });
+    }
 
     it('18.S75: cancelled with its tasks done and open, reactivated, finish\'s landing opens each again and lands them all — nothing lands short of the work done', () => {
       const at = project(world);

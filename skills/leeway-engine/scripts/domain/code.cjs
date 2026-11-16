@@ -121,12 +121,13 @@ function uncommittedDiff(cwd) {
 }
 
 /**
- * The uncommitted files across the project, each with its porcelain status.
- * @param {string} cwd
+ * The uncommitted files across the project — in `repos` of its, where they
+ * are named — each with its porcelain status.
+ * @param {string} cwd @param {Repo[]} [repos]
  * @returns {{files: {path: string, status: string}[]}}
  */
-function codeStatus(cwd) {
-  return { files: codeChanges(projectRepos(cwd)) };
+function codeStatus(cwd, repos = projectRepos(cwd)) {
+  return { files: codeChanges(repos) };
 }
 
 module.exports = { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus };

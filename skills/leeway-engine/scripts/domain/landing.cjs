@@ -136,11 +136,13 @@
 // repository's (`cancelClosed`), which the driver's reads take as none
 // while each stays closed, so after a reactivate the landing opens what it
 // needs anew, never refusing one of them as closed by hand: a quick-fix's
-// close opens its one again as it merges (`quickFixLand`), and `land
-// phase` and finish's merges each open again, before they merge, every
-// task done and not landed of those they merge whose pull request the
-// cancel closed, as `land open` opens it (`openedAgain`), so nothing lands
-// short of the work done.
+// close opens its one again as it merges (`quickFixLand`); `land phase`
+// and finish's merges each open again, before they merge, every task done
+// and not landed of those they merge whose pull request the cancel closed,
+// and `land open`, before it opens its task, each such task whose work the
+// task's branch holds, as `land open` opens it (`openedAgain`), so nothing
+// lands short of the work done and nothing waits on a task the cancel
+// closed.
 //
 // A unit with a branch of its own (7.2.34, unit-branch.cjs) lands its tasks
 // and phases on it: each repository's context lands on the unit's landing
@@ -345,9 +347,10 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
 /**
  * The chain's tip a driver answers for a task: the branch the task's branch
  * must descend from, and that branch's commit, which the repository has
- * locally; and, set by the seam where the task's branch does not descend
- * from it, the commit the task's change is laid onto it from (`laidFrom`).
- * A driver may carry more on it for its own `open`.
+ * locally; and, where the task's branch does not descend from it, the
+ * commit the task's change is laid onto it from — the driver's, where it
+ * answers one, else set by the seam (`laidFrom`). A driver may carry more
+ * on it for its own `open`.
  * @typedef {{name: string, commit: string, over?: string}} ChainTip
  */
 
@@ -711,6 +714,8 @@ function untyped(ref, status) {
     + `so land its change as a task of its own, made with \`task create ${ref.unit} ${ref.phase} --file <path>\``;
 }
 
+/** A task's landing with the repositories holding its branch (`landingOf`). @typedef {{task: LandingTask, holding: Repo[]}} HeldLanding */
+
 /**
  * The landing a task opens under, from the type and title the tracker holds
  * for it (7.2.18, 12.4.1), and the repositories holding its branch — a
@@ -718,7 +723,7 @@ function untyped(ref, status) {
  * where it has no type, where no repository holds its branch, or none holds
  * work on it, and where its change carries the state.
  * @param {Project} project @param {TaskRef} ref @param {{type: string|null, title: string, status: string}} task
- * @returns {{task: LandingTask, holding: Repo[]}}
+ * @returns {HeldLanding}
  */
 function landingOf(project, ref, { type, title, status }) {
   const shown = shownTask(ref);
@@ -913,9 +918,9 @@ function laidFrom(ctx, into, task, tip) {
  * first where its branch did after its landing what no verb reads
  * (`refuseAfterLanding`), which a task read landed may: landed on the
  * default branch, as the one read of what has landed reads it, or opened
- * already; past the chain's tip, to open on it, its change laid onto it
- * from where `laidFrom` reads it where its branch does not descend from it;
- * or with nothing past the default branch or the chain's tip — refused
+ * already; past the chain's tip, to open on it, its change laid onto it,
+ * where its branch does not descend from it, from where the driver's tip
+ * says (`ChainTip`), else where `laidFrom` reads it; or with nothing past the default branch or the chain's tip — refused
  * where it does not descend from the tip and its change is laid from
  * nowhere, or where it holds another task's work not landed past it
  * (`refuseHeld`).
@@ -931,7 +936,7 @@ function standing(driver, ctx, task) {
   const tip = driver.chainTip(ctx, task);
   if (tip === null) return { opened: true };
   if (lg.isAncestor(ctx.root, task.branch, tip.commit)) return { past: tip.name };
-  const over = lg.isAncestor(ctx.root, tip.commit, task.branch) ? undefined : laidFrom(ctx, into, task, tip);
+  const over = lg.isAncestor(ctx.root, tip.commit, task.branch) ? undefined : tip.over ?? laidFrom(ctx, into, task, tip);
   if (over === null) {
     throw new Error(`land: task ${shownTask(task.ref)}'s branch ${task.branch} does not descend from the chain's tip, ${tip.name} (${lg.short(tip.commit)}) — merge it back onto ${tip.name} first`);
   }
@@ -996,8 +1001,11 @@ function refuseUnproven(cwd, ref) {
  * wherever it touches, so a rerun reads finished work as done. A task the
  * tracker lacks is refused as the read finds it; a bugfix's reproducing
  * task while its bug is not proven, and a fix phase's off the work below
- * it, before anything opens. A quick-fix's task opens the quick-fix's one
- * pull request (`quickFixOpen`).
+ * it, before anything opens. For a unit a cancel closed a pull request of,
+ * each task done and not landed whose work its branch holds is opened again
+ * first (`openedAgain`, `heldBy`), so it opens onto them as it would have
+ * before the cancel. A quick-fix's task opens the quick-fix's one pull
+ * request (`quickFixOpen`).
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -1011,8 +1019,9 @@ function landOpen(cwd, unit, task) {
   carrying(warnings ?? [], () => refuseUnproven(cwd, ref));
   carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
   return withDriver(cwd, (driver) => {
-    nestedMade(project, driver, landing, holding);
-    const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
+    const opening = openedAgain(project, driver, heldBy(project, landing, holding));
+    nestedMade(opening, driver, landing, holding);
+    const steps = touching(opening, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
     const already = steps.length === 0 ? { already: true } : {};
     return { task: shown, branch: landing.branch, ...already, ...answered(walk(steps, () => `task ${shown} opened`)) };
   }, { committed, warnings });
@@ -1092,8 +1101,29 @@ function landChain(cwd, unit, task) {
 }
 
 /**
+ * The unit's tasks whose work a task's branch holds not landed past the
+ * branch each repository holding it lands on (task-landed.cjs, `heldPast`,
+ * R31), but its own — read once, where first asked: those its `land open`
+ * opens again first (`openedAgain`).
+ * @param {Project} project @param {LandingTask} task @param {Repo[]} holding
+ * @returns {(ref: TaskRef) => boolean}
+ */
+function heldBy(project, task, holding) {
+  /** @type {Set<string>|undefined} */
+  let held;
+  return (ref) => {
+    held ??= new Set(holding.flatMap((repo) => {
+      const ctx = contextOf(project, repo);
+      const into = lg.branches(ctx.root).get(ctx.into);
+      return into === undefined ? [] : ctx.landedOn(into).heldPast(`refs/heads/${task.branch}`, [into]).map(taskId);
+    }));
+    return taskId(ref) !== taskId(task.ref) && held.has(taskId(ref));
+  };
+}
+
+/**
  * Each task done and not landed, of those `picks` names, opened again as
- * `land open` opens it, before a merge reads what is open (the header's):
+ * `land open` opens it, before a landing reads what is open (the header's):
  * after a cancel closed its pull request and a reactivate, it is open
  * nowhere — those below it in their stack first (`stackOrder`), each on
  * contexts made afresh, so each opens onto the one opened before it.
@@ -1108,7 +1138,7 @@ function openedAgain(project, driver, picks) {
   const landed = hasLanded(manifest, tasksLanded(cwd, unit, project.repos, project.since, manifest).landed);
   const waiting = trackedBuild(cwd, unit, buildLength(manifest)).tasks.filter((task) => task.status === 'done' && picks(task.ref) && !landed(task.ref));
   let opened = false;
-  for (const { task, holding } of stackOrder(waiting.map((held) => landingOf(project, held.ref, held)))) {
+  for (const { task, holding } of stackOrder(project, waiting.map((held) => landingOf(project, held.ref, held)))) {
     for (const { ctx, tip } of touching(projectOf(cwd, unit, project.repos), driver, task, holding)) {
       inRepo(ctx.repo, () => driver.open(ctx, task, tip));
       opened = true;
@@ -1118,13 +1148,12 @@ function openedAgain(project, driver, picks) {
 }
 
 /**
- * Tasks in the order their stack holds them: each after every task its
- * branch descends from in a repository holding both, as a task merged back
- * onto the one below it does; else in the order given.
- * @param {{task: LandingTask, holding: Repo[]}[]} landings
+ * Tasks in the order their stack holds them: each after every task below it
+ * (`belowIn`); else in the order given.
+ * @param {Project} project @param {HeldLanding[]} landings
  */
-function stackOrder(landings) {
-  const below = (/** @type {typeof landings[number]} */ a, /** @type {typeof landings[number]} */ b) => b.holding.some((repo) => lg.branches(repo.path).has(a.task.branch) && lg.isAncestor(repo.path, a.task.branch, b.task.branch));
+function stackOrder(project, landings) {
+  const below = belowIn(project);
   const left = [...landings];
   const order = [];
   while (left.length > 0) {
@@ -1134,6 +1163,25 @@ function stackOrder(landings) {
   }
   return order;
 }
+
+/**
+ * Whether one task is below another in their stack: in a repository
+ * holding both, the lower's branch holding work of its own there
+ * (`ownWork`), the other's descending from it, as a task merged back onto
+ * the one below it does — never where a task's worktree merely made its
+ * branch, in a clone it changes nothing in (12.7.10).
+ * @param {Project} project @returns {(a: HeldLanding, b: HeldLanding) => boolean}
+ */
+const belowIn = (project) => (a, b) => b.holding.some((repo) => a.holding.some((held) => held.dir === repo.dir)
+  && ownWork(project, repo, a.task.branch) && lg.isAncestor(repo.path, a.task.branch, b.task.branch));
+
+/**
+ * Whether a task's branch holds work of its own in a repository holding it:
+ * in a nested one, as holding it reads (`landingOf`); in the project's own,
+ * which holds every branch it names, past the branch it lands on.
+ * @param {Project} project @param {Repo} repo @param {string} branch
+ */
+const ownWork = (project, repo, branch) => repo.dir !== '' || !lg.isAncestor(repo.path, branch, contextOf(project, repo).into);
 
 /**
  * A phase merged whole in every repository it lands in, children first —
@@ -1804,11 +1852,26 @@ function quickFixClose(read, told = () => {}) {
 }
 
 /**
+ * Whether a pull request of the unit's may stand open for its cancel to
+ * close, asking no host (18.3.9): in a repository landing through a host
+ * (`landsThroughHost`), its remote holding a branch of the unit's as last
+ * fetched, as an opening pushes it.
+ * @param {string} cwd @param {string} unit
+ */
+function mayHoldOpen(cwd, unit) {
+  const { driver } = chosenDriver(cwd, 'landing');
+  return projectRepos(codeRoot(cwd)).some((repo) => {
+    const remote = lg.remoteOf(cwd, repo);
+    return landsThroughHost(/** @type {LandingDriver} */ (driver), remote) && lg.trackedBranches(repo.path, /** @type {string} */ (remote)).some((branch) => names.isUnitBranch(unit, branch));
+  });
+}
+
+/**
  * The cancel's close (18.3.9): every pull request open on a branch of the
  * unit's closed unmerged, in each repository it touched, the branches left
  * as they stand, each told to `told` as it closes, so a refusal part way
- * keeps those it closed — a refusal's way on the cancel run again
- * (`cancelling`).
+ * keeps those it closed — a refusal the cancel's, its way on the cancel
+ * run again (`cancelling`).
  * @param {string} cwd @param {string} unit @param {Told} told
  * @returns {Closed}
  */
@@ -1816,7 +1879,7 @@ function cancelClose(cwd, unit, told) {
   try {
     return cancelling(cwd, unit, told);
   } catch (err) {
-    if (err instanceof Error) err.message = err.message.replace(/land again/g, 'cancel again');
+    if (err instanceof Error) err.message = err.message.replace(/^land:/, 'cancel:').replace(/land again/g, 'cancel again');
     throw err;
   }
 }
@@ -1987,5 +2050,5 @@ module.exports = {
   landFinish: (cwd, unit) => recording(cwd, unit, () => landFinish(cwd, unit)),
   /** `land finish` past its refusals, its landings written for finish's yes's commit of the unit to carry, `then` the step a refusal's way on runs again. @param {string} cwd @param {string} unit @param {string} then */
   finishMerge: (cwd, unit, then) => recording(cwd, unit, () => finishMerge(cwd, unit, then), true),
-  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, cancelClose, workFrom, unendedRefusal, reviewOpened,
+  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, cancelClose, mayHoldOpen, workFrom, unendedRefusal, reviewOpened,
 };
