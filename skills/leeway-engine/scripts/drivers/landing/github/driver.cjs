@@ -932,7 +932,7 @@ function broughtUpFirst(ctx, host, stacks, stack, fetched) {
  * A stack brought up to date with the default branch on GitHub, `into`:
  * merged into the bottom branch, then each branch into the one above —
  * each over its commit of `bases`, else their merge base (`broughtOver`),
- * a branch whose head is that merge already left as it is, so landing
+ * a branch whose head already merges that commit in left as it is, so landing
  * again pushes nothing anew — refused, before anything is pushed, where a
  * merge conflicts in a file: its way on, where a pull request of it is
  * read over another commit its branches

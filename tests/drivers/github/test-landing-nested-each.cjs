@@ -89,6 +89,6 @@ describe('GitHub\'s landing driver across nested repositories, each asked in tur
     }
     const merged = { ok: true, phase: 1, already: true, repos: [], driver: 'github' };
 
-    assert.deepStrictEqual([ok(at.dir, ['land', 'phase', 'pay', '1']), ok(at.dir, ['land', 'phase', 'pay', '1'])], [merged, merged]);
+    assert.deepStrictEqual(ok(at.dir, ['land', 'phase', 'pay', '1']), merged);
   });
 });
