@@ -1,25 +1,49 @@
 # The agents
 
-More than thirty specialised sub-agents work alongside the pipeline, and the reason they exist comes down to a single idea about context. The session you are talking to was *in* the conversation — it remembers what was said, what was meant, what was waved off. That memory is an asset when the job is to catch what was discussed but never written down. It is a liability when the job is to judge what *was* written down, because a participant reads a document already knowing what it was supposed to say. A sub-agent has no such memory. It reads the artifact cold, with nothing but the artifact in front of it, and that is exactly what makes its critique worth having. The orchestrating session catches what was said but not written; the fresh agent catches what was written but not right.
-
-Every one of these agents is stateless — each time it runs it starts from nothing and is given its inputs in full — and every one hands back a short, structured result. Most write their findings to files rather than into the chat, so the conversation is not flooded. None of them touches git or changes your project's state; committing and record-keeping belong to the orchestrating session and the [engine](engine.md) alone. The agents propose; nothing they produce becomes part of a plan or a specification without passing through a gate you control.
-
-They divide naturally by *when* in the work they act.
-
-**Before the pipeline exists.** On a project the workflows were installed into mid-life, the [baseline](knowledge-base.md) assessment fans one researcher out per area of the existing codebase. Each reads the code cold and returns what it shows — and the questions only the owner can answer, which become the interview that captures the rest.
-
-**While you converse.** Behind a live [research](research-and-discussion.md) session, a deep-dive researcher can be sent after a single question in real depth while the conversation carries on — a survey, a read, a feasibility check, a landscape, a verification against sources, never a measurement — and what it brings back folds into the document as material and reaches you as the answers to what was asked; it is never a critique. Behind a live discussion, background critics read the growing document with clean eyes and look for what is missing — coverage gaps, shallow spots, assumptions taken on faith. And when a decision has two genuinely competing answers, a pair of them argue it from deliberately opposing viewpoints, after which another reconciles the two into a map of the real trade-offs. The critics' findings never dump on you all at once: a maturity-graded bar filters what is worth your time at all, corrections your own decisions already determine arrive together in scannable screens, calls the record settles arrive made — named with what determined them, yours to veto — and anything holding a genuine choice surfaces one at a time, as a question, when you are ready for it.
-
-**When a document must be validated.** As a [specification](specification.md) nears completion, agents check it in a strict sequence. A spec gets three: one measures its factual claims against the actual codebase, one finds what was missed or distorted coming in from the sources, and one reads the finished document as its future consumers will. Because they run in order, each later pass is always reviewing the corrected version rather than the original. A bugfix's root cause gets the same treatment: an independent agent re-traces the code from scratch to confirm the diagnosis holds.
-
-**While the plan is built.** The plan is not drafted in one pass by one mind. One agent designs the phase structure from the specification, another breaks a phase into a task list, another writes the full detail of those tasks, and another works out the dependencies and ordering across the whole plan — each doing one job well, with you approving between them.
-
-**While the code is written.** Each task in the [implementation](implementation.md) loop is handled by a pair: an executor that writes the code test-first, and an independent reviewer — which did not write that code — that checks it against the specification and the task's acceptance criteria. The reviewer's verdict is what drives the fix loop.
-
-**At each phase boundary.** When a phase's tasks are all built, a consolidation finder reads the phase's combined surface cold — the cross-task duplication, near-miss helpers, dead ends, and behaviour the phase's work makes owed that no single task's eyes could see — verdicts everything the executor and reviewer banked along the way, and reports where the specification no longer matches what was rightly built. What survives is walked past you as short proposals; a task author then writes the full detail for exactly the ones you approved, into the same phase before it closes.
-
-**After the code exists.** Once the tasks are built, a set of examiners looks back over the whole result from different angles — architecture, duplication, standards conformance — and a synthesiser turns their overlapping findings into a clean list of remediation proposals for you to approve — the task author writing full detail for the survivors. In the final [review](review.md), verifiers check the completed tasks against what was agreed by reading, working in parallel, and record the criteria reading alone cannot settle; change-set verifiers then hold the whole delivered change-set against the specification's intent — the gaps between tasks are theirs — measuring where the project's own conventions allow and returning a map of what they checked and found sound. A prep pipeline checks every finding against the code — is it true, would its fix meet the standard, could it breach a guard, does it collide with another — and a synthesis merges the collisions and routes each survivor. The fixes that can be made in session are made by appliers, one batch at a time, and checked by a verifier that reads the whole diff and runs the suite before anything is committed; another agent turns what must still be planned into remediation work.
+Ledger sends out twenty agents of its own beside the conversation, and the reason comes down to one idea about context. The session you are talking to was in the conversation: it remembers what was said, what was meant, what was waved off. That is an asset when the job is to catch what was discussed but never recorded. It is a liability when the job is to judge what was recorded, because a participant reads it already knowing what it was meant to say. An agent has no such memory. It works from the record, cold, and that is what makes its work worth having — and what tests that the record holds everything.
 
 ## The common shape
 
-Read across all of them and the same discipline repeats. Their inputs are always explicit — the exact material to work from, handed over in full, never a vague "everything we've discussed so far" — which is what lets a stateless agent do a reliable job. Their outputs are always structured, so the orchestrator can act on them without guessing. Each is given only the capabilities its job actually needs and no more. And every point where judgment is exercised stays with the orchestrating session and with you: the agents surface, propose, and argue, but the decisions, and the commits that record them, are never theirs to make. That is the whole arrangement in one line — a workforce of fresh, narrow experts that produce findings, feeding a single conversation that decides what to do with them.
+The conversation itself stays in your session, at your effort. The spec, the phase cut, the tasks, the reviews and the deep dives are each written by a named agent whose one job is that artifact, with its rules boxed inside it. Each agent's model and effort are fixed in its own definition and hold whatever your session runs at: Opus at medium, save the root-cause validator, which runs at extra-high.
+
+Every agent is briefed by the engine, from a template Ledger owns, filled from the records and handed over unchanged; a hook refuses a Ledger agent dispatched with anything else. Nothing of the conversation reaches an agent but what the records hold, so anything an agent should know goes into the record first. An agent's findings and decisions come back to the conversation and take the [ask rule](trust.md#the-ask-rule)'s route like any other call: the agents surface, propose and argue, and the decisions stay with the conversation and with you.
+
+## Before the work
+
+- **The product researcher** reads a codebase that predates Ledger for the product's first conversation: it lands what the code shows as findings on the ledger, and brings back what it leaves open as questions for you.
+
+## While you talk
+
+Behind a live [discussion](discussion.md), agents work in the background while the conversation carries on:
+
+- **The deep dive** answers one open question in real depth — from sources, from the code — and reports what it found for the conversation to take up.
+- **The discussion reviewer** reads the topic's record and log with a clean slate, for gaps, shallow ground and edges nobody raised, each finding with where it belongs.
+- **The perspective agents** argue a hard decision from two deliberately opposed lenses, and **the synthesis agent** reconciles them into the landscape of trade-offs and what would tip it.
+- **The closing-pass reader** reads the topic fresh at its close, against the other records and the product record, and carries the gap review where none has run since the topic's last decision.
+
+## Between the topics and the spec
+
+- **The sweep** runs once every topic of an epic is decided: it reads across all the records, and the project's in the areas they touch, for work no topic owns and for answers that conflict.
+- **The spec writer** assembles the work unit's one spec, by area, from the records, every statement citing the entries it comes from.
+- **The spec reviewer** reads the spec against the records and the code, re-running each recorded measurement, and reports its gaps.
+- **The phase cutter** cuts the spec into build phases, in build order, from what each part relies on.
+
+In a bugfix, **the root-cause validator** re-traces the cause from the record and the code, independently of the investigation, and **the fix validator** checks the proposed fix against it: whether it resolves the cause, and what it would break.
+
+## While the code is written
+
+- **The task writer** writes each build phase's tasks as the phase starts, against the code the phases before it left.
+- **The builder** builds one task, with the tests that prove it, to its task, the spec's sections it cites and the decided calls, proves it by running the product, commits it through the engine's door, writes its account, and takes its review's fix rounds.
+- **The reviewer** runs as a pair, two independent reviewers who did not write the code, at three reviews: each task's change, each build phase's whole change, and the whole change against one area of the spec in the review phase. Each runs the tests and reports each finding with its call and the user scenario that meets it.
+- **The consolidation agent**, at a build phase's end, reads its notes for later against the phase's finished code, drops what the code settled, and makes the rest tasks of the phase.
+- **The test-surface agent**, in the review phase, reads every test of the whole change against every scenario the spec asks them to guard, runs them, and breaks what they guard to see that they notice.
+
+[The build](the-build.md) and [review](review.md) describe where each fits.
+
+## Searching in depth
+
+- **The plain-search helper** searches the project's files in depth where a [knowledge base](knowledge-base.md) query did not answer, and returns only what it found, so the cost of the search stays out of your conversation.
+
+## Moving a project across
+
+- **The migration's topic agent** carries the judgment work of moving a project from before Ledger, one topic or one phase of a work unit's plan at a time, and **the migration verifier** checks what it composed against its sources, hunting for detail it dropped. [State and git](state-and-git.md#moving-a-project-across) describes the move.

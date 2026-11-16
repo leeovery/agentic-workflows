@@ -4,17 +4,17 @@ Guidance for Claude Code working in this repo.
 
 ## Project Overview
 
-Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
+Ledger: agentic workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
 
-**This project authors the workflow system — it does not use it.** Never invoke workflow skills (`/ledger`, `/ledger-continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
+**This project authors Ledger — it does not use it.** Never invoke Ledger's skills (`/ledger`, `/ledger-continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
 
 This file holds the rules for working on the repo and a map of the system. How the system behaves is stated by the document that owns each part:
 
 - **The skills** — each `SKILL.md` and its `references/` are the source of truth for their own flow.
 - **`CONVENTIONS.md`** — skill authoring rules.
 - **The engine** — `skills/ledger-engine/SKILL.md` (architecture), `skills/ledger-engine/references/commands.md` (every verb's contract, state and response), and each module's header comment.
-- **`docs/`** — the user-facing book: work types, every phase, lifecycle operations (`docs/lifecycle-operations.md`), reliability (`docs/reliability.md`), configuration, the knowledge base. `docs/contributing.md` covers setup, the gates, migrations, and the knowledge-base code.
-- **`skills/ledger-help/references/glossary.md`** — the canonical vocabulary.
+- **`docs/`** — the user-facing book: work types, every phase, lifecycle operations (`docs/lifecycle-operations.md`), trust, verification, state and git, tracking, reliability (`docs/reliability.md`), configuration, the knowledge base. `docs/contributing.md` covers setup, the gates, migrations, the docs' checks, and the knowledge-base code.
+- **`skills/ledger-shared/references/glossary.md`** — the canonical vocabulary.
 - **`skills/ledger-gates/README.md`** and **`skills/ledger-gates-rows/README.md`** — the Claude Code mods.
 - **`tests/README.md`** — how a test is written: the layers, the fixture library, assertions, measuring.
 - **`tests/prose/README.md`** — the prose-test harness.
@@ -51,7 +51,7 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 3. **Discussion** (`ledger-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
 4. **Investigation** (`ledger-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
 5. **Specification** (`ledger-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
-6. **Implementation** (`ledger-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built by TDD; a quick-fix's is its own skill (`ledger-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
+6. **Implementation** (`ledger-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built with the tests that prove it, held by the tests the commit door runs and the reviewer pair; a quick-fix's is its own skill (`ledger-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
 7. **Review** (`ledger-review-process`) — verify the built change against the specification, its findings landing as fix tasks; a quick-fix's only when the person asks for one at its close.
 
 ### Work types and topics
@@ -72,7 +72,8 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Navigation** (`ledger-continue-epic`) — an epic's menu; any other unit is continued from the start menu, where it stands.
 - **Phase skills** (`ledger-{phase}-process`) — one per phase after discovery, and a quick-fix's own, `ledger-quick-fix-process`, from its first fix to its close; what each holds is in CONVENTIONS.md (The Phase Skill).
 - **Capture** (`ledger-log-idea`, `ledger-log-bug`, `ledger-log-quickfix`) — write to the inbox; no steps, no gates.
-- **Project-level** — `ledger-roadmap` (the product roadmap, and starting work from it through discovery), `ledger-help` (the walkthrough and reference cards).
+- **Project-level** — `ledger-roadmap` (the product roadmap, and starting work from it through discovery).
+- **Help** — the engine's: each menu's help beside the projection that draws it (`skills/ledger-engine/scripts/domain/projections/{menu}.help.md`), and the walkthrough and reference cards in `skills/ledger-engine/content/walkthrough/`.
 - **Shared references** (`skills/ledger-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
 - **Engine** (`ledger-engine`) — state, derivation and rendering; `ledger-migrate` holds the migrations.
 - **Drivers** (`skills/ledger-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
@@ -106,7 +107,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Ledger of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
 - `.ledger/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `refs/ledger/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
-- `~/.config/ledger/` (or `LEDGER_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, and `conversations/{session-id}/`, per-conversation state
+- `~/.config/ledger/` (or `LEDGER_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, `decision-checks.jsonl` the one-decision check's log, and `conversations/{session-id}/`, per-conversation state: `booted.json` boot's stamp, which the verbs that touch work refuse without, and `briefs/` the briefs the conversation issued
 
 ### State
 
@@ -146,6 +147,9 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 - **The git floor** is one value — the engine's `GIT_FLOOR` (`skills/ledger-engine/scripts/domain/git-floor.cjs`), behind boot's stop on an older git or none — and the docs that name it, held equal by `tests/scripts/test-git-floor.cjs`. A change that runs a git command or option a newer git brought raises it, and those docs, in the same PR.
 - **Any change to the workflows updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation-*.cjs`, its oracle `pipeline-oracle.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
+- **Where a tool may be named** is held by `tests/scripts/test-tool-names.cjs`: a driver's tool, in the forms only it takes, nowhere outside the places Tool Names allows, and in help and the glossary not even as a word.
+- **The glossary** is held by `tests/scripts/test-glossary.cjs`: no retired term, every term the design adds, and no entry speaking in an engine verb, a path or a skill name.
+- **The docs** are held by `tests/scripts/test-docs.cjs`: the book's chapters, the effort line, the README's pipeline table, none of the author's own products named, and the product called Ledger in the docs, help and the glossary.
 
 ### Prose tests
 
