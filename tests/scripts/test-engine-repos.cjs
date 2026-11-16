@@ -16,7 +16,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { git, commitCode, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, layout, traced } = require('./engine-harness.cjs');
+const { git, commitCode, initRepo, setupGitFixture, cleanupFixture, createFile, writeState, layout, traced } = require('./engine-harness.cjs');
 const { git: engineGit } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
 const { withVerbReads } = require('../../skills/leeway-engine/scripts/kernel/isolated-git.cjs');
 const {
@@ -43,12 +43,12 @@ describe('projectRepos: the repos a project holds', () => {
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('finds an ignored clone, an untracked repo at any depth, a submodule and a repo inside another — the root first, then by folder', () => {
-    const api = nestedRepo(dir, 'api');
+  it('finds an ignored clone, an untracked repo at any depth and a repo inside another — the root first, then by folder', () => {
+    nestedRepo(dir, 'api');
     nestedRepo(dir, 'api/lib');
     createFile(dir, 'packages/notes.txt', 'a loose file beside the repo\n');
     nestedRepo(dir, 'packages/tools/cli');
-    addSubmodule(dir, 'vendor/sdk', api);
+    nestedRepo(dir, 'vendor/sdk');
 
     const repos = projectRepos(dir);
 
@@ -56,8 +56,7 @@ describe('projectRepos: the repos a project holds', () => {
     assert.deepStrictEqual(repos.map((repo) => repo.path),
       [dir, ...['api', 'api/lib', 'packages/tools/cli', 'vendor/sdk'].map((rel) => path.join(dir, rel))]);
     assert.deepStrictEqual(repos.map((repo) => repo.heldOut), [['packages/tools/cli', 'vendor/sdk'], ['lib'], [], [], []],
-      'each git holds out the untracked repos and submodules directly inside it — never one it ignores, never one further down');
-    assert.deepStrictEqual(repos.map((repo) => repo.submodules), [['vendor/sdk'], [], [], [], []]);
+      'each git holds out the untracked repos directly inside it — never one it ignores, never one further down');
   });
 
   it('walks once in a verb, each call given its own copy, each folder\'s facts asked once, and again once git has written', () => {
@@ -87,24 +86,23 @@ describe('projectRepos: the repos a project holds', () => {
     assert.deepStrictEqual(roots, [tree, dir]);
   });
 
-  it('never looks inside an ignored folder that is not a repo, and takes no submodule with nothing checked out', () => {
+  it('never looks inside an ignored folder that is not a repo, and takes a gitlink with nothing checked out for no repo', () => {
     createFile(dir, 'node_modules/left-pad/index.js', '1\n');
     nestedRepo(dir, 'node_modules/dep');
     const sha = git(dir, ['rev-parse', 'HEAD']).trim();
     git(dir, ['update-index', '--add', '--cacheinfo', `160000,${sha},libs/absent`]);
 
-    assert.deepStrictEqual(projectRepos(dir), [{ dir: '', path: dir, prefix: '', heldOut: [], submodules: [] }]);
+    assert.deepStrictEqual(projectRepos(dir), [{ dir: '', path: dir, prefix: '', heldOut: [] }]);
   });
 
   it('a linked worktree of the project\'s own repository is no repo of its own — its folder stays the root\'s dirt', () => {
     git(dir, ['worktree', 'add', '-q', '-b', 'side', path.join(dir, 'trees/side')]);
-    const api = nestedRepo(dir, 'api');
-    addSubmodule(dir, 'vendor/sdk', api);
+    nestedRepo(dir, 'api');
 
     const repos = projectRepos(dir);
 
-    assert.deepStrictEqual(dirsOf(repos), ['', 'api', 'vendor/sdk'], 'a submodule\'s own git dir is not the root\'s');
-    assert.deepStrictEqual(repos[0].heldOut, ['vendor/sdk']);
+    assert.deepStrictEqual(dirsOf(repos), ['', 'api']);
+    assert.deepStrictEqual(repos[0].heldOut, []);
     assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'trees/side/', status: '??' }]);
   });
 
@@ -146,36 +144,22 @@ describe('projectRepos: the repos a project holds', () => {
     }
   });
 
-  it('S1 (12.14): a gitlink is a submodule only where .gitmodules maps it, a path holding a space read whole — a nested clone git add staged stays a nested clone, held out and no submodule, at the root and in a child', () => {
+  it('S1 (12.14): a nested clone git add staged stays a nested clone, held out, at the root and in a child — a path holding a space read whole', () => {
     const api = nestedRepo(dir, 'api');
     nestedRepo(dir, 'packages/kit');
+    nestedRepo(dir, 'my sdk');
     nestedRepo(api, 'tools');
-    addSubmodule(dir, 'vendor/sdk', api);
-    addSubmodule(dir, 'my sdk', api);
-    git(dir, ['add', 'packages/kit']);
+    git(dir, ['add', 'packages/kit', 'my sdk']);
     git(api, ['add', 'tools']);
 
     const repos = projectRepos(dir);
 
-    assert.deepStrictEqual(repos.map(({ dir: at, heldOut, submodules }) => ({ at, heldOut, submodules })), [
-      { at: '', heldOut: ['packages/kit', 'my sdk', 'vendor/sdk'], submodules: ['my sdk', 'vendor/sdk'] },
-      { at: 'api', heldOut: ['tools'], submodules: [] },
-      { at: 'api/tools', heldOut: [], submodules: [] },
-      { at: 'my sdk', heldOut: [], submodules: [] },
-      { at: 'packages/kit', heldOut: [], submodules: [] },
-      { at: 'vendor/sdk', heldOut: [], submodules: [] },
-    ]);
-  });
-
-  it('a project nested in a larger repository reads its submodules from the larger repository\'s .gitmodules, by the project\'s own names', () => {
-    const project = path.join(dir, 'apps/web');
-    createFile(project, 'src/app.js', '1\n');
-    commitCode(dir, 'the project');
-    addSubmodule(dir, 'apps/web/vendor/sdk', nestedRepo(dir, 'api'));
-
-    assert.deepStrictEqual(projectRepos(project).map(({ dir: at, submodules }) => ({ at, submodules })), [
-      { at: '', submodules: ['vendor/sdk'] },
-      { at: 'vendor/sdk', submodules: [] },
+    assert.deepStrictEqual(repos.map(({ dir: at, heldOut }) => ({ at, heldOut })), [
+      { at: '', heldOut: ['my sdk', 'packages/kit'] },
+      { at: 'api', heldOut: ['tools'] },
+      { at: 'api/tools', heldOut: [] },
+      { at: 'my sdk', heldOut: [] },
+      { at: 'packages/kit', heldOut: [] },
     ]);
   });
 
@@ -187,8 +171,8 @@ describe('projectRepos: the repos a project holds', () => {
     nestedRepo(project, 'service');
 
     assert.deepStrictEqual(projectRepos(project), [
-      { dir: '', path: project, prefix: 'apps/web/', heldOut: ['service'], submodules: [] },
-      { dir: 'service', path: path.join(project, 'service'), prefix: '', heldOut: [], submodules: [] },
+      { dir: '', path: project, prefix: 'apps/web/', heldOut: ['service'] },
+      { dir: 'service', path: path.join(project, 'service'), prefix: '', heldOut: [] },
     ]);
   });
 });
@@ -227,18 +211,13 @@ describe('where the project sits in its repository', () => {
 });
 
 describe('commitGroups: a code commit\'s order', () => {
-  const repo = (dir, submodules = []) => ({ dir, path: `/p/${dir}`, heldOut: submodules, submodules });
+  const repo = (dir, heldOut = []) => ({ dir, path: `/p/${dir}`, prefix: '', heldOut });
   const repos = [repo('', ['sdk']), repo('api'), repo('sdk', ['inner']), repo('sdk/inner'), repo('web')];
   const plan = (paths) => commitGroups(repos, paths).map((group) => [group.repo.dir, group.paths]);
 
-  it('commits the deepest repos first, then by folder, so a repo commits before the one it is nested in', () => {
+  it('commits the deepest repos first, then by folder, so a repo commits before the one it is nested in — a parent never taking a nested repo\'s folder', () => {
     assert.deepStrictEqual(plan(['app.js', 'web/x.js', 'api/y.js']), [['api', ['y.js']], ['web', ['x.js']], ['', ['app.js']]]);
-  });
-
-  it('a parent takes the folder of each submodule the call reaches into, up the chain — never an untouched one', () => {
-    assert.deepStrictEqual(plan(['sdk/inner/x.js']), [['sdk/inner', ['x.js']], ['sdk', ['inner']], ['', ['sdk']]]);
-    assert.deepStrictEqual(plan(['app.js', 'sdk/z.js']), [['sdk', ['z.js']], ['', ['app.js', 'sdk']]]);
-    assert.deepStrictEqual(plan(['app.js']), [['', ['app.js']]]);
+    assert.deepStrictEqual(plan(['app.js', 'sdk/inner/x.js']), [['sdk/inner', ['x.js']], ['', ['app.js']]]);
   });
 });
 
@@ -270,9 +249,10 @@ describe('dirt and history across the repos', () => {
     const cli = nestedRepo(dir, 'tools/cli');
     createFile(dir, 'packages/notes.txt', 'loose\n');
     const kit = nestedRepo(dir, 'packages/kit');
-    const sdk = addSubmodule(dir, 'vendor/sdk', api);
+    const sdk = nestedRepo(dir, 'vendor/sdk', 'src/handler.js');
+    git(dir, ['add', 'vendor/sdk']);
     createFile(sdk, 'moved.js', '1\n');
-    commitCode(sdk, 'the pointer moves');
+    commitCode(sdk, 'the clone moves past its staged gitlink');
     createFile(sdk, 'src/handler.js', '2\n');
     createFile(sdk, 'src/new/sdk.js', 'new\n');
     createFile(dir, 'src/app.js', '2\n');
@@ -286,7 +266,7 @@ describe('dirt and history across the repos', () => {
     createFile(dir, '.gitignore', 'api/\n');
 
     assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean), [
-      ' M .gitignore', ' M src/app.js', ' M vendor/sdk', '?? .leeway/', '?? packages/kit/', '?? packages/notes.txt',
+      ' M .gitignore', ' M src/app.js', 'AM vendor/sdk', '?? .leeway/', '?? packages/kit/', '?? packages/notes.txt',
       '?? src/new/a.js', '?? src/new/b.js', '?? tools/cli/',
     ], 'the root\'s git names the nested repos and the state by their folders, file by file never');
     assert.deepStrictEqual(projectDirtyEntries(projectRepos(dir)), [
@@ -301,7 +281,7 @@ describe('dirt and history across the repos', () => {
       { path: 'tools/cli/bin/run.js', status: '??' },
       { path: 'vendor/sdk/src/handler.js', status: ' M' },
       { path: 'vendor/sdk/src/new/sdk.js', status: '??' },
-    ], 'an ignored clone, an untracked nested repo and a submodule never reach the root\'s dirt; each one\'s own reads under its folder');
+    ], 'an ignored clone, an untracked nested repo and a staged one never reach the root\'s dirt; each one\'s own reads under its folder');
   });
 
   it('a project nested in a larger repository reads only its own folder of it, named from the project', () => {

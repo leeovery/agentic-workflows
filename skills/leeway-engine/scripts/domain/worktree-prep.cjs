@@ -66,7 +66,7 @@
 const fs = require('fs');
 const path = require('path');
 const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
-const { projectDirtyEntries, mappedSubmodules, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
+const { projectDirtyEntries, folderUnder } = require('../kernel/repos.cjs');
 const { mainCheckout, gitfileTarget } = require('../kernel/isolated-git.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { tryClaimFile } = require('../kernel/manifest-io.cjs');
@@ -303,10 +303,9 @@ function linksHeldOut(repos) {
  * What the index of one of the project's repositories holds against its
  * HEAD that the door never commits (the header's), each by its path from the
  * repository with what it is: a link preparation made — a symbolic link at a
- * directory the settings name to link — a nested clone's gitlink, one
- * `.gitmodules` does not map (kernel/repos.cjs), as `git add` stages a clone,
- * and a file in the folder of a repository nested in it, as a merge or a
- * checkout of a tree holding one writes it there.
+ * directory the settings name to link — a nested clone's gitlink, as `git
+ * add` stages a clone, and a file in the folder of a repository nested in it,
+ * as a merge or a checkout of a tree holding one writes it there.
  * @param {Repo[]} repos the project's, as `projectRepos` reads them @param {Repo} repo one of them
  * @returns {{path: string, what: string}[]}
  */
@@ -316,7 +315,6 @@ function stagedHeldOut(repos, repo) {
     .filter(({ mode }) => mode !== '000000');
   if (staged.length === 0) return [];
   const directories = linkedDirectories(projectFolder(repos));
-  const mapped = mappedSubmodules({ top: checkoutTop(repo, repo.path), prefix: repo.prefix });
   /** @type {Map<string, boolean>} */
   const nestedAt = new Map();
   const inNested = (/** @type {string} */ name) => {
@@ -327,7 +325,7 @@ function stagedHeldOut(repos, repo) {
   };
   const what = (/** @type {{mode: string, name: string}} */ { mode, name }) => {
     if (mode === '120000' && directories.includes(name)) return 'a link the worktree\'s preparation made, as worktree.symlinkDirectories names';
-    if (mode === '160000' && !mapped.includes(name)) return 'the gitlink of a repository nested in it that no .gitmodules entry maps';
+    if (mode === '160000') return 'the gitlink of a repository nested in it';
     return inNested(name) ? 'in the folder of a repository nested in it' : null;
   };
   return staged.flatMap((entry) => {

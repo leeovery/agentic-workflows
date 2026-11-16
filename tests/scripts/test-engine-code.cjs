@@ -20,7 +20,7 @@ const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 
-const { git, commitAll, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, statePath, layout } = harness;
+const { git, commitAll, initRepo, setupGitFixture, cleanupFixture, createFile, writeState, statePath, layout } = harness;
 const { diffPatch } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
 const { building, FOR_TASK, TASK_BRANCH, startBuilding } = require('./commit-door-world.cjs');
 
@@ -65,11 +65,11 @@ describe('engine code log and diff --subject: the commits a subject prefix selec
     createFile(api, 'README.md', '# API\n');
     commitAll(api, 'docs: the readme');
 
-    // A submodule whose own history the task commit lands in.
-    const source = initRepo(path.join(dir, '..', `${path.basename(dir)}-sdk-source`));
-    createFile(source, 'index.js', '1\n');
-    commitAll(source, 'init');
-    sdk = addSubmodule(dir, 'vendor/sdk', source);
+    // An untracked clone deeper in, whose own history the task commit
+    // lands in.
+    sdk = initRepo(path.join(dir, 'vendor/sdk'));
+    createFile(sdk, 'index.js', '1\n');
+    commitAll(sdk, 'init');
     createFile(sdk, 'lib.js', '1\n');
     commitAll(sdk, `${PREFIX}4 — the sdk`);
 
@@ -77,23 +77,20 @@ describe('engine code log and diff --subject: the commits a subject prefix selec
     initRepo(path.join(dir, 'fresh'));
     createFile(dir, 'fresh/notes.txt', 'nothing committed\n');
   });
-  afterEach(() => {
-    cleanupFixture(dir);
-    cleanupFixture(`${dir}-sdk-source`);
-  });
+  afterEach(() => cleanupFixture(dir));
 
   it('log: the commits grouped by repo and oldest first, the files they touched named from the project, and each repo\'s base', () => {
     const res = harness.ok(dir, ['code', 'log', '--subject', PREFIX]);
 
     assert.deepStrictEqual(res.commits, [
-      { repo: '.', sha: sha(dir, 'HEAD~3'), subject: `${PREFIX}1 — the app` },
+      { repo: '.', sha: sha(dir, 'HEAD~2'), subject: `${PREFIX}1 — the app` },
       { repo: 'api', sha: sha(api, 'HEAD~2'), subject: `${PREFIX}2 — the handler` },
       { repo: 'api', sha: sha(api, 'HEAD~1'), subject: `${PREFIX}3 — the routes` },
       { repo: 'vendor/sdk', sha: sha(sdk), subject: `${PREFIX}4 — the sdk` },
     ], 'a body mention, the prefix mid-subject and the later commits are never selected; the empty repo adds nothing');
     assert.deepStrictEqual(res.files, ['api/src/handler.js', 'api/src/routes.js', 'src/app.js', 'vendor/sdk/lib.js']);
     assert.deepStrictEqual(res.repos, [
-      { repo: '.', base: sha(dir, 'HEAD~4') },
+      { repo: '.', base: sha(dir, 'HEAD~3') },
       { repo: 'api', base: EMPTY_TREE },
       { repo: 'vendor/sdk', base: sha(sdk, 'HEAD~1') },
     ], 'the parent of each repo\'s earliest — the empty tree where that is the repo\'s first commit');
@@ -131,10 +128,7 @@ describe('engine code log and diff with a selection: what a commit carries', () 
     createFile(dir, 'src/old.ts', 'export const x = 1;\n');
     commitAll(dir, 'chore: init');
   });
-  afterEach(() => {
-    cleanupFixture(dir);
-    cleanupFixture(`${dir}-sdk-source`);
-  });
+  afterEach(() => cleanupFixture(dir));
 
   it('a move names both its paths, and its diff reads as a deletion and an addition', () => {
     const api = initRepo(path.join(dir, 'api'));
@@ -167,33 +161,6 @@ describe('engine code log and diff with a selection: what a commit carries', () 
 
     assert.deepStrictEqual(harness.ok(dir, ['code', 'log', '--subject', 'impl(pay): Tsig-']).files, ['src/signed-1.ts', 'src/signed-2.ts']);
   });
-
-  it('a submodule\'s pointer is never its parent\'s change: the pointer\'s own commit drops out, a commit carrying more keeps the rest', () => {
-    const source = initRepo(`${dir}-sdk-source`);
-    createFile(source, 'index.js', '1\n');
-    commitAll(source, 'init');
-    const sdk = addSubmodule(dir, 'vendor/sdk', source);
-    createFile(sdk, 'lib.js', '1\n');
-    commitAll(sdk, 'impl(pay): Tsdk-1-1 — the client');
-    git(dir, ['add', 'vendor/sdk']);
-    git(dir, ['commit', '-q', '-m', 'impl(pay): Tsdk-1-1 — the client']);
-    createFile(sdk, 'lib.js', '2\n');
-    commitAll(sdk, 'impl(pay): Tsdk-1-2 — the client and its caller');
-    createFile(dir, 'src/caller.ts', 'call\n');
-    git(dir, ['add', 'vendor/sdk', 'src/caller.ts']);
-    git(dir, ['commit', '-q', '-m', 'impl(pay): Tsdk-1-2 — the client and its caller']);
-
-    const log = harness.ok(dir, ['code', 'log', '--subject', 'impl(pay): Tsdk-']);
-    assert.deepStrictEqual(log.commits.map((c) => [c.repo, c.subject]), [
-      ['.', 'impl(pay): Tsdk-1-2 — the client and its caller'],
-      ['vendor/sdk', 'impl(pay): Tsdk-1-1 — the client'],
-      ['vendor/sdk', 'impl(pay): Tsdk-1-2 — the client and its caller'],
-    ]);
-    assert.deepStrictEqual(log.files, ['src/caller.ts', 'vendor/sdk/lib.js']);
-    const patch = harness.output(dir, ['code', 'diff', '--subject', 'impl(pay): Tsdk-']);
-    assert.deepStrictEqual(headers(patch), ['diff --git a/src/caller.ts b/src/caller.ts', 'diff --git a/vendor/sdk/lib.js b/vendor/sdk/lib.js']);
-    assert.ok(!patch.includes('Subproject commit'));
-  });
 });
 
 describe('engine code diff and status: the change not yet committed', () => {
@@ -213,9 +180,6 @@ describe('engine code diff and status: the change not yet committed', () => {
     kit = initRepo(path.join(dir, 'kit'));
     createFile(kit, 'kit.js', '1\n');
     commitAll(kit, 'init');
-    const sdk = addSubmodule(dir, 'vendor/sdk', api);
-    createFile(sdk, 'moved.js', '1\n');
-    commitAll(sdk, 'the pointer moves');
     fresh = initRepo(path.join(dir, 'fresh'));
   });
   afterEach(() => cleanupFixture(dir));
@@ -245,7 +209,7 @@ describe('engine code diff and status: the change not yet committed', () => {
       'diff --git a/fresh/loose.txt b/fresh/loose.txt',
       'diff --git a/fresh/staged.txt b/fresh/staged.txt',
       'diff --git a/kit/kit.js b/kit/kit.js',
-    ], 'a repo with no commits yet shows every file as an addition; a submodule\'s moved pointer is no change');
+    ], 'a repo with no commits yet shows every file as an addition');
     assert.ok(patch.includes('--- /dev/null\n+++ b/fresh/staged.txt\n@@ -0,0 +1 @@\n+staged\n'));
     assert.ok(patch.includes('--- /dev/null\n+++ b/api/src/extra.js\n@@ -0,0 +1 @@\n+extra\n'));
   });

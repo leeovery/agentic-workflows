@@ -154,30 +154,23 @@ describe('the brownfield signal across the project\'s repos', () => {
     });
   });
 
-  it('with the state begun after every commit, every repo\'s whole history and HEAD tree came before — a submodule\'s pointer is never a file, an empty repo adds nothing', () => {
+  it('with the state begun after every commit, every repo\'s whole history and HEAD tree came before — a clone nested deeper among them, an empty repo adding nothing', () => {
     writeFile(api, 'src/a.js', 'a\n');
     writeFile(api, 'src/b.js', 'b\n');
     commitOn(api, 'api: the first endpoints', '2025-02-01');
     commitOn(dir, 'initial', '2025-03-01');
-    const sdkSource = harness.initRepo(`${dir}-sdk-source`);
-    writeFile(sdkSource, 'index.js', 'sdk\n');
-    commitOn(sdkSource, 'sdk: the client', '2025-01-10');
-    harness.addSubmodule(dir, 'vendor/sdk', sdkSource);
-    execFileSync('git', ['commit', '-q', '--amend', '--no-edit', '--date', '2025-04-01T12:00:00Z'],
-      { cwd: dir, env: { ...process.env, GIT_COMMITTER_DATE: '2025-04-01T12:00:00Z' } });
+    const sdk = harness.initRepo(path.join(dir, 'vendor', 'sdk'));
+    writeFile(sdk, 'index.js', 'sdk\n');
+    commitOn(sdk, 'sdk: the client', '2025-01-10');
     harness.initRepo(path.join(dir, 'fresh'));
     writeFile(dir, 'fresh/notes.txt', 'nothing committed\n');
     beginState(dir, '2025-06-01');
 
-    try {
-      assert.deepStrictEqual(brownfieldSignal(dir), {
-        root_date: '2025-01-10', workflows_date: '2025-06-01', commits_total: 4, commits_before: 4,
-        history_before: ['2025-01-10  sdk: the client', '2025-02-01  api: the first endpoints', '2025-03-01  initial', '2025-04-01  add vendor/sdk'],
-        files_at_arrival: 6, tree_at_arrival: ['api/ (2)', '.gitignore', '.gitmodules', 'README.md', 'vendor/ (1)'],
-      });
-    } finally {
-      harness.cleanupFixture(`${dir}-sdk-source`);
-    }
+    assert.deepStrictEqual(brownfieldSignal(dir), {
+      root_date: '2025-01-10', workflows_date: '2025-06-01', commits_total: 3, commits_before: 3,
+      history_before: ['2025-01-10  sdk: the client', '2025-02-01  api: the first endpoints', '2025-03-01  initial'],
+      files_at_arrival: 5, tree_at_arrival: ['api/ (2)', '.gitignore', 'README.md', 'vendor/ (1)'],
+    });
   });
 
   it('a shallow nested clone adds its tree alone — its truncated history is no account of what came before', () => {

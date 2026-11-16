@@ -75,28 +75,25 @@
 //   called from: the engine lays the project out in a scratch worktree of
 //   its own where Claude Code lays out the builders' isolation worktrees,
 //   `.claude/worktrees/` of the project's main checkout, so the tool runs
-//   where the setup's trial ran — never below the git directory, whose
-//   files test runners leave out. It is laid out as a task's worktree is
-//   (project-layout.cjs): the project's folder in it, a nested project's
-//   own folder of its repository, each repository holding the phase's work
-//   at its stack's tip (phase-stack.cjs), a submodule holding none at the
-//   commit its holder points it at, a clone holding none at the tip of the
-//   branch it lands on, each prepared as Claude Code prepares an isolation
-//   worktree, the environment setup's steps for each worktree run there as
-//   in a task's (worktree-prep.cjs) — as in the unfixed code's worktree
-//   above. The tool runs in the project's folder there, and the worktree is
-//   taken apart again, whatever the tool did.
-//   In each repository there, the commits of the phase — those whose
-//   `Leeway-Task` trailer names a task of it (commit-task.cjs), and the
-//   person's own commits since the unit's work began, past the branch it
-//   lands on or on it, that are one of its tasks' work, as the one read of
-//   what has landed reads whose work a commit is (task-landed.cjs,
-//   `ownedSince`, R32) — and the change from the
-//   parent of the earliest to the tip, confined to the files those commits
-//   touched — each file's lines as they stand at the tip, a submodule's pointer
-//   never one of them. The lines go to the tool as `$LEEWAY_CHANGED`, a
-//   JSON file, `[{path, lines: [[from, to], …]}]`, each path from the
-//   project's root; the tool writes
+//   where the setup's trial ran — never below the git directory, whose files
+//   test runners leave out. It is laid out as a task's worktree is
+//   (project-layout.cjs): the project's folder in it, a nested project's own
+//   folder of its repository, each repository holding the phase's work at
+//   its stack's tip (phase-stack.cjs), a clone holding none at the tip of
+//   the branch it lands on, each prepared as Claude Code prepares an
+//   isolation worktree, the environment setup's steps for each worktree run
+//   there as in a task's (worktree-prep.cjs) — as in the unfixed code's
+//   worktree above. The tool runs in the project's folder there, and the
+//   worktree is taken apart again, whatever the tool did. In each repository
+//   there, the commits of the phase — those whose `Leeway-Task` trailer
+//   names a task of it (commit-task.cjs), and the person's own commits since
+//   the unit's work began, past the branch it lands on or on it, that are
+//   one of its tasks' work, as the one read of what has landed reads whose
+//   work a commit is (task-landed.cjs, `ownedSince`, R32) — and the change
+//   from the parent of the earliest to the tip, confined to the files those
+//   commits touched — each file's lines as they stand at the tip. The lines
+//   go to the tool as `$LEEWAY_CHANGED`, a JSON file, `[{path, lines:
+//   [[from, to], …]}]`, each path from the project's root; the tool writes
 //   what survived to `$LEEWAY_RUN/survivors.json`, `[{path, line, mutant}]`,
 //   whatever its exit code says — many exit failing where a mutant survives.
 //   A survivor's path is read as the project's: posix-normalised, an
@@ -672,8 +669,7 @@ function recordSetup(cwd, unit, file, scenario) {
 
 /**
  * The commits `git log` lists for `args` in a repository, each with the
- * tasks its trailer names and the paths it touched, a submodule's pointer
- * left out.
+ * tasks its trailer names and the paths it touched.
  * @param {Repo} repo @param {string[]} args
  * @returns {{sha: string, tasks: string[], paths: string[]}[]}
  */
@@ -682,20 +678,19 @@ function commitsTouching(repo, args) {
   return out.split('\x1e').slice(1).map((record) => {
     const end = record.search(/[\n\0]/);
     const [sha, ...tasks] = (end < 0 ? record : record.slice(0, end)).split('\t');
-    const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, '')).filter((p) => p !== '' && !repo.submodules.includes(p));
+    const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, '')).filter((p) => p !== '');
     return { sha, tasks: tasks.map((id) => id.trim()), paths };
   });
 }
 
 /**
- * A repository's commits of the phase, each with the paths it touched, a
- * submodule's pointer left out: `stamped`, those naming a task of it in
- * their trailer, oldest first; `own`, the person's own commits since the
- * unit's work began that the commit it has out holds — past the branch it
- * lands on, or on it, as a fast-forward lays them — the work of a task of
- * it as the one read of what has landed reads whose work a commit is, a
- * recorded landing's commit its task's (task-landed.cjs, `ownedSince`,
- * R32), oldest first.
+ * A repository's commits of the phase, each with the paths it touched:
+ * `stamped`, those naming a task of it in their trailer, oldest first;
+ * `own`, the person's own commits since the unit's work began that the
+ * commit it has out holds — past the branch it lands on, or on it, as a
+ * fast-forward lays them — the work of a task of it as the one read of
+ * what has landed reads whose work a commit is, a recorded landing's
+ * commit its task's (task-landed.cjs, `ownedSince`, R32), oldest first.
  * @param {string} cwd @param {Repo} repo @param {string} unit @param {number} phase @param {string|null} since the time the unit's work is read from
  * @returns {{stamped: {sha: string, paths: string[]}[], own: {sha: string, paths: string[]}[]}}
  */

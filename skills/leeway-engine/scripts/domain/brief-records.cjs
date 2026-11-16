@@ -54,10 +54,9 @@
 //                  repository of the project, each before those nested in
 //                  it, as the builder's worktree held them all
 //                  (task-worktree.cjs): one holding work on the task's
-//                  branch at that branch, a submodule otherwise at the
-//                  commit its holder as laid out points it at, a clone
-//                  otherwise at the task's branch, or the branch it lands
-//                  on where the task's branch is not made there; then the
+//                  branch at that branch, a clone otherwise at the task's
+//                  branch, or the branch it lands on where the task's
+//                  branch is not made there; then the
 //                  calls, by the engine's absolute path, that lay it out
 //                  so at those commits, prepared as a builder's worktree
 //                  is, and take it apart (scratch.cjs) — named for the
@@ -98,8 +97,7 @@
 //                  stands: where the work below it (review-change.cjs) has
 //                  moved past it in a repository holding the branch, the
 //                  merge of that tip back onto it there, children first,
-//                  each committed through the door before the next, a
-//                  child's pointer staged at its merged tip; then the
+//                  each committed through the door before the next; then the
 //                  account where one is owed, reported accounted, else
 //                  reported merged; a quick-fix's task's, that its branch
 //                  is the quick-fix's one, with no chain
@@ -542,7 +540,6 @@ const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch, quickFixBranch } = require('./landing-names.cjs');
 const { branches, branchesHeldBy, holdingBranch, landingBranch, latestOf, quoted } = require('./landing-git.cjs');
 const { childrenFirst } = require('../kernel/repos.cjs');
-const { heldIn, pointedAt } = require('./project-layout.cjs');
 const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -746,8 +743,7 @@ function stepsRunning(cwd, failed) {
  * Where the reviewer's scratch worktree lays out every repository of the
  * project, each before those nested in it, as the builder's worktree held
  * them all (task-worktree.cjs): one holding work at its tip there, as
- * `tipped` says it; a submodule otherwise at the commit its holder, as laid
- * out, points it at; any other as `otherwise` lays it out. Then the calls
+ * `tips` says it; any other as `otherwise` lays it out. Then the calls
  * that lay the scratch worktree `name` out so, prepared, and take it apart
  * (scratch.cjs).
  * @param {string} cwd @param {Repo[]} repos @param {Map<Repo, Laid>} tips where each repository holding work is laid out, at its tip
@@ -757,7 +753,7 @@ function layoutOf(cwd, repos, tips, otherwise, name) {
   /** @type {Map<string, string>} */
   const laid = new Map();
   const lines = repos.map((repo) => {
-    const place = laidOut(repos, repo, tips, laid, otherwise);
+    const place = tips.get(repo) ?? otherwise(repo);
     laid.set(repo.dir, place.commit);
     return `- ${repoNamed(repo)}: \`${place.named}\` — ${place.why}`;
   });
@@ -772,20 +768,6 @@ function layoutOf(cwd, repos, tips, otherwise, name) {
     `${ENGINE_RUN} scratch remove ${name}`,
     '```',
   ].join('\n');
-}
-
-/**
- * @param {Repo[]} repos @param {Repo} repo @param {Map<Repo, Laid>} tips @param {Map<string, string>} laid each laid out before it, its commit by folder
- * @param {(repo: Repo) => Laid} otherwise
- * @returns {Laid}
- */
-function laidOut(repos, repo, tips, laid, otherwise) {
-  const tip = tips.get(repo);
-  if (tip !== undefined) return tip;
-  if (repo.dir === '' || !heldIn(repos, repo).submodule) return otherwise(repo);
-  const { holder } = heldIn(repos, repo);
-  const commit = pointedAt(repos, repo, /** @type {string} */ (laid.get(holder.dir)));
-  return { named: commit, commit, why: `a submodule, at the commit ${repoNamed(holder)} points it at as laid out` };
 }
 
 /**
@@ -2022,10 +2004,9 @@ const CHAIN_THEN = Object.freeze({
 /**
  * Whether the task's branch holds its chain as it stands, and where it does
  * not, the merge of the chain's tip back onto it in each repository, a
- * child before its holder — the holder's pointer then resolved to that
- * child's merged tip — each committed through the door; then the task, while
- * its review is not over, the account where one is owed, or else the report
- * that it merged (`CHAIN_THEN`).
+ * child before its holder, each committed through the door; then the task,
+ * while its review is not over, the account where one is owed, or else the
+ * report that it merged (`CHAIN_THEN`).
  * @param {Filling} filling
  */
 function drawChain(filling) {
@@ -2034,17 +2015,12 @@ function drawChain(filling) {
   const repos = projectRepos(codeRoot(filling.cwd));
   const past = chainPast(filling, repos);
   if (past.length === 0) return 'Your branch holds its phase\'s chain as it stands.';
-  const pointers = past.filter(({ repo }) => repo.dir !== '' && heldIn(repos, repo).submodule).map(({ repo }) => {
-    const { holder, folder } = heldIn(repos, repo);
-    return `\`git${holder.dir === '' ? '' : ` -C ${quoted(holder.dir)}`} add ${quoted(folder)}\``;
-  });
   const { stage } = landingStage(filling.cwd, ref);
   return [
     'Your phase\'s chain has moved on past your branch. Merge its tip back before anything else, from your task\'s worktree, one repository at a time in this order, each merge committed before the next starts:',
     past.map(({ repo, tip }) => `- \`git${repo.dir === '' ? '' : ` -C ${quoted(repo.dir)}`} merge --no-ff --no-commit ${tip}\``).join('\n'),
     [
       'Resolve what conflicts as your task and the chained work both need',
-      pointers.length === 0 ? '' : ` — a child repository's pointer at that repository's merged tip, ${pointers.join(', ')}`,
       `, then commit the merge through the door, naming each file you resolved — or, where nothing conflicted, any file the merge changed: the engine's \`commit --paths {file}… --task ${ref.unit} ${shownTask(ref)} -m "{message}"\`, which finishes it.`,
     ].join(''),
     CHAIN_THEN[stage],

@@ -63,24 +63,7 @@
 // it, not landed, has not; a task read from its last commit takes for its
 // work the commits that commit holds, never the person's own past it on its
 // branch, its landing the copy of its commit alone. Each task's last commit
-// is read once for every revision of a repository (`unitLanded`). A
-// submodule's pointer read from a commit moves to the landing past that
-// commit of the newest task whose work its commits are, as `repointing`
-// reads it: a task's squash
-// under the person's own message, a line of it rewritten since; never back to a
-// landing the commit holds, a task's branch brought up to date with its
-// squash, nor to an earlier task's landing where the newest has not landed,
-// the pointer refused instead (7.2.21). A pointer the engine moves never
-// moves back: a commit pointing it at a task's branch brought up to date
-// with its squash leaves the default branch's pointer at that squash; a
-// task's own pin, at a task not landed cut before the submodule's main moved
-// on, lands as the task wrote it. A pointer at the person's own commit on
-// a task's branch in the submodule, through `land phase` on each driver, is
-// test-engine-landing-conformance-nested-owner.cjs's. A pointer at the
-// person's own commit past a task's commit moves to its own copy, both
-// cherry-picked onto main, never the task's, or it alone cherry-picked
-// there after the task was fast-forwarded, still the task's work; that
-// commit alone squashed, it stays. Whose work a commit is (R32): the
+// is read once for every revision of a repository (`unitLanded`). Whose work a commit is (R32): the
 // person's own commit on main before a task's branch was cut, on its
 // branch below its first commit, or on a later task's branch below that
 // one's first, is no task's; between its commits, fast-forwarded onto
@@ -107,7 +90,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { createFile, datedAt } = require('./discovery-test-utils.cjs');
-const { repoLanded, landedIn, unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
+const { repoLanded, unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
 const lg = require('../../skills/leeway-engine/scripts/domain/landing-git.cjs');
 const { TRAILER } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
 
@@ -235,25 +218,23 @@ const lines = (count, edits) => `${Array.from({ length: count }, (_, at) => edit
  * second rewriting a line the first wrote, squashed under the person's own
  * message, then a line of it rewritten on main; 1.2 merged by a merge
  * commit, then a commit changing nothing naming it, as the local driver's
- * replay lands one; 1.3 squashed under its `Task:` line, then a later
- * commit naming it again; 1.4 squashed under the person's own message, then
- * a commit changing nothing naming it; 1.5, of two commits, the second the
+ * replay lands one; 1.3 squashed under its `Task:` line, then a later commit
+ * naming it again; 1.4 squashed under the person's own message, then a
+ * commit changing nothing naming it; 1.5, of two commits, the second the
  * person's own rewriting the first's line, squashed under the person's own
- * message; 1.6, no commit of its stamped, named by its `Task:` line on
- * main, then again on a side line merged back, all in one second; 1.7 and
- * 1.8, cut together, each writing its own line of one file, squashed in
- * turn under the person's own messages, so 1.7's squash touches 1.8's paths
- * first without its change; 1.9 squashed under the person's own message in
- * the second its commit was made; 1.10, its change made on main by hand
- * past where its own branch was cut, the day before its own commit made it
- * again, duplicate work; 1.11, cut on 1.1's branch, not landed; 1.1's
- * branch, on a branch of its own, brought up to date with its squash; 1.12,
- * its change made on main by hand before its branch was cut, then named on
- * main by two commits changing nothing, a day apart; 1.13, its first
- * commit amended away on a branch of its own, its commit made again
- * squashed under the person's own message; and 1.14, its change reverted
- * by 1.15 on its branch, both squashed onto main changing nothing, as a
- * host lands a pull request, main moving on.
+ * message; 1.6, no commit of its stamped, named by its `Task:` line on main,
+ * then again on a side line merged back, all in one second; 1.7 and 1.8, cut
+ * together, each writing its own line of one file, squashed in turn under
+ * the person's own messages, so 1.7's squash touches 1.8's paths first
+ * without its change; 1.9 squashed under the person's own message in the
+ * second its commit was made; 1.10, its change made on main by hand past
+ * where its own branch was cut, the day before its own commit made it again,
+ * duplicate work; 1.12, its change made on main by hand before its branch
+ * was cut, then named on main by two commits changing nothing, a day apart;
+ * 1.13, its first commit amended away on a branch of its own, its commit
+ * made again squashed under the person's own message; and 1.14, its change
+ * reverted by 1.15 on its branch, both squashed onto main changing nothing,
+ * as a host lands a pull request, main moving on.
  */
 const byHandWorld = folderFrom('engine-task-landed-by-hand-', (folder) => {
   const dir = based(folder);
@@ -304,10 +285,6 @@ const byHandWorld = folderFrom('engine-task-landed-by-hand-', (folder) => {
   day(21, () => committed(dir, ['ten, by hand'], { 'ten.txt': 'ten\n' }));
   git(dir, ['switch', '-q', '-c', 'ten', 'main~1']);
   day(22, () => committed(dir, ['feat(pay): ten', stampOf(10)], { 'ten.txt': 'ten\n' }));
-  git(dir, ['switch', '-q', '-c', 'eleven', 'one']);
-  day(23, () => committed(dir, ['feat(pay): eleven', stampOf(11)], { 'eleven.txt': 'eleven\n' }));
-  git(dir, ['switch', '-q', '-c', 'one-updated', 'one']);
-  day(24, () => git(dir, ['merge', '-q', '--no-ff', '-m', 'Merge the squash of one', ':/In my own words, one']));
   git(dir, ['switch', '-q', 'main']);
   day(25, () => committed(dir, ['twelve, by hand'], { 'twelve.txt': 'twelve\n' }));
   git(dir, ['switch', '-q', '-c', 'twelve', 'main']);
@@ -521,19 +498,14 @@ const tipsWorld = folderFrom('engine-task-landed-tips-', (folder) => {
 
 /**
  * The person's own commits beside task 1.1's, a day a step: in `forwarded`,
- * one on main, then 1.1's branch cut there, one on it before its commit
- * and one after, main fast-forwarded to it, then 1.1's commit again and the
+ * one on main, then 1.1's branch cut there, one on it before its commit and
+ * one after, main fast-forwarded to it, then 1.1's commit again and the
  * person's own past it, and 1.2 cut from that, the person's own before its
- * commit; in `copied`, `squashed` and `picked`, 1.1's commit and the
- * person's own past it — both cherry-picked onto main by hand, as a rebase
- * lays them; 1.1's commit alone squashed under the person's own message,
- * the person's own past it not landed again; or 1.1's commit fast-forwarded
- * onto main, then the person's own cherry-picked there alone; in `shared`,
- * 1.1's commit, 1.2 cut from it, its commit and the person's own past it,
- * 1.1's branch brought up to that, then 1.2's commit again; in `named`,
- * 1.1's commit fast-forwarded onto main, then a squash there naming task
- * 1.2 by its `Task:` line and the person's own hotfix, main then
- * fast-forwarded into 1.1's branch.
+ * commit; in `shared`, 1.1's commit, 1.2 cut from it, its commit and the
+ * person's own past it, 1.1's branch brought up to that, then 1.2's commit
+ * again; in `named`, 1.1's commit fast-forwarded onto main, then a squash
+ * there naming task 1.2 by its `Task:` line and the person's own hotfix,
+ * main then fast-forwarded into 1.1's branch.
  */
 const besideWorld = folderFrom('engine-task-landed-beside-', (folder) => {
   const dir = based(folder, 'forwarded');
@@ -553,23 +525,6 @@ const besideWorld = folderFrom('engine-task-landed-beside-', (folder) => {
     committed(dir, ['feat(pay): part 2', stampOf(2)], { 'part-2.txt': '2\n' });
     git(dir, ['switch', '-q', 'main']);
   });
-  for (const name of ['copied', 'squashed', 'picked']) {
-    const at = based(folder, name);
-    from('2026-06-01T00:00:00Z', () => {
-      git(at, ['switch', '-q', '-c', branchOf(1)]);
-      committed(at, ['feat(pay): part 1', stampOf(1)], { 'part-1.txt': '1\n' });
-      committed(at, ['my own words past it'], { 'past.txt': 'past\n' });
-      git(at, ['switch', '-q', 'main']);
-    });
-    from('2026-06-02T00:00:00Z', () => {
-      if (name === 'copied') git(at, ['cherry-pick', `main..${branchOf(1)}`]);
-      else if (name === 'squashed') squashed(at, `${branchOf(1)}~1`, ['In my own words, 1']);
-      else {
-        git(at, ['merge', '-q', '--ff-only', `${branchOf(1)}~1`]);
-        git(at, ['cherry-pick', branchOf(1)]);
-      }
-    });
-  }
   const named = based(folder, 'named');
   from('2026-06-03T00:00:00Z', () => {
     git(named, ['switch', '-q', '-c', branchOf(1)]);
@@ -907,7 +862,7 @@ describe('repoLanded: whose work a commit is, on main or past it (R32)', () => {
 describe('unitLanded: each task\'s last commit read once for every revision of a repository (12.14)', () => {
   it('a task read on main and on another revision: its last commit read once, and main asked again answers the read already made', () => {
     const dir = repo(squashedWorld);
-    const project = { dir: '.', path: dir, prefix: '', heldOut: [], submodules: [] };
+    const project = { dir: '.', path: dir, prefix: '', heldOut: [] };
     const ref = { unit: UNIT, phase: 1, n: 8 };
     const real = lg.lastStamped;
     let reads = 0;
@@ -924,86 +879,5 @@ describe('unitLanded: each task\'s last commit read once for every revision of a
     } finally {
       lg.lastStamped = real;
     }
-  });
-});
-
-describe('repoLanded: a task\'s landing past a commit, where a submodule\'s pointer read from it moves (landing-git.cjs, `repointing`, 7.2.21, R25)', () => {
-  /** The by-hand world's repository as a submodule a default branch points at `pointer`, re-pointed. @param {string} dir @param {string} pointer */
-  const repointed = (dir, pointer) => {
-    const sub = { root: dir, unit: UNIT, into: 'main', landedOn: landedIn(dir, UNIT, null) };
-    const [at, onto] = [pointer, 'main'].map((rev) => git(dir, ['rev-parse', rev]).trim());
-    return lg.repointing('main', 'lib', sub, at, onto);
-  };
-
-  /** The refusal of a default branch pointing the submodule at `pointer`, its main not holding it. @param {string} dir @param {string} pointer */
-  const refusal = (dir, pointer) => ({
-    refused: `land: main points lib at ${git(dir, ['rev-parse', '--short=7', pointer]).trim()}, a commit lib's main does not hold — bring lib's main up to it, as \`git -C lib pull\` does where its remote holds it, and land again`,
-  });
-
-  it('a pointer at a task\'s last commit, the task squashed under the person\'s own message and a line of it rewritten since, moves to the squash', () => {
-    const dir = repo(byHandWorld);
-
-    assert.deepStrictEqual(repointed(dir, 'one'), { to: git(dir, ['rev-parse', ':/In my own words, one']).trim() });
-  });
-
-  it('a pointer at a task\'s branch brought up to date with its squash after it landed: nothing moves, the pointer refused, never moved back to the landing it holds', () => {
-    const dir = repo(byHandWorld);
-
-    assert.deepStrictEqual(repointed(dir, 'one-updated'), refusal(dir, 'one-updated'));
-  });
-
-  it('a pointer at a task not landed, cut on a task that has landed since: nothing moves, the pointer refused, never moved to a landing lacking the later task\'s work', () => {
-    const dir = repo(byHandWorld);
-
-    assert.deepStrictEqual(repointed(dir, 'eleven'), refusal(dir, 'eleven'));
-  });
-
-  it('a pointer at the person\'s own commit past a task\'s commit, both cherry-picked onto main by hand: moves to that commit\'s own copy, never to the copy of the task\'s', () => {
-    const dir = repo(besideWorld, 'copied');
-
-    assert.deepStrictEqual(repointed(dir, branchOf(1)), { to: git(dir, ['rev-parse', 'main']).trim() });
-  });
-
-  it('a pointer at the person\'s own commit past a task\'s commit, the task fast-forwarded onto main by hand and that commit cherry-picked there after: moves to its copy, read as the task\'s work though no commit of the task\'s stands past main (R32)', () => {
-    const dir = repo(besideWorld, 'picked');
-
-    assert.deepStrictEqual(repointed(dir, branchOf(1)), { to: git(dir, ['rev-parse', 'main']).trim() });
-  });
-
-  it('a pointer at the person\'s own commit past a task\'s commit, that commit alone squashed onto main: nothing moves, the pointer refused, never moved back to the task\'s landing, which lacks it', () => {
-    const dir = repo(besideWorld, 'squashed');
-
-    assert.deepStrictEqual(repointed(dir, branchOf(1)), refusal(dir, branchOf(1)));
-  });
-});
-
-describe('stackMoves: the engine\'s own move of a pointer never moves it back, a task\'s pin kept as written (landing-git.cjs, `pointerFrom`)', () => {
-  /**
-   * The pointer a holder's main pointing the by-hand world's repository, as
-   * lib, at `start` is moved to by a commit on it pointing lib at `pointer`.
-   * @param {string} dir @param {string} start @param {string} pointer
-   */
-  const movedTo = (dir, start, pointer) => {
-    const holder = initRepo(path.join(path.dirname(dir), 'holder'));
-    const [from, to] = [start, pointer].map((rev) => {
-      git(holder, ['update-index', '--add', '--cacheinfo', `160000,${git(dir, ['rev-parse', rev]).trim()},lib`]);
-      git(holder, ['commit', '-q', '-m', `lib at ${rev}`]);
-      return git(holder, ['rev-parse', 'HEAD']).trim();
-    });
-    const sub = { root: dir, unit: UNIT, into: 'main', landedOn: landedIn(dir, UNIT, null) };
-    const [moves] = lg.stackMoves({ root: holder, into: 'main', gitlinks: ['lib'], submodules: [{ path: 'lib', ctx: sub }] }, [{ sha: to, parents: [from] }], from, () => git(dir, ['rev-parse', 'main']).trim());
-    return moves.get('lib');
-  };
-
-  it('a commit pointing it at a task\'s branch brought up to date with its squash, the default branch pointing it at that squash: the pointer stays there, never moved to the branch\'s merge off the submodule\'s line', () => {
-    const dir = repo(byHandWorld);
-
-    assert.strictEqual(movedTo(dir, ':/In my own words, one', 'one-updated'), git(dir, ['rev-parse', ':/In my own words, one']).trim());
-  });
-
-  it('a commit pointing it at a task not landed, cut before the submodule\'s main moved on, the default branch pointing it at main\'s tip: the task\'s pin, kept as the task wrote it', () => {
-    const dir = repo(byHandWorld);
-
-    assert.strictEqual(movedTo(dir, 'main', 'eleven'), git(dir, ['rev-parse', 'eleven']).trim());
   });
 });

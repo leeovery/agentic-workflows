@@ -17,16 +17,14 @@
 // the last by the letters it holds and the last against the count
 // (13.3.4, 2.4.6); the verb's answer, the account, every round's reports
 // and the figures committed in one state commit (12.S42), the figures the
-// task's own change across its repositories, a stack's earlier task, the
-// person's own commit below its first commit (R32) and a submodule's
-// pointer not counted, its criteria, its additions, whoever
-// made them (13.11.3), and when it started — the tracker's, outliving a
-// state merge that drops the start's commit — and finished (15.3.4); a
-// failed last round
-// settled by the orchestrator, then the task's account taken, a later round
-// passing or not (13.4.6); and every refusal writing and committing nothing
-// — a last round with a bug standing (13.S3) and no repository holding the
-// task's branch among them.
+// task's own change across its repositories, a stack's earlier task and the
+// person's own commit below its first commit (R32) not counted, its
+// criteria, its additions, whoever made them (13.11.3), and when it started
+// — the tracker's, outliving a state merge that drops the start's commit —
+// and finished (15.3.4); a failed last round settled by the orchestrator,
+// then the task's account taken, a later round passing or not (13.4.6); and
+// every refusal writing and committing nothing — a last round with a bug
+// standing (13.S3) and no repository holding the task's branch among them.
 //
 // Layer: verb. World: a project with one work unit, built once and copied:
 // its first phase written in the tracker, its second task started and its
@@ -45,7 +43,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, statePath, layout, writeState, readState, stateGit, lastMessage, touched, commitAll, commitCode, git, initRepo, addSubmodule, tip, fixtureFrom,
+  ok, refuses, refusedPristine, statePath, layout, writeState, readState, stateGit, lastMessage, touched, commitAll, commitCode, git, initRepo, tip, fixtureFrom,
   withFrozenClock, FROZEN_AT, accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
@@ -411,19 +409,6 @@ describe('task account (12.14.4, 6.3.13)', () => {
     stateGit(dir, ['reset', '-q', '--soft', stateGit(dir, ['commit-tree', 'HEAD^{tree}', '-m', 'state: merge the remote\'s']).trim()]);
 
     assert.strictEqual(take().figures.started, started);
-  });
-
-  it('15.3.4: a submodule\'s pointer the task moved is no file of its figures, as `verify mutants` leaves it out', () => {
-    const source = initRepo(path.join(folder(), 'ext-source'));
-    git(source, ['commit', '-q', '--allow-empty', '-m', 'ext']);
-    addSubmodule(dir, 'ext', source);
-    const pinning = path.join(folder(), 'pinning');
-    git(dir, ['worktree', 'add', '-q', pinning, RECEIPT]);
-    git(pinning, ['update-index', '--add', '--cacheinfo', `160000,${tip(source, 'HEAD')},ext`]);
-    git(pinning, ['commit', '-q', '-m', 'pin ext\n\nLeeway-Task: pay-1-2']);
-    git(dir, ['worktree', 'remove', '--force', pinning]);
-
-    assert.deepStrictEqual((({ files, added, removed }) => ({ files, added, removed }))(take().figures), { files: 4, added: 7, removed: 1 });
   });
 
   it('13.S3: a task whose last round has a bug standing, however many rounds before it', () => {

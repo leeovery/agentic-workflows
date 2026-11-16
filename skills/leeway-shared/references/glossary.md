@@ -308,7 +308,7 @@ The cue on a topic another conversation is working right now, with how long ago 
 _Avoid_: code session
 
 **nested repo**:
-A git repository of its own inside the project's folder that holds code: a clone, or a submodule. Found every time, never configured — except one inside a git-ignored folder that is not itself a repo, which is never found. A code commit lands in each one it touches, and every read of the change spans them all.
+A git repository of its own inside the project's folder that holds code: a clone. Found every time, never configured — except one inside a git-ignored folder that is not itself a repo, which is never found. A code commit lands in each one it touches, and every read of the change spans them all.
 _Avoid_: child repo
 
 **state branch**:

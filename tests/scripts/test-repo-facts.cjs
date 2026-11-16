@@ -7,7 +7,7 @@
 // each operation's marker and the commit lock, the ref HEAD names and its
 // branch — answered as each of those words answered it, in every shape the
 // engine meets: the main checkout, a linked worktree and a folder of each,
-// the state worktree, a detached HEAD, an unborn branch, a submodule, a bare
+// the state worktree, a detached HEAD, an unborn branch, a nested clone, a bare
 // repository and a worktree of one — save the branch of a branch a tag shares
 // its name with, its own name where `symbolic-ref --short` gave
 // `heads/{name}`; asked in one rev-parse wherever HEAD names a commit in a
@@ -29,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { git, traced, codeProject, initRepo, addSubmodule, commitCode, createFile } = require('./engine-harness.cjs');
+const { git, traced, codeProject, initRepo, commitCode, createFile } = require('./engine-harness.cjs');
 const { useTempFolder, bareRepo } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -84,10 +84,9 @@ function askedApart(cwd) {
  */
 function shapes() {
   const { main, root } = codeProject(world(), { state: true });
-  const source = initRepo(path.join(world(), 'sdk-source'));
-  createFile(source, 'sdk.js', '1\n');
-  commitCode(source, 'sdk');
-  const sdk = addSubmodule(main, 'vendor/sdk', source);
+  const sdk = initRepo(path.join(main, 'vendor', 'sdk'));
+  createFile(sdk, 'sdk.js', '1\n');
+  commitCode(sdk, 'sdk');
   const linked = path.join(world(), 'linked');
   git(main, ['worktree', 'add', '-q', '-b', 'feature', linked]);
   const detached = path.join(world(), 'detached');
@@ -108,7 +107,7 @@ function shapes() {
     { shape: 'the state worktree', at: root, oneCall: true },
     { shape: 'a detached HEAD', at: detached, oneCall: true },
     { shape: 'a branch a tag shares its name with', at: tagged, oneCall: true, unlike: { branch: 'tagged' } },
-    { shape: 'a submodule', at: sdk, oneCall: true },
+    { shape: 'a nested clone', at: sdk, oneCall: true },
     { shape: 'a worktree of a bare repository', at: bareLinked, oneCall: true },
     { shape: 'an unborn branch', at: initRepo(path.join(world(), 'unborn')), oneCall: false },
     { shape: 'a bare repository', at: bare, oneCall: false },

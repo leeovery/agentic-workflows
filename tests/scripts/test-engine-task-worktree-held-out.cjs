@@ -2,21 +2,20 @@
 
 // ---------------------------------------------------------------------------
 // A task's worktree, its prepared links and nested clones held out
-// (leeway-engine/scripts/domain/worktree-prep.cjs; the commit door's staging,
-// engine.cjs's checkedGroups): a link the worktree's preparation made at a
-// folder a committed `.gitignore` names, in the root or a child, is no change
-// of the task's — the door, `code status` and a take-over pass over it, and
-// task done and task close each end their task, the link removed with its
-// worktree — the door staging neither it nor a nested clone where a merge
-// names their folder, and refusing by either route, in the root and a child,
-// an index that holds either already, by every way git stages one: the link,
-// a clone's gitlink no `.gitmodules` maps, a file in a clone's folder at any
+// (leeway-engine/scripts/domain/worktree-prep.cjs; the commit door's
+// staging, engine.cjs's checkedGroups): a link the worktree's preparation
+// made at a folder a committed `.gitignore` names, in the root or a child,
+// is no change of the task's — the door, `code status` and a take-over pass
+// over it, and task done and task close each end their task, the link
+// removed with its worktree — the door staging neither it nor a nested clone
+// where a merge names their folder, and refusing by either route, in the
+// root and a child, an index that holds either already, by every way git
+// stages one: the link, a clone's gitlink, a file in a clone's folder at any
 // depth, its remedy quoted for the shell — what is the task's own, a link of
 // its own or work inside an untracked clone, committing beside them. Git
 // layer: the task worktree world (task-worktree-world.cjs), built once and
 // copied for each test. The worktree taken apart as the task ends:
-// test-engine-task-worktree-end.cjs; its submodules, each a gitlink
-// `.gitmodules` maps: test-engine-task-worktree-submodules.cjs.
+// test-engine-task-worktree-end.cjs.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -160,7 +159,7 @@ describe('a task\'s worktree: the links its preparation made and the nested clon
   /** Why the door refuses a commit in `repo` whose index holds `names`, each with what it is, as its way on names them. @param {string} repo @param {Array<[string, string]>} held */
   const heldRefusal = (repo, held) => `commit --paths: the index in ${repo === '' ? '.' : repo} holds ${held.map(([name, what]) => `${name}, ${what}`).join('; and ')}, which the door never commits — unstage ${held.length === 1 ? 'it' : 'them'}, \`git${repo === '' ? '' : ` -C ${repo}`} restore --staged -- ${held.map(([name]) => name).join(' ')}\`, then run the commit again`;
   const LINK = 'a link the worktree\'s preparation made, as worktree.symlinkDirectories names';
-  const CLONE = 'the gitlink of a repository nested in it that no .gitmodules entry maps';
+  const CLONE = 'the gitlink of a repository nested in it';
 
   it('S1 (12.14): every way the index comes to hold a prepared link or a nested clone before a door commit — git add in each form, --force past an ignore rule, the index\'s plumbing, a checkout, restore or reset from a commit holding one, a merge, pick, revert, patch or stash bringing one, a file a merge writes in the clone\'s folder, git add -A mid-merge — refuses the commit by either route, in a child and the root, nothing committed, naming each and how to unstage them; git add -N stages neither', () => {
     const { at, linkedIsolation } = linkedProject();
@@ -242,7 +241,7 @@ describe('a task\'s worktree: the links its preparation made and the nested clon
     assert.deepStrictEqual([rootOrdinary, rootMerging, git(a, ['rev-parse', 'HEAD']).trim()], [heldRefusal('', rootHeld), heldRefusal('', rootHeld), rootBefore]);
   });
 
-  it('S1 (12.14): what is the task\'s own commits beside them — a symbolic link at a name the settings do not link, staged by git add -A; work inside an untracked clone, committed in the clone alone, its holder taking no pointer — and a clone whose path holds a space is refused, the remedy quoted for the shell, though the repository\'s settings hide submodules from a diff', () => {
+  it('S1 (12.14): what is the task\'s own commits beside them — a symbolic link at a name the settings do not link, staged by git add -A; work inside an untracked clone, committed in the clone alone, its holder taking no pointer — and a clone whose path holds a space is refused, the remedy quoted for the shell, though the repository\'s settings hide gitlinks from a diff', () => {
     const at = project();
     const session = building(at.dir, ['3.1']);
     const a = isolation(at.dir, 'a');

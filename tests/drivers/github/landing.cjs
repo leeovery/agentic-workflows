@@ -106,7 +106,7 @@ function pushedFrom(dir, into, calls) {
  * @param {string} dir @param {string} [into]
  */
 function pulledHere(dir, into = 'main') {
-  if (git(dir, ['branch', '--show-current']).trim() === into) git(dir, ['pull', '-q', '--ff-only', '--no-recurse-submodules', 'origin', into]);
+  if (git(dir, ['branch', '--show-current']).trim() === into) git(dir, ['pull', '-q', '--ff-only', 'origin', into]);
   else git(dir, ['fetch', '-q', 'origin', `${into}:${into}`]);
 }
 

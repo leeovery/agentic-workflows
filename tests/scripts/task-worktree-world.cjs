@@ -1,14 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The task worktree suites' world and helpers (test-engine-task-worktree.cjs,
-// test-engine-task-worktree-end.cjs, test-engine-task-worktree-held-out.cjs,
-// test-engine-task-worktree-submodules.cjs): the nested world
-// (landing-world.cjs) set to the local landing driver, phase 3's three tasks in the tracker,
-// built once per suite and copied for each test; a conversation of its own
-// for each that builds, its folder removed once the suite ends; the
-// worktree Claude Code's isolation makes for a builder, beside the project;
-// and the reads of what a layout made.
+// The task worktree suites' world and helpers
+// (test-engine-task-worktree.cjs, test-engine-task-worktree-end.cjs and
+// test-engine-task-worktree-held-out.cjs): the nested world
+// (landing-world.cjs) set to the local landing driver, phase 3's three tasks
+// in the tracker, built once per suite and copied for each test; a
+// conversation of its own for each that builds, its folder removed once the
+// suite ends; the worktree Claude Code's isolation makes for a builder,
+// beside the project; and the reads of what a layout made.
 // ---------------------------------------------------------------------------
 
 const { after } = require('node:test');

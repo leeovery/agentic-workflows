@@ -3,11 +3,10 @@
 // ---------------------------------------------------------------------------
 // The commit door's code commit: `engine commit --paths`, the declared paths
 // committed in the code tree under the commit lock, and across the repos
-// nested in the project — each path in the repo that owns it, a submodule's
-// pointer recorded in its parent, refused before any repo commits where one
-// cannot; and the most git commands a commit runs. Each is made under the
-// task in flight, whose own refusals and trailer are
-// test-engine-commit-task.cjs's.
+// nested in the project — each path in the repo that owns it, refused before
+// any repo commits where one cannot; and the most git commands a commit
+// runs. Each is made under the task in flight, whose own refusals and
+// trailer are test-engine-commit-task.cjs's.
 //
 // Layer: git. World: the project world and its code projects, built once and
 // copied (engine-harness.cjs), the commit door's epic over them and its task
@@ -223,8 +222,13 @@ describe('engine commit --paths: code in repos of its own', () => {
 
   const head = (repo) => git(repo, ['rev-parse', '--short', 'HEAD']).trim();
   const subject = (repo) => git(repo, ['log', '-1', '--format=%s']).trim();
-  /** The commit the root's HEAD records for a submodule. */
-  const pointer = (rel) => git(dir, ['rev-parse', `HEAD:${rel}`]).trim();
+  /** A clone of its own at `rel` in the project, one commit holding `src/handler.js`. @param {string} rel */
+  const nestedClone = (rel) => {
+    const clone = harness.initRepo(path.join(dir, rel));
+    createFile(clone, 'src/handler.js', 'const h = 1;\n');
+    commitAll(clone, 'init');
+    return clone;
+  };
   /** A pre-commit hook in the repo that refuses every commit. */
   const refusingHook = (repo, name) => {
     const hook = path.join(repo, '.git/hooks/pre-commit');
@@ -249,17 +253,18 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(res.left_dirty, []);
   });
 
-  it('takes a path in a nested repo literally — a routing file in a clone or a submodule is that file', () => {
-    const sdk = harness.addSubmodule(dir, 'sdk', api);
+  it('takes a path in a nested repo literally — a routing file in an ignored clone or an untracked one is that file', () => {
+    const sdk = nestedClone('sdk');
+    const rootBefore = head(dir);
     const named = ['api/app/[id]/page.tsx', 'api/app/(marketing)/page.tsx', 'sdk/routes/[slug]/+page.svelte'];
     for (const rel of [...named, 'api/app/i/page.tsx', 'sdk/routes/s/+page.svelte']) createFile(dir, rel, `// ${rel}\n`);
 
     const res = ok(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...FOR_TASK], building);
 
-    assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: 'sdk', sha: head(sdk) }]);
     assert.deepStrictEqual(codeHeadFiles(api).sort(), ['app/(marketing)/page.tsx', 'app/[id]/page.tsx']);
     assert.deepStrictEqual(codeHeadFiles(sdk), ['routes/[slug]/+page.svelte']);
-    assert.deepStrictEqual(codeHeadFiles(dir), ['sdk'], 'the submodule\'s new pointer, and nothing else');
+    assert.strictEqual(head(dir), rootBefore, 'the parent records nothing of a nested repo');
     assert.deepStrictEqual(res.left_dirty, ['api/app/i/page.tsx', 'sdk/routes/s/+page.svelte']);
   });
 
@@ -305,35 +310,8 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(res.left_dirty, ['api/src/other.js', 'web/index.js']);
   });
 
-  it('records a submodule\'s new pointer in its parent when the call reaches into it, the submodule first', () => {
-    const sdk = harness.addSubmodule(dir, 'sdk', api);
-    createFile(sdk, 'src/handler.js', 'const h = 2;\n');
-    createFile(dir, 'src/app.js', 'const x = 2;\n');
-
-    const both = ok(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
-
-    assert.deepStrictEqual(both.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['sdk', 'src/app.js']);
-    assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim(), 'the gitlink records the submodule\'s new HEAD');
-    assert.deepStrictEqual(both.left_dirty, []);
-
-    createFile(sdk, 'src/other.js', 'const o = 2;\n');
-    const alone = ok(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...FOR_TASK], building);
-
-    assert.deepStrictEqual(alone.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }],
-      'a call naming the submodule alone records its pointer too');
-    assert.deepStrictEqual(codeHeadFiles(dir), ['sdk']);
-    assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim());
-
-    createFile(sdk, 'scratch.txt', 'stray\n');
-    const again = ok(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...FOR_TASK], building);
-
-    assert.deepStrictEqual(again.committed, [], 'work uncommitted inside the submodule is no pointer to record');
-    assert.strictEqual(again.note, 'nothing to commit');
-  });
-
   it('refuses a call that would commit in a repo on a detached HEAD, before any repo commits', () => {
-    const sdk = harness.addSubmodule(dir, 'sdk', api);
+    const sdk = nestedClone('sdk');
     const branch = git(sdk, ['symbolic-ref', '--short', 'HEAD']).trim();
     git(sdk, ['checkout', '-q', '--detach']);
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
@@ -346,24 +324,16 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual([head(dir), head(sdk)], [rootBefore, sdkBefore], 'nothing commits in any repo');
 
     git(sdk, ['checkout', '-q', branch]);
-    git(dir, ['checkout', '-q', '--detach']);
-
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building).error,
-      'commit --paths: . is on a detached HEAD — check out a branch there, then run the commit again',
-      'the parent a reached submodule\'s pointer lands in is checked too');
-    assert.strictEqual(head(sdk), sdkBefore);
-
-    git(dir, ['checkout', '-q', '-']);
     const landed = ok(dir, call, building);
 
     assert.deepStrictEqual(landed.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['sdk', 'src/app.js']);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
   });
 
-  it('refuses a call that would commit in a repo mid-operation — a rebase in a submodule, a cherry-pick in the root — before any repo commits; a revert, naming its end by --quit, which keeps its change', () => {
-    const sdk = harness.addSubmodule(dir, 'sdk', api);
+  it('refuses a call that would commit in a repo mid-operation — a rebase in a nested clone, a cherry-pick in the root — before any repo commits; a revert, naming its end by --quit, which keeps its change', () => {
+    const sdk = nestedClone('sdk');
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
-    commitAll(sdk, 'the submodule moves on');
+    commitAll(sdk, 'the clone moves on');
     assert.throws(() => git(sdk, ['rebase', '-q', '--exec', 'false', 'HEAD~1']), 'the rebase stops at its failing exec');
     createFile(sdk, 'src/other.js', 'const o = 2;\n');
     createFile(dir, 'src/app.js', 'const x = 2;\n');
@@ -419,34 +389,20 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(res.left_dirty, []);
   });
 
-  it('records the pointer of a submodule the call reaches into inside a folder the call also names', () => {
-    const sub = harness.addSubmodule(dir, 'packages/sub', api);
+  it('commits a nested repo\'s path the call reaches into inside a folder the call also names, the folder\'s own files in the parent', () => {
+    const sub = nestedClone('packages/sub');
     createFile(dir, 'packages/readme.txt', 'the packages\n');
     createFile(sub, 'lib.txt', 'a library\n');
 
     const res = ok(dir, ['commit', '--paths', 'packages', 'packages/sub/lib.txt', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'packages/sub', sha: head(sub) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['packages/readme.txt', 'packages/sub']);
-    assert.strictEqual(pointer('packages/sub'), git(sub, ['rev-parse', 'HEAD']).trim());
-    assert.deepStrictEqual(codeStatusLines(dir), []);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['packages/readme.txt']);
+    assert.deepStrictEqual(codeHeadFiles(sub), ['lib.txt']);
+    assert.deepStrictEqual(res.left_dirty, []);
   });
 
-  it('never commits a nested repo in its parent the call did not reach into — an untouched submodule, an untracked repo', () => {
-    const sdk = harness.addSubmodule(dir, 'sdk', api);
-    const before = pointer('sdk');
-    createFile(sdk, 'src/handler.js', 'const h = 2;\n');
-    commitAll(sdk, 'the submodule moves on its own');
-    createFile(dir, 'src/app.js', 'const x = 2;\n');
-
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
-
-    assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
-    assert.strictEqual(pointer('sdk'), before, 'the untouched gitlink stays where it was');
-    assert.ok(codeStatusLines(dir).includes(' M sdk'), 'the moved pointer is the root\'s git to see');
-    assert.deepStrictEqual(res.left_dirty, [], 'and never dirt');
-
+  it('never commits a nested repo in its parent — an untracked repo inside a folder the call names', () => {
     createFile(dir, 'packages/notes.txt', 'loose\n');
     const kit = harness.initRepo(path.join(dir, 'packages/kit'));
     createFile(kit, 'kit.js', 'const k = 1;\n');
@@ -459,27 +415,26 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.strictEqual(git(dir, ['ls-files', '--stage', '--', 'packages/kit']).trim(), '', 'no gitlink staged for the untracked repo');
   });
 
-  it('commits beside a submodule its parent ignores, and records that submodule\'s pointer when the call reaches into it', () => {
-    createFile(dir, '.gitignore', '.leeway/\napi/\nvendor/\n');
-    commitAll(dir, 'the vendor folder is ignored');
-    const sdk = harness.addSubmodule(dir, 'vendor/sdk', api, { force: true });
-    const before = pointer('vendor/sdk');
+  it('commits beside a clone its parent ignores in a folder deeper in, and in that clone alone when the call reaches into it', () => {
+    createFile(dir, '.gitignore', '.leeway/\napi/\n/vendor/sdk/\n');
+    commitAll(dir, 'the vendored clone is ignored');
+    const sdk = nestedClone('vendor/sdk');
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
-    commitAll(sdk, 'the submodule moves on its own');
+    commitAll(sdk, 'the clone moves on its own');
     createFile(dir, 'index.js', 'const i = 1;\n');
 
     const beside = ok(dir, ['commit', '--paths', 'index.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(beside.committed, [{ repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir), ['index.js']);
-    assert.strictEqual(pointer('vendor/sdk'), before);
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'nothing is left staged');
 
+    const rootBefore = head(dir);
     createFile(sdk, 'src/other.js', 'const o = 2;\n');
     const into = ok(dir, ['commit', '--paths', 'vendor/sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...FOR_TASK], building);
 
-    assert.deepStrictEqual(into.committed, [{ repo: 'vendor/sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
-    assert.strictEqual(pointer('vendor/sdk'), git(sdk, ['rev-parse', 'HEAD']).trim(), 'the pointer lands without being added');
+    assert.deepStrictEqual(into.committed, [{ repo: 'vendor/sdk', sha: head(sdk) }]);
+    assert.strictEqual(head(dir), rootBefore);
   });
 
   it('names the repo whose commit failed, and the commits already made', () => {
@@ -520,21 +475,6 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(retried.left_dirty, []);
   });
 
-  it('re-running the call picks up a submodule\'s pointer its parent failed to record', () => {
-    const sdk = harness.addSubmodule(dir, 'sdk', api);
-    createFile(sdk, 'src/handler.js', 'const h = 2;\n');
-    const hook = refusingHook(dir, 'root');
-    const call = ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK];
-
-    assert.match(refuses(dir, call, building).error, new RegExp(`^the commit in \\. failed after sdk committed ${head(sdk)} — `));
-
-    fs.rmSync(hook);
-    const retried = ok(dir, call, building);
-
-    assert.deepStrictEqual(retried.committed, [{ repo: '.', sha: head(dir) }], 'the submodule has nothing left; its pointer has');
-    assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim());
-  });
-
   it('checks every path in the repo that owns it before any repo commits', () => {
     createFile(dir, '.gitignore', '.leeway/\napi/\n*.log\n');
     commitAll(dir, 'logs are ignored');
@@ -554,16 +494,6 @@ describe('engine commit --paths: code in repos of its own', () => {
       /"api\/src\/never-written\.js" is neither on disk nor tracked/);
     assert.strictEqual(head(dir), rootBefore);
     assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
-
-    createFile(dir, '.gitignore', '.leeway/\napi/\n*.log\nlib/gen/\n');
-    commitAll(dir, 'generated code is ignored');
-    harness.addSubmodule(dir, 'lib/gen/sdk', api, { force: true });
-    createFile(dir, 'lib/util.js', 'const u = 1;\n');
-
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/src/handler.js', 'lib', '-m', 'x', ...FOR_TASK], building).error,
-      'commit --paths: git in . refuses to stage "lib" (an ignore rule, or a path beyond a symbolic link)',
-      'a folder holding a submodule its parent ignores is checked as the commit would stage it');
-    assert.strictEqual(head(api), apiBefore);
 
     git(api, ['rm', '-q', '--', 'src/old.js']);
     const res = ok(dir, ['commit', '--paths', 'api/src/old.js', '-m', 'refactor(topic-a): drop the module', ...FOR_TASK], building);

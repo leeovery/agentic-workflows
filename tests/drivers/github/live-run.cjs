@@ -7,39 +7,35 @@
 // command line; without it, it refuses and touches nothing. No gate runs
 // it: it is no suite, and no script names it.
 //
-//   node tests/drivers/github/live-run.cjs <owner>/<repo> [<owner>/<sub-repo>] [--unit <owner>/<unit-repo>]
+//   node tests/drivers/github/live-run.cjs <owner>/<repo> [<owner>/<nested-repo>] [--unit <owner>/<unit-repo>]
 //
 // Each repository named must exist and hold no branch. The run pushes the
 // world's code there, sets the repository's squash default as setup's yes
 // does (`github-squash`), then lands three phases: a stack of three tasks
-// merged whole, a fix phase of one task, and a fix phase built on it,
-// landed at finish. Given a second repository, it then adds that one as
-// the submodule `ext`, its code pushed there and its squash default set by
-// setup's yes again, which sets it on every repository nested since,
-// and lands two phases more across both (7.2.17): a stack of two tasks,
-// each moving the submodule's pointer, the lower first, and a fix phase of
-// two built on it, the first leaving the pointer alone and the second
-// moving it again, landed at finish — so GitHub squashes a stack brought
-// up to date with its default branch, the stand-in's model of which the
-// suites rest on. It then reads
-// what each default branch gained and checks each commit against 7.2.18 —
-// its subject the task's landing subject with GitHub's " (#N)", its body
-// naming the task's id on a line of its own — each pull request merged,
-// and, given the submodule, that the project's default branch points it at
-// a commit on the submodule's. Given a repository for a unit's own branch
-// (`--unit`), it lands a unit of a cut of five phases there too: its first
-// phase start's close making `feat/pay` on GitHub (7.2.34), phase 1's
-// stack linked onto that branch and merged into it, never retargeted onto
-// GitHub's default, then finish landing phase 2 on it and the branch on
-// main through the unit's pull request, by a merge commit (7.2.38) — and
-// checks that branch gained each task as 7.2.18 names it, every task's pull
-// request based off main, and main's first-parent line one commit, `Merge
-// feat/pay (#N)` described by the phases, its history holding the
-// branch's. Everything it made stays on GitHub to be looked at; the local
-// copies go at exit. It runs as the person on GitHub:
-// their gh login, which the harness's hermetic environment pins away, is
-// taken before the harness loads and given back to every call the run
-// makes — its own gh, git's credential helper, and the engine's.
+// merged whole, a fix phase of one task, and a fix phase built on it, landed
+// at finish. Given a second repository, it then nests that one as the clone
+// `ext`, which the project ignores, its code pushed there and its squash
+// default set by setup's yes again, which sets it on every repository nested
+// since, and lands two phases more across both (7.2.17): a stack of two
+// tasks in both, the lower first, and a fix phase of two built on it, the
+// first in the project alone and the second in both again, landed at finish.
+// It then reads what each default branch gained and checks each commit
+// against 7.2.18 — its subject the task's landing subject with GitHub's "
+// (#N)", its body naming the task's id on a line of its own — each pull
+// request merged. Given a repository for a unit's own branch (`--unit`), it
+// lands a unit of a cut of five phases there too: its first phase start's
+// close making `feat/pay` on GitHub (7.2.34), phase 1's stack linked onto
+// that branch and merged into it, never retargeted onto GitHub's default,
+// then finish landing phase 2 on it and the branch on main through the
+// unit's pull request, by a merge commit (7.2.38) — and checks that branch
+// gained each task as 7.2.18 names it, every task's pull request based off
+// main, and main's first-parent line one commit, `Merge feat/pay (#N)`
+// described by the phases, its history holding the branch's. Everything it
+// made stays on GitHub to be looked at; the local copies go at exit. It runs
+// as the person on GitHub: their gh login, which the harness's hermetic
+// environment pins away, is taken before the harness loads and given back to
+// every call the run makes — its own gh, git's credential helper, and the
+// engine's.
 
 const fs = require('fs');
 const os = require('os');
@@ -50,10 +46,10 @@ const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
 const argv = process.argv.slice(2);
 const flag = argv.indexOf('--unit');
 const unitRepo = flag === -1 ? undefined : argv[flag + 1];
-const [named, sub, ...extra] = flag === -1 ? argv : [...argv.slice(0, flag), ...argv.slice(flag + 2)];
-const repositories = [named, sub, unitRepo].filter((repository) => repository !== undefined);
+const [named, nested, ...extra] = flag === -1 ? argv : [...argv.slice(0, flag), ...argv.slice(flag + 2)];
+const repositories = [named, nested, unitRepo].filter((repository) => repository !== undefined);
 if (named === undefined || extra.length > 0 || (flag !== -1 && unitRepo === undefined) || !repositories.every((repository) => REPOSITORY.test(repository)) || new Set(repositories).size < repositories.length) {
-  process.stderr.write('live-run: name the scratch repository on GitHub you created for this run, as <owner>/<repo>, for a submodule a second one, as <owner>/<sub-repo>, and for a unit\'s own branch another, as --unit <owner>/<unit-repo> — nothing has been done\n');
+  process.stderr.write('live-run: name the scratch repository on GitHub you created for this run, as <owner>/<repo>, for a nested clone a second one, as <owner>/<nested-repo>, and for a unit\'s own branch another, as --unit <owner>/<unit-repo> — nothing has been done\n');
   process.exit(2);
 }
 
@@ -149,9 +145,9 @@ function faultsIn(dir, repository, from, expected, branch = 'main') {
 }
 
 /**
- * The project's phases 4 and 5 landed across it and the submodule `ext`,
- * put on GitHub as `repository` and added on the project's main, pushed:
- * the faults the landing shows.
+ * The project's phases 4 and 5 landed across it and the clone `ext` it
+ * nests and ignores, put on GitHub as `repository`: the faults the
+ * landing shows.
  * @param {string} dir @param {string} repository
  * @returns {string[]}
  */
@@ -162,26 +158,24 @@ function landNested(dir, repository) {
   git(ext, ['commit', '-q', '-m', 'the ext']);
   git(ext, ['tag', BASE]);
   onGithub(ext, repository, ['refs/heads/main:refs/heads/main']);
-  git(dir, ['submodule', 'add', '-q', `https://github.com/${repository}.git`, 'ext']);
-  git(dir, ['commit', '-q', '-m', 'chore: add ext']);
-  git(dir, ['push', '-q', 'origin', 'main']);
+  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), '/ext/\n');
   setSquash(dir);
   const added = git(dir, ['rev-parse', 'main']).trim();
 
-  /** A task cut in both repositories, from `from`, the project's moving the pointer to its change in ext. @param {string} shown @param {string} type @param {string} title @param {string} from */
+  /** A task cut in both repositories, from `from`, a change in each. @param {string} shown @param {string} type @param {string} title @param {string} from */
   const across = (shown, type, title, from) => {
     const task = track(dir, shown, type, title);
     const slug = task.branch.split('-').slice(2).join('-');
-    const moved = commitFiles(ext, task.branch, from, { [`ext-${slug}.txt`]: `${slug}\n` });
-    commitFiles(dir, task.branch, from, { [`${slug}.txt`]: `${slug}\n` }, { gitlinks: { ext: moved } });
+    commitFiles(ext, task.branch, from, { [`ext-${slug}.txt`]: `${slug}\n` });
+    commitFiles(dir, task.branch, from, { [`${slug}.txt`]: `${slug}\n` });
     return task;
   };
   const rates = across('4.1', 'feat', 'Add ext rates', 'main');
   const shown = across('4.2', 'feat', 'Show ext rates', rates.branch);
   const alone = cutTask(dir, '5.1', 'fix', 'Fix the rates page', shown.branch, { 'rates-page.txt': 'page\n' });
   const fix = track(dir, '5.2', 'fix', 'Fix ext rates');
-  const moved = commitFiles(ext, fix.branch, shown.branch, { 'ext-fix-ext-rates.txt': 'fix\n' });
-  commitFiles(dir, fix.branch, alone.branch, { 'fix-ext-rates.txt': 'fix\n' }, { gitlinks: { ext: moved } });
+  commitFiles(ext, fix.branch, shown.branch, { 'ext-fix-ext-rates.txt': 'fix\n' });
+  commitFiles(dir, fix.branch, alone.branch, { 'fix-ext-rates.txt': 'fix\n' });
   for (const task of [rates, shown]) land(dir, openArgs(task));
   land(dir, ['land', 'chain', 'pay', '4.2']);
   for (const task of [alone, fix]) land(dir, openArgs(task));
@@ -193,10 +187,7 @@ function landNested(dir, repository) {
     { subject: 'feat(pay): Add ext rates', task: 'pay-4-1' }, { subject: 'feat(pay): Show ext rates', task: 'pay-4-2' },
     { subject: 'fix(pay): Fix the rates page', task: 'pay-5-1' }, { subject: 'fix(pay): Fix ext rates', task: 'pay-5-2' },
   ];
-  const faults = [...faultsIn(dir, named, added, [addRates, showRates, leftAlone, fixRates]), ...faultsIn(ext, repository, BASE, [addRates, showRates, fixRates])];
-  const pointer = git(dir, ['rev-parse', 'origin/main:ext']).trim();
-  const onSub = spawnSync('git', ['merge-base', '--is-ancestor', pointer, 'origin/main'], { cwd: ext }).status === 0;
-  return [...faults, ...(onSub ? [] : [`${named}'s main points ext at ${pointer.slice(0, 7)}, a commit ${repository}'s main lacks`])];
+  return [...faultsIn(dir, named, added, [addRates, showRates, leftAlone, fixRates]), ...faultsIn(ext, repository, BASE, [addRates, showRates, fixRates])];
 }
 
 /**
@@ -238,7 +229,7 @@ function landOwnBranch(repository) {
 }
 
 refuseUnlessEmpty(named);
-if (sub !== undefined) refuseUnlessEmpty(sub);
+if (nested !== undefined) refuseUnlessEmpty(nested);
 if (unitRepo !== undefined) refuseUnlessEmpty(unitRepo);
 
 const dir = harness.setupGitFixture('leeway-live-run-');
@@ -266,7 +257,7 @@ const faults = faultsIn(dir, named, BASE, [
   { subject: 'feat(pay): Add card', task: 'pay-1-1' }, { subject: 'feat(pay): Show total', task: 'pay-1-2' }, { subject: 'feat(pay): Add tax', task: 'pay-1-4' },
   { subject: 'fix(pay): Round totals', task: 'pay-2-1' }, { subject: 'fix(pay): Name the currency', task: 'pay-3-1' },
 ]);
-if (sub !== undefined) faults.push(...landNested(dir, sub));
+if (nested !== undefined) faults.push(...landNested(dir, nested));
 if (unitRepo !== undefined) faults.push(...landOwnBranch(unitRepo));
 process.stdout.write(faults.length === 0 ? '\nlive-run: every task landed as 7.2.18 names it\n' : `\nlive-run: ${faults.length} differences from 7.2.18:\n${faults.map((f) => `  ${f}`).join('\n')}\n`);
 process.exitCode = faults.length === 0 ? 0 : 1;

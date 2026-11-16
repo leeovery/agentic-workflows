@@ -14,9 +14,7 @@
 // merged back onto the task's branch — finished through the door, its
 // resolution named, the checks run and the trailer on the merge commit,
 // refused while a conflict stays unnamed, in a project at a repository's top
-// or a folder of it, a child repository merged first
-// and its holder's pointer resolved to the child's merged tip, staged by the
-// builder as the chain slot says or by the door (12.14); and
+// or a folder of it, and in a child repository alone (12.14); and
 // a tree with the state branch checked out is refused before any check runs
 // (4.S20); and a commit from a checkout on a branch other than the task's
 // refused, naming the worktree that has the task's branch out, or, with
@@ -40,7 +38,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, createFile, initRepo, addSubmodule, commitCode, setEnvironment, confirmEnvironment,
+  ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, createFile, initRepo, commitCode, setEnvironment, confirmEnvironment,
 } = require('./engine-harness.cjs');
 const { spawnSync } = require('child_process');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
@@ -347,60 +345,22 @@ describe('commit --task: a merge in progress, the chain merged back (12.14)', ()
     assert.deepStrictEqual([codeHead(dir), merging(dir), marked(dir)], [before, true, '']);
   });
 
-  /**
-   * The submodule `ext`, its chain past the task's branch in it and in the
-   * project, each with work of its own beside; the child's merge back begun,
-   * clean, and committed through the door.
-   * @param {import('node:test').TestContext} t @returns {{ext: string, extMerge: unknown}}
-   */
-  function childMergedBack(t) {
-    const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-child-')));
-    t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
-    const source = initRepo(path.join(folder, 'ext-source'));
-    createFile(source, 'ext.txt', 'ext\n');
-    commitCode(source, 'ext');
-    const ext = addSubmodule(dir, 'ext', source);
+  it('finishes a child repository\'s merge through the door in the child alone, its merge committed under the task\'s trailer, the project gaining no commit', () => {
+    const ext = initRepo(path.join(dir, 'ext'));
+    createFile(ext, 'ext.txt', 'ext\n');
+    commitCode(ext, 'ext');
     git(ext, ['checkout', '-q', '-b', 'chained']);
     createFile(ext, 'chained.txt', 'chained\n');
     commitCode(ext, 'chained in ext');
-    git(dir, ['checkout', '-q', '-b', 'chained']);
-    git(dir, ['add', 'ext']);
-    git(dir, ['commit', '-q', '-m', 'ext chained']);
-    git(dir, ['checkout', '-q', branchOf(1)]);
-    git(ext, ['checkout', '-q', '-B', 'main', 'main']);
+    git(ext, ['checkout', '-q', 'main']);
     createFile(ext, 'own.txt', 'own\n');
     commitCode(ext, 'own in ext');
-    git(dir, ['add', 'ext']);
-    git(dir, ['commit', '-q', '-m', 'ext own']);
-
+    const before = codeHead(dir);
     assert.strictEqual(mergeBegun(ext, 'chained'), false, 'the child merges clean');
+
     ok(dir, ['commit', '--paths', 'ext/chained.txt', '--task', UNIT, '1.1', '-m', 'merge(pay): the chain back, in ext'], as(BUILDING));
-    return { ext, extMerge: mergeCommit(ext) };
-  }
 
-  it('a child repository merged first, then the project\'s, its pointer named staged by the door as the child stands — past the merged tip the merge itself resolves it to', (t) => {
-    const { ext, extMerge } = childMergedBack(t);
-    createFile(ext, 'fix.txt', 'fix\n');
-    commitCode(ext, 'a fix in ext');
-    const fixed = git(ext, ['rev-parse', 'HEAD']).trim();
-    mergeBegun(dir, 'chained');
-    ok(dir, ['commit', '--paths', 'ext', '--task', UNIT, '1.1', '-m', 'merge(pay): the chain back'], as(BUILDING));
-
-    assert.deepStrictEqual([extMerge, mergeCommit(dir)], [{ parents: 2, task: 'pay-1-1' }, { parents: 2, task: 'pay-1-1' }]);
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD:ext']).trim(), fixed, 'the pointer at the child as it stands');
-  });
-
-  it('a child repository merged first, then the project\'s, its pointer at the child as it stands, past the merged tip, staged by git add before the door, as the chain slot says — committed, never refused', (t) => {
-    const { ext } = childMergedBack(t);
-    createFile(ext, 'fix.txt', 'fix\n');
-    commitCode(ext, 'a fix in ext');
-    mergeBegun(dir, 'chained');
-    git(dir, ['add', 'ext']);
-    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only', 'HEAD']).trim(), 'ext', 'the pointer staged');
-
-    ok(dir, ['commit', '--paths', 'ext', '--task', UNIT, '1.1', '-m', 'merge(pay): the chain back'], as(BUILDING));
-
-    assert.deepStrictEqual([mergeCommit(dir), git(dir, ['rev-parse', 'HEAD:ext']).trim()], [{ parents: 2, task: 'pay-1-1' }, git(ext, ['rev-parse', 'HEAD']).trim()]);
+    assert.deepStrictEqual([mergeCommit(ext), merging(ext), codeHead(dir)], [{ parents: 2, task: 'pay-1-1' }, false, before]);
   });
 });
 

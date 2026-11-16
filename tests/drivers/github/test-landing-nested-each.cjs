@@ -2,18 +2,16 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver across nested repositories (leeway-engine/
-// scripts/drivers/landing/github/), each repository asked in turn, past
-// what every driver gives (the nested conformance suite's): the squash
-// default set by one yes on the project's repository and each nested one
-// on GitHub, and a stack in a repository nested since refused, naming that
-// yes; a merge refused in one repository carrying the warnings of those
-// landed before it; and a task squashed by hand under the person's own
-// message in every repository it touches, landed still once `land phase`
-// points the submodule at its landing (7.2.22, R25). The remotes a task's
-// repositories land through, and the submodule's pointer, are
-// test-landing-nested.cjs's. Git layer: the nested world
-// (landing-world.cjs), each repository on a fake GitHub of its own
-// (world.cjs), built once and copied for each test.
+// scripts/drivers/landing/github/), each repository asked in turn, past what
+// every driver gives (the nested conformance suite's): the squash default
+// set by one yes on the project's repository and each nested one on GitHub,
+// and a stack in a repository nested since refused, naming that yes; a merge
+// refused in one repository carrying the warnings of those landed before it;
+// and a task squashed by hand under the person's own message in every
+// repository it touches, read landed (7.2.22, R25). The remotes a task's
+// repositories land through are test-landing-nested.cjs's. Git layer: the
+// nested world (landing-world.cjs), each repository on a fake GitHub of its
+// own (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('../../scripts/hermetic-env.cjs');
@@ -80,11 +78,8 @@ describe('GitHub\'s landing driver across nested repositories, each asked in tur
     );
   });
 
-  it('a task squashed by hand under the person\'s own message in each repository it touches, its two commits in the project\'s the first moving the submodule\'s pointer, which land phase then points at its landing: landed still in every one, its phase answered merged again (7.2.22, R25)', () => {
+  it('a task squashed by hand under the person\'s own message in each repository it touches, its two commits in the project\'s: landed in every one, its phase answered merged (7.2.22, R25)', () => {
     const at = project();
-    const pointer = commitFiles(at.ext, rates.branch, 'main', { 'ext-rates.txt': 'rates\n' });
-    commitFiles(at.lib, rates.branch, NESTED.lib.into, { 'lib-rates.txt': 'rates\n' });
-    commitFiles(at.dir, rates.branch, 'main', { 'rates.txt': 'rates\n' }, { gitlinks: { [NESTED.ext.folder]: pointer } });
     commitFiles(at.dir, rates.branch, rates.branch, { 'rates-more.txt': 'more\n' });
     git(at.dir, ['branch', '-f', show.branch, rates.branch]);
     ok(at.dir, openArgs(rates));
@@ -92,10 +87,8 @@ describe('GitHub\'s landing driver across nested repositories, each asked in tur
       onGithub(repo, (state) => { state.squash = { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'BLANK' }; });
       side.mergedOnGithub(repo, rates.branch, 'squash', true, into);
     }
-    const [landed] = ok(at.dir, ['land', 'phase', 'pay', '1']).repos;
+    const merged = { ok: true, phase: 1, already: true, repos: [], driver: 'github' };
 
-    assert.deepStrictEqual([landed.already, Object.keys(landed.repointed.pointers), ok(at.dir, ['land', 'phase', 'pay', '1'])], [
-      true, [NESTED.ext.folder], { ok: true, phase: 1, already: true, repos: [], driver: 'github' },
-    ]);
+    assert.deepStrictEqual(ok(at.dir, ['land', 'phase', 'pay', '1']), merged);
   });
 });

@@ -19,8 +19,8 @@
 // Its phase landed by hand is test-engine-land-local-again-by-hand
 // .cjs's; its tasks read off its branch's top,
 // test-engine-land-local-again-top.cjs's; every verb's answer on each
-// driver, the conformance table's (landing-again.cjs); submodules,
-// test-engine-land-nested-again.cjs's. Git layer: the landing world
+// driver, the conformance table's (landing-again.cjs); nested
+// repositories, test-engine-land-nested-again.cjs's. Git layer: the landing world
 // (landing-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 

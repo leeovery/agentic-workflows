@@ -24,10 +24,7 @@
 // commits alone — the rest of its message each of its tasks' landings in
 // turn, `{type}({unit}): {its title}` in the task's own type then its
 // `Task:` line (`quickFixMessage`). The type is the task's own,
-// from its template (12.4.1): a lowercase word, as feat or fix. A commit
-// pointing submodules at their landings is `chore({unit}): point {folders}
-// at its landing`, `their` for more than one (`pointedMessage`), naming no
-// task; on a branch of its own, `chore/{unit}-point-submodules`. The merge
+// from its template (12.4.1): a lowercase word, as feat or fix. The merge
 // bringing the default branch into a unit's own branch is `Merge {default}
 // into feat/{unit}` (`bringUpSubject`), no conventional commit's either.
 // ---------------------------------------------------------------------------
@@ -112,17 +109,6 @@ function taskOfBranch(unit, branch) {
 function quickFixBranch(unit) {
   assertUnit(unit);
   return `fix/${unit}`;
-}
-
-/** The branch a commit pointing the unit's submodules at their landings lands from, where it needs one of its own. @param {string} unit @returns {string} */
-function pointerBranch(unit) {
-  assertUnit(unit);
-  return `chore/${unit}-point-submodules`;
-}
-
-/** The message of a commit pointing submodules at their landings, each folder as a refusal names it. @param {string} unit @param {string[]} folders @returns {string} */
-function pointedMessage(unit, folders) {
-  return `chore(${unit}): point ${folders.join(', ')} at ${folders.length === 1 ? 'its' : 'their'} landing\n`;
 }
 
 /** Whether a branch is one a task of the unit's commits on: a task's own, or a quick-fix's one branch. @param {string} unit @param {string} branch @returns {boolean} */
@@ -222,4 +208,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, landingOf, tasksOfMessage };

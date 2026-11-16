@@ -42,7 +42,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { afterEach } = require('node:test');
 const {
-  call, ok, okSections, okSectionsAsync, output, sectionOf, writeState, readState, createFile, commitAll, commitCode, git, statePath, layout, fixtureFrom, folderFrom, setupFixtureAt, initRepo, addSubmodule, cleanupFixture, accountTaken, GIT_TIMEOUT_MS,
+  call, ok, okSections, okSectionsAsync, output, sectionOf, writeState, readState, createFile, commitAll, commitCode, git, statePath, layout, fixtureFrom, folderFrom, setupFixtureAt, initRepo, cleanupFixture, accountTaken, GIT_TIMEOUT_MS,
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { NESTED } = require('./landing-world.cjs');
@@ -283,28 +283,26 @@ function quickFixConformance(name, prefix) {
   };
 }
 
-/** A copy of the quick-fix nesting repositories: the project, and its submodule's and clone's checkouts. @typedef {{dir: string, ext: string, lib: string}} NestedQuickFix */
+/** A copy of the quick-fix nesting repositories: the project, and its clones' checkouts. @typedef {{dir: string, ext: string, lib: string}} NestedQuickFix */
 
 /**
- * The quick-fix in a project nesting a submodule and a clone (landing-
+ * The quick-fix in a project nesting two clones it ignores (landing-
  * world.cjs's `NESTED`), each repository's code tagged `landing-base`, no
  * landing driver yet readying it: built once per process and copied into
  * each driver's world (`quickFixNestedConformance`).
  */
 const nestedQuickFix = folderFrom('quick-fix-nested-', (folder) => {
   const dir = setupFixtureAt(path.join(folder, 'project'));
-  const upstream = initRepo(path.join(folder, NESTED.ext.folder));
-  createFile(upstream, 'ext.txt', 'ext\n');
-  commitCode(upstream, 'the ext');
-  const ext = addSubmodule(dir, NESTED.ext.folder, upstream);
-  git(ext, ['remote', 'remove', 'origin']);
-  const lib = initRepo(path.join(dir, NESTED.lib.folder));
-  git(lib, ['symbolic-ref', 'HEAD', `refs/heads/${NESTED.lib.into}`]);
-  git(lib, ['config', 'init.defaultBranch', NESTED.lib.into]);
-  createFile(lib, 'lib.txt', 'lib\n');
-  commitCode(lib, 'the lib');
+  const [ext, lib] = Object.entries(NESTED).map(([name, { folder: at, into }]) => {
+    const clone = initRepo(path.join(dir, at));
+    git(clone, ['symbolic-ref', 'HEAD', `refs/heads/${into}`]);
+    git(clone, ['config', 'init.defaultBranch', into]);
+    createFile(clone, `${name}.txt`, `${name}\n`);
+    commitCode(clone, `the ${name}`);
+    return clone;
+  });
   fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
-  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.lib.folder}/\n`);
+  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.ext.folder}/\n/${NESTED.lib.folder}/\n`);
   quickFix(dir);
   for (const repo of [dir, ext, lib]) git(repo, ['tag', 'landing-base']);
 });
@@ -312,8 +310,8 @@ const nestedQuickFix = folderFrom('quick-fix-nested-', (folder) => {
 /**
  * What a quick-fix suite across nested repositories reads a landing driver
  * by (7.2.24): its side; the calls' options in the suite's conversation; a
- * copy at each call of the quick-fix in a project nesting a submodule and a
- * clone (`nestedQuickFix`, built once per process for every driver),
+ * copy at each call of the quick-fix in a project nesting two clones
+ * (`nestedQuickFix`, built once per process for every driver),
  * readied for the driver once per process, entered — every copy removed
  * after its test; fix `n` opened through the
  * door from the files it writes, each by its path in the project —

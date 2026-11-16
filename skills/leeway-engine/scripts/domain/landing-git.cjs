@@ -13,10 +13,9 @@
 // where it is.
 //
 // - A push or a fetch names its refspec, the branch to the branch of its
-//   name, and takes nothing with it — no tag, no signature, no nested
-//   repository — so no `push.*` or `fetch.*` setting changes what goes
-//   where; it never prompts, and is held to the state's time limits
-//   (state-worktree.cjs).
+//   name, and takes nothing with it — no tag, no signature — so no
+//   `push.*` or `fetch.*` setting changes what goes where; it never
+//   prompts, and is held to the state's time limits (state-worktree.cjs).
 // - The default branch: the one the project's remote names its HEAD; else
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
@@ -34,21 +33,18 @@
 //   a reviewer's brief draws its ranges by.
 // - A change is read from the project's folder alone, named from it — a
 //   project inside a larger repository reads only its own folder (7.2.17) —
-//   but for what a caller asks of a folder at the repository's top. A
-//   branch holds a commit's change where merging the commit there changes
-//   nothing (`holdsChange`), however the change got there, meeting no
-//   conflict but at a submodule's pointer the submodule holds it at — its
-//   repository holding, at the commit the branch points it at, the change
-//   of the one the commit does, as a landing points it at the submodule's
-//   landing (`pointersHold`); and a task's commits through the door are
-//   found by their stamp on its line where its work branch stands — the
-//   branch's tip's first-parent line, a merge's other parents never on it
-//   (`taskLine`), else what its tip holds — else on any ref or reflog, so a
-//   branch deleted loses none, a branch a remedy kept never among them
-//   (`lastStamped`), as a branch holding one is told by its history
-//   (`stampsUnit`). What a read asks of many commits at once — whether each
-//   of many holds another's change, or a copy of it — is read in one call
-//   however many are asked (`holdChanges`, `belowOwn`, `copiesOf`).
+//   but for what a caller asks of a folder at the repository's top. A branch
+//   holds a commit's change where merging the commit there changes nothing
+//   (`holdsChange`), however the change got there, meeting no conflict; and
+//   a task's commits through the door are found by their stamp on its line
+//   where its work branch stands — the branch's tip's first-parent line, a
+//   merge's other parents never on it (`taskLine`), else what its tip holds
+//   — else on any ref or reflog, so a branch deleted loses none, a branch a
+//   remedy kept never among them (`lastStamped`), as a branch holding one is
+//   told by its history (`stampsUnit`). What a read asks of many commits at
+//   once — whether each of many holds another's change, or a copy of it — is
+//   read in one call however many are asked (`holdChanges`, `belowOwn`,
+//   `copiesOf`).
 // - A commit is made with no checkout: a tree committed onto a parent, or a
 //   commit replayed onto another, which stops on a conflict; signed where
 //   the person's config signs every commit, as `git commit` signs it. A
@@ -58,12 +54,10 @@
 //   a worktree has checked out, which moves only by a fast-forward there,
 //   its tracked files clean where the move changes them — changes to any
 //   other carried across, as the fast-forward carries them — nothing at a
-//   path the move adds, ignored or not, and in the middle of no operation.
-//   A submodule's own checkout is its repository's: the move leaves it
-//   where it is, and it is no dirt of the parent's. A rebase stopped in a
-//   worktree leaves it detached, yet holds the branch it rebases and those
-//   it updates, so no such branch moves. Otherwise the move stops, saying
-//   what is in the way and the way on.
+//   path the move adds, ignored or not, and in the middle of no operation. A
+//   rebase stopped in a worktree leaves it detached, yet holds the branch it
+//   rebases and those it updates, so no such branch moves. Otherwise the
+//   move stops, saying what is in the way and the way on.
 // - No remedy changes the files of any worktree but one it makes itself.
 //   Before it moves or rewrites a branch, it keeps the branch as it stands
 //   on a `.kept-` branch and frees it: a worktree an earlier remedy left
@@ -82,13 +76,11 @@
 // - A task's worktree (task-worktree.cjs) is laid out by the same git: its
 //   branch made in place at the worktree's own commit or the commit a fix
 //   phase is built on, or switched to, and
-//   a worktree of each child repository added on it, none recursing into a
-//   submodule nor tracking a branch; and each child worktree removed as git
-//   removes a clean one.
+//   a worktree of each child repository added on it, none tracking a
+//   branch; and each child worktree removed as git removes a clean one.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { git: personGit, tryGit: personTryGit, gitRun, operationInProgress, mergeInProgress, dirtyEntries, GitError } = require('../kernel/git.cjs');
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
@@ -249,6 +241,11 @@ const holdingBranch = (unit, repos, branch) => holdingBranches(unit, repos, [bra
 /** Whether `ancestor` is `commit` or one it descends from. @param {string} root @param {string} ancestor @param {string} commit @returns {boolean} */
 function isAncestor(root, ancestor, commit) {
   return tryGit(root, ['merge-base', '--is-ancestor', ancestor, commit]) !== null;
+}
+
+/** Whether `commit` is a merge of `other`, a full sha, into its first parent. @param {string} root @param {string} commit @param {string} other @returns {boolean} */
+function mergeOf(root, commit, other) {
+  return tryGit(root, ['rev-parse', '--verify', '--quiet', `${commit}^2`])?.trim() === other;
 }
 
 /**
@@ -506,13 +503,13 @@ function holdsCopy(root, tip, commit) {
  * @param {string} root @param {{ours: string, tree: string, theirs: string, base?: string}[]} pairs
  * @returns {boolean[]}
  */
-const holdChanges = (root, pairs) => heldMerges(root, mergeTrees(root, pairs));
+const holdChanges = (root, pairs) => heldMerges(mergeTrees(root, pairs));
 
 /**
  * A merge of `pairs`' each — `theirs` into `ours`, over `base` where it
  * names one, else over their merge base — in one call, none where none is
- * asked: whether it met no conflict, the tree it gives, and the paths it
- * met one at, with the tree `ours` has.
+ * asked: whether it met no conflict and the tree it gives, with the tree
+ * `ours` has.
  * @param {string} root @param {{ours: string, tree: string, theirs: string, base?: string}[]} pairs
  * @returns {Merge[]}
  */
@@ -526,25 +523,22 @@ function mergeTrees(root, pairs) {
   return pairs.map(({ ours, tree, theirs }) => {
     const clean = fields.shift() === '1';
     const merged = /** @type {string} */ (fields.shift());
-    /** @type {string[]} */
-    const conflicted = [];
-    for (let field = fields.shift(); field !== undefined && field !== ''; field = fields.shift()) conflicted.push(field);
-    return { ours, theirs, tree, clean, merged, conflicted };
+    let field = fields.shift();
+    while (field !== undefined && field !== '') field = fields.shift();
+    return { ours, theirs, tree, clean, merged };
   });
 }
 
-/** A merge `mergeTrees` made. @typedef {{ours: string, theirs: string, tree: string, clean: boolean, merged: string, conflicted: string[]}} Merge */
+/** A merge `mergeTrees` made. @typedef {{ours: string, theirs: string, tree: string, clean: boolean, merged: string}} Merge */
 
 /**
  * Whether each of `merges` changes nothing: it gives the tree `ours` has,
- * meeting no conflict but at submodules' pointers that hold it
- * (`pointersHold`).
- * @param {string} root @param {Merge[]} merges
+ * meeting no conflict.
+ * @param {Merge[]} merges
  * @returns {boolean[]}
  */
-function heldMerges(root, merges) {
-  const pointed = pointersHold(root, merges.filter(({ clean, merged, tree }) => merged === tree && !clean));
-  return merges.map((merge) => merge.merged === merge.tree && (merge.clean || pointed.has(merge)));
+function heldMerges(merges) {
+  return merges.map((merge) => merge.merged === merge.tree && merge.clean);
 }
 
 /**
@@ -573,51 +567,6 @@ function pathsApart(root, pairs) {
     byTrees.set(trees, paths);
   }
   return new Map(pairs.map((pair) => [pair, /** @type {string[]} */ (byTrees.get(`${pair.merged} ${pair.tree}\n`))]));
-}
-
-/**
- * Those of `asks` whose `ours` holds the change of `theirs` at each path of
- * its `conflicted`, every one a submodule's pointer both point: where the
- * submodule's repository holds, at the commit `ours` points it at, the
- * change of the one `theirs` does (`submoduleHolds`) — as a landing points
- * it at the submodule's landing of the commit a task points it at (7.2.17).
- * @template {{ours: string, theirs: string, conflicted: string[]}} Ask
- * @param {string} root @param {Ask[]} asks the paths from the repository's top
- * @returns {Set<Ask>}
- */
-function pointersHold(root, asks) {
-  if (asks.length === 0) return new Set();
-  const commits = [...new Set(asks.flatMap(({ ours, theirs }) => [ours, theirs]))];
-  const paths = [...new Set(asks.flatMap(({ conflicted }) => conflicted))];
-  const pointers = new Map(pointersAt(root, commits, paths).map((at, i) => [commits[i], at]));
-  const move = (/** @type {string} */ at, /** @type {string} */ ours, /** @type {string} */ theirs) => ({ ours: pointers.get(ours)?.get(at) ?? null, theirs: pointers.get(theirs)?.get(at) ?? null });
-  const keyOf = (/** @type {string} */ at, /** @type {{ours: string|null, theirs: string|null}} */ { ours, theirs }) => `${at} ${ours} ${theirs}`;
-  const { top } = placeOf(root);
-  const held = new Set(paths.flatMap((at) => {
-    const moves = new Map(asks.flatMap(({ ours, theirs, conflicted }) => {
-      const pair = move(at, ours, theirs);
-      return conflicted.includes(at) && pair.ours !== null && pair.theirs !== null ? [[keyOf(at, pair), { ours: pair.ours, theirs: pair.theirs }]] : [];
-    }));
-    return submoduleHolds(path.join(top, at), moves);
-  }));
-  return new Set(asks.filter(({ ours, theirs, conflicted }) => conflicted.every((at) => held.has(keyOf(at, move(at, ours, theirs))))));
-}
-
-/**
- * The keys of `moves` whose `ours` holds, in the submodule's repository at
- * `sub`, the change of its `theirs` (`holdChanges`): none where no
- * repository is there, nor where it lacks either commit.
- * @param {string} sub @param {Map<string, {ours: string, theirs: string}>} moves
- * @returns {string[]}
- */
-function submoduleHolds(sub, moves) {
-  if (moves.size === 0 || !fs.existsSync(path.join(sub, '.git'))) return [];
-  const present = commitsIn(sub, [...moves.values()].flatMap(({ ours, theirs }) => [ours, theirs]));
-  const asked = [...moves].filter(([, { ours, theirs }]) => present.has(ours) && present.has(theirs));
-  if (asked.length === 0) return [];
-  const trees = treesOf(sub, asked.map(([, { ours }]) => ours));
-  const answers = holdChanges(sub, asked.map(([, pair], at) => ({ ...pair, tree: trees[at] })));
-  return asked.filter((_, at) => answers[at]).map(([key]) => key);
 }
 
 /** Those of `shas` the repository holds as commits, in one call. @param {string} root @param {string[]} shas @returns {Set<string>} */
@@ -961,204 +910,9 @@ function treesPast(root, from, to) {
   return new Set(git(root, ['log', '--format=%T', `${from}..${to}`]).split('\n').filter(Boolean));
 }
 
-/**
- * The commit each of `commits` points each submodule of `paths` at, null
- * where it holds no submodule there; the paths from the repository's top.
- * @param {string} root @param {string[]} commits @param {string[]} paths
- * @returns {Map<string, string|null>[]} by path, in `commits`' order
- */
-function pointersAt(root, commits, paths) {
-  const asked = commits.flatMap((commit) => paths.map((at) => `${commit}:${at}`));
-  const answers = git(root, ['cat-file', '--batch-check=%(objectname) %(objecttype)'], `${asked.join('\n')}\n`).split('\n');
-  return commits.map((_, i) => new Map(paths.map((at, j) => {
-    const [sha, type] = answers[i * paths.length + j].split(' ');
-    return [at, type === 'submodule' ? sha : null];
-  })));
-}
-
-/**
- * A tree's own, or a commit's, with each submodule of `pointers` pointed at
- * its commit — or taken out, where that is null — the paths from the
- * repository's top: built in an index of its own, so no checkout's index is
- * touched.
- * @param {string} root @param {string} treeish @param {Map<string, string|null>} pointers
- * @returns {string} the tree
- */
-function treeWithPointers(root, treeish, pointers) {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-pointers-'));
-  const env = { GIT_INDEX_FILE: path.join(folder, 'index') };
-  try {
-    personGit(root, [...PINNED, 'read-tree', treeish], env);
-    const none = '0'.repeat(git(root, ['rev-parse', treeish]).trim().length);
-    const entries = [...pointers].map(([at, sha]) => (sha === null ? `0 ${none}\t${at}\n` : `160000 commit ${sha}\t${at}\n`)).join('');
-    personGit(root, [...PINNED, 'update-index', '--index-info'], env, entries);
-    return personGit(root, [...PINNED, 'write-tree'], env).trim();
-  } finally {
-    fs.rmSync(folder, { recursive: true, force: true });
-  }
-}
-
-/**
- * A commit, standing alone and never signed, of `commit`'s tree with each
- * submodule of `paths` pointed as `like` points it: the base a merge is
- * given so that its side holding `like`'s pointers takes the other side's,
- * and no merge of a submodule's two moves is ever git's to make.
- * @param {string} root @param {string} commit @param {string} like @param {string[]} paths
- * @returns {string}
- */
-function pointedLike(root, commit, like, paths) {
-  const [pointers] = pointersAt(root, [like], paths);
-  return git(root, ['commit-tree', '--no-gpg-sign', treeWithPointers(root, commit, pointers), '-m', 'leeway: a merge base']).trim();
-}
-
 /** Whether the repository holds `sha` as a commit. @param {string} root @param {string} sha */
 function holdsCommit(root, sha) {
   return tryGit(root, ['cat-file', '-e', `${sha}^{commit}`]) !== null;
-}
-
-/**
- * The refusal of a landing whose default branch, `into`, points a submodule
- * at `sha`, where what the submodule lands onto, `onto`, does not descend
- * from it — as a pull of the repository holding it leaves it, the
- * submodule's default branch not pulled — so the submodule's landing would
- * move the pointer off it; null where `onto` descends from it, which it
- * never does from a commit the submodule lacks.
- * @param {string} into @param {string} folder the submodule's @param {{root: string, into: string}} sub @param {string} sha @param {string} onto
- * @returns {string|null}
- */
-function pointerAhead(into, folder, sub, sha, onto) {
-  if (isAncestor(sub.root, sha, onto)) return null;
-  const named = plain(folder);
-  return `land: ${into} points ${named} at ${short(sha)}, a commit ${named}'s ${sub.into} does not hold — bring ${named}'s ${sub.into} up to it, as \`git -C ${quoted(folder)} pull\` does where its remote holds it, and land again`;
-}
-
-/** A submodule as a pointer's moves read it: its repository, unit and default branch, and what has landed on a revision of it (landing.cjs's context, `landedOn`). @typedef {{root: string, unit: string, into: string, landedOn: (tip: string) => import('./task-landed.cjs').RepoLanded}} PointedSub */
-
-/**
- * A submodule's landing, on what it lands onto, `tip`, of the commit a
- * pointer names, `pointer`, as the one read of what has landed reads it —
- * its landed copy, of the newest task whose work the commits it holds past
- * `tip` are (task-landed.cjs, `ownersOf`, `landedCopy`): `{at}`, that
- * landing, where `start`, the pointer it is read from, does not hold it;
- * `{held}` where `start` does, so the pointer moves nowhere; null where
- * none is, as where `tip` holds `pointer`, that task has not landed, or
- * `pointer` is past its landing with no copy landed.
- * @param {PointedSub} sub @param {string} start @param {string} tip @param {string} pointer
- * @returns {{at: string}|{held: true}|null}
- */
-function landingPast(sub, start, tip, pointer) {
-  const read = sub.landedOn(tip);
-  const latest = read.ownersPast(pointer).at(-1);
-  const at = latest === undefined ? null : read.landedCopy(latest, pointer);
-  if (at === null) return null;
-  return isAncestor(sub.root, at, start) ? { held: true } : { at };
-}
-
-/**
- * The pointer a default branch pointing a submodule at `start` takes for
- * the work a commit pointing it at `pointer` carries — the one place every
- * move of a pointer passes through: the submodule's landing on `tip` of
- * that work (`landingPast`), the engine's own move, which never moves the
- * pointer back, as `start` where it holds that landing; else `pointer`, the
- * task's own pin, at a commit the submodule landed none of its work for,
- * kept as the task wrote it, forward or back.
- * @param {PointedSub} sub @param {string} start @param {string} tip @param {string} pointer
- * @returns {string}
- */
-function pointerFrom(sub, start, tip, pointer) {
-  const found = landingPast(sub, start, tip, pointer);
-  if (found === null) return pointer;
-  return 'held' in found ? start : found.at;
-}
-
-/**
- * Where a default branch, `into`, pointing a submodule at `sha` that what
- * the submodule lands onto, `onto`, does not descend from, points it
- * instead: the submodule's landing there of the work `sha` carries, as a
- * stack's moves find it (`pointerFrom`) — refused where there is none to
- * move to, or the submodule lacks the commit (`pointerAhead`); null where
- * `onto` descends from it.
- * @param {string} into @param {string} folder the submodule's @param {PointedSub} sub @param {string} sha @param {string} onto
- * @returns {{to: string}|{refused: string}|null}
- */
-function repointing(into, folder, sub, sha, onto) {
-  const ahead = pointerAhead(into, folder, sub, sha, onto);
-  if (ahead === null) return null;
-  const to = holdsCommit(sub.root, sha) ? pointerFrom(sub, sha, onto, sha) : sha;
-  return to === sha ? { refused: ahead } : { to };
-}
-
-/**
- * Each of a stack's own commits' moves of its repository's submodules'
- * pointers, in the commits' order: where a commit points a submodule other
- * than every parent of it does — so a merge taking one side's pointer moves
- * nothing, and a pointer the stack inherited from below it is no move of
- * its — for a submodule the walk lands in, the pointer the engine sets
- * there (`pointerFrom`), from the one the moves before it leave, the commit
- * `since` points it at for the first, on the submodule's tip (`tipOf`, read
- * when first needed); else the commit's own pointer. One taken out stays
- * out. Refused, never in git's words, where the submodule's tip neither
- * descends from the commit `since` points it at nor has landed, past it,
- * the work that commit carries (`repointing`) — as a merge of the
- * submodule by hand after the repository holding it leaves it, the pointer
- * the stack sets then on the submodule's tip.
- * @template {PointedSub} Sub
- * @param {{root: string, into: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
- * @param {{sha: string, parents: string[]}[]} commits @param {string} since the default branch's tip @param {(sub: Sub) => string} tipOf
- * @returns {Map<string, string|null>[]}
- */
-function stackMoves(repo, commits, since, tipOf) {
-  const { root, gitlinks: paths } = repo;
-  if (commits.length === 0 || paths.length === 0) return commits.map(() => new Map());
-  const asked = [since, ...commits.flatMap(({ sha, parents }) => [sha, ...parents])];
-  const read = new Map(pointersAt(root, asked, paths).map((pointers, i) => [asked[i], pointers]));
-  const from = /** @type {Map<string, string|null>} */ (read.get(since));
-  /** @type {Map<string, string|null>} each submodule's pointer as the moves so far leave it, by its path */
-  const now = new Map(from);
-  /** @type {Map<string, string>} each submodule's tip, by its path */
-  const tips = new Map();
-  /** Where a commit pointing the submodule at `at` at `pointer` moves it. @param {string} at @param {string} pointer */
-  const moveOf = (at, pointer) => {
-    const sub = repo.submodules.find((walked) => walked.path === at)?.ctx;
-    const start = now.get(at) ?? null;
-    const landed = from.get(at) ?? null;
-    if (sub === undefined || start === null || landed === null) return pointer;
-    if (!tips.has(at)) {
-      const tip = tipOf(sub);
-      const held = repointing(repo.into, at, sub, landed, tip);
-      if (held !== null && 'refused' in held) throw new Error(held.refused);
-      tips.set(at, tip);
-    }
-    return pointerFrom(sub, start, /** @type {string} */ (tips.get(at)), pointer);
-  };
-  return commits.map(({ sha, parents }) => {
-    const own = /** @type {Map<string, string|null>} */ (read.get(sha));
-    /** @type {Map<string, string|null>} */
-    const moves = new Map();
-    for (const at of paths) {
-      const pointer = own.get(at) ?? null;
-      const before = parents.length === 0 ? [null] : parents.map((parent) => read.get(parent)?.get(at) ?? null);
-      if (before.includes(pointer)) continue;
-      const to = pointer === null ? null : moveOf(at, pointer);
-      moves.set(at, to);
-      now.set(at, to);
-    }
-    return moves;
-  });
-}
-
-/**
- * The commits `head` holds that none of `not` does, oldest first — parents
- * before children — each with its parents; a commit of `not` this
- * repository lacks is passed over.
- * @param {string} root @param {string} head @param {string[]} not
- * @returns {{sha: string, parents: string[]}[]}
- */
-function commitsPast(root, head, not) {
-  return git(root, ['rev-list', '--ignore-missing', '--reverse', '--topo-order', '--parents', head, '--not', ...not]).split('\n').filter(Boolean).map((line) => {
-    const [sha, ...parents] = line.split(' ');
-    return { sha, parents };
-  });
 }
 
 /**
@@ -1213,26 +967,17 @@ function mergeTree(root, base, ours, theirs) {
 }
 
 /**
- * Each submodule's pointer a replay records (`stackMoves`): the paths it
- * decides, from the repository's top, and each commit's moves of them.
- * @typedef {{paths: string[], moves: Map<string, string|null>[]}} Pointers
- */
-
-/**
  * Commits replayed onto `onto`, oldest first, each its own change under its
  * own message: the commit the last replay made, and those whose change was
  * there already, each replayed as a commit that changes nothing — a commit
- * that changes nothing itself is none of them. Where `pointers` decides a
- * submodule's pointer, git never merges it: each commit keeps the pointer
- * of the one it is replayed onto but where it moves it, and then takes its
- * move. Stops on the first change that conflicts, naming it and its paths
- * (`Conflict`), and is refused at the first commit git cannot make
- * (`commitTree`).
+ * that changes nothing itself is none of them. Stops on the first change
+ * that conflicts, naming it and its paths (`Conflict`), and is refused at
+ * the first commit git cannot make (`commitTree`).
  * @template {{sha: string, message: string, name: string}} C
- * @param {string} root @param {C[]} commits @param {string} onto @param {string} ontoName @param {Pointers} [pointers]
+ * @param {string} root @param {C[]} commits @param {string} onto @param {string} ontoName
  * @returns {{tip: string, empty: C[]}}
  */
-function replay(root, commits, onto, ontoName, pointers) {
+function replay(root, commits, onto, ontoName) {
   let at = onto;
   let [atTree] = treesOf(root, [onto]);
   const own = treesOf(root, commits.flatMap(({ sha }) => [`${sha}^`, sha]));
@@ -1240,11 +985,9 @@ function replay(root, commits, onto, ontoName, pointers) {
   /** @type {C[]} */
   const empty = [];
   commits.forEach((commit, i) => {
-    const base = pointers === undefined ? `${commit.sha}^` : pointedLike(root, `${commit.sha}^`, commit.sha, pointers.paths);
-    const merged = mergeTree(root, base, at, commit.sha);
+    const merged = mergeTree(root, `${commit.sha}^`, at, commit.sha);
     if ('conflicts' in merged) throw new Conflict(`land: ${commit.name} conflicts with ${ontoName} at ${merged.conflicts.map(plain).join(', ')}`);
-    const moves = pointers?.moves[i] ?? new Map();
-    const tree = moves.size === 0 ? merged.tree : treeWithPointers(root, merged.tree, moves);
+    const { tree } = merged;
     if (tree === atTree && own[2 * i] !== own[2 * i + 1]) empty.push(commit);
     at = commitTree(root, { tree, parent: at, message: commit.message, signed }, `${commit.name}'s replay onto ${ontoName}`, 'land again');
     atTree = tree;
@@ -1287,18 +1030,6 @@ function rebasing(gitDir) {
 }
 
 /**
- * The folder of a repository's main checkout, from where git's listing
- * names it: a submodule's is named by its git directory, which holds no
- * `.git`, and is asked of that directory.
- * @param {string} listed
- * @returns {string}
- */
-function mainCheckout(listed) {
-  if (!fs.existsSync(listed) || fs.existsSync(path.join(listed, '.git'))) return listed;
-  return tryGit(listed, ['rev-parse', '--show-toplevel'])?.trim() || listed;
-}
-
-/**
  * The project's folder in its own checkout, from the code root of any
  * worktree of it.
  * @param {string} root @param {{prefix: string}} [at] where the code root sits in its repository, where read @param {Worktree[]} [trees] the repository's, where read
@@ -1322,7 +1053,7 @@ function taskWorktree(root, ref) {
 
 /** The repository's main checkout, whichever of its worktrees `root` is. @param {string} root */
 function mainCheckoutOf(root) {
-  return mainCheckout(git(root, ['worktree', 'list', '--porcelain']).split('\n')[0].slice('worktree '.length));
+  return git(root, ['worktree', 'list', '--porcelain']).split('\n')[0].slice('worktree '.length);
 }
 
 /**
@@ -1333,10 +1064,9 @@ function mainCheckoutOf(root) {
  * @returns {Worktree[]}
  */
 function worktrees(root, made = scratchRoot(root)) {
-  return git(root, ['worktree', 'list', '--porcelain']).split('\n\n').filter(Boolean).map((block, i) => {
+  return git(root, ['worktree', 'list', '--porcelain']).split('\n\n').filter(Boolean).map((block) => {
     const lines = block.split('\n');
-    const listed = lines[0].slice('worktree '.length);
-    const tree = i === 0 ? mainCheckout(listed) : listed;
+    const tree = lines[0].slice('worktree '.length);
     const branch = lines.find((line) => line.startsWith(`branch ${HEADS}`));
     return {
       path: tree,
@@ -1399,17 +1129,15 @@ function mergeHeld(root, branch) {
  * (`mergingTree`) — added there detached at `ours`, a folder no worktree
  * holds cleared first, where it holds none at `ours` already — under
  * `message`, by the replay's settings (`MERGE_PINS`), committing nothing:
- * its conflicts left in its files for the person to settle, each submodule
- * of `pointers`, by its path from the repository's top, set at its commit,
- * which leaves no conflict there theirs. The branch and `then`, the step
- * that takes it, are kept in the worktree's own git directory for every
- * land verb's refusal to name (`scratchBlock`), as soon as the worktree
- * is there, so a merge git stops or a kill cuts short leaves them. Where
- * it is.
- * @param {string} root @param {{branch: string, ours: string, theirs: string, message: string, then: string}} merging the unit's branch @param {Map<string, string>} pointers
+ * its conflicts left in its files for the person to settle. The branch and
+ * `then`, the step that takes it, are kept in the worktree's own git
+ * directory for every land verb's refusal to name (`scratchBlock`), as
+ * soon as the worktree is there, so a merge git stops or a kill cuts short
+ * leaves them. Where it is.
+ * @param {string} root @param {{branch: string, ours: string, theirs: string, message: string, then: string}} merging the unit's branch
  * @returns {string}
  */
-function mergeBegun(root, { branch, ours, theirs, message, then }, pointers) {
+function mergeBegun(root, { branch, ours, theirs, message, then }) {
   const tree = mergingTree(root, branch);
   if (mergeHeld(root, branch)?.head !== ours) {
     if (mergingIn(worktrees(root), tree) !== undefined) git(root, ['worktree', 'remove', '--force', tree]);
@@ -1417,9 +1145,8 @@ function mergeBegun(root, { branch, ours, theirs, message, then }, pointers) {
     addWorktree(root, tree, null, ours);
   }
   fs.writeFileSync(path.join(gitDirOf(tree), MERGING_FOR), JSON.stringify({ branch, then }));
-  const res = gitRun(tree, [...PINNED, ...CHECKOUT_PINS, 'merge', '--no-ff', '--no-commit', '--no-log', '--no-verify-signatures', '-m', message, theirs]);
+  const res = gitRun(tree, [...PINNED, 'merge', '--no-ff', '--no-commit', '--no-log', '--no-verify-signatures', '-m', message, theirs]);
   if (res.error || res.status === null || res.status > 1) throw new GitError(`git merge failed: ${(res.error?.message ?? res.stderr).trim()}`);
-  for (const [at, sha] of pointers) git(tree, ['update-index', '--cacheinfo', `160000,${sha},${at}`]);
   return tree;
 }
 
@@ -1574,9 +1301,6 @@ function holderOf(root, branch, trees = worktrees(root)) {
   return trees.find((tree) => !tree.scratch && tree.branch === branch);
 }
 
-/** The settings a checkout a task's worktree makes is read by, at git's own defaults: no submodule recursed into. */
-const CHECKOUT_PINS = ['-c', 'submodule.recurse=false'];
-
 /**
  * A branch made at `start` and checked out in a worktree, tracking nothing:
  * made at the worktree's own commit, no file and no index entry changes, so
@@ -1584,7 +1308,7 @@ const CHECKOUT_PINS = ['-c', 'submodule.recurse=false'];
  * @param {string} tree @param {string} branch @param {string} start
  */
 function branchInPlace(tree, branch, start) {
-  git(tree, [...CHECKOUT_PINS, 'switch', '-q', '--no-track', '-c', branch, start]);
+  git(tree, ['switch', '-q', '--no-track', '-c', branch, start]);
 }
 
 /**
@@ -1596,17 +1320,17 @@ function branchInPlace(tree, branch, start) {
  */
 function addWorktree(root, at, branch, start) {
   const placed = branch === null ? ['--detach', at, /** @type {string} */ (start)] : start === null ? [at, branch] : ['--no-track', '-b', branch, at, start];
-  git(root, [...CHECKOUT_PINS, 'worktree', 'add', '-q', ...placed]);
+  git(root, ['worktree', 'add', '-q', ...placed]);
 }
 
 /** A branch made already checked out in a worktree, its files moved to it. @param {string} tree @param {string} branch */
 function switchTo(tree, branch) {
-  git(tree, [...CHECKOUT_PINS, 'switch', '-q', branch]);
+  git(tree, ['switch', '-q', branch]);
 }
 
 /** A worktree let go of its branch, detached at its own commit, so no file there moves. @param {string} tree */
 function detach(tree) {
-  git(tree, [...CHECKOUT_PINS, 'switch', '-q', '--detach']);
+  git(tree, ['switch', '-q', '--detach']);
 }
 
 /** A worktree of the repository removed, as git removes a clean one — or its registration, where its folder is gone. @param {string} root @param {string} tree */
@@ -1880,24 +1604,17 @@ function rebaseBlock(root, branch, trees = worktrees(root)) {
 }
 
 /**
- * The tracked changes not committed in a worktree, by path — but for a
- * submodule's own checkout, its commit or its files, which no move there
- * touches (`PINNED`); a pointer staged there is the worktree's own.
+ * The tracked changes not committed in a worktree, by path.
  * @param {string} tree the worktree's top
  * @returns {string[]}
  */
 function changesAt(tree) {
-  const entries = dirtyEntries(tree, '').filter((entry) => entry.status !== '??');
-  const unstaged = entries.filter((entry) => entry.status[0] === ' ').map((entry) => `:(literal)${entry.path}`);
-  if (unstaged.length === 0) return entries.map((entry) => entry.path);
-  const submodules = new Set(git(tree, ['ls-files', '--stage', '-z', '--', ...unstaged]).split('\0')
-    .filter((line) => line.startsWith('160000 ')).map((line) => line.slice(line.indexOf('\t') + 1)));
-  return entries.filter((entry) => !(entry.status[0] === ' ' && submodules.has(entry.path))).map((entry) => entry.path);
+  return dirtyEntries(tree, '').filter((entry) => entry.status !== '??').map((entry) => entry.path);
 }
 
-/** The paths a move from one commit, or tree, to another changes, from the repository's top, a submodule's pointer among them. @param {string} root @param {string} from @param {string} to @returns {Set<string>} */
+/** The paths a move from one commit, or tree, to another changes, from the repository's top. @param {string} root @param {string} from @param {string} to @returns {Set<string>} */
 function pathsChanged(root, from, to) {
-  return new Set(git(root, ['diff', '--name-only', '-z', '--no-renames', '--no-relative', '--ignore-submodules=none', from, to]).split('\0').filter(Boolean));
+  return new Set(git(root, ['diff', '--name-only', '-z', '--no-renames', '--no-relative', from, to]).split('\0').filter(Boolean));
 }
 
 /**
@@ -2011,7 +1728,7 @@ function pushBranches(root, remote, pushed, then) {
   const atomic = pushed.length > 1 ? ['--atomic'] : [];
   const leases = pushed.flatMap(({ branch, lease }) => (lease === undefined ? [] : [`--force-with-lease=${HEADS}${branch}:${lease}`]));
   try {
-    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', ...atomic, ...leases, remote, ...pushed.map(({ branch, commit }) => `${commit}:${HEADS}${branch}`)], PUSH_TIMEOUT_MS);
+    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', ...atomic, ...leases, remote, ...pushed.map(({ branch, commit }) => `${commit}:${HEADS}${branch}`)], PUSH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     throw new Error(`land: ${pushed.map(({ branch }) => branch).join(', ')} could not be pushed to ${remote} (${gitSaid(err)}), so ${then}`);
@@ -2033,7 +1750,7 @@ function gitSaid(err) {
 function fetchBranch(root, remote, branch) {
   const tracking = `refs/remotes/${remote}/${branch}`;
   try {
-    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--recurse-submodules=no', remote, `+${HEADS}${branch}:${tracking}`], FETCH_TIMEOUT_MS);
+    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', remote, `+${HEADS}${branch}:${tracking}`], FETCH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     return { failed: gitSaid(err) };
@@ -2075,7 +1792,7 @@ const trackedTip = (root, remote, branch) => tryGit(root, ['rev-parse', '--verif
 function fetchedCommit(root, remote, ref, commit) {
   if (holdsCommit(root, commit)) return true;
   try {
-    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--refmap=', '--recurse-submodules=no', remote, ref], FETCH_TIMEOUT_MS);
+    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--refmap=', remote, ref], FETCH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     return false;
@@ -2217,8 +1934,8 @@ function landingMade(repo, unit, branch) {
 }
 
 module.exports = {
-  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
-  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, mergeContinued, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
+  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, mergeOf, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
+  changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, mergeContinued, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree, mergeHeld, mergeBegun, mergeDone,
 };

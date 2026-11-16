@@ -46,9 +46,7 @@
 //   the person signs, its first parent the unit's branch, so the line the
 //   landing record names is kept — a merge even where the default branch
 //   holds the branch's tip, as after a reopen; nothing where the branch
-//   holds the default branch already. A submodule's pointer both sides
-//   moved is pointed at the submodule's branch as brought up, where that
-//   holds both, and is no conflict. The merge is pushed to the host, leased
+//   holds the default branch already. The merge is pushed to the host, leased
 //   on its copy there, then the branch moved here, nothing moving where a
 //   checkout that has it out holds changes the move would touch (7.2.20).
 // - A conflict refuses, nothing moved and nothing recorded: the merge is
@@ -65,11 +63,9 @@
 //   waits on it (landing-git.cjs, `scratchBlock`).
 // - At finish (landing.cjs), where the unit's branch would conflict with
 //   the default branch it lands on, the default branch is brought into it
-//   first by the same merge (`broughtUpToLand`), each submodule pointer
-//   both sides moved pointed at the submodule's default branch as the unit
-//   landed there first, which holds both; a conflict left begins the same
-//   merge with the same way on, and finish run again takes it before
-//   anything lands (`settlementsTaken`).
+//   first by the same merge (`broughtUpToLand`); a conflict left begins
+//   the same merge with the same way on, and finish run again takes it
+//   before anything lands (`settlementsTaken`).
 // - Never deleted by the engine (7.2.41).
 // ---------------------------------------------------------------------------
 
@@ -79,7 +75,7 @@ const { chosenDriver } = require('./drivers.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { cutPhases, phaseBuilt, phaseStarted } = require('./derivations.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { projectRepos, childrenFirst, projectPath, topPath } = require('../kernel/repos.cjs');
+const { projectRepos, childrenFirst } = require('../kernel/repos.cjs');
 
 /** @typedef {import('./drivers.cjs').LandingDriver} LandingDriver */
 
@@ -334,34 +330,10 @@ function movedTo(home, branch, { here, hosted }, to, held, { undone, then }) {
 }
 
 /**
- * A submodule of a repository the unit's branch was brought up in first:
- * its path from the repository's top, its repository, and the branch's tip
- * there as brought up.
- * @typedef {{at: string, root: string, tip: string}} BroughtSub
- */
-
-/**
- * The submodules whose pointer both sides of a merge moved, each to a
- * commit the submodule's branch as brought up holds: that tip, by the
- * submodule's path from the repository's top (the header's).
- * @param {string} root @param {string} base @param {string} ours @param {string} theirs @param {BroughtSub[]} subs
- * @returns {Map<string, string>}
- */
-function bothMoved(root, base, ours, theirs, subs) {
-  if (subs.length === 0) return new Map();
-  const [was, mine, other] = lg.pointersAt(root, [base, ours, theirs], subs.map(({ at }) => at));
-  return new Map(subs.flatMap(({ at, root: sub, tip }) => {
-    const [from, to, moved] = [was.get(at), mine.get(at), other.get(at)];
-    const both = from !== to && from !== moved && to !== moved && typeof to === 'string' && typeof moved === 'string';
-    return both && lg.isAncestor(sub, to, tip) && lg.isAncestor(sub, moved, tip) ? [/** @type {[string, string]} */ ([at, tip])] : [];
-  }));
-}
-
-/**
  * A merge of the default branch into the unit's branch, as the step makes
- * it: the default branch by name and by its tip, the unit's branch's side,
- * and each submodule pointer it settles.
- * @typedef {{into: string, theirs: string, ours: string, pointers: Map<string, string>}} Merging
+ * it: the default branch by name and by its tip, and the unit's branch's
+ * side.
+ * @typedef {{into: string, theirs: string, ours: string}} Merging
  */
 
 /** The default branch as a refusal of the step names it: as the host has it, where the driver lands through one. @param {BranchHome} home @param {string} into */
@@ -375,31 +347,28 @@ const theirsNamed = (home, into) => (home.hosted ? `${home.remote}/${into}` : in
  * @param {BranchHome} home @param {string} branch @param {Merging} merging @param {string[]} paths @param {{so: string, then: string}} words
  * @returns {string}
  */
-function mergeStopped(home, branch, { into, theirs, ours, pointers }, paths, { so, then }) {
-  const tree = lg.mergeBegun(home.root, { branch, ours, theirs, message: `${names.bringUpSubject(into, branch)}\n`, then }, pointers);
+function mergeStopped(home, branch, { into, theirs, ours }, paths, { so, then }) {
+  const tree = lg.mergeBegun(home.root, { branch, ours, theirs, message: `${names.bringUpSubject(into, branch)}\n`, then });
   return `${theirsNamed(home, into)} conflicts with ${branch} at ${paths.map(lg.plain).join(', ')}, so ${so} — the merge is begun at ${tree}, a worktree of its own: `
     + `settle each conflict there and finish the merge, as ${lg.mergeContinued(tree)} does once they are, then ${then}, which takes it onto ${branch}; every land verb in the repository waits on it until then, a quick-fix's among them`;
 }
 
 /**
  * The default branch, at `theirs`, merged into the unit's branch, at
- * `ours` (the header's): the merge commit, its first parent `ours`, each
- * submodule pointer both sides moved pointed at the submodule's branch as
- * brought up (`bothMoved`) — refused where the two conflict, the merge
- * begun in its worktree (`mergeStopped`).
- * @param {BranchHome} home @param {string} branch @param {string} into @param {string} ours @param {string} theirs @param {BroughtSub[]} subs @param {Bringing} bringing
+ * `ours` (the header's): the merge commit, its first parent `ours` —
+ * refused where the two conflict, the merge begun in its worktree
+ * (`mergeStopped`).
+ * @param {BranchHome} home @param {string} branch @param {string} into @param {string} ours @param {string} theirs @param {Bringing} bringing
  * @returns {string}
  */
-function mergedIn(home, branch, into, ours, theirs, subs, bringing) {
+function mergedIn(home, branch, into, ours, theirs, bringing) {
   const { root } = home;
-  const base = lg.mergeBase(root, ours, theirs);
-  const pointers = bothMoved(root, base, ours, theirs, subs);
-  const merged = lg.mergeTree(root, pointers.size === 0 ? base : lg.pointedLike(root, base, ours, [...pointers.keys()]), ours, theirs);
+  const merged = lg.mergeTree(root, lg.mergeBase(root, ours, theirs), ours, theirs);
   if ('conflicts' in merged) {
     const named = theirsNamed(home, into);
-    throw new Error(mergeStopped(home, branch, { into, theirs, ours, pointers }, merged.conflicts, { so: `${named} was not brought into ${branch} and ${bringing.undone}`, then: bringing.then }));
+    throw new Error(mergeStopped(home, branch, { into, theirs, ours }, merged.conflicts, { so: `${named} was not brought into ${branch} and ${bringing.undone}`, then: bringing.then }));
   }
-  const tree = pointers.size === 0 ? merged.tree : lg.treeWithPointers(root, merged.tree, pointers);
+  const { tree } = merged;
   return lg.commitTree(root, { tree, parent: [ours, theirs], message: `${names.bringUpSubject(into, branch)}\n`, signed: lg.signs(root) }, `the merge of ${into} into ${branch}`, bringing.then);
 }
 
@@ -407,52 +376,41 @@ function mergedIn(home, branch, into, ours, theirs, subs, bringing) {
  * The default branch brought into the unit's branch in one repository (the
  * header's), a merge held in its worktree taken first (`settled`): its tip
  * as brought up.
- * @param {BranchHome} home @param {string} unit @param {string} branch @param {BroughtSub[]} subs @param {Bringing} bringing
+ * @param {BranchHome} home @param {string} unit @param {string} branch @param {Bringing} bringing
  * @returns {string}
  */
-function broughtUpIn(home, unit, branch, subs, bringing) {
+function broughtUpIn(home, unit, branch, bringing) {
   const { into, tip: theirs } = defaultTip(home, `nothing was brought into ${branch}`, bringing);
   const at = standingOf(home, unit, branch);
   const { ours, held } = settled(home, branch, at.tip, bringing.then);
-  const to = lg.isAncestor(home.root, theirs, ours) ? ours : mergedIn(home, branch, into, ours, theirs, subs, bringing);
+  const to = lg.isAncestor(home.root, theirs, ours) ? ours : mergedIn(home, branch, into, ours, theirs, bringing);
   return movedTo(home, branch, at, to, held, bringing);
 }
 
 /**
  * The default branch, at `theirs`, merged into the unit's branch in one
  * repository as finish lands it there, where landing it would conflict
- * (the header's): the merge a bring-up makes (`mergedIn`), each submodule
- * of `subs` at its default branch as the unit landed there first — pushed
+ * (the header's): the merge a bring-up makes (`mergedIn`) — pushed
  * and moved as a bring-up's is, refused the same where the two still
  * conflict. Its tip.
- * @param {string} cwd @param {import('../kernel/repos.cjs').Repo} repo @param {string} unit @param {{branch: string, into: string, theirs: string}} merging the unit's branch, and the default branch by name and by its tip @param {BroughtSub[]} subs @param {Bringing} bringing
+ * @param {string} cwd @param {import('../kernel/repos.cjs').Repo} repo @param {string} unit @param {{branch: string, into: string, theirs: string}} merging the unit's branch, and the default branch by name and by its tip @param {Bringing} bringing
  * @returns {string}
  */
-function broughtUpToLand(cwd, repo, unit, { branch, into, theirs }, subs, bringing) {
+function broughtUpToLand(cwd, repo, unit, { branch, into, theirs }, bringing) {
   const home = homeOf(cwd, repo, /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver));
   const at = standingOf(home, unit, branch);
-  return movedTo(home, branch, at, mergedIn(home, branch, into, at.tip, theirs, subs, bringing), null, bringing);
+  return movedTo(home, branch, at, mergedIn(home, branch, into, at.tip, theirs, bringing), null, bringing);
 }
 
 /**
- * Each repository of the project holding the unit's branch, children
- * first, with its home and the submodules in it that `act` reached before
- * it: what `act` answers of each, by its folder in the project, null where
- * it answers nothing.
- * @param {string} cwd @param {string} unit @param {(home: BranchHome, subs: BroughtSub[]) => string|null} act
+ * `act` run in each repository of the project holding the unit's branch,
+ * children first, with its home.
+ * @param {string} cwd @param {string} unit @param {(home: BranchHome) => unknown} act
  */
 function eachHolding(cwd, unit, act) {
   const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
-  /** @type {Map<string, {root: string, tip: string}>} */
-  const reached = new Map();
   for (const repo of childrenFirst(projectRepos(codeRoot(cwd)))) {
-    if (lg.unitBranchIn(cwd, repo, unit) === null) continue;
-    const subs = repo.submodules.flatMap((folder) => {
-      const sub = reached.get(projectPath(repo.dir, folder));
-      return sub === undefined ? [] : [{ at: topPath(repo, folder), ...sub }];
-    });
-    const tip = asStep(repo.dir === '' ? '.' : repo.dir, () => act(homeOf(cwd, repo, driver), subs));
-    if (tip !== null) reached.set(repo.dir, { root: repo.path, tip });
+    if (lg.unitBranchIn(cwd, repo, unit) !== null) asStep(repo.dir === '' ? '.' : repo.dir, () => act(homeOf(cwd, repo, driver)));
   }
 }
 
@@ -462,7 +420,7 @@ function eachHolding(cwd, unit, act) {
  * @param {string} cwd @param {string} unit @param {string} branch @param {Bringing} bringing
  */
 function bringUp(cwd, unit, branch, bringing) {
-  eachHolding(cwd, unit, (home, subs) => broughtUpIn(home, unit, branch, subs, bringing));
+  eachHolding(cwd, unit, (home) => broughtUpIn(home, unit, branch, bringing));
 }
 
 /**
@@ -476,10 +434,10 @@ function settlementsTaken(cwd, unit, bringing) {
   const branch = lg.recordedBranch(cwd, unit);
   if (branch === null) return;
   eachHolding(cwd, unit, (home) => {
-    if (lg.mergeHeld(home.root, branch) === null) return null;
+    if (lg.mergeHeld(home.root, branch) === null) return;
     const at = standingOf(home, unit, branch);
     const { ours, held } = settled(home, branch, at.tip, bringing.then);
-    return movedTo(home, branch, at, ours, held, bringing);
+    movedTo(home, branch, at, ours, held, bringing);
   });
 }
 

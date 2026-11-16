@@ -33,10 +33,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, commitCode, initRepo, addSubmodule, cleanupFixture, createFile, treeSnapshot, head, git, readState, confirmEnvironment, layout, datedAt, accountTaken,
+  ok, refusedPristine, commitCode, initRepo, cleanupFixture, createFile, treeSnapshot, head, git, readState, confirmEnvironment, layout, datedAt, accountTaken,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, setupArgs, world } = require('./verify-world.cjs');
 
@@ -189,26 +188,6 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     const res = ok(dir, ['verify', 'mutants', UNIT, '1']);
 
     assert.deepStrictEqual([res.survivors, fs.readFileSync(path.join(steer(dir), 'ran-in'), 'utf8').trim(), fs.existsSync(scratch())], [[], scratch(), false]);
-  });
-
-  it('a submodule holding none of the phase\'s work is laid out at the commit the phase\'s tip points it at, never where its own checkout stands', (t) => {
-    const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'verify-mutants-ext-')));
-    t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
-    const source = initRepo(path.join(folder, 'ext-source'));
-    createFile(source, 'e.txt', 'pointed\n');
-    commitCode(source, 'pointed');
-    const ext = addSubmodule(dir, 'ext', source);
-    git(dir, ['checkout', '-q', '-b', branchOf(1)]);
-    commitWith(dir, { 'src/card.js': 'const card = 1;\nconst brand = "visa";\n' }, 'Leeway-Task: pay-1-1');
-    git(dir, ['checkout', '-q', 'main']);
-    createFile(ext, 'e.txt', 'moved on\n');
-    commitCode(ext, 'moved on');
-    steering(dir, 'look', 'ext/e.txt\n');
-    surviving([]);
-
-    ok(dir, ['verify', 'mutants', UNIT, '1']);
-
-    assert.strictEqual(fs.readFileSync(path.join(steer(dir), 'looked'), 'utf8').trim(), 'ext/e.txt holds pointed');
   });
 
   it('the tool runs beside the builders\' isolation worktrees, in .claude/worktrees of the project\'s main checkout, whichever checkout calls it — below no folder a test runner leaves out', () => {
