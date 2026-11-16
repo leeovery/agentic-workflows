@@ -8,7 +8,9 @@
 // project world built once: its unit's manifest written, the note window
 // and the menu bar under discussion and the tray cancelled. The engine runs
 // in process through the harness, on the frozen clock, in one conversation:
-// a surface drawn, a command run or refused, a row picked at the gate shown.
+// a surface drawn, or drawn with the gate surface announced and its payload
+// held against its menu (gate-audit.cjs), a command run or refused, a row
+// picked at the gate shown.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -19,6 +21,7 @@ const path = require('path');
 const { ok, output, refuses, screenOf, readState, layout, fixtureFrom, withFrozenClock } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { idOf, SESSION, lines, useTrustWorld } = require('./trust-world.cjs');
+const { auditGate } = require('./gate-audit.cjs');
 
 const ENV = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION });
 const UNIT = 'fumi';
@@ -30,6 +33,9 @@ const CARRY_ON = Object.freeze({ kind: 'continue' });
 
 /** A surface drawn in the conversation on the frozen clock. @param {string} dir @param {string[]} args */
 const render = (dir, args) => withFrozenClock(() => output(dir, ['render', ...args], { env: ENV }));
+
+/** A surface drawn as `render` draws it, the gate surface announced: its payload, held against its menu. @param {string} dir @param {string[]} args */
+const audited = (dir, args) => auditGate(withFrozenClock(() => output(dir, ['render', ...args], { env: { ...ENV, LEDGER_GATE_SURFACE: '1' } })), `render ${args.join(' ')}`);
 
 /** A command that must succeed in the conversation on the frozen clock: its response. @param {string} dir @param {string[]} args */
 const run = (dir, args) => withFrozenClock(() => ok(dir, args, { env: ENV }));
@@ -91,4 +97,4 @@ function useMatrixWorld(prefix) {
   return { folder, logPath, logHolding, settingsFile, settingsHolding, fumi, careHeld };
 }
 
-module.exports = { UNIT, OTHER, engine, CARRY_ON, render, run, refused, pick, screen, useMatrixWorld };
+module.exports = { UNIT, OTHER, engine, CARRY_ON, render, audited, run, refused, pick, screen, useMatrixWorld };

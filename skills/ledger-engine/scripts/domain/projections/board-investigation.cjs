@@ -39,7 +39,9 @@
 //   validation one of whose findings was surfaced as it, whatever that
 //   validation's row now stands at — asked as its question, or raised
 //   replacing its decision (`agent surface`); else the fix direction where
-//   it is the fix direction's; else nothing.
+//   it is the fix direction's; else nothing. And why it reached the
+//   person, the decision point's reason as sealed: none on a blind
+//   question, whose screen gives none.
 // - The fix direction's raises are those down its question's chain — one
 //   answering it, or replacing a decision of its chain (`downChain`) — and,
 //   before its question is logged, one carrying a step back. The latest
@@ -168,7 +170,7 @@ function raisedBy(at, seal) {
 const waitingSeals = (at) => at.once('hunt-waiting', () => ledgerAt(at).seals.filter((seal) => sealWaits(ledgerAt(at).folded, seal)));
 
 /** The conclude's yes, as what waits on the person. @type {HuntWait} */
-const CONCLUDE_LINE = Object.freeze({ kind: 'conclude', id: 'conclude', text: 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes', page: null, raised_by: null, options: null, lean: null });
+const CONCLUDE_LINE = Object.freeze({ kind: 'conclude', id: 'conclude', text: 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes', page: null, raised_by: null, why: null, options: null, lean: null });
 
 /** Whether the conclude's yes waits on the person, read once a call. @param {BoardAt} at */
 const concludeWaits = (at) => at.once('hunt-conclude', () => concludeDraws(at.cwd, at.unit));
@@ -189,9 +191,9 @@ function leanAmong(seal, rows) {
 /**
  * A raise waiting on the person, as the hunt holds it (the header's), from
  * the seal the unit's one list has it wait as: by the decision it asks
- * about, as the list names it; what raised it, and for the fix direction's
- * how many options it sets out and where Claude's lean stands among them
- * (`leanAmong`).
+ * about, as the list names it; what raised it, why it reached the person,
+ * and for the fix direction's how many options it sets out and where
+ * Claude's lean stands among them (`leanAmong`).
  * @param {BoardAt} at @param {Wait} wait @returns {HuntWait}
  */
 function raiseLine(at, wait) {
@@ -203,6 +205,7 @@ function raiseLine(at, wait) {
     text: wait.text,
     page: null,
     raised_by: raisedBy(at, seal),
+    why: seal.blind ? null : seal.reason,
     options: rows === null ? null : rows.length,
     lean: rows === null ? null : leanAmong(seal, rows),
   };

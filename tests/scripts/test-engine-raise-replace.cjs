@@ -10,7 +10,7 @@
 // proposed answers drawn with a row of the screen's own keeping the
 // decision as it stands, `ledger replace`'s checks run before anything is
 // drawn or sealed, each decision's raise sealed on its own (16.5.7,
-// 29.5.2); each answer — a proposal picked, the person's own words, `keep`,
+// 29.19.2); each answer — a proposal picked, the person's own words, `keep`,
 // "I don't follow", "don't care" — with its ledger line, its raise event, who moved whom
 // (5.3.10) and the verdict queue, read through this machine's trust log
 // (domain/trust-evidence.cjs), and refused, recording nothing, on a raise
@@ -19,8 +19,8 @@
 // and confirming it still holds against its cause (5.6.13), its raise event
 // a departure this machine alone judges, and every reader passing it by or
 // showing it beside the decision; each answer landed once across a kill;
-// and a call the decision point lets proceed landed as Claude's
-// replacement.
+// a call the decision point lets proceed landed as Claude's replacement;
+// and Claude's own `ledger replace` of the person's decision refused.
 //
 // Layer: verb, and beside it process — the answer killed in a child at a
 // file call on its way. World: the ledger suites' unit with a question, a
@@ -40,7 +40,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, okSectionsAsync, refusesAsync, refusedPristine, output, killedAt, cleanupFixture,
+  ok, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, killedAt, lockAttempts, statePath, layout, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, NOTE_COPY, writtenWorld, ledgerHelpers, copiesHelpers } = require('./ledger-world.cjs');
@@ -53,9 +53,10 @@ const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { linesToAdd, entryId } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
+const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
+const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
 const OVER = 'person-moved-claude';
 
 // Claude's decision as it stands, which the raise proposes to replace.
@@ -182,7 +183,7 @@ const decideFocus = (more = []) => ledgerHelpers(() => dir).write('decide', NOTE
 /** What a replacement affects in the unit, by full id. */
 const affected = () => ok(dir, ['ledger', 'affected', UNIT]).affected.map((/** @type {{id: string}} */ e) => full(e.id));
 
-describe('the draw (16.5.7, 29.5.2)', () => {
+describe('the draw (16.5.7, 29.19.2)', () => {
   it('draws Claude\'s proposals, the lean recommended, then keep — the decision\'s answer as it stands — and seals the replacement\'s target, reason and cause beside the call, so the answer needs nothing more', async () => {
     const { res, sections } = await drawn(replacing('new-fact', ['--cause', made.screens, '--relies-on', made.screens]), { env: { LEDGER_GATE_SURFACE: '1' } });
 
@@ -192,7 +193,7 @@ describe('the draw (16.5.7, 29.5.2)', () => {
       answers: null, relies_on: [full(made.screens)],
       replaces: { entry: full(made.opens), reason: 'new-fact', cause: full(made.screens), keep: KEEP },
       call: CALL, fact: false, rows_judged: [], label: null, model: null, blocks_build: false, replaced_by: 'claude', always: null, measured: null, chain: null,
-      reason: EVERY_CALL_ASKS, blind: false, at: sealed.at, raised: sealed.at, answered: null, didnt_follow: 0, parks: null,
+      reason: UNLABELLED, blind: false, at: sealed.at, raised: sealed.at, answered: null, didnt_follow: 0, parks: null,
     });
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise --replaces'));
     assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.head, o.recommended]).slice(0, 3),
@@ -203,7 +204,7 @@ describe('the draw (16.5.7, 29.5.2)', () => {
 
   it('labels the call from its question and Claude\'s proposals, never the keep row — the decision as it stands — and a keep lands no kind, the raise event carrying the label', async () => {
     const log = path.join(config(), 'calls.jsonl');
-    const { res } = await drawn(replacing(), { env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('words') }), CLAUDE_STUB_LOG: log } });
+    const { res } = await drawn(replacing(), { call: { ...CALL, sort: 'several' }, env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('words') }), CLAUDE_STUB_LOG: log } });
 
     const [labelled] = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line)).filter(({ argv }) => argv[argv.indexOf('--model') + 1] === 'sonnet');
     assert.strictEqual(labelled.input, `${CALL.question}\n\nThe answers offered:\n${CALL.rows.map((/** @type {{text: string, notice: string}} */ row) => `- ${row.text} — ${row.notice}`).join('\n')}`);
@@ -426,6 +427,37 @@ describe('a keep changes nothing current (5.6.10)', () => {
     assert.deepStrictEqual([added(before, after), added(after, after)], [[keptLine], []]);
     const checked = ok(dir, ['ledger', 'late-check'], { env: { ...conversation(), CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }) } });
     assert.deepStrictEqual([checked, entries().filter((e) => e.event === 'checked').map((e) => e.entry)], [{ ok: true, ran: true, checked: 1, several: 0, owed: 0 }, [full(made.opens)]]);
+  });
+});
+
+describe('Claude\'s own replacement of the person\'s decision (16.5.7)', () => {
+  it('is refused, writing nothing, naming the raise: the person\'s decision as written, at once while a peer holds the lock, and Claude\'s once the person kept it, their keep landing while the write waited on the lock; the person\'s own replacement lands, and one they hand Claude', async (t) => {
+    const theirs = ledgerHelpers(() => dir).write('decide', NOTE, ['--answers', made.focus], { by: 'person', who_moved_whom: 'none', text: 'It takes the focus', why: 'Typing starts at once.' }).id;
+    const kept = await draw();
+    /** Claude's replacement of the decision `entry`, `given` over its content: the call's argv and options. @param {string} entry @param {Record<string, unknown>} [given] @returns {[string[], {env: Record<string, string|undefined>, stdin: string}]} */
+    const changing = (entry, given = {}) => [
+      ['ledger', 'replace', NOTE, '--replaces', entry, '--reason', 'changed-mind'],
+      { env: conversation(), stdin: JSON.stringify({ ...MADE, drops: [], text: 'Wherever the last note was.', why: 'Notes gather.', ...given }) },
+    ];
+    const refusal = (/** @type {string} */ entry) => `ledger replace: ${entry} is the person's decision — Claude's change to it always comes to them: raise --replaces ${entry}`;
+    const lock = statePath(dir, layout.lock);
+    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const attempts = lockAttempts(t, lock, () => {
+      fs.unlinkSync(lock);
+      answer(kept, ['--pick', 'keep']);
+    });
+    const count = entries().length;
+
+    const atOnce = refuses(dir, ...changing(theirs)).error;
+    const unlocked = [...attempts];
+    const keptMeanwhile = refuses(dir, ...changing(made.opens)).error;
+
+    assert.deepStrictEqual([atOnce, unlocked, keptMeanwhile], [refusal(theirs), [], refusal(made.opens)]);
+    assert.deepStrictEqual([attempts[0], attempts.at(-1)], ['taken', 'made']);
+    assert.deepStrictEqual(entries().slice(count).map((e) => [e.event, full(e.id)]), [['kept', kept]]);
+    ok(dir, ...changing(theirs, { given: 'your-call' }));
+    ok(dir, ...changing(made.opens, { by: 'person', who_moved_whom: 'person-moved-claude' }));
+    assert.deepStrictEqual(entries().slice(-2).map((e) => [e.by, e.given, e.replaces]), [['claude', 'your-call', full(theirs)], ['person', 'own', full(made.opens)]]);
   });
 });
 

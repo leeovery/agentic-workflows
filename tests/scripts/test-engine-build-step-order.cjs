@@ -89,7 +89,7 @@ describe('which task goes on first where more than one is freed (12.7.9)', () =>
     await bothParked();
     answered('Q1');
     answered('Q2');
-    written('replace', ['--replaces', decidedFor('1.1'), '--reason', 'was-wrong'], { text: 'A refund prints a slip.', why: 'A slip is shorter.', drops: [] });
+    written('replace', ['--replaces', decidedFor('1.1'), '--reason', 'was-wrong'], { given: 'your-call', text: 'A refund prints a slip.', why: 'A slip is shorter.', drops: [] });
 
     assert.strictEqual(refused(['step-gate', UNIT, '1.2']), behind('render step-gate', '1.1', '1.2'));
   });

@@ -147,7 +147,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
       event: 'kept', unit: 'palette', topic: 'palette', phase: 'discussion', session: SESSION,
       by: 'person', who_moved_whom: 'none', entry: full(claudes), reason: 'was-wrong', cause: null, why: 'Warm suits it.', sealed: 'The palette is cool.', given: 'own',
     }, []);
-    replaced(claudes, 'claude', 'The palette is slate.');
+    replaced(claudes, 'person', 'The palette is slate.');
 
     assert.deepStrictEqual(board().view.replaces.find((/** @type {{id: string}} */ row) => row.id === claudes), { id: claudes, text: 'The palette is warm.', by: 'person', unit_title: 'Palette' });
   });

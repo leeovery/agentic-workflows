@@ -1,6 +1,6 @@
 // The view model engine board answers for a realistic build, held to its shape by tests/scripts/test-engine-board.cjs.
 export default {
-  "version": 9,
+  "version": 10,
   "place": {
     "unit": "token-aware-diff-sizing",
     "type": "feature",

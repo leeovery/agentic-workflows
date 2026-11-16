@@ -20,12 +20,11 @@
 // of its own, start this work's screen and its yes, the feature's
 // discussion reading the investigation as its earlier log at its first
 // opening. And a bugfix whose investigation's gates the person has always
-// said yes at, the decision point stepping them as it will once the learned
-// gates are switched on: the plan, the check-in and the conclude each run as
-// a learned step, logged as one, the conclude's yes standing over a call the
-// person changed, and ready to build, its count as long, stopping before any
-// code; then the replay of a lower threshold, which would have stopped at
-// each of those steps.
+// said yes at, the decision point stepping them: the plan, the check-in and
+// the conclude each run as a learned step, logged as one, the conclude's
+// yes standing over a call the person changed, and ready to build, its
+// count as long, stopping before any code; then the replay of a lower
+// threshold, which would have stopped at each of those steps.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -49,6 +48,8 @@ const { trustLines } = require('./pipeline-oracle.cjs');
 const { FROZEN_AT } = require('./engine-harness.cjs');
 const { statePath } = require('./discovery-test-utils.cjs');
 const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/decision-point.cjs'));
+
+const { gateStep } = decisionPoint;
 const { TRUST_LOG } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
 
 const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
@@ -223,7 +224,7 @@ describe('pipeline simulation: bugfix', () => {
     for (const gate of ['plan gate', 'check-in gate', 'conclude gate']) for (let i = 0; i < 13; i += 1) seeded.gate(gate, { picked: 'y' });
     for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
     fs.writeFileSync(path.join(sim.configDir, TRUST_LOG), lines(...seeded.events));
-    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, { ...at, key: null }));
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => gateStep(name, { ...at, key: null }));
     enteredFrozen(t, sim);
 
     startNew(sim);

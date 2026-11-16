@@ -25,6 +25,7 @@ export type RaiseWait = {
   text: string
   page: string | null
   raised_by: 'root-cause' | 'fix' | 'fix-direction' | null
+  why: string | null
   options: number | null
   lean: 'first' | 'marked' | 'held' | null
 }
@@ -84,13 +85,17 @@ const RAISED: Readonly<Record<'root-cause' | 'fix' | 'fix-direction', string>> =
   'fix-direction': 'raised by the fix direction',
 }
 
-/** What raised a wait, as its second line says it: a validation, or the fix direction where the wait is no setting out of its options, which says so itself; nothing for any other. */
+/**
+ * What raised a wait and why it reached the person, as its second line says
+ * them: a validation, or the fix direction where the wait is no setting out
+ * of its options, which says nothing more; then why, where the engine gives it.
+ */
 function saidOf(wait: RaiseWait): string {
-  if (wait.raised_by === null || (wait.raised_by === 'fix-direction' && wait.options !== null)) {
+  if (wait.raised_by === 'fix-direction' && wait.options !== null) {
     return ''
   }
 
-  return RAISED[wait.raised_by]
+  return [...(wait.raised_by === null ? [] : [RAISED[wait.raised_by]]), ...(wait.why === null ? [] : [wait.why])].join(' · ')
 }
 
 /** Where Claude's lean stands among the fix direction's options, as its wait says it: nothing where a blind question holds it back. */
@@ -106,7 +111,7 @@ const whichFix = (options: number, lean: 'first' | 'marked' | 'held' | null) => 
 /**
  * A raise waiting in the investigation, on its view and on the unit's tab:
  * the fix direction's by its options, any other by its question; then what
- * raised it.
+ * raised it and why it reached the person.
  */
 export function raiseLines(wait: RaiseWait, key: string): Line[] {
   const said = saidOf(wait)

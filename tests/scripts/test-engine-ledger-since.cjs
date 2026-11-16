@@ -150,11 +150,11 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     assert.deepStrictEqual(calls('since'), []);
   });
 
-  it('lists a later unit\'s call replacing a finished unit\'s decision in both units: on the later unit\'s map and in its record as the other place\'s current answer, a look there clearing it from both (5.8.19, 5.S39)', () => {
+  it('lists a later unit\'s call replacing a finished unit\'s decision on the person\'s word in both units: on the later unit\'s map and in its record as the other place\'s current answer, a look there clearing it from both (5.8.19, 5.S39)', () => {
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const decided = call(NOTE, 'A note is a panel.', 'person');
     ok(dir, ['manifest', 'set', UNIT, 'status', 'completed']);
-    const sheet = writeIn(dir, 'replace', 'mint.discussion.mint', ['--replaces', decided, '--reason', 'changed-mind'], { ...MADE, drops: ['a panel'], text: 'A note is a sheet.', why: 'Mint draws sheets.' });
+    const sheet = writeIn(dir, 'replace', 'mint.discussion.mint', ['--replaces', decided, '--reason', 'changed-mind'], { ...MADE, given: 'your-call', drops: ['a panel'], text: 'A note is a sheet.', why: 'Mint draws sheets.' });
     const since = () => [callsOf(dir, 'since', UNIT), callsOf(dir, 'since', UNIT, 'note-window'), callsOf(dir, 'since', 'mint'), callsOf(dir, 'since', 'mint', 'mint')];
     assert.deepStrictEqual(since(), [[sheet], [sheet], [sheet], [sheet]]);
 
@@ -171,7 +171,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const decided = call(NOTE, 'A note is a panel.', 'person');
     ok(dir, ['manifest', 'set', UNIT, 'status', 'completed']);
-    const sheet = writeIn(dir, 'replace', 'mint.discussion.mint', ['--replaces', decided, '--reason', 'changed-mind'], { ...MADE, drops: ['a panel'], text: 'A note is a sheet.', why: 'Mint draws sheets.' });
+    const sheet = writeIn(dir, 'replace', 'mint.discussion.mint', ['--replaces', decided, '--reason', 'changed-mind'], { ...MADE, given: 'your-call', drops: ['a panel'], text: 'A note is a sheet.', why: 'Mint draws sheets.' });
     assert.deepStrictEqual(calls('shown', 'note-window'), [sheet]);
 
     ok(dir, ['manifest', 'set', UNIT, 'status', 'cancelled']);

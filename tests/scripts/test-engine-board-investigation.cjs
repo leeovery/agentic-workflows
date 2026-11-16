@@ -5,8 +5,9 @@
 // projections/board-investigation.cjs; 20.12): This session drawn from the
 // hunt's log, the ledger at its place, its validations' rows and the raises
 // this conversation sealed there — what waits on the person with the
-// validation whose finding it was surfaced as, the validation being read
-// with its clock (20.S18); the person's ruling theirs, a hypothesis it made
+// validation whose finding it was surfaced as and why it reached them, the
+// decision point's reason, none on a blind question, the validation being
+// read with its clock (20.S18); the person's ruling theirs, a hypothesis it made
 // intended, and the fix direction's step back and options, Claude's lean
 // marked (20.S19); nothing of earlier fixes (20.S20); each decision read
 // where its chain stands now; a raise named by the decision it asks about,
@@ -45,6 +46,8 @@ const AT = `${BUG}.investigation.${BUG}`;
 const STARTED = '2026-08-16T09:00:00.000Z';
 const CLAUDE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
+const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
+const YOURS = 'You decided this yourself, so changing it always comes to you.';
 const ROOT_CAUSE = 'Every save takes the session list as the whole truth. Whatever it does not see is dropped.';
 
 /** The ledger entries the hunt rests on, by short id. */
@@ -233,7 +236,7 @@ describe('This session in an investigation (20.12.1)', () => {
     assert.deepStrictEqual(board().view.waiting.filter((/** @type {{id: string}} */ { id }) => reworded.startsWith(id)).map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by), ['root-cause']);
   });
 
-  it('20.S18: a question the root-cause validation\'s one finding was surfaced as waits on the person, asked in the conversation, with what raised it and nothing more; while it waits the validation reads with its clock from its dispatch, though its row is taken in, the root cause being validated, the tab validating and All work not yet confirmed; the banner flags it; answered, the validation is done with what it found', async () => {
+  it('20.S18: a question the root-cause validation\'s one finding was surfaced as waits on the person, asked in the conversation, with what raised it and why it reached them, the decision point\'s reason; while it waits the validation reads with its clock from its dispatch, though its row is taken in, the root cause being validated, the tab validating and All work not yet confirmed; the banner flags it; answered, the validation is done with what it found', async () => {
     const validation = dispatched('root-cause-validation', ['F1']);
     found('A session you kill never comes back, by design or not.');
     const raise = await raised(KEEP_CALL, made.keep);
@@ -249,7 +252,7 @@ describe('This session in an investigation (20.12.1)', () => {
       project: view.project,
       started: STARTED,
       standing: 'validating-root-cause',
-      waiting: [{ kind: 'raise', id: made.keep, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }],
+      waiting: [{ kind: 'raise', id: made.keep, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', why: UNLABELLED, options: null, lean: null }],
       decided: [],
       symptoms: ['sessions.json is overwritten with an empty index', 'Every saved scrollback file is removed'],
       hypotheses: [
@@ -326,7 +329,7 @@ describe('This session in an investigation (20.12.1)', () => {
       lists: { hypotheses: ['H1 intended', 'H2 ruled-out', 'H3 suspected'], validations: ['root-cause done', 'fix after'] },
       root: true,
       standing: 'fix-waits',
-      waiting: [{ kind: 'raise', id: made.fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'first' }],
+      waiting: [{ kind: 'raise', id: made.fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', why: UNLABELLED, options: 2, lean: 'first' }],
       fix: {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
@@ -359,7 +362,7 @@ describe('This session in an investigation (20.12.1)', () => {
     const pages = ['1', '2'].map((key) => board(['--page', `option:${key}`]).view.state);
 
     assert.deepStrictEqual([view.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.fix)), view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean), pages], [
-      [{ kind: 'raise', id: made.fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', options: 2, lean: 'held' }],
+      [{ kind: 'raise', id: made.fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', why: null, options: 2, lean: 'held' }],
       [false, false],
       ['option', 'option'],
     ]);
@@ -445,7 +448,7 @@ describe('each decision where its chain stands now', () => {
     assert.deepStrictEqual([waiting.validations[1].state, waitingFar], ['running', 'fix picked, not yet confirmed']);
     assert.deepStrictEqual([waiting.standing, waiting.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, fix)), waiting.fix_direction], [
       'validating-fix',
-      [{ kind: 'raise', id: fix, text: REPLACE_CALL.question, page: null, raised_by: 'fix', options: 3, lean: 'first' }],
+      [{ kind: 'raise', id: fix, text: REPLACE_CALL.question, page: null, raised_by: 'fix', why: YOURS, options: 3, lean: 'first' }],
       {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
@@ -585,7 +588,7 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     assert.deepStrictEqual([first.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.keep).id), board().view.waiting], [[made.keep], first]);
   });
 
-  it('under way, the tab says it investigates until a validation runs, validates while one does, and holds the raise on its one list with what raised it', async () => {
+  it('under way, the tab says it investigates until a validation runs, validates while one does, and holds the raise on its one list with what raised it and why', async () => {
     atTheHunt();
     const investigating = tabRow();
     const validation = dispatched('root-cause-validation', ['F1', 'F2']);
@@ -597,7 +600,7 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
 
     assert.deepStrictEqual([investigating.state, investigating.doing, validating.state, validating.doing], ['running', 'investigating', 'running', 'validating']);
     assert.deepStrictEqual({ ...tab, waiting: tab.waiting.map((/** @type {string} */ line) => line.split(' ')[0]) }, { now: 'investigation', state: 'waits', words: '3 hypotheses', waiting: ['raise'] });
-    assert.deepStrictEqual(listed.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.keep)), [{ kind: 'raise', id: made.keep, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', options: null, lean: null }]);
+    assert.deepStrictEqual(listed.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.keep)), [{ kind: 'raise', id: made.keep, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', why: UNLABELLED, options: null, lean: null }]);
   });
 
   it('20.15.1: the tab\'s LATELY holds the hunt\'s moments, each when its record dates it: each experiment by its name and title and the root cause written at the entries they rest on, the fix direction picked at the person\'s pick, the investigation concluded at its stamp; a hypothesis confirmed or ruled out, which nothing dates, is none', async () => {

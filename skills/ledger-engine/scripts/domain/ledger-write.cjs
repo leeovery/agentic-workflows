@@ -93,6 +93,11 @@
 //   answer or one they hand Claude; Claude's own decision, move or merge of
 //   it is refused, checked with the links, before the call and under the
 //   lock.
+// - What is the person's (16.5.7): a decision of theirs, as written or as
+//   their keep of it since gives it, is changed by a raise alone, which
+//   always asks them; Claude's own `ledger replace` of one is refused,
+//   checked with the links, before the call and under the lock. One they
+//   hand Claude is written as Claude's, given as they gave it.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it
@@ -176,7 +181,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { appendEntry, carrying, commitLedger } = require('./ledger.cjs');
 const { HEADER, REASONS, ROADMAP, PRODUCT, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf, whoseDecision } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, roadmapItemNamed, manifestOf, measuredBy, liveness } = require('./ledger-units.cjs');
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
@@ -405,6 +410,40 @@ function unparked(said) {
   return ({ answers, question, replaces, duplicate }, read) => {
     checkUnparked(read, { answers: oneId(answers ?? question), replaces: oneId(replaces) }, said);
     if (typeof duplicate === 'string') checkUnparked(read, { replaces: duplicate }, said);
+  };
+}
+
+/**
+ * Claude's own replacement of a decision that is the person's (16.5.7) —
+ * theirs as written, or as their keep of it since gives it — refused in the
+ * words of `said`: changing it always comes to them, through a raise.
+ * @param {string} said
+ * @returns {LinksCheck}
+ */
+function theirsUnreplaced(said) {
+  return ({ replaces }, read) => {
+    const entry = oneId(replaces);
+    if (entry === null || whoseDecision(read, entry) !== 'person') return;
+    const short = shortId(entry, read.facts.keys());
+    throw new Error(`${said}: ${short} is the person's decision — Claude's change to it always comes to them: raise --replaces ${short}`);
+  };
+}
+
+/**
+ * What a ledger verb checks of its links under the lock, and before it for
+ * a decision: what a question waiting in the build is about, where it
+ * answers one, and the person's decision, where Claude's own call would
+ * replace one.
+ * @param {string} said @param {Write} write @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ * @returns {LinksCheck}
+ */
+function linksChecked(said, write, kind, { by, given }) {
+  const checks = [
+    ...(ANSWERING.has(write) ? [unparked(said)] : []),
+    ...(write === WRITES.replace && kind === 'decision' && by === 'claude' && given === 'own' ? [theirsUnreplaced(said)] : []),
+  ];
+  return (linked, read) => {
+    for (const check of checks) check(linked, read);
   };
 }
 
@@ -1201,7 +1240,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
     label: null,
     id: null,
     checkRead: nothingToCheck,
-    checkLinks: ANSWERING.has(write) ? unparked(said) : linksUnchecked,
+    checkLinks: linksChecked(said, write, kind, fields),
     mints: NOTHING_MINTED,
     logs: trustEventOf(kind, fields, reason, replaced),
     before,

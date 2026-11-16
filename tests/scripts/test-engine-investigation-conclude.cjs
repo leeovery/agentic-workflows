@@ -488,8 +488,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual(run(['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [changed]);
   });
 
-  it('a conclude set aside stays held at the investigation through what comes meanwhile — a call the person changed, its raise drawn, then its verdict asked first on the conclude\'s own screen; then a raise drawn and answered, and the recap staged again: drawn again after each, it shows on its hold, never drawn, and its answers are one event (S1)', async (t) => {
-    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ gateAt) => decisionPoint.learned(name, gateAt));
+  it('a conclude set aside stays held at the investigation through what comes meanwhile — a call the person changed, its raise drawn, then its verdict asked first on the conclude\'s own screen; then a raise drawn and answered, and the recap staged again: drawn again after each, it shows on its hold, never drawn, and its answers are one event (S1)', async () => {
     const h = history({ project: JSON.parse(readState(dir, layout.projectManifest)).project_id, start: Date.now() - DAY });
     for (let i = 0; i < 12; i += 1) h.gate('conclude gate', { picked: 'y' });
     fs.writeFileSync(path.join(config, TRUST_LOG), lines(...h.events));

@@ -59,7 +59,7 @@ describe('engine boot: the setup gates due at a start (22.2.1, O3)', () => {
     assert.deepStrictEqual(onBoth({ knowledge: 'not-ready' }), [['knowledge'], ['knowledge']]);
   });
 
-  it('O3: the mod\'s notice, the effort notice and the one-time offers wait for the bare command, after the gates every entry shows, in start\'s order', () => {
+  it('O3: the mod\'s notice, the effort notice and the one-time offers wait for the bare command, after the gates every entry shows, in start\'s order — none of them offering a decision model (1.S3)', () => {
     assert.deepStrictEqual(gatesDue(ALL_DUE, { ...CLAUDE, outdated: true }), ['migration-review', 'claude-code-floor', 'knowledge']);
     assert.deepStrictEqual(gatesDue(ALL_DUE, { ...BARE, outdated: true }), [
       'migration-review', 'claude-code-floor', 'knowledge', 'mod-notice', 'effort', 'walkthrough', 'session-labels', 'brownfield', 'github-rule', 'github-squash',

@@ -222,11 +222,11 @@ describe('gate payload — a learned gate run as an automatic step', () => {
     const { project_id: project } = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
     const skipped = history({ project, start: Date.now() - DAY });
     for (let i = 0; i < 13; i += 1) skipped.gate('import reprompt', { picked: 's' });
-    fs.writeFileSync(log, lines(...skipped.events));
     /** The reprompt over `missing` drawn. @param {string[]} missing */
     const reprompt = (missing) => output(dir, ['render', 'import-reprompt', '--file', createFile(dir, '.ledger/.cache/pay/discovery/pay/import-reprompt.json', JSON.stringify({ missing }))], { env });
     const shown = gateOf(reprompt(['/notes/other.png']))?.gate;
-    const asked = t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
+    fs.writeFileSync(log, lines(...skipped.events));
+    const asked = t.mock.method(decisionPoint, 'gateStep');
     const out = reprompt(['/notes/sketch.png']);
     const refused = refusedPristine(dir, ['gate', 'import reprompt', '--pick', 's'], { env }).error;
     const logged = fs.readFileSync(log, 'utf8').split('\n').slice(skipped.events.length, -1).map((line) => JSON.parse(line));
@@ -283,7 +283,6 @@ describe('gate payload — the import reprompt\'s showing, held at no place (N1,
     const skipped = history({ project, start: Date.now() - DAY });
     for (let i = 0; i < 13; i += 1) skipped.gate('import reprompt', { picked: 's' });
     fs.writeFileSync(log, lines(...skipped.events));
-    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
     const missing = ['/notes/sketch.png'];
     /** The reprompt over `missing` drawn in `session`. @param {string} session */
     const reprompt = (session) => output(dir, ['render', 'import-reprompt', '--file', createFile(dir, '.ledger/.cache/product/discovery/product/import-reprompt.json', JSON.stringify({ missing }))], { env: as(session) });

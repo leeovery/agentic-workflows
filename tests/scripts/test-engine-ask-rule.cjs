@@ -2,21 +2,22 @@
 
 // ---------------------------------------------------------------------------
 // The ask rule (ledger-engine/scripts/domain/ask-rule.cjs), its settings
-// (domain/trust-settings.cjs), and the decision point's `ruled`
-// (domain/decision-point.cjs), what it decides once switched on: the order
+// (domain/trust-settings.cjs), and the decision point's `decide`
+// (domain/decision-point.cjs), which decides by it: the order
 // it decides in — what always asks with no label to tell it, no label,
 // what always asks by the label, a question Claude could find out,
 // Claude's one-answer calls, the kind's count — the threshold a question
 // takes, one-answer calls' among them, the reason in the person's words, a
 // bound shown to as many places as tell it from its line, and §16's worked
 // scenarios held to their figures; the person's threshold and its raise
-// mid-build read from the settings file; and the rule given the trust
+// mid-build read from the settings file, and no decision model among the
+// trust layer's settings and verbs (1.S3); and the rule given the trust
 // log's counts for the project as of the time, with the blind draw over a
 // call it lets proceed (16.17.3, 16.17.4, 16.17.9).
 //
 // Layer: unit. World: the counts are the rule's input, from events built in
 // memory a day before the frozen clock (trust-world.cjs, `history`); the
-// settings' and `ruled`'s tests keep the log and the settings file in a
+// settings' and `decide`'s tests keep the log and the settings file in a
 // config folder of their own, a project a plain folder whose state root is
 // pinned.
 // ---------------------------------------------------------------------------
@@ -35,7 +36,8 @@ const { labelled } = require('./labels.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { rule } = require(path.join(SCRIPTS, 'domain/ask-rule.cjs'));
 const { DEFAULTS, trustSettings } = require(path.join(SCRIPTS, 'domain/trust-settings.cjs'));
-const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { decide } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { TRUST_USAGE } = require(path.join(SCRIPTS, 'domain/trust-verbs.cjs'));
 const { MODEL_LINES, countsFrom } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const { kindOf } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
@@ -410,6 +412,13 @@ describe('the person\'s settings (16.4.6, 16.4.7, 16.13.7)', () => {
     assert.deepStrictEqual(trustSettings(), { threshold: 0.25, build_threshold: 0.3 });
   });
 
+  it('1.S3: setting up the trust layer offers no decision model — its settings are the threshold and its raise mid-build alone, a model the settings file names passed over, and its verbs set those two and correct a kind or a verdict in words, none picking a model (1.3.6, 16.19.1)', () => {
+    settingsHold(JSON.stringify({ trust: { threshold: 0.3, model: 'jev', labeller: 'clef' } }));
+
+    const verbs = TRUST_USAGE.split('\n').map((usage) => usage.split(' ').slice(0, 2).join(' '));
+    assert.deepStrictEqual([trustSettings(), verbs], [{ threshold: 0.3, build_threshold: null }, ['trust threshold', 'trust build-threshold', 'trust correct']]);
+  });
+
   it('refuses, naming the file, a settings file that does not read as a JSON object, a trust key that is none, and a setting holding what it cannot', () => {
     const refusals = ['{"torn', '[]', '{"trust": 0.2}', '{"trust": null}', '{"trust": {"threshold": 20}}', '{"trust": {"threshold": 1}}', '{"trust": {"build_threshold": 0}}'].map((text) => {
       settingsHold(text);
@@ -433,7 +442,7 @@ describe('the person\'s settings (16.4.6, 16.4.7, 16.13.7)', () => {
   });
 });
 
-describe('the rule as the decision point gives it, once switched on (decision-point.cjs `ruled`)', () => {
+describe('the rule as the decision point gives it (decision-point.cjs `decide`)', () => {
   const { folder, logPath, project } = useTrustWorld('ask-rule-ruled-');
 
   it('decides over the trust log\'s counts for the project and the session\'s model as of the time it is given, and the person\'s threshold from the settings file: 13 clean answers proceed at 20% and ask at 15%, ask for a model no line holds, which takes them at half, and 12, counted as of a moment after the 12th, ask; the same inputs decide alike (16.S2, 16.S46)', () => {
@@ -448,16 +457,16 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     const at = (/** @type {number} */ now) => ({
       label: BEHAVIOUR, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(dir), name: 'Mint' }, model: MODEL, now, chain: UNDRAWN,
     });
-    const decided = [ruled(call, at(FROZEN_MS)).decision, ruled(call, { ...at(FROZEN_MS), model: 'claude-sonnet-5' }).decision, ruled(call, at(twelfth + 500)).decision];
+    const decided = [decide(call, at(FROZEN_MS)).decision, decide(call, { ...at(FROZEN_MS), model: 'claude-sonnet-5' }).decision, decide(call, at(twelfth + 500)).decision];
     fs.writeFileSync(path.join(folder(), 'config', 'config.json'), JSON.stringify({ trust: { threshold: 0.15 } }));
 
-    assert.deepStrictEqual([...decided, ruled(call, at(FROZEN_MS)), ruled(call, at(FROZEN_MS))], ['proceed', 'ask', 'ask', ...Array(2).fill({
+    assert.deepStrictEqual([...decided, decide(call, at(FROZEN_MS)), decide(call, at(FROZEN_MS))], ['proceed', 'ask', 'ask', ...Array(2).fill({
       decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 19%, over your 15%.',
     })]);
   });
 
   /**
-   * How `ruled` decides a call sorted `sort` labelled `label` in Mint, its
+   * How `decide` decides a call sorted `sort` labelled `label` in Mint, its
    * log holding `h`'s events, on the question whose id is `chain`, as of the
    * frozen clock.
    * @param {History} h @param {string|null} chain @param {{sort?: 'one'|'several', label?: import('./labels.cjs').Label|null}} [call]
@@ -466,7 +475,7 @@ describe('the rule as the decision point gives it, once switched on (decision-po
     fs.mkdirSync(path.dirname(logPath()), { recursive: true });
     fs.writeFileSync(logPath(), lines(...h.events));
     const at = { label, place: TOPIC, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false, project: { root: statePath(project('mint')), name: 'Mint' }, model: MODEL, now: FROZEN_MS, chain };
-    return ruled(/** @type {any} */ ({ sort }), at);
+    return decide(/** @type {any} */ ({ sort }), at);
   }
 
   const BLIND = { decision: 'blind', reason: 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.' };

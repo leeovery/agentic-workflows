@@ -75,7 +75,7 @@ Each is a question on the map, saying what was tried and why it blocks the trace
 - a fact only the person holds — whether a behaviour is intended, the environment, a reproduction that fails here — goes to `raise --fact`;
 - what the product should do is a call, and goes to `raise`.
 
-Whether anything may run against a live server is a call of the person's, every time and before it runs. It is a permission for the hunt, never a rule the fix keeps: ask it at the investigation's own level, `{work_unit}.investigation`, through `raise`. The project's verify setup, where it has one, holds how to run the product safely.
+Whether anything may run against a live server is a call of the person's, every time and before it runs. It is a permission for the hunt, never a rule the fix keeps: ask it at the investigation's own level, `{work_unit}.investigation`, through `raise` marked `--always live-server`. The project's verify setup, where it has one, holds how to run the product safely.
 
 ### The Root Cause
 
@@ -106,7 +106,7 @@ Before setting out fix options, step back from the bug. Was the implementation w
 
 ### The Fix Direction
 
-The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice. Where the cause sits in the design or the area keeps breaking, it carries one row more: rework the area as a feature. The direction says what the fix does, never how it is written — that is the spec's.
+The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice. Where the cause sits in the design or the area keeps breaking, it carries one row more: rework the area as a feature. Where the root cause is a design problem, each raise of the fix direction is marked `--always design-problem`. The direction says what the fix does, never how it is written — that is the spec's.
 
 Once the fix is decided, log the fix direction (`investigation-log fix-direction`), which carries what the step back found from the raise; then dispatch the fix's validation. Reworking the area as a feature, decided, dispatches no validation: go on to **Reworking It as a Feature**.
 
@@ -132,7 +132,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{wo
 - A question → `ledger ask {place}`, `{"text", "by": "person|claude", "who_moved_whom": "none"}`.
 - A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where exploratory.
 - A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "who_moved_whom": "none"}`; a changed one → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops.
-- A call → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fix settled afresh once the person keeps shaping → `raise {place} --replaces {id} --reason changed-mind`; a fact only the person holds → `raise {place} --answers {id} --fact`; a run against a live server → `ledger ask {work_unit}.investigation`, then `raise {work_unit}.investigation --answers {id}`.
+- A call → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fix settled afresh once the person keeps shaping → `raise {place} --replaces {id} --reason changed-mind`; each of the fix direction's adding `--always design-problem` where the root cause is a design problem; a fact only the person holds → `raise {place} --answers {id} --fact`; a run against a live server → `ledger ask {work_unit}.investigation`, then `raise {work_unit}.investigation --answers {id} --always live-server`.
 - The topic as it stands → `ledger record|map {work_unit} {work_unit}`.
 - A validation's agent → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`; a finding that reached the person → `agent surface {work_unit} investigation {work_unit} {id} {finding} --replaces {fix} --reason new-fact`, or `--question {question}`.
 - Earlier work → `knowledge query "{term}" …`.

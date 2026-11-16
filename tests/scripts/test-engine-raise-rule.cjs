@@ -4,15 +4,16 @@
 // A raise decided by the ask rule (ledger-engine/scripts/domain/raise.cjs,
 // over the decision point domain/decision-point.cjs and the rule
 // domain/ask-rule.cjs): what the raise gives the decision point beside the
-// call (E1), every call still asking until the rule is switched on — none
-// given in discovery, where a raise is refused (16.S24) — and what it is
-// decided from beyond its label riding with the call to its raise event;
-// the model the call is decided under sealed with it, every event about it
-// logged under that model and with Claude's mark, a builder's answered in
-// the conversation among them (16.4.4); and, the decision point forced to
-// the rule in process (`ruled`) as the switch will make it, on a question
-// whose id draws no blind question (test-engine-raise-blind.cjs), a
-// question Claude could find out
+// call (E1) — none given in discovery, where a raise is refused (16.S24) —
+// and what it is decided from beyond its label riding with the call to its
+// raise event; the model the call is decided under sealed with it, every
+// event about it logged under that model and with Claude's mark, a
+// builder's answered in the conversation among them (16.4.4); and the
+// rule's decisions as a raise meets them, a question's id drawing no blind
+// question where a call proceeds (test-engine-raise-blind.cjs): with an
+// empty trust log, a call of taste asking and a call with one defensible
+// answer landing as Claude's (1.S2, 16.S50, 16.S69); a kind not gone quiet
+// asking in the rule's words alone (16.S1); a question Claude could find out
 // sent to check and asked once the same raise is made again, in any
 // words — another task's raise of it sent to check as any first is — a call
 // with no label asked (16.S68), Claude's mark that
@@ -51,6 +52,8 @@ const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+
+const { decide } = decisionPoint;
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { MODEL_LINES, countsFrom, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
@@ -58,7 +61,6 @@ mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable
 
 /** @typedef {import('../../skills/ledger-engine/scripts/domain/event-fields.cjs').Kind} Kind */
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 // An epic in its build, in auto, beside the epic in discussion.
 const BUILT = 'mint';
 const BUILD = `${BUILT}.implementation`;
@@ -123,16 +125,16 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { ledgerText, full, entries } = ledgerHelpers(() => dir);
+const { write, ledgerText, full, entries } = ledgerHelpers(() => dir);
 const { conversation, inFolder, seals, logText, project, lastEntry, answer, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
 /**
- * The decision point forced to the rule, as switching it on makes it, for
- * test `t`: on a question whose id draws no blind question, so a call the
- * rule lets proceed proceeds (test-engine-raise-blind.cjs).
+ * The decision point for test `t` on a question whose id draws no blind
+ * question, so a call the rule lets proceed proceeds
+ * (test-engine-raise-blind.cjs).
  * @param {import('node:test').TestContext} t
  */
-const byTheRule = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: UNDRAWN }));
+const undrawn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decide(call, { ...at, chain: UNDRAWN }));
 
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
@@ -173,7 +175,7 @@ const logEvents = () => logText().split('\n').slice(0, -1).map((line) => JSON.pa
 const cleanFor = (kind, model) => stateOf(countsFrom(logEvents(), { project: project(), model, now: Date.now() }).kinds[kind], 0.2).clean;
 
 describe('what the decision point is given (E1)', () => {
-  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — the time, and the id a blind draw hashes, the question\'s, none on a replacement, which is never drawn blind (E3); and every call still asks, as before the rule is switched on', async (t) => {
+  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — the time, and the id a blind draw hashes, the question\'s, none on a replacement, which is never drawn blind (E3); and the rule\'s decision answered — a look call, none of its kind answered, and the person\'s decision replaced, each asking', async (t) => {
     const decide = t.mock.method(decisionPoint, 'decide');
     const claude = path.join(config(), 'claude');
     const transcript = path.join(claude, 'projects', '-Users-me-fumi', `${SESSION}.jsonl`);
@@ -197,7 +199,8 @@ describe('what the decision point is given (E1)', () => {
       [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null, chain: null }],
       [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null, chain: full(made.size) }],
     ]);
-    assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.parked, taskless.res.parked, taskless.res.task], ['ask', EVERY_CALL_ASKS, 'ask', 'Q1', 'Q2', null]);
+    const none = `It's look, and you haven't answered any look questions in ${projectName(dir)} yet, so it comes to you.`;
+    assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.reason, build.res.parked, taskless.res.parked, taskless.res.task], ['ask', none, 'ask', 'You decided this yourself, so changing it always comes to you.', 'Q1', 'Q2', null]);
   });
 
   it('16.S24: in discovery a call is never raised — refused in the engine\'s own words before the decision point is reached, nothing written or sealed (16.7.3)', async (t) => {
@@ -272,8 +275,38 @@ describe('the model the call is decided under (16.4.4)', () => {
 });
 
 describe('the rule\'s decisions as a raise meets them', () => {
-  it('a question Claude could find out is sent to check — drawing, sealing, parking, landing and logging nothing, the conversation keeping the raise as sent, by the question and the task raising it — and the same raise made again asks: at a topic, and in the build, where another task\'s raise of it, whose own check has not come back, is sent to check too (16.3.1, 16.11.7)', async (t) => {
-    byTheRule(t);
+  it('1.S2, 16.S50, 16.S69: with an empty trust log, a call of taste asks, saying none of its kind is answered; a call with one defensible answer stays Claude\'s, labelled as any — landed in the ledger as its call with its kind, and in the trust log as a call sorted one — but where it is danger, which asks, the always-asks outranking the sort (16.16.1, 16.3.7, 16.5.1)', async (t) => {
+    undrawn(t);
+    /** Claude's call with one defensible answer on a question of its own, worded `question`: the call and the question's short id. @param {string} question */
+    const oneAnswer = (question) => ({ call: { ...CALL, question, sort: 'one' }, asked: write('ask', NOTE, [], { ...MADE, text: question }).id });
+    const sized = oneAnswer('Does a new note open at the default size?');
+    const closing = oneAnswer('Does closing a note delete it?');
+
+    const taste = (await raised(NOTE, ['--answers', made.note], CALL, labelledAs(CALL, 'look'))).res;
+    const one = (await raised(NOTE, ['--answers', sized.asked], sized.call, labelledAs(sized.call, 'behaviour'))).res;
+    const landed = lastEntry();
+    const danger = (await raised(NOTE, ['--answers', closing.asked], closing.call, labelledAs(closing.call, 'danger'))).res;
+
+    assert.deepStrictEqual([[taste.decision, taste.reason], [one.decision, one.reason], [danger.decision, danger.reason]], [
+      ['ask', `It's look, and you haven't answered any look questions in ${projectName(dir)} yet, so it comes to you.`],
+      ['proceed', `It has one sensible answer, and you haven't overruled my one-answer calls in ${projectName(dir)}.`],
+      ['ask', 'An answer here could lose data or weaken security, so it always comes to you.'],
+    ]);
+    assert.deepStrictEqual([landed.event, landed.answers, landed.by, landed.kind], ['decided', full(sized.asked), 'claude', 'behaviour']);
+    assert.deepStrictEqual(logEvents().filter(({ type }) => type === 'call').map(({ entry, kind, sort }) => [entry, kind, sort]), [[full(one.id), 'behaviour', 'one']]);
+  });
+
+  it('16.S1: a kind not gone quiet, its bound over the threshold, asks — the session given the decision and the rule\'s reason, in numbers and the names of the kind and the project, and nothing of the trust log\'s', async () => {
+    quietOn('behaviour', 12);
+
+    const { res, sections } = await raised(NOTE, ['--answers', made.note], CALL, labelledAs(CALL, 'behaviour'));
+
+    const reason = `It's behaviour, and on behaviour in ${projectName(dir)} my calls still miss more often than you allow: 21%, over your 20%.`;
+    assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason, raise: res.raise, redrawn: false });
+    assert.ok(sections.includes(`\nWHY I'M ASKING\n\n${reason}\n`), `the screen gives another reason:\n${sections}`);
+  });
+
+  it('a question Claude could find out is sent to check — drawing, sealing, parking, landing and logging nothing, the conversation keeping the raise as sent, by the question and the task raising it — and the same raise made again asks: at a topic, and in the build, where another task\'s raise of it, whose own check has not come back, is sent to check too (16.3.1, 16.11.7)', async () => {
     const log = quietOn('behaviour');
     const checkable = labelledAs(CALL, 'behaviour', { yes: ['checkable'] });
     const ledger = ledgerText();
@@ -294,8 +327,7 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([parked.decision, parked.parked, lastEntry().why_asking], ['ask', 'Q1', checked]);
   });
 
-  it('a replacement Claude could find out is sent to check by the decision it would replace and the task raising it: two decisions in one conversation are each sent their own, and one raised again in other words asks; in the build, another task\'s raise of the same proposal, whose own check has not come back, is sent to check too (16.11.7)', async (t) => {
-    byTheRule(t);
+  it('a replacement Claude could find out is sent to check by the decision it would replace and the task raising it: two decisions in one conversation are each sent their own, and one raised again in other words asks; in the build, another task\'s raise of the same proposal, whose own check has not come back, is sent to check too (16.11.7)', async () => {
     quietOn('behaviour');
     const checkable = labelledAs(FRAMED, 'behaviour', { yes: ['checkable'] });
 
@@ -312,8 +344,7 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([reworded.res.decision, reworded.res.reason], ['ask', 'Checking couldn\'t settle it, so it comes to you.']);
   });
 
-  it('16.S68, the label\'s half: with no label — the stub serving no login — a call asks however quiet its kind, saying so', async (t) => {
-    byTheRule(t);
+  it('16.S68, the label\'s half: with no label — the stub serving no login — a call asks however quiet its kind, saying so', async () => {
     quietOn('behaviour');
 
     const { res } = await raised(NOTE, ['--answers', made.note], CALL, conversation());
@@ -322,8 +353,7 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([res.decision, res.reason, seals()?.[res.raise].label], ['ask', unlabelled, null]);
   });
 
-  it('--always: Claude\'s mark asks however quiet the kind, and though Claude could find the answer out — a design problem at a topic, testing against a live server parking its task in the build (19.4.22, 19.4.20)', async (t) => {
-    byTheRule(t);
+  it('--always: Claude\'s mark asks however quiet the kind, and though Claude could find the answer out — a design problem at a topic, testing against a live server parking its task in the build (19.4.22, 19.4.20)', async () => {
     quietOn('behaviour');
     const checkable = labelledAs(CALL, 'behaviour', { yes: ['checkable'] });
 
@@ -356,8 +386,7 @@ describe('the rule\'s decisions as a raise meets them', () => {
     ]);
   });
 
-  it('3.S15: in a build in auto, a danger question parks its task for the person however quiet its kind, and though Claude could find the answer out — a question about the session whose option could lose data, composing process, among them (16.S62, 16.5.1)', async (t) => {
-    byTheRule(t);
+  it('3.S15: in a build in auto, a danger question parks its task for the person however quiet its kind, and though Claude could find the answer out — a question about the session whose option could lose data, composing process, among them (16.S62, 16.5.1)', async () => {
     quietOn('process');
 
     const { res } = await raised(BUILD, ['--answers', made.where, '--parks', '2.3'], CALL, labelledAs(CALL, 'process', { yes: ['danger', 'checkable'] }));
@@ -365,8 +394,7 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([res.decision, res.parked, res.task, res.reason, sentToCheck()], ['ask', 'Q1', '2.3', 'An answer here could lose data or weaken security, so it always comes to you.', null]);
   });
 
-  it('16.S72: mid-build, replacing the person\'s decision of a quiet kind asks, parking its task, whatever the counts; replacing Claude\'s call of the same kind follows the rule, and proceeds, landing Claude\'s replacement (16.5.7, 12.9.2)', async (t) => {
-    byTheRule(t);
+  it('16.S72: mid-build, replacing the person\'s decision of a quiet kind asks, parking its task, whatever the counts; replacing Claude\'s call of the same kind follows the rule, and proceeds, landing Claude\'s replacement (16.5.7, 12.9.2)', async () => {
     quietOn('behaviour');
     const labelledFrame = labelledAs(FRAMED, 'behaviour');
 
@@ -377,14 +405,12 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual([mine.decision, lastEntry().event, lastEntry().replaces, lastEntry().by, lastEntry().task], ['proceed', 'replaced', full(made.mine), 'claude', '2.5']);
   });
 
-  it('a decision of Claude\'s the person kept against its replacement is theirs: raised for replacement again, it asks whatever the counts, as their own decision would (16.5.7, 5.3.14)', async (t) => {
+  it('a decision of Claude\'s the person kept against its replacement is theirs: raised for replacement again, it asks whatever the counts, as their own decision would (16.5.7, 5.3.14)', async () => {
     quietOn('behaviour');
-    const labelledFrame = labelledAs(FRAMED, 'behaviour');
-    const first = (await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, labelledFrame)).res;
+    const first = (await raised(NOTE, ['--replaces', made.light, '--reason', 'was-wrong'], FRAMED, conversation())).res;
     answer(first.raise, ['--pick', 'keep'], { why: 'They want a note light.' });
-    byTheRule(t);
 
-    const again = (await raised(NOTE, ['--replaces', made.light, '--reason', 'changed-mind'], FRAMED, labelledFrame)).res;
+    const again = (await raised(NOTE, ['--replaces', made.light, '--reason', 'changed-mind'], FRAMED, labelledAs(FRAMED, 'behaviour'))).res;
 
     assert.deepStrictEqual([again.decision, again.reason, lastEntry().event], ['ask', 'You decided this yourself, so changing it always comes to you.', 'kept']);
   });

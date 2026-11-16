@@ -45,7 +45,7 @@ const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cj
 const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
 const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
+const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
 const NO_GATE = 'gate: no gate has been shown in this conversation — render the gate, then answer it';
 // The way on from a raise the conversation never drew.
 const ELSEWHERE = 'a raise is answered in the conversation that drew it, so after a /clear, or a resume under a new session, raise the question again';
@@ -70,7 +70,7 @@ const CALL = Object.freeze({
  * `technical`, the reason the decision point gave.
  * @param {string} id @param {{technical?: boolean, reason?: string}} [opts]
  */
-function screen(id, { technical = false, reason = EVERY_CALL_ASKS } = {}) {
+function screen(id, { technical = false, reason = UNLABELLED } = {}) {
   return [
     `=== MENU: raise — ${id} (emit verbatim as markdown (not a code block), then STOP for the user's response) ===`,
     '· · · · · · · · · · · ·',
@@ -172,7 +172,7 @@ describe('the draw (16.S30, 16.9.2)', () => {
     const { res, sections } = await draw();
 
     assert.ok(isId(res.raise), `the raise's id is no ledger id: ${res.raise}`);
-    assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason: EVERY_CALL_ASKS, raise: res.raise, redrawn: false });
+    assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason: UNLABELLED, raise: res.raise, redrawn: false });
     assert.strictEqual(sections, screen(res.raise));
   });
 
@@ -251,7 +251,7 @@ describe('the draw (16.S30, 16.9.2)', () => {
     const gate = auditGate(announced.sections, 'raise');
     auditGate(technical.sections, 'raise show --technical');
     assert.strictEqual(gate?.gate, `raise — ${plain.res.raise}`);
-    assert.ok(gate?.statement.includes('- Main: every note opens on the same screen') && gate.statement.includes(EVERY_CALL_ASKS), 'the payload states no notice or no why');
+    assert.ok(gate?.statement.includes('- Main: every note opens on the same screen') && gate.statement.includes(UNLABELLED), 'the payload states no notice or no why');
     assert.strictEqual(withoutGate(announced.sections), plain.sections);
   });
 });
@@ -282,7 +282,7 @@ describe('the seal (P1, P6)', () => {
       always: null,
       measured: null,
       chain: full(asked.where),
-      reason: EVERY_CALL_ASKS,
+      reason: UNLABELLED,
       blind: false,
       at: sealed.at,
       raised: sealed.at,
@@ -444,8 +444,8 @@ describe('the label at the draw (16.11, 16.S38)', () => {
   });
 });
 
-describe('the decision point (29.5.2)', () => {
-  it('answers ask with its reason for every call, and the response, the seal and the screen carry whatever it answers', async (t) => {
+describe('the decision point (29.19.2)', () => {
+  it('the response, the seal and the screen carry whatever it answers, with its reason', async (t) => {
     const reason = 'On behaviour in Fumi my calls still miss more often than you allow: 21%, over your 20%.';
     t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason }));
 

@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 9;
+const BOARD_VERSION = 10;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -464,11 +464,12 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * What waits on the person in an investigation (20.12.1), as the unit's one
  * list holds it (WaitingLine), with what raised it — the validation whose
  * finding it was surfaced as, by the entry it validates, else the fix
- * direction, else null — and for the fix direction's how many options it
+ * direction, else null — why it reached them, the decision point's reason,
+ * null on a blind question, and for the fix direction's how many options it
  * sets out and where Claude's lean stands among them: the first, marked
  * further down, or held back, a blind question's, until the person has
  * answered; every other wait, the conclude among them, with none.
- * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, options: number|null, lean: 'first'|'marked'|'held'|null}} HuntWait
+ * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, why: string|null, options: number|null, lean: 'first'|'marked'|'held'|null}} HuntWait
  */
 /**
  * A validation of the investigation (20.12.1): which, the effort its agent

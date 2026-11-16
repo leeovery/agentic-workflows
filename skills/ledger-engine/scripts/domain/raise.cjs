@@ -23,7 +23,7 @@
 //   entry (investigation-log.cjs); the fix direction's log line takes it
 //   from the seal as its body (`steppedBackSealed`). Every field of text is
 //   one line but the mechanism, drawn as written; nothing else is taken.
-// - A raise on a replacement (16.5.7, 29.5.2): `raise <unit>.<phase>[.<topic>]
+// - A raise on a replacement (16.5.7, 29.19.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
 //   …] [--always <mark>]`, the same call on stdin, its rows Claude's
 //   proposed answers in place

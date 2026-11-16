@@ -139,12 +139,12 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     assert.notStrictEqual(head(dir), tip);
   });
 
-  it('logs a call for Claude\'s replacement of a decision, its own or the person\'s, and no reversal: Claude\'s answer is a call however it is written, and a reversal is the person\'s (5.8.19)', () => {
+  it('logs a call for Claude\'s replacement of a decision, its own or the person\'s handed to Claude, and no reversal: Claude\'s answer is a call however it is written, and a reversal is the person\'s (5.8.19)', () => {
     const call = decide(question).id;
     const agreed = decide(question, { by: 'person', who_moved_whom: 'none' }).id;
 
     const own = change(call).id;
-    const persons = change(agreed, { text: 'A floating panel.', why: 'It follows the person.' }).id;
+    const persons = change(agreed, { text: 'A floating panel.', why: 'It follows the person.', given: 'your-call' }).id;
 
     assert.deepStrictEqual(logged(), [callOf(call), callOf(own), callOf(persons)]);
   });
