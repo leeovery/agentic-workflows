@@ -36,6 +36,6 @@ The files are what the migration found no place for, below each place's `assets/
   ```
 
   A question bearing on no topic in discussion is a finding saying what the file leaves open: ``{file} leaves open whether …``.
-- **Discard it** → `asset discard {place} '{path}'`, once the person has said to; the state's history keeps it. `asset legacy {place}` answers each file's and folder's `dead`: where it is above none, say how many things the discard leaves pointing at nothing before they say.
+- **Discard it** → `asset discard {place} '{path}'`, once the person has said to; the state's history keeps it. `asset legacy {place}` answers each file's and folder's `dead`: where it is more than 0, say how many things the discard leaves pointing at nothing before they say.
 
 Each answer's `left` counts what still waits in the places it sorted. The pass ends when nothing is left, or where the person stops; what is left waits on the same row.
