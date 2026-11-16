@@ -204,10 +204,10 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
     assert.deepStrictEqual(snapshot(fix), before);
   });
 
-  it('refuses a completed or cancelled feature', () => {
+  it('refuses a completed feature, which stays finished, writing nothing', () => {
     fix = setupFixture(featureManifest({ status: 'completed' }));
     const before = snapshot(fix);
-    assert.match(engineFails(fix, PIVOT).error, /not in-progress \(status: completed\) — reactivate it first/);
+    assert.strictEqual(engineFails(fix, PIVOT).error, 'work unit "auth-flow" is completed — a finished unit stays finished; a later change is new work');
     assert.deepStrictEqual(snapshot(fix), before);
   });
 

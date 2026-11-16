@@ -174,8 +174,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     const sheet = writeIn(dir, 'replace', 'mint.discussion.mint', ['--replaces', decided, '--reason', 'changed-mind'], { ...MADE, drops: ['a panel'], text: 'A note is a sheet.', why: 'Mint draws sheets.' });
     assert.deepStrictEqual(calls('shown', 'note-window'), [sheet]);
 
-    ok(dir, ['workunit', 'reactivate', UNIT]);
-    ok(dir, ['workunit', 'cancel', UNIT]);
+    ok(dir, ['manifest', 'set', UNIT, 'status', 'cancelled']);
 
     const rows = ok(dir, ['ledger', 'map', 'mint', 'mint']).questions;
     assert.deepStrictEqual(rows.map((/** @type {{id: string, stands: string}} */ r) => [r.id, r.stands]), [[sheet, 'question-set-aside']]);

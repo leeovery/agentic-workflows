@@ -8,7 +8,9 @@
 // item; the guards the other verbs keep on an unstarted topic, and no verb
 // of its own for a topic's start, reopen or complete; a unit's completion,
 // as finish runs it in process; `workunit cancel` and `workunit
-// reactivate`; each transition refusing what the field surface refuses;
+// reactivate`, a completed unit of any type never reopened — reactivate and
+// cancel refuse it, writing nothing; each transition refusing what the
+// field surface refuses;
 // and the engine's usage banner. Each commits what it wrote, and a refusal
 // writes nothing.
 //
@@ -521,13 +523,13 @@ describe('work-unit completion — finish\'s, in process', () => {
     ]);
   });
 
-  it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
-    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
-    assert.throws(() => completeUnit(dir, 'auth-flow', 'again'), /already completed/);
-
-    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+  it('routes a cancelled unit through reactivate and rejects an already-completed unit', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
     assert.throws(() => completeUnit(dir, 'auth-flow', 'msg'), /is cancelled — reactivate it first/);
+
+    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
+    assert.throws(() => completeUnit(dir, 'auth-flow', 'again'), /already completed/);
   });
 
   it('is no CLI verb — a unit completes at finish\'s yes — and refuses an unknown work unit', () => {
@@ -540,7 +542,7 @@ describe('work-unit completion — finish\'s, in process', () => {
 
   it('completes a cancelled unit with a finished pipeline directly, restoring its chunks', () => {
     // A cancelled finished pipeline completes directly (reactivate stays open
-    // as the revisit path) — and cancellation removed the unit's chunks, so
+    // as the other path) — and cancellation removed the unit's chunks, so
     // the transition re-indexes them (warn-don't-block).
     const finishedDir = setupFinishedQuickFixFixture();
     engine(finishedDir, ['workunit', 'cancel', 'caching']);
@@ -597,15 +599,15 @@ describe('engine workunit cancel', () => {
     assert.match(receipt, /"Auth Flow" marked as cancelled\./);
   });
 
-  it('rejects an already-cancelled unit and routes a completed unit through reactivate', () => {
+  it('rejects an already-cancelled unit, and a completed one, which stays finished', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
     assert.match(engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error, /already cancelled/);
 
     engine(dir, ['workunit', 'reactivate', 'auth-flow']);
     completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
-    assert.match(
+    assert.strictEqual(
       engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error,
-      /is completed — reactivate it first/);
+      'work unit "auth-flow" is completed — a finished unit stays finished; a later change is new work');
   });
 
   it('rejects missing and unknown work units', () => {
@@ -620,21 +622,17 @@ describe('engine workunit reactivate', () => {
   beforeEach(() => { dir = setupFeatureFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('round-trips a complete: status restored, completed_at cleared, no KB attempt', () => {
-    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
-    const res = engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+  it('refuses a completed feature, bugfix, quick-fix and epic, writing nothing: a finished unit stays finished, and a later change is new work', () => {
+    for (const type of ['feature', 'bugfix', 'quick-fix', 'epic']) {
+      writeFile(dir, `.leeway/done-${type}/manifest.json`, `${JSON.stringify({ name: `done-${type}`, work_type: type, status: 'completed', completed_at: '2026-11-01' }, null, 2)}\n`);
+    }
+    commitAll(dir, 'the finished units');
+    const before = { head: shortHead(dir), manifests: ['feature', 'bugfix', 'quick-fix', 'epic'].map((type) => readManifest(dir, `done-${type}`)) };
 
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.status, 'in-progress');
-    assert.strictEqual(res.previous_status, 'completed');
-    assert.strictEqual(res.committed, shortHead(dir));
-    // Completed units retained their chunks — no re-indexing, no warnings.
-    assert.deepStrictEqual(res.warnings, []);
+    const refusals = ['feature', 'bugfix', 'quick-fix', 'epic'].map((type) => engineFails(dir, ['workunit', 'reactivate', `done-${type}`]).error);
 
-    const m = readManifest(dir, 'auth-flow');
-    assert.strictEqual(m.status, 'in-progress');
-    assert.ok(!('completed_at' in m), 'stale completed_at must be cleared');
-    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
+    assert.deepStrictEqual(refusals, ['feature', 'bugfix', 'quick-fix', 'epic'].map((type) => `work unit "done-${type}" is completed — a finished unit stays finished; a later change is new work`));
+    assert.deepStrictEqual({ head: shortHead(dir), manifests: ['feature', 'bugfix', 'quick-fix', 'epic'].map((type) => readManifest(dir, `done-${type}`)) }, before);
   });
 
   it('re-indexes after a cancel in one scoped bulk pass — failure is a warning', () => {
@@ -677,24 +675,7 @@ describe('engine workunit reactivate', () => {
     cleanupFixture(epicDir);
   });
 
-  it('reactivates a completed unit whose pipeline is finished — the revisit path stays open', () => {
-    const finishedDir = setupFinishedQuickFixFixture();
-    completeUnit(finishedDir, 'caching', 'workflow(caching): complete quick-fix pipeline');
-    const res = engine(finishedDir, ['workunit', 'reactivate', 'caching']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.status, 'in-progress');
-    assert.strictEqual(res.previous_status, 'completed');
-    // Completed units retained their chunks — no re-indexing, no warnings.
-    assert.deepStrictEqual(res.warnings, []);
-    const m = readManifest(finishedDir, 'caching');
-    assert.strictEqual(m.status, 'in-progress');
-    assert.ok(!('completed_at' in m), 'stale completed_at must be cleared');
-    assert.strictEqual(lastMessage(finishedDir), 'workflow(caching): reactivate work unit');
-    cleanupFixture(finishedDir);
-  });
-
-  it('reactivates a cancelled unit whose pipeline is finished — complete stays open as the other path', () => {
+  it('reactivates a cancelled unit whose pipeline is finished — completion stays open as the other path', () => {
     const finishedDir = setupFinishedQuickFixFixture();
     engine(finishedDir, ['workunit', 'cancel', 'caching']);
     const res = engine(finishedDir, ['workunit', 'reactivate', 'caching']);
@@ -719,7 +700,7 @@ describe('engine workunit reactivate', () => {
     writeFile(dir, '.leeway/auth-flow/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.match(
       engineFails(dir, ['workunit', 'reactivate', 'auth-flow']).error,
-      /not completed or cancelled \(status: archived\)/);
+      /not cancelled \(status: archived\)/);
   });
 });
 

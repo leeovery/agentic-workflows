@@ -102,7 +102,7 @@ function refuseEngineRecords(phase, fieldSegments) {
     fail(`"${LANDINGS}" is the engine's own landing record: a land verb writes it as it lands a task, and a verb acting on a landing as it reads one made by hand`);
   }
   if (fieldSegments[0] === CLOSED_BY_CANCEL) {
-    fail(`"${CLOSED_BY_CANCEL}" is the engine's own: the unit's cancel writes it as it closes the unit's pull requests, and every landing after reads them as none`);
+    fail(`"${CLOSED_BY_CANCEL}" is the engine's own: the unit's cancel writes it as it closes the unit's pull requests, and every landing after reads them as none while they stay closed`);
   }
   if (fieldSegments[0] === 'build' && (fieldSegments.length === 1 || fieldSegments[1] === 'branch')) {
     fail('"build.branch" is the engine\'s own: the first phase start\'s close of the build writes it as it makes the unit\'s branch, and it never changes');

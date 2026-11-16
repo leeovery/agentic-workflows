@@ -136,11 +136,11 @@ Bring the build's log up to date, then draft the new type's brief at `.leeway/.c
 node .claude/skills/leeway-engine/scripts/engine.cjs workunit move {work_unit} --to {type:[feature|bugfix]} --file .leeway/.cache/{work_unit}/build/move.json
 ```
 
-A refusal names what to fix. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran: the move closes the fixes not done, so stop every agent you dispatched with the TaskStop tool before the handoff into the new type's first phase. The person keeping shaping keeps the quick-fix: carry on with its fixes.
+A refusal names what to fix. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran, the handoff into the new type's first phase. A yes's `next` sets aside what the checkout holds not committed, takes the checkout off the quick-fix's branch and closes the fixes not done: stop every agent you dispatched with the TaskStop tool before you follow it. The person keeping shaping keeps the quick-fix: carry on with its fixes.
 
 ## Cancelling the Quick-Fix
 
-The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. The cancel it runs sets aside what the checkout holds not committed and takes the checkout off the quick-fix's branch, so stop every agent you dispatched with the TaskStop tool before you run it. A refusal names what holds the unit: say it in a line.
+The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A yes's `next` sets aside what the checkout holds not committed and takes the checkout off the quick-fix's branch: stop every agent you dispatched with the TaskStop tool before you follow it. A refusal names what holds the unit: say it in a line.
 
 Fetch the cancel's receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; then follow the cancel's `next`:
 

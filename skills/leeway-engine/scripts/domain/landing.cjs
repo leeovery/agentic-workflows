@@ -130,12 +130,17 @@
 // request open on a branch of the unit's, in each repository it touched,
 // and keeps the branches under their own names (`cancelClose`): a
 // quick-fix's as its move closes them, any other unit's each of its tasks'
-// and its own, in each repository holding a branch of the unit's. The
-// pull requests the host names are recorded on the unit's manifest
+// and its own, in each repository holding its work. The pull requests the
+// host names are recorded on the unit's manifest as each closes
 // (`closed_by_cancel`), and every context made after carries its
-// repository's (`cancelClosed`), which the driver's reads take as none,
-// so after a reactivate the landing opens what it needs anew, never
-// refusing one of them as closed by hand.
+// repository's (`cancelClosed`), which the driver's reads take as none
+// while each stays closed, so after a reactivate the landing opens what it
+// needs anew, never refusing one of them as closed by hand: a quick-fix's
+// close opens its one again as it merges (`quickFixLand`), and `land
+// phase` and finish's merges each open again, before they merge, every
+// task done and not landed of those they merge whose pull request the
+// cancel closed, as `land open` opens it (`openedAgain`), so nothing lands
+// short of the work done.
 //
 // A unit with a branch of its own (7.2.34, unit-branch.cjs) lands its tasks
 // and phases on it: each repository's context lands on the unit's landing
@@ -228,10 +233,10 @@ const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutLength, cutPhases, buildLength, quickFixBuild, fixesBegun, isFixPhase, builtSince } = require('./derivations.cjs');
+const { cutLength, cutPhases, buildLength, quickFixBuild, fixesBegun, isFixPhase, builtSince, hasLanded } = require('./derivations.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
-const { repoLanded, landedIn, landedAcross, foundIn, workIn } = require('./task-landed.cjs');
+const { repoLanded, landedIn, landedAcross, foundIn, workIn, unitLanded: tasksLanded } = require('./task-landed.cjs');
 const { recordsIn, writeLandings, recordLandings } = require('./landing-record.cjs');
 const { landsThroughHost, readied, madeNested, bringUp, broughtUpToLand, settlementsTaken } = require('./unit-branch.cjs');
 const names = require('./landing-names.cjs');
@@ -242,7 +247,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { withWriterLock } = require('../kernel/manifest-io.cjs');
 const { projectRepos, childrenFirst, repoName } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
-const { CLOSED_BY_CANCEL } = require('../kernel/manifest-schema.cjs');
+const { cancelClosedIn, closedAny } = require('./cancel-closed.cjs');
 
 // A phase's checks, and what a fix phase is built on, loaded at their call:
 // they read what landed through this module.
@@ -282,7 +287,7 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  * host's copy refuses there what the default branch here has not seen;
  * and the pull requests the unit's cancel closed there, by the host's own
  * names (`closed_by_cancel`), which every read of the driver's takes as
- * none (`cancelClosed`).
+ * none while it stays closed (`cancelClosed`).
  * @typedef {{
  *   root: string, repo: string, unit: string, into: string, remote: string|null, cancelClosed: Set<string>,
  *   reads: Map<string, unknown>, landedOn: (tip: string) => RepoLanded, merged: (shown: string[]) => void, message: (ref: TaskRef) => string,
@@ -463,7 +468,7 @@ function repoContext(project, repo, remote) {
       unit: project.unit,
       into,
       remote,
-      cancelClosed: new Set(project.manifest?.[CLOSED_BY_CANCEL]?.[named] ?? []),
+      cancelClosed: cancelClosedIn(project.manifest, named),
       reads: new Map(),
       landedOn,
       merged: (shown) => noteMerged(project, repo.path, shown),
@@ -1087,11 +1092,57 @@ function landChain(cwd, unit, task) {
 }
 
 /**
+ * Each task done and not landed, of those `picks` names, opened again as
+ * `land open` opens it, before a merge reads what is open (the header's):
+ * after a cancel closed its pull request and a reactivate, it is open
+ * nowhere — those below it in their stack first (`stackOrder`), each on
+ * contexts made afresh, so each opens onto the one opened before it.
+ * Answers the project to merge in, made afresh where any opened; the one
+ * given, nothing opened, for a unit no cancel closed a pull request of.
+ * @param {Project} project @param {LandingDriver} driver @param {(ref: TaskRef) => boolean} picks
+ * @returns {Project}
+ */
+function openedAgain(project, driver, picks) {
+  const { cwd, unit, manifest } = project;
+  if (manifest === null || !closedAny(manifest)) return project;
+  const landed = hasLanded(manifest, tasksLanded(cwd, unit, project.repos, project.since, manifest).landed);
+  const waiting = trackedBuild(cwd, unit, buildLength(manifest)).tasks.filter((task) => task.status === 'done' && picks(task.ref) && !landed(task.ref));
+  let opened = false;
+  for (const { task, holding } of stackOrder(waiting.map((held) => landingOf(project, held.ref, held)))) {
+    for (const { ctx, tip } of touching(projectOf(cwd, unit, project.repos), driver, task, holding)) {
+      inRepo(ctx.repo, () => driver.open(ctx, task, tip));
+      opened = true;
+    }
+  }
+  return opened ? projectOf(cwd, unit, project.repos) : project;
+}
+
+/**
+ * Tasks in the order their stack holds them: each after every task its
+ * branch descends from in a repository holding both, as a task merged back
+ * onto the one below it does; else in the order given.
+ * @param {{task: LandingTask, holding: Repo[]}[]} landings
+ */
+function stackOrder(landings) {
+  const below = (/** @type {typeof landings[number]} */ a, /** @type {typeof landings[number]} */ b) => b.holding.some((repo) => lg.branches(repo.path).has(a.task.branch) && lg.isAncestor(repo.path, a.task.branch, b.task.branch));
+  const left = [...landings];
+  const order = [];
+  while (left.length > 0) {
+    const next = left.find((b) => !left.some((a) => a !== b && below(a, b) && !below(b, a))) ?? left[0];
+    order.push(next);
+    left.splice(left.indexOf(next), 1);
+  }
+  return order;
+}
+
+/**
  * A phase merged whole in every repository it lands in, children first —
  * `already` where it is merged wherever it lands, or where no driver reads
  * a stack of it and its tasks have landed, as the close reads it, so a
  * rerun reads finished work as done, with every warning bringing the
- * default branch here to it gave — refused before anything moves, for a phase the cut holds, until
+ * default branch here to it gave — each task of it done and not landed
+ * whose pull request the unit's cancel closed opened again first
+ * (`openedAgain`) — refused before anything moves, for a phase the cut holds, until
  * its phase review has passed and its fixes are done (7.2.4, 12.11.3), and
  * for one of the review's fix phases while a task of it is unended. A
  * quick-fix's phase lands its one pull request (`quickFixLand`), refused
@@ -1109,9 +1160,10 @@ function landPhase(cwd, unit, given) {
   }
   const unreviewed = phaseChecks().phaseReviewRefusal(cwd, unit, phase) ?? fixPhaseRefusal(cwd, unit, phase);
   if (unreviewed !== null) throw new Error(`land: ${unreviewed}`);
-  const project = projectOf(cwd, unit);
   const ofPhase = (/** @type {string} */ branch) => (names.taskOfBranch(unit, branch)?.phase ?? names.phaseOfBranch(unit, branch)) === phase;
+  const opening = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
+    const project = openedAgain(opening, driver, (ref) => ref.phase === phase);
     const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, ofPhase)), (ctx) => noted(ctx, driver.mergePhase(ctx, phase)), (ref) => ref.phase === phase);
     const answers = walk(steps, (answer) => (answer.already ? null : `phase ${phase} merged`));
     if (answers.length === 0 && !phaseChecks().landedPhase(cwd, unit, phase)) throw new Error(`land: phase ${phase} of ${unit} has no task opened — open its tasks first`);
@@ -1209,7 +1261,9 @@ function asLanding(act) {
 /**
  * `land finish` past its refusals, which finish's yes makes itself before
  * it lands: a merge into the unit's own branch held in its worktree taken
- * onto it first (unit-branch.cjs, `settlementsTaken`); every phase still
+ * onto it first (unit-branch.cjs, `settlementsTaken`), and each task done
+ * and not landed whose pull request the unit's cancel closed opened again
+ * (`openedAgain`); every phase still
  * standing merged onto the unit's landing branch, then, for a unit with a
  * branch of its own, that branch landed on the default branch
  * (`unitSteps`) — one walk, so a refusal names the phases merged before
@@ -1219,8 +1273,9 @@ function asLanding(act) {
 function finishMerge(cwd, unit, then = 'land again') {
   if (landsAsOne(cwd, unit)) return quickFixLand(cwd, unit, true);
   asLanding(() => settlementsTaken(cwd, unit, { undone: 'nothing landed', then }));
-  const project = projectOf(cwd, unit);
+  const opening = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
+    const project = openedAgain(opening, driver, () => true);
     const walking = walked(project, driver, holdingWork(project, (branch) => names.isUnitBranch(unit, branch)));
     const steps = [...mergeSteps(project, driver, walking, (ctx) => finishing(driver, ctx), () => true), ...unitSteps(project, driver, walking, then)];
     const merged = (/** @type {Answer} */ answer) => (answer.phases ?? []).length > 0;
@@ -1714,65 +1769,83 @@ function quickFixLand(cwd, unit, closes = false) {
 
 /**
  * What a move's or a cancel's close did: whether it closed any pull
- * request, and each the host names, by the repository it was in, as the
- * cancel records them (`closed_by_cancel`); and what settling the landing
- * driver warned of, where it did.
- * @typedef {{closed: boolean, pulls: Record<string, string[]>, warnings?: string[]}} Closed
+ * request, and what settling the landing driver warned of, where it did.
+ * @typedef {{closed: boolean, warnings?: string[]}} Closed
  */
+
+/** Each pull request a close closes, by the repository it was in and the host's own name for it, told as it closes. @typedef {(repo: string, name: string) => void} Told */
 
 /** A close with nothing to close. @returns {Closed} */
-const nothingClosed = () => ({ closed: false, pulls: {} });
+const nothingClosed = () => ({ closed: false });
 
 /**
- * Each repository's closes made in turn, children first, a refusal in a
- * nested one naming it: what they did, together (`Closed`).
- * @param {{ctx: LandingContext, closes: (() => import('./drivers.cjs').PullsClosed)[]}[]} steps
+ * Each repository's closes made in turn, a refusal in a nested one naming
+ * it, each pull request closed told to `told` with its repository as it
+ * closes: whether any closed.
+ * @param {{ctx: LandingContext, closes: ((closed: import('./drivers.cjs').Closing) => import('./drivers.cjs').PullsClosed)[]}[]} steps @param {Told} told
  * @returns {Closed}
  */
-function closedIn(steps) {
-  const done = steps.map(({ ctx, closes }) => ({ repo: ctx.repo, made: closes.map((close) => inRepo(ctx.repo, close)) }));
-  const pulls = done.map(({ repo, made }) => [repo, made.flatMap((answer) => answer.pulls)]).filter(([, named]) => named.length > 0);
-  return { closed: done.some(({ made }) => made.some((answer) => answer.closed)), pulls: Object.fromEntries(pulls) };
+function closedIn(steps, told) {
+  const made = steps.flatMap(({ ctx, closes }) => closes.map((close) => inRepo(ctx.repo, () => close((name) => told(ctx.repo, name)))));
+  return { closed: made.some((answer) => answer.closed) };
 }
 
 /**
  * A quick-fix's pull request closed unmerged in each repository its
  * landing `read` walks, where that read found one open — as its move and
  * its cancel close it (workunit-move.cjs, `cancelClose`) — through the
- * driver the project names, its setting left as it stands.
- * @param {QuickFixLanding} read @returns {Closed}
+ * driver the project names, its setting left as it stands, each told as it
+ * closes where the caller asks (`Told`).
+ * @param {QuickFixLanding} read @param {Told} [told]
+ * @returns {Closed}
  */
-function quickFixClose(read) {
-  return closedIn(read.repos.map((held) => ({ ctx: held.ctx, closes: [() => read.driver.closeQuickFix(held.ctx, held.pull())] })));
+function quickFixClose(read, told = () => {}) {
+  return closedIn(read.repos.map((held) => ({ ctx: held.ctx, closes: [(closed) => read.driver.closeQuickFix(held.ctx, held.pull(), closed)] })), told);
 }
 
 /**
  * The cancel's close (18.3.9): every pull request open on a branch of the
  * unit's closed unmerged, in each repository it touched, the branches left
- * as they stand. A quick-fix's, once its fixes have begun, as its move
- * closes it (`quickFixClose`); any other unit's, in each repository holding
- * a branch of the unit's, walked as every verb walks them, children first,
- * on contexts landing on the default branches — each of its tasks' open
- * there (`closeTasks`) and, where the repository holds the unit's own
- * branch, its own (`closeUnit`) — the landing driver settled where it is
- * not (`withDriver`); nothing, and no host asked, where no repository
- * holds a branch of the unit's.
- * @param {string} cwd @param {string} unit
+ * as they stand, each told to `told` as it closes, so a refusal part way
+ * keeps those it closed — a refusal's way on the cancel run again
+ * (`cancelling`).
+ * @param {string} cwd @param {string} unit @param {Told} told
  * @returns {Closed}
  */
-function cancelClose(cwd, unit) {
+function cancelClose(cwd, unit, told) {
+  try {
+    return cancelling(cwd, unit, told);
+  } catch (err) {
+    if (err instanceof Error) err.message = err.message.replace(/land again/g, 'cancel again');
+    throw err;
+  }
+}
+
+/**
+ * `cancelClose` past its wording: a quick-fix's, once its fixes have
+ * begun, as its move closes it (`quickFixClose`); any other unit's in each
+ * repository holding its work, walked as the land verbs walk them
+ * (`holdingWork`), children first, on contexts landing on the default
+ * branches — each of its tasks' open there (`closeTasks`) and, where the
+ * repository holds the unit's own branch, its own (`closeUnit`) — the
+ * landing driver settled where it is not (`withDriver`); nothing, and no
+ * host asked, where no repository holds its work.
+ * @param {string} cwd @param {string} unit @param {Told} told
+ * @returns {Closed}
+ */
+function cancelling(cwd, unit, told) {
   const manifest = manifestOf(stateRoot(cwd), unit);
-  if (manifest !== null && quickFixBuild(manifest)) return fixesBegun(manifest) ? quickFixClose(quickFixLanding(cwd, unit)) : nothingClosed();
+  if (manifest !== null && quickFixBuild(manifest)) return fixesBegun(manifest) ? quickFixClose(quickFixLanding(cwd, unit), told) : nothingClosed();
   const project = projectOf(cwd, unit, undefined, { onDefault: true, recorded: false });
-  const holds = (/** @type {Repo} */ repo) => [...lg.branches(repo.path).keys()].some((branch) => names.isUnitBranch(unit, branch));
+  const holds = holdingWork(project, (branch) => names.isUnitBranch(unit, branch));
   if (!project.repos.some(holds)) return nothingClosed();
   const own = lg.recordedBranch(cwd, unit);
-  const { closed, pulls, warnings } = withDriver(cwd, (driver) => closedIn(walked(project, driver, holds).map((repo) => {
+  const { closed, warnings } = withDriver(cwd, (driver) => closedIn(walked(project, driver, holds).map((repo) => {
     const ctx = contextOf(project, repo);
     const holdsOwn = own !== null && lg.unitBranchIn(cwd, repo, unit) !== null;
-    return { ctx, closes: [() => driver.closeTasks(ctx), ...(holdsOwn ? [() => driver.closeUnit(ctx, driver.unitPull?.(ctx, own) ?? null)] : [])] };
-  })));
-  return { closed, pulls, ...(warnings === undefined ? {} : { warnings }) };
+    return { ctx, closes: [(closed) => driver.closeTasks(ctx, closed), ...(holdsOwn ? [(/** @type {import('./drivers.cjs').Closing} */ closed) => driver.closeUnit(ctx, driver.unitPull?.(ctx, own) ?? null, closed)] : [])] };
+  }), told));
+  return { closed, ...(warnings === undefined ? {} : { warnings }) };
 }
 
 /**

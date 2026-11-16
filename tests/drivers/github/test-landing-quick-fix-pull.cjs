@@ -69,12 +69,12 @@ describe('a quick-fix\'s one pull request on GitHub (R14)', () => {
     assert.deepStrictEqual([squash('%P'), squash('%B').match(/^Task: .*$/gm), pulls(dir)], [copy, [`Task: ${UNIT}-1-2`], [{ number: 1, state: 'MERGED', base: 'main' }]]);
   });
 
-  it('closed by a move: the one open closed unmerged, named by its number, and closed again, as a yes run again closes it, closing nothing', () => {
+  it('closed by a move: the one open closed unmerged, and closed again, as a yes run again closes it, closing nothing', () => {
     dir = world();
     const closed = () => quickFixClose(quickFixLanding(dir, UNIT));
     const [first, again] = withEnv(as().env, () => [closed(), closed()]);
 
-    assert.deepStrictEqual([first, again, pulls(dir)], [{ closed: true, pulls: { '.': ['1'] } }, { closed: false, pulls: {} }, [{ number: 1, state: 'CLOSED', base: 'main' }]]);
+    assert.deepStrictEqual([first, again, pulls(dir)], [{ closed: true }, { closed: false }, [{ number: 1, state: 'CLOSED', base: 'main' }]]);
   });
 
   it('closed by hand there: a fix\'s done and its close refused in the landing\'s words, each opening on its own verb', () => {

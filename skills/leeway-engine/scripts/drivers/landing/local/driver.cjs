@@ -873,18 +873,18 @@ function openQuickFix(ctx, landing) {
 }
 
 /** What a close answers where it closed nothing. @returns {PullsClosed} */
-const noneClosed = () => ({ closed: false, pulls: [] });
+const noneClosed = () => ({ closed: false });
 
 /**
  * The quick-fix closed for its move or its cancel (the header's), its
  * opening dropped where the read `pull` found it open: whether this call
- * closed it, which no host names.
+ * closed it, which no host names, so nothing is told of it.
  * @param {LandingContext} ctx @param {QuickFixPull} pull @returns {PullsClosed}
  */
 function closeQuickFix(ctx, pull) {
   if (pull.open === null) return noneClosed();
   lg.updateRefs(ctx.root, { drop: [`${quickFixUnder(ctx.unit)}open`] });
-  return { closed: true, pulls: [] };
+  return { closed: true };
 }
 
 /**

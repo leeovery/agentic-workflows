@@ -13,7 +13,8 @@
 // saying so, no question parked, no ref left, and the checkout holding the
 // work as before; and a cancel keeping what the park set aside, its receipt
 // naming the branch its commits stay on and the work with the calls that
-// show it, bring it into the checkout and drop it (R26, 19.5.29). The
+// show it, bring it into the checkout and drop it, and one during the first
+// fix, nothing committed, naming no branch (R26, 19.5.29). The
 // set-aside's own rules: test-engine-quick-fix-checkout.cjs.
 //
 // Layer: git. World: a repository holding the project in its folder `app`,
@@ -60,6 +61,16 @@ const world = fixtureFrom('quick-fix-aside-', (dir) => {
     ok(app, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag --colour`], as);
   });
   asked.id = ledgerHelpers(() => dir).write('ask', PLACE, [], { ...MADE, text: 'Does --color still work?' }).id;
+});
+
+/** A quick-fix whose fix 1.1 is started, nothing of it committed, in a repository of its own. */
+const started = fixtureFrom('quick-fix-aside-started-', (at) => {
+  quickFix(at);
+  asGone((as) => {
+    entered(at, as);
+    createFix(at, 1, FLAG, as);
+    ok(at, ['task', 'start', UNIT, '1.1'], as);
+  });
 });
 
 let dir = ''; // the larger repository
@@ -169,5 +180,12 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
       '',
     ].join('\n'));
     assert.deepStrictEqual([kept === null, at(ASIDE)], [false, kept]);
+  });
+
+  it('a cancel during the first fix, nothing of it committed, names no branch on its receipt: the branch holds no commit of its own', () => {
+    dir = started();
+    ok(dir, ['workunit', 'cancel', UNIT], as());
+
+    assert.strictEqual(sectionOf(output(dir, ['render', 'workunit-receipt', UNIT, '--verb', 'cancel'], as()), 'DISPLAY: confirmation'), '"Typo" marked as cancelled.\n');
   });
 });

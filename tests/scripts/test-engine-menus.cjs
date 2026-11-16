@@ -367,7 +367,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     'r → The roadmap holds what you\'ve shaped but not yet committed to build, by horizon.',
     'e → Verdicts appears while a call you changed waits for your word on what Claude\'s answer would have cost.',
     'v → View lists completed and cancelled work.',
-    'm → Manage reopens, pivots, absorbs, cancels or brings back a piece of work, and changes the project\'s setup, its drivers and the matrix.',
+    'm → Manage pivots, absorbs, cancels or brings back a piece of work, and changes the project\'s setup, its drivers and the matrix.',
     '',
     'Ask → Ask anything about how Leeway works',
   ].join('\n');
@@ -416,9 +416,9 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
       '  · Verdicts appears while a call you changed waits for your word',
       '    on what Claude\'s answer would have cost.',
       '  · View lists completed and cancelled work.',
-      '  · Manage reopens, pivots, absorbs, cancels or brings back a',
-      '    piece of work, and changes the project\'s setup, its drivers',
-      '    and the matrix.',
+      '  · Manage pivots, absorbs, cancels or brings back a piece of',
+      '    work, and changes the project\'s setup, its drivers and the',
+      '    matrix.',
       'Ask about anything else, or walk through the whole thing.',
     ], [
       '· · · · · · · · · · · ·',

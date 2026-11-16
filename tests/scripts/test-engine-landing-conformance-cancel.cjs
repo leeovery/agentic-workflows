@@ -5,13 +5,17 @@
 // leeway-engine/scripts/domain/landing.cjs, `cancelClose`, through
 // workunit-lifecycle.cjs): the contract every landing driver meets, run
 // through the engine's verbs against each shipped driver in turn. A
-// feature's cancel closes each of its tasks' pull requests open on a host
-// and keeps every branch under its own name; reactivated, its branches are
-// there, its pull requests stay closed, and its next landing opens what it
-// needs anew and merges the phase. A unit's cancel with a branch of its
+// feature's cancel, its confirm saying so before the yes, closes each of
+// its tasks' pull requests open on a host and keeps every branch under its
+// own name; reactivated, its branches are
+// there, its pull requests stay closed, and its next landing — `land
+// phase`, or finish's — opens each task done again, the one below in its
+// stack first, and merges them all. A unit's cancel with a branch of its
 // own closes the unit's own pull request, the branch kept here and on the
-// host. A quick-fix's cancel: test-engine-landing-conformance-quick-fix-
-// nested-cancel.cjs. A driver's side (tests/drivers/{name}/landing.cjs)
+// host; cancelled mid-build, before its pull request opens, it closes
+// nothing of its own. A quick-fix's cancel: test-engine-landing-
+// conformance-quick-fix-nested-cancel.cjs; across nested clones, and what
+// the host records: tests/drivers/github/test-landing-cancel*.cjs. A driver's side (tests/drivers/{name}/landing.cjs)
 // readies the world and reads what is open on a host; this file names no
 // driver and no tool. Conformance layer: the landing world
 // (landing-world.cjs), and the unit with its own branch, phase 1 landed on
@@ -27,12 +31,24 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { git, tip, fixtureFrom, cleanupFixture } = harness;
-const { UNIT, TASKS, openArgs, own, mergeBack, buildLanding, unitBranchLanded, reviewReady } = require('./landing-world.cjs');
+const { git, tip, fixtureFrom, cleanupFixture, statePath } = harness;
+const { UNIT, TASKS, TRACKER, openArgs, own, mergeBack, buildLanding, unitBranchLanded, reviewReady, finishReady } = require('./landing-world.cjs');
+const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { card, total } = TASKS;
 const OWN = `feat/${UNIT}`;
+
+/** Each of `tasks` done in the tracker, as its build ends it, the state committed. @param {string} dir @param {{shown: string}[]} tasks */
+function done(dir, tasks) {
+  for (const { shown } of tasks) {
+    const ref = parseShownTask(UNIT, shown);
+    TRACKER.start(statePath(dir), ref);
+    TRACKER.done(statePath(dir), ref);
+  }
+  git(statePath(dir), ['add', '-A']);
+  git(statePath(dir), ['commit', '-q', '-m', 'the tasks done']);
+}
 
 /** Every branch of the repository at `dir` past the state's, at its tip. @param {string} dir */
 const branchesAt = (dir) => git(dir, ['for-each-ref', '--format=%(refname:short) %(objectname)', 'refs/heads/']).split('\n').filter((line) => line !== '' && !line.startsWith('leeway-state '));
@@ -64,25 +80,43 @@ for (const { name } of listDrivers('landing')) {
     /** Whether the driver lands through a host. @param {string} at */
     const hosted = (at) => side.on(at) !== at;
 
-    it('18.S75: a feature\'s cancel closes its two tasks\' pull requests and keeps their branches under their own names; reactivated, its branches are found, its pull requests stay closed, and its next landing opens them anew and merges the phase', () => {
-      const at = project(world);
+    /** Phase 1's two tasks opened as a stack, 1.1 on 1.2, both done: what the cancel finds. @param {string} at */
+    const stacked = (at) => {
       ok(at, openArgs(total));
       mergeBack(at, card.branch, total.branch);
       ok(at, openArgs(card));
+      done(at, [card, total]);
+    };
+
+    it('18.S75: a feature\'s cancel closes its two tasks\' pull requests and keeps their branches under their own names; reactivated, its branches are found, its pull requests stay closed, and `land phase` opens each again, the one below in the stack first, and merges them both', () => {
+      const at = project(world);
+      stacked(at);
       const open = side.tasksOpen(at);
       const branches = branchesAt(at);
+      const gate = harness.output(at, ['render', 'cancel-gate', UNIT], { env: side.env });
 
       const cancelled = ok(at, ['workunit', 'cancel', UNIT]);
       const afterCancel = { open: side.tasksOpen(at), branches: branchesAt(at) };
       ok(at, ['workunit', 'reactivate', UNIT]);
       const afterReactivate = { open: side.tasksOpen(at), branches: branchesAt(at) };
-      const reopened = [total, card].map((task) => ok(at, openArgs(task)).already === true);
+      const merged = own(ok(at, ['land', 'phase', UNIT, '1'])).merged;
 
       assert.deepStrictEqual([open, cancelled.pull_requests_closed, cancelled.checkout], [hosted(at) ? ['pay-1-1', 'pay-1-2'] : [], hosted(at), undefined]);
+      assert.match(gate, / It closes its open pull requests, keeping each branch for a reactivate to carry on from\./);
       assert.deepStrictEqual(afterCancel, { open: [], branches });
       assert.deepStrictEqual(afterReactivate, { open: [], branches });
-      assert.deepStrictEqual([reopened, side.tasksOpen(at)], hosted(at) ? [[false, false], ['pay-1-1', 'pay-1-2']] : [[true, true], []]);
-      assert.deepStrictEqual(own(ok(at, ['land', 'phase', UNIT, '1'])).merged, ['1.2', '1.1']);
+      assert.deepStrictEqual([merged, side.landed(at).map(({ task }) => task)], [['1.2', '1.1'], ['pay-1-2', 'pay-1-1']]);
+    });
+
+    it('18.S75: cancelled with its tasks done and open, reactivated, finish\'s landing opens each again and lands them all — nothing lands short of the work done', () => {
+      const at = project(world);
+      stacked(at);
+      finishReady(at);
+      ok(at, ['workunit', 'cancel', UNIT]);
+      ok(at, ['workunit', 'reactivate', UNIT]);
+
+      ok(at, ['land', 'finish', UNIT]);
+
       assert.deepStrictEqual(side.landed(at).map(({ task }) => task), ['pay-1-2', 'pay-1-1']);
     });
 
@@ -96,6 +130,15 @@ for (const { name } of listDrivers('landing')) {
 
       assert.deepStrictEqual([before.pull, cancelled.pull_requests_closed], [!hosted(at), hosted(at)]);
       assert.deepStrictEqual({ pull: side.unitPullOpen(at), here: tip(at, OWN), there: tip(side.on(at), OWN) }, { pull: null, here: before.here, there: before.there });
+    });
+
+    it('a unit with a branch of its own cancelled mid-build, before its own pull request opens, closes nothing of its own and keeps the branch', () => {
+      const at = project(ownWorld);
+      const before = { here: tip(at, OWN), there: tip(side.on(at), OWN) };
+
+      const cancelled = ok(at, ['workunit', 'cancel', UNIT]);
+
+      assert.deepStrictEqual([cancelled.pull_requests_closed, tip(at, OWN), tip(side.on(at), OWN)], [false, before.here, before.there]);
     });
   });
 }

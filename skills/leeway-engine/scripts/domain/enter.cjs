@@ -259,7 +259,7 @@ function carriedBefore({ cwd, unit, topic = '', notes }) {
     ...earlier(`${EARLIER.build}/log.md`).map(as(CARRIED.buildLog)),
     ...earlier(EARLIER.summary).map(as(CARRIED.summary)),
     ...rounds.map(as(CARRIED.reviewRound)),
-    ...keptBranches(cwd, unit, 'move').map(as(CARRIED.branch)),
+    ...keptBranches(cwd, unit).map(as(CARRIED.branch)),
     ...keptAside(cwd, unit).map(keptWords).map(as(CARRIED.work)),
   ];
 }

@@ -24,7 +24,12 @@ const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
-const { keptBranches } = require('./fix-branch.cjs');
+const { cancelKept } = require('./fix-branch.cjs');
+const { quickFixBranch, isUnitBranch } = require('./landing-names.cjs');
+const { branches } = require('./landing-git.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { lastClosed } = require('./cancel-closed.cjs');
 const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { logClaims } = require('./inbox.cjs');
@@ -51,7 +56,7 @@ const {
   computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan, unitOpenRecords,
   postponePlan, postponeTarget, postponedItem, openExperiments,
-  topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild,
+  topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild, fixesBegun,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
@@ -449,11 +454,29 @@ function epicUnitCancel(cwd, dotpath) {
 }
 
 /**
+ * What a unit's cancel does to its code, as its gate says it before the yes
+ * (18.3.9): a quick-fix's, once its fixes have begun, its pull requests
+ * closed, its branch kept and each checkout taken off it, its work not
+ * committed set aside; any other unit's holding a branch of its own, its
+ * pull requests closed and its branches kept; null where it touches none.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
+ * @returns {string|null}
+ */
+function cancelCodeLine(cwd, unit, manifest) {
+  if (quickFixBuild(manifest)) {
+    return fixesBegun(manifest) ? `It closes its open pull requests and keeps ${quickFixBranch(unit)}, taking each checkout off it, any work not committed set aside and kept.` : null;
+  }
+  const holds = projectRepos(codeRoot(cwd)).some((repo) => [...branches(repo.path).keys()].some((branch) => isUnitBranch(unit, branch)));
+  return holds ? 'It closes its open pull requests, keeping each branch for a reactivate to carry on from.' : null;
+}
+
+/**
  * A unit by its bare name under the cancel gate: the whole unit called off
  * where it stands — a single-topic unit's its one topic, an epic's asked for
  * in a session of the unit, its spec, build or review (18.4.20), or through
- * manage (18.3.4) — each open experiment record of its ending abandoned
- * (18.4.22), an epic's named by their topics.
+ * manage (18.3.4) — what it does to the unit's code said (`cancelCodeLine`),
+ * each open experiment record of its ending abandoned (18.4.22), an epic's
+ * named by their topics.
  * @param {string} cwd @param {string} dotpath
  * @returns {{statement: string, cancel: string[]}}
  */
@@ -463,6 +486,8 @@ function workUnitCancel(cwd, dotpath) {
     throw new Error(`render cancel-gate: "${workUnit}" is ${manifest.status} — only work in progress is cancelled`);
   }
   const parts = [`Cancelling **${titlecase(workUnit)}** calls off the whole ${typeLabel.toLowerCase()} — it stops where it stands, and can be reactivated later.`];
+  const code = cancelCodeLine(cwd, workUnit, manifest);
+  if (code !== null) parts.push(code);
   const open = unitOpenRecords(manifest);
   const epic = manifest.work_type === 'epic';
   if (open.length > 0) parts.push(abandonedLine(open.map(({ topic, ids }) => ({ name: epic ? topicTitle(manifest, topic) : null, experiments: openExperiments(ids) }))));
@@ -614,7 +639,8 @@ function workunitReceiptSurface(cwd, args) {
   return workunitReceipt(verb, workUnit, {
     warn: args.warn === '1',
     inbox,
-    branches: verb === 'cancel' && quickFixBuild(manifest) ? keptBranches(cwd, workUnit, 'cancel') : [],
+    closed: verb === 'cancel' ? lastClosed(manifest) : {},
+    branches: verb === 'cancel' && quickFixBuild(manifest) ? cancelKept(cwd, workUnit) : [],
     kept: verb === 'cancel' ? keptAside(cwd, workUnit).map(keptWords) : [],
     stayed,
   });

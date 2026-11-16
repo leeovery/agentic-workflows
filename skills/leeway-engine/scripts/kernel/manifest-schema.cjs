@@ -188,12 +188,12 @@ const LANDINGS = 'landings';
 const LANDING_RECORD_FIELDS = Object.freeze(['commit', 'tip', 'first', 'by', 'at']);
 const LANDING_BY = Object.freeze(['engine', 'read']);
 
-// The pull requests a unit's cancel closed (18.3.9, landing.cjs): the
-// unit's manifest holds them as `closed_by_cancel`, by the repository's
-// folder in the project, `.` for its own, each list the host's own names
-// for them — written by the engine alone and kept for good, so every
-// landing after a reactivate reads them as none and opens what it needs
-// anew.
+// The pull requests a unit's cancels closed (18.3.9, cancel-closed.cjs):
+// the unit's manifest holds them as `closed_by_cancel`, an entry for each
+// cancel, the latest last, each the host's own names for them by the
+// repository's folder in the project, `.` for its own — written by the
+// engine alone and kept for good, so every landing after a reactivate
+// reads them as none while they stay closed and opens what it needs anew.
 const CLOSED_BY_CANCEL = 'closed_by_cancel';
 
 // Phase-item statuses that end a topic's life in its phase — excluded from

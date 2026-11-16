@@ -8,6 +8,9 @@
 // taken back as its move takes it (fix-leave.cjs), and every pull request
 // open on the unit's branches closed, the branches kept under their own
 // names, so a reactivate finds them there (landing.cjs, `cancelClose`).
+// A completed unit, of any type, is never reopened: it stays finished, and
+// a later change to it is new work (`finishedRefusal`) — reactivate takes a
+// cancelled unit alone, and cancel and pivot refuse a completed one.
 //
 // The status vocabulary comes from the shared schema
 // (kernel/manifest-schema.cjs) — the same table the manifest
@@ -43,7 +46,12 @@ const { abandonExperiments } = require('./transitions.cjs');
 const { cancelClose } = require('./landing.cjs');
 const { leaveCheckout } = require('./fix-leave.cjs');
 
-const { VALID_WORK_UNIT_STATUSES, CLOSED_BY_CANCEL } = require('../kernel/manifest-schema.cjs');
+const { recordClosed, nextCancel } = require('./cancel-closed.cjs');
+
+const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
+
+/** The refusal of a lifecycle verb acting on a completed unit (the header's). @param {string} workUnit */
+const finishedRefusal = (workUnit) => `work unit "${workUnit}" is completed — a finished unit stays finished; a later change is new work`;
 
 // Refuse any status write the field surface would refuse — the two enforcers
 // share one schema table.
@@ -138,25 +146,33 @@ function abandonUnitExperiments(manifest) {
  * aside and each checkout taken back (fix-leave.cjs); then every pull
  * request open on the unit's branches closed, in each repository it
  * touched, the branches kept under their own names (`cancelClose`,
- * landing.cjs). Each step is one a cancel run again finds done.
+ * landing.cjs), each the host names recorded on the loaded manifest as it
+ * closes (`recordClosed`, cancel-closed.cjs). Each step is one a cancel run
+ * again finds done; a refusal part way keeps the record of what closed
+ * before it, saved and committed as the refusal goes on (`keepClosed`).
  * @param {string} cwd @param {Record<string, any>} manifest
  */
 function leaveCode(cwd, manifest) {
   const checkout = quickFixBuild(manifest) && fixesBegun(manifest) ? leaveCheckout(cwd, manifest, 'workunit cancel', 'cancel') : null;
-  return { checkout, ...cancelClose(cwd, manifest.name) };
+  let told = 0;
+  try {
+    return {
+      checkout,
+      ...cancelClose(cwd, manifest.name, (repo, name) => {
+        recordClosed(manifest, repo, name);
+        told += 1;
+      }),
+    };
+  } catch (err) {
+    if (told > 0) keepClosed(cwd, manifest);
+    throw err;
+  }
 }
 
-/**
- * The pull requests a cancel closed recorded on the unit, by repository,
- * beside any an earlier cancel recorded (`closed_by_cancel`). Mutates the
- * loaded manifest.
- * @param {Record<string, any>} manifest @param {Record<string, string[]>} pulls
- */
-function recordClosed(manifest, pulls) {
-  if (Object.keys(pulls).length === 0) return;
-  const held = { ...manifest[CLOSED_BY_CANCEL] };
-  for (const [repo, named] of Object.entries(pulls)) held[repo] = [...new Set([...(held[repo] ?? []), ...named])];
-  manifest[CLOSED_BY_CANCEL] = held;
+/** The record of what a refused cancel closed saved and committed alone, the unit otherwise as it stood. @param {string} cwd @param {Record<string, any>} manifest */
+function keepClosed(cwd, manifest) {
+  saveWorkUnitManifest(cwd, manifest.name, manifest);
+  commitStateTail(cwd, [`${manifest.name}/manifest.json`], `workflow(${manifest.name}): record the pull requests its cancel closed`, []);
 }
 
 /**
@@ -168,8 +184,9 @@ function recordClosed(manifest, pulls) {
  * recorded on it, and each of its topics' waiting mail moved to the inbox
  * as ideas under the same lock (18.4.22, 18.8.20, 10.1.6), remove its
  * knowledge-base chunks (warn-don't-block), commit scoped to the work unit
- * and the ideas. Refuses an already-cancelled unit; a completed unit must go
- * through reactivate first — cancellation is only offered on active work.
+ * and the ideas. Refuses an already-cancelled unit, and a completed one,
+ * which stays finished (`finishedRefusal`) — cancellation is only offered
+ * on active work.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @returns {WorkUnitLifecycleResult}
@@ -181,11 +198,8 @@ function cancelWorkUnit(cwd, workUnit) {
     if (manifest.status === 'cancelled') {
       throw new Error(`work unit "${workUnit}" is already cancelled`);
     }
-    if (manifest.status === 'completed') {
-      throw new Error(`work unit "${workUnit}" is completed — reactivate it first`);
-    }
+    if (manifest.status === 'completed') throw new Error(finishedRefusal(workUnit));
     const code = leaveCode(cwd, manifest);
-    recordClosed(manifest, code.pulls);
     manifest.status = 'cancelled';
     const ended = abandonUnitExperiments(manifest);
     // The cancel-revert hop, whole-unit form: every roadmap item joined to
@@ -235,13 +249,13 @@ function reindexWorkUnit(cwd, workUnit, warnings, opts) {
 }
 
 /**
- * Reactivate a completed or cancelled work unit: `status: in-progress`, a
- * stale `completed_at` cleared, the roadmap items its cancel put back taken
- * back where they still wait (18.8.20), commit scoped to the work unit. A
- * finished pipeline (derived next phase `done`) is no bar. Cancellation removed
- * the unit's knowledge-base chunks, so reactivating from `cancelled`
- * re-indexes them (warn-don't-block); completed units retained their chunks —
- * no knowledge-base action.
+ * Reactivate a cancelled work unit: `status: in-progress`, the roadmap
+ * items its cancel put back taken back where they still wait (18.8.20), the
+ * next cancel's entry of the pull requests closed opened (cancel-closed.cjs),
+ * commit scoped to the work unit. A finished pipeline (derived next phase
+ * `done`) is no bar. A completed unit is refused, nothing written: it stays
+ * finished (`finishedRefusal`). Cancellation removed the unit's
+ * knowledge-base chunks, so reactivating re-indexes them (warn-don't-block).
  * @param {string} cwd project root
  * @param {string} workUnit
  * @returns {WorkUnitLifecycleResult}
@@ -253,12 +267,13 @@ function reactivateWorkUnit(cwd, workUnit) {
     if (loaded.status === 'in-progress') {
       throw new Error(`work unit "${workUnit}" is already in-progress`);
     }
-    if (loaded.status !== 'completed' && loaded.status !== 'cancelled') {
-      throw new Error(`work unit "${workUnit}" is not completed or cancelled (status: ${loaded.status ?? 'none'})`);
+    if (loaded.status === 'completed') throw new Error(finishedRefusal(workUnit));
+    if (loaded.status !== 'cancelled') {
+      throw new Error(`work unit "${workUnit}" is not cancelled (status: ${loaded.status ?? 'none'})`);
     }
     const from = loaded.status;
     loaded.status = 'in-progress';
-    if ('completed_at' in loaded) delete loaded.completed_at;
+    nextCancel(loaded);
     const retaken = retakeJoins(cwd, workUnit, loaded);
 
     saveWorkUnitManifest(cwd, workUnit, loaded);
@@ -267,9 +282,7 @@ function reactivateWorkUnit(cwd, workUnit) {
 
   /** @type {string[]} */
   const warnings = [];
-  if (previous === 'cancelled') {
-    reindexWorkUnit(cwd, workUnit, warnings);
-  }
+  reindexWorkUnit(cwd, workUnit, warnings);
 
   const specs = rejoined.length > 0 ? [workUnit, 'manifest.json'] : workUnit;
   const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): reactivate work unit`, warnings);
@@ -312,6 +325,7 @@ function pivotWorkUnit(cwd, workUnit, topic) {
     if (loaded.work_type !== 'feature') {
       throw new Error(`work unit "${workUnit}" is not a feature (work_type: ${loaded.work_type ?? 'none'}) — only features pivot to epics`);
     }
+    if (loaded.status === 'completed') throw new Error(finishedRefusal(workUnit));
     if (loaded.status !== 'in-progress') {
       throw new Error(`work unit "${workUnit}" is not in-progress (status: ${loaded.status ?? 'none'}) — reactivate it first`);
     }
