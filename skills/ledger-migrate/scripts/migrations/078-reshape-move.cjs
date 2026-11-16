@@ -55,9 +55,14 @@
 // (22.4.3, 7.1.11); each roadmap item's sources follow their files, once
 // each, the roadmap's `imports` index is dropped — its files are the
 // product's assets, which nothing indexes — and its open session is marked
-// as the product's conversation's (`product_session`); and a registry
+// as the product's conversation's (`product_session`); a registry
 // entry naming no unit — `.workflows/` holding no folder of its name with a
-// manifest — is dropped, the verification addendum naming it. The inbox, the
+// manifest — is dropped, the verification addendum naming it; and a
+// registry entry typed otherwise than its unit's manifest types it — a
+// change of type rewrites the manifest alone — takes the manifest's type,
+// each so corrected journaled in the state's cache, `.cache/migrate/
+// move.json`, `{corrections: [{unit, was, found, changed}]}`, which the
+// migration's review lists among its corrections. The inbox, the
 // environment setup file and the checkout's knowledge config are carried as
 // they are, but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), kept
@@ -66,7 +71,8 @@
 // `.product/` (21.5.7): its sessions as they are but for their headings,
 // demoted as a log's documents are, each note out of its kind's folder under
 // its inbox name, and `imports/` as `assets/`, the documents' links to an
-// import rewritten as a unit's are.
+// import rewritten as a unit's are, and an import a session names in words
+// from the product's folder, `imports/{name}`, named `assets/{name}`.
 // `.baseline/`'s docs are reference in `.product/assets/baseline/`, names
 // kept, and so is each interview agenda in `.baseline/.state/`, beside them:
 // it holds the person's answers, which an area under way has woven into no
@@ -111,7 +117,10 @@
 //     research under any other name fed the topics it was split into or
 //     spawned, and goes to a discovery session of its own, numbered after
 //     the unit's last and headed as the migration's, until the cut and the
-//     merges place it (21.5.4). A topic promoted to a
+//     merges place it (21.5.4) — but for a legacy split's copy of the
+//     research it superseded, `{source}-superseded-{at}.md`, its research
+//     item `superseded` (077), which is reference, in `assets/research/`,
+//     its name kept: the split's topics hold what it held. A topic promoted to a
 //     cross-cutting unit took only its discussion there, so its research
 //     joins that unit's log for it, ahead of the discussion;
 //   - each review the old agent store holds of a topic — in
@@ -407,8 +416,18 @@ const EARLIER = 'earlier';
 const READ_OR_REBUILT = ['.cache', '.state', '.knowledge', '.gitignore', '.inbox', '.roadmap', '.baseline', 'manifest.json'];
 // A building unit's spec joined into its `spec.md`, the place a link to it follows.
 const JOINED = Symbol('joined');
+// A legacy split's copy of the research it superseded (077), by its research
+// item's status, and where it is kept as reference.
+const SUPERSEDED = 'superseded';
+const SUPERSEDED_PLACE = 'assets/research';
+// The migration's journal of the corrections the move made, which the
+// migration's review lists (directives.cjs).
+const CORRECTIONS_JOURNAL = path.join(CACHE, 'migrate', 'move.json');
 
 const IMPORT_LINK = /(?:\.\.\/)+imports\/([A-Za-z0-9._-]+)/g;
+// An import as the roadmap's session template named one in words, from the
+// roadmap's folder: never a link's target, which resolves from the session's.
+const SESSION_IMPORT = /(?<![\w./-]|\]\()imports\/([A-Za-z0-9._-]+)/g;
 // An experiment record's folder, a sub-experiment's within it, and the files
 // a record holds beside its data (4.11.15).
 const EXPERIMENT_RECORD = /^E[1-9][0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -521,6 +540,19 @@ function relinked(text, at, unit, imported) {
   return text.replace(IMPORT_LINK, (link, named) => {
     const name = named.replace(/\.+$/, '');
     return imported.has(name) ? `${hops}/${name}${named.slice(name.length)}` : link;
+  });
+}
+
+/**
+ * A product session's imports named in words from the product's folder,
+ * each naming a file `imported` holds, named as the asset it is; any other
+ * name, and a link, as written.
+ * @param {string} text @param {Set<string>} imported
+ */
+function sessionImports(text, imported) {
+  return text.replace(SESSION_IMPORT, (named, file) => {
+    const name = file.replace(/\.+$/, '');
+    return imported.has(name) ? `assets/${name}${file.slice(name.length)}` : named;
   });
 }
 
@@ -827,6 +859,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   accounted: Set<string>,
  *   relocations: Relocations,
  *   topics: Set<string>,
+ *   superseded: Set<string>,
  *   cancelled: Set<string>,
  *   quickFix: boolean,
  *   quickFixDone: boolean,
@@ -922,13 +955,15 @@ function unfoldedReviews(move, topic, log) {
 
 /**
  * Whether a file of the unit's is a document a log takes: research under any
- * name, a discussion or an investigation under a topic's.
+ * name but a split's superseded copy, a discussion or an investigation
+ * under a topic's.
  * @param {UnitMove} move @param {string} rel
  */
 function logDocument(move, rel) {
   const phase = path.posix.dirname(rel);
   if (!LOG_PHASES.includes(phase) || !rel.endsWith('.md')) return false;
-  return phase === 'research' || move.topics.has(path.posix.basename(rel, '.md'));
+  const name = path.posix.basename(rel, '.md');
+  return phase === 'research' ? !move.superseded.has(name) : move.topics.has(name);
 }
 
 /** The number of the migration's discovery session for research no topic holds: the next after the unit's last. @param {UnitMove} move */
@@ -1196,7 +1231,8 @@ function experimentPlace(at, inside, named = EXPERIMENT_RECORD) {
 
 /**
  * Where a file of the unit's goes, unit-relative, by its place today: DROP,
- * or null as `deliveryPlace` says.
+ * or null as `deliveryPlace` says; a split's superseded copy of research
+ * kept as reference.
  * @param {UnitMove} move @param {string} rel
  * @returns {string|symbol|null}
  */
@@ -1205,6 +1241,7 @@ function placeOf(move, rel) {
   const session = SESSION.exec(rel);
   if (session !== null) return `discovery/${session[1]}`;
   if (below.length === 0) return null;
+  if (top === 'research' && below.length === 1 && move.superseded.has(path.posix.basename(below[0], '.md'))) return `${SUPERSEDED_PLACE}/${below[0]}`;
   if (top === '.state') return DROP;
   if (Object.hasOwn(CARRIED, top)) return `${CARRIED[top]}/${below.join('/')}`;
   const [topic, ...inside] = below;
@@ -1263,6 +1300,7 @@ function unitMove(workflows, state, unit, manifest, promoted, relocations) {
     accounted: new Set(['manifest.json']),
     relocations,
     topics,
+    superseded: new Set(Object.entries(itemsOf(manifest, 'research')).filter(([, item]) => isObject(item) && item.status === SUPERSEDED).map(([name]) => name)),
     cancelled: cancelledTopics(reshaped),
     quickFix: isQuickFix(manifest),
     quickFixDone: quickFixDone(manifest),
@@ -1569,8 +1607,9 @@ function productPlan(from) {
 /**
  * The product's files written where `plan` puts them, its documents' links
  * to its imports pointed at the assets (21.5.7), and to the files and
- * folders the move places, its sessions' headings demoted: each file's place
- * recorded in `relocations`.
+ * folders the move places, its sessions' headings demoted and the imports
+ * they name from the product's folder named as its assets: each file's
+ * place recorded in `relocations`.
  * @param {string} from @param {string} state @param {ProductFile[]} plan @param {Relocations} relocations @param {Places} places
  */
 function moveProduct(from, state, plan, relocations, places) {
@@ -1580,7 +1619,7 @@ function moveProduct(from, state, plan, relocations, places) {
     const file = path.join(from, source);
     const to = `${PRODUCT}/${at}`;
     const text = relink ? linked(fs.readFileSync(file, 'utf8'), source, to, PRODUCT, imported, places) : fs.readFileSync(file);
-    writeFile(path.join(state, to), log ? demoted(text.toString()) : text, modeOf(file));
+    writeFile(path.join(state, to), log ? demoted(sessionImports(text.toString(), imported)) : text, modeOf(file));
     relocations.set(source, to);
   }
 }
@@ -1594,14 +1633,16 @@ function moveProduct(from, state, plan, relocations, places) {
  * resolves to its default at first need (22.4.3, 7.1.11); each roadmap
  * item's sources following their files, once each; the roadmap's `imports`
  * index dropped, its files the product's assets (21.5.7); the roadmap's open
- * session the product's conversation's, `product_session`; and each
- * registry entry naming no unit's folder dropped.
- * @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered
+ * session the product's conversation's, `product_session`; each registry
+ * entry naming no unit's folder dropped; and each mistyped entry typed as
+ * its unit's manifest types it.
+ * @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered @param {Mistyped[]} mistyped
  * @returns {Record<string, any>}
  */
-function reshapedProject(project, relocations, unfoldered) {
+function reshapedProject(project, relocations, unfoldered, mistyped) {
   const { baseline, ...out } = structuredClone(project);
   if (isObject(out.work_units)) for (const name of unfoldered) delete out.work_units[name];
+  for (const { name, is } of mistyped) out.work_units[name].work_type = is;
   const answer = isObject(baseline) ? baseline.status : undefined;
   if (BROWNFIELD_ANSWERS.includes(answer)) out.brownfield_offer = answer;
   if (isObject(out.defaults)) {
@@ -1655,17 +1696,58 @@ function keepAsItWas(from, state, kept, relocations) {
 }
 
 /**
+ * A registry entry typed otherwise than its unit's manifest types it — a
+ * change of type rewrote the manifest and left the registry: the unit's
+ * name, the registry's type and the manifest's.
+ * @typedef {{name: string, was: unknown, is: string}} Mistyped
+ */
+
+/**
+ * Each mistyped registry entry, the manifest being the unit's own record of
+ * its type.
+ * @param {Record<string, any>} project @param {Map<string, Record<string, any>>} manifests @returns {Mistyped[]}
+ */
+function mistypedEntries(project, manifests) {
+  return Object.entries(isObject(project.work_units) ? project.work_units : {}).flatMap(([name, entry]) => {
+    const is = manifests.get(name)?.work_type;
+    return isObject(entry) && typeof is === 'string' && entry.work_type !== is ? [{ name, was: entry.work_type, is }] : [];
+  });
+}
+
+/**
+ * The corrections the move made, for the migration's review, each by its
+ * unit as carried: what disagreed, what was found and what was changed; the
+ * journal gone where it made none.
+ * @param {string} state @param {Mistyped[]} mistyped @param {Map<string, string>} renames
+ */
+function journalCorrections(state, mistyped, renames) {
+  const file = path.join(state, CORRECTIONS_JOURNAL);
+  if (mistyped.length === 0) {
+    fs.rmSync(file, { force: true });
+    return;
+  }
+  writeWhole(scratchOf(state), file, jsonText({
+    corrections: mistyped.map(({ name, was, is }) => ({
+      unit: renamedPath(name, renames),
+      was: `The registry typed it ${JSON.stringify(was)}, and its manifest ${JSON.stringify(is)}.`,
+      found: 'Its manifest is its own record of its type, which a change of type rewrote and the registry missed.',
+      changed: `The registry types it ${JSON.stringify(is)}.`,
+    })),
+  }));
+}
+
+/**
  * The project's manifest reshaped, with its id minted first — kept where a
  * move cut short already minted one — and the checklists a directive closed
  * before the move kept.
- * @param {string} state @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered
+ * @param {string} state @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered @param {Mistyped[]} mistyped
  */
-function writeProjectManifest(state, project, relocations, unfoldered) {
+function writeProjectManifest(state, project, relocations, unfoldered, mistyped) {
   const moved = path.join(state, 'manifest.json');
   const { project_id: minted, checklists } = fs.existsSync(moved) ? readManifest(moved) : {};
   writeWhole(scratchOf(state), moved, jsonText({
     project_id: typeof minted === 'string' ? minted : newId(),
-    ...reshapedProject(project, relocations, unfoldered),
+    ...reshapedProject(project, relocations, unfoldered, mistyped),
     ...(isObject(checklists) ? { checklists } : {}),
   }));
 }
@@ -1873,6 +1955,7 @@ function move(projectDir, reportUpdate, reportSkip) {
     .map((name) => [name, readManifest(path.join(from, name, 'manifest.json'))]));
   const renames = caseRenames(manifests.keys());
   const unfoldered = Object.keys(isObject(projectManifest.work_units) ? projectManifest.work_units : {}).filter((name) => !manifests.has(name));
+  const mistyped = mistypedEntries(projectManifest, manifests);
   const promoted = promotions(manifests);
   const moves = [...manifests].map(([name, manifest]) => unitMove(from, state, name, manifest, promoted, relocations));
   const product = productPlan(from);
@@ -1910,8 +1993,9 @@ function move(projectDir, reportUpdate, reportSkip) {
     reportUpdate();
   }
   keepAsItWas(from, state, [...legacy, ...reports], relocations);
-  writeProjectManifest(state, projectManifest, relocations, unfoldered);
+  writeProjectManifest(state, projectManifest, relocations, unfoldered, mistyped);
   renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
+  journalCorrections(state, mistyped, renames);
   const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
   const userNote = moveUserFolder();
   const lintersNote = carryLinters(state);
@@ -1932,7 +2016,7 @@ function move(projectDir, reportUpdate, reportSkip) {
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/ledger/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return move(projectDir, reportUpdate, reportSkip);
   },

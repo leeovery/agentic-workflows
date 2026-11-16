@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine cut <unit> --migrating --file <plan.json>`, `engine task adopt`
-// and `engine task close-plan` (ledger-engine/scripts/domain/cut-migrating.cjs,
+// `engine cut <unit> --migrating --file <plan.json>` and `engine task
+// close-plan` (ledger-engine/scripts/domain/cut-migrating.cjs,
 // task-verbs.cjs; 21.7.1, 21.8.4–21.8.8, 21.5.21, 11.5.8, 11.5.9, P3, E6,
 // E13): a unit whose building started cut by the migration, its plan
 // applied whole — its old plans' phases the cut, the built ones name, goal,
@@ -39,9 +39,7 @@
 // its old plan's order, its task ids from the unit's task map by number and
 // then the letters after them, pigeon's five phases the tracker holds out of
 // that order among them, and a run again after the task map went keeping
-// each name. `task adopt` in the migration
-// alone: a phase of a plan adopted, a unit whose spec the migration joined
-// refused — its cut adopts. `task close-plan` in the migration alone: the
+// each name. `task close-plan` in the migration alone: the
 // plan of a unit that built nothing closed under its root, a bugfix's
 // reproducing task among its tasks, the build's first phase then written
 // free of it (21.8.4); a unit whose spec the migration joined refused, and
@@ -421,7 +419,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.strictEqual(ok(dir, ['checklist', 'show', 'phase-close', 'shop', '5'], { env: SESSION }).items.find(({ key }) => key === 'phase-review-passed').state, 'open');
   });
 
-  it('21.S30: the banked findings notes for later, taken at the next phase\'s end and numbered on by the next note; the staging gone with the old plan\'s items', () => {
+  it('21.S30: the notes for later, taken at the next phase\'s end and numbered on by the next note; the bank and the staging gone with the old plan\'s items', () => {
     cut('shop', shopPlan());
     writeState(dir, '.cache/shop/note.md', 'The receipt wants the shop\'s logo.\n');
 
@@ -432,7 +430,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
 
   it('refuses, nothing written to the tracker or the unit, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up', () => {
     const root = statePath(dir);
-    ok(dir, ['task', 'adopt', 'memo', '1', '--parent', PLANS.memo.phases[0]], { env: SESSION });
+    DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
     cut('tally', tallyPlan());
     for (const [title, after] of [['Refund a charge', 'Export payments'], ['Email a receipt', 'Take a card'], ['Email a receipt', 'Write a memo'], ['Refund a charge', 'Count a day'], ['Charge the card', 'Export payments']]) SIDE.linkBy(root, title, after);
 
@@ -459,10 +457,10 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.strictEqual(fs.existsSync(statePath(dir, 'shop/build/notes.md')), false);
   });
 
-  it('runs only while the migration does, as `task adopt` and `task close-plan` do, writing nothing outside it (E13)', () => {
+  it('runs only while the migration does, as `task close-plan` does, writing nothing outside it (E13)', () => {
     migrationDone();
     const head = git(statePath(dir), ['rev-parse', 'HEAD']);
-    const outside = [cutArgs('shop', shopPlan()), ['task', 'adopt', 'memo', '1', '--parent', PLANS.memo.phases[0]], ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]].map((args) => {
+    const outside = [cutArgs('shop', shopPlan()), ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]].map((args) => {
       const before = harness.treeSnapshot(dir);
       const { error } = refuses(dir, args, { env: SESSION });
       assert.deepStrictEqual(harness.treeSnapshot(dir), before, `engine ${args.join(' ')} wrote on refusing`);
@@ -471,7 +469,6 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
 
     assert.deepStrictEqual(outside, [
       'cut: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done',
-      'a plan from before Ledger is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
       'a plan from before Ledger is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
     ]);
     assert.strictEqual(git(statePath(dir), ['rev-parse', 'HEAD']), head);
@@ -605,26 +602,13 @@ describe('the old plan\'s task order, which the migration\'s cut gives adoption 
   });
 });
 
-describe('a plan from before Ledger taken in through the task verbs (21.8.8, 21.8.4)', () => {
+describe('the plan from before Ledger of a unit that built nothing, closed through `task close-plan` (21.8.4)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('adopts a phase of a plan from before Ledger, again to the same with nothing written, the commit held', () => {
-    const args = ['task', 'adopt', 'memo', '1', '--parent', PLANS.memo.phases[0]];
-    assert.deepStrictEqual(ok(dir, args, { env: SESSION }), { ok: true, phase: 1, parent: PLANS.memo.phases[0], tasks: ['1.1', '1.2'], committed: null, note: HELD });
-    const once = store();
-    assert.deepStrictEqual([ok(dir, args, { env: SESSION }).tasks, store()], [['1.1', '1.2'], once]);
-    assert.deepStrictEqual([tracked('memo', 1), stateUnborn(dir)], [[['1.1 open null', '1.2 open null']], true]);
-  });
-
-  it('refuses, writing nothing, to adopt or close a plan of a unit whose spec the migration joined — its building started, its cut carrying its plans on (21.8.4, 21.8.8)', () => {
-    assert.deepStrictEqual([
-      untouched(['task', 'adopt', 'shop', '4', '--parent', PLANS.pay.phases[1]]),
-      untouched(['task', 'close-plan', 'shop', '--parent', PLANS.pay.root]),
-    ], [
-      'shop\'s building started before the migration — its specs joined — so its plans are adopted by its cut alone: cut shop --migrating --file <plan.json>',
-      'shop\'s building started before the migration — its specs joined — so its plan is not closed — its cut carries it on: cut shop --migrating --file <plan.json>',
-    ]);
+  it('refuses, writing nothing, to close a plan of a unit whose spec the migration joined — its building started, its cut carrying its plans on (21.8.4, 21.8.8)', () => {
+    assert.strictEqual(untouched(['task', 'close-plan', 'shop', '--parent', PLANS.pay.root]),
+      'shop\'s building started before the migration — its specs joined — so its plan is not closed — its cut carries it on: cut shop --migrating --file <plan.json>');
   });
 
   it('closes the plan of a unit that built nothing under its root, each task not ended with the migration\'s reason, the plan none of the build\'s — the build\'s first phase written after it — a run again closing nothing (21.8.4)', () => {

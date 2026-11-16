@@ -32,7 +32,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { ok, git, statePath, layout, writeState, cleanupFixture } = harness;
+const { ok, git, statePath, layout, writeState, readState, cleanupFixture } = harness;
 const { recordsMigration, refusedUntouched } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -213,13 +213,21 @@ describe('the verifier\'s brief (21.10.7)', () => {
 });
 
 describe('the refusals, nothing stored', () => {
-  it('a directive the migrations lack, a place naming no topic, a phase the records carry no topic of, a topic the unit lacks, a topic promoted, and the verifier\'s brief with no record composed, or an empty one', () => {
+  it('a directive the migrations lack, a place naming no topic, a phase the records carry no topic of, a topic the unit lacks, a topic promoted, a place at a phase before the one its item is in, and the verifier\'s brief with no record composed, or an empty one', () => {
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '078-move'], /^there is no directive 078-move$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '../079'], /^"\.\.\/079" is no directive's id/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.licensing', '--directive', '079-records'], /^brief: "fumi\.licensing" names no topic — <work-unit>\.<phase>\.<topic>$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.research.search', '--directive', '079-records'], /^brief: the records carry no topic in "research" — one of discovery, discussion, investigation$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.billing', '--directive', '079-records'], /^brief: fumi has no topic "billing" in discussion$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.auth', '--directive', '079-records'], /^brief: fumi's auth was promoted to platform, which carries its record$/);
+    const manifest = readState(dir, layout.manifest('fumi'));
+    const mapped = JSON.parse(manifest);
+    mapped.phases.discovery.items.licensing = { source: 'discovery', summary: 'Licensing', order: 3 };
+    writeState(dir, layout.manifest('fumi'), JSON.stringify(mapped));
+    for (const role of ['migration-topic', 'migration-verifier']) {
+      refusedUnissued([role, '--topic', 'fumi.discovery.licensing', '--directive', '079-records'], /^brief: fumi's licensing is in discussion, past discovery — its record is carried there: fumi\.discussion\.licensing$/);
+    }
+    writeState(dir, layout.manifest('fumi'), manifest);
     refusedUnissued(['migration-verifier', ...LICENSING], /^fumi's licensing has no record composed — .*licensing\.json is no file$/);
     writeState(dir, composedPath('fumi', 'licensing'), '\n');
     refusedUnissued(['migration-verifier', ...LICENSING], /^fumi's licensing has no record composed — .*licensing\.json is empty$/);

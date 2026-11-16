@@ -18,8 +18,8 @@
 //   `spec.md` takes as the area's block of scenarios after it, `## N-S.
 //   Scenarios for §N`, numbered `N.S1` on in the order given, where the cut
 //   finds them (11.5.9);
-// - `notes`: the notes for later, each its text — the banked findings, and
-//   what a correction leaves for the build to settle (21.8.8);
+// - `notes`: the notes for later, each its text — what the build must
+//   know, and what a correction leaves for the build to settle (21.8.8);
 // - `corrections`: each disagreement between the manifest and the tracker
 //   the directive settled from both and the code, `{was, found, changed}`,
 //   each one line — what disagreed, what was found, what was changed —

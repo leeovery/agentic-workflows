@@ -142,10 +142,13 @@ const refusedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.r
 
 /**
  * A topic of a unit, from its dot-path, live or not, as a directive's check
- * carries topics — the records directive's, where no other is given.
- * Refuses, in the words of `said`, the command asking, a path of another
- * shape, a phase the directive carries no topic of, a unit the project
- * lacks, a topic with no item in the phase, and a topic promoted.
+ * carries topics — the records directive's, where no other is given — at
+ * the phase its item is in: the last of the directive's phases holding it,
+ * so an epic's topic past its map is carried at its discussion, never at
+ * discovery. Refuses, in the words of `said`, the command asking, a path of
+ * another shape, a phase the directive carries no topic of, a unit the
+ * project lacks, a topic with no item in the phase, one whose item is in a
+ * later phase, and a topic promoted.
  * @param {string} cwd @param {string} dotpath @param {string} said
  * @param {ReturnType<typeof recordsRules>} [rules] @returns {Place}
  */
@@ -158,6 +161,8 @@ function topicPlace(cwd, dotpath, said, rules = recordsRules()) {
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
   if (!rules.holds(manifest, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
+  const at = [...rules.phases].reverse().find((held) => rules.holds(manifest, held, topic));
+  if (at !== phase) throw new Error(`${said}: ${unit}'s ${topic} is in ${at}, past ${phase} — its record is carried there: ${unit}.${at}.${topic}`);
   if (!rules.topicsOf(manifest).includes(topic)) {
     throw new Error(`${said}: ${unit}'s ${topic} was promoted to ${manifest.phases.discussion.items[topic].promoted_to}, which carries its record`);
   }

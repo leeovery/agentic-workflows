@@ -191,7 +191,7 @@ function cutAndMergesProject(dir) {
     '.workflows/shop/research/exploration.md': EXPLORATION,
     '.workflows/shop/specification/cart/specification.md': '# Specification: Cart\n\n## Adding\n\nOne tap.\n\n## Saving\n\nKept a week.\n',
     '.workflows/shop/specification/pay/specification.md': '# Specification: Pay\n\n## Cards\n\nVisa and more.\n\n## Refunds\n\nWhole or part.\n',
-    '.workflows/shop/planning/pay/planning.md': '# Plan: Pay\n\n## Phases\n\n### Phase 1: Cards\n\nCards taken.\n\n### Phase 2: Charges\n\nCards charged and refunded.\n\n### Phase 3: Export\n\nPayments exported.\n',
+    '.workflows/shop/planning/pay/planning.md': '# Plan: Pay\n\n## Phases\n\n### Phase 1: Taking cards\n\nCards taken.\n\n### Phase 2: Charges\n\nCards charged and refunded.\n\n### Phase 3: Export\n\nPayments exported.\n',
     '.workflows/shop/planning/pay/phase-2-tasks.md': '# Phase 2: Charges\n\n## pay-2-1 | Charge the card\n\n## pay-2-2 | Refund a charge\n',
     '.workflows/memo/manifest.json': jsonText(memo),
     '.workflows/memo/discussion/memo.md': '# Discussion: Memo\n',

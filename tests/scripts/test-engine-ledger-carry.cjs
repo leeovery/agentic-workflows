@@ -206,6 +206,18 @@ describe('the refusals, nothing written', () => {
     ]);
   });
 
+  it('a place at a phase before the one the topic\'s item is in — an epic\'s topic on its map and in discussion, named at discovery — writing nothing', () => {
+    const manifest = readState(dir, layout.manifest('fumi'));
+    const mapped = JSON.parse(manifest);
+    mapped.phases.discovery.items.licensing = { source: 'discovery', summary: 'Licensing', order: 3 };
+    writeState(dir, layout.manifest('fumi'), JSON.stringify(mapped));
+    try {
+      assert.strictEqual(untouched(['ledger', 'carry', 'fumi.discovery.licensing']), 'ledger carry: fumi\'s licensing is in discussion, past discovery — its record is carried there: fumi.discussion.licensing');
+    } finally {
+      writeState(dir, layout.manifest('fumi'), manifest);
+    }
+  });
+
   it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind, a question answered twice, a map item of a finding, a thread of a decision, either of another shape, a point to raise that is no open question or marked otherwise, and content its write refuses', () => {
     const refused = (/** @type {unknown[]} */ entries) => mend({ entries });
     const { assets: _, ...decision } = DECISION;

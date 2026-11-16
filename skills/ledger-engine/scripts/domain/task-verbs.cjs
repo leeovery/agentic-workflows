@@ -26,15 +26,13 @@
 // the person's, its text from a file (13.11.3), the task marked changed after
 // the last round reported of its review, which its pair reads again
 // (round-report.cjs); a task not yet ended takes a new type, as the migration
-// gives one (21.5.21). While the migration runs, and only then, a plan the
-// tracker held from before Ledger is adopted, its parent named by the
-// tracker's own id: a phase of it and its tasks take the engine's names,
-// nothing else of them changed (21.8.8); and the plan of a unit that built
-// nothing is closed under its root (`task close-plan`, 21.8.4,
-// drivers.cjs), the driver refusing a plan holding a task done: the tracker
-// wins (21.8.8); the close marked in the state's cache, so the cut and the
-// merges' check tells it done (`closedMarkPath`, 080). Neither verb takes a
-// unit whose spec the migration joined: its cut adopts its plans. The
+// gives one (21.5.21). While the migration runs, and only then, the plan
+// the tracker held from before Ledger of a unit that built nothing is
+// closed under its root (`task close-plan`, 21.8.4, drivers.cjs), the
+// driver refusing a plan holding a task done: the tracker wins (21.8.8);
+// the close marked in the state's cache, so the cut and the merges' check
+// tells it done (080). It never takes a unit whose spec the migration
+// joined: its cut carries its plans on. The
 // migration's cut runs its tracker steps here too (`migratedTracker`,
 // cut-migrating.cjs): the phases it names the parents of read as their
 // adoption would leave them, each task a correction of the directive's ends
@@ -529,21 +527,6 @@ function refuseJoined(cwd, unit, what) {
 }
 
 /**
- * `task adopt`: a phase of a plan the tracker held from before Ledger given
- * the engine's names (21.8.8), its parent named by the tracker's own id,
- * only while the migration runs (E13), and never for a unit whose spec it
- * joined, whose cut adopts its plans.
- * @param {string} cwd @param {string} unit @param {string} given @param {string} parent
- */
-function adoptPhase(cwd, unit, given, parent) {
-  const phase = parsePhase(given);
-  refuseUnlessMigrating(cwd);
-  requireUnit(cwd, unit);
-  refuseJoined(cwd, unit, 'its plans are adopted by its cut alone');
-  return withTracker(cwd, unit, `adopt phase ${phase}`, (driver, root) => ({ phase, parent, tasks: driver.adopt(root, unit, phase, parent).map(shownTask) }));
-}
-
-/**
  * `task close-plan`: the plan the tracker held from before Ledger of a unit
  * that built nothing closed under its root (21.8.4), named by the tracker's
  * own id, only while the migration runs (E13) — refused for a unit whose
@@ -702,7 +685,7 @@ function migratedTracker(cwd, unit, phases, type, topics, corrections = []) {
  * adoption would leave them, writing nothing to the tracker — what the
  * migration's per-unit agent's brief draws (brief-records.cjs).
  * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases
- * @returns {{phase: number, plan: string|null, tasks: TaskDetail[]}[]}
+ * @returns {{phase: number, plan: string|null, title: string, tasks: TaskDetail[]}[]}
  */
 function adoptionRead(cwd, unit, phases) {
   return withTracker(cwd, unit, null, (driver, root) => ({ phases: driver.adoption(root, unit, phases) })).phases;
@@ -1351,7 +1334,6 @@ const TASK_VERBS = Object.freeze({
   create: { usage: '<unit> <N> --file <path>', arity: 2, flags: ['file'], run: (cwd, [unit, phase], file) => createTask(cwd, unit, phase, file) },
   add: { usage: '<unit> <task> --file <path> --by <orchestrator|person>', arity: 2, flags: ['file', 'by'], run: (cwd, [unit, task], file, by) => addToTask(cwd, unit, task, file, by) },
   type: { usage: '<unit> <task> <type>', arity: 3, run: (cwd, [unit, task, type]) => typeTask(cwd, unit, task, type) },
-  adopt: { usage: '<unit> <N> --parent <tracker-id>', arity: 2, flags: ['parent'], run: (cwd, [unit, phase], parent) => adoptPhase(cwd, unit, phase, parent) },
   'close-plan': { usage: '<unit> --parent <tracker-id>', arity: 1, flags: ['parent'], run: (cwd, [unit], parent) => closePlan(cwd, unit, parent) },
   link: { usage: '<unit> <task> --after <task>', arity: 2, flags: ['after'], run: (cwd, [unit, task], after) => linkTask(cwd, unit, task, after) },
   ready: { usage: '<unit> [<N>]', arity: 1, optional: 1, run: (cwd, [unit, phase]) => readyTasks(cwd, unit, phase) },
@@ -1383,4 +1365,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, closedMarkPath, adoptionRead, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, adoptionRead, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };

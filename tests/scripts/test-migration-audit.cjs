@@ -225,6 +225,16 @@ describe('each check refuses a world made to fail it', () => {
     ]);
   });
 
+  it('files-placed: a topic\'s old document a released migration took part of into the topic\'s mail — 054\'s triage, by way of 071\'s mailbox, as codeintel\'s cost economics — placed where its log and its mail together hold every line; its lines in another topic\'s mail placed nowhere', () => {
+    const old = structuredClone(world.old);
+    appendOld(old, 'memo/discussion/memo.md', 'Claude subscription vs metered API billing.');
+    appendOld(old, 'gateway/discussion/errors.md', 'Errors carry a code.');
+    fs.mkdirSync(statePath(world.dir, layout.mailbox('memo', 'memo')), { recursive: true });
+    fs.writeFileSync(statePath(world.dir, layout.mailbox('memo', 'memo', '001-triage.md')), '# Triage\n\nClaude subscription vs metered API billing.\n\nErrors carry a code.\n');
+
+    assert.deepStrictEqual(faults(old), ['files-placed: .workflows/gateway/discussion/errors.md is neither placed nor kept as legacy']);
+  });
+
   it('names-resolve: a link the migration left naming nothing where it was live, the same words dead in another old document excusing it nowhere else', () => {
     const old = structuredClone(world.old);
     appendOld(old, 'memo/discussion/memo.md', `See the ${OLD_RFC}.`);

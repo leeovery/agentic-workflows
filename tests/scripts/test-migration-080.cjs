@@ -136,12 +136,12 @@ function cutBy(plan) {
   return run(['cut', 'shop', '--migrating', '--file', statePath(dir, STAGING, 'plan.json')]);
 }
 
-/** The research placed on `topics`, appended to each log, and the placement written. @param {string[]} topics */
-function placed(topics) {
+/** The research placed on `topics`, `section` appended to each log, and the placement written. @param {string[]} topics @param {string} [section] */
+function placed(topics, section = PLACED_SECTION) {
   for (const topic of topics) {
     const log = statePath(dir, layout.topic('shop', topic, 'log.md'));
     fs.mkdirSync(path.dirname(log), { recursive: true });
-    fs.appendFileSync(log, `\n${PLACED_SECTION}`);
+    fs.appendFileSync(log, `\n${section}`);
   }
   writeState(dir, `${STAGING}/placed.json`, JSON.stringify({ 'session-001.md': { exploration: topics } }));
 }
@@ -217,11 +217,23 @@ describe('research that fed several topics, placed where it bears (21.7.2)', () 
       'its placement names session-009.md, which is no discovery session of the migration\'s',
       'its placement names ghosts in session-001.md, which holds no such research',
       'session-001.md\'s exploration: reviews\'s log holds "## Research: exploration, from discovery session 001" 2 times — the placed research goes under it once',
-      'session-001.md\'s exploration: gifts\'s log holds "## Research: exploration, from discovery session 001" without the research beneath it as the session has it',
+      'session-001.md\'s exploration: gifts\'s log holds "## Research: exploration, from discovery session 001" without the research beneath it as the session has it, each link rebased to the log\'s folder',
       'session-001.md\'s exploration: cart\'s log holds "## Research: exploration, from discovery session 001" nowhere — the placed research goes under it once',
     ]);
     writeState(dir, `${STAGING}/placed.json`, JSON.stringify({ 'session-001.md': {} }));
     assert.deepStrictEqual(lacks('shop/research'), ['session-001.md\'s research exploration is placed nowhere — name the topics it bears on, or none to leave it epic-wide']);
+  });
+
+  it('a section\'s relative links rebased to the log\'s folder: a link to another topic\'s log, placed as the session words it, names nothing from the log and is refused; rebased, it names that log and is done', () => {
+    const session = layout.session('shop', '001');
+    const linked = (/** @type {string} */ text, /** @type {string} */ target) => text.replace('Wrapped at the till.', `Wrapped at the till, as [the cart](${target}) holds it.`);
+    writeState(dir, session, linked(readState(dir, session), '../topics/cart/log.md'));
+    placed(['reviews'], linked(PLACED_SECTION, '../topics/cart/log.md'));
+    assert.deepStrictEqual(lacks('shop/research'), ['session-001.md\'s exploration: reviews\'s log holds "## Research: exploration, from discovery session 001" without the research beneath it as the session has it, each link rebased to the log\'s folder']);
+
+    writeState(dir, layout.topic('shop', 'reviews', 'log.md'), '');
+    placed(['reviews'], linked(PLACED_SECTION, '../cart/log.md'));
+    assert.deepStrictEqual([lacks('shop/research'), fs.existsSync(statePath(dir, layout.topic('shop', 'reviews', '../cart/log.md')))], [null, true]);
   });
 
   it('a topic a split took on to another epic is read there', () => {
@@ -305,13 +317,15 @@ describe('the mixed unit\'s question (21.8.9, 21.8.10)', () => {
 });
 
 describe('the correcting step: where the manifest and the tracker disagree', () => {
-  it('a correction ends the task the tracker held open, read as ended before the cut checks the phase built; the cut\'s mark keeps it, and the migration\'s review lists it by its unit', () => {
+  it('a correction ends the task the tracker held open, read as ended before the cut checks the phase built; the cut\'s mark keeps it, and the migration\'s review lists it by its unit, after the corrections the move journaled of that unit and of the units before it', () => {
     const res = cutBy(shopPlan());
+    const retyped = (/** @type {string} */ unit) => ({ unit, was: `The registry typed ${unit} "feature", and its manifest "epic".`, found: 'Its manifest is its own record of its type.', changed: 'The registry types it "epic".' });
+    writeState(dir, layout.cache('migrate', 'move.json'), JSON.stringify({ corrections: [retyped('shop'), retyped('memo')] }));
 
     assert.deepStrictEqual([res.corrections, res.ended, DRIVER.show(statePath(dir), { unit: 'shop', phase: 4, n: 2 })?.status], [1, ['4.2'], 'done']);
     assert.deepStrictEqual(JSON.parse(readState(dir, layout.cache('migrate', 'cut', 'shop.json'))).corrections, [REFUND_CORRECTED]);
     FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
-    assert.deepStrictEqual(run(['migrate', 'review']).reshape.corrections, [{ unit: 'shop', ...REFUND_CORRECTED }]);
+    assert.deepStrictEqual(run(['migrate', 'review']).reshape.corrections, [retyped('memo'), retyped('shop'), { unit: 'shop', ...REFUND_CORRECTED }]);
   });
 
   it('a task closed where the code shows its work is not wanted, what was found its reason; a correction ending nothing, or a task the tracker holds ended, changes nothing in the tracker', () => {
@@ -449,7 +463,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     ]);
   });
 
-  it('joins the pieces into the plan the cut takes — the phases the join writes, each naming its tracker parent, each phase\'s scenarios numbered on in its area — the person\'s answers kept, its path from the project\'s folder; the cut applies it', () => {
+  it('joins the pieces into the plan the cut takes — the phases the join writes, each named as its plan heads it, or as the tracker titles its parent where its plan heads it with none, and naming that parent (21.8.6); each phase\'s scenarios numbered on in its area — the person\'s answers kept, its path from the project\'s folder; the cut applies it', () => {
     stage({ answers: LEFT });
     compose(4, CHARGES);
     compose(5, exported());
@@ -458,9 +472,9 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     assert.deepStrictEqual(joined, { ok: true, unit: 'shop', plan: '.ledger/.cache/migrate/cut-and-merges/shop/plan.json', phases: 5, built: 4, scenarios: 1, corrections: 1 });
     assert.deepStrictEqual(JSON.parse(readState(dir, `${STAGING}/plan.json`)), {
       phases: [
-        { name: 'Cart, phase 1', goal: 'Phase 1 of the cart plan, built before the migration.', sections: ['1'], built: true, tracker: PLANS.cart.phases[0] },
-        { name: 'Cart, phase 2', goal: 'Phase 2 of the cart plan, built before the migration.', sections: ['1'], built: true, tracker: PLANS.cart.phases[1] },
-        { name: 'Pay, phase 1', goal: 'Phase 1 of the pay plan, built before the migration.', sections: ['2'], built: true, tracker: PLANS.pay.phases[0] },
+        { name: 'The cart', goal: 'Phase 1 of the cart plan, built before the migration.', sections: ['1'], built: true, tracker: PLANS.cart.phases[0] },
+        { name: 'Saving', goal: 'Phase 2 of the cart plan, built before the migration.', sections: ['1'], built: true, tracker: PLANS.cart.phases[1] },
+        { name: 'Taking cards', goal: 'Phase 1 of the pay plan, built before the migration.', sections: ['2'], built: true, tracker: PLANS.pay.phases[0] },
         { name: 'Charges', goal: 'Cards charged and refunded.', sections: ['2'], built: true, tracker: PLANS.pay.phases[1] },
         { name: 'Export', goal: 'Payments exported.', sections: ['2'], scenarios: ['2.S1'], relies_on: [4], tracker: PLANS.pay.phases[2] },
       ],

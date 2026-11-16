@@ -36,8 +36,9 @@
 //     the topics each of its sections bears on — none, to leave it epic-wide
 //     — and each topic's log holds the section once, under
 //     `## Research: {source}, from discovery session {NNN}`, as the session
-//     has it (21.7.2). A topic a split took on to another epic is read
-//     there.
+//     has it but for each relative link, rebased from the session's folder
+//     to the log's (21.7.2, markdown-links.cjs). A topic a split took on to
+//     another epic is read there.
 // What the step stages for a unit is in `.cache/migrate/cut-and-merges/
 // {unit}/`: its plan, `plan.json`, the person's answers in it from the
 // first, and the verifier's findings on it.
@@ -47,9 +48,9 @@
 // the cut reads them (`unitSourcesOf`), from which the engine lays its cut
 // out, phase by phase, for the agents and the join (cut-merges.cjs) — the
 // joined spec's areas, each old plan's files, tracker root and phases, each
-// phase's parent and its tasks in the plan's own order with the manifest's
-// credit of each, the dependencies between the old plans, the folder kept
-// as legacy and the unit's staging.
+// phase's name as its plan heads it, its parent and its tasks in the plan's
+// own order with the manifest's credit of each, the dependencies between
+// the old plans, the folder kept as legacy and the unit's staging.
 // It reads and changes nothing, and calls no model.
 //
 // Known edges: a migration session a person edited until the move's line
@@ -68,6 +69,14 @@ const CLOSED_MARKS = '.cache/migrate/closed';
 const PRODUCT_ASSETS = '.product/assets';
 const SET_ASIDE = ['cancelled', 'postponed'];
 const OUT_OF_THE_UNIT = ['cancelled', 'postponed', 'promoted'];
+// A markdown file's relative links, as the engine rebases them when a copy
+// lands in another folder (markdown-links.cjs), which no migration loads:
+// an inline link's or a definition's target outside a fenced block, but
+// one naming a scheme, an absolute path or only an anchor.
+const INLINE_LINK = /(\]\(\s*)(<[^>\n]*>|[^)\s]+)/g;
+const LINK_DEFINITION = /^( {0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]*>|\S+)/;
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+const UNTOUCHED = /^(?:[a-z][a-z0-9+.-]*:|\/|#|$)/i;
 // The line the move (078) opens its discovery session for research that fed several topics with.
 const MIGRATION_SESSION = 'Written by the migration: the research below fed several topics, so it is kept here, on the unit\'s discovery log, until the cut and the merges place it where it bears.';
 const SESSION_FILE = /^session-([0-9]{3,})\.md$/;
@@ -76,6 +85,10 @@ const SESSION_FILE = /^session-([0-9]{3,})\.md$/;
 // a level down reading the same way.
 const RESEARCH_HEADING = /^## Research: (.+)$/;
 const RESEARCH_FILE = /^(.+)\.md$/;
+// An old plan's file, and its heading for one of its phases: `Phase {N}`,
+// then the phase's name.
+const OLD_PLAN_FILE = 'planning.md';
+const PHASE_HEADING = /^#{1,6} Phase ([0-9]+)(?![0-9])[ \t]*[:.—–-]?[ \t]*(.*?)[ \t#]*$/;
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -298,8 +311,8 @@ function migrationSessions(project, unit) {
 const placedHeading = (source, number) => `## Research: ${source}, from discovery session ${number}`;
 
 /**
- * The log of a topic named by a placement: the unit's, or, where a split
- * took the topic on, the epic it went to.
+ * The log of a topic named by a placement, from the state's folder: the
+ * unit's, or, where a split took the topic on, the epic it went to.
  * @param {Project} project @param {string} unit @param {string} topic
  */
 function placedLog(project, unit, topic) {
@@ -307,17 +320,62 @@ function placedLog(project, unit, topic) {
     const now = project.now(name);
     return now !== null && (Object.hasOwn(phaseItems(now, 'discovery'), topic) || Object.hasOwn(phaseItems(now, 'discussion'), topic));
   });
-  return holders.length === 0 ? null : path.join(project.stateDir, holders[0], 'topics', topic, 'log.md');
+  return holders.length === 0 ? null : path.posix.join(holders[0], 'topics', topic, 'log.md');
 }
 
-/** What one placed section lacks in a topic's log. @param {Project} project @param {string} unit @param {string} topic @param {string} heading @param {string} text */
+/**
+ * `target`, relative to `fromDir`, made relative to `toDir`, its anchor,
+ * its query and a folder's trailing slash kept.
+ * @param {string} target @param {string} fromDir @param {string} toDir
+ */
+function rebasedTarget(target, fromDir, toDir) {
+  const angled = target.startsWith('<');
+  const bare = angled ? target.slice(1, -1) : target;
+  if (UNTOUCHED.test(bare)) return target;
+  const cut = bare.search(/[?#]/);
+  const named = path.posix.join(fromDir, cut === -1 ? bare : bare.slice(0, cut));
+  const rebased = (path.posix.relative(toDir, named) || '.') + (named.endsWith('/') ? '/' : '') + (cut === -1 ? '' : bare.slice(cut));
+  return angled ? `<${rebased}>` : rebased;
+}
+
+/**
+ * `text`, markdown in `fromDir`, each relative link rebased to resolve from
+ * `toDir`, fenced blocks as they are.
+ * @param {string} text @param {string} fromDir @param {string} toDir
+ */
+function rebasedLinks(text, fromDir, toDir) {
+  /** @type {string|null} */
+  let fence = null;
+  /** @param {string} _ @param {string} lead @param {string} target */
+  const rebase = (_, lead, target) => lead + rebasedTarget(target, fromDir, toDir);
+  return text.split('\n').map((line) => {
+    const opens = FENCE.exec(line)?.[1];
+    if (fence !== null) {
+      if (opens !== undefined && opens[0] === fence[0] && opens.length >= fence.length) fence = null;
+      return line;
+    }
+    if (opens !== undefined) {
+      fence = opens;
+      return line;
+    }
+    return line.replace(LINK_DEFINITION, rebase).replace(INLINE_LINK, rebase);
+  }).join('\n');
+}
+
+/**
+ * What one placed section lacks in a topic's log: the section as the
+ * session holds it, each relative link rebased from the session's folder to
+ * the log's.
+ * @param {Project} project @param {string} unit @param {string} topic @param {string} heading @param {string} text
+ */
 function placedProblem(project, unit, topic, heading, text) {
   const log = placedLog(project, unit, topic);
   if (log === null) return `places research on ${topic}, a topic no unit holds`;
-  const held = readText(log) ?? '';
+  const held = readText(path.join(project.stateDir, log)) ?? '';
   const times = held.split('\n').filter((line) => line.trimEnd() === heading).length;
   if (times !== 1) return `${topic}'s log holds "${heading}" ${times === 0 ? 'nowhere' : `${times} times`} — the placed research goes under it once`;
-  return held.includes(`${heading}\n\n${text}`) ? null : `${topic}'s log holds "${heading}" without the research beneath it as the session has it`;
+  const rebased = rebasedLinks(text, `${unit}/discovery`, path.posix.dirname(log));
+  return held.includes(`${heading}\n\n${rebased}`) ? null : `${topic}'s log holds "${heading}" without the research beneath it as the session has it, each link rebased to the log's folder`;
 }
 
 /**
@@ -366,9 +424,26 @@ function piecesOfUnit(project, unit) {
 }
 
 /**
+ * The name the plan in `folder` gives each of its phases, by its number:
+ * its heading's words after `Phase {N}`, the first heading of the phase
+ * naming it; none where its plan file is not there.
+ * @param {string} folder @returns {Map<number, string>}
+ */
+function phaseTitles(folder) {
+  /** @type {Map<number, string>} */
+  const titles = new Map();
+  for (const line of (readText(path.join(folder, OLD_PLAN_FILE)) ?? '').split('\n')) {
+    const [, number, title = ''] = PHASE_HEADING.exec(line) ?? [];
+    if (number !== undefined && title !== '' && !titles.has(Number(number))) titles.set(Number(number), title);
+  }
+  return titles;
+}
+
+/**
  * Each old plan of a building unit as the cut reads it: its topic, its
  * files kept in the unit's assets, its tracker root, its phases — each its
- * number, its parent in the tracker and its tasks in the plan's own order,
+ * number, the name its plan heads it with, null where it heads it with
+ * none, its parent in the tracker and its tasks in the plan's own order,
  * by the plan's id and the tracker's, and whether the manifest credits the
  * phase built and each task done — and the dependencies it named on
  * another spec.
@@ -377,14 +452,16 @@ function piecesOfUnit(project, unit) {
 function plansOf(project, unit, before) {
   const implementation = phaseItems(before, 'implementation');
   return Object.entries(phaseItems(before, 'planning')).filter(([, item]) => isObject(item)).map(([topic, item]) => {
+    const folder = path.join(project.stateDir, unit, 'assets', 'plans', topic);
+    const titles = phaseTitles(folder);
     const map = itemsOf(item.task_map);
     const credited = new Set(Array.isArray(implementation[topic]?.completed_tasks) ? implementation[topic].completed_tasks.map(String) : []);
     const built = new Set(Array.isArray(implementation[topic]?.completed_phases) ? implementation[topic].completed_phases.map(Number) : []);
-    /** @type {Map<number, {number: number, parent: string|null, tasks: {id: string, tracker: string, credited: boolean}[]}>} */
+    /** @type {Map<number, {number: number, title: string|null, parent: string|null, tasks: {id: string, tracker: string, credited: boolean}[]}>} */
     const phases = new Map();
     const phaseOf = (/** @type {number} */ number) => {
-      if (!phases.has(number)) phases.set(number, { number, parent: null, tasks: [] });
-      return /** @type {{number: number, parent: string|null, tasks: {id: string, tracker: string, credited: boolean}[]}} */ (phases.get(number));
+      if (!phases.has(number)) phases.set(number, { number, title: titles.get(number) ?? null, parent: null, tasks: [] });
+      return /** @type {{number: number, title: string|null, parent: string|null, tasks: {id: string, tracker: string, credited: boolean}[]}} */ (phases.get(number));
     };
     for (const [id, tracker] of Object.entries(map)) {
       const named = id.startsWith(`${topic}-`) ? /^([0-9]+)(?:-([0-9]+)([a-z]*))?$/.exec(id.slice(topic.length + 1)) : null;
@@ -398,7 +475,7 @@ function plansOf(project, unit, before) {
     };
     return {
       topic,
-      files: filesUnder(path.join(project.stateDir, unit, 'assets', 'plans', topic)).map((file) => `${unit}/assets/plans/${topic}/${file}`),
+      files: filesUnder(folder).map((file) => `${unit}/assets/plans/${topic}/${file}`),
       root: typeof item.external_id === 'string' ? item.external_id : null,
       phases: [...phases.values()].sort((a, b) => a.number - b.number).map((phase) => ({
         ...phase,

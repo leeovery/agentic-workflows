@@ -167,9 +167,10 @@ in the same header:
   their notice.
 - The engine's verbs only the migration's directives call — `ledger
   carry`, `workunit split`, `workunit retire`, `cut --migrating`, `task
-  adopt` and `task close-plan` — refuse once the state branch has its
-  first commit (`state-worktree.cjs`, `assertMigrationRuns` and
-  `migrationRuns`), and each finishes on a redo of a run killed part-way.
+  close-plan` and `migrate join` — each finish on a redo of a run killed
+  part-way, and all but `migrate join`, which writes only the state's
+  cache, refuse once the state branch has its first commit
+  (`state-worktree.cjs`, `migrationRuns`).
 - The reshape's finish (081) journals the code side's drops —
   `.workflows/` and each declared store — in the state's cache,
   `.ledger/.cache/migrate/finish.json`, `{drops}`, staging nothing, so
