@@ -32,21 +32,28 @@
 // nothing else of them changed (21.8.8); and the plan of a unit that built
 // nothing is closed under its root (`task close-plan`, 21.8.4,
 // drivers.cjs), the driver refusing a plan holding a task done: the tracker
-// wins (21.8.8). Neither verb takes a unit whose spec the migration joined:
-// its cut adopts its plans. The migration's cut runs its tracker steps here
-// too (`migratedTracker`, cut-migrating.cjs): the phases it names the
-// parents of read as their adoption would leave them, writing nothing, and
-// refused, every fault named at once — a phase it marks built holding a
+// wins (21.8.8); the close marked in the state's cache, so the cut and the
+// merges' check tells it done (`closedMarkPath`, 080). Neither verb takes a
+// unit whose spec the migration joined: its cut adopts its plans. The
+// migration's cut runs its tracker steps here too (`migratedTracker`,
+// cut-migrating.cjs): the phases it names the parents of read as their
+// adoption would leave them, each task a correction of the directive's ends
+// read as it ends it, writing nothing, and refused, every fault named at
+// once — a correction naming a task no adopted phase holds, or titling it
+// otherwise, a phase it marks built holding a
 // task neither done nor closed, or naming a section outside the area of its
 // old plan's topic, a phase it leaves unbuilt holding none, and a link
 // holding a task neither done nor closed after one neither, of a later
 // phase or another unit's, which `task link` refuses and the build would
 // wait on for ever (12.6.4, 7.1.14; a link after an ended task holds
 // nothing up) — so a refusal leaves the tracker as it was; then each phase
-// adopted and each task neither done nor closed typed (21.5.21), answering
-// the tasks of the phases not built the tracker holds done, and those
-// neither done nor closed with their text. A link holds a task after one of its own phase's or an
-// earlier phase's, still unfinished, and only a task not yet ended is linked
+// adopted, each task a correction ends ended where it has not, and each
+// task neither done nor closed typed (21.5.21), answering the tasks of the
+// phases not built the tracker holds done, and those neither done nor
+// closed with their text. The brief of the migration's per-unit agent
+// reads those phases as their adoption would leave them, writing nothing to
+// the tracker (`adoptionRead`). A link holds a task after one of its own
+// phase's or an earlier phase's, still unfinished, and only a task not yet ended is linked
 // (12.6.4); ready answers every task waiting with nothing before it and no
 // question parking it (7.1.5, 13.4.6), and, in step or in a quick-fix, the
 // task in progress whose turn has come where an answer freed it — its builder sent back in,
@@ -154,6 +161,7 @@ const {
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead, taskFolder } = require('./round-report.cjs');
+const { isoNow } = require('./dates.cjs');
 
 // The questions parking a task, and the landing naming a phase's mutation
 // run, loaded at their call: each reads the task through this module.
@@ -500,6 +508,13 @@ function typeTask(cwd, unit, given, type) {
   });
 }
 
+/**
+ * Where `task close-plan` marks a plan from before Leeway closed, in the
+ * state's cache, so the cut and the merges' check tells it done (080).
+ * @param {string} cwd @param {string} unit @param {string} parent the plan's root, the tracker's own id
+ */
+const closedMarkPath = (cwd, unit, parent) => statePath(cwd, '.cache', 'migrate', 'closed', unit, `${parent}.json`);
+
 /** Why a closed plan from before Leeway was closed, as the tracker keeps it (21.8.4). */
 const PLAN_CLOSED = 'closed by the migration — nothing of its unit was built, so the unit\'s build is planned afresh from its spec';
 
@@ -539,7 +554,11 @@ function closePlan(cwd, unit, parent) {
   refuseUnlessMigrating(cwd);
   requireUnit(cwd, unit);
   refuseJoined(cwd, unit, 'its plan is not closed — its cut carries it on');
-  return withTracker(cwd, unit, 'close the plan from before Leeway', (driver, root) => ({ parent, closed: driver.closePlan(root, unit, parent, PLAN_CLOSED) }));
+  const closed = withTracker(cwd, unit, 'close the plan from before Leeway', (driver, root) => ({ parent, closed: driver.closePlan(root, unit, parent, PLAN_CLOSED) }));
+  const mark = closedMarkPath(cwd, unit, parent);
+  fs.mkdirSync(path.dirname(mark), { recursive: true });
+  writeJsonAtomic(mark, { at: isoNow(), closed: closed.closed });
+  return closed;
 }
 
 /** A task's link after another as the cut refuses it, naming why the build would wait on it for ever. @param {TaskRef} task @param {TaskRef} after */
@@ -593,23 +612,74 @@ function areaFaults({ phase, built, sections, plan }, topics) {
 }
 
 /**
+ * A task the migration's cut ends where the manifest and the tracker
+ * disagreed and the code settled it (cut-migrating.cjs): the task by the
+ * name its phase's adoption gives it, its title as the tracker holds it,
+ * how it ends, and why, the reason a close keeps.
+ * @typedef {{ref: TaskRef, title: string, to: 'done'|'closed', why: string}} TrackerCorrection
+ */
+
+/**
+ * The faults of the corrections against the phases as their adoption
+ * leaves them: a task no phase adopted holds, or one titled otherwise.
+ * @param {{phase: number, tasks: TaskDetail[]}[]} held @param {TrackerCorrection[]} corrections
+ */
+function correctionFaults(held, corrections) {
+  return corrections.flatMap(({ ref, title }) => {
+    const task = held.find(({ phase }) => phase === ref.phase)?.tasks.find((each) => each.ref.n === ref.n);
+    if (task === undefined) return [`a correction names task ${shownTask(ref)}, which no phase the cut adopts holds`];
+    return task.title === title ? [] : [`a correction names task ${shownTask(ref)} "${title}", and the tracker titles it "${task.title}" — a correction names the task its phase's adoption gives that number`];
+  });
+}
+
+/**
+ * A phase the migration's cut adopts, as its adoption leaves it, with what
+ * the cut says of it.
+ * @typedef {{phase: number, plan: string|null, built: boolean, sections: string[], tasks: TaskDetail[]}} AdoptedPhase
+ */
+
+/**
+ * The phases as their adoption leaves them, each task a correction ends
+ * read as it ends it.
+ * @param {AdoptedPhase[]} held @param {TrackerCorrection[]} corrections @returns {AdoptedPhase[]}
+ */
+function corrected(held, corrections) {
+  const ending = (/** @type {TaskDetail} */ task) => corrections.find(({ ref }) => taskId(ref) === taskId(task.ref));
+  return held.map((phase) => ({ ...phase, tasks: phase.tasks.map((task) => {
+    const correction = ending(task);
+    return correction === undefined || ENDED.includes(task.status) ? task : { ...task, status: correction.to };
+  }) }));
+}
+
+/**
  * The migration's cut's tracker steps, one tracker commit (the header's):
- * the phases read as their adoption would leave them and refused, every
- * fault named and nothing written; then each phase naming its parent
- * adopted, and each task neither done nor closed given `type` where it has
- * another; answering, too, the tasks of the phases not built that the
- * tracker holds done, and those neither done nor closed with their text. A
- * run again adopts and types only what the last left out.
+ * the phases read as their adoption would leave them, each task a
+ * correction ends read as ended, and refused, every fault named and
+ * nothing written; then each phase naming its parent adopted, each task a
+ * correction ends that the tracker holds neither done nor closed ended, and
+ * each task neither done nor closed given `type` where it has another;
+ * answering, too, the tasks of the phases not built that the tracker holds
+ * done, and those neither done nor closed with their text. A run again
+ * adopts, ends and types only what the last left out.
  * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[], built: boolean, sections: string[]}[]} phases
  * @param {string} type @param {string[]|null} topics the topics joined, area by area — null for a single-topic unit (`areaFaults`)
- * @returns {{adopted: {phase: number, tasks: string[]}[], typed: string[], done: string[], open: {task: string, text: string}[], committed?: string|null, note?: string, warnings?: string[]}}
+ * @param {TrackerCorrection[]} [corrections]
+ * @returns {{adopted: {phase: number, tasks: string[]}[], typed: string[], ended: string[], done: string[], open: {task: string, text: string}[], committed?: string|null, note?: string, warnings?: string[]}}
  */
-function migratedTracker(cwd, unit, phases, type, topics) {
+function migratedTracker(cwd, unit, phases, type, topics, corrections = []) {
   return withTracker(cwd, unit, 'adopt the plan', (driver, root) => {
-    const held = driver.adoption(root, unit, phases).map(({ phase, plan, tasks }, at) => ({ phase, plan, built: phases[at].built, sections: phases[at].sections, tasks }));
-    const faults = [...held.flatMap(builtFaults), ...held.flatMap((each) => areaFaults(each, topics)), ...linkFaults(driver, root, unit, held.flatMap(({ tasks }) => tasks))];
+    /** @type {AdoptedPhase[]} */
+    const read = driver.adoption(root, unit, phases).map(({ phase, plan, tasks }, at) => ({ phase, plan, built: phases[at].built, sections: phases[at].sections, tasks }));
+    const held = corrected(read, corrections);
+    const faults = [...correctionFaults(read, corrections), ...held.flatMap(builtFaults), ...held.flatMap((each) => areaFaults(each, topics)), ...linkFaults(driver, root, unit, held.flatMap(({ tasks }) => tasks))];
     if (faults.length > 0) throw new TaskRefusal(faults.join('; '));
     const adopted = phases.map(({ phase, parent, order }) => ({ phase, tasks: driver.adopt(root, unit, phase, parent, order).map(shownTask) }));
+    const unended = new Set(read.flatMap(({ tasks }) => tasks.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => taskId(ref))));
+    const ended = corrections.filter(({ ref }) => unended.has(taskId(ref))).map(({ ref, to, why }) => {
+      if (to === 'done') driver.done(root, ref);
+      else driver.close(root, ref, why);
+      return shownTask(ref);
+    });
     const typed = held.flatMap(({ tasks }) => tasks
       .filter((task) => !ENDED.includes(task.status) && task.type !== type)
       .map((task) => {
@@ -620,10 +690,22 @@ function migratedTracker(cwd, unit, phases, type, topics) {
     return {
       adopted,
       typed,
+      ended,
       done: unbuilt.filter(({ status }) => status === 'done').map(({ ref }) => shownTask(ref)),
       open: unbuilt.filter(({ status }) => !ENDED.includes(status)).map(({ ref, text }) => ({ task: shownTask(ref), text })),
     };
   });
+}
+
+/**
+ * The phases of plans the tracker held from before Leeway, read as their
+ * adoption would leave them, writing nothing to the tracker — what the
+ * migration's per-unit agent's brief draws (brief-records.cjs).
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases
+ * @returns {{phase: number, plan: string|null, tasks: TaskDetail[]}[]}
+ */
+function adoptionRead(cwd, unit, phases) {
+  return withTracker(cwd, unit, null, (driver, root) => ({ phases: driver.adoption(root, unit, phases) })).phases;
 }
 
 /**
@@ -1301,4 +1383,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, closedMarkPath, adoptionRead, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };

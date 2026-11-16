@@ -162,14 +162,15 @@ function readArgs(verb, argv) {
 
 /**
  * The state root, `unit` checked: a unit the project has, and where `takes`
- * names what the call adds to it, live (5.8.17).
+ * names what the call adds to it, live (5.8.17) and not completed.
  * @param {string} cwd @param {string} said @param {string} unit @param {{takes?: string}} [opts]
  * @returns {string}
  */
 function unitRoot(cwd, said, unit, { takes } = {}) {
   const root = stateRoot(cwd);
-  if (workUnitNameRefusal(unit) !== null || manifestOf(root, unit) === null) throw new Error(`${said}: there is no work unit "${unit}"`);
-  const dead = takes === undefined ? null : liveness(root)(unit, null);
+  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(root, unit) : null;
+  if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
+  const dead = takes === undefined ? null : liveness(root)(unit, null) ?? (manifest.status === 'completed' ? `${unit} is completed` : null);
   if (dead !== null) throw new Error(`${said}: ${unit} takes no ${takes} — ${dead}`);
   return root;
 }

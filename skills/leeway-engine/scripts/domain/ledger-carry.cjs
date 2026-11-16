@@ -94,7 +94,7 @@ const CARRIED = '.cache/migrate/carried';
 /**
  * Where each topic's record is composed before it is carried, and the
  * verifier's findings on it written, state-relative: `{unit}/{topic}.json`
- * and `{unit}/{topic}.findings.md` beneath it.
+ * and `{unit}/{topic}.findings.txt` beneath it.
  */
 const COMPOSED = '.cache/migrate/records';
 
@@ -135,23 +135,24 @@ const carriedPath = (unit, topic) => path.posix.join(CARRIED, unit, `${topic}.js
 const composedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.json`);
 
 /** @param {string} unit @param {string} topic */
-const findingsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.findings.md`);
+const findingsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.findings.txt`);
 
 /** @param {string} unit @param {string} topic */
 const refusedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.refused.md`);
 
 /**
- * A topic of a unit, from its dot-path, live or not. Refuses, in the words
- * of `said`, the command asking, a path of another shape, a phase the
- * records directive carries no topic of, a unit the project lacks, a topic
- * with no item in the phase, and a topic promoted.
- * @param {string} cwd @param {string} dotpath @param {string} said @returns {Place}
+ * A topic of a unit, from its dot-path, live or not, as a directive's check
+ * carries topics — the records directive's, where no other is given.
+ * Refuses, in the words of `said`, the command asking, a path of another
+ * shape, a phase the directive carries no topic of, a unit the project
+ * lacks, a topic with no item in the phase, and a topic promoted.
+ * @param {string} cwd @param {string} dotpath @param {string} said
+ * @param {ReturnType<typeof recordsRules>} [rules] @returns {Place}
  */
-function topicPlace(cwd, dotpath, said) {
+function topicPlace(cwd, dotpath, said, rules = recordsRules()) {
   const parts = String(dotpath).split('.');
   if (parts.length !== 3 || parts.some((part) => part === '')) throw new Error(`${said}: "${dotpath}" names no topic — <work-unit>.<phase>.<topic>`);
   const [unit, phase, topic] = parts;
-  const rules = recordsRules();
   if (!rules.phases.includes(phase)) throw new Error(`${said}: the records carry no topic in "${phase}" — one of ${rules.phases.join(', ')}`);
   const root = stateRoot(cwd);
   const manifest = manifestOf(root, unit);

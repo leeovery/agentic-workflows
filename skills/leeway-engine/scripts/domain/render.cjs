@@ -73,7 +73,7 @@ const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
-const { directiveStopSurface, takenStopSurface } = require('./directives.cjs');
+const { directiveStopSurface, takenStopSurface, leavingSurface } = require('./directives.cjs');
 const { finishing } = require('./migration-commit.cjs');
 const { OLD_STATE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
@@ -1154,6 +1154,7 @@ const SURFACES = {
   'migration-guard-stop': migrationGuardStopSurface,
   'migration-checks-stop': () => migrationChecksStop(),
   'migration-taken-stop': takenStopSurface,
+  'migration-leaving': leavingSurface,
   'send-report': (cwd, { dotpath, sent }) => sendReportOf(cwd, dotpath, sent),
   'map': mapSurface,
   'decided': decidedSurface,

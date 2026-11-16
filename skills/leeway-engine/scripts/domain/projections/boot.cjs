@@ -8,13 +8,13 @@
 // stops on a git below the engine's floor, in a folder in no git repository,
 // at the reshape's guard, and at the checks before its move and a directive
 // of the migration not yet done, this session carrying the migration on or
-// another, the knowledge gate's displays, and the banner the bare command
-// opens on. Pure renderers; none reads state (the calling prose follows the
+// another, the question where a building unit's leaving topics go, the
+// knowledge gate's displays, and the banner the bare command opens on. Pure renderers; none reads state (the calling prose follows the
 // boot response and fetches the gate at its display point, and the render
 // surface reads what a display names).
 // ---------------------------------------------------------------------------
 
-const { section, titleSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, titleSection, menu, cmdOption, promptOption, treeList, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
@@ -159,6 +159,37 @@ function directiveStop({ project, step, progress, carrier = null }) {
   return [
     section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
     section('DISPLAY: directive account', emitAs('markdown'), account.join('\n')),
+  ].join('\n');
+}
+
+/** How the mixed unit's question groups the topics leaving it, in its order. */
+const LEAVING_GROUPS = Object.freeze([['in-progress', 'IN PROGRESS'], ['not-started', 'NOT STARTED'], ['decided', 'DECIDED']]);
+
+/**
+ * The mixed unit's question (21.8.10): a unit being built, the topics its
+ * specs cover counted, and those that leave it, grouped by where each
+ * stands, each by its title; then where they go — a new epic the person
+ * names, or the roadmap, the horizon asked next. Either row carries the
+ * directive on.
+ * @param {{unit: string, covered: number, leaving: {title: string, standing: string}[]}} mixed
+ * @returns {string}
+ */
+function leavingQuestion({ unit, covered, leaving }) {
+  const name = titlecase(unit);
+  const one = leaving.length === 1;
+  const groups = LEAVING_GROUPS.flatMap(([standing, heading]) => {
+    const titles = leaving.filter((topic) => topic.standing === standing).map(({ title }) => title);
+    return titles.length === 0 ? [] : [`${heading} (${titles.length})\n${treeList(titles, { indent: '  ' })}`];
+  });
+  const opening = `${name} is being built, and its specs cover ${covered} of its topics. A unit being built can't take a topic its specs don't cover, so ${one ? 'this one leaves' : `these ${leaving.length} leave`} it:`;
+  /** @type {import('./surfaces.cjs').Next} */
+  const carryOn = { kind: 'continue' };
+  return [
+    section('DISPLAY: migration leaving', CONTINUE_INSTRUCTION, ['▪ Migration', '', ...wrapWithPrefix(opening, { width: displayWidth() }), '', groups.join('\n\n')].join('\n')),
+    section('MENU: migration leaving gate', MENU_INSTRUCTION, menu(`Once ${one ? 'it goes' : 'they go'}, ${escapeMarkdown(name)} is whole: every topic decided, its specs joined, one build.`, [
+      cmdOption('n', 'new', `A new epic, which you name — ${one ? 'it moves whole and starts' : 'they move whole and start'} in discussion`, { next: carryOn }),
+      cmdOption('r', 'roadmap', `The roadmap, as ${one ? 'a postponed topic' : 'postponed topics'} — I'll ask which horizon next`, { next: carryOn }),
+    ], { question: one ? 'Where does this topic go?' : `Where do these ${leaving.length} topics go?` })),
   ].join('\n');
 }
 
@@ -462,4 +493,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

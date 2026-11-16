@@ -4,7 +4,9 @@
 // The pipeline simulation from the state the migration committed, once the
 // cut and the merges' verbs have run over today's layout: the cross-cutting
 // unit retired, two topics of the building epic split into a new one and a
-// third postponed to the roadmap, then the reshape's finish (081) and the
+// third postponed to the roadmap, the epic then cut by the migration — its
+// phase's piece, its verifier passing it, joined into the plan the cut takes — and the
+// directive's check passing, then the reshape's finish (081) and the
 // migration's commit. The retired unit's product-wide entries the product
 // record's and no unit's, its questions the product's, which the product's
 // conversation opens on and no topic's opening reads, its spec and its
@@ -16,7 +18,8 @@
 // split away entered in discussion on its new epic, reading the record and
 // the mail it carried, none of it an earlier record, and the topic
 // postponed, pulled into that epic, opening on the record it left, its
-// entries as they stood (21.8.9, 18.8.17). The tracker's tasks the
+// entries as they stood (21.8.9, 18.8.17); and the epic, whole once its
+// topics left, entering its build on the phase its cut wrote (21.S31). The tracker's tasks the
 // directive closes for a unit nothing of which was built are the task
 // driver's (`task close`), which nothing from the spec's entry to ready to
 // build reads.
@@ -53,11 +56,22 @@ const FINISH = require('../../skills/leeway-migrate/scripts/migrations/081-resha
 async function buildMigrated(folder) {
   const dir = cutMigration(folder);
   const log = writeState(dir, layout.cache('scratch', 'storefront.md'), '# Discovery Session 001\n\nWhat buyers see, apart from the shop.\n');
+  writeState(dir, layout.cache('migrate', 'cut-and-merges', 'shop', 'plan.json'), JSON.stringify({ answers: { leaving: { to: 'epic', epic: 'storefront' } } }));
   for (const args of [
     ['workunit', 'retire', 'caching'],
     ['workunit', 'split', 'shop', '--topics', 'reviews,gifts', '--into', 'storefront', '--description', 'What buyers see', '--session-log-file', log],
     ['topic', 'postpone', 'shop', 'wishlist', '--horizon', 'later'],
   ]) harness.ok(dir, args, { env: SESSION });
+  writeState(dir, layout.cache('migrate', 'cut-and-merges', 'shop', 'phases', '1.json'), JSON.stringify({
+    phase: { name: 'Weights', goal: 'Ties broken by price.', sections: ['1'], relies_on: [] },
+    scenarios: ['Given two items of one weight, when they are listed, then the cheaper comes first.'],
+    notes: [],
+    corrections: [],
+  }));
+  writeState(dir, layout.cache('migrate', 'cut-and-merges', 'shop', 'phases', '1.findings.txt'), '');
+  const { plan } = harness.ok(dir, ['migrate', 'join', 'shop', '--directive', '080-cut-and-merges'], { env: SESSION });
+  harness.ok(dir, ['cut', 'shop', '--migrating', '--file', plan], { env: SESSION });
+  assert.strictEqual(harness.ok(dir, ['migrate', 'check', '080-cut-and-merges'], { env: SESSION }).passed, true, 'the cut and the merges\' check passes');
   FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
   harness.ok(dir, ['commit', '--migrations', '-m', 'chore: apply workflow migrations'], { env: SESSION });
   assert.ok(!stateUnborn(dir), 'the migration\'s commit gives the state branch its first commit');
@@ -147,5 +161,13 @@ describe('pipeline simulation: from the migration\'s cut and merges', () => {
     assert.strictEqual(call, 'ledger earlier shop wishlist', sim.sections);
     const earlier = JSON.parse(sim.read(call.split(' ')));
     assert.deepStrictEqual([earlier.live, earlier.earlier, earlier.questions.map(({ text }) => text)], [false, true, ['May a wishlist be shared?']]);
+  });
+
+  it('21.S31: the building epic, whole once its topics left — every topic decided, its specs joined, one build — enters its build on the phase its cut wrote (21.8.9, 21.7.4)', () => {
+    const { phases } = sim.manifest('shop');
+    assert.deepStrictEqual([Object.entries(phases.discussion.items).map(([topic, { status }]) => [topic, status]), sim.manifest('shop').spec.joined], [[['weights', 'completed'], ['wishlist', 'postponed']], ['weights']]);
+
+    assert.strictEqual(sim.run(['enter', 'implementation', 'shop']).entered, true);
+    assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 1, "Weights": not yet written']);
   });
 });

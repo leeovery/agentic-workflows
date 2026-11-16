@@ -447,6 +447,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>]
   render migration-checks-stop
   render migration-taken-stop --at <directive id|checks> --active <seconds>
+  render migration-leaving <work-unit> --directive <id>
   render help <menu> [<arg>] [--<name> <value> …]
   render verdicts [--unit <unit>]
   render start-menu

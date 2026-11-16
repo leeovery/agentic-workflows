@@ -68,7 +68,8 @@ function filledTemplate(role, drawn) {
 }
 
 /** The directive as a brief draws it: each heading a level down. */
-const directiveDrawn = () => fs.readFileSync(DIRECTIVE, 'utf8').trimEnd().split('\n').map((line) => (/^#{1,6} /.test(line) ? `#${line}` : line)).join('\n');
+/** The directive as a brief draws it: its headings a level down, its blocks calling the engine left out. */
+const directiveDrawn = () => fs.readFileSync(DIRECTIVE, 'utf8').replace(/```bash\n[^`]*engine\.cjs[^`]*```\n\n?/g, '').trimEnd().split('\n').map((line) => (/^#{1,6} /.test(line) ? `#${line}` : line)).join('\n');
 
 /** The licensing topic as a brief draws it. */
 const licensingDrawn = () => [
@@ -105,7 +106,7 @@ const licensingDrawn = () => [
   '## Where the record goes',
   '',
   '- The record composed: .cache/migrate/records/fumi/licensing.json',
-  '- The verifier\'s findings on it: .cache/migrate/records/fumi/licensing.findings.md',
+  '- The verifier\'s findings on it: .cache/migrate/records/fumi/licensing.findings.txt',
   '- A carry\'s refusal of it: .cache/migrate/records/fumi/licensing.refused.md',
 ].join('\n');
 
@@ -225,14 +226,19 @@ describe('the refusals, nothing stored', () => {
   });
 });
 
-describe('the migration\'s agents (21.S35, 26.5.1)', () => {
-  it('each role\'s agent\'s tools hold no shell: no engine call and no ledger write is the agent\'s, only the session\'s', () => {
-    for (const role of ['migration-topic', 'migration-verifier']) {
-      const { agent } = ROLES[role];
-      const head = /^---\n([^]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'));
-      const fields = Object.fromEntries(String(head?.[1]).split('\n').map((line) => line.split(/: (.*)/s).slice(0, 2)));
+describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => {
+  /** The rule confining an agent's shell, word for word in each agent's file. */
+  const CONFINED = '**The shell is for reading and searching alone:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine, never run git, and never write, move or delete a file through it.';
 
-      assert.ok(!fields.tools.split(', ').includes('Bash'), `${agent}'s tools: ${fields.tools}`);
+  it('each searches through a shell confined to reading — Claude Code giving no Glob or Grep tool — and neither its agent file nor its brief names an engine call: only the session writes the ledger and the state', () => {
+    for (const agent of ['leeway-migration-topic', 'leeway-migration-verifier', 'leeway-plain-search']) {
+      const text = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
+      const tools = String(/^tools: (.*)$/m.exec(text)?.[1]).split(', ');
+
+      assert.deepStrictEqual(['Bash', 'Glob', 'Grep'].map((tool) => tools.includes(tool)), [true, false, false], `${agent}'s tools: ${tools.join(', ')}`);
+      assert.ok(text.includes(CONFINED), `${agent} confines its shell`);
+      assert.ok(!text.includes('engine.cjs'), `${agent} names no engine call`);
     }
+    assert.deepStrictEqual([issued(['migration-topic', ...LICENSING]).brief.includes('engine.cjs'), fs.readFileSync(DIRECTIVE, 'utf8').includes('engine.cjs')], [false, true], 'the brief draws the directive without the session\'s engine calls');
   });
 });

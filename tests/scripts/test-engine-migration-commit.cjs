@@ -186,8 +186,9 @@ describe('the review\'s read (21.9.4)', () => {
         commits: ['state', 'code'],
         units: 1,
         topics: 3,
-        directives: ['079-records', '080-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'],
+        directives: ['079-records', '085-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'],
         files: ['.gitignore', '.workflows', OLD_STORE],
+        corrections: [],
       },
     });
 
@@ -278,7 +279,7 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     killedAt({ method: 'rmSync', file: '.workflows', when: 'before' }, dir, COMMIT, { env: SESSION });
     const tip = stateGit(dir, ['rev-parse', STATE_BRANCH]).trim();
 
-    assert.deepStrictEqual(ok(['migrate', 'review']).reshape, { commits: [], units: 1, topics: 3, directives: ['079-records', '080-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'], files: [] });
+    assert.deepStrictEqual(ok(['migrate', 'review']).reshape, { commits: [], units: 1, topics: 3, directives: ['079-records', '085-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'], files: [], corrections: [] });
 
     assert.strictEqual(ok(['boot']).state, 'ready');
 

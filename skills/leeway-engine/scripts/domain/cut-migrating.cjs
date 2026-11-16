@@ -19,8 +19,14 @@
 //   Scenarios for §N`, numbered `N.S1` on in the order given, where the cut
 //   finds them (11.5.9);
 // - `notes`: the notes for later, each its text — the banked findings, and
-//   each disagreement between the manifest and the tracker, whose state
-//   stands (21.8.8);
+//   what a correction leaves for the build to settle (21.8.8);
+// - `corrections`: each disagreement between the manifest and the tracker
+//   the directive settled from both and the code, `{was, found, changed}`,
+//   each one line — what disagreed, what was found, what was changed —
+//   and, where the tracker was wrong, the task it ends, `{task, title,
+//   to}`: the task by the name its phase's adoption gives it, `N.n`, its
+//   title as the tracker holds it, and `done` or `closed`; a correction of
+//   the plan's built marks is the phases' own, and recorded alone;
 // - `answers`: what the person answered for the unit (21.8.10), kept with
 //   the plan so a run again asks nothing, and never read here.
 //
@@ -29,9 +35,10 @@
 // a quick-fix's never are — and one this cut has marked (below); a plan it
 // cannot read, or of another shape; scenarios for an area `spec.md` lacks,
 // or text that is not one line; a note holding nothing, or a heading at
-// level one or two (notes.cjs); two phases naming one tracker parent; a
-// phase marked built naming no tracker parent, or no section, and one still
-// to build placing no scenario; an area of `spec.md` no phase places,
+// level one or two (notes.cjs); a correction of another shape, or ending a
+// task of a phase naming no tracker parent; two phases naming one tracker
+// parent; a phase marked built naming no tracker parent, or no section, and
+// one still to build placing no scenario; an area of `spec.md` no phase places,
 // naming it, its sections or a scenario; and the cut, against `spec.md` as
 // its scenarios leave it, as `cut` refuses it.
 // Unlike `cut`, it marks a phase built and names its tracker parent anywhere
@@ -40,16 +47,19 @@
 //
 // Then, in this order, each step whole, so a run again takes it from the
 // top: the tracker's steps (task-verbs.cjs, `migratedTracker`) — the phases
-// read as their adoption would leave them and refused, every fault named
-// and the tracker left as it was, where a phase marked built holds a task
+// read as their adoption would leave them, each task a correction ends read
+// as ended, and refused, every fault named and the tracker left as it was,
+// where a correction names a task no adopted phase holds, or titles it
+// otherwise than the tracker, where a phase marked built holds a task
 // neither done nor closed or names a section outside the area of its old
 // plan's topic — the topic its plan's root names, a single-topic unit's
 // plan the whole spec's — a phase not marked built holds none, or a link
 // holds a task neither done nor closed after one neither, of a later phase
 // or another unit's; then each phase naming its parent adopted, its tasks
 // named in its old plan's order — the plan's task ids by number, then the
-// letters after it (`oldPlanOrder`) — and each task neither done nor closed
-// given its type, fix in a bugfix or quick-fix and feat in any other
+// letters after it (`oldPlanOrder`) — each task a correction ends ended,
+// a close keeping what was found as its reason, and each task neither done
+// nor closed given its type, fix in a bugfix or quick-fix and feat in any other
 // (21.5.21); then the unit's files, `spec.md` with the
 // plan's blocks of scenarios, any a run before wrote replaced,
 // `build/notes.md` the notes whole, numbered from 1, and the manifest — the
@@ -61,7 +71,9 @@
 // …]}`, a task citing none left out (`citedAreas`), and the old plan's spec,
 // planning and implementation items dropped (P12) — committed to the state
 // branch, the commit held for the migration's (21.9.3). Last, the mark,
-// `.cache/migrate/cut/{unit}.json` in the state.
+// `.cache/migrate/cut/{unit}.json` in the state, `{at, corrections}`: every
+// correction the plan records, as given, which the migration review lists
+// (directives.cjs, `migrate review`).
 //
 // A task of the old plan cites an old spec by its path in the layout before
 // Leeway, in any of its forms: `docs/workflow/specification/{topic}.md`,
@@ -87,18 +99,29 @@ const { readSpec, specPath, specReading, rowsOf, fencedLines, SPEC_FILE } = requ
 const { phasesOf, placing, specIn, againstSpec, refuse } = require('./cut.cjs');
 const { notesPath, notesAppended, topHeading } = require('./notes.cjs');
 const { migratedTracker } = require('./task-verbs.cjs');
+const { parseShownTask } = require('./task-id.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { isoNow } = require('./dates.cjs');
 
 /** @typedef {import('./cut.cjs').Phase} Phase */
-/** @typedef {{phases: Phase[], scenarios: Record<string, string[]>, notes: string[]}} Plan */
+/** A disagreement the directive settled, and the task it ends where the tracker was wrong. @typedef {{was: string, found: string, changed: string, task?: string, title?: string, to?: 'done'|'closed'}} Correction */
+/** @typedef {{phases: Phase[], scenarios: Record<string, string[]>, notes: string[], corrections: Correction[]}} Plan */
 
 const MIGRATING_USAGE = 'cut <work-unit> --migrating --file <plan.json>';
 
 /** What a plan may hold, `phases` the one it must. */
-const PLAN_KEYS = Object.freeze(['phases', 'scenarios', 'notes', 'answers']);
+const PLAN_KEYS = Object.freeze(['phases', 'scenarios', 'notes', 'corrections', 'answers']);
 
-const PLAN_SHAPE = '{"phases": [the cut\'s phases], "scenarios": {"<area>": ["<text>", …]}, "notes": ["<text>", …], "answers": {…}}';
+const PLAN_SHAPE = '{"phases": [the cut\'s phases], "scenarios": {"<area>": ["<text>", …]}, "notes": ["<text>", …], "corrections": [{"was", "found", "changed"}, …], "answers": {…}}';
+
+/** What a correction says, each one line. */
+const CORRECTION_SAYS = Object.freeze(['was', 'found', 'changed']);
+
+/** What a correction ending a task names, all three or none. */
+const CORRECTION_ENDS = Object.freeze(['task', 'title', 'to']);
+
+/** How a correction ends a task. */
+const ENDS = Object.freeze(['done', 'closed']);
 
 /** The type each task neither done nor closed takes, by the unit's type: feat where none is named (21.5.21). */
 const TYPES = Object.freeze({ bugfix: 'fix', 'quick-fix': 'fix' });
@@ -110,6 +133,7 @@ const LEVEL_TWO = /^## /;
 const AREA_OF = /^## ([0-9]+)\. /;
 const SCENARIOS_OF = /^## [0-9]+-S\. /;
 const AREA_NUMBER = /^[1-9][0-9]*$/;
+const SHOWN_TASK = /^([1-9][0-9]*)\.([1-9][0-9]*)$/;
 
 /** An old spec's path in a task's text (the header's): the unit's folder where it names one, and the topic. */
 const OLD_SPEC_PATH = /(?:docs\/workflow|\.workflows)\/(?:([^/\s`'"()]+)\/)?specification\/([^/\s`'"()]+?)(?:\/specification)?\.md/g;
@@ -158,6 +182,27 @@ function noteFaults(notes) {
     if (typeof note !== 'string' || note.trim() === '') return [`note ${at + 1} holds nothing`];
     const heading = topHeading(note);
     return heading === null ? [] : [`note ${at + 1} holds a heading at level one or two, which would read as another note — "${heading}"`];
+  });
+}
+
+/**
+ * The faults in a plan's corrections, against its phases: a correction of
+ * another shape, or ending a task of a phase naming no tracker parent.
+ * @param {unknown} corrections @param {{tracker?: string}[]} phases
+ */
+function correctionFaults(corrections, phases) {
+  if (!Array.isArray(corrections)) return ['the plan\'s corrections are not a list'];
+  return corrections.flatMap((correction, at) => {
+    const which = `correction ${at + 1}`;
+    if (!isObject(correction) || Object.keys(correction).some((key) => ![...CORRECTION_SAYS, ...CORRECTION_ENDS].includes(key))) return [`${which} is not {"was", "found", "changed"}, with {"task", "title", "to"} where it ends a task`];
+    const says = CORRECTION_SAYS.filter((key) => !isLine(correction[key])).map((key) => `${which}'s ${key} is not one line of text`);
+    const ends = CORRECTION_ENDS.filter((key) => key in correction);
+    if (ends.length === 0) return says;
+    if (ends.length < CORRECTION_ENDS.length || !isLine(correction.title) || !ENDS.includes(correction.to)) return [...says, `${which} ends a task by its "task", the name its phase's adoption gives it, its "title" as the tracker holds it, and "to", done or closed — all three`];
+    const named = SHOWN_TASK.exec(String(correction.task));
+    if (named === null) return [...says, `${which} names "${correction.task}", which is no task — {phase}.{n}, as the cut's adoption names it`];
+    const phase = phases[Number(named[1]) - 1];
+    return phase?.tracker === undefined ? [...says, `${which} ends task ${correction.task}, of a phase that names no tracker parent — a correction ends a task of a phase the cut adopts`] : says;
   });
 }
 
@@ -239,10 +284,11 @@ function planIn(file) {
   if (!isObject(plan) || !Array.isArray(plan.phases) || plan.phases.length === 0 || Object.keys(plan).some((key) => !PLAN_KEYS.includes(key))) {
     refuse([`${file} holds no plan — a plan is ${PLAN_SHAPE}`]);
   }
-  const { scenarios = {}, notes = [] } = plan;
-  const faults = [...scenarioFaults(scenarios), ...noteFaults(notes)];
+  const { scenarios = {}, notes = [], corrections = [] } = plan;
+  const phases = phasesOf(plan.phases);
+  const faults = [...scenarioFaults(scenarios), ...noteFaults(notes), ...correctionFaults(corrections, phases)];
   if (faults.length > 0) refuse(faults);
-  return { phases: phasesOf(plan.phases), scenarios, notes };
+  return { phases, scenarios, notes, corrections };
 }
 
 /**
@@ -339,10 +385,11 @@ function cuttable(cwd, unit) {
  * The tracker's steps (`migratedTracker`), a refusal of theirs opening
  * `cut: ` as every refusal of the verb does.
  * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[], built: boolean, sections: string[]}[]} parents @param {string} type @param {string[]|null} topics
+ * @param {import('./task-verbs.cjs').TrackerCorrection[]} corrections
  */
-function cutTracker(cwd, unit, parents, type, topics) {
+function cutTracker(cwd, unit, parents, type, topics, corrections) {
   try {
-    return migratedTracker(cwd, unit, parents, type, topics);
+    return migratedTracker(cwd, unit, parents, type, topics, corrections);
   } catch (err) {
     if (err instanceof Error) err.message = `cut: ${err.message}`;
     throw err;
@@ -363,7 +410,8 @@ function cutMigrating(cwd, unit, file) {
     phase: at + 1, parent: phase.tracker, order: oldPlanOrder(manifest, phase.tracker), built: 'built' in phase, sections: phase.sections,
   }]));
   const topics = manifest.work_type === 'epic' ? joinedTopics(manifest) : null;
-  const tracker = parents.length === 0 ? { adopted: [], typed: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type), topics);
+  const ends = plan.corrections.flatMap(({ task, title, to, found }) => (task === undefined ? [] : [{ ref: parseShownTask(unit, task), title: /** @type {string} */ (title), to: /** @type {'done'|'closed'} */ (to), why: found }]));
+  const tracker = parents.length === 0 ? { adopted: [], typed: [], ended: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type), topics, ends);
   const notes = withWorkUnitLock(cwd, unit, () => {
     writeTextAtomic(specPath(cwd, unit), text);
     const wrote = writeNotes(cwd, unit, plan.notes);
@@ -376,7 +424,7 @@ function cutMigrating(cwd, unit, file) {
   const outcome = commitStateTail(cwd, paths, `cut(${unit}): the migration's cut, ${plan.phases.length === 1 ? '1 phase' : `${plan.phases.length} phases`}`, warnings);
   const mark = markPath(cwd, unit);
   fs.mkdirSync(path.dirname(mark), { recursive: true });
-  writeJsonAtomic(mark, { at: isoNow() });
+  writeJsonAtomic(mark, { at: isoNow(), corrections: plan.corrections });
   /** @type {Record<string, unknown>} */
   const result = {
     unit,
@@ -384,6 +432,7 @@ function cutMigrating(cwd, unit, file) {
     built: plan.phases.filter((phase) => 'built' in phase).length,
     adopted: tracker.adopted,
     typed: tracker.typed,
+    ...(plan.corrections.length === 0 ? {} : { corrections: plan.corrections.length, ended: tracker.ended }),
     scenarios: Object.values(plan.scenarios).reduce((sum, texts) => sum + texts.length, 0),
     notes: plan.notes.length,
     committed: outcome.committed,
@@ -393,4 +442,4 @@ function cutMigrating(cwd, unit, file) {
   return result;
 }
 
-module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder };
+module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder, correctionFaults };
