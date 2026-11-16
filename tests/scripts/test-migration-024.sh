@@ -489,10 +489,10 @@ ext_id: tick-parent1
 
   local plan_content
   plan_content=$(cat "$TEST_DIR/.workflows/plan-rename/planning/plan-rename/planning.md")
-  assert_eq "Ext ID renamed to External ID in table header" "true" "$(echo "$plan_content" | grep -qF 'External ID' && echo true || echo false)"
-  assert_eq "no Ext ID remaining" "false" "$(echo "$plan_content" | grep -qF 'Ext ID' && echo true || echo false)"
-  assert_eq "ext_id: renamed to external_id: in phase entry" "true" "$(echo "$plan_content" | grep -qF 'external_id:' && echo true || echo false)"
-  assert_eq "no ext_id: remaining" "false" "$(echo "$plan_content" | grep -qF 'ext_id:' && echo true || echo false)"
+  assert_eq "Ext ID renamed to External ID in table header" "true" "$(grep -qF 'External ID' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "no Ext ID remaining" "false" "$(grep -qF 'Ext ID' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "ext_id: renamed to external_id: in phase entry" "true" "$(grep -qF 'external_id:' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "no ext_id: remaining" "false" "$(grep -qF 'ext_id:' <<<"$plan_content" && echo true || echo false)"
 
   teardown
 }
@@ -544,10 +544,10 @@ external_id:
 
   local plan_content
   plan_content=$(cat "$TEST_DIR/.workflows/id-rename/planning/id-rename/planning.md")
-  assert_eq "ID renamed to Internal ID in header" "true" "$(echo "$plan_content" | grep -qF '| Internal ID |' && echo true || echo false)"
-  assert_eq "separator widened for Internal ID" "true" "$(echo "$plan_content" | grep -qF '|-------------|' && echo true || echo false)"
-  assert_eq "no | ID | remaining" "false" "$(echo "$plan_content" | grep -qF '| ID |' && echo true || echo false)"
-  assert_eq "data rows unchanged" "true" "$(echo "$plan_content" | grep -qF '| id-rename-1-1 |' && echo true || echo false)"
+  assert_eq "ID renamed to Internal ID in header" "true" "$(grep -qF '| Internal ID |' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "separator widened for Internal ID" "true" "$(grep -qF '|-------------|' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "no | ID | remaining" "false" "$(grep -qF '| ID |' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "data rows unchanged" "true" "$(grep -qF '| id-rename-1-1 |' <<<"$plan_content" && echo true || echo false)"
 
   teardown
 }
@@ -673,12 +673,12 @@ ext_id: tick-phase1
   assert_eq "manifest ext_id -> external_id" "tick-plan1" "$(get_field "full-feat" "phases.planning.external_id")"
   local plan_content
   plan_content=$(cat "$TEST_DIR/.workflows/full-feat/planning/full-feat/planning.md")
-  assert_eq "plan table: Ext ID -> External ID" "true" "$(echo "$plan_content" | grep -qF 'External ID' && echo true || echo false)"
-  assert_eq "plan phase: ext_id: -> external_id:" "true" "$(echo "$plan_content" | grep -qF 'external_id:' && echo true || echo false)"
+  assert_eq "plan table: Ext ID -> External ID" "true" "$(grep -qF 'External ID' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "plan phase: ext_id: -> external_id:" "true" "$(grep -qF 'external_id:' <<<"$plan_content" && echo true || echo false)"
 
   # Step 5: ID -> Internal ID
-  assert_eq "plan table: ID -> Internal ID" "true" "$(echo "$plan_content" | grep -qF '| Internal ID |' && echo true || echo false)"
-  assert_eq "no old | ID | remaining" "false" "$(echo "$plan_content" | grep -qF '| ID |' && echo true || echo false)"
+  assert_eq "plan table: ID -> Internal ID" "true" "$(grep -qF '| Internal ID |' <<<"$plan_content" && echo true || echo false)"
+  assert_eq "no old | ID | remaining" "false" "$(grep -qF '| ID |' <<<"$plan_content" && echo true || echo false)"
 
   teardown
 }

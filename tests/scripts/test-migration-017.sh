@@ -62,12 +62,12 @@ EOF
 
   content=$(cat "$TEST_DIR/.workflows/auth/manifest.json")
 
-  assert_eq "billing key exists" "true" "$(echo "$content" | grep -qF '"billing"' && echo true || echo false)"
-  assert_eq "billing state preserved" "true" "$(echo "$content" | grep -qF '"state": "unresolved"' && echo true || echo false)"
-  assert_eq "billing description preserved" "true" "$(echo "$content" | grep -qF '"description": "Invoice API"' && echo true || echo false)"
-  assert_eq "payments key exists" "true" "$(echo "$content" | grep -qF '"payments"' && echo true || echo false)"
-  assert_eq "payments task_id preserved" "true" "$(echo "$content" | grep -qF '"task_id": "pay-1"' && echo true || echo false)"
-  assert_eq "topic field removed from values" "false" "$(echo "$content" | grep -qF '"topic"' && echo true || echo false)"
+  assert_eq "billing key exists" "true" "$(grep -qF '"billing"' <<<"$content" && echo true || echo false)"
+  assert_eq "billing state preserved" "true" "$(grep -qF '"state": "unresolved"' <<<"$content" && echo true || echo false)"
+  assert_eq "billing description preserved" "true" "$(grep -qF '"description": "Invoice API"' <<<"$content" && echo true || echo false)"
+  assert_eq "payments key exists" "true" "$(grep -qF '"payments"' <<<"$content" && echo true || echo false)"
+  assert_eq "payments task_id preserved" "true" "$(grep -qF '"task_id": "pay-1"' <<<"$content" && echo true || echo false)"
+  assert_eq "topic field removed from values" "false" "$(grep -qF '"topic"' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -134,9 +134,9 @@ EOF
 
   content=$(cat "$TEST_DIR/.workflows/my-epic/manifest.json")
 
-  assert_eq "auth key exists in epic item" "true" "$(echo "$content" | grep -qF '"auth"' && echo true || echo false)"
-  assert_eq "state preserved" "true" "$(echo "$content" | grep -qF '"state": "resolved"' && echo true || echo false)"
-  assert_eq "topic field removed" "false" "$(echo "$content" | grep -qF '"topic"' && echo true || echo false)"
+  assert_eq "auth key exists in epic item" "true" "$(grep -qF '"auth"' <<<"$content" && echo true || echo false)"
+  assert_eq "state preserved" "true" "$(grep -qF '"state": "resolved"' <<<"$content" && echo true || echo false)"
+  assert_eq "topic field removed" "false" "$(grep -qF '"topic"' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -260,8 +260,8 @@ EOF
   source "$MIGRATION"
 
   content=$(cat "$TEST_DIR/.workflows/user's-auth/manifest.json")
-  assert_eq "quoted-name: array converted to object" "true" "$(echo "$content" | grep -qF '"billing"' && echo true || echo false)"
-  assert_eq "quoted-name: topic field removed from values" "false" "$(echo "$content" | grep -qF '"topic"' && echo true || echo false)"
+  assert_eq "quoted-name: array converted to object" "true" "$(grep -qF '"billing"' <<<"$content" && echo true || echo false)"
+  assert_eq "quoted-name: topic field removed from values" "false" "$(grep -qF '"topic"' <<<"$content" && echo true || echo false)"
 
   teardown
 }

@@ -485,9 +485,9 @@ JSON
 
   local content
   content=$(cat "$wu_dir/inception/session-001.md")
-  assert_eq "session: contains migration heading" "true" "$(echo "$content" | grep -qF -- 'Initial Framing — Pre-Inception Migration' && echo true || echo false)"
-  assert_eq "session: counts items" "true" "$(echo "$content" | grep -qF -- '2 topic(s) found in existing research/discussion items' && echo true || echo false)"
-  assert_eq "session: mentions workflow-start" "true" "$(echo "$content" | grep -qF -- '/workflow-start' && echo true || echo false)"
+  assert_eq "session: contains migration heading" "true" "$(grep -qF -- 'Initial Framing — Pre-Inception Migration' <<<"$content" && echo true || echo false)"
+  assert_eq "session: counts items" "true" "$(grep -qF -- '2 topic(s) found in existing research/discussion items' <<<"$content" && echo true || echo false)"
+  assert_eq "session: mentions workflow-start" "true" "$(grep -qF -- '/workflow-start' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -519,8 +519,8 @@ JSON
 
   local content
   content=$(cat "$wu_dir/inception/session-001.md")
-  assert_eq "preserved: starts with custom heading" "true" "$(echo "$content" | grep -qF -- '# Custom Session' && echo true || echo false)"
-  assert_eq "preserved: no migration heading" "false" "$(echo "$content" | grep -qF -- 'Pre-Inception Migration' && echo true || echo false)"
+  assert_eq "preserved: starts with custom heading" "true" "$(grep -qF -- '# Custom Session' <<<"$content" && echo true || echo false)"
+  assert_eq "preserved: no migration heading" "false" "$(grep -qF -- 'Pre-Inception Migration' <<<"$content" && echo true || echo false)"
 
   teardown
 }

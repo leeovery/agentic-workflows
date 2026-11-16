@@ -71,12 +71,12 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/billing.md")
 
-  assert_eq "external_dependencies added to frontmatter" "true" "$(echo "$content" | grep -q 'external_dependencies:' && echo true || echo false)"
-  assert_eq "Dep topic extracted" "true" "$(echo "$content" | grep -q 'topic: payment-gateway' && echo true || echo false)"
-  assert_eq "Dep description extracted" "true" "$(echo "$content" | grep -q 'description: Payment processing for checkout' && echo true || echo false)"
-  assert_eq "State set to unresolved" "true" "$(echo "$content" | grep -q 'state: unresolved' && echo true || echo false)"
-  assert_eq "Body section removed" "false" "$(echo "$content" | grep -qF '## External Dependencies' && echo true || echo false)"
-  assert_eq "Other body sections preserved" "true" "$(echo "$content" | grep -qF '## Phase 1: Setup' && echo true || echo false)"
+  assert_eq "external_dependencies added to frontmatter" "true" "$(grep -q 'external_dependencies:' <<<"$content" && echo true || echo false)"
+  assert_eq "Dep topic extracted" "true" "$(grep -q 'topic: payment-gateway' <<<"$content" && echo true || echo false)"
+  assert_eq "Dep description extracted" "true" "$(grep -q 'description: Payment processing for checkout' <<<"$content" && echo true || echo false)"
+  assert_eq "State set to unresolved" "true" "$(grep -q 'state: unresolved' <<<"$content" && echo true || echo false)"
+  assert_eq "Body section removed" "false" "$(grep -qF '## External Dependencies' <<<"$content" && echo true || echo false)"
+  assert_eq "Other body sections preserved" "true" "$(grep -qF '## Phase 1: Setup' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -113,10 +113,10 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/auth.md")
 
-  assert_eq "Resolved dep topic extracted" "true" "$(echo "$content" | grep -q 'topic: user-service' && echo true || echo false)"
-  assert_eq "Resolved dep description extracted" "true" "$(echo "$content" | grep -q 'description: User context for permissions' && echo true || echo false)"
-  assert_eq "State set to resolved" "true" "$(echo "$content" | grep -q 'state: resolved' && echo true || echo false)"
-  assert_eq "Task ID extracted" "true" "$(echo "$content" | grep -q 'task_id: auth-1-3' && echo true || echo false)"
+  assert_eq "Resolved dep topic extracted" "true" "$(grep -q 'topic: user-service' <<<"$content" && echo true || echo false)"
+  assert_eq "Resolved dep description extracted" "true" "$(grep -q 'description: User context for permissions' <<<"$content" && echo true || echo false)"
+  assert_eq "State set to resolved" "true" "$(grep -q 'state: resolved' <<<"$content" && echo true || echo false)"
+  assert_eq "Task ID extracted" "true" "$(grep -q 'task_id: auth-1-3' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -153,8 +153,8 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/api.md")
 
-  assert_eq "Resolved state detected" "true" "$(echo "$content" | grep -q 'state: resolved' && echo true || echo false)"
-  assert_eq "Task ID extracted with (resolved) suffix stripped" "true" "$(echo "$content" | grep -q 'task_id: db-2-1' && echo true || echo false)"
+  assert_eq "Resolved state detected" "true" "$(grep -q 'state: resolved' <<<"$content" && echo true || echo false)"
+  assert_eq "Task ID extracted with (resolved) suffix stripped" "true" "$(grep -q 'task_id: db-2-1' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -191,9 +191,9 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/checkout.md")
 
-  assert_eq "Satisfied dep topic extracted" "true" "$(echo "$content" | grep -q 'topic: payment-gateway' && echo true || echo false)"
-  assert_eq "Satisfied dep description extracted" "true" "$(echo "$content" | grep -q 'description: Payment processing' && echo true || echo false)"
-  assert_eq "State set to satisfied_externally" "true" "$(echo "$content" | grep -q 'state: satisfied_externally' && echo true || echo false)"
+  assert_eq "Satisfied dep topic extracted" "true" "$(grep -q 'topic: payment-gateway' <<<"$content" && echo true || echo false)"
+  assert_eq "Satisfied dep description extracted" "true" "$(grep -q 'description: Payment processing' <<<"$content" && echo true || echo false)"
+  assert_eq "State set to satisfied_externally" "true" "$(grep -q 'state: satisfied_externally' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -232,15 +232,15 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/mixed.md")
 
-  assert_eq "Unresolved dep present" "true" "$(echo "$content" | grep -q 'topic: billing-system' && echo true || echo false)"
-  assert_eq "Unresolved state present" "true" "$(echo "$content" | grep -q 'state: unresolved' && echo true || echo false)"
-  assert_eq "Resolved dep present" "true" "$(echo "$content" | grep -q 'topic: user-authentication' && echo true || echo false)"
-  assert_eq "Resolved state present" "true" "$(echo "$content" | grep -q 'state: resolved' && echo true || echo false)"
-  assert_eq "Task ID present" "true" "$(echo "$content" | grep -q 'task_id: auth-1-3' && echo true || echo false)"
-  assert_eq "Satisfied dep present" "true" "$(echo "$content" | grep -q 'topic: payment-gateway' && echo true || echo false)"
-  assert_eq "Satisfied state present" "true" "$(echo "$content" | grep -q 'state: satisfied_externally' && echo true || echo false)"
-  assert_eq "Body section removed" "false" "$(echo "$content" | grep -qF '## External Dependencies' && echo true || echo false)"
-  assert_eq "Other sections preserved" "true" "$(echo "$content" | grep -qF '## Phase 1: Core' && echo true || echo false)"
+  assert_eq "Unresolved dep present" "true" "$(grep -q 'topic: billing-system' <<<"$content" && echo true || echo false)"
+  assert_eq "Unresolved state present" "true" "$(grep -q 'state: unresolved' <<<"$content" && echo true || echo false)"
+  assert_eq "Resolved dep present" "true" "$(grep -q 'topic: user-authentication' <<<"$content" && echo true || echo false)"
+  assert_eq "Resolved state present" "true" "$(grep -q 'state: resolved' <<<"$content" && echo true || echo false)"
+  assert_eq "Task ID present" "true" "$(grep -q 'task_id: auth-1-3' <<<"$content" && echo true || echo false)"
+  assert_eq "Satisfied dep present" "true" "$(grep -q 'topic: payment-gateway' <<<"$content" && echo true || echo false)"
+  assert_eq "Satisfied state present" "true" "$(grep -q 'state: satisfied_externally' <<<"$content" && echo true || echo false)"
+  assert_eq "Body section removed" "false" "$(grep -qF '## External Dependencies' <<<"$content" && echo true || echo false)"
+  assert_eq "Other sections preserved" "true" "$(grep -qF '## Phase 1: Core' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -273,8 +273,8 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/no-deps.md")
 
-  assert_eq "Empty array added when no section" "true" "$(echo "$content" | grep -q 'external_dependencies: \[\]' && echo true || echo false)"
-  assert_eq "Body preserved" "true" "$(echo "$content" | grep -qF '## Phase 1: Core' && echo true || echo false)"
+  assert_eq "Empty array added when no section" "true" "$(grep -q 'external_dependencies: \[\]' <<<"$content" && echo true || echo false)"
+  assert_eq "Body preserved" "true" "$(grep -qF '## Phase 1: Core' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -422,11 +422,11 @@ TESTEOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/hr-body.md")
 
-  assert_eq "Dep extracted from body" "true" "$(echo "$content" | grep -q 'topic: some-dep' && echo true || echo false)"
-  assert_eq "Deps section removed" "false" "$(echo "$content" | grep -qF '## External Dependencies' && echo true || echo false)"
-  assert_eq "Overview preserved" "true" "$(echo "$content" | grep -qF '## Overview' && echo true || echo false)"
-  assert_eq "Phase 1 preserved" "true" "$(echo "$content" | grep -qF '## Phase 1: Setup' && echo true || echo false)"
-  assert_eq "Phase 2 preserved" "true" "$(echo "$content" | grep -qF '## Phase 2: Core' && echo true || echo false)"
+  assert_eq "Dep extracted from body" "true" "$(grep -q 'topic: some-dep' <<<"$content" && echo true || echo false)"
+  assert_eq "Deps section removed" "false" "$(grep -qF '## External Dependencies' <<<"$content" && echo true || echo false)"
+  assert_eq "Overview preserved" "true" "$(grep -qF '## Overview' <<<"$content" && echo true || echo false)"
+  assert_eq "Phase 1 preserved" "true" "$(grep -qF '## Phase 1: Setup' <<<"$content" && echo true || echo false)"
+  assert_eq "Phase 2 preserved" "true" "$(grep -qF '## Phase 2: Core' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -488,8 +488,8 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/arrow-alt.md")
 
-  assert_eq "Resolved with -> syntax" "true" "$(echo "$content" | grep -q 'state: resolved' && echo true || echo false)"
-  assert_eq "Task ID extracted with -> syntax" "true" "$(echo "$content" | grep -q 'task_id: data-1-2' && echo true || echo false)"
+  assert_eq "Resolved with -> syntax" "true" "$(grep -q 'state: resolved' <<<"$content" && echo true || echo false)"
+  assert_eq "Task ID extracted with -> syntax" "true" "$(grep -q 'task_id: data-1-2' <<<"$content" && echo true || echo false)"
 
   teardown
 }

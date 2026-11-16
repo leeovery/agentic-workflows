@@ -94,7 +94,7 @@ assert_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$content" | grep -q -- "$expected"; then
+    if grep -q -- "$expected" <<<"$content"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -114,7 +114,7 @@ assert_not_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$content" | grep -q -- "$unexpected"; then
+    if grep -q -- "$unexpected" <<<"$content"; then
         echo -e "  ${RED}✗${NC} $description"
         echo -e "    Unexpectedly found: $unexpected"
         TESTS_FAILED=$((TESTS_FAILED + 1))

@@ -65,7 +65,7 @@ EOF
   assert_eq "Original flat file removed" "false" "$([ -f "$SPEC_DIR/user-auth.md" ] && echo true || echo false)"
 
   content=$(cat "$SPEC_DIR/user-auth/specification.md")
-  assert_eq "Content preserved after move" "true" "$(echo "$content" | grep -q 'topic: user-auth' && echo true || echo false)"
+  assert_eq "Content preserved after move" "true" "$(grep -q 'topic: user-auth' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -98,7 +98,7 @@ EOF
   assert_eq "Original flat file removed" "false" "$([ -f "$PLAN_DIR/billing.md" ] && echo true || echo false)"
 
   content=$(cat "$PLAN_DIR/billing/plan.md")
-  assert_eq "Content preserved after move" "true" "$(echo "$content" | grep -q 'topic: billing' && echo true || echo false)"
+  assert_eq "Content preserved after move" "true" "$(grep -q 'topic: billing' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -169,8 +169,8 @@ TESTEOF
   source "$MIGRATION"
   moved_content=$(cat "$PLAN_DIR/caching/plan.md")
 
-  assert_eq "Topic preserved" "true" "$(echo "$moved_content" | grep -q 'topic: caching' && echo true || echo false)"
-  assert_eq "Body preserved" "true" "$(echo "$moved_content" | grep -qF '## Phase 1: Setup' && echo true || echo false)"
+  assert_eq "Topic preserved" "true" "$(grep -q 'topic: caching' <<<"$moved_content" && echo true || echo false)"
+  assert_eq "Body preserved" "true" "$(grep -qF '## Phase 1: Setup' <<<"$moved_content" && echo true || echo false)"
 
   teardown
 }
@@ -261,7 +261,7 @@ EOF
   source "$MIGRATION"
   content=$(cat "$PLAN_DIR/user-auth/plan.md")
 
-  assert_eq "Specification field updated to directory path" "true" "$(echo "$content" | grep -q 'specification: user-auth/specification.md' && echo true || echo false)"
+  assert_eq "Specification field updated to directory path" "true" "$(grep -q 'specification: user-auth/specification.md' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -346,7 +346,7 @@ EOF
   assert_eq "Plan A flat file removed" "false" "$([ -f "$PLAN_DIR/topic-a.md" ] && echo true || echo false)"
 
   content=$(cat "$PLAN_DIR/topic-a/plan.md")
-  assert_eq "Plan A spec field updated" "true" "$(echo "$content" | grep -q 'specification: topic-a/specification.md' && echo true || echo false)"
+  assert_eq "Plan A spec field updated" "true" "$(grep -q 'specification: topic-a/specification.md' <<<"$content" && echo true || echo false)"
 
   teardown
 }
