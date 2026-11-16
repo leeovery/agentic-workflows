@@ -43,7 +43,7 @@ describe('the git floor', () => {
 
   for (const [rel, line] of [
     ['README.md', /^\*\*Setup:\*\* .*\bgit (\d+\.\d+\.\d+)\+/m],
-    ['docs/configuration.md', /^The workflows need .*\bgit (\d+\.\d+\.\d+) or newer/m],
+    ['docs/configuration.md', /^Ledger needs .*\bgit (\d+\.\d+\.\d+) or newer/m],
     ['docs/contributing.md', /The engine needs git (\d+\.\d+\.\d+) or newer/],
   ]) {
     it(`is the version ${rel} requires`, () => {

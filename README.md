@@ -1,7 +1,7 @@
-<h1 align="center">Agentic Engineering Workflows</h1>
+<h1 align="center">Ledger</h1>
 
 <p align="center">
-  <strong>A phased engineering process for Claude Code. Discuss, specify, plan; then let it build.</strong>
+  <strong>Agentic workflows for Claude Code. Talk the product through, approve the spec, then let it build.</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 
 ---
 
-> Claude Code is a capable engineer with no memory and no process. This adds both.
+> Claude Code is a capable engineer with no memory and no process. Ledger adds both, and learns when to ask you.
 
 ```bash
 npx agntc add leeovery/agentic-workflows
@@ -29,124 +29,111 @@ Then in Claude Code:
 /ledger
 ```
 
-That's the whole interface. Describe what you want to build and the right pipeline picks you up: a discussion that pushes back, a specification you approve, a plan broken into tasks, then implementation running hands-off in a gated TDD loop while you do something else. Every decision lands in a versioned document in your repo. Kill the session whenever; the next one resumes from disk.
+That's the whole interface — or skip it and ask Claude for a change in your own words. Describe what you want to build and the right shape of work picks you up: a conversation that pushes back and finds the questions nobody has answered yet, a spec you approve, then a build that runs on its own, task by task, each proven by running the product. Kill the session whenever; the next one resumes from disk.
 
-**Real memory.** Not a scratchpad: everything the process produces is indexed locally with provenance. "Why did we rule out email as an identity field?" has a citable answer months later, and dead ends are remembered so no future session re-explores them.
+**A record, not a scratchpad.** Every question, finding and decision lands on the project's ledger as it is made: who made it, why, what it rules out, what it relies on, and what the other side would have said. Nothing on it is edited — a change of mind replaces the old answer and flags everything that relied on it. "What have you decided without me?" is always one question away.
 
-**A loop you can leave alone.** Agentic loops fail when the agent improvises. Here the thinking is front-loaded into discussion and specification, so implementation runs task by task, test-first, gated or fully auto, executing decisions that are already written down.
+**Claude decides as you would.** Whether a call reaches you is arithmetic over your own answers, never Claude's confidence. Every question of taste asks at first; a kind of question goes quiet only once Claude's calls on it have matched yours, and asks again the moment they stop. Danger, and anything you said you care about, always asks.
 
-**Spec-driven by enforcement, not convention.** A deterministic engine owns every state transition. Phases can't be skipped, status displays are computed from disk rather than remembered, and a half-finished session resumes exactly where it stopped.
+**Proven by running it.** Builders prove each task by driving the running product the way a user would, and a script, never Claude's account, writes the verdict. A scenario nothing could drive is reported not proven.
 
-Work comes in five shapes, each with a pipeline suited to its size, from months of multi-topic discovery down to a one-file fix. Mid-conversation capture too: say "log that as an idea" and keep working.
+**Spec-driven by enforcement, not convention.** A deterministic engine owns every state transition, every screen and every commit. Each record has one door, required steps are checklists the engine holds, and hooks refuse the ways round them.
 
-```
-epic           Discovery → (Research) → (Experiment) → Discussion → Specification → Implementation → Review
-feature        Discovery → (Research) → (Experiment) → Discussion → Specification → Implementation → Review
-bugfix         Discovery → Investigation → Specification → Implementation → Review
-quick-fix      Discovery → Scoping → Implementation → Review
-cross-cutting  Discovery → (Research) → (Experiment) → Discussion → Specification
-```
+Work comes in four shapes, each with a pipeline suited to its size, from months of multi-topic work down to a one-line fix:
 
-Parenthesised phases are optional.
+| Type | Pipeline |
+|---|---|
+| Epic | Discovery → Discussion → Specification → Implementation → Review |
+| Feature | Discovery → Discussion → Specification → Implementation → Review |
+| Bugfix | Discovery → Investigation → Specification → Implementation → Review |
+| Quick-fix | Discovery → Implementation → Review (on request) |
 
-The experiment slot is never entered directly: a research or discussion conversation spawns one when a number is about to bear a decision — a controlled measurement, designed and frozen before it runs — and the verdict feeds back into the conversation that asked, which cannot conclude until it lands.
+An epic is many topics, each its own discussion, decided before one spec is written across them; a feature is one. A discussion can spawn an experiment when a number is about to bear a decision: a controlled measurement, designed before it runs, whose verdict comes back to be discussed.
 
 ## What it looks like
 
 ```
-■ Workflow Overview
+Inbox: 2 ideas · 1 bug · 1 quick-fix
 
-Features
-  └─ 1. Api Rate Limiting
-
-Epics
-  └─ 2. Payments Overhaul
-
-Inbox
-  ├─ Smart Retry [idea]
-  └─ Tooltip Flicker [bug]
-
-· · · · · · · · · · · ·
 ◆ What would you like to do?
 
-1       → Continue "Api Rate Limiting" — feature, specification (in-progress)
-2       → Continue "Payments Overhaul" — epic
-s/start → Start something new
-i/inbox → View the inbox and triage its items
+1         → Continue feature: Saved Filters — build, phase 1 of 3
+2         → Continue bugfix: Export Timeout — investigation
+3         → Continue epic: Payments Overhaul — discussion, 1 of 3 topics decided
+p/product → Talk about the product
+s/start   → Start something new — describe it, and we'll find what kind of work it is
+t/triage  → Triage the inbox
+r/roadmap → Open the product roadmap
+v/view    → View completed & cancelled work units
+m/manage  → Manage work units
+h/help    → How Ledger works
 ```
 
-In the terminal the chrome is coloured — the title blue and underlined, the keys and the `◆` highlighted, the metadata tails italic. One screen, not four blocks.
+Every screen is drawn by the engine from the state on disk and shown exactly as drawn. Claude cannot editorialise your status. With Ledger's Claude Code mod, every menu is a row of buttons above the prompt, and a board beside the conversation shows the build's tasks, a topic's map and the questions waiting.
 
-Every display is computed by the engine from state on disk and emitted byte-for-byte. Claude cannot editorialise your status.
+## The build runs on its own
 
-## The hands-off loop
+The spec is cut into phases at ready to build, where you pick the build's position: auto, where it runs on its own and only what needs you stops it, or step, where it also stops after each task for you to try it. Each phase's tasks are written as it starts. Builders work them side by side, test first, each in a worktree of its own; a pair of reviewers who didn't write the code checks each task, and each phase's whole change, against the spec. On GitHub every task lands as its own pull request, each phase a stack of them. A question for you parks only the tasks that depend on it; the rest carry on. Front-load your attention on the conversation and the spec; the build handles the rest.
 
-Implementation runs task by task: an executor writes the code test-first, a reviewer checks it against the plan's acceptance criteria, and failures loop back with findings, capped at three attempts before you're consulted. Each gate can be approved by hand or set to auto. When a phase's last task lands, a consolidation sweep reads what its tasks built side by side — duplication, near-miss helpers, dead code no single task could see — and anything worth fixing becomes tasks you approve before the phase closes. Front-load your attention on the discussion and the spec; the loop handles the rest, and every task lands as its own commit. The context each agent sees is engineered by the process: briefs, read-in-full contracts, and scoped handoffs instead of a dumped transcript.
+## The ledger and the record
 
-## The knowledge base
+Each topic's current decisions are drawn from the ledger into its record, which is what the spec is assembled from — every statement citing the entries it comes from — and what later work searches. Beside each record, the conversation's log keeps the journey: the options weighed, the false paths, why minds changed. When you change one of Claude's calls, you're asked at the next sign-off what its answer would have cost: nothing, a fix later, or a real loss. Those verdicts are what it learns from, and the matrix shows where every kind of question stands.
 
-Every completed artifact is indexed: research, discussions, investigations, specifications, the discovery record, the product roadmap's session logs. Later phases query it in plain language and get answers with provenance. Dead ends count too; a rejected approach stops the next work unit exploring the same ground. Relevance decays with shipped work rather than wall-clock time, and specifications never decay.
+## Memory across the work
+
+Every record is indexed locally and searched by meaning. Later work asks "what did we decide about X?" and gets the decision itself, with where it came from. A replaced decision drops out of search the moment it changes, and material fades as the project moves past it, not as the calendar does.
 
 ## Starting in an existing codebase
 
-A project that grew up on the workflows accumulates that record as it goes. A project you install them into has none of it — so your first working session offers a **baseline assessment**. Research agents fan out over the code, then the system interviews you about what they found: the intent, constraints, and history only you can supply, with the evidence woven into every question. The answers land as a doc set the knowledge base surfaces in every later phase — observed structure, your stated reasoning, and honest open questions kept separate. Pausable mid-interview, resumable from the start menu, expandable as the product grows.
+A project that grew up on Ledger accumulates its record as it goes. A project you install it into has none, so your first session offers to have a researcher read the code first: what the code shows lands on the ledger as findings, and what it leaves open becomes the product conversation's first questions.
 
-## An expert in the room
+## Your tracker and your code host
 
-This is multi-agent by design. More than thirty specialised agents work alongside the pipeline: baseline researchers that map a codebase the workflows were installed into, background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Review findings are verified against the code before anything acts on them; safe contained corrections are applied and checked in-session, and everything needing a decision reaches you — never a wall of notes.
+Tasks live in your tracker through a driver, and land in your repository through another. The tracker that ships is **Tick**, a lightweight task tool built for coding agents. Code lands through **GitHub**, as stacked pull requests, where your remote is there, and as local branches where it isn't. A driver for another code host comes by pull request against the drivers' conformance suite.
 
-## Your task tracker
+## The roadmap and the inbox
 
-Plans write tasks to the format you choose behind one adapter contract: **Tick** (native dependency graphs, built for this), **Local Markdown** (zero dependencies), or **Linear** (your team already lives there).
-
-## The product roadmap
-
-Above the work units sits a product layer for the conversations that are not yet a piece of work: horizons you name in your own release language, items with pointers back to the thinking — capabilities, and the bugs and quick-fixes competing with them for a release — and a **pull** that births a work unit already fenced to the slice you chose. Ideas surfacing mid-work park there with one confirmed line ("that's a v2 thing"), a topic that belongs to a later release is postponed there whole, everything unpulled stays visibly waiting, and cancelling delivery hands the item straight back. [The product roadmap](docs/roadmap.md) has the full account.
+Say "log that as an idea" mid-conversation and keep working: it lands in the inbox, for you to triage later. Above the pieces of work sits the roadmap: horizons you name in your own release language, holding what you've decided on but not started. Say "that's a v2 thing" anywhere and it's on the roadmap in one line. Pick items off it and they go into discovery together as the seeds of one piece of work.
 
 ## When work changes shape
 
-A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. A topic wanted later rather than never is postponed onto the roadmap whole. Cancelled work reactivates; completed work stays finished, and a later change to it is new work. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan.
+A feature that outgrows its scope pivots into an epic. A feature that belongs inside one is absorbed as a topic. A topic wanted later rather than never is postponed onto the roadmap whole. Cancelled work comes back; finished work stays finished, and a later change to it is new work.
 
 ---
 
 ## More features
 
-- **Graduated autonomy.** Every approval gate accepts auto mode; hand over as much or as little of the loop as you trust, per work unit, reversibly.
-- **Durable by construction.** State transitions are transactions: validated first, refused cleanly, committed atomically. A crash mid-anything leaves files byte-identical.
-- **Full audit trail.** Every phase, decision, and review finding lands in git through engine-owned commits; the manifest is versioned alongside your code.
-- **Self-healing epics.** A background analysis re-reads completed research and discussions to surface emergent topics, gaps between artifacts, and work that should exist but doesn't.
-- **Provenance everywhere.** Every topic records how it landed on the map, every knowledge answer cites its source, every review finding names the concrete failure it prevents and traces to the verifier that raised it.
-- **Nothing falls on the floor.** Off-topic points raised mid-session are sent as messages to the right topic's mailbox and block that topic's conclusion until read.
-- **Many sessions, one checkout.** Run as many document phases in parallel as you like — every commit stages only its own topic's files, so nothing gets swept into someone else's record. Writing code is the exception a working tree forces: implementation and review run one at a time, and a second one meets a red stop naming who holds the slot, which you can override.
-- **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
-- **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
-- **tmux session labels.** Opt in per project and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases and the menus between them, restoring the original name on exit and bringing the label back when you resume a session.
-- **Gates you can press.** The workflows come with a Claude Code mod: while the terminal or the Desktop app is the only screen attached, every menu is drawn as buttons above the prompt, where they stay put while the transcript scrolls — a click picks a row, and a second click or Enter sends it — and the same mod carries the work into a fresh conversation each time it moves on to its next step, and after a compaction has Claude re-read the skill and the documents the work runs from before it carries on. It runs in Claude Code's terminal app and the Desktop app's Code tab, where mods are on by default from 2.1.287.
-- **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
+- **State on its own branch.** Ledger keeps its records on a branch of their own, `ledger-state`, checked out beside your code, pushed after every commit and protected from deletion. Pull requests never carry it, and a second machine catches up on its own.
+- **Full audit trail.** Every decision, every review finding and every verification run lands in git through engine-owned commits.
+- **Durable by construction.** State changes are transactions: checked first, refused cleanly, committed whole. A crash mid-anything leaves nothing half-written.
+- **Nothing falls on the floor.** A point raised in the wrong topic is sent as mail to the topic it belongs to, and waits there until read.
+- **Many sessions, one checkout.** Talk through as many topics in parallel as you like; every commit takes only what its own action wrote. A build, the review phase and a quick-fix take turns in the checkout.
+- **Recovers from anything.** After a compaction, a crash or a new session, the work re-reads its record and carries on where it was, with no recap.
+- **tmux session labels.** Opt in per project and your tmux session renames to show where you're working — `myproject · payments · discussion · auth-flow` — restoring the original name on exit.
+- **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run, including a project from before Ledger.
 
 ## Documentation
 
-The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all thirty-four agents, and the history of the project. Start with these:
+The [full documentation](docs/README.md) covers every phase in detail, trust and verification, the state branch, the engine, the knowledge base, the agents, and the history of the project. Start with these:
 
 | Page | Contents |
 |---|---|
-| [Introduction](docs/introduction.md) | The ideas behind the design |
-| [How it fits together](docs/how-it-fits-together.md) | The layers, the tiers, and how an action travels through them |
-| [The five work types](docs/work-types.md) | Epic to quick-fix, each pipeline in full |
-| [Implementation](docs/implementation.md) | The TDD loop, gates, the fix threshold, and the consolidation sweep |
-| [The engine](docs/engine.md) | What the deterministic core does, and why |
-| [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
-| [The agents](docs/agents.md) | All thirty-four, organised by when they act |
-| [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
+| [Introduction](docs/introduction.md) | What Ledger is and your part in it |
+| [Work types](docs/work-types.md) | Epic to quick-fix, each pipeline in full |
+| [The build](docs/the-build.md) | Phases, tasks, the reviews, pull requests and the drivers |
+| [Trust](docs/trust.md) | The ledger, the ask rule, verdicts and the matrix |
+| [Verification](docs/verification.md) | Proving the work by running the product |
+| [State and git](docs/state-and-git.md) | The state branch, pushing, a second machine |
+| [Configuration](docs/configuration.md) | Install, effort, the drivers, the environment setup |
 | [History](docs/history.md) | Where this came from and how it evolved |
 
-**Setup:** Node 18+, git 2.40.0+, and Claude Code 2.1.287+ in its terminal app or the Desktop app's Code tab, which the workflows are built for — on the web or in the VS Code extension the menus stay text and support is soft, fixes welcome. There is no setup procedure: your first working session sets everything up in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
+**Setup:** Node 18+, git 2.40.0+, and Claude Code 2.1.287+ in its terminal app or the Desktop app's Code tab, which Ledger is built for — on the web or in the VS Code extension the menus stay text and support is soft, fixes welcome. Run your session at medium effort or above. There is no setup procedure: your first session sets everything up in chat. The build's tracker needs Tick, and landing on GitHub needs GitHub's CLI with its stack extension. Optional: an OpenAI(-compatible) key for search by meaning, entered in your terminal, never the chat.
 
-**Managing the install:** commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
+**Managing the install:** commit the installed files to share Ledger with your team. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
 
 ## Contributing
 
-Contributions are welcome — bug fixes, workflow improvements, or new ideas. Please open an issue first to discuss anything significant.
+Contributions are welcome — bug fixes, improvements, or new ideas. Please open an issue first to discuss anything significant.
 
 See [docs/contributing.md](docs/contributing.md) for getting set up, the test gates, and the setup gotchas worth knowing before they cost you an afternoon.
 
@@ -156,7 +143,6 @@ See [docs/contributing.md](docs/contributing.md) for getting set up, the test ga
 - [**claude-laravel**](https://github.com/leeovery/claude-laravel) — Laravel development skills for Claude Code
 - [**claude-nuxt**](https://github.com/leeovery/claude-nuxt) — Nuxt.js development skills for Claude Code
 - [**tick**](https://github.com/leeovery/tick) — Lightweight task management CLI designed for AI coding agents; deterministic, with zero-friction git integration
-- [**portal**](https://github.com/leeovery/portal) — Interactive tmux session manager with project memory and a keyboard-driven TUI
 
 ## License
 

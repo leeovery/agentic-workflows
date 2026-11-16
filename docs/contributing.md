@@ -1,13 +1,13 @@
 # Contributing
 
-This page is for working **on** the system rather than with it. Most of
+This page is for working **on** Ledger rather than with it. Most of
 the documentation describes the product; this describes the repository
 that produces it.
 
 Start by reading `CLAUDE.md` at the repository root — the standing rules
 for working on this repository that are easy to violate by accident, a
-short map of the system, and the documents that own each part. How the
-system behaves lives in the skills themselves, the engine's command
+short map of Ledger, and the documents that own each part. How
+Ledger behaves lives in the skills themselves, the engine's command
 reference (`skills/ledger-engine/references/commands.md`), the module
 header comments, and this book.
 
@@ -31,7 +31,7 @@ is to run them before every commit rather than at the end of a branch.
 
 | Command | What it covers | Layers |
 | --- | --- | --- |
-| `npm test` | Node suites: engine, gateways, knowledge, migrations, pipeline simulation, prose-test perimeter; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, simulation, migration (047 on), prose |
+| `npm test` | Node suites: engine, drivers, knowledge, migrations, pipeline simulation, prose-test perimeter, and the checks on the docs, the glossary and where a tool may be named; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, simulation, migration (047 on), prose |
 | `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) | — |
@@ -52,10 +52,11 @@ The knowledge base is engine code — its mechanism in
 `skills/ledger-engine/scripts/domain/knowledge/`. The kernel holds the
 store's file format, the tokenizer and stemmer, ranking, chunking,
 excerpts and outlines, the embedding providers and the config; the domain
-side holds artifact identity against the manifests, indexing, the vector
-fill, query and the passages it prints, status, decay, setup, and
-`commands.cjs`, the `engine knowledge` door; the per-phase chunking
-configs sit in `skills/ledger-engine/content/knowledge/chunking/`. Each
+side holds what is indexed and each artifact's identity, indexing, the
+vector fill, query and the passages it prints, status, decay, setup, and
+`commands.cjs`, the `engine knowledge` door; the chunking configs, one for
+the records and one for a quick-fix's short record, sit in
+`skills/ledger-engine/content/knowledge/chunking/`. Each
 module's header states its contract. The modules take no dependencies:
 Node's built-ins alone, none newer than Node 18.
 
@@ -115,8 +116,8 @@ format and its check's contract.
   check over a project the migration is under way in
   (`tests/scripts/migration-world.cjs`).
 
-The **reshape** — the migration from the workflows' `.workflows/` to
-Ledger's `.ledger/` — keeps a contract of its own in the runner, stated
+The **reshape** — the migration from a project's `.workflows/`, from
+before Ledger, to `.ledger/` — keeps a contract of its own in the runner, stated
 in the same header:
 
 - Whether a project owes it is `skills/ledger-migrate/scripts/old-layout.cjs`'s
@@ -214,6 +215,25 @@ it, so an old checkout will look set up and quietly not be.
 - **`CHANGELOG.md` is generated** — CLAUDE.md (Changelog).
 - **Released migrations are frozen** — CLAUDE.md (Migrations).
 
+## The docs
+
+`docs/` is the book, and `README.md` its pitch. The book is written from the
+shipped skills and engine, which are the source of truth: a change to what
+Ledger does describes itself in the chapter that covers it. Three suites
+hold what can be checked:
+
+- `tests/scripts/test-docs.cjs` — the chapters the book is made of, with no
+  `planning.md` and no collaboration chapter apart from trust; the main
+  session's recommended minimum effort, medium, stated; the README's pipeline
+  table naming no retired phase; none of the author's own products and
+  projects named, only described; and the product called Ledger, never the
+  name it had while it was built, in the docs, help and the glossary.
+- `tests/scripts/test-tool-names.cjs` — a tool a driver wraps named only
+  where CLAUDE.md's Tool Names allows: the docs and `README.md` may name
+  one, help and the glossary never.
+- `tests/scripts/test-glossary.cjs` — the glossary's terms, the vocabulary
+  the docs share with the screens.
+
 ## Conventions
 
 Skill authoring — where each rule goes, what a phase skill holds, prose,
@@ -224,7 +244,7 @@ silently non-compliant skills more than once.
 
 ## Moving to a new model
 
-When the workflows move to a new model, the prose is walked on it and one
+When Ledger moves to a new model, the prose is walked on it and one
 pass cuts what that model no longer needs. Beyond the prose, the pass
 re-weighs each item below, each held as it is for today's model:
 
@@ -254,5 +274,5 @@ Open an issue before anything substantial, so the shape can be agreed
 before the work. Each idea ships as its own pull request rather than
 bundled with others, and any change to engine scripts (the knowledge
 base's among them), adapters, migrations or the gate mods lands with its
-test alongside it. A change to what the system does describes itself in
+test alongside it. A change to what Ledger does describes itself in
 its pull request and in this book.
