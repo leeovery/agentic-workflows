@@ -6,7 +6,7 @@
 
 The files are what the migration found no place for, below each place's `assets/legacy/`: a unit's, or the product's. From the start menu, `asset legacy` answered `places`, each with its `work_type`, its `status`, its topics `in_discussion` and its `folders`, every folder's `count` of files and how many of them something already `named`. From an epic's menu, `asset legacy {place}` answered that epic alone, in progress, with its `in_discussion`, its `folders` and its `files`. Show the person each place and what its folders hold, sorted by what the read knows. `{path}` is a file as `files` names it, or a folder as `folders` names it, the files below it sorted together.
 
-- **Finished work, kept whole** — a completed unit's build reports and the review tracking of its plan and spec, a completed quick-fix's plan, a topic's old reports under `cache/{phase}/{topic}/` where the topic is not `in_discussion`, and every folder whose files something already names. Offer to keep all of it at once, every place's in one call, each `{place} '{path}'` pair a folder or a whole place's `assets/legacy`:
+- **Finished work, kept whole** — a completed unit's build reports and the review tracking of its plan and spec, a completed quick-fix's plan, and every folder whose files something already names. Offer to keep all of it at once, every place's in one call, each `{place} '{path}'` pair a folder or a whole place's `assets/legacy`:
 
   ```bash
   node .claude/skills/leeway-engine/scripts/engine.cjs asset keep {place} '{path}' {place} '{path}' …

@@ -65,7 +65,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PRODUCT, PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
+const { PRODUCT, PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason, isTopicPhase } = require('../kernel/manifest-schema.cjs');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, leftPath, storedPosition, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
@@ -724,7 +724,7 @@ function closedReason(position, manifest) {
     if (refused !== null) return refused;
   }
   if (phase === undefined || typeof topic !== 'string') return null;
-  const status = itemOf(manifest, phase, topic)?.status;
+  const status = isTopicPhase(phase) ? itemOf(manifest, phase, topic)?.status : undefined;
   if (typeof status === 'string' && TERMINAL_STATUSES.includes(status)) return `the ${phase} is ${status}`;
   if (!MAP_PHASES.includes(phase)) return null;
   const { lifecycle } = computeTopicLifecycle(manifest, topic);

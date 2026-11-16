@@ -15,9 +15,6 @@
 //   its tasks not written, says so: "build, phase 3 of 5, not yet written"
 //   — a phase whose parent the migration adopted has its tasks written.
 // - Any other phase is said by its name alone ("investigation", "review").
-// - A unit waiting on the migration's cut — of a type the reshape retires,
-//   or built under the old plan (P12) — says so, whatever its items have in
-//   flight, since nothing is done in it until the cut.
 // ---------------------------------------------------------------------------
 
 const { nowOf, unitRead } = require('./unit-phases.cjs');
@@ -25,13 +22,10 @@ const { liveInOrder } = require('./approve-map.cjs');
 const { mapCount } = require('./projections/board-discovery.cjs');
 const { counted } = require('./projections/map.cjs');
 const {
-  cutPhases, cutLength, phaseClosed, phaseStarted, phaseAdopted, awaitsCut, computeTopicLifecycle,
+  cutPhases, cutLength, phaseClosed, phaseStarted, phaseAdopted, computeTopicLifecycle,
 } = require('./derivations.cjs');
 
 /** How far a unit has come: its phase, and how far into it where the phase has a measure. @typedef {{phase: string, far: string|null}} Progress */
-
-/** A unit of a type the reshape retires, where it has come to (the header's). */
-const AT_THE_CUT = 'waiting on the migration\'s cut';
 
 /** How far an epic in its discussion has come: its topics decided of all. @param {Record<string, any>} manifest */
 function epicWords(manifest) {
@@ -63,15 +57,13 @@ function buildMeasure(manifest) {
  * @returns {Progress}
  */
 function progressOf(cwd, manifest) {
-  if (awaitsCut(manifest)) return { phase: 'cut', far: null };
   const { phase } = nowOf(unitRead(cwd, manifest));
   return { phase, far: phase === 'build' ? buildMeasure(manifest) : epicMeasure(cwd, manifest, phase) };
 }
 
 /** A unit's progress as its row says it: "build, phase 2 of 3". @param {Progress} progress */
 function progressWords({ phase, far }) {
-  const named = phase === 'cut' ? AT_THE_CUT : phase;
-  return far === null ? named : `${named}, ${far}`;
+  return far === null ? phase : `${phase}, ${far}`;
 }
 
-module.exports = { AT_THE_CUT, epicMeasure, buildMeasure, progressOf, progressWords };
+module.exports = { epicMeasure, buildMeasure, progressOf, progressWords };

@@ -45,14 +45,11 @@ const DEFAULTS = {
   // topics(V) × weight[work_type(V)] over later units, so a quick-fix advances
   // the clock less than a feature and an epic (multi-topic) advances it more.
   // S0/prune are thus measured in "feature-equivalents". Tunable; missing keys
-  // fall back to 1.0. cross-cutting = 0: it's terminal (stops at spec, never
-  // implemented), so it doesn't move the codebase forward and shouldn't age
-  // anything.
+  // fall back to 1.0.
   decay_weights: {
     'quick-fix': 0.25,
     'bugfix': 0.5,
     'feature': 1.0,
-    'cross-cutting': 0,
     'epic': 1.0,
   },
 };

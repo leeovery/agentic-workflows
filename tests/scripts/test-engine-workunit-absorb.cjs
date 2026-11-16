@@ -73,6 +73,7 @@ describe('engine workunit absorb — happy path', () => {
     indexFiles(fix, [...FEATURE_FILES, EPIC_FILE]);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     writeFile(fix.project, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    writeFile(fix.project, '.leeway/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
     writeFile(fix.project, '.leeway/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md', 'put back\n');
     const marks = path.join(fix.project, '.leeway/.cache/.marks');
     writeFile(fix.project, '.leeway/.cache/.marks/auth-flow.json', '{"shown":[]}\n');
@@ -88,7 +89,7 @@ describe('engine workunit absorb — happy path', () => {
     const stateCommits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']));
     const res = engine(fix, ABSORB);
     assert.strictEqual(fs.existsSync(path.join(fix.project, '.leeway/.cache/auth-flow')), false,
-      "the absorbed feature's scratch cache is purged with it");
+      "the absorbed feature's scratch cache is purged with it, the old cache's reports the migration copied into its earlier/ among it");
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md'), 'utf8'), 'put back\n',
       'what its review\'s put back set aside outlives it');
     assert.deepStrictEqual([fs.readdirSync(marks), lockedAsRemoved], [['payments.json'], [[true, true]]],

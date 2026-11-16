@@ -7,22 +7,20 @@
 // spec's refusal (spec-entry.cjs) holds the unit to its first two parts.
 // - The unit: one this project has, in progress — a cancelled unit
 //   reactivated first, a completed one closed to new work.
-// - Its phase: one its work type's pipeline holds — a type the reshape
-//   retires holds none.
+// - Its phase: one its work type's pipeline holds.
 // - The topic: a name that is one, a topic the unit holds — an epic's map
 //   names them, a single-topic unit's is the unit — and none once the unit
 //   is past its spec (spec-standing.cjs), from which a change is settled in
 //   the spec (4.11.2, 10.2.2).
-// - What the topic is now: postponed or cancelled on the map, promoted out
-//   of the unit, decided, or for a bugfix its investigation concluded, the
+// - What the topic is now: postponed or cancelled on the map, decided, or
+//   for a bugfix its investigation concluded, the
 //   unit's menu leading past it. A decided topic is entered all the same
 //   while an entry of it relies on an answer replaced since and the unit is
 //   in its discussion, where such an entry is answered (unit-handoff.cjs),
 //   to confirm each still holds or replace it, staying decided (10.2.6,
 //   ledger-affected.cjs). A message waits in a postponed topic's mailbox,
 //   reopens a decided or concluded one and goes to the inbox for a
-//   cancelled one (10.1.6, 10.1.8, 10.2.7), so only a promoted topic
-//   refuses it.
+//   cancelled one (10.1.6, 10.1.8, 10.2.7).
 // And whether a unit's discovery can still be talked in: an epic's, until
 // its spec closes the map (8.6.5, 8.2.11); every other type's ended at
 // start this work. The product's conversation never closes.
@@ -31,7 +29,7 @@
 const { PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
-const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits, retiredRefusal } = require('./derivations.cjs');
+const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
 const { pastSpecRefusal } = require('./spec-standing.cjs');
 
 /**
@@ -80,14 +78,11 @@ function unitInProgress(cwd, unit) {
 }
 
 /**
- * Why the unit's work type has no place for the phase, naming its phases —
- * a retired type none, its discovery among them — or null where it has;
- * never discovery for any other, which every work type opens on.
+ * Why the unit's work type has no place for the phase, naming its phases,
+ * or null where it has; never discovery, which every work type opens on.
  * @param {Record<string, any>} manifest @param {string} phase @returns {string|null}
  */
 function phaseHeldRefusal(manifest, phase) {
-  const retired = retiredRefusal(manifest);
-  if (retired !== null) return retired;
   if (phase === 'discovery') return null;
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
   return pipeline.includes(phase) ? null : `a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`;
@@ -126,7 +121,8 @@ function holdsTopic(manifest, topic) {
 /**
  * Why the topic named cannot take work, whatever the phase: an epic named at
  * none, a name that is not one, the unit past its spec (4.11.2), or a topic
- * the unit lacks; null where it can.
+ * the unit lacks; null where it takes a message, and an entry where its
+ * phase has no rule of its own.
  * @param {Standing} at @returns {string|null}
  */
 function topicStanding({ cwd, phase, unit, topic, manifest }) {
@@ -152,26 +148,6 @@ function postponedRefusal(cwd, unit, topic, through) {
   return postponedStillWaits(cwd, unit, topic)
     ? `the topic "${topic}" is postponed to the roadmap — pulling it forward goes through ${through}`
     : `the topic "${topic}" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back`;
-}
-
-/**
- * Why a topic takes nothing more, entry or message: promoted out of the
- * unit; null where it can.
- * @param {Standing} at @returns {string|null}
- */
-function closedStanding({ topic = '', manifest }) {
-  const item = itemOf(manifest, 'discussion', topic);
-  return item?.status === 'promoted' ? `the topic "${topic}" was promoted to "${item.promoted_to}" — it carries on there` : null;
-}
-
-/**
- * Why a topic takes nothing at all — the topic named, or its closure; null
- * where it takes a message, and an entry where its phase has no rule of its
- * own.
- * @param {Standing} at @returns {string|null}
- */
-function topicClosure(at) {
-  return topicStanding(at) ?? closedStanding(at);
 }
 
 /**
@@ -212,8 +188,6 @@ function discussionStanding(at) {
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   if (lifecycle === 'postponed') return postponedRefusal(cwd, unit, topic, through);
   if (lifecycle === 'cancelled') return SET_ASIDE.cancelled(topic, through);
-  const closed = closedStanding(at);
-  if (closed !== null) return closed;
   return itemOf(manifest, 'discussion', topic)?.status === 'completed' && !affectedHere(at)
     ? `the topic "${topic}" is decided — it reopens through a message sent to it, or through ${through}`
     : null;
@@ -221,15 +195,14 @@ function discussionStanding(at) {
 
 /**
  * Why a bugfix's investigation cannot be entered: concluded, the unit's
- * work going on where its menu goes (`computeNextPhase`), or done; null
- * while the menu still leads to the investigation.
+ * work going on where its menu goes (`computeNextPhase`); null while the
+ * menu still leads to the investigation — a unit whose work is done is past
+ * its spec, refused before.
  * @param {Standing} at @returns {string|null}
  */
 function investigationStanding({ topic = '', manifest }) {
   const next = computeNextPhase(manifest).next_phase;
-  if (next === 'investigation') return null;
-  const where = next === 'done' ? 'its work is done' : `its work goes on in ${next}, from the start menu`;
-  return `the topic "${topic}" is concluded — ${where}, and a message sent to it reopens it`;
+  return next === 'investigation' ? null : `the topic "${topic}" is concluded — its work goes on in ${next}, from the start menu, and a message sent to it reopens it`;
 }
 
 /**
@@ -254,12 +227,12 @@ function discoveryStanding({ cwd, unit, manifest }) {
  */
 const STANDINGS = Object.freeze({
   discussion: (at) => topicStanding(at) ?? discussionStanding(at),
-  investigation: (at) => topicClosure(at) ?? investigationStanding(at),
+  investigation: (at) => topicStanding(at) ?? investigationStanding(at),
 });
 
 /** @param {string} phase @returns {(at: Standing) => string|null} */
 function phaseStanding(phase) {
-  return STANDINGS[phase] ?? topicClosure;
+  return STANDINGS[phase] ?? topicStanding;
 }
 
 /**
@@ -273,4 +246,4 @@ function assertEnterable(cwd, phase, manifest, topic) {
   if (refusal !== null) throw new Error(refusal);
 }
 
-module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, phaseHeldRefusal, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable, staysDecided };
+module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, phaseHeldRefusal, assertPhaseHeld, holdsTopic, topicStanding, phaseStanding, discoveryStanding, assertEnterable, staysDecided };

@@ -34,12 +34,10 @@
 //   investigation log as `investigation-log.md`,
 //   so the discussion keeps a log of its own — each line naming one
 //   following it through the carry.
-// - It refuses, writing nothing: a unit not in progress; a unit of a type
-//   the reshape retires, as every door does (`retiredRefusal`,
-//   derivations.cjs); a type that does not move — an epic, a feature — or
-//   a move to a type its own does not take: a quick-fix moves to a feature
-//   or a bugfix, a bugfix to a feature alone; a quick-fix its old scoping
-//   made; a unit past its spec; a bugfix but from its investigation in
+// - It refuses, writing nothing: a unit not in progress; a type that does
+//   not move — an epic, a feature — or a move to a type its own does not
+//   take: a quick-fix moves to a feature or a bugfix, a bugfix to a feature
+//   alone; a unit past its spec; a bugfix but from its investigation in
 //   progress, or while the root cause logged has no validation taken in
 //   since it was — one out, its report not taken in, or none dispatched
 //   (`assertMovable`, investigation-conclude.cjs); and a quick-fix a task
@@ -116,7 +114,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { appendEntry, commitLedger } = require('./ledger.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { retiredRefusal, legacyBuild, fixesBegun, FIXES_PHASE, itemOf, briefFile, EARLIER, earlierFile } = require('./derivations.cjs');
+const { fixesBegun, FIXES_PHASE, itemOf, briefFile, EARLIER, earlierFile } = require('./derivations.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { assertMovable } = require('./investigation-conclude.cjs');
 const { draftIn, writeBrief } = require('./discovery-map.cjs');
@@ -220,10 +218,7 @@ function checkMove(cwd, manifest, to, warnings, landing = () => quickFixLanding(
   const unit = manifest.name;
   const from = manifest.work_type;
   if (manifest.status !== 'in-progress') throw new Error(`${unit} is ${manifest.status ?? 'without a status'} — only work in progress moves`);
-  const retired = retiredRefusal(manifest);
-  if (retired !== null) throw new Error(retired);
   assertMoves(unit, from, to);
-  if (from === 'quick-fix' && legacyBuild(manifest)) throw new Error(`${unit} was scoped under the old plan, and moves once the reshape's 29.17 migration has cut it`);
   assertBeforeSpec(cwd, manifest, 'ownWork');
   if (from === 'quick-fix') return fixesOf(cwd, manifest, to, landing);
   assertInvestigating(manifest);

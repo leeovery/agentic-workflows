@@ -334,8 +334,8 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
   const RECORD = layout.record('payments', 'session-model');
   const OTHER_UNIT = layout.summary('billing');
   // An epic with a topic still in discussion and two decided, one decided
-  // topic's record indexed; and a finished quick-fix beside it, its short
-  // record indexed.
+  // topic's record indexed; and a quick-fix beside it, its short record
+  // indexed.
   const indexedWorld = world((dir) => {
     writeFile(dir, '.leeway/payments/manifest.json', json({
       name: 'payments', work_type: 'epic', status: 'in-progress',
@@ -346,7 +346,7 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
     }));
     writeFile(dir, '.leeway/billing/manifest.json', json({
       name: 'billing', work_type: 'quick-fix', status: 'in-progress',
-      phases: { planning: { items: { billing: { status: 'completed' } } }, implementation: { items: { billing: { status: 'completed' } } }, review: { items: { billing: { status: 'completed' } } } },
+      phases: {},
     }));
     for (const file of [RECORD, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);
     commitAll(dir, 'init');
@@ -377,10 +377,4 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
     assert.deepStrictEqual(fs.readFileSync(path.join(dir, '.leeway/.knowledge/store.bin')), before);
   });
 
-  it('a work-unit complete over a cancelled, finished unit re-indexes it — another unit\'s untouched', () => {
-    engine(dir, ['workunit', 'cancel', 'billing']);
-    assert.deepStrictEqual(indexed(), [RECORD]);
-    assert.deepStrictEqual(harness.completeUnit(dir, 'billing').warnings, []);
-    assert.deepStrictEqual(indexed(), [RECORD, OTHER_UNIT]);
-  });
 });

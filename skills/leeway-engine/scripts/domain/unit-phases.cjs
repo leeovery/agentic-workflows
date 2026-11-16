@@ -27,17 +27,16 @@
 // - Where it has come to (`now`): the first phase not complete — an epic
 //   past its discovery by its stages, the specification once the topics are
 //   settled, the build once begun, the review once the build has finished —
-//   or complete, since the day the phase before it closed; a migrated unit
-//   of a type the reshape retires, the migration's cut it waits on (E6).
-//   The menus' rows read it too (progress.cjs, unit-handoff.cjs), so it
-//   reads the unit alone.
+//   or complete, since the day the phase before it closed. The menus' rows
+//   read it too (progress.cjs, unit-handoff.cjs), so it reads the unit
+//   alone.
 // - Read outside a board call, a unit has its own one read of anything read
 //   twice (`unitRead`).
 // ---------------------------------------------------------------------------
 
 const { specBegun } = require('./spec-standing.cjs');
 const {
-  phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec, quickFixBuild, fixesBegun, reviewAsked, startedOn,
+  phaseStatus, buildPlaceStatus, buildBegun, buildFinished, closedIntoSpec, quickFixBuild, fixesBegun, reviewAsked, startedOn,
 } = require('./derivations.cjs');
 
 /** @typedef {import('./board.cjs').BoardAt} BoardAt */
@@ -143,12 +142,8 @@ function linearNow(at) {
   return { phase: phases[now].phase, since: phases[now - 1]?.on ?? null };
 }
 
-/** Where a unit of a type the reshape retires has come to: the migration's cut, which it waits on. @type {UnitNow} */
-const AT_THE_CUT = Object.freeze({ phase: 'cut', since: null });
-
 /** Where the unit has come to (the header's). @param {UnitRead} at @returns {UnitNow} */
 function unitNow(at) {
-  if (retiredRefusal(at.manifest) !== null) return AT_THE_CUT;
   return pastDiscovery(at.manifest) ? epicNow(at) : linearNow(at);
 }
 

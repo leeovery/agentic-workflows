@@ -94,14 +94,16 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.leeway/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
 - `.leeway/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
 - `.leeway/{work_unit}/seeds/` — the inbox items the unit was started from
-- `.leeway/{work_unit}/assets/` — the files the user shared; `assets/legacy/` the unit's files from before Leeway the migration had no other place for, each at its path from the unit's old folder, and in `assets/legacy/cache/` the old cache's reports, each at its path below the unit's folder in the old cache
+- `.leeway/{work_unit}/assets/` — the files the user shared; `assets/legacy/` the unit's files from before Leeway the migration had no other place for, each at its path from the unit's old folder
 - `.leeway/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
 - `.leeway/.state/` — the migrations ledger, `environment-setup.md`
 - `.leeway/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch, presence and `entered.json`, when the place was last entered, and in `.showings/` the learned gates' showings held there; `.cache/.session-labels/` the tmux label store
+- `.leeway/.cache/{work_unit}/earlier/` — the old cache's reports from before Leeway, copied by the migration, each at its path below the unit's folder in the old cache, purged with the unit's cache; `.cache/earlier/` those of no unit, each at its path below the old cache
 - `.leeway/.cache/.showings/` — the import reprompt's showing held, at no place
+- `.leeway/.cache/migrate/` — the migration's staging: the split's plans (`split/`), each topic's record as composed (`records/`) and as carried (`carried/`), each building unit's pieces and plan (`cut-and-merges/{unit}/`), the cut's and the closed plans' marks (`cut/`, `closed/`), and the finish's drops (`finish.json`)
 - `.leeway/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
 - `.leeway/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
-- `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Leeway of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/cache/` the old cache's reports of no unit's, each at its path below the old cache, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
+- `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Leeway of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
 - `.leeway/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `refs/leeway/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
 - `~/.config/leeway/` (or `LEEWAY_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, and `conversations/{session-id}/`, per-conversation state
@@ -123,6 +125,8 @@ Everything else reaches a tool through the driver the project manifest's `driver
 ## Migrations
 
 Migrations keep existing projects' `.leeway/` in step with the current design, run by `engine boot` at `/leeway`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/leeway-migrate/scripts/migrate.cjs`.
+
+The migration into Leeway runs from a project's `.workflows/` at 072: the guard (074) first, then what the chain still owes (073), the split (075–077, its directive 076), the move (078), the records (directive 079), the cut and the merges (directive 080), and the finish (081). Boot stops at each directive for the session to carry it out, then at the finish for the review, whose yes makes the migration's commit. `tests/scripts/migration-audit.cjs` checks a migrated project migrated cleanly.
 
 - **Upgrades live in migrations, never in code.** Converting, renaming, deleting or tolerating a shape an older version left behind is a migration. Runtime code may keep the current version's own requirements in place, but never recognises what an earlier version did — runtime code handling old leftovers can never be deleted.
 - **A released migration is never touched** — not edited, not deleted; a correction is a new migration.

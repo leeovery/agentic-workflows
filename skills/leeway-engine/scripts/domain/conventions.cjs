@@ -111,14 +111,12 @@ function discoveryGlyph(tier) {
 // `waits` (the map row's live waits, every kind) appends `awaiting E1`
 // directly after the lifecycle — a conversation beneath the row is blocked
 // pending experiment evidence, released when the experiment ends.
-// `promotedTo` (the map row's promoted_to) names the cross-cutting unit a
-// decided topic's discussion moved to with its specification.
-/** @param {string} lifecycle @param {boolean} [mailWaiting] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
-function discoveryLifecycleLabel(lifecycle, mailWaiting, waits, promotedTo) {
+/** @param {string} lifecycle @param {boolean} [mailWaiting] @param {import('./derivations.cjs').Wait[]} [waits] */
+function discoveryLifecycleLabel(lifecycle, mailWaiting, waits) {
   let label;
   switch (lifecycle) {
     case 'discussing': label = 'discussing'; break;
-    case 'decided': label = promotedTo ? `decided · promoted to ${promotedTo}` : 'decided'; break;
+    case 'decided': label = 'decided'; break;
     case 'cancelled': label = 'cancelled'; break;
     case 'postponed': label = 'postponed'; break;
     default: label = 'fresh';

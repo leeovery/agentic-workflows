@@ -29,9 +29,7 @@
 // that question closed reaches the topic as a message, through `topic send`,
 // which reopens a decided topic and commits its own delivery. A report owed
 // past the unit's spec is refused before the conclusion writes anything, as
-// is a spawn from a discussion past it (4.11.2). Known edge: a report
-// owed to a promoted topic is refused by the send after the conclusion has
-// committed, and never arrives.
+// is a spawn from a discussion past it (4.11.2).
 //
 // While it runs, `runs` records the tally of its runs from Claude's payload,
 // each condition with the runs its design gives it, those done and their
@@ -60,6 +58,7 @@ const {
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   EXPERIMENT_SPAWN_PHASES,
+  isTopicPhase,
 } = require('../kernel/manifest-schema.cjs');
 const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
 const { releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
@@ -217,7 +216,7 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
   if ((from === undefined) === (parent === undefined)) {
     throw new Error(`exactly one of --from <${EXPERIMENT_SPAWN_PHASES.join('|')}> (a spawn) or --parent <E{n}> (a split) is required`);
   }
-  if (from !== undefined && !EXPERIMENT_SPAWN_PHASES.includes(from)) {
+  if (from !== undefined && !(isTopicPhase(from) && EXPERIMENT_SPAWN_PHASES.includes(from))) {
     throw new Error(`--from must be one of ${EXPERIMENT_SPAWN_PHASES.join('|')} — the phases whose sessions spawn experiments; got "${from}"`);
   }
   if (parent !== undefined) {

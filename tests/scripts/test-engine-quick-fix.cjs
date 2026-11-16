@@ -33,9 +33,8 @@
 // conversation, parking nothing, and one its builder asks parking its fix
 // (19.5.25); the review's fix phases numbered past the fixes (P14); and the
 // cut's screens refusing it. The task file's rules are
-// test-engine-task-verbs.cjs's, its verify run test-engine-verify.cjs's, the
-// board's row test-engine-board-units.cjs's, and a quick-fix its old scoping
-// made test-engine-build-entry.cjs's and test-engine-legacy-build.cjs's.
+// test-engine-task-verbs.cjs's, its verify run test-engine-verify.cjs's, and
+// the board's row test-engine-board-units.cjs's.
 //
 // Layer: git. World: a quick-fix made through `workunit create` from an
 // inbox note, its code and its skill committed, and a feature beside

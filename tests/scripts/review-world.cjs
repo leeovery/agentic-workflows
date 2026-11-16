@@ -17,8 +17,7 @@
 // over as "your call", one unlabelled;
 // the person's at the spec, one replaced and so no longer current, one
 // relying on Claude's call on the receipt; and the project's linters.
-// Beside it a quick-fix, a unit built under the old plan, a unit whose
-// build has not begun, one whose second phase has not closed, one with no
+// Beside it a quick-fix, a unit whose build has not begun, one whose second phase has not closed, one with no
 // phase closed, one of one area and one of five, each its one phase closed.
 // ---------------------------------------------------------------------------
 
@@ -165,7 +164,6 @@ const world = fixtureFrom('review-', (dir) => {
   });
   createManifest(dir, 'fresh', { cut: CUT });
   createManifest(dir, 'tweak', { work_type: 'quick-fix' });
-  createManifest(dir, 'old', { phases: { planning: { items: { old: { status: 'completed' } } } }, build: { position: 'auto' } });
   for (const unit of ['half', 'fresh']) writeState(dir, layout.unit(unit, SPEC_FILE), specOf());
   writeState(dir, layout.unit('solo', SPEC_FILE), specOf().slice(0, specOf().indexOf('## 2. Refunds')));
   writeState(dir, layout.unit('five', SPEC_FILE), fiveSpec());

@@ -15,7 +15,7 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
-const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, LEGACY_PHASES, LEGACY_PLANNING, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, isTopicPhase, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
  * Whether the unit's build has begun: ready to build's yes recorded on its
@@ -224,30 +224,18 @@ function isFixPhase(manifest, phase) {
   return (quickFixBuild(manifest) || buildFinished(manifest)) && phase > buildLength(manifest);
 }
 
-/** The phases whose items a unit built under the old plan keeps, which 29.17's cut takes (P12, cut-migrating.cjs). */
-const OLD_PLAN_PHASES = Object.freeze(['specification', ...LEGACY_PHASES, 'implementation']);
-
-/**
- * Whether the unit was built under the old plan: its old spec's,
- * planning's or implementation's items standing on its manifest.
- * @param {Record<string, any>} manifest
- */
-function legacyBuild(manifest) {
-  return OLD_PLAN_PHASES.some((phase) => phaseItems(manifest, phase).length > 0);
-}
-
 /** A quick-fix's one phase, the fixes, each fix its own task (19.5.4, E4). */
 const FIXES_PHASE = Object.freeze({ number: 1, name: 'the fixes' });
 
 /**
  * Whether the unit is built as a quick-fix: its own tasks in its one phase,
- * with no cut, no ready to build and no position (19.5.4, E4) — a quick-fix
- * with nothing of the old plan standing. The one place a quick-fix's build
- * is told from a build by its cut, whose readers never see one.
+ * with no cut, no ready to build and no position (19.5.4, E4). The one
+ * place a quick-fix's build is told from a build by its cut, whose readers
+ * never see one.
  * @param {Record<string, any>} manifest
  */
 function quickFixBuild(manifest) {
-  return manifest.work_type === 'quick-fix' && !legacyBuild(manifest);
+  return manifest.work_type === 'quick-fix';
 }
 
 /**
@@ -295,50 +283,15 @@ function buildLength(manifest) {
 }
 
 /**
- * Why a unit of a type the reshape retires has no way into its work, or null
- * for any other: it is read until the reshape's 29.17 cut takes it (19.6.7).
- * @param {Record<string, any>} manifest @returns {string|null}
- */
-function retiredRefusal(manifest) {
-  return Object.hasOwn(LEGACY_WORK_TYPES, manifest.work_type)
-    ? `${manifest.name} is a ${manifest.work_type} unit, a type the reshape retires — it waits on the reshape's 29.17 migration, and nothing is done in it until then`
-    : null;
-}
-
-/**
- * Whether the unit waits on the migration's cut: of a type the reshape
- * retires, or built under the old plan — a quick-fix the old scoping made
- * among them. Its menus show it waiting, with no route into its work (P12).
- * @param {Record<string, any>} manifest
- */
-function awaitsCut(manifest) {
-  return retiredRefusal(manifest) !== null || legacyBuild(manifest);
-}
-
-/**
- * Whether the unit's build runs by its cut: begun at ready to build's yes,
- * with nothing of the old plan standing.
- * @param {Record<string, any>} manifest
- */
-function buildByCut(manifest) {
-  return buildBegun(manifest) && !legacyBuild(manifest);
-}
-
-/**
  * Why the unit's build cannot be entered, nor its review phase or its
- * finish reached, with its way on, or null where it can: a unit of a
- * retired type, a unit built under the old plan, and a build by its cut not
- * begun — never a quick-fix, whose fixes are built at its own arm of the
- * build's entry and closed at finish (`quickFixBuild`).
+ * finish reached, with its way on, or null where it can: a build by its
+ * cut not begun — never a quick-fix, whose fixes are built at its own arm
+ * of the build's entry and closed at finish (`quickFixBuild`).
  * @param {Record<string, any>} manifest @returns {string|null}
  */
 function buildRefusal(manifest) {
-  const unit = manifest.name;
-  const retired = retiredRefusal(manifest);
-  if (retired !== null) return retired;
-  if (legacyBuild(manifest)) return `${unit} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
   if (quickFixBuild(manifest) || buildBegun(manifest)) return null;
-  return `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
+  return `${manifest.name}'s build has not begun — ready to build's yes begins it: render ready-to-build ${manifest.name}`;
 }
 
 /**
@@ -398,31 +351,30 @@ function fixesStatus(manifest) {
 }
 
 /**
- * A phase's status over its live items. The one spec a unit writes keeps no
- * items: it reads completed once its build has begun, in progress while its
- * `spec.md` is written — the state's to say, so the caller says it
- * (spec-standing.cjs) — and none before. A build by the cut reads its build
- * and its review phase off its own records (`buildPlaceStatus`), and a
- * quick-fix its implementation off its own (`fixesStatus`). A unit
- * whose building began under the old spec keeps that spec's items, which
- * are read alone.
+ * A phase's status: a topic's phase over its live items, any other off the
+ * unit's own records, never items. The one spec a unit writes reads
+ * completed once its build has begun, in progress while its `spec.md` is
+ * written — the state's to say, so the caller says it (spec-standing.cjs) —
+ * and none before. A build by the cut reads its build and its review phase
+ * off its own records (`buildPlaceStatus`), a quick-fix its implementation
+ * off its own (`fixesStatus`), and either reads none before it begins.
  * @param {Record<string, any>} manifest @param {string} phase @param {boolean} [specWritten]
  * @returns {string|null}
  */
 function phaseStatus(manifest, phase, specWritten = false) {
-  if (BUILD_PHASES.includes(phase) && buildByCut(manifest)) return buildPlaceStatus(manifest, /** @type {'implementation'|'review'} */ (phase));
+  if (phase === 'specification') return buildBegun(manifest) ? 'completed' : specWritten ? 'in-progress' : null;
+  if (BUILD_PHASES.includes(phase) && buildBegun(manifest)) return buildPlaceStatus(manifest, /** @type {'implementation'|'review'} */ (phase));
   if (phase === 'implementation' && quickFixBuild(manifest)) return fixesStatus(manifest);
+  if (!TOPIC_PHASES.includes(phase)) return null;
   const p = (manifest.phases || {})[phase] || {};
   const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
   if (keys.length > 0) {
-    // Non-live statuses drop out of aggregation: cancelled/superseded/proposed,
-    // promoted and postponed alike — a promoted spec continues in its
-    // cross-cutting unit and a postponed topic waits on the roadmap, and
-    // neither must mask the siblings' state (unfiltered, the label went
-    // insertion-order-dependent). `unstarted` is pre-live: a stub holding
-    // messages for a topic no session has started — it must not flip the
-    // phase's aggregate label.
-    const NON_LIVE = ['cancelled', 'superseded', 'proposed', 'promoted', 'unstarted', 'postponed'];
+    // Non-live statuses drop out of aggregation: the terminal ones — a
+    // postponed topic waits on the roadmap, and must not mask the siblings'
+    // state (unfiltered, the label went insertion-order-dependent) — and
+    // `unstarted`, pre-live: a stub holding messages for a topic no session
+    // has started — it must not flip the phase's aggregate label.
+    const NON_LIVE = [...TERMINAL_STATUSES, 'unstarted'];
     if (keys.length === 1) {
       const status = (p.items[keys[0]] || {}).status || null;
       return NON_LIVE.includes(status) ? null : status;
@@ -433,11 +385,14 @@ function phaseStatus(manifest, phase, specWritten = false) {
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
     return statuses[0];
   }
-  if (phase !== 'specification') return null;
-  if (buildBegun(manifest)) return 'completed';
-  return specWritten ? 'in-progress' : null;
+  return null;
 }
 
+/**
+ * A topic phase's items, each with its name.
+ * @param {Record<string, any>} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase
+ * @returns {Record<string, any>[]}
+ */
 function phaseItems(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
   if (!p.items || typeof p.items !== 'object') return [];
@@ -448,7 +403,7 @@ function phaseData(manifest, phase) {
   return (manifest.phases || {})[phase] || {};
 }
 
-/** @param {object} manifest @param {string} phase @param {string} topic @returns {Record<string, any>|undefined} */
+/** @param {object} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase @param {string} topic @returns {Record<string, any>|undefined} */
 function itemOf(manifest, phase, topic) {
   const item = (phaseData(manifest, phase).items || {})[topic];
   return item && typeof item === 'object' ? item : undefined;
@@ -470,7 +425,7 @@ const UNIT_PHASES = {
  */
 function unitItems(manifest, stage, name) {
   return UNIT_PHASES[stage].flatMap((phase) => {
-    const item = itemOf(manifest, phase, name);
+    const item = isTopicPhase(phase) ? itemOf(manifest, phase, name) : undefined;
     return item ? [{ phase, item }] : [];
   });
 }
@@ -827,7 +782,7 @@ function postponePlan(manifest, name, project, horizon) {
  * @returns {string[]}
  */
 function awaitedExperiments(manifest, phase, topic) {
-  const item = itemOf(manifest, phase, topic);
+  const item = isTopicPhase(phase) ? itemOf(manifest, phase, topic) : undefined;
   return item && Array.isArray(item.awaiting_experiments) ? item.awaiting_experiments : [];
 }
 
@@ -839,7 +794,7 @@ function awaitedExperiments(manifest, phase, topic) {
  * Every wait holding one item's conclusion shut: one `experiment` wait per
  * live awaited id. Derived from the item's own state alone — never stored —
  * and work-type agnostic; an absent item holds nothing.
- * @param {object} manifest @param {string} phase @param {string} topic
+ * @param {object} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase @param {string} topic
  * @returns {Wait[]}
  */
 function waits(manifest, phase, topic) {
@@ -884,6 +839,7 @@ function settleItemStatus(item) {
 // state that blocks their conclusion and routes the linear pipeline to the
 // experiment. A decided one waits on nothing: the experiment it spawned
 // runs on, and its report reaches the topic as mail.
+/** @param {Record<string, any>} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase */
 function waitingItems(manifest, phase) {
   return phaseItems(manifest, phase)
     .filter((i) => i.status === 'in-progress'
@@ -910,47 +866,20 @@ function buildNext(manifest) {
 }
 
 /**
- * Where a unit built under the old plan stands, read from its old spec's,
- * planning's, implementation's and review's items as before the build by
- * its cut, until 29.17's cut takes them (P12) — null where none of them
- * says. For an epic, one topic completing review never marks the whole
- * epic done: completion is the explicit status flip.
- * @param {Record<string, any>} manifest @returns {{next_phase: string, phase_label: string}|null}
- */
-function legacyNext(manifest) {
-  const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase);
-  if (ps('review') === 'completed') {
-    return manifest.work_type === 'epic'
-      ? { next_phase: 'review', phase_label: 'review completed for current topics' }
-      : { next_phase: 'done', phase_label: 'pipeline complete' };
-  }
-  if (ps('review') === 'in-progress') return { next_phase: 'review', phase_label: 'review (in-progress)' };
-  if (ps('implementation') === 'completed') return { next_phase: 'review', phase_label: 'ready for review' };
-  if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
-  if (ps(LEGACY_PLANNING) === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
-  if (ps(LEGACY_PLANNING) === 'in-progress') return { next_phase: LEGACY_PLANNING, phase_label: `${LEGACY_PLANNING} (in-progress)` };
-  if (ps('specification') !== 'completed') return null;
-  return { next_phase: LEGACY_PLANNING, phase_label: `ready for ${LEGACY_PLANNING}` };
-}
-
-/**
  * Where the unit's work goes next, and the label the menus show for it,
- * `specWritten` saying whether its spec is written (phaseStatus). A unit of
- * a retired type goes nowhere: it waits on the migration's cut.
+ * `specWritten` saying whether its spec is written (phaseStatus).
  * @param {Record<string, any>} manifest @param {boolean} [specWritten]
  * @returns {{next_phase: string, phase_label: string}}
  */
 function computeNextPhase(manifest, specWritten = false) {
-  if (retiredRefusal(manifest) !== null) return { next_phase: 'done', phase_label: 'waiting on the migration\'s cut' };
-  if (buildByCut(manifest)) return buildNext(manifest);
+  if (buildBegun(manifest)) return buildNext(manifest);
   const wt = manifest.work_type;
 
   const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase, specWritten);
 
   // A quick-fix's fixes, then its review only once the person asked for one
-  // at its close (19.5.14); one built under the old plan waits on the cut.
+  // at its close (19.5.14).
   if (wt === 'quick-fix') {
-    if (legacyBuild(manifest)) return { next_phase: 'done', phase_label: 'waiting on the migration\'s cut' };
     if (manifest.status === 'completed') return { next_phase: 'done', phase_label: 'pipeline complete' };
     if (reviewAsked(manifest)) return { next_phase: 'review', phase_label: 'review (in-progress)' };
     if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
@@ -972,7 +901,7 @@ function computeNextPhase(manifest, specWritten = false) {
       if (ps(phase) === 'in-progress' && !(phase === 'discussion' && closedIntoSpec(manifest))) {
         const awaiting = DERIVED_PHASES.includes(phase)
           ? EXPERIMENT_SPAWN_PHASES.some((p) => waitingItems(manifest, p).length > 0)
-          : EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
+          : isTopicPhase(phase) && EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
         if (awaiting) {
           return { next_phase: 'experiment', phase_label: 'experiment (awaiting evidence)' };
         }
@@ -984,10 +913,6 @@ function computeNextPhase(manifest, specWritten = false) {
     }
   }
 
-  if (legacyBuild(manifest)) {
-    const next = legacyNext(manifest);
-    if (next !== null) return next;
-  }
   if (ps('specification') === 'in-progress') {
     return {
       next_phase: 'specification',
@@ -1025,26 +950,6 @@ function computeNextPhase(manifest, specWritten = false) {
   return { next_phase: 'discussion', phase_label: 'ready for discussion' };
 }
 
-/**
- * The last phase, in the given pipeline order, with at least one completed
- * item — or null when nothing has completed. Single-topic phases carry one
- * item, so "an item completed" and "the phase aggregate is completed" coincide;
- * epics keep the per-item reading (one topic completing a phase is enough). A
- * phase keeping no items, the one spec, completes as `phaseStatus` reads it.
- * @param {object} manifest
- * @param {string[]} pipeline  phases to scan, in order
- * @returns {string|null}
- */
-function lastCompletedPhase(manifest, pipeline) {
-  let last = null;
-  for (const phase of pipeline) {
-    const items = phaseItems(manifest, phase);
-    const completed = items.length > 0 ? items.some((i) => i.status === 'completed') : phaseStatus(manifest, phase) === 'completed';
-    if (completed) last = phase;
-  }
-  return last;
-}
-
 const TIER_RANK = { '✓': 0, '◐': 1, '○': 2, '⊘': 3, '⊖': 4 };
 
 // Shared row comparator for the discovery map: tier rank first — decided
@@ -1080,9 +985,7 @@ function computeTopicLifecycle(manifest, topicName) {
     return { lifecycle: 'postponed', tier: '⊖', current_phase: null, discussion_state: ds };
   }
 
-  // A promoted discussion concluded and moved on with its specification to a
-  // cross-cutting unit — decided, as a concluded one is.
-  if (ds === 'completed' || ds === 'promoted') {
+  if (ds === 'completed') {
     return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', discussion_state: ds };
   }
   if (ds === 'in-progress') {
@@ -1103,17 +1006,6 @@ function computeTopicLifecycle(manifest, topicName) {
 
 // The lifecycles a topic leaves the board under — no row, no action.
 const CLOSED_LIFECYCLES = ['cancelled', 'postponed'];
-
-/**
- * The refusal every write over a promoted item makes — each hand transition
- * and the field surface: it left the epic for the cross-cutting unit it
- * names, and continues there.
- * @param {string} phase @param {string} topic @param {{promoted_to?: unknown}} item
- */
-function promotedRefusal(phase, topic, item) {
-  const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
-  return `${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`;
-}
 
 // Why a lifecycle stands in the way of a move — the map ops' refusals and
 // the phase-birth guard share it, so the engine and the epic menu's
@@ -1179,13 +1071,13 @@ function computeMapSummary(items) {
 
 // The conversations a topic's mail waits for, in the order a pipeline is
 // searched: discussion, or a bugfix's investigation.
-const MAIL_PHASES = ['discussion', 'investigation'];
+const MAIL_PHASES = /** @type {const} */ (['discussion', 'investigation']);
 
 /**
  * The phase a unit's topics are talked through, where their mail is raised
  * (10.1.3): the first of `MAIL_PHASES` its work type's pipeline holds, null
  * for a quick-fix, which talks through none.
- * @param {string} workType @returns {string|null}
+ * @param {string} workType @returns {typeof MAIL_PHASES[number]|null}
  */
 function mailPhase(workType) {
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] ?? [];
@@ -1368,31 +1260,14 @@ function mailboxDepth(stateDir, workUnit, topic) {
 }
 
 /**
- * A single-topic unit's phase items where any carries a name other than the
- * unit's, and none where each carries the unit's — as every single-topic
- * unit's do but a promoted one's, whose moved discussions keep their epic
- * names.
- * @param {object} manifest @param {string} phase
- * @returns {{name: string, status?: string}[]}
- */
-function ownNamedItems(manifest, phase) {
-  const items = phaseItems(manifest, phase);
-  return items.some((i) => i.name !== manifest.name) ? items : [];
-}
-
-/**
  * The phase whose topic has mail waiting in a single-topic unit — its start
  * menu row's cue: the unit's mail phase, where mail waits for the unit's
- * own topic or, where the phase's items carry names of their own, for
- * any of them; none where none waits.
+ * own topic; none where none waits.
  * @param {string} stateDir  the state root @param {{name: string, work_type: string}} manifest @returns {string[]}
  */
 function mailPhases(stateDir, manifest) {
   const phase = mailPhase(manifest.work_type);
-  if (phase === null) return [];
-  const own = ownNamedItems(manifest, phase);
-  const topics = own.length > 0 ? own.map((i) => i.name) : [manifest.name];
-  return topics.some((topic) => mailboxDepth(stateDir, manifest.name, topic) > 0) ? [phase] : [];
+  return phase !== null && mailboxDepth(stateDir, manifest.name, manifest.name) > 0 ? [phase] : [];
 }
 
 /**
@@ -1410,7 +1285,6 @@ function mailPhases(stateDir, manifest) {
  * @property {string} tier
  * @property {string|null} current_phase
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
- * @property {string|null} promoted_to       the cross-cutting unit a promoted discussion moved to, null otherwise
  * @property {boolean} mail_waiting       messages wait in the topic's mailbox, whatever its items' status
  * @property {number} mail_queued         how many messages wait in the topic's mailbox, counted from disk
  * @property {Wait[]} waits               the live waits of the topic's in-progress discussion (empty when none)
@@ -1438,7 +1312,6 @@ function buildDiscoveryMap(manifest, stateDir) {
     const mail_queued = mailboxDepth(stateDir, manifest.name, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
-    const discussion = discussion_state === 'promoted' ? itemOf(manifest, 'discussion', item.name) : undefined;
     return {
       name: item.name,
       summary: summaryText,
@@ -1453,7 +1326,6 @@ function buildDiscoveryMap(manifest, stateDir) {
       tier,
       current_phase,
       discussion_state,
-      promoted_to: discussion && typeof discussion.promoted_to === 'string' ? discussion.promoted_to : null,
       mail_waiting: mail_queued > 0,
       mail_queued,
       waits: topicWaits(manifest, item.name),
@@ -1491,11 +1363,6 @@ module.exports = {
   areaBuilt,
   cutLength,
   isFixPhase,
-  legacyBuild,
-  OLD_PLAN_PHASES,
-  awaitsCut,
-  retiredRefusal,
-  buildByCut,
   buildRefusal,
   FIXES_PHASE,
   quickFixBuild,
@@ -1535,14 +1402,12 @@ module.exports = {
   topicWaits,
   settleItemStatus,
   computeNextPhase,
-  lastCompletedPhase,
   computeTopicLifecycle,
   computeNextAction,
   CONVERSATION_ACTIONS,
   CLOSED_LIFECYCLES,
   lifecyclePhrase,
   mapWayOn,
-  promotedRefusal,
   itemOf,
   computeMapSummary,
   compareMapRows,

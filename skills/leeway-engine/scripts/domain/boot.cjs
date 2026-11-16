@@ -39,7 +39,7 @@
 // and its pieces done of all of them, where its check can say. So does a
 // run the runner stops before the reshape's move, for the checks the chain
 // before it handed back (21.10.13): the `checks` stop carries them, and the
-// folder in the main checkout whose `.workflows/` they fix, uncommitted,
+// folder in the main checkout whose old state they fix, uncommitted,
 // for the move to carry. Once made, they come back marked `made` with the
 // run that finishes the migration, beside the chain's notices. The session
 // either stop meets carries the migration on, its row at the migration's
@@ -73,7 +73,7 @@
 // in the calling checkout, whose session reads them, and in the project's
 // folder in the main checkout, which the commit takes. They go live at the
 // checks stop, the first the migration's own work meets, since the guards
-// refuse none of that work — the checks' fixes in `.workflows/`, the
+// refuse none of that work — the checks' fixes in the old state, the
 // split's plans staged in the cache, the records carried through the
 // engine — and so the brief hook hands the records directive's agents
 // their briefs. Before the move there is no manifest to read the label
@@ -339,7 +339,7 @@ function stopAt(state, { args, given } = {}) {
 /**
  * Boot stopped before the reshape's move (21.10.13): the checks the chain
  * before it handed back, and the project's folder in the main checkout,
- * whose `.workflows/` the old state's checks are made on, uncommitted, for
+ * whose old state the checks are made on, uncommitted, for
  * the move to carry — `render migration-checks-stop` draws the stop, the
  * session makes the checks and records them made (`migrate checked`).
  * @typedef {{state: 'checks', folder: string, verify: VerifyAddendum[], stop: Stop, warnings: string[]}} ChecksStop

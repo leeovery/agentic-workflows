@@ -103,11 +103,12 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
     assert.ok(stateUnborn(dir));
   });
 
-  it('the knowledge store read at once: the unit\'s record copies gone from it, every other unit\'s there still; its cache purged', async () => {
+  it('the knowledge store read at once: the unit\'s record copies gone from it, every other unit\'s there still; its cache purged, the old cache\'s reports the migration copied into its earlier/ with it', async () => {
     keywordOnlyKnowledge(dir);
     const indexed = await callAsync(dir, ['knowledge', 'index'], { env: SESSION });
     assert.strictEqual(indexed.code, 0, indexed.stderr);
     writeState(dir, layout.cache('caching', 'discussion', 'invalidation', 'entered.json'), '{}\n');
+    writeState(dir, `${layout.cache('caching')}/earlier/discussion/invalidation/review-001.md`, 'an old report\n');
     const others = indexedFiles(dir).filter((file) => file !== layout.record('caching', 'invalidation'));
     assert.strictEqual(others.length, indexedFiles(dir).length - 1, 'the store held the unit\'s record copy');
 

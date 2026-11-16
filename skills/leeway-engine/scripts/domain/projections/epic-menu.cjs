@@ -36,8 +36,7 @@
 //   every topic is decided, cancelled or postponed, s/spec, to start it or
 //   carry it on; during the build its row at the phase it is at, of its
 //   cut's (progress.cjs), the phase named only in the heading; then the
-//   review's row, standing aside for finish once finish waits. An epic
-//   built under the old plan says so in place of its build's row (P12).
+//   review's row, standing aside for finish once finish waits.
 // - d/discovery while the map is open, before the spec (18.4.19); b/back to
 //   the start menu.
 // - The recommended row leads, never one another conversation holds
@@ -209,18 +208,17 @@ function topicRows(epic, detail, waiting) {
 
 /**
  * The way on past the topics (the header's): the build's row or its
- * review's, numbered, where the epic has come to either and was not built
- * under the old plan; the spec's, s/spec.
+ * review's, numbered, where the epic has come to either; the spec's, s/spec.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} phase @param {EpicDetail} detail @param {Wait[]} waits
  * @returns {{numbered: Row[], spec: Row[]}}
  */
-function onwardRows(cwd, manifest, phase, { old, spec, summary }, waits) {
+function onwardRows(cwd, manifest, phase, { spec, summary }, waits) {
   const epic = manifest.name;
   /** @type {Row[]} */
   const numbered = [];
-  if (old === null && phase === 'build') {
+  if (phase === 'build') {
     numbered.push({ label: { head: 'Continue the build', tail: /** @type {string} */ (progressOf(cwd, manifest).far) }, next: into(epic, 'implementation') });
-  } else if (old === null && phase === 'review' && !waits.some((wait) => wait.kind === 'finish')) {
+  } else if (phase === 'review' && !waits.some((wait) => wait.kind === 'finish')) {
     numbered.push({ label: { head: 'Continue the review' }, next: into(epic, 'review') });
   }
   if (spec === null) return { numbered, spec: [] };
@@ -321,7 +319,6 @@ function epicMenuScreen(cwd, manifest, waits) {
   return {
     title,
     shows: shown(detail, waiting),
-    ...(detail.old === null ? {} : { statement: detail.old }),
     rows: ordered([...waitsDrawn, ...legacyRows(cwd, epic), ...verdictRows(waits), ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
     back: BACK,
   };

@@ -6,9 +6,7 @@
 // implementation` and `enter review`, at the place entered, its recovery
 // note naming it (leeway-engine/scripts/domain/build-entry.cjs, 24.2.4);
 // `task start` of a fix task keeps the review phase the conversation is at,
-// or, with no build place held, puts it there — a task of a unit built
-// under the old plan, with no cut and so no fix phase, at its
-// implementation — its tasks riding between the unit's implementation and
+// or, with no build place held, puts it there — its tasks riding between the unit's implementation and
 // its review phase (domain/position.cjs); and
 // `land open` refuses a fix task whose branch does not descend from the
 // unit's work not landed below it, which a fix phase is built on
@@ -33,7 +31,7 @@ const fs = require('fs');
 const path = require('path');
 const { output, createFile } = require('./engine-harness.cjs');
 const {
-  UNIT, SESSION_ID, EVERY, useWorld, env, enter, reported, recorded, inStep, cutUnmerged, firstRoundFailed, taskMade, fixPhaseWritten, fixBranch, fixBuilt, commitFile, ok, okSections, refusedPristine, git, assert,
+  UNIT, SESSION_ID, EVERY, useWorld, env, enter, reported, recorded, inStep, cutUnmerged, firstRoundFailed, fixPhaseWritten, fixBranch, fixBuilt, commitFile, ok, okSections, refusedPristine, git, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -92,18 +90,11 @@ describe('the position: a fix task in flight at the review phase (14.3.2, 24.2.4
     ]);
   });
 
-  it('task start, where the conversation holds no place in the unit\'s build, puts a fix task at the review phase, and a task of a unit built under the old plan — no cut, so none of its phases the review\'s fixes — at its implementation', () => {
+  it('task start, where the conversation holds no place in the unit\'s build, puts a fix task at the review phase', () => {
     fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
     ok(dir, ['task', 'start', UNIT, '3.1'], { env: env('fresh') });
-    ok(dir, ['task', 'phase', 'old', '1', '--title', 'The old work']);
-    taskMade(1, 'Keep the old work', '§1', 'old');
-    ok(dir, ['task', 'start', 'old', '1.1'], { env: env('old') });
 
-    const started = (/** @type {string} */ task) => [{ task, builder: null, reviewers: [] }];
-    assert.deepStrictEqual([positionOf('fresh'), positionOf('old')], [
-      { name: UNIT, phase: 'review', topic: UNIT, tasks: started('3.1') },
-      { name: 'old', phase: 'implementation', topic: 'old', tasks: started('1.1') },
-    ]);
+    assert.deepStrictEqual(positionOf('fresh'), { name: UNIT, phase: 'review', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] });
   });
 });
 

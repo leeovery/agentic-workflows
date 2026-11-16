@@ -253,14 +253,6 @@ describe('the screen (18.4.17)', () => {
 
     assert.deepStrictEqual(rowsOf(menuOf()).slice(2, 4), ['2           → Continue "Onboarding" in the laboratory — 1', '              experiment waiting']);
   });
-
-  it('an epic built under the old plan says it waits on the migration\'s cut in place of its build\'s row (P12)', () => {
-    epicAs({ phases: { ...DISCUSSING.phases, implementation: { items: { billing: { status: 'in-progress' } } } } });
-    const menu = screenOf(menuOf(), 'MENU: epic menu');
-
-    assert.deepStrictEqual(menu.slice(1, 3), ['fumi was built under the old plan, and its build is entered once', 'the reshape\'s 29.17 migration has cut it']);
-    assert.ok(!menu.some((line) => line.includes('Continue the build')));
-  });
 });
 
 describe('the recommended row (18.4.7, 18.4.21)', () => {

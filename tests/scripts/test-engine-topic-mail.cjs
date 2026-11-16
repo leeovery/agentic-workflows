@@ -38,7 +38,7 @@
 // holds `commercialization` under discussion with a question asked on it and
 // an experiment, E1, `licence` not yet discussed, `first-run` decided with a question of its
 // own and sourced by a concluded specification, `widgets` postponed,
-// `removal` cancelled, and `export` promoted; a
+// and `removal` cancelled; a
 // feature, `quick-sync`; a bugfix, `crash`, under investigation; a
 // quick-fix, `typo`; a cancelled feature, `retired`; a completed one,
 // `shipped`; one with its spec, `specced`; and a cancelled epic, `shelved`,
@@ -83,13 +83,13 @@ const world = fixtureFrom('engine-mail-', (dir) => {
       discovery: {
         items: {
           commercialization: row(1), licence: row(2), 'first-run': row(3), widgets: row(4, { postponed: true }),
-          removal: row(5, { cancelled: true }), export: row(7),
+          removal: row(5, { cancelled: true }),
         },
       },
       discussion: {
         items: {
           commercialization: { status: 'in-progress' }, 'first-run': { status: 'in-progress' }, widgets: { status: 'postponed' },
-          removal: { status: 'cancelled' }, export: { status: 'promoted', promoted_to: 'portability' },
+          removal: { status: 'cancelled' },
         },
       },
       specification: { items: { onboarding: { status: 'completed', sources: { 'first-run': { status: 'incorporated' } } } } },
@@ -328,13 +328,12 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(message), true);
   });
 
-  it('refuses a target the entry refuses, by its rule, writing nothing and keeping the scratch: a unit the project lacks, one completed, one past its spec — a change from there settled where it is found (10.2.2) — a topic the unit lacks, one promoted out of the unit, a quick-fix', () => {
+  it('refuses a target the entry refuses, by its rule, writing nothing and keeping the scratch: a unit the project lacks, one completed, one past its spec — a change from there settled where it is found (10.2.2) — a topic the unit lacks, a quick-fix', () => {
     const cases = [
       [['nowhere', 'nowhere'], 'there is no work unit "nowhere"'],
       [['shipped', 'shipped'], 'shipped is completed — new work starts from the start menu'],
       [['specced', 'specced'], 'specced has its spec — a topic exists only before it, and a change is settled in the spec from here'],
       [[EPIC, 'billing'], 'fumi has no topic "billing" — the epic\'s map holds its topics, and a new one comes through its discovery'],
-      [[EPIC, 'export'], 'the topic "export" was promoted to "portability" — it carries on there'],
       [['typo', 'typo'], 'a quick-fix has no conversation for a message to wait in'],
     ];
     const message = scratch();

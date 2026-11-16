@@ -41,7 +41,7 @@
 // Layer: verb. World, built once and copied: an epic, `fumi`, whose map
 // holds a topic for each standing — `onboarding` with its brief and not yet
 // started, `licence` under way with agents a process now gone dispatched,
-// `sync` decided, `export` promoted, `removal` cancelled, `widgets` postponed
+// `sync` decided, `removal` cancelled, `widgets` postponed
 // with its roadmap item waiting, `reports` postponed with its item gone to
 // another epic — a spike, and four discovery logs, the fourth open, the
 // first pointing into the product's sessions; an epic, `atlas`, with none;
@@ -102,13 +102,13 @@ const world = fixtureFrom('engine-enter-', (dir) => {
       discovery: {
         active_session: '004',
         items: {
-          onboarding: row(1), licence: row(2), sync: row(3), export: row(4),
+          onboarding: row(1), licence: row(2), sync: row(3),
           removal: row(5, { cancelled: true }), widgets: row(6, { postponed: true }), reports: row(7, { postponed: true }),
         },
       },
       discussion: {
         items: {
-          licence: { status: 'in-progress' }, sync: { status: 'completed' }, export: { status: 'promoted', promoted_to: 'portability' },
+          licence: { status: 'in-progress' }, sync: { status: 'completed' },
           removal: { status: 'cancelled' }, widgets: { status: 'postponed' }, reports: { status: 'postponed' },
         },
       },
@@ -241,13 +241,12 @@ describe('what cannot be entered is refused, naming the way on, and nothing is w
     assert.strictEqual(refused(['discussion', 'specced']), 'specced has its spec — a topic exists only before it, and a change is settled in the spec from here');
   });
 
-  it('a topic standing closed: cancelled, postponed — its roadmap item waiting or gone to another epic — promoted out of the unit, decided', () => {
+  it('a topic standing closed: cancelled, postponed — its roadmap item waiting or gone to another epic — decided', () => {
     const through = 'the epic menu\'s discovery row';
-    assert.deepStrictEqual(['removal', 'widgets', 'reports', 'export', 'sync'].map((topic) => refused(['discussion', EPIC, topic])), [
+    assert.deepStrictEqual(['removal', 'widgets', 'reports', 'sync'].map((topic) => refused(['discussion', EPIC, topic])), [
       `the topic "removal" is cancelled — reactivating it goes through ${through}`,
       `the topic "widgets" is postponed to the roadmap — pulling it forward goes through ${through}`,
       'the topic "reports" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back',
-      'the topic "export" was promoted to "portability" — it carries on there',
       `the topic "sync" is decided — it reopens through a message sent to it, or through ${through}`,
     ]);
   });
@@ -426,7 +425,6 @@ describe('the answer', () => {
     const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding']));
     assert.strictEqual(sections, data([
       `brief: ${at(layout.brief(EPIC, 'onboarding'))}`,
-      `decided: \`${ENGINE} ledger record ${EPIC} export\``,
       `decided: \`${ENGINE} ledger record ${EPIC} sync\``,
       `product: \`${ENGINE} ledger product ${EPIC} onboarding\``,
       `spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`,
@@ -504,7 +502,6 @@ describe('the answer', () => {
     ok(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', 'mine'], { env: env() });
     const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'licence']));
     assert.strictEqual(sections, data([
-      `decided: \`${ENGINE} ledger record ${EPIC} export\``,
       `decided: \`${ENGINE} ledger record ${EPIC} sync\``,
       `product: \`${ENGINE} ledger product ${EPIC} licence\``,
       `spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`,

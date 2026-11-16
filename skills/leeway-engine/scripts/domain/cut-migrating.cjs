@@ -68,8 +68,9 @@
 // phases not built that the tracker holds done, `done_before`, each built
 // and landed before Leeway (derivations.cjs, `landedBefore`), and the areas
 // each task of them neither done nor closed cites, `cites: {"N.n": ["<area>",
-// …]}`, a task citing none left out (`citedAreas`), and the old plan's spec,
-// planning and implementation items dropped (P12) — committed to the state
+// …]}`, a task citing none left out (`citedAreas`), and every item past the
+// topics', the old plan's and its review's, dropped (P12, old-layout.cjs's
+// `PAST_THE_TOPICS`) — committed to the state
 // branch, the commit held for the migration's (21.9.3). Last, the mark,
 // `.cache/migrate/cut/{unit}.json` in the state, `{at, corrections}`: every
 // correction the plan records, as given, which the migration review lists
@@ -78,9 +79,9 @@
 // A task of the old plan cites an old spec by its path in the layout before
 // Leeway, in any of its forms: `docs/workflow/specification/{topic}.md`,
 // before 15 February 2026; `{root}/specification/{topic}/specification.md`
-// from then, its root `docs/workflow` or `.workflows`; and
-// `.workflows/{unit}/specification/{topic}/specification.md` once the work
-// was kept by unit, the unit the one cut. Each topic joined is the area of
+// from then, its root `docs/workflow` or the old state (old-layout.cjs's
+// `OLD_STATE`); and `{old state}/{unit}/specification/{topic}/specification.md`
+// once the work was kept by unit, the unit the one cut. Each topic joined is the area of
 // its place in `spec.joined`, the areas in the spec's order; a path naming
 // another unit, or a topic not joined, cites none.
 // ---------------------------------------------------------------------------
@@ -94,7 +95,8 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { migrationRuns } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { specJoined, joinedTopics, areaOfAddress, OLD_PLAN_PHASES } = require('./derivations.cjs');
+const { specJoined, joinedTopics, areaOfAddress } = require('./derivations.cjs');
+const { OLD_STATE, OLD_PLANNING, PAST_THE_TOPICS } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 const { readSpec, specPath, specReading, rowsOf, fencedLines, SPEC_FILE } = require('./spec-sections.cjs');
 const { phasesOf, placing, specIn, againstSpec, refuse } = require('./cut.cjs');
 const { notesPath, notesAppended, topHeading } = require('./notes.cjs');
@@ -136,7 +138,7 @@ const AREA_NUMBER = /^[1-9][0-9]*$/;
 const SHOWN_TASK = /^([1-9][0-9]*)\.([1-9][0-9]*)$/;
 
 /** An old spec's path in a task's text (the header's): the unit's folder where it names one, and the topic. */
-const OLD_SPEC_PATH = /(?:docs\/workflow|\.workflows)\/(?:([^/\s`'"()]+)\/)?specification\/([^/\s`'"()]+?)(?:\/specification)?\.md/g;
+const OLD_SPEC_PATH = new RegExp(`(?:docs/workflow|${OLD_STATE.replace('.', '\\.')})/(?:([^/\\s\`'"()]+)/)?specification/([^/\\s\`'"()]+?)(?:/specification)?\\.md`, 'g');
 
 /**
  * The areas an old task's text cites (the header's), in the spec's order.
@@ -219,7 +221,8 @@ const OLD_TASK = /^([0-9]+)([a-z]*)$/;
  * @returns {string[]}
  */
 function oldPlanOrder(manifest, parent) {
-  const maps = Object.values(isObject(manifest.phases?.planning?.items) ? manifest.phases.planning.items : {})
+  const items = manifest.phases?.[OLD_PLANNING]?.items;
+  const maps = Object.values(isObject(items) ? items : {})
     .map((item) => (isObject(item) && isObject(item.task_map) ? item.task_map : {}));
   const map = maps.find((each) => Object.values(each).includes(parent)) ?? {};
   const phaseId = Object.keys(map).find((id) => map[id] === parent);
@@ -362,7 +365,7 @@ function writeManifest(cwd, unit, phases, done, cites) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   manifest.cut = { phases };
   manifest.build = { position: 'step', ...(done.length === 0 ? {} : { done_before: done }), ...(Object.keys(cites).length === 0 ? {} : { cites }) };
-  if (isObject(manifest.phases)) for (const phase of OLD_PLAN_PHASES) delete manifest.phases[phase];
+  if (isObject(manifest.phases)) for (const phase of PAST_THE_TOPICS) delete manifest.phases[phase];
   saveWorkUnitManifest(cwd, unit, manifest);
 }
 

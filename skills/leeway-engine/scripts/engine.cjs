@@ -650,8 +650,8 @@ function runTrust(call, argv) {
 // move stages a quick-fix's or a bugfix's move to another type and draws
 // start this work's screen from it, its yes start this work's.
 // split and retire are the migration's alone: split moves topics whole to a
-// new epic, retire keeps a cross-cutting unit's folder in the product's
-// assets and takes it off the registry.
+// new epic, retire keeps the folder of a unit of a type the reshape retires
+// in the product's assets and takes it off the registry.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

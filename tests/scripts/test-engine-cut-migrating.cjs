@@ -90,6 +90,7 @@ const OLD_SHOP = {
         pay: { status: 'in-progress', completed_tasks: ['pay-1-1', 'pay-2-1', 'pay-2-2'], bank: [{ finding: 'The charge retries without a cap.' }], staging: [{ batch: 1 }], analysis_staging: [{ batch: 1 }] },
       },
     },
+    review: { items: { cart: { status: 'in-progress', reviewed_tasks: ['cart-1-1'] } } },
   },
 };
 
@@ -287,7 +288,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('21.S28: two specs joined, one built and one partly, cut through the verbs — the built plan\'s phases name, goal, sections and built, the unfinished ones their scenarios, sections and relies-on, their scenarios in spec.md\'s block for their area; each phase naming its tracker parent; every task\'s id and tracker state as they stood, each neither done nor closed now typed feat beside its other tags; the tasks done before, and the areas each task not ended cites; the build begun in step and the old plan\'s items gone, all held, the unit marked (21.5.21, 11.5.8, 11.5.9, P3)', () => {
+  it('21.S28: two specs joined, one built and one partly, cut through the verbs — the built plan\'s phases name, goal, sections and built, the unfinished ones their scenarios, sections and relies-on, their scenarios in spec.md\'s block for their area; each phase naming its tracker parent; every task\'s id and tracker state as they stood, each neither done nor closed now typed feat beside its other tags; the tasks done before, and the areas each task not ended cites; the build begun in step and the items of the old plan and its review gone, all held, the unit marked (21.5.21, 11.5.8, 11.5.9, P3)', () => {
     const before = SIDE.apartFromNames(statePath(dir), 'shop', false);
     const plan = shopPlan();
 
@@ -320,7 +321,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
       'phase: phase 5 of 5, "Export": written — tasks 5.1 not started, 5.2 closed',
     ]);
     const menu = harness.output(dir, ['render', 'start-menu'], { env: SESSION }).replace(/\*\n\s+\*/g, ' ');
-    assert.deepStrictEqual(['Tally', 'Shop'].map((title) => new RegExp(`${title} — \\*([^*]+)\\*`).exec(menu)?.[1]), ['waiting on the migration\'s cut', 'build, phase 4 of 5'],
+    assert.strictEqual(/Shop — \*([^*]+)\*/.exec(menu)?.[1], 'build, phase 4 of 5',
       'the phase the build goes on in written, its tasks the old plan\'s');
     for (const end of ['start', 'close']) {
       assert.strictEqual(refuses(dir, ['checklist', 'show', `phase-${end}`, 'shop', '2'], { env: SESSION }).error,

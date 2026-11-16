@@ -12,13 +12,6 @@
 
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'quick-fix'];
 
-// The types the reshape retires, each with the phases its units' items were
-// written in: a migrated unit of one is read, never created, until the
-// reshape's 29.17 cut takes it (19.6.7).
-const LEGACY_WORK_TYPES = Object.freeze({
-  'cross-cutting': ['experiment', 'discussion', 'specification'],
-});
-
 // The engine's phase table: each phase, in pipeline order, with the stage
 // it sits in (3.1.1–3.1.4).
 const PHASE_STAGES = Object.freeze({
@@ -32,12 +25,6 @@ const PHASE_STAGES = Object.freeze({
 });
 
 const VALID_PHASES = Object.keys(PHASE_STAGES);
-
-// The item names older units carry that no phase table holds: a unit built
-// under the old plan keeps its planning items, read and never written, until
-// the reshape's 29.17 cut takes it (P12).
-const LEGACY_PLANNING = 'planning';
-const LEGACY_PHASES = Object.freeze([LEGACY_PLANNING]);
 
 // Per-work-type pipeline order — the phases a unit of that type moves through
 // after discovery (the universal first phase; a map, not a pipeline phase, so
@@ -60,8 +47,15 @@ const EPIC_PHASES = Object.freeze(['discovery', ...WORK_TYPE_PIPELINES.epic]);
 // item. Every generic surface keys on this list, never on a phase name.
 const DERIVED_PHASES = ['experiment'];
 
+const TOPIC_PHASE_NAMES = /** @type {const} */ (['discovery', 'experiment', 'discussion', 'investigation']);
+
+/** A phase a topic exists in, the only kind whose items a manifest keeps. @typedef {typeof TOPIC_PHASE_NAMES[number]} TopicPhase */
+
 /** The phases a topic exists in: those before the spec (4.11.2). */
-const TOPIC_PHASES = Object.freeze(['discovery', 'experiment', 'discussion', 'investigation']);
+const TOPIC_PHASES = /** @type {readonly string[]} */ (Object.freeze(TOPIC_PHASE_NAMES));
+
+/** Whether `phase` is a topic's. @param {unknown} phase @returns {phase is TopicPhase} */
+const isTopicPhase = (phase) => TOPIC_PHASES.includes(/** @type {string} */ (phase));
 
 /** The build's places: its phases, where a question parks its task (12.13.2). */
 const BUILD_PHASES = Object.freeze(['implementation', 'review']);
@@ -83,8 +77,7 @@ const VALID_PHASE_STATUSES = {
   // specification is past "not yet".
   discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed'],
   investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
-  // The one spec keeps no items (P7): a unit built under the old plan keeps
-  // its spec's.
+  // The one spec keeps no items (P7).
   specification:  ['in-progress', 'completed', 'cancelled'],
   implementation: ['in-progress', 'completed', 'cancelled'],
   review:         ['in-progress', 'completed', 'cancelled'],
@@ -165,7 +158,7 @@ function assertLegalName(kind, name) {
 
 // The phase whose sessions spawn experiments (9.1.4): each spawn locks the
 // spawning discussion's own item, `awaiting_experiments`.
-const EXPERIMENT_SPAWN_PHASES = ['discussion'];
+const EXPERIMENT_SPAWN_PHASES = /** @type {readonly TopicPhase[]} */ (['discussion']);
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
@@ -199,7 +192,7 @@ const CLOSED_BY_CANCEL = 'closed_by_cancel';
 // Phase-item statuses that end a topic's life in its phase — excluded from
 // aggregation. One vocabulary for every consumer (derivations, the position,
 // the engine's topic reads).
-const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
+const TERMINAL_STATUSES = ['cancelled', 'postponed'];
 
 // The product as a whole: its conversation, the project-level discovery
 // place (8.2.7), its logs in `.product/sessions/` and its session marker on
@@ -265,15 +258,13 @@ const ENVIRONMENT_SETS = Object.freeze({ prepare: 'name', concurrency: 'what', l
 
 module.exports = {
   VALID_WORK_TYPES,
-  LEGACY_WORK_TYPES,
   PHASE_STAGES,
   VALID_PHASES,
-  LEGACY_PHASES,
-  LEGACY_PLANNING,
   WORK_TYPE_PIPELINES,
   EPIC_PHASES,
   DERIVED_PHASES,
   TOPIC_PHASES,
+  isTopicPhase,
   VALID_PHASE_STATUSES,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,

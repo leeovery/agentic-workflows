@@ -19,10 +19,8 @@
 //   fine, the stop is drawn in the screen's place, and the yes, checking
 //   them again, is refused with it (22.4.5–22.4.9, drivers-verbs.cjs). It refuses a unit
 //   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
-//   one not in progress, a quick-fix, a unit of a retired type, topics not
-//   settled; a unit keeping the old spec's items, which never reaches this
-//   gate, the migration's cut for built units carrying it across (29.17);
-//   and a unit whose build has begun, the gate raised once per spec
+//   one not in progress, a quick-fix, topics not settled; and a unit whose
+//   build has begun, the gate raised once per spec
 //   (11.8.1).
 // - It shows the short outline, the landed spec's areas; the phase cut, read
 //   from the manifest (11.S31); Claude's calls at the spec — the current
@@ -82,7 +80,7 @@ const { isCurrent, factsOf, decidedNow } = require('./ledger-fold.cjs');
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
-const { buildBegun, itemTitle, phaseItems, topicTitles, cutPhases, quickFixBuild } = require('./derivations.cjs');
+const { buildBegun, itemTitle, topicTitles, cutPhases, quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
 const { specEntryRefusal } = require('./spec-entry.cjs');
@@ -111,17 +109,13 @@ const POSITION_USAGE = 'workunit position <work-unit> auto|step';
 
 /**
  * Why ready to build cannot show for the unit before its checklist is read,
- * or null: a unit its spec's entry refuses, one keeping the old spec's
- * items, or one whose build has begun.
+ * or null: a unit its spec's entry refuses, or one whose build has begun.
  * @param {string} cwd @param {string} unit @returns {string|null}
  */
 function unitRefusal(cwd, unit) {
   const entry = specEntryRefusal(cwd, unit);
   if (entry !== null) return entry;
   const manifest = /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), unit));
-  if (phaseItems(manifest, PHASE).length > 0) {
-    return `${unit} keeps its spec in the old form, which never comes to ready to build — the migration's cut for built units carries it across (29.17)`;
-  }
   return buildBegun(manifest)
     ? `ready to build has passed for ${unit} — its build began in ${manifest.build.position}, and its position switches through workunit position ${unit} auto|step`
     : null;
