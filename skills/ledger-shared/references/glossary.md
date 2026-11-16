@@ -282,7 +282,7 @@ Something a session found that belongs to another discussion or investigation �
 _Avoid_: concern, reroute, spawn
 
 **manage**:
-The start menu's row for changing a piece of work's shape or standing — pivot, absorb, cancel, or bring cancelled work back — and the project's own settings: its environment setup, its drivers and the matrix.
+The start menu's row for changing a piece of work's shape or standing — pivot, absorb, cancel, or bring cancelled work back — and the project's own environment setup and drivers, and the matrix of Claude's calls.
 
 **pivot**:
 Converting a feature into an epic in place, when it turns out to be several things, before its specification is written.

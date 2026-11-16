@@ -115,7 +115,7 @@ const MENUS = Object.freeze({
   archived: registered('archived', 'archived items', 'the archived items', 'none', [NUMBERED, BACK]),
   'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none', ['u', 'd', BACK]),
   roadmap: registered('roadmap', 'roadmap', 'the roadmap', 'roadmap', ['w', 'n', 'm', 'a', 'p', BACK]),
-  manage: registered('manage', 'manage', 'manage', 'none', [NUMBERED, 's', 'd', BACK]),
+  manage: registered('manage', 'manage', 'manage', 'none', [NUMBERED, 's', 'd', 'm', BACK]),
   'manage-unit': registered('manage-unit', 'manage unit', 'managing the unit', 'none', ['p', 'o', 'c', 'r', BACK]),
   closed: registered('closed', 'closed units', 'the closed units', 'none', [NUMBERED, BACK]),
   verdicts: registered('verdicts', 'verdicts', 'the verdict queue', 'none', ['n', 'f', 'l', 'b'], { label: 'What this screen is for, row by row' }),

@@ -157,7 +157,7 @@ function startMenuScreen(read) {
       { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('ledger-roadmap') },
       ...verdictRows(read.verdicts),
       ...(read.closed ? [{ key: 'v', word: 'view', label: 'View completed & cancelled work units', next: drawing('closed') }] : []),
-      { key: 'm', word: 'manage', label: 'Manage work units', next: drawing('manage') },
+      { key: 'm', word: 'manage', label: 'Manage work units, the project\'s setup and drivers, and the matrix', next: drawing('manage') },
     ],
   };
 }
