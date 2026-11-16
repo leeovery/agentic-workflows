@@ -69,13 +69,13 @@ EOF
   content=$(cat "$PLAN_DIR/user-auth.md")
 
   assert_eq "File starts with frontmatter delimiter" "---" "$(head -1 "$PLAN_DIR/user-auth.md")"
-  assert_eq "Topic extracted from filename" "true" "$(echo "$content" | grep -q '^topic: user-auth$' && echo true || echo false)"
-  assert_eq "Draft status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
-  assert_eq "Date extracted" "true" "$(echo "$content" | grep -q '^date: 2024-01-15$' && echo true || echo false)"
-  assert_eq "Format preserved" "true" "$(echo "$content" | grep -q '^format: local-markdown$' && echo true || echo false)"
-  assert_eq "Specification filename extracted" "true" "$(echo "$content" | grep -q '^specification: user-auth.md$' && echo true || echo false)"
-  assert_eq "H1 heading preserved" "true" "$(echo "$content" | grep -q '^# Implementation Plan: User Authentication$' && echo true || echo false)"
-  assert_eq "Content sections preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
+  assert_eq "Topic extracted from filename" "true" "$(grep -q '^topic: user-auth$' <<<"$content" && echo true || echo false)"
+  assert_eq "Draft status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
+  assert_eq "Date extracted" "true" "$(grep -q '^date: 2024-01-15$' <<<"$content" && echo true || echo false)"
+  assert_eq "Format preserved" "true" "$(grep -q '^format: local-markdown$' <<<"$content" && echo true || echo false)"
+  assert_eq "Specification filename extracted" "true" "$(grep -q '^specification: user-auth.md$' <<<"$content" && echo true || echo false)"
+  assert_eq "H1 heading preserved" "true" "$(grep -q '^# Implementation Plan: User Authentication$' <<<"$content" && echo true || echo false)"
+  assert_eq "Content sections preserved" "true" "$(grep -q '^## Overview$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -103,7 +103,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/api-endpoints.md")
 
-  assert_eq "Ready status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "Ready status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -131,7 +131,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/caching.md")
 
-  assert_eq "In Progress status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "In Progress status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -159,7 +159,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/database.md")
 
-  assert_eq "Completed status mapped to concluded" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
+  assert_eq "Completed status mapped to concluded" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -184,8 +184,8 @@ EOF
   content=$(cat "$PLAN_DIR/no-frontmatter.md")
 
   assert_eq "Frontmatter added" "---" "$(head -1 "$PLAN_DIR/no-frontmatter.md")"
-  assert_eq "Topic extracted from filename" "true" "$(echo "$content" | grep -q '^topic: no-frontmatter$' && echo true || echo false)"
-  assert_eq "Missing format flagged" "true" "$(echo "$content" | grep -q '^format: MISSING$' && echo true || echo false)"
+  assert_eq "Topic extracted from filename" "true" "$(grep -q '^topic: no-frontmatter$' <<<"$content" && echo true || echo false)"
+  assert_eq "Missing format flagged" "true" "$(grep -q '^format: MISSING$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -213,7 +213,7 @@ EOF
   content=$(cat "$PLAN_DIR/no-date.md")
   today=$(date +%Y-%m-%d)
 
-  assert_eq "Date defaults to today when not found" "true" "$(echo "$content" | grep -q "^date: $today$" && echo true || echo false)"
+  assert_eq "Date defaults to today when not found" "true" "$(grep -q "^date: $today$" <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -240,7 +240,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/no-spec.md")
 
-  assert_eq "Specification defaults to topic.md" "true" "$(echo "$content" | grep -q '^specification: no-spec.md$' && echo true || echo false)"
+  assert_eq "Specification defaults to topic.md" "true" "$(grep -q '^specification: no-spec.md$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -268,7 +268,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/billing.md")
 
-  assert_eq "Specification filename extracted from path" "true" "$(echo "$content" | grep -q '^specification: billing-system.md$' && echo true || echo false)"
+  assert_eq "Specification filename extracted from path" "true" "$(grep -q '^specification: billing-system.md$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -296,7 +296,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/beads-plan.md")
 
-  assert_eq "Non-default format preserved" "true" "$(echo "$content" | grep -q '^format: beads$' && echo true || echo false)"
+  assert_eq "Non-default format preserved" "true" "$(grep -q '^format: beads$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -419,10 +419,10 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/full-plan.md")
 
-  assert_eq "Overview section preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
-  assert_eq "Phase 1 section preserved" "true" "$(echo "$content" | grep -q '^## Phase 1: Setup$' && echo true || echo false)"
-  assert_eq "Phase 2 section preserved" "true" "$(echo "$content" | grep -q '^## Phase 2: Core$' && echo true || echo false)"
-  assert_eq "Phase 3 section preserved" "true" "$(echo "$content" | grep -q '^## Phase 3: Polish$' && echo true || echo false)"
+  assert_eq "Overview section preserved" "true" "$(grep -q '^## Overview$' <<<"$content" && echo true || echo false)"
+  assert_eq "Phase 1 section preserved" "true" "$(grep -q '^## Phase 1: Setup$' <<<"$content" && echo true || echo false)"
+  assert_eq "Phase 2 section preserved" "true" "$(grep -q '^## Phase 2: Core$' <<<"$content" && echo true || echo false)"
+  assert_eq "Phase 3 section preserved" "true" "$(grep -q '^## Phase 3: Polish$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -450,7 +450,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/user-profile-settings.md")
 
-  assert_eq "Topic uses kebab-case from filename" "true" "$(echo "$content" | grep -q '^topic: user-profile-settings$' && echo true || echo false)"
+  assert_eq "Topic uses kebab-case from filename" "true" "$(grep -q '^topic: user-profile-settings$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -478,10 +478,10 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/docman-python-sdk.md")
 
-  assert_eq "Beads format preserved" "true" "$(echo "$content" | grep -q '^format: beads$' && echo true || echo false)"
-  assert_eq "Epic migrated to plan_id" "true" "$(echo "$content" | grep -q '^plan_id: docman-api-python-0c8$' && echo true || echo false)"
-  assert_eq "Date extracted from Created field" "true" "$(echo "$content" | grep -q '^date: 2026-01-12$' && echo true || echo false)"
-  assert_eq "Epic field removed" "false" "$(echo "$content" | grep -q '^epic:' && echo true || echo false)"
+  assert_eq "Beads format preserved" "true" "$(grep -q '^format: beads$' <<<"$content" && echo true || echo false)"
+  assert_eq "Epic migrated to plan_id" "true" "$(grep -q '^plan_id: docman-api-python-0c8$' <<<"$content" && echo true || echo false)"
+  assert_eq "Date extracted from Created field" "true" "$(grep -q '^date: 2026-01-12$' <<<"$content" && echo true || echo false)"
+  assert_eq "Epic field removed" "false" "$(grep -q '^epic:' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -509,9 +509,9 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/linear-plan.md")
 
-  assert_eq "Linear format preserved" "true" "$(echo "$content" | grep -q '^format: linear$' && echo true || echo false)"
-  assert_eq "Project migrated to plan_id" "true" "$(echo "$content" | grep -q '^plan_id: my-linear-project$' && echo true || echo false)"
-  assert_eq "Project field removed" "false" "$(echo "$content" | grep -q '^project:' && echo true || echo false)"
+  assert_eq "Linear format preserved" "true" "$(grep -q '^format: linear$' <<<"$content" && echo true || echo false)"
+  assert_eq "Project migrated to plan_id" "true" "$(grep -q '^plan_id: my-linear-project$' <<<"$content" && echo true || echo false)"
+  assert_eq "Project field removed" "false" "$(grep -q '^project:' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -539,7 +539,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/created-field.md")
 
-  assert_eq "Date extracted from Created field" "true" "$(echo "$content" | grep -q '^date: 2026-01-15$' && echo true || echo false)"
+  assert_eq "Date extracted from Created field" "true" "$(grep -q '^date: 2026-01-15$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -566,7 +566,7 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/no-plan-id.md")
 
-  assert_eq "No plan_id when original had no epic/project" "false" "$(echo "$content" | grep -q '^plan_id:' && echo true || echo false)"
+  assert_eq "No plan_id when original had no epic/project" "false" "$(grep -q '^plan_id:' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -606,15 +606,15 @@ TESTEOF
   run_migration
   content=$(cat "$PLAN_DIR/hr-rules.md")
 
-  assert_eq "Format preserved in frontmatter" "true" "$(echo "$content" | grep -q '^format: local-markdown$' && echo true || echo false)"
-  assert_eq "Topic extracted from filename" "true" "$(echo "$content" | grep -q '^topic: hr-rules$' && echo true || echo false)"
-  assert_eq "Status mapped correctly" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "Format preserved in frontmatter" "true" "$(grep -q '^format: local-markdown$' <<<"$content" && echo true || echo false)"
+  assert_eq "Topic extracted from filename" "true" "$(grep -q '^topic: hr-rules$' <<<"$content" && echo true || echo false)"
+  assert_eq "Status mapped correctly" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
 
   body_after=$(sed -n '/^## /,$p' "$PLAN_DIR/hr-rules.md")
-  assert_eq "Phase 1 section preserved" "true" "$(echo "$body_after" | grep -q '^## Phase 1: Setup$' && echo true || echo false)"
-  assert_eq "Phase 2 section preserved" "true" "$(echo "$body_after" | grep -q '^## Phase 2: Core$' && echo true || echo false)"
-  assert_eq "Phase 3 section preserved" "true" "$(echo "$body_after" | grep -q '^## Phase 3: Cleanup$' && echo true || echo false)"
-  assert_eq "Horizontal rules preserved in body" "true" "$(echo "$body_after" | grep -q '^---$' && echo true || echo false)"
+  assert_eq "Phase 1 section preserved" "true" "$(grep -q '^## Phase 1: Setup$' <<<"$body_after" && echo true || echo false)"
+  assert_eq "Phase 2 section preserved" "true" "$(grep -q '^## Phase 2: Core$' <<<"$body_after" && echo true || echo false)"
+  assert_eq "Phase 3 section preserved" "true" "$(grep -q '^## Phase 3: Cleanup$' <<<"$body_after" && echo true || echo false)"
+  assert_eq "Horizontal rules preserved in body" "true" "$(grep -q '^---$' <<<"$body_after" && echo true || echo false)"
 
   teardown
 }
@@ -670,8 +670,8 @@ TESTEOF
   assert_eq "Body content exactly preserved after migration" "$body_before" "$body_after"
 
   content=$(cat "$PLAN_DIR/exact-body.md")
-  assert_eq "Format preserved" "true" "$(echo "$content" | grep -q '^format: beads$' && echo true || echo false)"
-  assert_eq "Epic migrated to plan_id" "true" "$(echo "$content" | grep -q '^plan_id: PROJ-123$' && echo true || echo false)"
+  assert_eq "Format preserved" "true" "$(grep -q '^format: beads$' <<<"$content" && echo true || echo false)"
+  assert_eq "Epic migrated to plan_id" "true" "$(grep -q '^plan_id: PROJ-123$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -695,8 +695,8 @@ EOF
   content=$(cat "$PLAN_DIR/no-h1.md")
 
   assert_eq "no-h1: migrated to frontmatter" "---" "$(head -1 "$PLAN_DIR/no-h1.md")"
-  assert_eq "no-h1: status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
-  assert_eq "no-h1: body section preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
+  assert_eq "no-h1: status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
+  assert_eq "no-h1: body section preserved" "true" "$(grep -q '^## Overview$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -720,9 +720,9 @@ EOF
   run_migration
   content=$(cat "$PLAN_DIR/no-section.md")
 
-  assert_eq "no-section: first body line preserved" "true" "$(echo "$content" | grep -qF 'Body prose with no section heading.' && echo true || echo false)"
-  assert_eq "no-section: later body line preserved" "true" "$(echo "$content" | grep -qF 'More plan content that must survive migration.' && echo true || echo false)"
-  assert_eq "no-section: H1 preserved" "true" "$(echo "$content" | grep -q '^# Implementation Plan: No Section$' && echo true || echo false)"
+  assert_eq "no-section: first body line preserved" "true" "$(grep -qF 'Body prose with no section heading.' <<<"$content" && echo true || echo false)"
+  assert_eq "no-section: later body line preserved" "true" "$(grep -qF 'More plan content that must survive migration.' <<<"$content" && echo true || echo false)"
+  assert_eq "no-section: H1 preserved" "true" "$(grep -q '^# Implementation Plan: No Section$' <<<"$content" && echo true || echo false)"
 
   teardown
 }

@@ -120,3 +120,34 @@ describe('the npm test script', () => {
     }
   });
 });
+
+// `grep -q` exits at its first match while the writer is still writing, and
+// the writer takes SIGPIPE: under `set -o pipefail` the check then fails at
+// random. A here-string hands grep its input with no pipe.
+const EARLY_EXIT_GREP = /\|\s*grep\s+(?:-[A-Za-z]*[qlm]|--quiet|--silent|--max-count|--files-with-matches)/;
+
+/**
+ * The lines of a shell suite's source that pipe into an early-exiting grep.
+ * @param {string} source
+ * @returns {number[]} line numbers, from 1
+ */
+function pipedIntoEarlyGrep(source) {
+  return source.split('\n').flatMap((line, i) => (EARLY_EXIT_GREP.test(line) ? [i + 1] : []));
+}
+
+describe('the shell suites', () => {
+  it('never pipe into a grep that exits early', () => {
+    const dir = path.join(REPO, 'tests');
+    const shells = /** @type {string[]} */ (fs.readdirSync(dir, { recursive: true })).filter((name) => name.endsWith('.sh'));
+    assert.ok(shells.length > 10, `found ${shells.length} shell suites — the folder read is broken`);
+    const found = shells.flatMap((name) => pipedIntoEarlyGrep(fs.readFileSync(path.join(dir, name), 'utf8')).map((n) => `tests/${name}:${n}`));
+    assert.deepStrictEqual(found, [], 'use `grep -q … <<<"$x"`, never `echo "$x" | grep -q …`');
+  });
+
+  it('catches a pipe into -q, -qF, -m, -l or --quiet, behind echo, printf or cat, and leaves a grep that reads it all', () => {
+    const early = ['echo "$x" | grep -q a', 'printf %s "$x" | grep -qF -- a', 'cat f | grep -m 1 a', 'ls | grep -l a', 'echo "$x" | grep --quiet a'];
+    const whole = ['echo "$x" | grep -c a', 'echo "$x" | grep -v a', 'grep -q a <<<"$x"'];
+    assert.deepStrictEqual(pipedIntoEarlyGrep(early.join('\n')), [1, 2, 3, 4, 5]);
+    assert.deepStrictEqual(pipedIntoEarlyGrep(whole.join('\n')), []);
+  });
+});

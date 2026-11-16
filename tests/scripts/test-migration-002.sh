@@ -65,12 +65,12 @@ EOF
   content=$(cat "$SPEC_DIR/user-auth.md")
 
   assert_eq "File starts with frontmatter delimiter" "---" "$(head -1 "$SPEC_DIR/user-auth.md")"
-  assert_eq "Topic extracted from filename" "true" "$(echo "$content" | grep -q '^topic: user-auth$' && echo true || echo false)"
-  assert_eq "Status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
-  assert_eq "Type preserved as feature" "true" "$(echo "$content" | grep -q '^type: feature$' && echo true || echo false)"
-  assert_eq "Date extracted from Last Updated" "true" "$(echo "$content" | grep -q '^date: 2024-01-15$' && echo true || echo false)"
-  assert_eq "H1 heading preserved" "true" "$(echo "$content" | grep -q '^# Specification: User Authentication$' && echo true || echo false)"
-  assert_eq "Content sections preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
+  assert_eq "Topic extracted from filename" "true" "$(grep -q '^topic: user-auth$' <<<"$content" && echo true || echo false)"
+  assert_eq "Status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
+  assert_eq "Type preserved as feature" "true" "$(grep -q '^type: feature$' <<<"$content" && echo true || echo false)"
+  assert_eq "Date extracted from Last Updated" "true" "$(grep -q '^date: 2024-01-15$' <<<"$content" && echo true || echo false)"
+  assert_eq "H1 heading preserved" "true" "$(grep -q '^# Specification: User Authentication$' <<<"$content" && echo true || echo false)"
+  assert_eq "Content sections preserved" "true" "$(grep -q '^## Overview$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -94,8 +94,8 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/billing-system.md")
 
-  assert_eq "Complete status mapped to concluded" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
-  assert_eq "Type preserved as cross-cutting" "true" "$(echo "$content" | grep -q '^type: cross-cutting$' && echo true || echo false)"
+  assert_eq "Complete status mapped to concluded" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
+  assert_eq "Type preserved as cross-cutting" "true" "$(grep -q '^type: cross-cutting$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -119,8 +119,8 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/api-design.md")
 
-  assert_eq "Completed status mapped to concluded" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
-  assert_eq "Date extracted from Date field" "true" "$(echo "$content" | grep -q '^date: 2024-03-10$' && echo true || echo false)"
+  assert_eq "Completed status mapped to concluded" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
+  assert_eq "Date extracted from Date field" "true" "$(grep -q '^date: 2024-03-10$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -144,7 +144,7 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/caching.md")
 
-  assert_eq "Building status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "Building status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -167,7 +167,7 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/notifications.md")
 
-  assert_eq "Type left empty when not found" "true" "$(echo "$content" | grep -q '^type: *$' && echo true || echo false)"
+  assert_eq "Type left empty when not found" "true" "$(grep -q '^type: *$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -191,7 +191,7 @@ EOF
   content=$(cat "$SPEC_DIR/logging.md")
   today=$(date +%Y-%m-%d)
 
-  assert_eq "Date defaults to today when not found" "true" "$(echo "$content" | grep -q "^date: $today$" && echo true || echo false)"
+  assert_eq "Date defaults to today when not found" "true" "$(grep -q "^date: $today$" <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -293,7 +293,7 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/draft-spec.md")
 
-  assert_eq "Draft status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "Draft status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -317,7 +317,7 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/done-spec.md")
 
-  assert_eq "Done status mapped to concluded" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
+  assert_eq "Done status mapped to concluded" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -354,11 +354,11 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/full-spec.md")
 
-  assert_eq "Overview section preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
-  assert_eq "Architecture section preserved" "true" "$(echo "$content" | grep -q '^## Architecture$' && echo true || echo false)"
-  assert_eq "Edge Cases section preserved" "true" "$(echo "$content" | grep -q '^## Edge Cases$' && echo true || echo false)"
-  assert_eq "List content preserved" "true" "$(echo "$content" | grep -qF -- '- Case 1' && echo true || echo false)"
-  assert_eq "Dependencies section preserved" "true" "$(echo "$content" | grep -q '^## Dependencies$' && echo true || echo false)"
+  assert_eq "Overview section preserved" "true" "$(grep -q '^## Overview$' <<<"$content" && echo true || echo false)"
+  assert_eq "Architecture section preserved" "true" "$(grep -q '^## Architecture$' <<<"$content" && echo true || echo false)"
+  assert_eq "Edge Cases section preserved" "true" "$(grep -q '^## Edge Cases$' <<<"$content" && echo true || echo false)"
+  assert_eq "List content preserved" "true" "$(grep -qF -- '- Case 1' <<<"$content" && echo true || echo false)"
+  assert_eq "Dependencies section preserved" "true" "$(grep -q '^## Dependencies$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -382,7 +382,7 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/user-profile-settings.md")
 
-  assert_eq "Topic uses kebab-case from filename" "true" "$(echo "$content" | grep -q '^topic: user-profile-settings$' && echo true || echo false)"
+  assert_eq "Topic uses kebab-case from filename" "true" "$(grep -q '^topic: user-profile-settings$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -411,8 +411,8 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/migration-spec.md")
 
-  assert_eq "Sources field present in frontmatter" "true" "$(echo "$content" | grep -q '^sources:$' && echo true || echo false)"
-  assert_eq "Single source preserved as YAML list item" "true" "$(echo "$content" | grep -q '^  - migration-subcommand$' && echo true || echo false)"
+  assert_eq "Sources field present in frontmatter" "true" "$(grep -q '^sources:$' <<<"$content" && echo true || echo false)"
+  assert_eq "Single source preserved as YAML list item" "true" "$(grep -q '^  - migration-subcommand$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -441,10 +441,10 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/tick-core.md")
 
-  assert_eq "Sources field present in frontmatter" "true" "$(echo "$content" | grep -q '^sources:$' && echo true || echo false)"
-  assert_eq "First source preserved" "true" "$(echo "$content" | grep -q '^  - project-fundamentals$' && echo true || echo false)"
-  assert_eq "Second source preserved" "true" "$(echo "$content" | grep -q '^  - data-schema-design$' && echo true || echo false)"
-  assert_eq "Last source preserved" "true" "$(echo "$content" | grep -q '^  - tui$' && echo true || echo false)"
+  assert_eq "Sources field present in frontmatter" "true" "$(grep -q '^sources:$' <<<"$content" && echo true || echo false)"
+  assert_eq "First source preserved" "true" "$(grep -q '^  - project-fundamentals$' <<<"$content" && echo true || echo false)"
+  assert_eq "Second source preserved" "true" "$(grep -q '^  - data-schema-design$' <<<"$content" && echo true || echo false)"
+  assert_eq "Last source preserved" "true" "$(grep -q '^  - tui$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -470,7 +470,7 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/no-sources.md")
 
-  assert_eq "No sources field when source not present" "false" "$(echo "$content" | grep -q '^sources:' && echo true || echo false)"
+  assert_eq "No sources field when source not present" "false" "$(grep -q '^sources:' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -507,13 +507,13 @@ TESTEOF
   run_migration
   content=$(cat "$SPEC_DIR/hr-body.md")
 
-  assert_eq "Frontmatter status correct" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
-  assert_eq "Frontmatter date correct" "true" "$(echo "$content" | grep -q '^date: 2024-01-01$' && echo true || echo false)"
+  assert_eq "Frontmatter status correct" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
+  assert_eq "Frontmatter date correct" "true" "$(grep -q '^date: 2024-01-01$' <<<"$content" && echo true || echo false)"
 
   body=$(sed -n '/^## /,$p' "$SPEC_DIR/hr-body.md")
-  assert_eq "Overview section preserved" "true" "$(echo "$body" | grep -q '^## Overview$' && echo true || echo false)"
-  assert_eq "Dependencies section preserved" "true" "$(echo "$body" | grep -q '^## Dependencies$' && echo true || echo false)"
-  assert_eq "Final Section preserved" "true" "$(echo "$body" | grep -q '^## Final Section$' && echo true || echo false)"
+  assert_eq "Overview section preserved" "true" "$(grep -q '^## Overview$' <<<"$body" && echo true || echo false)"
+  assert_eq "Dependencies section preserved" "true" "$(grep -q '^## Dependencies$' <<<"$body" && echo true || echo false)"
+  assert_eq "Final Section preserved" "true" "$(grep -q '^## Final Section$' <<<"$body" && echo true || echo false)"
 
   teardown
 }
@@ -611,13 +611,13 @@ TESTEOF
   run_migration
   content=$(cat "$SPEC_DIR/building-complex.md")
 
-  assert_eq "Building specification maps to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "Building specification maps to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
 
   body=$(sed -n '/^## /,$p' "$SPEC_DIR/building-complex.md")
-  assert_eq "Overview section preserved" "true" "$(echo "$body" | grep -q '^## Overview$' && echo true || echo false)"
-  assert_eq "Watchers section preserved" "true" "$(echo "$body" | grep -q '^## Watchers$' && echo true || echo false)"
-  assert_eq "Integration section preserved" "true" "$(echo "$body" | grep -q '^## Integration$' && echo true || echo false)"
-  assert_eq "Table content preserved" "true" "$(echo "$body" | grep -qF '| create | onCreate | high |' && echo true || echo false)"
+  assert_eq "Overview section preserved" "true" "$(grep -q '^## Overview$' <<<"$body" && echo true || echo false)"
+  assert_eq "Watchers section preserved" "true" "$(grep -q '^## Watchers$' <<<"$body" && echo true || echo false)"
+  assert_eq "Integration section preserved" "true" "$(grep -q '^## Integration$' <<<"$body" && echo true || echo false)"
+  assert_eq "Table content preserved" "true" "$(grep -qF '| create | onCreate | high |' <<<"$body" && echo true || echo false)"
 
   teardown
 }
@@ -643,9 +643,9 @@ EOF
   content=$(cat "$SPEC_DIR/type-only.md")
 
   assert_eq "type-only: migrated to frontmatter" "---" "$(head -1 "$SPEC_DIR/type-only.md")"
-  assert_eq "type-only: status defaulted to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
-  assert_eq "type-only: type preserved" "true" "$(echo "$content" | grep -q '^type: feature$' && echo true || echo false)"
-  assert_eq "type-only: body section preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
+  assert_eq "type-only: status defaulted to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
+  assert_eq "type-only: type preserved" "true" "$(grep -q '^type: feature$' <<<"$content" && echo true || echo false)"
+  assert_eq "type-only: body section preserved" "true" "$(grep -q '^## Overview$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -671,9 +671,9 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/no-section.md")
 
-  assert_eq "no-section: first body line preserved" "true" "$(echo "$content" | grep -qF 'This is spec body prose with no section heading.' && echo true || echo false)"
-  assert_eq "no-section: later body line preserved" "true" "$(echo "$content" | grep -qF 'More requirements that must survive migration.' && echo true || echo false)"
-  assert_eq "no-section: H1 preserved" "true" "$(echo "$content" | grep -q '^# Specification: No Section$' && echo true || echo false)"
+  assert_eq "no-section: first body line preserved" "true" "$(grep -qF 'This is spec body prose with no section heading.' <<<"$content" && echo true || echo false)"
+  assert_eq "no-section: later body line preserved" "true" "$(grep -qF 'More requirements that must survive migration.' <<<"$content" && echo true || echo false)"
+  assert_eq "no-section: H1 preserved" "true" "$(grep -q '^# Specification: No Section$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
