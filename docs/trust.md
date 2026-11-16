@@ -71,7 +71,7 @@ Beyond the questions, some of Ledger's own stops are routine: whether to bring i
 
 ## The matrix
 
-The matrix is where you see and correct all of this, reached from manage and whenever you ask for it. <!-- 19.12 --> For each kind it shows how often you changed Claude's lean, the real-loss rate the rule runs on, and whether the kind is asking or has gone quiet, with Claude's one-answer calls on a row of their own; below, the threshold mid-build and how the reviews' findings split between what you were asked, what Claude settled and what went elsewhere.
+The matrix is where you see and correct all of this, reached from manage's `m/matrix` and whenever you ask for it. For each kind it shows how often you changed Claude's lean, the real-loss rate the rule runs on, and whether the kind is asking or has gone quiet, with Claude's one-answer calls on a row of their own; below, the threshold mid-build and how the reviews' findings split between what you were asked, what Claude settled and what went elsewhere.
 
 You correct it through your own settings:
 

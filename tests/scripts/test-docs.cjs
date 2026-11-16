@@ -10,7 +10,8 @@
 // phase (23.S14). None of the author's own products and projects is named
 // in the docs or the README (23.S12, 23.4.6). The docs, help and the
 // glossary call the product Ledger, and never the name it was built under,
-// but where history tells of it (23.S19, 23.1.4).
+// but where history tells of it (23.S19, 23.1.4). Every link of the book's
+// and the README's resolves, to its file and the heading it names.
 //
 // Layer: unit. World: the repository's own files, read.
 
@@ -87,7 +88,28 @@ function pipelineTable(text) {
   });
 }
 
+/** A heading's anchor, as GitHub makes it. @param {string} heading */
+const anchorOf = (heading) => heading.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s/g, '-');
+
+/**
+ * Each link of `rel`'s that goes nowhere: a file of the repository missing,
+ * or a heading of it, by its anchor, absent. A web address is passed over.
+ * @param {string} rel from the repository's root
+ */
+function brokenLinks(rel) {
+  return [...read(rel).matchAll(/\]\(([^)\s]+)\)/g)].map(([, target]) => target).filter((target) => !/^[a-z]+:/.test(target)).filter((target) => {
+    const [file, anchor] = target.split('#');
+    const linked = file === '' ? rel : path.join(path.dirname(rel), file);
+    if (!fs.existsSync(path.join(REPO, linked))) return true;
+    return anchor !== undefined && ![...read(linked).matchAll(/^#+ (.+)$/gm)].some(([, heading]) => anchorOf(heading) === anchor);
+  }).map((target) => `${rel}: ${target}`);
+}
+
 describe('the user docs (23.4)', () => {
+  it('every link of the book\'s and the README\'s goes somewhere, to the heading it names', () => {
+    assert.deepStrictEqual([...bookFiles(), 'README.md'].flatMap(brokenLinks), []);
+  });
+
   it('23.S11, 23.S17: the book is the chapters 23.4.2 lists and its index, nothing else — no planning.md, no collaboration chapter apart from trust', () => {
     assert.deepStrictEqual(bookFiles().map((rel) => path.basename(rel)).sort(), [...Object.values(CHAPTERS), INDEX].sort());
   });

@@ -32,7 +32,7 @@ The other rows:
 - **`t/triage`** works through the inbox, and **`r/roadmap`** opens the roadmap; both are below.
 - **`e/verdicts`** shows only while a call you changed waits for your verdict, the [verdict queue](trust.md#verdicts).
 - **`v/view`** lists completed and cancelled work once any has closed, each opening in manage.
-- **`m/manage`** is where work changes shape — pivot, absorb, cancel, bring back — and where the project's setup, its drivers and [the matrix](trust.md#the-matrix) are changed. [Lifecycle operations](lifecycle-operations.md) covers the reshaping; [configuration](configuration.md) the setup and drivers. <!-- 19.12 -->
+- **`m/manage`** is where work changes shape — pivot, absorb, cancel, bring back — and where the project's setup, its drivers and [the matrix](trust.md#the-matrix) are changed. [Lifecycle operations](lifecycle-operations.md) covers the reshaping; [configuration](configuration.md) the setup and drivers.
 - **`h/help`** is on every menu: what the screen is for and what each row does, then an invitation to ask about anything else. The start menu's help also leads to the walkthrough and to a card on each part of Ledger.
 
 You rarely need the menu to start. Ask Claude for a change in the middle of any conversation and it takes your words into Ledger itself, going straight into Start or into the piece of work they name; the start menu is drawn only when you type the bare command.
